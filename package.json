@@ -49,6 +49,7 @@
     "babel-runtime": "^6.26.0",
     "isomorphic-git": "^0.18.2",
     "secure-random-bytes": "^1.0.1",
+    "tar": "^4.4.4",
     "virtualfs": "^2.1.0"
   }
 }

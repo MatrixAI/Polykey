@@ -4,5 +4,5 @@
   with pkgs;
   stdenv.mkDerivation {
     name = "js-polykey";
-    buildInputs = [ python2 nodejs flow ];
+    buildInputs = [ python2 nodejs-8_x flow ];
   }
