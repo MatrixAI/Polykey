@@ -149,3 +149,237 @@ The `tar` library returns `tar.Unpack` object. It is "writable stream" that unpa
 Ok so it's async, and nothing is consuming the stream, so there's no need to get it. If you provide it with just options, it will return a Promise. But if you provide it with a string, it just returns the Unpack object. Strange API. Ok can we use this?
 
 We have to integrate the indexer into it. So either we fork this it. Or monkey patch it. Or something... I'm not sure. I think it might be better to write a simple tar reader and writer that works against an in-memory fs. First to understand the tar format however.
+
+We read the extraction function and the creation function.
+
+---
+
+The RAT archive has declaration of a Var:
+
+```
+var (
+  IndexSignature = []byte{'R', 'A', 'T'}
+  UnsupportedIndex = errors.New("Unsupported tar file")
+  UnableToSerializeIndexEntry = errors.New("Unable...")
+)
+```
+
+It seems that's a way to declare multiple variables.
+
+It defines variables in bulk, so you don't need to write it all the same time.
+
+The most important part is the `IndexSignature`. Which is a byte string of `RAT`.
+
+It gets used in:
+
+```
+func (i *index) WriteTo(w io.Writer) error {
+  tail := bytes.NewBuffer(IndexSignature)
+  if err := binary.Write(tail, binary.LittleEndian, IndexVersion); err != nil {
+    // ...
+  }
+}
+```
+
+So there we go, it is turned into a `NewBuffer`. Not sure why that's needed. It creates and initialises a new Buffer using `buf` as the initial contents. So `* Buffer` means heap allocation, whereas the original buf is just a pointer. The `* Buffer` takes ownership. Wait... apparently the caller should not use buf after this call. It's used to prepare a Buffer to read existing data. So it seems that this is not being used correctly then. I thought it would mean heap allocation.
+
+Also then `binary.Write`. What does this do?
+
+```
+type index struct {
+  Entries map[string]*indexEntry
+}
+```
+
+So this says that we have `index` is a struct, with 1 property. It's `indexEntry`.
+
+The `map[string]*indexEntry` means `map[KeyType]ValueType`.
+
+So here we have `Entries` that is a map from string to pointer to `indexEntry`.
+
+Ok so we have a struct with `Entries` as its only property. Which is a map of string keys to pointers to `indexEntry`.
+
+An `indexEntry` is:
+
+```
+type indexEntry struct {
+  Name string
+  Typeflag byte
+  Header int64
+  Start, End int64
+}
+```
+
+It's in the same file, defined slightly lower.
+
+We havea smart constructor:
+
+```
+// we are creating a pointer to index
+// so it's heap allocation
+func NewIndex() *index {
+  // returns a pointer to an index construction
+  // we don't need to name it explicitly
+  // there's only 1 entry in the struct
+  return &index{make(map[string]*indexEntry, 0)}
+}
+```
+
+How does `make` work? It builds an empty map. The `make` if given no parameters other than the map type. Weird, I'm not sure if that's an actual parameter of it types are values in go. What's with the 0? The 0 means size. The first argument is a type, nota value. The make's return type is the same type as argument, not pointer to it. In the case of making maps, the second integer just means starting size. Apparently the size can be omitted. We can imagine it to be just an empty index with empty Entries!
+
+The index has a method. That's called `WriteTo`. It takes a writer. This function basically takes a writer and writes the index to it.
+
+```
+func (i *index) WriteTo(w io.Writer) error {
+
+  // tail is a new buffer with the size of IndexSignature
+  // or it is buffer initialised with IndexSignature contents
+  // not sure
+  tail := bytes.NewBuffer(IndexSignature)
+  // this writes to the tail buffer
+  // in little endian order
+  // the IndexVersion which is an int64
+  if err := binary.Write(tail, binary.LittleEndian, IndexVersion); err != nil {
+    return err
+  }
+
+  // iterate over each entry in the map
+  // because it is a map
+  // the iteration gives both key and value
+  // here we discard the key
+  // and then we use the WriteTo function
+  // of each entry which is indexEntry type
+  // and remember it's a pointer to indexEntry
+  // but that works too
+  // and we can call WriteTo
+  // we write to the tail
+  // which is an arbitrary sized buffer
+  for _, e := range i.Entries {
+    if err := e.WriteTo(tail); err != nil {
+      return err
+    }
+  }
+
+  // here we take our tail, and stream copy it into the w
+  // the w which was passed into the WriteTo
+  // each method is writing itself to some Writer
+  // but it's actually a io.Writer which is an interface
+  // so that's the type constraint
+
+  // returns the length that waas written
+  length, err := io.Copy(w, tail)
+  if err != nil {
+    return err
+  }
+
+   // so we still write the length which is already int64
+   // at the very end again!
+   // why do we write the length of what we wrote to it?
+  if err := binary.Write(w, binary.LittleEndian, int64(length)); err != nil {
+    return err
+  }
+
+}
+```
+
+The `indexEntry` byte representation has the following format:
+
+```
+3 byte index signature
+x-byte index entries
+8 byte length
+```
+
+I think what we have is a binary buffer that is incrementally getting written to. But the buffer appears to have arbitrary size.
+
+First we initialise it with `RAT`. Then we write the `int64` in little endian format.
+
+That means we have `IndexSignature` then `IndexVersion`.
+
+Afterwhich we write each entry. Then after that we write the length number.
+
+The whole thing is copied into the `w`.
+
+Why do we have 3 bytes index signature, 8 bytes index version, then entries and then 8 byte length. Remember 8 bytes for int64. Why do we need the length at the very end? Oh wait, because you can start reading from the end of the file, and you read the length, which tells you how long to read it for! Ah I see it now... because this index is put at the end of the tar file! So that's why we have length indexing at the end.
+
+Still strange since we put the signature and version at the beginning of this. I guess it still makes sense somewhat. Usually these things are TLV. So you would have this signature at the very front. But in that case you are trying to detect a signature at the very end.
+
+Afterwards we have `tailSizeLength = 8`.
+
+Note that tar has posix format and gnu format.
+
+A tar archive is a series of file objects. Each file object includes a 512 byte header. The file data is always written with its length rounded to a multiple of 512 bytes. The extra padding data is usually zeroed.
+
+The end of the archive is 2 consecutive zero filled records (how is it 2 if it is all zeros?)
+
+The file header is this (all info in the header is in ASCII):
+
+```
+0 - 100 - File name (so max length of name is 100 characters)
+100 - 8 - File mode
+108 - 8 - Owner Id
+116 - 8 - Group Id
+124 - 12 - File size in octal base
+136 - 12 - Last modification time in unix time format octal format
+148 - 8 - Checksum
+156 - 1 - Link indicator
+157 - 100 - Name of linked file
+
+Link indicator:
+
+0 - Normal file
+1 - Hard link
+2 - Symlink
+```
+
+Wait the above is the old format. It is the `Pre-POSIX.1-1998 v7` tar header.
+
+Apparently modern tar writes in `UStar` format now.
+
+The GNU tar supports ustar, pax, GNU and v7 formats. We have to be aware what format we are trying to support and then, write an index for each one if necessary. Although we should probably convert the formats to a standardised format that we expect.
+
+The `UStar` format is now:
+
+```
+0  - 156 - Several fields same as old format( the old format 7 fields up to 156 bytes!?) - That is File name, file mode, owner id, group id, file size, mod time, checksum
+156 - 1 - Type flag
+157 - 100 Same as old format (name of the linked name)
+257 - 6 - Ustar indicator
+263 - 2 - Ustar version
+265 - 32 - Owner username
+297 - 32 - Owner group name
+329 - 8 - Device major number
+337 - 8 - Device minor number
+345 - 155 - Filename prefix
+```
+
+Remember how the header is 512 bytes, yea, so this is being used up by the extended tar format!
+
+Device numbering is bit werid, there's standard numbers for disks, and the minor numbers tell us which one it is. It's just a marker to the driver being used, and the number of the device being used. Both are now variable anyway. I wonder why the tar keeps these for the files. They seem rather irrelevant! It is possible to dynamically allocate these numbers. Tar archives can apparently store device files. Oh... so you can now tar up block and char files. How weird! I'm assuming that doens't work on the systems that don't have that device.
+
+So that header is in front of every file. So really it's possible to have a tar archive with header blocks that are not ustar and blocks that are ustar. That's pretty weird.
+
+The type can now be 0, 1, 2, 3, 4, 5, 6, 7, g, x, A-Z. So that now covers normal files, hardlinks, symlinks, character devices, block devcies, directories, FIFO, contiguous file, global extended header, x extended header with metadata for the next file.
+
+```
+struct posix_header
+{                              /* byte offset */
+  char name[100];               /*   0 */
+  char mode[8];                 /* 100 */
+  char uid[8];                  /* 108 */
+  char gid[8];                  /* 116 */
+  char size[12];                /* 124 */
+  char mtime[12];               /* 136 */
+  char chksum[8];               /* 148 */
+  char typeflag;                /* 156 */
+  char linkname[100];           /* 157 */
+  char magic[6];                /* 257 */
+  char version[2];              /* 263 */
+  char uname[32];               /* 265 */
+  char gname[32];               /* 297 */
+  char devmajor[8];             /* 329 */
+  char devminor[8];             /* 337 */
+  char prefix[155];             /* 345 */
+                                /* 500 */
+};
+```
