@@ -9,7 +9,7 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 export default [
   {
-    input: 'lib/index.js',
+    input: 'src/index.js',
     output: {
       file: 'dist/index.node.es.js',
       format: 'es'
@@ -19,12 +19,7 @@ export default [
         .concat(Object.keys(packageJson.devDependencies))
         .map((dep) => new RegExp('^' + dep))
         .concat([
-            /^babel-runtime/,
-            /^buffer/,
-            /^events/,
-            /^process/,
-            /^path/,
-            /^stream/
+            /^babel-runtime/
         ])
         .some((pattern) => pattern.test(id));
     },
@@ -33,13 +28,17 @@ export default [
         babelrc: false,
         exclude: 'node_modules/**',
         runtimeHelpers: true,
-        plugins: ['transform-object-rest-spread', 'transform-runtime'],
+        plugins: [
+          '@babel/plugin-transform-runtime',
+          '@babel/plugin-proposal-class-properties',
+          '@babel/plugin-proposal-object-rest-spread'
+        ],
         presets: [
-          'flow',
-          ['env', {
+          '@babel/preset-flow',
+          ['@babel/preset-env', {
             modules: false,
             targets: {
-              node: '6.4.0'
+              node: '8.7.0'
             }
           }]
         ]
@@ -47,7 +46,7 @@ export default [
     ]
   },
   {
-    input: 'lib/index.js',
+    input: 'src/index.js',
     output: {
       file: 'dist/index.node.cjs.js',
       format: 'cjs'
@@ -57,12 +56,7 @@ export default [
         .concat(Object.keys(packageJson.devDependencies))
         .map((dep) => new RegExp('^' + dep))
         .concat([
-            /^babel-runtime/,
-            /^buffer/,
-            /^events/,
-            /^process/,
-            /^path/,
-            /^stream/
+            /^babel-runtime/
         ])
         .some((pattern) => pattern.test(id));
     },
@@ -71,13 +65,17 @@ export default [
         babelrc: false,
         exclude: 'node_modules/**',
         runtimeHelpers: true,
-        plugins: ['transform-object-rest-spread', 'transform-runtime'],
+        plugins: [
+          '@babel/plugin-transform-runtime',
+          '@babel/plugin-proposal-class-properties',
+          '@babel/plugin-proposal-object-rest-spread'
+        ],
         presets: [
-          'flow',
-          ['env', {
+          '@babel/preset-flow',
+          ['@babel/preset-env', {
             modules: false,
             targets: {
-              node: '6.4.0'
+              node: '8.7.0'
             }
           }]
         ]
@@ -85,11 +83,11 @@ export default [
     ]
   },
   {
-    input: 'lib/index.js',
+    input: 'src/index.js',
     output: {
       file: 'dist/index.browser.umd.js',
       format: 'umd',
-      name: 'polykey'
+      name: 'virtualfs'
     },
     plugins: [
       babel({
@@ -97,13 +95,13 @@ export default [
         exclude: 'node_modules/**',
         runtimeHelpers: true,
         plugins: [
-          'transform-object-rest-spread',
-          'transform-runtime',
-          'transform-class-properties'
+          '@babel/plugin-transform-runtime',
+          '@babel/plugin-proposal-class-properties',
+          '@babel/plugin-proposal-object-rest-spread'
         ],
         presets: [
-          'flow',
-          ['env', {
+          '@babel/preset-flow',
+          ['@babel/preset-env', {
             modules: false,
             targets: {
               browsers: ['last 2 versions']
