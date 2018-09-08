@@ -30,6 +30,11 @@
   "engines": {
     "node": ">=6.4.0"
   },
+  "dependencies": {
+    "@babel/runtime": "^7.0.0",
+    "isomorphic-git": "^0.35.1",
+    "virtualfs": "^2.2.0"
+  },
   "devDependencies": {
     "@babel/cli": "^7.0.0",
     "@babel/core": "^7.0.0",
@@ -47,12 +52,6 @@
     "rollup-plugin-commonjs": "^9.1.6",
     "rollup-plugin-node-builtins": "^2.1.2",
     "rollup-plugin-node-globals": "^1.2.1",
-    "wcwidth": "^1.0.0",
-    "ignore": "^5.0.0",
-    "isomorphic-git": "^0.35.0",
     "rollup-plugin-node-resolve": "^3.3.0"
-  },
-  "dependencies": {
-    "@babel/runtime": "^7.0.0"
   }
 }
