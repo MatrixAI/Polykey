@@ -1,5 +1,5 @@
 import test from 'ava';
-import Library from '../src/Library.js';
+import Library from '../lib/tmp/Library.js';
 
 test('give me a 1', t => {
   const lib = new Library;

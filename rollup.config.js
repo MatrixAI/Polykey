@@ -9,7 +9,7 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 export default [
   {
-    input: 'src/index.js',
+    input: 'lib/index.js',
     output: {
       file: 'dist/index.node.es.js',
       format: 'es'
@@ -46,7 +46,7 @@ export default [
     ]
   },
   {
-    input: 'src/index.js',
+    input: 'lib/index.js',
     output: {
       file: 'dist/index.node.cjs.js',
       format: 'cjs'
@@ -83,11 +83,20 @@ export default [
     ]
   },
   {
-    input: 'src/index.js',
+    input: 'bin/polykey.js',
     output: {
-      file: 'dist/index.browser.umd.js',
-      format: 'umd',
-      name: 'virtualfs'
+      file: 'dist/bin/polykey',
+      format: 'cjs',
+      banner: '#!/usr/bin/env node'
+    },
+    external: (id) => {
+      return Object.keys(packageJson.dependencies)
+        .concat(Object.keys(packageJson.devDependencies))
+        .map((dep) => new RegExp('^' + dep))
+        .concat([
+            /^babel-runtime/
+        ])
+        .some((pattern) => pattern.test(id));
     },
     plugins: [
       babel({
@@ -104,18 +113,11 @@ export default [
           ['@babel/preset-env', {
             modules: false,
             targets: {
-              browsers: ['last 2 versions']
+              node: '8.7.0'
             }
           }]
         ]
-      }),
-      resolve({
-        preferBuiltins: true,
-        browser: true
-      }),
-      commonjs(),
-      globals(),
-      builtins()
+      })
     ]
   }
 ];
