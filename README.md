@@ -579,3 +579,36 @@ Read this: https://en.wikipedia.org/wiki/Disk_encryption_theory
 ---
 
 Need to also plan out how to share secret repositories with each other. Right now git pull and push may be ok, but later we want something that works a bit better. There's also the possibility of using. More P2P sharing systems. Like torrenting, but there needs to be a model of initiating the sending of secrets to someplace. And whether the sharing of secrets is mediated out of band or in-band. Right now an in-band forward replication is like git push. While an out-of-band replication is a git pull. Essentially you need a discovery system, but a discovery system that is secure. So you could piggyback off keybase as a discovery system to share secrets with others. Look at things like hypercore and keybase while you're working on this.
+
+---
+
+Ok so now we are going to build this...
+
+We have made a bunch of experiments.
+
+As a core library of Polykey, we need to think of the API that UI system will have.
+
+So we need to have some function calls.
+
+The main class should be `Polykey.js`.
+
+This should expose things like:
+
+* Create a secret bundle
+* Delete a secret bundle (untag it)
+* Tag a secret bundle (we are using a tag based system)
+* Untag it... so we can use a tagging system for this
+
+A secret bundle. Let's give it a better name? It's a filesystem. So we can create a "secret archive" or "secret bundle" or "secretfs". FS is too technical.
+
+A symmetric API means you can delete a vault. But without a tag, you cannot refer to it. So really there's. So when you create a vault, it's always tagged. When you remove the last tag, it's deleted, via garbage collection. Tagging is idempotent. There's no need to.. do that.
+
+But the concept of deleting a vault, means removing all tags from the vault.
+
+Note that security in transit, security at rest. What about security at use. The security at use is also secure, as we only maintain a decrypted version in-memory. It does not do memory encryption though. It's possible to extend this later by using secure enclaves. The main thing is to be secure even when the program is idling, and the decryption only occurs to a trusted program. (Then it's that fault to maintain).
+
+We need a pub/priv key pair generated automatically. If this is not passed as a constructor, we will do autogeneration. And every new instance will have this. Note that each vault that is managed by a KeyNode is "encrypted" with the KeyNode pair always. So it is always tagged with the pubkey. But these tags could be untagged? That seems like it can be a problem, so we have to separate secure tags away from unsecured tags.
+
+Suppose you have a key that is randomly generated when you create a new vault
+
+A keynode has multiple vaults. Each vault has a corresponding vault key. This is hidden from end users. The vault key is encrypted with as many root public keys that the vault is meant to be shared with. You find other root public keys via external systems like Keybase acting as a social network for crypto-enthusiasts. But then you need to perform P2P discovery between keynodes to find the other keynode that is holding holding that root public key. The handshake here is important as we need to ensure that this prevents floods and DOS and ensure we don't scale bad actors. We don't want to leak information about whenever we are sharin/unsharing a vault with another user. So the vault key can be different in different keynodes.
