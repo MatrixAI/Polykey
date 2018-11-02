@@ -1,19 +1,23 @@
 {
   pkgs ? import ./pkgs.nix,
-  nodePath ? "nodejs-8_x"
+  nodeVersion ? "8_x",
 }:
   with pkgs;
   let
-    drv = import ./default.nix { inherit pkgs nodePath; };
+    drv = import ./default.nix { inherit pkgs nodeVersion; };
   in
     drv.overrideAttrs (attrs: {
       src = null;
-      buildInputs = [ flow ] ++ attrs.buildInputs;
+      buildInputs = [ nodePackages_6_x.node2nix ] ++
+                    attrs.buildInputs ++
+                    attrs.checkInputs;
       shellHook = ''
         echo 'Entering ${attrs.name}'
         set -v
 
-        export PATH="$(npm bin):$PATH"
+        export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
+
+        flow server 2>/dev/null &
 
         set +v
       '';

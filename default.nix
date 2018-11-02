@@ -1,13 +1,18 @@
 {
   pkgs ? import ./pkgs.nix,
-  nodePath ? "nodejs-8_x"
+  nodeVersion ? "8_x"
 }:
   with pkgs;
   let
-    nodejs = lib.getAttrFromPath (lib.splitString "." nodePath) pkgs;
+    nodejs = lib.getAttrFromPath
+            (lib.splitString "." ("nodejs-" + nodeVersion))
+            pkgs;
+    nodePackages = lib.getAttrFromPath
+                   (lib.splitString "." ("nodePackages_" + nodeVersion))
+                   pkgs;
   in
     stdenv.mkDerivation {
-      name = "javascript-demo";
+      name = "js-polykey";
       version = "0.0.1";
       src = lib.cleanSourceWith {
         filter = (path: type:
@@ -20,5 +25,6 @@
         );
         src = lib.cleanSource attrs.src;
       };
-      buildInputs = [ nodejs ];
+      buildInputs = [ nodejs dos2unix ];
+      checkInputs = [ flow ];
     }
