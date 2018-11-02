@@ -6,6 +6,9 @@
     "secrets"
   ],
   "author": "Roger Qiu",
+  "contributors": [
+    "Aaashwin Varshney"
+  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
