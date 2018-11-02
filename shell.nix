@@ -19,6 +19,12 @@
 
         flow server 2>/dev/null &
 
+        cleanup () {
+          flow stop
+        }
+
+        trap cleanup EXIT
+
         set +v
       '';
     })
