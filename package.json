@@ -33,8 +33,10 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.0.0",
+    "bip39": "^2.5.0",
     "isomorphic-git": "^0.35.1",
     "kbpgp": "^2.0.82",
+    "moniker": "^0.1.2",
     "virtualfs": "^2.2.0"
   },
   "devDependencies": {
