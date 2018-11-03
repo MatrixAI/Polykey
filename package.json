@@ -34,6 +34,7 @@
   "dependencies": {
     "@babel/runtime": "^7.0.0",
     "isomorphic-git": "^0.35.1",
+    "kbpgp": "^2.0.82",
     "virtualfs": "^2.2.0"
   },
   "devDependencies": {

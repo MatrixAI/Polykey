@@ -612,3 +612,9 @@ We need a pub/priv key pair generated automatically. If this is not passed as a 
 Suppose you have a key that is randomly generated when you create a new vault
 
 A keynode has multiple vaults. Each vault has a corresponding vault key. This is hidden from end users. The vault key is encrypted with as many root public keys that the vault is meant to be shared with. You find other root public keys via external systems like Keybase acting as a social network for crypto-enthusiasts. But then you need to perform P2P discovery between keynodes to find the other keynode that is holding holding that root public key. The handshake here is important as we need to ensure that this prevents floods and DOS and ensure we don't scale bad actors. We don't want to leak information about whenever we are sharin/unsharing a vault with another user. So the vault key can be different in different keynodes.
+
+So let's continue with this and then.... later GOI. We need to implement the second part porting over the G constructions.
+
+It turns out, that... we need to ignore node modules. Mostly. Since it can d o weird things there.
+
+So yea it takes about 30 seconds to generate a key. But once that's done it should be possible to continue.
