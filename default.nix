@@ -1,6 +1,6 @@
 {
   pkgs ? import ./pkgs.nix,
-  nodeVersion ? "8_x"
+  nodeVersion ? "12_x"
 }:
   with pkgs;
   let
@@ -26,5 +26,5 @@
         src = lib.cleanSource attrs.src;
       };
       buildInputs = [ nodejs dos2unix ];
-      checkInputs = [ flow ];
+      checkInputs = [ webpack ];
     }

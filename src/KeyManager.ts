@@ -1,4 +1,4 @@
-import kbpgp from 'kbpgp';
+import kbpgp from 'kbpgp'
 
 // we get back an object
 // not a series of modules I guess
@@ -10,4 +10,4 @@ class KeyManager {
 
 }
 
-export default KeyManager;
+export default KeyManager

@@ -3,9 +3,9 @@
 class Another {
 
   doWhatever () {
-    console.log('hello!');
+    console.log('hello!')
   }
 
 }
 
-export default Another;
+export default Another
