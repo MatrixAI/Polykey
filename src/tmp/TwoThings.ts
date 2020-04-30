@@ -2,24 +2,24 @@
 
 class FirstThing {
 
-  _private: number;
+  _private: number
 
   constructor () {
-    this._private = 1;
+    this._private = 1
   }
 
   getIt () {
-    return this._private;
+    return this._private
   }
 
 }
 
 class SecondThing {
 
-  _private: number;
+  _private: number
 
   constructor () {
-    this._private = 2;
+    this._private = 2
   }
 
 }
@@ -27,4 +27,4 @@ class SecondThing {
 export {
   FirstThing,
   SecondThing
-};
+}

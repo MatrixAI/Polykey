@@ -1,4 +1,4 @@
-import kbpgp from 'kbpgp';
+import kbpgp from 'kbpgp'
 
 // a keymanager
 // everything can have a keymanager
@@ -6,15 +6,15 @@ import kbpgp from 'kbpgp';
 // which we can change
 // or we use also use to manage other keys
 
-// console.log('hello');
-// console.log(pgpConstants);
+// console.log('hello')
+// console.log(pgpConstants)
 
 
 // time to test generate
 // kbpgp.const are the constants
 // ok I see
 
-const pgpConstants = kbpgp.const.openpgp;
+const pgpConstants = kbpgp.const.openpgp
 
 // primary option
 // find out what each flag is doing
@@ -43,7 +43,7 @@ const options = {
       expires_in: 86400 * 365 * 2 // 2 years
     }
   ]
-};
+}
 
 // so our key manager will need to the expiry issue
 // and if we are going to expire it, the keys must be rotated
@@ -76,46 +76,46 @@ const options = {
 //     // sign alice's subkeys
 //     alice.sign({}, (err) => {
 
-//       console.log(alice);
+//       console.log(alice)
 
 //       alice.export_pgp_private(
 //         { passphrase: 'booyeah!' },
 //         (err, pgp_private) => {
 //           // this produces a the ascii armoured version
 //           // it has a Version and Comment headers
-//           console.log('private key', pgp_private);
+//           console.log('private key', pgp_private)
 //         }
-//       );
+//       )
 
 //       alice.export_pgp_public(
 //         {},
 //         (err, pgp_public) => {
-//           console.log('public key', pgp_public);
+//           console.log('public key', pgp_public)
 //         }
-//       );
+//       )
 
 //     })
 //   }
 
-//   console.log(alice);
+//   console.log(alice)
 
-// });
+// })
 
 
 // alternatively we use a default options
 kbpgp.KeyManager.generate_rsa({ userid: "Roger Qiu <roger.qiu@matrix.ai>"}, (err, charlie) => {
 
   charlie.sign({}, (err) => {
-    console.log('done');
+    console.log('done')
 
-    console.log(charlie);
+    console.log(charlie)
 
 
-  });
+  })
 
-  console.log(charlie.sign.toString());
+  console.log(charlie.sign.toString())
 
-});
+})
 
 // RSA key generation take awhile, the function can take a ASP
 // that has a process hook function that gets called about the progress

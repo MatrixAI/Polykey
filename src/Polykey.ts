@@ -42,4 +42,4 @@ class Polykey {
 
 }
 
-export default Polykey;
+export default Polykey

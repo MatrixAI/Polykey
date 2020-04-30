@@ -1,13 +1,13 @@
 // @flow
 
-const fs = require('fs');
+const fs = require('fs')
 
 async function f1() {
-  	console.log(dir);
-  	await pfs.mkdir(dir);
+  	console.log(dir)
+  	await pfs.mkdir(dir)
 
     // Now it should not be empty...
-    await pfs.readdir(dir);
+    await pfs.readdir(dir)
 
 	await git.clone({
 	  	dir,
@@ -16,11 +16,11 @@ async function f1() {
 	  	ref: 'master',
 	  	singleBranch: true,
 	  	depth: 10
-	});
+	})
 
-	//console.log("dir is" + dir);
+	//console.log("dir is" + dir)
 	// Now it should not be empty...
-	//await pfs.readdir(dir);
+	//await pfs.readdir(dir)
 }
 
-f1();
+f1()

@@ -1,30 +1,39 @@
 {
-  pkgs ? import ./pkgs.nix,
-  nodeVersion ? "8_x",
+  pkgs ? import ./pkgs.nix
 }:
-  with pkgs;
-  let
-    drv = import ./default.nix { inherit pkgs nodeVersion; };
-  in
-    drv.overrideAttrs (attrs: {
-      src = null;
-      buildInputs = [ nodePackages_6_x.node2nix ] ++
-                    attrs.buildInputs ++
-                    attrs.checkInputs;
-      shellHook = ''
-        echo 'Entering ${attrs.name}'
-        set -v
 
-        export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
+with pkgs;
+let
+  nodeVersion = "12";
+  nodePackages = pkgs."nodePackages_${nodeVersion}_x";
+  drv = callPackage ./default.nix {};
+in
+  drv.overrideAttrs (attrs: {
+    src = null;
+    nativeBuildInputs = [
+      nodePackages.node2nix
+    ] ++ (lib.attrByPath [ "nativeBuildInputs" ] [] attrs);
+    shellHook = ''
+      echo 'Entering ${attrs.name}'
+      set -o allexport
+      . ./.env
+      set +o allexport
+      set -v
 
-        flow server 2>/dev/null &
+      export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
 
-        cleanup () {
-          flow stop
-        }
+      # setting up for nix-build
+      npm install --package-lock-only
+      node2nix \
+        --input package.json \
+        --lock package-lock.json \
+        --node-env ./nix/node-env.nix \
+        --output ./nix/node-packages.nix \
+        --composition ./nix/default.nix \
+        --nodejs-${nodeVersion}
 
-        trap cleanup EXIT
+      mkdir --parents "$(pwd)/tmp"
 
-        set +v
-      '';
-    })
+      set +v
+    '';
+  })
