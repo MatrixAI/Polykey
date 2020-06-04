@@ -1,0 +1,8 @@
+package peerinfopackage;
+syntax = "proto3";
+
+message PeerInfoMessage {
+  string pub_key = 1;
+  repeated string addresses = 2;
+  string connected_addr = 3;
+}

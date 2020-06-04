@@ -2,16 +2,16 @@
   "compilerOptions": {
     "outDir": "./dist",
     "sourceMap": true,
+    "declaration": true,
     "strictNullChecks": true,
-    "allowJs": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "module": "CommonJS",
     "target": "ES2018",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@polykey/*": ["*"]
+      "@polykey/*": ["src/lib/*"],
     }
   },
   "include": [
