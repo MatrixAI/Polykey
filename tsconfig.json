@@ -14,7 +14,7 @@
       "@polykey/*": ["*"]
     }
   },
-  "include": [ 
-    "./src/**/*" 
+  "include": [
+    "./src/**/*"
   ]
 }

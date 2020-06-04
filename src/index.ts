@@ -1,3 +1,1 @@
-// @flow
-
-export { default } from './Polykey.js'
+export { default } from '@polykey/Polykey'
