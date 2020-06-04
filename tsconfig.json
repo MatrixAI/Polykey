@@ -2,19 +2,20 @@
   "compilerOptions": {
     "outDir": "./dist",
     "sourceMap": true,
+    "lib": [ "es2015", "dom" ],
     "strictNullChecks": true,
-    "allowJs": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "module": "CommonJS",
     "target": "ES2018",
-    "baseUrl": "./src",
+    "baseUrl": "src/lib/",
     "paths": {
-      "@polykey/*": ["*"]
+      "@polykey/*": ["*"],
     }
   },
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+    "./tests/**/*"
   ]
 }

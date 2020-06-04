@@ -1,13 +1,10 @@
 // ts imports
 import fs from 'fs'
 import os from 'os'
-import Polykey from '../src/Polykey'
-import { randomString } from '../src/utils'
-
-// js imports
-const kbpgp = require('kbpgp')
-const vfs = require('virtualfs')
-
+import Polykey from '@polykey/Polykey'
+import { randomString } from '@polykey/utils'
+import KeyManager from '@polykey/KeyManager'
+import PeerDiscovery from '@polykey/P2P/PeerDiscovery'
 
 describe('PolyKey class', () => {
 
@@ -19,11 +16,12 @@ describe('PolyKey class', () => {
 		tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
 		// Create keyManager
-		const km = new Polykey.KeyManager()
-		km.loadKeyPair('./playground/keys/private.key', './playground/keys/public.key')
+		const km = new KeyManager()
+		km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', true)
 		// Initialize polykey
 		pk = new Polykey(
-			km,
+      km,
+      undefined,
 			tempDir
 		)
 		done()
@@ -35,7 +33,7 @@ describe('PolyKey class', () => {
 
 	test('can create keypairs', done => {
 		// Create private keys (async)
-		pk.km.generateKeyPair('John Smith', 'john.smith@gmail.com', 'passphrase').then((keypair) => {
+		pk.keyManager.generateKeyPair('John Smith', 'john.smith@gmail.com', 'passphrase').then((keypair) => {
 			fs.mkdirSync(`${tempDir}/keys/`, {recursive: true})
 			fs.writeFileSync(`${tempDir}/keys/private.key`, keypair.private)
 			fs.writeFileSync(`${tempDir}/keys/public.key`, keypair.public)
@@ -53,7 +51,7 @@ describe('PolyKey class', () => {
 			// Reset the vault name for each test
 			vaultName = `Vault-${randomString()}`
 			// Create private keys (async)
-			pk.km.generateKeyPair('John Smith', 'john.smith@gmail.com', 'passphrase').then((keypair) => {
+			pk.keyManager.generateKeyPair('John Smith', 'john.smith@gmail.com', 'passphrase').then((keypair) => {
 				expect(keypair).not.toBeNull()
 				done()
 			})
@@ -61,8 +59,8 @@ describe('PolyKey class', () => {
 
 		test('can sign and verify strings', async done => {
 			const originalData = Buffer.from('I am to be signed')
-			const signedData = await pk.km.signData(originalData)
-			const verifiedData = await pk.km.verifyData(originalData, signedData)
+			const signedData = await pk.keyManager.signData(originalData)
+			const verifiedData = await pk.keyManager.verifyData(originalData, signedData)
 			expect(originalData).toEqual(verifiedData)
 			done()
 
@@ -74,10 +72,10 @@ describe('PolyKey class', () => {
 			fs.writeFileSync(filePath, originalData)
 			// Sign file
 			const signedPath = `${tempDir}/file.signed`
-			await pk.signFile(filePath, signedPath)
+			await pk.keyManager.signFile(filePath, signedPath)
 			// Verify file
 			const verifiedPath = `${tempDir}/file.signed`
-			await pk.verifyFile(signedPath, verifiedPath)
+			await pk.keyManager.verifyFile(signedPath, verifiedPath)
 			// Confirm equality
 			const verifiedBuffer = fs.readFileSync(verifiedPath, undefined)
 			expect(verifiedBuffer).toEqual(originalData)

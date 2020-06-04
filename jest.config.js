@@ -6,6 +6,9 @@ module.exports = {
     "**/?(*.)+(spec|test|unit.test).+(ts|tsx|js)"
   ],
   "transform": {
-    "^.+\\.(ts|tsx)$": "ts-jest"
+    "^.+\\.tsx?$": "ts-jest"
   },
-}
+  moduleNameMapper: {
+    '@polykey/(.*)$': '<rootDir>/src/$1'
+  }
+};

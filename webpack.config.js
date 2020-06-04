@@ -1,27 +1,27 @@
 const path = require('path');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const ThreadsPlugin = require('threads-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
+const NpmDtsPlugin = require('npm-dts-webpack-plugin')
 const nodeExternals = require('webpack-node-externals');
+const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
-module.exports = {
-  entry: './src/index.ts',
+const cliConfig = {
+  name: 'cli',
+  entry: './src/cli/polykey.ts',
   output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'polykey.js',
-    library: 'polykey',
+    path: path.resolve(__dirname, 'dist', 'bin'),
+    filename: 'pk.js',
+    library: 'pk',
     libraryTarget: 'umd',
     globalObject: 'this'
   },
-  devtool: "source-map",
   resolve: {
-    extensions: ['.ts', '.js'],
-    plugins: [new TsconfigPathsPlugin()],
-    alias: {
-      '@': path.resolve('src')
-    }
+    extensions: ['.ts', '.js', '.proto'],
+    plugins: [new TsconfigPathsPlugin()]
   },
-  node: {
-    fs: 'empty'
+  target: "node",
+  externals: {
+    fs: "commonjs fs"
   },
   module: {
     rules: [
@@ -37,9 +37,73 @@ module.exports = {
   plugins: [
     new ThreadsPlugin({
       globalObject: false
+    }),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: 'src/**/*.proto',
+          to: '',
+          flatten: true
+        },
+      ]
+    }),
+  ],
+  watchOptions: {
+    ignored: /node_modules/
+  }
+}
+
+const libraryConfig = {
+  name: 'library',
+  entry: './src/lib/index.ts',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'polykey.js',
+    library: 'polykey',
+    libraryTarget: 'umd',
+    globalObject: 'this'
+  },
+  devtool: "source-map",
+  resolve: {
+    extensions: ['.ts', '.js', '.proto'],
+    plugins: [new TsconfigPathsPlugin()]
+  },
+  target:'node',
+  externals: {
+    fs: "commonjs fs"
+  },
+  module: {
+    rules: [
+      {
+        test: /.tsx?$/,
+        loader: 'ts-loader'
+      }
+    ]
+  },
+  externals: [
+    nodeExternals()
+  ],
+  plugins: [
+    new ThreadsPlugin({
+      globalObject: false
+    }),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: 'src/**/*.proto',
+          to: '',
+          flatten: true
+        },
+      ]
+    }),
+    new NpmDtsPlugin({
+      entry: path.resolve(process.cwd(), 'src/lib/index.ts'),
+      tmp: path.resolve(process.cwd(), 'tmp')
     })
   ],
   watchOptions: {
     ignored: /node_modules/
   }
-};
+}
+
+module.exports = [cliConfig, libraryConfig];
