@@ -9,12 +9,9 @@
     "allowSyntheticDefaultImports": true,
     "module": "CommonJS",
     "target": "ES2018",
-    "baseUrl": ".",
-    "paths": {
-      "@polykey/*": ["src/lib/*"],
-    }
+    "baseUrl": "./src/lib",
   },
   "include": [
-    "./src/**/*"
+    "./src/lib/**/*"
   ]
 }

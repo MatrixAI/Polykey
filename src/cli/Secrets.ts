@@ -15,11 +15,11 @@ function makeListSecretsCommand() {
     const vaultName: string = options.vaultName
     try {
       // Check if vault exists
-      if (!(await pk.vaultExists(vaultName))) {
+      if (!(await pk.vaultManager.vaultExists(vaultName))) {
         throw new Error(`vault '${vaultName}' does not exist!`)
       }
       // Get list of secrets from pk
-      const vault = await pk.getVault(vaultName)
+      const vault = await pk.vaultManager.getVault(vaultName)
       const secretsList = vault.listSecrets()
 
       // List secrets
@@ -54,10 +54,10 @@ function makeAddSecretCommand() {
       const secretPath: string = options.secretPath
       try {
         // Check if vault exists
-        if (!(await pk.vaultExists(vaultName))) {
+        if (!(await pk.vaultManager.vaultExists(vaultName))) {
           throw new Error(`vault '${vaultName}' does not exist!`)
         }
-        const vault = await pk.getVault(secretName)
+        const vault = await pk.vaultManager.getVault(secretName)
         // Check if secret exists
         if (await vault.secretExists(secretName)) {
           throw new Error(`secret '${secretName}' already exists in vault ${vaultName}!`)
@@ -90,10 +90,10 @@ function makeRemoveSecretCommand() {
       const secretName: string = options.secretName
       try {
         // Check if vault exists
-        if (!(await pk.vaultExists(vaultName))) {
+        if (!(await pk.vaultManager.vaultExists(vaultName))) {
           throw new Error(`vault '${vaultName}' does not exist!`)
         }
-        const vault = await pk.getVault(secretName)
+        const vault = await pk.vaultManager.getVault(secretName)
         // Remove secret
         await vault.removeSecret(secretName)
         if (!(await vault.secretExists(secretName))) {

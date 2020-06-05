@@ -2,6 +2,7 @@ const path = require('path');
 const ThreadsPlugin = require('threads-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const nodeExternals = require('webpack-node-externals');
+const TypedocWebpackPlugin = require('typedoc-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const cliConfig = {
@@ -46,6 +47,13 @@ const cliConfig = {
         },
       ]
     }),
+    new TypedocWebpackPlugin({
+        name: 'Contoso',
+        mode: 'file',
+        theme: './typedoc-theme/',
+        includeDeclarations: false,
+        ignoreCompilerErrors: true,
+    })
   ],
   watchOptions: {
     ignored: /node_modules/

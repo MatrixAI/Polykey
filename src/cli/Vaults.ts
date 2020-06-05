@@ -13,7 +13,7 @@ function makeListVaultsCommand() {
     if (options.verbose) {
       pkLogger(`vaults contained within polykey:`, PKMessageType.INFO)
     }
-    const vaultList = pk.listVaults()
+    const vaultList = pk.vaultManager.listVaults()
     if (vaultList === undefined || vaultList.length == 0) {
       pkLogger('no vaults found', PKMessageType.INFO)
     } else {
@@ -32,7 +32,7 @@ function makeAddVaultCommand() {
     const pk = await initPolyKey()
     const vaultNames = options.args.values()
     for (const vaultName of vaultNames) {
-      await pk.createVault(vaultName)
+      await pk.vaultManager.createVault(vaultName)
       pkLogger(`vault created at ${pk.polykeyPath}/${vaultName}`, PKMessageType.SUCCESS)
     }
   }))
@@ -49,12 +49,12 @@ function makeRemoveVaultCommand() {
     const verbose: boolean = options.verbose ?? false
     const deleteAll: boolean = options.all ?? false
     if (deleteAll) {
-      const vaultList = pk.listVaults()
+      const vaultList = pk.vaultManager.listVaults()
       if (vaultList === undefined || vaultList.length == 0) {
         pkLogger('no vaults found', PKMessageType.INFO)
       } else {
         for (const vaultName of vaultList) {
-          await pk.destroyVault(vaultName)
+          await pk.vaultManager.destroyVault(vaultName)
           if (verbose) {
             pkLogger(`destroyed ${vaultName}`, PKMessageType.SUCCESS)
           }
@@ -67,12 +67,12 @@ function makeRemoveVaultCommand() {
     if (!vaultName) {
       throw new Error(chalk.red('error: did not receive vault name'))
     }
-    if (!(await pk.vaultExists(vaultName))) {
+    if (!(await pk.vaultManager.vaultExists(vaultName))) {
       throw new Error(`vault '${vaultName}' does not exist`)
     }
 
-    await pk.destroyVault(vaultName)
-    pkLogger(`vault '${vaultName}' destroyed ${await pk.vaultExists(vaultName) ? 'un-' : ''}successfully`, PKMessageType.SUCCESS)
+    await pk.vaultManager.destroyVault(vaultName)
+    pkLogger(`vault '${vaultName}' destroyed ${await pk.vaultManager.vaultExists(vaultName) ? 'un-' : ''}successfully`, PKMessageType.SUCCESS)
   }))
 }
 
