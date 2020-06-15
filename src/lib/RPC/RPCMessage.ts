@@ -15,7 +15,7 @@ class RPCMessage {
     // Load root
     const root: Root = new protobuf.Root()
     root.resolvePath = (origin, target) => {
-      return Path.join(__filename, target)
+      return Path.join(Path.dirname(__filename), target)
     }
 
     return root.loadSync(name)
