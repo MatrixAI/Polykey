@@ -1,8 +1,8 @@
 import fs from 'fs'
 import os from 'os'
-import Polykey from "@polykey/Polykey"
-import { randomString } from '@polykey/utils'
-import KeyManager from '@polykey/KeyManager'
+import Polykey from "../src/lib/Polykey"
+import { randomString } from '../src/lib/utils'
+import KeyManager from '../src/lib/KeyManager'
 
 describe('vaults', () => {
   let vaultName: string

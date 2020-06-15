@@ -53,14 +53,6 @@ class PeerDiscovery {
     this.multicastBroadcaster = new MulticastBroadcaster(this.peerStore, this.keyManager)
   }
 
-  async start() {
-    await this.multicastBroadcaster.start()
-  }
-
-  async stop() {
-    await this.multicastBroadcaster.stop()
-  }
-
   async findPubKey(pubKey: string): Promise<PeerInfo> {
     return new Promise<PeerInfo>((resolve, reject) => {
       this.multicastBroadcaster.requestPeerContact(pubKey)

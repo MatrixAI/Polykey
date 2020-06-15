@@ -1,3 +1,5 @@
+const { pathsToModuleNameMapper } = require('ts-jest/utils');
+
 module.exports = {
   "roots": [
     "<rootDir>/tests"
@@ -8,7 +10,9 @@ module.exports = {
   "transform": {
     "^.+\\.tsx?$": "ts-jest"
   },
-  moduleNameMapper: {
-    '@polykey/(.*)$': '<rootDir>/src/$1'
-  }
+  moduleNameMapper: pathsToModuleNameMapper(
+    compilerOptions.paths,
+    { prefix: "<rootDir>/src/" }
+  )
+
 };

@@ -1,7 +1,6 @@
 const path = require('path');
 const ThreadsPlugin = require('threads-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-const NpmDtsPlugin = require('npm-dts-webpack-plugin')
 const nodeExternals = require('webpack-node-externals');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
@@ -95,10 +94,6 @@ const libraryConfig = {
           flatten: true
         },
       ]
-    }),
-    new NpmDtsPlugin({
-      entry: path.resolve(process.cwd(), 'src/lib/index.ts'),
-      tmp: path.resolve(process.cwd(), 'tmp')
     })
   ],
   watchOptions: {
