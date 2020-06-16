@@ -23,10 +23,9 @@ import VaultStore from "@polykey/vault-store/VaultStore";
 const services = ['upload-pack', 'receive-pack']
 
 class GitServer {
-  repoDir: string;
-  vaultStore: VaultStore;
-  autoCreate = false
-  server: http.Server;
+  private repoDir: string;
+  private vaultStore: VaultStore;
+  private server: http.Server;
   constructor(
     repoDir: string,
     vaultStore: VaultStore
