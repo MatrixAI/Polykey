@@ -8,7 +8,7 @@ class Vault {
   private key: Buffer
   private keyLen: number
   name: string
-  private fs: EncryptedFS
+  efs: EncryptedFS
   private secrets: Map<string, any>
   private vaultPath: string
   constructor(
@@ -23,7 +23,7 @@ class Vault {
     // Set filesystem
     const vfsInstance = new (require('virtualfs')).VirtualFS
 
-    this.fs = new EncryptedFS(
+    this.efs = new EncryptedFS(
       symKey,
       vfsInstance,
       vfsInstance,
@@ -34,7 +34,7 @@ class Vault {
     this.name = name
     this.vaultPath = Path.join(baseDir, name)
     // make the vault directory
-    this.fs.mkdirSync(this.vaultPath, {recursive: true})
+    this.efs.mkdirSync(this.vaultPath, {recursive: true})
     this.secrets = new Map()
 
     this.loadSecrets()
@@ -54,15 +54,15 @@ class Vault {
 
   secretExists(secretName: string) : boolean {
     const secretPath = Path.join(this.vaultPath, secretName)
-    return this.secrets.has(secretName) && this.fs.existsSync(secretPath)
+    return this.secrets.has(secretName) && this.efs.existsSync(secretPath)
   }
 
   addSecret (secretName: string, secretBuf: Buffer): void {
     // TODO: check if secret already exists
     const writePath = Path.join(this.vaultPath, secretName)
     // TODO: use aysnc methods
-    const fd = this.fs.openSync(writePath, 'w')
-    this.fs.writeSync(fd, secretBuf, 0, secretBuf.length, 0)
+    const fd = this.efs.openSync(writePath, 'w')
+    this.efs.writeSync(fd, secretBuf, 0, secretBuf.length, 0)
     this.secrets.set(secretName, secretBuf)
     // TODO: close file or use write file sync
   }
@@ -75,7 +75,7 @@ class Vault {
       } else {
         const secretPath = Path.join(this.vaultPath, secretName)
         // TODO: this should be async
-        const secretBuf = this.fs.readFileSync(secretPath, {})
+        const secretBuf = this.efs.readFileSync(secretPath, {})
         this.secrets.set(secretName, secretBuf)
         return secretBuf
       }

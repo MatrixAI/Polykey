@@ -3,12 +3,14 @@ import fs from 'fs'
 import Path from 'path'
 import crypto from 'crypto'
 import jsonfile from 'jsonfile'
-import Vault from '@polykey/Vault'
+import Vault from '@polykey/vault-store/Vault'
+import VaultStore from '@polykey/vault-store/VaultStore'
 import KeyManager from '@polykey/KeyManager'
-import PeerStore from '@polykey/PeerStore/PeerStore'
-import PeerInfo from '@polykey/PeerStore/PeerInfo'
-import RPCMessage from '@polykey/RPC/RPCMessage'
-import PeerDiscovery from '@polykey/P2P/PeerDiscovery'
+import PeerStore from '@polykey/peer-store/PeerStore'
+import PeerInfo, { Address } from '@polykey/peer-store/PeerInfo'
+import RPCMessage from '@polykey/rpc/RPCMessage'
+import PeerDiscovery from '@polykey/p2p/PeerDiscovery'
+import GitServer from '@polykey/git/GitServer'
 
 type Metadata = {
   vaults: {
@@ -24,13 +26,15 @@ type Metadata = {
 class Polykey {
   polykeyPath: string
   private fs: typeof fs
-  private vaults:Map<string, Vault>
   private metadata: Metadata
   private metadataPath: string
 
   keyManager: KeyManager
   peerStore: PeerStore
+  vaultStore: VaultStore
   peerDiscovery: PeerDiscovery
+  gitServer: GitServer
+  gitAddress: Address
 
   constructor(
     keyManager?: KeyManager,
@@ -75,25 +79,30 @@ class Polykey {
     this.peerDiscovery = new PeerDiscovery(this.peerStore, this.keyManager)
 
     // Load all of the vaults into memory
-    this.vaults = new Map()
+    this.vaultStore = new VaultStore()
     for (const vaultName in this.metadata.vaults) {
       if (this.metadata.vaults.hasOwnProperty(vaultName)) {
         const path = Path.join(this.polykeyPath, vaultName)
         if (this.fs.existsSync(path)) {
           const vaultKey = Buffer.from(this.metadata.vaults[vaultName].key)
           const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-          this.vaults.set(vaultName, vault)
+          this.vaultStore.setVault(vaultName, vault)
         }
       }
     }
+
+    // Start git server
+    this.gitServer = new GitServer(this.polykeyPath, this.vaultStore)
+    const addressInfo = this.gitServer.listen()
+    this.gitAddress = new Address(addressInfo.address, addressInfo.port.toString())
   }
 
   ////////////
   // Vaults //
   ////////////
   async getVault(vaultName: string): Promise<Vault> {
-    if (this.vaults.has(vaultName)) {
-      const vault = this.vaults.get(vaultName)
+    if (this.vaultStore.hasVault(vaultName)) {
+      const vault = this.vaultStore.getVault(vaultName)
       if (vault) {
         return vault
       }
@@ -103,7 +112,7 @@ class Polykey {
 
     const vaultKey = this.metadata.vaults[vaultName].key
     const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-    this.vaults.set(vaultName, vault)
+    this.vaultStore.setVault(vaultName, vault)
     return vault
   }
 
@@ -131,7 +140,7 @@ class Polykey {
       this.metadata.vaults[vaultName] = { key: vaultKey, tags: []}
       await this.writeMetadata()
       const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-      this.vaults.set(vaultName, vault)
+      this.vaultStore.setVault(vaultName, vault)
       return await this.getVault(vaultName)
     } catch (err) {
       // Delete vault dir and garbage collect
@@ -160,8 +169,8 @@ class Polykey {
     }
     // Remaining garbage collection:
     // Remove vault from vaults map
-    if (this.vaults.has(vaultName)) {
-      this.vaults.delete(vaultName)
+    if (this.vaultStore.hasVault(vaultName)) {
+      this.vaultStore.deleteVault(vaultName)
     }
     // Remove from metadata
     if (this.metadata.vaults.hasOwnProperty(vaultName)) {
@@ -173,7 +182,7 @@ class Polykey {
     if (vaultPathExists) {
       throw new Error('Vault path could not be destroyed!')
     }
-    const vaultEntryExists = this.vaults.has(vaultName)
+    const vaultEntryExists = this.vaultStore.hasVault(vaultName)
     if (vaultEntryExists) {
       throw new Error('Vault could not be removed from PolyKey!')
     }
@@ -200,7 +209,7 @@ class Polykey {
   }
 
   listVaults(): string[] {
-    return Array.from(this.vaults.keys())
+    return this.vaultStore.getVaultNames()
   }
 
 

@@ -2,8 +2,8 @@ import dgram from 'dgram'
 import crypto from 'crypto'
 import { EventEmitter } from 'events'
 import KeyManager from '@polykey/KeyManager'
-import RPCMessage from '@polykey/RPC/RPCMessage'
-import PeerStore from '@polykey/PeerStore/PeerStore'
+import RPCMessage from '@polykey/rpc/RPCMessage'
+import PeerStore from '@polykey/peer-store/PeerStore'
 
 // This module is based heavily on libp2p's mDNS module:
 // https://github.com/libp2p/js-libp2p-mdns

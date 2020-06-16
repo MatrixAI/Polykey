@@ -1,4 +1,4 @@
-import PeerInfo from "@polykey/PeerStore/PeerInfo"
+import PeerInfo from "@polykey/peer-store/PeerInfo"
 
 /**
  * Responsible for managing known peers, as well as their addresses and metadata

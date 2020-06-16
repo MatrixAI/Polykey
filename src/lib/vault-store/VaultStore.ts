@@ -1,4 +1,4 @@
-import Vault from "@polykey/VaultStore/Vault";
+import Vault from "@polykey/vault-store/Vault";
 
 // Capability
 // needs address to object and what can be done to object

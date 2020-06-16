@@ -8,7 +8,7 @@ import { Readable } from "stream";
 import { parse } from 'querystring'
 import { HttpDuplex } from "./HttpDuplex";
 import uploadPack from "./upload-pack/UploadPack";
-import VaultStore from "@polykey/VaultStore/VaultStore";
+import VaultStore from "@polykey/vault-store/VaultStore";
 
 // Here is the protocol git outlines for sending pack files over http:
 // https://git-scm.com/docs/pack-protocol/2.17.0
@@ -194,7 +194,7 @@ class GitServer {
   /**
    * starts a git server on the given port
    */
-  listen(port?: number): AddressInfo {
+  listen(port: number = 0): AddressInfo {
     this.server = http.createServer((req, res) => {
       this.handle(req, res)
     })
@@ -208,11 +208,7 @@ class GitServer {
    * stops the server instance
    */
   async stop() {
-    try {
-      await promisify(this.server.close)()
-    } catch (error) {
-      throw(error)
-    }
+    await promisify(this.server.close)()
   }
 
   // ============ Helper functions ============ //

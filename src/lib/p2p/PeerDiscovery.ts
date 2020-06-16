@@ -1,8 +1,8 @@
 import fetch from 'node-fetch'
 import KeyManager from "@polykey/KeyManager";
-import PeerInfo from "@polykey/PeerStore/PeerInfo";
-import PeerStore from "@polykey/PeerStore/PeerStore";
-import MulticastBroadcaster from "@polykey/P2P/MulticastBroadcaster";
+import PeerInfo from "@polykey/peer-store/PeerInfo";
+import PeerStore from "@polykey/peer-store/PeerStore";
+import MulticastBroadcaster from "@polykey/p2p/MulticastBroadcaster";
 import { firstPromiseFulfilled } from '@polykey/utils';
 
 interface SocialDiscovery {

@@ -1,6 +1,6 @@
 import Path from 'path'
 import protobuf, { Root } from 'protobufjs'
-import PeerInfo from '@polykey/PeerStore/PeerInfo'
+import PeerInfo from '@polykey/peer-store/PeerInfo'
 
 type HandshakeMessage = {
   targetPubKey: Buffer
