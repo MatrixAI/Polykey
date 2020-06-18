@@ -73,7 +73,7 @@ describe('vaults', () => {
       const initialSecret = 'super confidential information'
       // Add secret
       const vault = await pk.getVault(randomVaultName)
-      vault.addSecret(initialSecretName, Buffer.from(initialSecret))
+      await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // Read secret
       const readBuffer = vault.getSecret(initialSecretName)
