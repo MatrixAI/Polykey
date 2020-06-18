@@ -308,8 +308,8 @@ class KeyManager {
   }
 
   // Verify data
-  verifyData(data: Buffer | string, signature: Buffer, withKey?: Buffer): Promise<string> {
-    return new Promise<string>(async (resolve, reject) => {
+  verifyData(data: Buffer | string, signature: Buffer, withKey?: Buffer): Promise<boolean> {
+    return new Promise<boolean>(async (resolve, reject) => {
       const ring = new kbpgp.keyring.KeyRing;
       let resolvedIdentity: Object
       if (withKey) {
@@ -342,16 +342,21 @@ class KeyManager {
             km = ds.get_key_manager()
           }
           if (km) {
-            resolve(km.get_pgp_fingerprint().toString('hex'));
+            if (km.get_pgp_fingerprint()) {
+              resolve(true)
+            } else {
+              resolve(false)
+            }
+            resolve(km.get_pgp_fingerprint());
           } else {
-            reject(Error('could not verify file'))
+            resolve(false)
           }
         })
       }
     })
   }
 
-  async verifyFile(filePath: string, signaturePath: string, publicKey?: string | Buffer): Promise<string> {
+  async verifyFile(filePath: string, signaturePath: string, publicKey?: string | Buffer): Promise<boolean> {
     // Get key if provided
     let keyBuffer: Buffer
     if (publicKey) {
@@ -365,8 +370,8 @@ class KeyManager {
     // Read in file buffer and signature
     const fileBuffer = fs.readFileSync(filePath)
     const signatureBuffer = fs.readFileSync(signaturePath)
-    const verified = await this.verifyData(fileBuffer, signatureBuffer, keyBuffer!)
-    return verified
+    const isVerified = await this.verifyData(fileBuffer, signatureBuffer, keyBuffer!)
+    return isVerified
   }
 
   async signFile(path: string, privateKey?: string | Buffer, privateKeyPassphrase?: string): Promise<string> {

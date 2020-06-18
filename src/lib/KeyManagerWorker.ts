@@ -18,8 +18,8 @@ const keyManagerWorker = {
     })
   },
   // Verify data
-  verifyData(data: Buffer | string, signature: Buffer, identity: any): Promise<string> {
-    return new Promise<string>(async (resolve, reject) => {
+  verifyData(data: Buffer | string, signature: Buffer, identity: any): Promise<boolean> {
+    return new Promise<boolean>(async (resolve, reject) => {
       const ring = new kbpgp.keyring.KeyRing;
 
       ring.add_key_manager(identity)
@@ -38,9 +38,14 @@ const keyManagerWorker = {
           km = ds.get_key_manager()
         }
         if (km) {
-          resolve(km.get_pgp_fingerprint().toString('hex'));
+          if (km.get_pgp_fingerprint()) {
+            resolve(true)
+          } else {
+            resolve(false)
+          }
+          resolve(km.get_pgp_fingerprint());
         } else {
-          reject(Error('could not verify file'))
+          resolve(false)
         }
       })
     })
