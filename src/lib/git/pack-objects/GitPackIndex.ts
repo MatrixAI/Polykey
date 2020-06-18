@@ -35,21 +35,7 @@ function decodeVarInt (reader) {
   return bytes.reduce((a, b) => ((a + 1) << 7) | b, -1)
 }
 
-// I'm pretty much copying this one from the git C source code,
-// because it makes no sense.
-function otherVarIntDecode (reader: BufferCursor, startWith: number) {
-  let result = startWith
-  let shift = 4
-  let byte: number | null = null
-  do {
-    byte = reader.readUInt8()
-    result |= (byte & 0b01111111) << shift
-    shift += 7
-  } while (byte & 0b10000000)
-  return result
-}
-
-export class GitPackIndex {
+class GitPackIndex {
   offsetCache: any
   readDepth: number
   externalReadDepth: number
@@ -279,60 +265,12 @@ export class GitPackIndex {
     )
     return p
   }
-  toBuffer () {
-    let buffers: Buffer[] = []
-    let write = (str: string, encoding: any) => {
-      buffers.push(Buffer.from(str, encoding))
-    }
-    // Write out IDX v2 magic number
-    write('ff744f63', 'hex')
-    // Write out version number 2
-    write('00000002', 'hex')
-    // Write fanout table
-    let fanoutBuffer = new BufferCursor(Buffer.alloc(256 * 4))
-    for (let i = 0; i < 256; i++) {
-      let count = 0
-      for (let hash of this.hashes) {
-        if (parseInt(hash.slice(0, 2), 16) <= i) count++
-      }
-      fanoutBuffer.writeUInt32BE(count)
-    }
-    buffers.push(fanoutBuffer.buffer)
-    // Write out hashes
-    for (let hash of this.hashes) {
-      write(hash, 'hex')
-    }
-    // Write out crcs
-    let crcsBuffer = new BufferCursor(Buffer.alloc(this.hashes.length * 4))
-    for (let hash of this.hashes) {
-      crcsBuffer.writeUInt32BE(this.crcs[hash])
-    }
-    buffers.push(crcsBuffer.buffer)
-    // Write out offsets
-    let offsetsBuffer = new BufferCursor(Buffer.alloc(this.hashes.length * 4))
-    for (let hash of this.hashes) {
-      offsetsBuffer.writeUInt32BE(this.offsets.get(hash))
-    }
-    buffers.push(offsetsBuffer.buffer)
-    // Write out packfile checksum
-    // write(this.packfileSha(), 'hex')
-    // Write out shasum
-    let totalBuffer = Buffer.concat(buffers)
-    let sha = shasum(totalBuffer)
-    let shaBuffer = Buffer.alloc(20)
-    shaBuffer.write(sha, 'hex')
-    return Buffer.concat([totalBuffer, shaBuffer])
-  }
-  packfileSha(packfileSha: any, arg1: string) {
-    return ""
-    // throw new Error("Method not implemented.")
-  }
-  async load ({ pack }) {
-    this.pack = pack
-  }
-  async unload () {
-    this.pack = null
-  }
+  // async load ({ pack }) {
+  //   this.pack = pack
+  // }
+  // async unload () {
+  //   this.pack = null
+  // }
   async read ({ oid }) {
     if (!this.offsets.get(oid)) {
       if (this.getExternalRefDelta) {
@@ -375,9 +313,9 @@ export class GitPackIndex {
     // Whether the next byte is part of the variable-length encoded number
     // is encoded in bit 7
     let multibyte = byte & 0b10000000
-    if (multibyte) {
-      length = otherVarIntDecode(reader, lastFour)
-    }
+    // if (multibyte) {
+    //   length = otherVarIntDecode(reader, lastFour)
+    // }
     let base = null
     let object: Buffer
     // Handle deltified objects

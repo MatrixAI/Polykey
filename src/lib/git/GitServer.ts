@@ -1,14 +1,15 @@
-import fs from 'fs'
 import url from 'url'
 import Path from 'path'
 import http from 'http'
+import through from 'through';
 import { promisify } from "util";
 import { AddressInfo } from "net";
 import { Readable } from "stream";
 import { parse } from 'querystring'
-import { HttpDuplex } from "./HttpDuplex";
-import uploadPack from "./upload-pack/UploadPack";
-import VaultStore from "@polykey/vault-store/VaultStore";
+import Vault from '@polykey/Vault';
+import uploadPack from '@polykey/git/upload-pack/uploadPack';
+import GitSideBand from '@polykey/git/side-band/GitSideBand';
+import packObjects from '@polykey/git/pack-objects/packObjects';
 
 // Here is the protocol git outlines for sending pack files over http:
 // https://git-scm.com/docs/pack-protocol/2.17.0
@@ -24,22 +25,25 @@ const services = ['upload-pack', 'receive-pack']
 
 class GitServer {
   private repoDir: string;
-  private vaultStore: VaultStore;
+  private vaults: Map<string, Vault>;
   private server: http.Server;
   constructor(
     repoDir: string,
-    vaultStore: VaultStore
+    vaults: Map<string, Vault>
   ) {
     this.repoDir = repoDir
-    this.vaultStore = vaultStore
+    this.vaults = vaults
   }
 
   /**
-   * Find out whether `repoName` exists.
+   * Find out whether vault exists.
    */
-  exists(repo: string) {
-    // TODO: consider if vault has been shared
-    return fs.existsSync(Path.join(this.repoDir, repo))
+  exists(vaultName: string, publicKey: string) {
+    const vault = this.vaults.get(vaultName)
+    if (vault) {
+      return vault.peerCanAccess(publicKey)
+    }
+    return false
   }
 
   /**
@@ -56,28 +60,12 @@ class GitServer {
     }
   }
 
-
-  // alternatively you can also pass authenticate a promise
-  authenticate(
-    type: string,
-    repo: string,
-    username: string,
-    password: string,
-    headers: http.IncomingHttpHeaders
-  ): boolean {
-    if(username === 'foo') {
-      return true
-    }
-    return false
-  }
-
   /**
    * Handle incoming HTTP requests with a connect-style middleware
    */
   handle(req: http.IncomingMessage, res: http.ServerResponse) {
 
     const infoHandler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
-
       if (req.method !== 'GET') return false
 
       const u = url.parse(req.url!)
@@ -101,34 +89,16 @@ class GitServer {
         return true
       }
 
-      const repoName = this.parseGitName(m[1])
-
-      // check if the repo is authenticated
-      const type = this.getType(service)
-      const headers = req.headers
-      const { username, password } = {username: 'foo', password: 's'}
-      let authenticated: boolean = false
-
-      if (username && password) {
-        authenticated = this.authenticate(type, repoName, username, password, headers)
-      }
-
-      if (!authenticated) {
-        res.setHeader("Content-Type", 'text/plain')
-        res.setHeader("WWW-Authenticate", 'Basic realm="authorization needed"')
-        res.writeHead(401)
-        res.end('Unauthorised to view this repo')
-        return true
-      }
-
       this.infoResponse(repo, service, req, res)
       return true
     }
     const requestPackHandler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
       if (req.method !== 'POST') return false
+
       const m = req.url!.match(/\/(.+)\/git-(.+)/)
       if (!m) return false
       if (/\.\./.test(m[1])) return false
+
 
       const repo = m[1]
       const service = m[2]
@@ -144,16 +114,54 @@ class GitServer {
 
       const repoDir = Path.join(this.repoDir, repo)
 
-      const fileSystem = this.vaultStore.getVault(repo)?.efs
+      // Check if vault exists
+      const connectingPublicKey = ''
+      if (!this.exists(repo, connectingPublicKey)) {
+        res.statusCode = 404
+        res.end('not found')
+        return true
+      }
+
+      const fileSystem = this.vaults.get(repo)?.efs
+
       if (fileSystem) {
-        const dup = new HttpDuplex(
-          req,
-          res,
-          repo,
-          service,
-          repoDir,
-          fileSystem
-        )
+        req.on('data', async (data) => {
+          if (data.toString().slice(4, 8) == 'want') {
+            const wantedObjectId = data.toString().slice(9, 49)
+            const packResult = await packObjects(
+              fileSystem,
+              repoDir,
+              [wantedObjectId],
+              undefined
+            )
+
+            // This the 'wait for more data' line as I understand it
+            res.write(Buffer.from('0008NAK\n'))
+
+            // This is to get the side band stuff working
+            const readable = through()
+            const progressStream = through()
+            const sideBand = GitSideBand.mux(
+              'side-band-64',
+              readable,
+              packResult.packstream,
+              progressStream,
+              []
+            )
+            sideBand.pipe(res)
+
+            // Write progress to the client
+            progressStream.write(Buffer.from('0014progress is at 50%\n'))
+            progressStream.end()
+          }
+        })
+        // const dup = new HttpDuplex(
+        //   req,
+        //   res,
+        //   service,
+        //   repoDir,
+        //   fileSystem
+        // )
       }
 
       return true
@@ -225,7 +233,8 @@ class GitServer {
    */
   infoResponse(repo: string, service: string, req: http.IncomingMessage, res: http.ServerResponse) {
 
-    const exists = this.exists(repo)
+    const connectingPublicKey = ''
+    const exists = this.exists(repo, connectingPublicKey)
 
     if (!exists) {
       res.statusCode = 404
@@ -269,7 +278,8 @@ class GitServer {
     res.write(this.createGitPacketLine('# service=git-' + service + '\n'))
     res.write('0000')
 
-    const fileSystem = this.vaultStore.getVault(repoName)!.efs
+
+    const fileSystem = this.vaults.get(repoName)!.efs
 
     const buffers = await uploadPack(
       fileSystem,

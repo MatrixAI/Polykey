@@ -3,14 +3,15 @@ import fs from 'fs'
 import Path from 'path'
 import crypto from 'crypto'
 import jsonfile from 'jsonfile'
-import Vault from '@polykey/vault-store/Vault'
-import VaultStore from '@polykey/vault-store/VaultStore'
+import git from 'isomorphic-git'
+import { EncryptedFS } from 'encryptedfs'
 import KeyManager from '@polykey/KeyManager'
-import PeerStore from '@polykey/peer-store/PeerStore'
-import PeerInfo, { Address } from '@polykey/peer-store/PeerInfo'
-import RPCMessage from '@polykey/rpc/RPCMessage'
-import PeerDiscovery from '@polykey/p2p/PeerDiscovery'
 import GitServer from '@polykey/git/GitServer'
+import RPCMessage from '@polykey/rpc/RPCMessage'
+import PeerManager from '@polykey/p2p/PeerManager'
+import { efsCallbackWrapper } from '@polykey/utils'
+import Vault, { customHttpRequest } from '@polykey/Vault'
+import PeerInfo, { Address } from '@polykey/peer-store/PeerInfo'
 
 type Metadata = {
   vaults: {
@@ -30,15 +31,13 @@ class Polykey {
   private metadataPath: string
 
   keyManager: KeyManager
-  peerStore: PeerStore
-  vaultStore: VaultStore
-  peerDiscovery: PeerDiscovery
+  vaults: Map<string, Vault>
+  peerManager: PeerManager
   gitServer: GitServer
-  gitAddress: Address
 
   constructor(
     keyManager?: KeyManager,
-    peerDiscovery?: PeerDiscovery,
+    peerManager?: PeerManager,
     polykeyPath: string = `${os.homedir()}/.polykey`
   ) {
     this.polykeyPath = polykeyPath
@@ -49,8 +48,6 @@ class Polykey {
     // Set key manager
     this.keyManager = keyManager ?? new KeyManager(polykeyPath)
 
-    // Set peer discovery
-    this.peerDiscovery = peerDiscovery ?? new PeerDiscovery(this.peerStore, this.keyManager)
 
     // Make polykey path if doesn't exist
     if (!this.fs.existsSync(this.polykeyPath)) {
@@ -75,34 +72,34 @@ class Polykey {
     }
 
     // Initialize peer store and peer discovery classes
-    this.peerStore = new PeerStore(RPCMessage.decodePeerInfo(this.metadata.peerInfo))
-    this.peerDiscovery = new PeerDiscovery(this.peerStore, this.keyManager)
+    this.peerManager = peerManager ?? new PeerManager(RPCMessage.decodePeerInfo(this.metadata.peerInfo), this.keyManager)
 
     // Load all of the vaults into memory
-    this.vaultStore = new VaultStore()
+    this.vaults = new Map()
     for (const vaultName in this.metadata.vaults) {
       if (this.metadata.vaults.hasOwnProperty(vaultName)) {
         const path = Path.join(this.polykeyPath, vaultName)
         if (this.fs.existsSync(path)) {
           const vaultKey = Buffer.from(this.metadata.vaults[vaultName].key)
           const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-          this.vaultStore.setVault(vaultName, vault)
+          this.vaults.set(vaultName, vault)
         }
       }
     }
 
     // Start git server
-    this.gitServer = new GitServer(this.polykeyPath, this.vaultStore)
+    this.gitServer = new GitServer(this.polykeyPath, this.vaults)
     const addressInfo = this.gitServer.listen()
-    this.gitAddress = new Address(addressInfo.address, addressInfo.port.toString())
+    const ip = (addressInfo.address == '::') ? "localhost" : addressInfo.address
+    this.peerManager.peerStore.localPeerInfo.connect(new Address(ip, addressInfo.port.toString()))
   }
 
   ////////////
   // Vaults //
   ////////////
   async getVault(vaultName: string): Promise<Vault> {
-    if (this.vaultStore.hasVault(vaultName)) {
-      const vault = this.vaultStore.getVault(vaultName)
+    if (this.vaults.has(vaultName)) {
+      const vault = this.vaults.get(vaultName)
       if (vault) {
         return vault
       }
@@ -112,20 +109,18 @@ class Polykey {
 
     const vaultKey = this.metadata.vaults[vaultName].key
     const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-    this.vaultStore.setVault(vaultName, vault)
+    this.vaults.set(vaultName, vault)
     return vault
   }
 
   async createVault(vaultName: string, key?: Buffer): Promise<Vault> {
-    const path = Path.join(this.polykeyPath, vaultName)
-    let vaultExists: boolean
-    vaultExists = this.fs.existsSync(path)
 
-    if (vaultExists) {
+    if (await this.vaultExists(vaultName)) {
       throw Error('Vault already exists!')
     }
 
     try {
+      const path = Path.join(this.polykeyPath, vaultName)
       // Directory not present, create one
       this.fs.mkdirSync(path, {recursive:true})
       // Create key if not provided
@@ -140,13 +135,58 @@ class Polykey {
       this.metadata.vaults[vaultName] = { key: vaultKey, tags: []}
       await this.writeMetadata()
       const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-      this.vaultStore.setVault(vaultName, vault)
+      await vault.initRepository()
+      this.vaults.set(vaultName, vault)
       return await this.getVault(vaultName)
     } catch (err) {
       // Delete vault dir and garbage collect
       await this.destroyVault(vaultName)
       throw err
     }
+  }
+
+  async cloneVault(vaultName: string, address: Address): Promise<Vault> {
+    // Confirm it doesn't exist locally already
+    if (await this.vaultExists(vaultName)) {
+      throw new Error('Vault name already exists locally, try pulling instead')
+    }
+
+    // First check if it exists on remote
+    const info = await git.getRemoteInfo({
+      http: customHttpRequest,
+      url: `http://${address.toString()}/${vaultName}`
+    })
+
+    if (!info.refs) {
+      throw new Error(`Peer does not have vault: '${vaultName}'`)
+    }
+
+    // Create new efs first
+    const key = crypto.randomBytes(16)
+
+    // Set filesystem
+    const vfsInstance = new (require('virtualfs')).VirtualFS
+
+    const newEfs = new EncryptedFS(
+      key,
+      vfsInstance,
+      vfsInstance,
+      fs,
+      process
+    )
+
+    // Clone vault from address
+    await git.clone({
+      fs: efsCallbackWrapper(newEfs),
+      http: customHttpRequest,
+      dir: Path.join(this.polykeyPath, vaultName),
+      url: "http://" + address.toString() + '/' + vaultName,
+      ref: 'master',
+      singleBranch: true
+    })
+
+    // Finally return the vault
+    return new Vault(vaultName, key, this.polykeyPath)
   }
 
   async vaultExists(vaultName: string): Promise<boolean> {
@@ -169,8 +209,8 @@ class Polykey {
     }
     // Remaining garbage collection:
     // Remove vault from vaults map
-    if (this.vaultStore.hasVault(vaultName)) {
-      this.vaultStore.deleteVault(vaultName)
+    if (this.vaults.has(vaultName)) {
+      this.vaults.delete(vaultName)
     }
     // Remove from metadata
     if (this.metadata.vaults.hasOwnProperty(vaultName)) {
@@ -182,7 +222,7 @@ class Polykey {
     if (vaultPathExists) {
       throw new Error('Vault path could not be destroyed!')
     }
-    const vaultEntryExists = this.vaultStore.hasVault(vaultName)
+    const vaultEntryExists = this.vaults.has(vaultName)
     if (vaultEntryExists) {
       throw new Error('Vault could not be removed from PolyKey!')
     }
@@ -209,7 +249,7 @@ class Polykey {
   }
 
   listVaults(): string[] {
-    return this.vaultStore.getVaultNames()
+    return Array.from(this.vaults.keys())
   }
 
 

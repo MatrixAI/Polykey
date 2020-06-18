@@ -3,18 +3,11 @@ import pako from 'pako'
 import path from 'path'
 import createHash from 'sha.js'
 import { PassThrough } from 'stream'
-import log from './Log'
+import log from './log'
 import GitObjectManager from './GitObjectManager'
 import GitCommit from './GitCommit'
 import GitTree from './GitTree'
 import { EncryptedFS } from 'encryptedfs'
-
-// import { GitObjectManager } from '../managers/GitObjectManager'
-// import { GitCommit } from '../models/GitCommit'
-// import { GitTree } from '../models/GitTree'
-
-// import { log } from './log'
-
 
 const types = {
   commit: 0b0010000,
@@ -74,7 +67,6 @@ async function packObjects (
         }
         oids.add(commit.oid)
         if (i === commits.length - 1) {
-          console.log('last one', commit.oid)
           if (
             !oldshallows.includes(commit.oid) &&
             (depth !== undefined || since !== undefined)
@@ -105,7 +97,7 @@ async function packObjects (
   return { packstream, shallows, unshallows, acks }
 }
 
-export async function listObjects (
+async function listObjects (
   fileSystem: EncryptedFS,
   dir: string,
   gitdir: string = path.join(dir, '.git'),
@@ -148,7 +140,7 @@ export async function listObjects (
   return [...commits, ...trees, ...blobs]
 }
 
-export async function pack (
+async function pack (
   fileSystem: EncryptedFS,
   dir: string,
   gitdir: string = path.join(dir, '.git'),
@@ -206,3 +198,4 @@ export async function pack (
 }
 
 export default packObjects
+export {listObjects, pack}

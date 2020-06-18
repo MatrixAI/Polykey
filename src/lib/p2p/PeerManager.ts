@@ -1,9 +1,10 @@
 import fetch from 'node-fetch'
 import KeyManager from "@polykey/KeyManager";
+import ConnectionManager from './ConnectionManager';
 import PeerInfo from "@polykey/peer-store/PeerInfo";
 import PeerStore from "@polykey/peer-store/PeerStore";
-import MulticastBroadcaster from "@polykey/p2p/MulticastBroadcaster";
 import { firstPromiseFulfilled } from '@polykey/utils';
+import MulticastBroadcaster from "@polykey/p2p/MulticastBroadcaster";
 
 interface SocialDiscovery {
   // Must return a public pgp key
@@ -29,18 +30,19 @@ const keybaseDiscovery: SocialDiscovery = {
   findUser: keybaseLookup
 }
 
-class PeerDiscovery {
+class PeerManager {
   peerStore: PeerStore
   keyManager: KeyManager
   multicastBroadcaster: MulticastBroadcaster
+  connectionManager: ConnectionManager
   private socialDiscoveryServices: SocialDiscovery[]
 
   constructor(
-    peerStore: PeerStore,
+    peerInfo: PeerInfo,
     keyManager: KeyManager,
     socialDiscoveryServices: SocialDiscovery[] = []
   ) {
-    this.peerStore = peerStore
+    this.peerStore = new PeerStore(peerInfo)
     this.keyManager = keyManager
     this.socialDiscoveryServices = socialDiscoveryServices
 
@@ -51,6 +53,8 @@ class PeerDiscovery {
     }
 
     this.multicastBroadcaster = new MulticastBroadcaster(this.peerStore, this.keyManager)
+
+    this.connectionManager = new ConnectionManager(this.peerStore)
   }
 
   async findPubKey(pubKey: string): Promise<PeerInfo> {
@@ -92,5 +96,5 @@ class PeerDiscovery {
   }
 }
 
-export default PeerDiscovery
+export default PeerManager
 export { SocialDiscovery }

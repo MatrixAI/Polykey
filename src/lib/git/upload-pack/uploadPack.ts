@@ -44,8 +44,6 @@ async function uploadPack(
       const refs = {}
       keys.unshift('HEAD') // HEAD must be the first in the list
       for (const key of keys) {
-        console.log('here at the end of the line');
-        console.log(key);
         refs[key] = await GitRefManager.resolve(fileSystem, gitdir, key)
       }
 

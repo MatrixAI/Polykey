@@ -56,11 +56,6 @@ class MulticastBroadcaster extends EventEmitter {
     this.socket.on("listening", (() => {
       this.socket.addMembership(UDP_MULTICAST_ADDR);
       const address = this.socket.address();
-      console.log(
-        `UDP socket listening on ${address.address}:${address.port} pid: ${
-          process.pid
-        }`
-      );
     }).bind(this));
 
     // Handle messages

@@ -1,3 +1,5 @@
+import { AddressInfo } from "net"
+
 class Address {
   ip: string
   port: string
@@ -15,6 +17,15 @@ class Address {
     const port = components[1]
 
     return new Address(ip, port)
+  }
+
+  toString() {
+    return `${this.ip}:${this.port}`
+  }
+
+  fromAddressInfo(addressInfo: AddressInfo) {
+    const ip = (addressInfo.address == '::') ? '127.0.0.1' : addressInfo.address
+    return new Address(ip, addressInfo.port.toString())
   }
 
 }

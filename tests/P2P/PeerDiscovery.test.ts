@@ -32,12 +32,12 @@ describe('Peer Discovery', () => {
 
 	test('find a peer', async () => {
     // TODO: try to find a way to test this, currently its untestable because keybase login integration hasn't been completed
-    await pk.peerDiscovery.findSocialUser('robert-cronin', 'github')
+    await pk.peerManager.findSocialUser('robert-cronin', 'github')
   })
 
 	test('find a user on github', async () => {
     // TODO: try to find a way to test this, currently its untestable because keybase login integration hasn't been completed
-    await pk.peerDiscovery.findSocialUser('robert-cronin', 'github')
+    await pk.peerManager.findSocialUser('robert-cronin', 'github')
   })
 
 

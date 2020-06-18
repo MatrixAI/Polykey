@@ -6,7 +6,7 @@ import { EncryptedFS } from 'encryptedfs'
 
 
 
-export async function logCommit (fileSystem: EncryptedFS, gitdir: string, oid: string, signing: boolean) {
+async function logCommit (fileSystem: EncryptedFS, gitdir: string, oid: string, signing: boolean) {
   try {
     let { type, object } = await GitObjectManager.read(fileSystem, gitdir, oid)
     if (type !== 'commit') {
@@ -99,3 +99,4 @@ async function log (
 }
 
 export default log
+export {logCommit}

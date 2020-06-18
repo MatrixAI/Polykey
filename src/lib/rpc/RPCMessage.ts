@@ -8,7 +8,6 @@ type HandshakeMessage = {
   message: Buffer
   responsePeerInfo?: PeerInfo
 }
-console.log(__filename);
 
 class RPCMessage {
   static loadProto(name: string): Root {

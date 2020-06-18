@@ -1,6 +1,6 @@
-import PeerInfo from '@polykey/PeerStore/PeerInfo'
-import RPCMessage from '@polykey/RPC/RPCMessage'
 import crypto from 'crypto'
+import RPCMessage from '@polykey/rpc/RPCMessage'
+import PeerInfo from '@polykey/peer-store/PeerInfo'
 
 // TODO add tests as part of testing PR
 describe('RPCMessage class', () => {
