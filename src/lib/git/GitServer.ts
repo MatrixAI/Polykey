@@ -63,138 +63,110 @@ class GitServer {
   /**
    * Handle incoming HTTP requests with a connect-style middleware
    */
-  handle(req: http.IncomingMessage, res: http.ServerResponse) {
-
-    const infoHandler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
-      if (req.method !== 'GET') return false
-
-      const u = url.parse(req.url!)
-      const m = u.pathname!.match(/\/(.+)\/info\/refs$/)
-      if (!m) return false
-      if (/\.\./.test(m[1])) return false
-
-
-      const repo = m[1]
-      const params = parse(u.query!)
-      if (!params.service) {
-        res.statusCode = 400
-        res.end('service parameter required')
-        return true
-      }
-
-      const service = (<string>params.service).replace(/^git-/, '')
-      if (services.indexOf(service) < 0) {
-        res.statusCode = 405
-        res.end('service not available')
-        return true
-      }
-
-      this.infoResponse(repo, service, req, res)
-      return true
-    }
-    const requestPackHandler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
-      if (req.method !== 'POST') return false
-
-      const m = req.url!.match(/\/(.+)\/git-(.+)/)
-      if (!m) return false
-      if (/\.\./.test(m[1])) return false
-
-
-      const repo = m[1]
-      const service = m[2]
-
-      if (services.indexOf(service) < 0) {
-        res.statusCode = 405
-        res.end('service not available')
-        return true
-      }
-
-      res.setHeader('content-type', 'application/x-git-' + service + '-result')
-      this.noCache(res)
-
-      const repoDir = Path.join(this.repoDir, repo)
-
-      // Check if vault exists
-      const connectingPublicKey = ''
-      if (!this.exists(repo, connectingPublicKey)) {
-        res.statusCode = 404
-        res.end('not found')
-        return true
-      }
-
-      const fileSystem = this.vaults.get(repo)?.efs
-
-      if (fileSystem) {
-        req.on('data', async (data) => {
-          if (data.toString().slice(4, 8) == 'want') {
-            const wantedObjectId = data.toString().slice(9, 49)
-            const packResult = await packObjects(
-              fileSystem,
-              repoDir,
-              [wantedObjectId],
-              undefined
-            )
-
-            // This the 'wait for more data' line as I understand it
-            res.write(Buffer.from('0008NAK\n'))
-
-            // This is to get the side band stuff working
-            const readable = through()
-            const progressStream = through()
-            const sideBand = GitSideBand.mux(
-              'side-band-64',
-              readable,
-              packResult.packstream,
-              progressStream,
-              []
-            )
-            sideBand.pipe(res)
-
-            // Write progress to the client
-            progressStream.write(Buffer.from('0014progress is at 50%\n'))
-            progressStream.end()
-          }
-        })
-        // const dup = new HttpDuplex(
-        //   req,
-        //   res,
-        //   service,
-        //   repoDir,
-        //   fileSystem
-        // )
-      }
-
-      return true
-    }
-    const notSupportedHandler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
-      if (req.method !== 'GET' && req.method !== 'POST') {
-        res.statusCode = 405
-        res.end('method not supported')
-        return true
-      } else {
-        return false
-      }
-    }
-    const notFoundHandler = (req: http.IncomingMessage, res: http.ServerResponse): boolean => {
-      res.statusCode = 404
-      res.end('not found')
-      return true
-    }
-
-    const handlers = [
-      infoHandler,
-      requestPackHandler,
-      notSupportedHandler,
-      notFoundHandler
-    ]
-
+  private handle(req: http.IncomingMessage, res: http.ServerResponse) {
     res.setHeader('connection', 'close')
 
-    for (const handler of handlers) {
-      const fulfilled = handler(req,res)
-      if (fulfilled) {
-        break
-      }
+    if (req.method == 'GET') {
+      this.handleInfoRequests(req, res)
+    } else if (req.method == 'POST') {
+      this.handlePackRequests(req, res)
+    } else {
+      res.statusCode = 405
+      res.end('method not supported')
+    }
+  }
+
+  private notFoundResponse(res: http.ServerResponse) {
+    res.statusCode = 404
+    res.end('not found')
+  }
+
+  private handleInfoRequests(req: http.IncomingMessage, res: http.ServerResponse) {
+    const u = url.parse(req.url!)
+    const m = u.pathname!.match(/\/(.+)\/info\/refs$/)
+    if (!m || /\.\./.test(m[1])) {
+      return this.notFoundResponse(res)
+    }
+
+    const repo = m[1]
+    const params = parse(u.query!)
+    if (!params.service) {
+      res.statusCode = 400
+      res.end('service parameter required')
+      return
+    }
+
+    const service = (<string>params.service).replace(/^git-/, '')
+    if (services.indexOf(service) < 0) {
+      res.statusCode = 405
+      res.end('service not available')
+      return
+    }
+
+    this.infoResponse(repo, service, req, res)
+  }
+
+  private handlePackRequests(req: http.IncomingMessage, res: http.ServerResponse) {
+    const m = req.url!.match(/\/(.+)\/git-(.+)/)
+    if (!m || /\.\./.test(m[1])) {
+      return this.notFoundResponse(res)
+    }
+
+    const repo = m[1]
+    const service = m[2]
+
+    if (services.indexOf(service) < 0) {
+      res.statusCode = 405
+      res.end('service not available')
+      return
+    }
+
+    res.setHeader('content-type', 'application/x-git-' + service + '-result')
+    this.noCache(res)
+
+    const repoDir = Path.join(this.repoDir, repo)
+
+    // Check if vault exists
+    const connectingPublicKey = ''
+    if (!this.exists(repo, connectingPublicKey)) {
+      res.statusCode = 404
+      res.end('not found')
+      return
+    }
+
+    const fileSystem = this.vaults.get(repo)?.efs
+
+    if (fileSystem) {
+      req.on('data', async (data) => {
+        if (data.toString().slice(4, 8) == 'want') {
+          const wantedObjectId = data.toString().slice(9, 49)
+          const packResult = await packObjects(
+            fileSystem,
+            repoDir,
+            [wantedObjectId],
+            undefined
+          )
+
+          // This the 'wait for more data' line as I understand it
+          res.write(Buffer.from('0008NAK\n'))
+
+          // This is to get the side band stuff working
+          const readable = through()
+          const progressStream = through()
+          const sideBand = GitSideBand.mux(
+            'side-band-64',
+            readable,
+            packResult.packstream,
+            progressStream,
+            []
+          )
+          sideBand.pipe(res)
+
+          // Write progress to the client
+          progressStream.write(Buffer.from('0014progress is at 50%\n'))
+          progressStream.end()
+        }
+      })
     }
   }
 
