@@ -204,9 +204,7 @@ class GitServer {
   listen(port: number = 0): AddressInfo {
     this.server = http.createServer((req, res) => {
       this.handle(req, res)
-    })
-
-    this.server.listen(port)
+    }).listen(port)
 
     return <AddressInfo>this.server.address()
   }

@@ -123,7 +123,9 @@ describe('vaults', () => {
 
       const pkSecret = vault.getSecret(initialSecretName).toString()
 
-      await clonedVault.pullVault(pkAddress)
+      const getSocket = peerPk.peerManager.connectionManager.connect.bind(peerPk.peerManager.connectionManager)
+      await clonedVault.pullVault(getSocket, pkAddress)
+
       const peerPkSecret = clonedVault.getSecret(initialSecretName).toString()
       console.log(pkSecret);
       console.log(peerPkSecret);
@@ -162,10 +164,10 @@ describe('vaults', () => {
       await vault.addSecret('NewSecret', Buffer.from('some other secret information'))
 
       // Pull from vault
-      await clonedVault.pullVault(pkAddress)
+      const getSocket = peerPk.peerManager.connectionManager.connect.bind(peerPk.peerManager.connectionManager)
+      await clonedVault.pullVault(getSocket, pkAddress)
 
       // Compare new secret
-
       const pkNewSecret = vault.getSecret(initialSecretName).toString()
       const peerPkNewSecret = clonedVault.getSecret(initialSecretName).toString()
       expect(pkNewSecret).toStrictEqual(peerPkNewSecret)
@@ -204,7 +206,8 @@ describe('vaults', () => {
       await vault.removeSecret(initialSecretName)
 
       // Pull clonedVault
-      await clonedVault.pullVault(pkAddress)
+      const getSocket = peerPk.peerManager.connectionManager.connect.bind(peerPk.peerManager.connectionManager)
+      await clonedVault.pullVault(getSocket, pkAddress)
 
       // Confirm secrets list is now empty
       const removedSecretList = vault.listSecrets()

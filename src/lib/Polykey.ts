@@ -10,8 +10,9 @@ import GitServer from '@polykey/git/GitServer'
 import RPCMessage from '@polykey/rpc/RPCMessage'
 import PeerManager from '@polykey/p2p/PeerManager'
 import { efsCallbackWrapper } from '@polykey/utils'
-import Vault, { customHttpRequest } from '@polykey/Vault'
+import Vault from '@polykey/Vault'
 import PeerInfo, { Address } from '@polykey/peer-store/PeerInfo'
+import httpRequest from './httpRequest'
 
 type Metadata = {
   vaults: {
@@ -90,8 +91,7 @@ class Polykey {
     // Start git server
     this.gitServer = new GitServer(this.polykeyPath, this.vaults)
     const addressInfo = this.gitServer.listen()
-    const ip = (addressInfo.address == '::') ? "localhost" : addressInfo.address
-    this.peerManager.peerStore.localPeerInfo.connect(new Address(ip, addressInfo.port.toString()))
+    this.peerManager.peerStore.localPeerInfo.connect(Address.fromAddressInfo(addressInfo))
   }
 
   ////////////
@@ -151,10 +151,12 @@ class Polykey {
       throw new Error('Vault name already exists locally, try pulling instead')
     }
 
+    const vaultUrl = `http://${address.toString()}/${vaultName}`
+
     // First check if it exists on remote
     const info = await git.getRemoteInfo({
-      http: customHttpRequest,
-      url: `http://${address.toString()}/${vaultName}`
+      http: httpRequest(this.peerManager.connectionManager.connect.bind(this.peerManager.connectionManager), address),
+      url: vaultUrl
     })
 
     if (!info.refs) {
@@ -178,9 +180,9 @@ class Polykey {
     // Clone vault from address
     await git.clone({
       fs: efsCallbackWrapper(newEfs),
-      http: customHttpRequest,
+      http: httpRequest(this.peerManager.connectionManager.connect.bind(this.peerManager.connectionManager), address),
       dir: Path.join(this.polykeyPath, vaultName),
-      url: "http://" + address.toString() + '/' + vaultName,
+      url: vaultUrl,
       ref: 'master',
       singleBranch: true
     })

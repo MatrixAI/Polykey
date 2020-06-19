@@ -1,6 +1,5 @@
 import tls from 'tls'
 import net from 'net'
-import http from 'http'
 import { AddressInfo } from 'net'
 import { Address } from '@polykey/peer-store/PeerInfo'
 import PeerStore from '@polykey/peer-store/PeerStore'
@@ -27,16 +26,21 @@ class ConnectionManager {
       requestCert: true,
       rejectUnauthorized: false
     }
-    this.server = tls.createServer(options)
+    this.server = tls.createServer(options, (socket) => {
+      console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
+    }).listen()
 
-    // const addressInfo = <AddressInfo>this.server.address()
-    // const address = new Address(addressInfo.address, addressInfo.port.toString())
-    // this.peerStore.localPeerInfo.connect(address)
+
+    const addressInfo = <AddressInfo>this.server.address()
+
+    const address = Address.fromAddressInfo(addressInfo)
+    this.peerStore.localPeerInfo.connect(address)
+    this.address = address
 
     this.connections = new Map()
   }
 
-  connect(peer: string | Address) {
+  connect(peer: string | Address): net.Socket {
     if (typeof peer == 'string') {
       const existingSocket = this.connections.get(peer)
       if (existingSocket) {
@@ -44,28 +48,36 @@ class ConnectionManager {
       } else {
         const address = this.peerStore.get(peer)?.connectedAddr
         if (address) {
-          const options: tls.ConnectionOptions = {
+          // const options: tls.ConnectionOptions = {
+          //   port: parseInt(address.port),
+          //   host: address.ip,
+          //   key: this.keyPem,
+          //   cert: this.certPem
+          // }
+          const options: net.NetConnectOpts = {
             port: parseInt(address.port),
-            host: address.ip,
-            key: this.keyPem,
-            cert: this.certPem
+            host: address.ip
           }
-          const socket =  tls.connect(options)
-          this.connections.set(peer, socket)
+          const socket =  net.connect(options)
+
+          // this.connections.set(peer, socket)
           return socket
         }
       }
     } else {
       const address = peer
-      const options: tls.ConnectionOptions = {
+      // const options: tls.ConnectionOptions = {
+      //   port: parseInt(address.port),
+      //   host: address.ip,
+      //   key: this.keyPem,
+      //   cert: this.certPem
+      // }
+      const options: net.NetConnectOpts = {
         port: parseInt(address.port),
-        host: address.ip,
-        key: this.keyPem,
-        cert: this.certPem
+        host: address.ip
       }
-      return tls.connect(options)
+      return net.connect(options)
     }
-
 
     throw new Error('Peer does not have an address connected')
   }

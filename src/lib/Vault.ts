@@ -1,87 +1,13 @@
 import fs from 'fs'
+import tls from 'tls'
+import net from 'net'
 import Path from 'path'
-import http from 'http'
 import hkdf from 'futoin-hkdf'
 import git from 'isomorphic-git'
 import { EncryptedFS } from 'encryptedfs'
 import { Address } from '@polykey/peer-store/PeerInfo'
 import { efsCallbackWrapper } from '@polykey/utils'
-
-function fromNodeStream(stream) {
-  let ended = false
-  const queue: Buffer[] = []
-  let defer: any = {}
-  stream.on('data', (chunk: Buffer) => {
-    queue.push(chunk)
-    if (defer.resolve) {
-      defer.resolve({ value: queue.shift(), done: false })
-      defer = {}
-    }
-  })
-  stream.on('error', err => {
-    if (defer.reject) {
-      defer.reject(err)
-      defer = {}
-    }
-  })
-  stream.on('end', () => {
-    ended = true
-    if (defer.resolve) {
-      defer.resolve({ done: true })
-      defer = {}
-    }
-  })
-  return {
-    next(): Promise<any> {
-      return new Promise((resolve, reject) => {
-        if (queue.length === 0 && ended) {
-          return resolve({ done: true })
-        } else if (queue.length > 0) {
-          return resolve({ value: queue.shift(), done: false })
-        } else if (queue.length === 0 && !ended) {
-          defer = { resolve, reject }
-        }
-      })
-    },
-  }
-}
-const customHttpRequest = {
-  async request ({
-    url,
-    method,
-    headers,
-    body,
-    onProgress
-  }) {
-    return new Promise<any>((resolve, reject) => {
-      const {hostname, port, pathname, search} = new URL(url)
-      const options: http.RequestOptions = {
-        hostname: hostname,
-        port: port,
-        path: pathname+search,
-        headers: headers,
-        method: method
-      };
-      const req = http.request(options, (res) => {
-        const iter = fromNodeStream(res)
-        resolve({
-          url: res.url,
-          method: res.method,
-          statusCode: res.statusCode,
-          statusMessage: res.statusMessage,
-          body: iter,
-          headers: res.headers,
-        })
-      })
-      if (body) {
-        for (const buffer of body) {
-          req.write(buffer)
-        }
-      }
-      req.end()
-    })
-  }
-}
+import httpRequest from './httpRequest'
 
 
 type VaultMetadata = {
@@ -327,7 +253,7 @@ class Vault {
     })
   }
 
-  async pullVault(address: Address) {
+  async pullVault(getSocket: (address: Address) => net.Socket, address: Address) {
     const remoteUrl = "http://" + address.toString() + '/' + this.name
 
     // Strangely enough this is needed for pulls along with ref set to 'HEAD'
@@ -342,7 +268,7 @@ class Vault {
     // First pull
     await git.pull({
       fs: efsCallbackWrapper(this.efs),
-      http: customHttpRequest,
+      http: httpRequest(getSocket, address),
       dir: this.vaultPath,
       url: remoteUrl,
       ref: 'HEAD',
@@ -358,4 +284,3 @@ class Vault {
 }
 
 export default Vault
-export {customHttpRequest}
