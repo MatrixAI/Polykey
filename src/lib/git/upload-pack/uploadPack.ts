@@ -1,7 +1,7 @@
-import GitRefManager from './GitRefManager'
-import { GitPktLine } from './GitPktLine'
 import path from 'path'
 import { EncryptedFS } from 'encryptedfs'
+import GitPktLine from '@polykey/git/upload-pack/GitPktLine'
+import GitRefManager from '@polykey/git/upload-pack/GitRefManager'
 
 async function writeRefsAdResponse({ capabilities, refs, symrefs }) {
   const stream: Buffer[] = []

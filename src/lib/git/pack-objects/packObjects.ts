@@ -1,13 +1,12 @@
-import pad from 'pad'
 import pako from 'pako'
 import path from 'path'
 import createHash from 'sha.js'
 import { PassThrough } from 'stream'
-import log from './log'
-import GitObjectManager from './GitObjectManager'
-import GitCommit from './GitCommit'
-import GitTree from './GitTree'
 import { EncryptedFS } from 'encryptedfs'
+import log from '@polykey/git/pack-objects/log'
+import GitTree from '@polykey/git/pack-objects/GitTree'
+import GitCommit from '@polykey/git/pack-objects/GitCommit'
+import GitObjectManager from '@polykey/git/pack-objects/GitObjectManager'
 
 const types = {
   commit: 0b0010000,
@@ -176,7 +175,9 @@ async function pack (
     while (multibyte) {
       multibyte = length > 0b01111111 ? 0b10000000 : 0b0
       byte = multibyte | (length & 0b01111111)
-      write(pad(2, byte.toString(16), '0'), 'hex')
+      const unpaddedChunk = byte.toString(16)
+      const paddedChunk = '0'.repeat(2-unpaddedChunk.length) + unpaddedChunk
+      write(paddedChunk, 'hex')
       length = length >>> 7
     }
     // Lastly, we can compress and write the object.
@@ -186,7 +187,9 @@ async function pack (
   write('PACK')
   write('00000002', 'hex')
   // Write a 4 byte (32-bit) int
-  write(pad(8, oids.length.toString(16), '0'), 'hex')
+  const unpaddedChunk = oids.length.toString(16)
+  const paddedChunk = '0'.repeat(8-unpaddedChunk.length) + unpaddedChunk
+  write(paddedChunk, 'hex')
   for (let oid of oids) {
     let { type, object } = await GitObjectManager.read(fileSystem, gitdir, oid)
     writeObject(object, type)

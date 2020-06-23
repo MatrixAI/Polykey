@@ -21,9 +21,20 @@ entire packfile without multiplexing.
 */
 import { Buffer } from 'buffer'
 import { PassThrough } from 'stream'
-import splitBuffer from 'split-buffer'
 
-import GitPktLine from '../upload-pack/GitPktLine'
+import GitPktLine from '@polykey/git/upload-pack/GitPktLine'
+
+function splitBuffer(buffer: Buffer, maxBytes: number) {
+  const result: Buffer[] = [];
+  let index = 0
+  while (index < buffer.length) {
+    const buf = buffer.slice(index, index+maxBytes)
+    result.push(buf)
+    index += buf.length
+  }
+  result.push(buffer.slice(index))
+  return result;
+}
 
 class GitSideBand {
   static demux (input) {

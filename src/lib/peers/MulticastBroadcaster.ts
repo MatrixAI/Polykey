@@ -1,9 +1,9 @@
 import dgram from 'dgram'
 import crypto from 'crypto'
 import { EventEmitter } from 'events'
-import KeyManager from '@polykey/KeyManager'
+import KeyManager from '@polykey/keys/KeyManager'
 import RPCMessage from '@polykey/rpc/RPCMessage'
-import PeerStore from '@polykey/peer-store/PeerStore'
+import PeerInfo from './PeerInfo'
 
 // This module is based heavily on libp2p's mDNS module:
 // https://github.com/libp2p/js-libp2p-mdns
@@ -28,7 +28,8 @@ type PeerMessage = {
 }
 
 class MulticastBroadcaster extends EventEmitter {
-  peerStore: PeerStore
+  addPeer: (peerInfo: PeerInfo) => void
+  localPeerInfo: PeerInfo
   keyManager: KeyManager
 
   socket: dgram.Socket
@@ -37,12 +38,14 @@ class MulticastBroadcaster extends EventEmitter {
   queryInterval: NodeJS.Timeout | null
   peerPubKeyMessages: Map<string, PeerMessage> = new Map()
   constructor(
-    peerStore: PeerStore,
+    addPeer: (peerInfo: PeerInfo) => void,
+    localPeerInfo: PeerInfo,
     keyManager: KeyManager
   ) {
     super()
 
-    this.peerStore = peerStore
+    this.addPeer = addPeer
+    this.localPeerInfo = localPeerInfo
     this.keyManager = keyManager
 
     this.interval = (1e3)
@@ -111,7 +114,7 @@ class MulticastBroadcaster extends EventEmitter {
           // Add peer info to peerStore
           const newPeerInfo = decodedMessage.responsePeerInfo
           if (newPeerInfo) {
-            this.peerStore.add(newPeerInfo)
+            this.addPeer(newPeerInfo)
             // Remove peerId from requested messages
             const pubKey = newPeerInfo.publicKey
             this.peerPubKeyMessages.delete(pubKey)
@@ -132,7 +135,7 @@ class MulticastBroadcaster extends EventEmitter {
           Buffer.from(encryptedTargetPubKey),
           Buffer.from(encryptedPubKey),
           Buffer.from(encryptedMessage),
-          this.peerStore.localPeerInfo
+          this.localPeerInfo
         )
         this.socket.send(handshakeMessage, 0, handshakeMessage.length, <number>UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
       }

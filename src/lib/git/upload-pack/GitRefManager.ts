@@ -1,8 +1,7 @@
 // This is a convenience wrapper for reading and writing files in the 'refs' directory.
-import GitPackedRefs from './GitPackedRefs'
 import path from 'path'
 import { EncryptedFS } from 'encryptedfs'
-import fs from 'fs'
+import GitPackedRefs from '@polykey/git/upload-pack/GitPackedRefs'
 
 // @see https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
 const refpaths = ref => [
@@ -39,7 +38,7 @@ async function recursiveDirectoryWalk(dir: string, fileSystem: EncryptedFS): Pro
       if (!pending) return resolve(results);
       list.forEach(async function(file) {
         file = path.resolve(dir, file);
-        fs.stat(file, async function(err, stat) {
+        fileSystem.stat(file).then(async (stat) => {
           if (stat && stat.isDirectory()) {
             const res = await recursiveDirectoryWalk(file, fileSystem)
             results = results.concat(res);

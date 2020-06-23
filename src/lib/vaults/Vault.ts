@@ -5,9 +5,9 @@ import Path from 'path'
 import hkdf from 'futoin-hkdf'
 import git from 'isomorphic-git'
 import { EncryptedFS } from 'encryptedfs'
-import { Address } from '@polykey/peer-store/PeerInfo'
+import { Address } from '@polykey/peers/PeerInfo'
 import { efsCallbackWrapper } from '@polykey/utils'
-import httpRequest from './httpRequest'
+import httpRequest from '../httpRequest'
 
 
 type VaultMetadata = {
@@ -19,7 +19,7 @@ class Vault {
   private key: Buffer
   private keyLen: number
   name: string
-  efs: EncryptedFS
+  private efs: EncryptedFS
   vaultPath: string
   private secrets: Map<string, any>
   private sharedPubKeys:Set<string>
@@ -61,6 +61,12 @@ class Vault {
     this.metadataPath = Path.join(this.vaultPath, '.vault', 'metadata')
     this.loadMetadata()
   }
+
+
+  public get EncryptedFS() : EncryptedFS {
+    return this.efs
+  }
+
 
   loadSecrets(): void {
     const secrets = fs.readdirSync(this.vaultPath, undefined)

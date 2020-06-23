@@ -1,4 +1,3 @@
-import url from 'url'
 import Path from 'path'
 import http from 'http'
 import through from 'through';
@@ -6,7 +5,7 @@ import { promisify } from "util";
 import { AddressInfo } from "net";
 import { Readable } from "stream";
 import { parse } from 'querystring'
-import Vault from '@polykey/Vault';
+import VaultManager from '@polykey/vaults/VaultManager';
 import uploadPack from '@polykey/git/upload-pack/uploadPack';
 import GitSideBand from '@polykey/git/side-band/GitSideBand';
 import packObjects from '@polykey/git/pack-objects/packObjects';
@@ -24,22 +23,22 @@ import packObjects from '@polykey/git/pack-objects/packObjects';
 const services = ['upload-pack', 'receive-pack']
 
 class GitServer {
-  private repoDir: string;
-  private vaults: Map<string, Vault>;
+  private polykeyPath: string;
+  private vaultManager: VaultManager;
   private server: http.Server;
   constructor(
-    repoDir: string,
-    vaults: Map<string, Vault>
+    polykeyPath: string,
+    vaultManager: VaultManager
   ) {
-    this.repoDir = repoDir
-    this.vaults = vaults
+    this.polykeyPath = polykeyPath
+    this.vaultManager = vaultManager
   }
 
   /**
    * Find out whether vault exists.
    */
   exists(vaultName: string, publicKey: string) {
-    const vault = this.vaults.get(vaultName)
+    const vault = this.vaultManager.getVault(vaultName)
     if (vault) {
       return vault.peerCanAccess(publicKey)
     }
@@ -82,14 +81,21 @@ class GitServer {
   }
 
   private handleInfoRequests(req: http.IncomingMessage, res: http.ServerResponse) {
-    const u = url.parse(req.url!)
-    const m = u.pathname!.match(/\/(.+)\/info\/refs$/)
+    const splitUrl = req.url?.split('?') ?? []
+    if (splitUrl.length != 2) {
+      return this.notFoundResponse(res)
+    }
+
+    const pathname = splitUrl[0]
+    const query = splitUrl[1]
+
+    const m = pathname.match(/\/(.+)\/info\/refs$/)
     if (!m || /\.\./.test(m[1])) {
       return this.notFoundResponse(res)
     }
 
     const repo = m[1]
-    const params = parse(u.query!)
+    const params = parse(query)
     if (!params.service) {
       res.statusCode = 400
       res.end('service parameter required')
@@ -124,7 +130,7 @@ class GitServer {
     res.setHeader('content-type', 'application/x-git-' + service + '-result')
     this.noCache(res)
 
-    const repoDir = Path.join(this.repoDir, repo)
+    const repoDir = Path.join(this.polykeyPath, repo)
 
     // Check if vault exists
     const connectingPublicKey = ''
@@ -134,7 +140,7 @@ class GitServer {
       return
     }
 
-    const fileSystem = this.vaults.get(repo)?.efs
+    const fileSystem = this.vaultManager.getVault(repo)?.EncryptedFS
 
     if (fileSystem) {
       req.on('data', async (data) => {
@@ -220,7 +226,7 @@ class GitServer {
       this.uploadPackRespond(
         service,
         repo,
-        Path.join(this.repoDir, repo),
+        Path.join(this.polykeyPath, repo),
         res
       )
     }
@@ -249,7 +255,7 @@ class GitServer {
     res.write('0000')
 
 
-    const fileSystem = this.vaults.get(repoName)!.efs
+    const fileSystem = this.vaultManager.getVault(repoName)?.EncryptedFS
 
     const buffers = await uploadPack(
       fileSystem,

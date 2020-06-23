@@ -50,7 +50,6 @@ Examples (as C-style strings):
 ----
 */
 
-import streamSource from 'stream-source/index.node.js'
 
 function padHex(b, n) {
   const s = n.toString(16)
@@ -60,7 +59,7 @@ function padHex(b, n) {
 // I'm really using this more as a namespace.
 // There's not a lot of "state" in a pkt-line
 
-export class GitPktLine {
+class GitPktLine {
   static flush() {
     return Buffer.from('0000', 'utf8')
   }
@@ -75,14 +74,13 @@ export class GitPktLine {
   }
 
   static streamReader (stream) {
-    const bufferstream = streamSource(stream)
     return async function read () {
       try {
-        let length = await bufferstream.slice(4)
+        let length = await stream.slice(4)
         if (length === null) return true
         length = parseInt(length.toString('utf8'), 16)
         if (length === 0) return null
-        let buffer = await bufferstream.slice(length - 4)
+        let buffer = await stream.slice(length - 4)
         if (buffer === null) return true
         return buffer
       } catch (err) {

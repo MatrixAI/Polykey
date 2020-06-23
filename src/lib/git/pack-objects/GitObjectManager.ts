@@ -3,7 +3,6 @@ import path from 'path'
 import fs from 'fs'
 
 import GitObject from './GitObject'
-import { GitPackIndex } from './GitPackIndex'
 import { EncryptedFS } from 'encryptedfs'
 
 const PackfileCache = new Map()
@@ -25,22 +24,6 @@ class GitObjectManager {
       for (let filename of list) {
         // Try to get the packfile from the in-memory cache
         let p = PackfileCache.get(filename)
-        if (!p) {
-          // If not there, load it from a .idx file
-          const idxName = filename.replace(/pack$/, 'idx')
-          if (fileSystem.existsSync(`${gitdir}/objects/pack/${idxName}`)) {
-            const idx = fileSystem.readFileSync(`${gitdir}/objects/pack/${idxName}`)
-            p = await GitPackIndex.fromIdx({ idx, getExternalRefDelta })
-          } else {
-            // If the .idx file isn't available, generate one.
-            const pack = fileSystem.readFileSync(`${gitdir}/objects/pack/${filename}`)
-            p = await GitPackIndex.fromPack({ pack, getExternalRefDelta })
-            // Save .idx file
-            fileSystem.writeFileSync(`${gitdir}/objects/pack/${idxName}`, p.toBuffer())
-          }
-          PackfileCache.set(filename, p)
-        }
-        // console.log(p)
         // If the packfile DOES have the oid we're looking for...
         if (p.offsets.has(oid)) {
           // Make sure the packfile is loaded in memory
@@ -57,7 +40,7 @@ class GitObjectManager {
     }
     // Check to see if it's in shallow commits.
     if (!file) {
-      let text = await fileSystem.readFileSync(`${gitdir}/shallow`, { encoding: 'utf8' })
+      let text = fileSystem.readFileSync(`${gitdir}/shallow`, { encoding: 'utf8' })
       if (text !== null && text.includes(oid)) {
         throw(new Error(`ReadShallowObjectFail: ${oid}`))
       }

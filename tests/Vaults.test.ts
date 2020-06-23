@@ -1,29 +1,30 @@
 import fs from 'fs'
 import os from 'os'
-import Path from 'path'
 import Polykey from "@polykey/Polykey"
 import { randomString } from '@polykey/utils'
-import KeyManager from '@polykey/KeyManager'
+import KeyManager from '@polykey/keys/KeyManager'
+import VaultManager from '@polykey/vaults/VaultManager'
 
 describe('vaults', () => {
   let randomVaultName: string
 
 	let tempDir: string
   let pk: Polykey
+  let vm: VaultManager
 
 	beforeAll(async done => {
 		// Define temp directory
 		tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
 		// Create keyManager
-		const km = new KeyManager()
-		// await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', true)
+		const km = new KeyManager(tempDir)
+		await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', 128, true)
 		// Initialize polykey
 		pk = new Polykey(
-      km,
-      undefined,
-			tempDir
-		)
+			tempDir,
+      km
+    )
+    vm = pk.vaultManager
 		done()
 	}, 30000)
 
@@ -38,26 +39,26 @@ describe('vaults', () => {
 
   test('can create vault', async () => {
     // Create vault
-    await pk.createVault(randomVaultName)
-    const vaultExists = await pk.vaultExists(randomVaultName)
+    await vm.createVault(randomVaultName)
+    const vaultExists = vm.vaultExists(randomVaultName)
     expect(vaultExists).toEqual(true)
   })
 
   test('cannot create same vault twice', async () => {
     // Create vault
-    await pk.createVault(randomVaultName)
-    const vaultExists = await pk.vaultExists(randomVaultName)
+    await vm.createVault(randomVaultName)
+    const vaultExists = vm.vaultExists(randomVaultName)
     expect(vaultExists).toEqual(true)
     // Create vault a second time
-    expect(pk.createVault(randomVaultName)).rejects.toThrow('Vault already exists!')
+    expect(vm.createVault(randomVaultName)).rejects.toThrow('Vault already exists!')
   })
   test('can destroy vaults', async () => {
     // Create vault
-    await pk.createVault(randomVaultName)
-    expect(await pk.vaultExists(randomVaultName)).toStrictEqual(true)
+    await vm.createVault(randomVaultName)
+    expect(vm.vaultExists(randomVaultName)).toStrictEqual(true)
     // Destroy the vault
-    await pk.destroyVault(randomVaultName)
-    expect(await pk.vaultExists(randomVaultName)).toStrictEqual(false)
+    vm.destroyVault(randomVaultName)
+    expect(vm.vaultExists(randomVaultName)).toStrictEqual(false)
   })
 
   ///////////////////
@@ -66,13 +67,12 @@ describe('vaults', () => {
   describe('secrets within vaults', () => {
     test('can create secrets and read them back', async () => {
       // Create vault
-      await pk.createVault(randomVaultName)
+      const vault = await vm.createVault(randomVaultName)
 
       // Run test
       const initialSecretName = 'ASecret'
       const initialSecret = 'super confidential information'
       // Add secret
-      const vault = await pk.getVault(randomVaultName)
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // Read secret
@@ -88,42 +88,44 @@ describe('vaults', () => {
   ////////////////////
   describe('sharing vaults', () => {
     let tempDir2: string
+    let peerPk: Polykey
+    let peerVm: VaultManager
 
-    beforeEach(() => {
+    beforeAll(async done => {
       // Define temp directory
       tempDir2 = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
-    })
+      // Create keyManager
+      const km2 = new KeyManager(tempDir2)
+      await km2.generateKeyPair('Jane Doe', 'jane.doe@email.com', 'passphrase', 128, true)
+      // Initialize polykey
+      peerPk = new Polykey(
+        tempDir2,
+        km2
+      )
+      peerVm = peerPk.vaultManager
+      done()
+    }, 30000)
 
-    afterEach(() => {
+    afterAll(() => {
       // Remove temp directory
       fs.rmdirSync(tempDir2, {recursive: true})
     })
 
     test('can share vault', async done => {
-      // Create keyManager
-      const km2 = new KeyManager()
-      // await km2.generateKeyPair('Jane Doe', 'jane.doe@email.com', 'passphrase', true)
-      // Initialize polykey
-      const peerPk = new Polykey(
-        km2,
-        undefined,
-        tempDir2
-      )
-
       // Create vault
-      const vault = await pk.createVault(randomVaultName)
+      const vault = await vm.createVault(randomVaultName)
       // Add secret
       const initialSecretName = 'ASecret'
       const initialSecret = 'super confidential information'
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // Pull from pk in peerPk
-      const pkAddress = pk.peerManager.peerStore.localPeerInfo.connectedAddr!
-      const clonedVault = await peerPk.cloneVault(randomVaultName, pkAddress)
+      const pkAddress = pk.peerManager.getLocalPeerInfo().connectedAddr!
+      const getSocket = peerPk.peerManager.connectToPeer.bind(peerPk.peerManager)
+      const clonedVault = await peerVm.cloneVault(randomVaultName, pkAddress, getSocket)
 
       const pkSecret = vault.getSecret(initialSecretName).toString()
 
-      const getSocket = peerPk.peerManager.connectionManager.connect.bind(peerPk.peerManager.connectionManager)
       await clonedVault.pullVault(getSocket, pkAddress)
 
       const peerPkSecret = clonedVault.getSecret(initialSecretName).toString()
@@ -139,32 +141,22 @@ describe('vaults', () => {
     }, 6000)
 
     test('can share vault and pull changes', async done => {
-      // Create keyManager
-      const km2 = new KeyManager()
-      // await km2.generateKeyPair('Jane Doe', 'jane.doe@email.com', 'passphrase', true)
-      // Initialize polykey
-      const peerPk = new Polykey(
-        km2,
-        undefined,
-        tempDir2
-      )
-
       // Create vault
-      const vault = await pk.createVault(randomVaultName)
+      const vault = await vm.createVault(randomVaultName)
       // Add secret
       const initialSecretName = 'InitialSecret'
       const initialSecret = 'super confidential information'
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // First clone from pk in peerPk
-      const pkAddress = pk.peerManager.peerStore.localPeerInfo.connectedAddr!
-      const clonedVault = await peerPk.cloneVault(randomVaultName, pkAddress)
+      const pkAddress = pk.peerManager.getLocalPeerInfo().connectedAddr!
+      const getSocket = peerPk.peerManager.connectToPeer.bind(peerPk.peerManager)
+      const clonedVault = await peerVm.cloneVault(randomVaultName, pkAddress, getSocket)
 
       // Add secret to pk
       await vault.addSecret('NewSecret', Buffer.from('some other secret information'))
 
       // Pull from vault
-      const getSocket = peerPk.peerManager.connectionManager.connect.bind(peerPk.peerManager.connectionManager)
       await clonedVault.pullVault(getSocket, pkAddress)
 
       // Compare new secret
@@ -175,26 +167,17 @@ describe('vaults', () => {
     }, 6000)
 
     test('removing secrets from shared vaults is reflected in peer vault', async done => {
-      // Create keyManager
-      const km2 = new KeyManager()
-      // await km2.generateKeyPair('Jane Doe', 'jane.doe@email.com', 'passphrase', true)
-      // Initialize polykey
-      const peerPk = new Polykey(
-        km2,
-        undefined,
-        tempDir2
-      )
-
       // Create vault
-      const vault = await pk.createVault(randomVaultName)
+      const vault = await vm.createVault(randomVaultName)
       // Add secret
       const initialSecretName = 'InitialSecret'
       const initialSecret = 'super confidential information'
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // First clone from pk in peerPk
-      const pkAddress = pk.peerManager.peerStore.localPeerInfo.connectedAddr!
-      const clonedVault = await peerPk.cloneVault(randomVaultName, pkAddress)
+      const pkAddress = pk.peerManager.getLocalPeerInfo().connectedAddr!
+      const getSocket = peerPk.peerManager.connectToPeer.bind(peerPk.peerManager)
+      const clonedVault = await peerVm.cloneVault(randomVaultName, pkAddress, getSocket)
 
       // Confirm secrets list only contains InitialSecret
       const secretList = vault.listSecrets()
@@ -206,7 +189,6 @@ describe('vaults', () => {
       await vault.removeSecret(initialSecretName)
 
       // Pull clonedVault
-      const getSocket = peerPk.peerManager.connectionManager.connect.bind(peerPk.peerManager.connectionManager)
       await clonedVault.pullVault(getSocket, pkAddress)
 
       // Confirm secrets list is now empty

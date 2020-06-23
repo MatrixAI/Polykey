@@ -1,7 +1,7 @@
 import fs from 'fs'
 import os from 'os'
 import { randomString } from '@polykey/utils'
-import KeyManager from '@polykey/KeyManager'
+import KeyManager from '@polykey/keys/KeyManager'
 
 describe('KeyManager class', () => {
 

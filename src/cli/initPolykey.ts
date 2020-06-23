@@ -5,7 +5,7 @@ import inquirer from 'inquirer'
 import Configstore from 'configstore'
 import PolyKey from '../lib/Polykey'
 import cliProgress from 'cli-progress'
-import KeyManager from '@polykey/KeyManager'
+import KeyManager from '@polykey/keys/KeyManager'
 import { actionRunner, pkLogger, PKMessageType } from './polykey'
 
 const configStore = new Configstore('PolyKeyConfig')

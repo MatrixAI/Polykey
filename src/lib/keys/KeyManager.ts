@@ -1,42 +1,64 @@
 import fs from 'fs'
+import os from 'os'
 import Path from 'path'
 import kbpgp from 'kbpgp'
 import crypto from 'crypto'
 import { promisify } from 'util'
 import {Pool, ModuleThread} from 'threads'
-import { KeyManagerWorker } from '@polykey/KeyManagerWorker'
+import { KeyManagerWorker } from '@polykey/keys/KeyManagerWorker'
+
+type KeyManagerMetadata = {
+  privateKeyPath: string | null,
+  publicKeyPath: string | null
+}
 
 type KeyPair = {
-  private: string,
-  public: string,
-  passphrase: string
+  private: string | null,
+  public: string | null
 }
 
 class KeyManager {
-  private primaryKeyPair: KeyPair = {private: '', public: '', passphrase: ''}
-  private primaryPassphrase?: string
+  private primaryKeyPair: KeyPair = {private: null, public: null}
   private primaryIdentity?: Object
   private derivedKeys: Map<string, Buffer>
   private useWebWorkers: boolean
   private workerPool?: Pool<ModuleThread<KeyManagerWorker>>
 
-  storePath: string
+  private metadataPath: string
+  private metadata: KeyManagerMetadata = { privateKeyPath: null, publicKeyPath: null }
 
   constructor(
-    polyKeyPath: string = '~/.polykey/',
+    polyKeyPath: string = `${os.homedir()}/.polykey`,
+    passphrase?: string,
     useWebWorkers: boolean = false,
     workerPool?: Pool<ModuleThread<KeyManagerWorker>>
   ) {
-    this.storePath = polyKeyPath
     this.useWebWorkers = useWebWorkers
     this.workerPool = workerPool
     this.derivedKeys = new Map()
+
+    // Load key manager metadata
+    const keypairPath = Path.join(polyKeyPath, '.keypair')
+    fs.mkdirSync(keypairPath)
+    this.metadataPath = Path.join(keypairPath, 'metadata')
+    this.loadMetadata()
+
+    // Load keys if they were provided
+    if (this.metadata.privateKeyPath && this.metadata.publicKeyPath && passphrase) {
+      // Load files into memory
+      const publicKey = fs.readFileSync(this.metadata.publicKeyPath)
+      const privateKey = fs.readFileSync(this.metadata.privateKeyPath)
+
+      // Load private and public keys
+      this.loadKeyPair(publicKey, privateKey, passphrase)
+    }
+
   }
 
   // return {private: string, public: string}
   // The replacePrimary parameter will tell KeyManager to replace the
   // existing identity with one derived from the new keypair
-  async generateKeyPair(name: string, email: string, passphrase: string, replacePrimary: boolean = false, progressCallback?: (info) => void): Promise<KeyPair> {
+  async generateKeyPair(name: string, email: string, passphrase: string, nbits: number = 4096, replacePrimary: boolean = false, progressCallback?: (info) => void): Promise<KeyPair> {
 
     // Define options
     const F = kbpgp["const"].openpgp
@@ -44,7 +66,7 @@ class KeyManager {
       asp: (progressCallback) ? new kbpgp.ASP({progress_hook: progressCallback}) : undefined,
       userid: `${name} <${email}>`,
       primary: {
-        nbits: 4096,
+        nbits: nbits,
         flags: F.certify_keys | F.sign_data | F.auth | F.encrypt_comm | F.encrypt_storage,
         expire_in: 0  // never expire
       },
@@ -71,10 +93,8 @@ class KeyManager {
                 reject(err)
               }
               // Resolve to parent promise
-              const keypair = { private: privKey, public: pubKey, passphrase: passphrase }
+              const keypair = { private: privKey, public: pubKey }
               if (replacePrimary) {
-                // Set the new passphrase
-                this.primaryPassphrase = passphrase
                 // Set the new keypair
                 this.primaryKeyPair = keypair
                 // Set the new identity
@@ -93,27 +113,42 @@ class KeyManager {
     return this.primaryKeyPair
   }
 
+  hasPublicKey(): boolean {
+    return (this.primaryKeyPair.public) ? true : false
+  }
+
   getPublicKey(): string {
+    if (!this.primaryKeyPair.public) {
+      throw new Error('Public key does not exist in memory')
+    }
     return this.primaryKeyPair.public
   }
 
   getPrivateKey(): string {
+    if (!this.primaryKeyPair.private) {
+      throw new Error('Private key does not exist in memory')
+    }
     return this.primaryKeyPair.private
   }
 
-  async loadPrivateKey(privateKey: string | Buffer, passphrase: string = ''): Promise<void> {
+  async loadKeyPair(publicKey: string | Buffer, privateKey: string | Buffer, passphrase: string): Promise<void> {
+    await this.loadPrivateKey(privateKey)
+    await this.loadPublicKey(publicKey)
+    await this.loadIdentity(passphrase)
+  }
+
+  async loadPrivateKey(privateKey: string | Buffer): Promise<void> {
     try {
       let keyBuffer: Buffer
       if (typeof privateKey === 'string') {
         keyBuffer = Buffer.from(await fs.promises.readFile(privateKey))
+        this.metadata.privateKeyPath = privateKey
+        this.writeMetadata()
       } else {
         keyBuffer = privateKey
       }
       this.primaryKeyPair.private = keyBuffer.toString()
 
-      if (passphrase) {
-        this.primaryPassphrase = passphrase
-      }
     } catch (err) {
       throw(err)
     }
@@ -124,6 +159,8 @@ class KeyManager {
       let keyBuffer: Buffer
       if (typeof publicKey === 'string') {
         keyBuffer = Buffer.from(await fs.promises.readFile(publicKey))
+        this.metadata.publicKeyPath = publicKey
+        this.writeMetadata()
       } else {
         keyBuffer = publicKey
       }
@@ -170,22 +207,16 @@ class KeyManager {
     })
   }
 
-  async loadKeyPair(publicKey: string | Buffer, privateKey: string | Buffer, passphrase: string = ''): Promise<void> {
-    await this.loadPrivateKey(privateKey)
-    await this.loadPublicKey(publicKey)
-    await this.loadIdentity(passphrase)
-
-    if (passphrase) {
-      this.primaryPassphrase
-    }
-  }
-
   async exportPrivateKey(path: string): Promise<void> {
     await fs.promises.writeFile(path, this.primaryKeyPair.private)
+    this.metadata.privateKeyPath = path
+    this.writeMetadata()
   }
 
   async exportPublicKey(path: string): Promise<void> {
     await fs.promises.writeFile(path, this.primaryKeyPair.public)
+    this.metadata.publicKeyPath = path
+    this.writeMetadata()
   }
 
   // symmetric key generation
@@ -273,7 +304,7 @@ class KeyManager {
   }
 
   // Sign data
-  signData(data: Buffer | string, withKey?: Buffer, keyPassphrase?: string): Promise<Buffer> {
+  async signData(data: Buffer | string, withKey?: Buffer, keyPassphrase?: string): Promise<Buffer> {
     return new Promise<Buffer>(async (resolve, reject) => {
       let resolvedIdentity: Object
       if (withKey) {
@@ -308,7 +339,7 @@ class KeyManager {
   }
 
   // Verify data
-  verifyData(data: Buffer | string, signature: Buffer, withKey?: Buffer): Promise<boolean> {
+  async verifyData(data: Buffer | string, signature: Buffer, withKey?: Buffer): Promise<boolean> {
     return new Promise<boolean>(async (resolve, reject) => {
       const ring = new kbpgp.keyring.KeyRing;
       let resolvedIdentity: Object
@@ -464,16 +495,31 @@ class KeyManager {
     })
   }
 
+  /* ============ HELPERS =============== */
   getKey(name: string): Buffer {
     return this.derivedKeys[name]
   }
 
-  isLoaded(): boolean {
+  isLoaded(name: string): boolean {
     if (this.derivedKeys[name]) {
       return true
     }
     return false
   }
+
+  private writeMetadata(): void {
+    const metadata = JSON.stringify(this.metadata)
+    fs.writeFileSync(this.metadataPath, metadata)
+  }
+  private loadMetadata(): void {
+    // Check if file exists
+    if (fs.existsSync(this.metadataPath)) {
+      const metadata = fs.readFileSync(this.metadataPath).toString()
+      this.metadata = JSON.parse(metadata)
+    }
+  }
+
+
 }
 
 export default KeyManager

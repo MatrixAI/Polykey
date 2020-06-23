@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import Polykey from "@polykey/Polykey"
 import { randomString } from '@polykey/utils'
-import KeyManager from '@polykey/KeyManager'
+import KeyManager from '@polykey/keys/KeyManager'
 
 // TODO expand tests as part of testing PR
 describe('Peer Discovery', () => {
@@ -15,13 +15,12 @@ describe('Peer Discovery', () => {
 
 		// Create keyManager
     const keyManager = new KeyManager()
-    await keyManager.generateKeyPair('John Smith', 'john.smith@email.com', 'some passphrase', true)
+    await keyManager.generateKeyPair('John Smith', 'john.smith@email.com', 'some passphrase', 128, true)
 
 		// Initialize polykey
 		pk = new Polykey(
-      keyManager,
-      undefined,
-			tempDir
+			tempDir,
+      keyManager
     )
 
 	}, 40000)

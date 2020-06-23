@@ -1,6 +1,6 @@
 import net from 'net'
 import http from 'http'
-import { Address } from './peer-store/PeerInfo'
+import { Address } from '@polykey/peers/PeerInfo'
 
 function fromNodeStream(stream) {
   let ended = false
