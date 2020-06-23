@@ -1,10 +1,10 @@
 import forge from 'node-forge'
 
-function createX509Certificate() {
+function createX509Certificate(nbits: number = 2048, organisationName: string = 'MatrixAI') {
   const pki = forge.pki;
 
   // generate a keypair and create an X.509v3 certificate
-  const keys = pki.rsa.generateKeyPair(2048);
+  const keys = pki.rsa.generateKeyPair(nbits);
   const cert = pki.createCertificate();
   cert.publicKey = keys.publicKey;
   // alternatively set public key from a csr
@@ -16,20 +16,11 @@ function createX509Certificate() {
 
   const attrs = [{
     name: 'commonName',
-    value: 'polykey.com'
+    value: 'polykey'
   }, {
-    name: 'countryName',
-    value: 'AUS'
-  }, {
-    shortName: 'ST',
-    value: 'NSW'
-  }, {
-    name: 'localityName',
-    value: 'Sydney'
-  }, {
-    name: 'organizationName',
-    value: 'MatrixAI'
-  },];
+    name: 'organisationName',
+    value: organisationName
+  }];
   cert.setSubject(attrs);
   // alternatively set subject from a csr
   //cert.setSubject(csr.subject.attributes);
