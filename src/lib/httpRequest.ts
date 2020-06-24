@@ -56,7 +56,14 @@ function httpRequest(getSocket: (address: Address) => net.Socket, address: Addre
           headers: headers,
           method: method,
           createConnection: () => {
-            return getSocket(address)
+            const socket = getSocket(address)
+            socket.on('data', data => {
+              console.log('heyyy');
+              console.log(data.toString());
+              console.log('heyyy');
+
+            })
+            return socket
           }
         };
         const req = http.request(options, (res) => {

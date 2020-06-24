@@ -1,6 +1,6 @@
 import forge from 'node-forge'
 
-function createX509Certificate(nbits: number = 2048, organisationName: string = 'MatrixAI') {
+function createX509Certificate(nbits: number = 2048, organizationName: string = 'MatrixAI') {
   const pki = forge.pki;
 
   // generate a keypair and create an X.509v3 certificate
@@ -14,12 +14,12 @@ function createX509Certificate(nbits: number = 2048, organisationName: string = 
   cert.validity.notAfter = new Date();
   cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
 
-  const attrs = [{
+  var attrs = [{
     name: 'commonName',
     value: 'polykey'
   }, {
-    name: 'organisationName',
-    value: organisationName
+    name: 'organizationName',
+    value: organizationName
   }];
   cert.setSubject(attrs);
   // alternatively set subject from a csr

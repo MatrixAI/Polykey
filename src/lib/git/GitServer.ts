@@ -9,6 +9,7 @@ import VaultManager from '@polykey/vaults/VaultManager';
 import uploadPack from '@polykey/git/upload-pack/uploadPack';
 import GitSideBand from '@polykey/git/side-band/GitSideBand';
 import packObjects from '@polykey/git/pack-objects/packObjects';
+import HttpMessageBuilder from './http-message/http-message-builder';
 
 // Here is the protocol git outlines for sending pack files over http:
 // https://git-scm.com/docs/pack-protocol/2.17.0
@@ -167,6 +168,14 @@ class GitServer {
             []
           )
           sideBand.pipe(res)
+          const responseStream = through()
+          sideBand.pipe(responseStream)
+          responseStream.on('data', data => {
+            const message = new HttpMessageBuilder()
+            message.appendToBody(data.toString())
+            console.log('data');
+            console.log(message.build().toString());
+          })
 
           // Write progress to the client
           progressStream.write(Buffer.from('0014progress is at 50%\n'))

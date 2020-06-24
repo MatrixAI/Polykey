@@ -14,7 +14,7 @@ describe('KeyManager class', () => {
 
 		// Create keyManager
 		km = new KeyManager(tempDir)
-    await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', true)
+    await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', 128, true)
 
 		done()
 	}, 30000)
