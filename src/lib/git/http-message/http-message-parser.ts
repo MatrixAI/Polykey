@@ -11,8 +11,11 @@ class HttpMessageParser {
   body?: Buffer
 
   constructor(raw: Buffer) {
-    const rawString = raw.toString()
+    const rawString = raw.toString().replace(/\r/g, '')
+    console.log(rawString);
+
     const lines = rawString.split('\n')
+
 
     // Handle first line
     const firstLineComponents = lines.shift()?.split(' ') ?? []
@@ -34,7 +37,9 @@ class HttpMessageParser {
     while (header && header !== '') {
       // Deal with header
       const [key, value] = header.split(': ')
-      this.headers.set(key, value)
+      if (value) {
+        this.headers.set(key, value)
+      }
       // Go to next header
       header = lines.shift()
     }
@@ -52,20 +57,29 @@ class HttpMessageParser {
         bodyLine = lines.shift()
       }
       this.body = Buffer.from(bodyString)
-    }
-    //  else if (this.headers.has('Transfer-Encoding')) {
-    //   // Handle chunked transfer coding
-    //   let bodyString = ''
-    //   let bodyLine: string | undefined = lines.shift()
-    //   while (bodyLine && bodyLine !== '') {
-    //     console.log(bodyLine);
+    } else if (this.headers.has('Transfer-Encoding')) {
+      console.log(lines);
 
-    //     bodyString += `${bodyLine}\n`
-    //     // Go to next header
-    //     bodyLine = lines.shift()
-    //   }
-    //   this.body = Buffer.from(bodyString)
-    // }
+      // Handle chunked transfer coding
+      let bodyString = ''
+      let bodyLine: string | undefined = lines.shift()
+      while (bodyLine) {
+        // First line is hexadecimal length
+        const lineLength = parseInt(bodyLine, 16)
+        bodyLine = lines.shift()
+        console.log('length = '+lineLength);
+
+        // Subsequent lines belong to the body
+        while (bodyLine != '') {
+          bodyString += `${bodyLine}\n`
+          // Go to next header
+          bodyLine = lines.shift()
+        }
+      }
+      console.log(bodyString);
+
+      this.body = Buffer.from(bodyString)
+    }
   }
 }
 

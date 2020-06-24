@@ -10,5 +10,6 @@ module.exports = {
   },
   moduleNameMapper: {
     '@polykey/(.*)$': '<rootDir>/src/lib/$1'
-  }
+  },
+  setupFiles: ['./jest.setup.js']
 };

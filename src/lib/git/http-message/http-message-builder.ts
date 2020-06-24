@@ -1,49 +1,80 @@
-class HttpMessageBuilder {
-  private statusCode: number = 200
-  private headers: Map<string, string> = new Map()
-  private body: string[] = []
+import net from 'net'
 
+class HttpMessageBuilder {
+  private httpVersion: string = 'HTTP/1.1'
+  statusCode: number = 200
+
+  // Headers
+  private headersSent: boolean = false
+  private headers: Map<string, string> = new Map()
+
+  // Internal stuff
+  private socket: net.Socket
   private statusMessages = {
     200: 'OK',
     400: 'Bad Request',
     404: 'Not Found',
     405: 'Method Not Allowed',
   }
+  private endString: string = '0\r\n\r\n'
 
-  addHeader(name: string, value: string) {
+  constructor(
+    socket: net.Socket
+  ) {
+     this.socket = socket
+  }
+
+  setHeader(name: string, value: string) {
     this.headers.set(name, value)
   }
 
-  appendToBody(content: string) {
-    this.body.push(content)
+  private getHeaders(totalContentLength?: number): string {
+    if (this.headersSent) {
+      throw new Error("Headers have already been sent to client")
+    }
+
+    let headerResponse = ''
+    headerResponse += `${this.httpVersion} ${this.statusCode} ${this.statusMessages[this.statusCode]}\n`
+    for (const [key, value] of this.headers) {
+      headerResponse += `${key}: ${value}\n`
+    }
+    if (totalContentLength || totalContentLength == 0) {
+      headerResponse += `Content-Length: ${totalContentLength.toString(16)}\n`
+      headerResponse += `\n`
+    } else {
+      headerResponse += `Transfer-Encoding: chunked\n`
+      headerResponse += `\n`
+    }
+
+    this.headersSent = true
+    return headerResponse
   }
 
-  build(): Buffer {
-    let response = ''
+  write(chunk: string) {
+    let response: string = ''
 
-    response += `HTTP/1.1 ${this.statusCode} ${this.statusMessages[this.statusCode]}\n`
-    for (const [key, value] of this.headers) {
-      response += `${key}: ${value}\n`
-    }
-    response += `Connection: close\n`
-    if (this.body.length == 0) {
-
-    } else if (this.body.length < 2) {
-      response += `Content-Length: ${this.body.length}\n`
-      response += '\n'
-      response += this.body
-    } else {
-      response += `Transfer-Encoding: chunked\n`
-      response += '\n'
-      for (const line of this.body) {
-        console.log(line.length.toString(16));
-
-        response += `${line.length.toString(16)}\r\n`
-        response += `${line}\r\n`
-      }
+    if (!this.headersSent) {
+      response += this.getHeaders()
     }
 
-    return Buffer.from(response)
+    response += `${chunk.length.toString(16)}\r\n`
+    response += `${chunk}\r\n`
+
+    this.socket.write(Buffer.from(response))
+  }
+
+
+  end(reason: string = '') {
+    let response: string = ''
+
+    if (!this.headersSent) {
+      response += this.getHeaders(reason.length)
+    }
+
+    response += reason
+    response += this.endString
+
+    this.socket.write(Buffer.from(response))
   }
 }
 

@@ -5,7 +5,6 @@
 with pkgs;
 let
   nodeVersion = "12";
-  nodePackages = pkgs."nodePackages_${nodeVersion}_x";
   drv = callPackage ./default.nix {};
 in
   drv.overrideAttrs (attrs: {

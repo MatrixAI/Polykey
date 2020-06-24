@@ -112,6 +112,8 @@ describe('vaults', () => {
     })
 
     test('can share vault', async done => {
+      console.log(process.argv);
+
       // Create vault
       const vault = await vm.createVault(randomVaultName)
       // Add secret
@@ -138,7 +140,7 @@ describe('vaults', () => {
 
 
       done()
-    }, 6000)
+    })
 
     test('can share vault and pull changes', async done => {
       // Create vault
@@ -164,7 +166,7 @@ describe('vaults', () => {
       const peerPkNewSecret = clonedVault.getSecret(initialSecretName).toString()
       expect(pkNewSecret).toStrictEqual(peerPkNewSecret)
       done()
-    }, 6000)
+    })
 
     test('removing secrets from shared vaults is reflected in peer vault', async done => {
       // Create vault
@@ -199,6 +201,6 @@ describe('vaults', () => {
 
 
       done()
-    }, 6000)
+    })
   })
 })

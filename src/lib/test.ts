@@ -1,78 +1,62 @@
-import net from 'net'
-import http from 'http'
-import HttpMessageBuilder from './git/http-message/http-message-builder'
-
-
-const port = 5001
-const host = 'localhost'
-async function startServer() {
-  return new Promise((resolve, reject) => {
-    const requestListener = function (req, res) {
-      res.statusCode = 404
-      res.end('not found')
-    };
-
-    const server = http.createServer(requestListener);
-    server.listen(port, host, () => {
-        console.log(`Server is running on http://${host}:${port}`);
-        resolve()
-    });
-  })
-}
-async function startCustomServer() {
-  return new Promise((resolve, reject) => {
-    const requestListener = function (socket: net.Socket) {
-      const message = new HttpMessageBuilder()
-      message.addHeader('content-type', 'application/x-git-' + 'service' + '-result')
-      message.appendToBody('My first server!')
-      message.appendToBody('0008NAK')
-      socket.write(message.build())
-      socket.end()
-    };
-
-    const server = net.createServer(requestListener);
-    server.listen(port, host, () => {
-        console.log(`Server is running on http://${host}:${port}`);
-        resolve()
-    });
-  })
-}
+import { randomString } from '@polykey/utils'
+import KeyManager from '@polykey/keys/KeyManager'
+import Polykey from '@polykey/Polykey'
 
 async function main() {
-  // await startServer()
-  await startCustomServer()
-  //============= client =============//
-  const clientSocket = new net.Socket()
+  const fs = require('fs')
+  const os = require('os')
+  // Pk
+  const tempDir: string = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+  const km = new KeyManager(tempDir)
+  console.log('hehe');
 
-  clientSocket.connect(port, '127.0.0.1')
+  await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', 128, true)
+  // Initialize polykey
+  const pk = new Polykey(
+    tempDir,
+    km
+  )
+  const vm = pk.vaultManager
 
-  clientSocket.on('data', data => {
-    console.log('==============');
-    console.log('Received: ' + data);
-    console.log('==============');
-    // clientSocket.destroy(); // kill client after server's response
-  })
-
-  const options: http.RequestOptions = {
-    host: host,
-    port: port,
-    path: '/',
-    method: 'GET',
-    createConnection: () => {
-      return clientSocket
-    }
-  }
+  // // Peer pk
+  // const tempDirPeer = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+  // const kmPeer = new KeyManager(tempDirPeer)
+  // await kmPeer.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', 128, true)
+  // // Initialize polykey
+  // const pkPeer = new Polykey(
+  //   tempDirPeer,
+  //   kmPeer
+  // )
+  // const vmPeer = pkPeer.vaultManager
 
 
-  const req = http.request(options, (res) => {
-    res.on('data', data => {
-      console.log('http data');
 
-      console.log(data.toString());
+  // // Create vault
+  // const randomVaultName = 'Vault' + randomString()
+  // const vault = await vm.createVault(randomVaultName)
+  // // Add secret
+  // const initialSecretName = 'ASecret'
+  // const initialSecret = 'super confidential information'
+  // await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
-    })
-  });
-  req.end()
+  // // Pull from pk in peerPk
+  // const pkAddress = pk.peerManager.getLocalPeerInfo().connectedAddr!
+  // const getSocket = pkPeer.peerManager.connectToPeer.bind(pkPeer.peerManager)
+  // const clonedVault = await vmPeer.cloneVault(randomVaultName, pkAddress, getSocket)
+
+  // const pkSecret = vault.getSecret(initialSecretName).toString()
+
+  // await clonedVault.pullVault(getSocket, pkAddress)
+
+  // const peerPkSecret = clonedVault.getSecret(initialSecretName).toString()
+  // console.log(pkSecret);
+  // console.log(peerPkSecret);
+
+
+
+
+  fs.rmdirSync(tempDir)
+  // fs.rmdirSync(tempDirPeer)
 }
 
 main()
