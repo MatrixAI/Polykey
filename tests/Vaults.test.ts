@@ -26,7 +26,7 @@ describe('vaults', () => {
     )
     vm = pk.vaultManager
 		done()
-	}, 30000)
+	})
 
 	afterAll(() => {
 		fs.rmdirSync(`${tempDir}`)
@@ -104,7 +104,7 @@ describe('vaults', () => {
       )
       peerVm = peerPk.vaultManager
       done()
-    }, 30000)
+    })
 
     afterAll(() => {
       // Remove temp directory

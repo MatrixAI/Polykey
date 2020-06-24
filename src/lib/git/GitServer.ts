@@ -1,3 +1,4 @@
+import net from 'net'
 import Path from 'path'
 import http from 'http'
 import through from 'through';
@@ -168,14 +169,14 @@ class GitServer {
             []
           )
           sideBand.pipe(res)
-          const responseStream = through()
-          sideBand.pipe(responseStream)
-          responseStream.on('data', data => {
-            const message = new HttpMessageBuilder()
-            message.appendToBody(data.toString())
-            console.log('data');
-            console.log(message.build().toString());
-          })
+          // const responseStream = through()
+          // sideBand.pipe(responseStream)
+          // responseStream.on('data', data => {
+          //   const message = new HttpMessageBuilder()
+          //   message.appendToBody(data.toString())
+          //   console.log('data');
+          //   console.log(message.build().toString());
+          // })
 
           // Write progress to the client
           progressStream.write(Buffer.from('0014progress is at 50%\n'))
@@ -188,8 +189,24 @@ class GitServer {
   /**
    * starts a git server on the given port
    */
-  listen(port: number = 0): AddressInfo {
+  listen(server: net.Server, port: number = 0): AddressInfo {
+    server.addListener('connection', socket => {
+      socket.on('data', data => {
+        console.log('socket!!!');
+        console.log(data.toString());
+        const req = new http.IncomingMessage(socket)
+        const res = new http.ServerResponse(req)
+        this.handle(req, res)
+      })
+    })
+
+
     this.server = http.createServer((req, res) => {
+      req.on('data', data => {
+        console.log(data.toString());
+
+      })
+
       this.handle(req, res)
     }).listen(port)
 

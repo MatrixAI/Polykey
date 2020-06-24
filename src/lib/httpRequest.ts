@@ -57,12 +57,6 @@ function httpRequest(getSocket: (address: Address) => net.Socket, address: Addre
           method: method,
           createConnection: () => {
             const socket = getSocket(address)
-            socket.on('data', data => {
-              console.log('heyyy');
-              console.log(data.toString());
-              console.log('heyyy');
-
-            })
             return socket
           }
         };

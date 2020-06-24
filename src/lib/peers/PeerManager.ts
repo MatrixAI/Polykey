@@ -51,7 +51,8 @@ class PeerManager {
   // Peer connections
   keyPem: string
   certPem: string
-  server: tls.Server
+  // server: tls.Server
+  server: net.Server
   peerConnections: Map<string, tls.TLSSocket>
 
   constructor(
@@ -89,19 +90,26 @@ class PeerManager {
 
     this.multicastBroadcaster = new MulticastBroadcaster(this.addPeer, this.localPeerInfo, this.keyManager)
 
-    // Setup secure server
-    const {keyPem, certPem} = createX509Certificate()
-    this.keyPem = keyPem
-    this.certPem = certPem
-    const options: tls.TlsOptions = {
-      key: keyPem,
-      cert: certPem,
-      requestCert: true,
-      rejectUnauthorized: false
-    }
-    this.server = tls.createServer(options, (socket) => {
-      console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
+    // // Setup secure server
+    // const {keyPem, certPem} = createX509Certificate()
+    // this.keyPem = keyPem
+    // this.certPem = certPem
+    // const options: tls.TlsOptions = {
+    //   key: keyPem,
+    //   cert: certPem,
+    //   requestCert: true,
+    //   rejectUnauthorized: false
+    // }
+    // this.server = tls.createServer(options, (socket) => {
+    //   console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
+    // }).listen()
+    this.server = net.createServer((socket) => {
     }).listen()
+    const addressInfo = <net.AddressInfo>this.server.address()
+    const address = Address.fromAddressInfo(addressInfo)
+    console.log(address);
+
+    this.localPeerInfo.connect(address)
 
 
     // This part is for adding the address of the custom tcp server to the localPeerInfo

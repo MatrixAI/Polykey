@@ -1,7 +1,7 @@
 class HttpMessageBuilder {
-  statusCode: number = 200
-  headers: Map<string, string> = new Map()
-  body: string[] = []
+  private statusCode: number = 200
+  private headers: Map<string, string> = new Map()
+  private body: string[] = []
 
   private statusMessages = {
     200: 'OK',
@@ -35,9 +35,11 @@ class HttpMessageBuilder {
     } else {
       response += `Transfer-Encoding: chunked\n`
       response += '\n'
-      for (const line in this.body) {
-        response += `${line.length.toString(16)}\n`
-        response += `${line}\n`
+      for (const line of this.body) {
+        console.log(line.length.toString(16));
+
+        response += `${line.length.toString(16)}\r\n`
+        response += `${line}\r\n`
       }
     }
 
