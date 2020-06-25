@@ -12,8 +12,6 @@ class HttpMessageParser {
 
   constructor(raw: Buffer) {
     const rawString = raw.toString().replace(/\r/g, '')
-    console.log(rawString);
-
     const lines = rawString.split('\n')
 
 
@@ -58,8 +56,6 @@ class HttpMessageParser {
       }
       this.body = Buffer.from(bodyString)
     } else if (this.headers.has('Transfer-Encoding')) {
-      console.log(lines);
-
       // Handle chunked transfer coding
       let bodyString = ''
       let bodyLine: string | undefined = lines.shift()
@@ -67,8 +63,6 @@ class HttpMessageParser {
         // First line is hexadecimal length
         const lineLength = parseInt(bodyLine, 16)
         bodyLine = lines.shift()
-        console.log('length = '+lineLength);
-
         // Subsequent lines belong to the body
         while (bodyLine != '') {
           bodyString += `${bodyLine}\n`
@@ -76,7 +70,6 @@ class HttpMessageParser {
           bodyLine = lines.shift()
         }
       }
-      console.log(bodyString);
 
       this.body = Buffer.from(bodyString)
     }

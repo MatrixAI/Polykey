@@ -103,11 +103,9 @@ class PeerManager {
     // this.server = tls.createServer(options, (socket) => {
     //   console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
     // }).listen()
-    this.server = net.createServer((socket) => {
-    }).listen()
+    this.server = net.createServer().listen()
     const addressInfo = <net.AddressInfo>this.server.address()
     const address = Address.fromAddressInfo(addressInfo)
-    console.log(address);
 
     this.localPeerInfo.connect(address)
 

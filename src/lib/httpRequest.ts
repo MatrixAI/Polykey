@@ -1,5 +1,6 @@
 import net from 'net'
 import http from 'http'
+import httpClient from 'http2-client'
 import { Address } from '@polykey/peers/PeerInfo'
 
 function fromNodeStream(stream) {
@@ -57,11 +58,6 @@ function httpRequest(getSocket: (address: Address) => net.Socket, address: Addre
           method: method,
           createConnection: () => {
             const socket = getSocket(address)
-            socket.on('data', data => {
-              console.log('========client data========');
-              console.log(data.toString());
-              console.log('========client data========');
-            })
             return socket
           }
         };

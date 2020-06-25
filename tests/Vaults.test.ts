@@ -112,8 +112,6 @@ describe('vaults', () => {
     })
 
     test('can share vault', async done => {
-      console.log(process.argv);
-
       // Create vault
       const vault = await vm.createVault(randomVaultName)
       // Add secret
@@ -142,7 +140,7 @@ describe('vaults', () => {
       done()
     })
 
-    test('can share vault and pull changes', async done => {
+    test('can pull changes', async done => {
       // Create vault
       const vault = await vm.createVault(randomVaultName)
       // Add secret

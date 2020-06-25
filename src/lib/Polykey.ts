@@ -32,8 +32,7 @@ class Polykey {
 
     // Start git server
     this.gitServer = new GitServer(this.polykeyPath, this.vaultManager)
-    const addressInfo = this.gitServer.listen(this.peerManager.server)
-    // this.peerManager.connectLocalPeerInfo(Address.fromAddressInfo(addressInfo))
+    this.gitServer.listen(this.peerManager.server)
   }
 }
 
