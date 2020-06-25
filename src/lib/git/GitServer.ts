@@ -37,7 +37,7 @@ class GitServer {
     this.server = server
 
     // Add a listener for git over the http protocol
-    this.server.addListener('connection', socket => {
+    this.server.addListener('secureConnection', socket => {
       socket.on('data', (data: Buffer) => {
         const req = new HttpMessageParser(data)
         const res = new HttpWriteStream(socket)

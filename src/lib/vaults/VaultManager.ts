@@ -7,7 +7,7 @@ import crypto from 'crypto'
 import git from 'isomorphic-git'
 import { EncryptedFS } from 'encryptedfs'
 import Vault from "@polykey/vaults/Vault";
-import httpRequest from '@polykey/httpRequest';
+import httpRequest from '@polykey/http/httpRequest';
 import { Address } from '@polykey/peers/PeerInfo'
 import { efsCallbackWrapper } from '@polykey/utils'
 

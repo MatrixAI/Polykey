@@ -138,7 +138,7 @@ describe('vaults', () => {
 
 
       done()
-    })
+    },20000)
 
     test('can pull changes', async done => {
       // Create vault

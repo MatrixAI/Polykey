@@ -7,7 +7,7 @@ import git from 'isomorphic-git'
 import { EncryptedFS } from 'encryptedfs'
 import { Address } from '@polykey/peers/PeerInfo'
 import { efsCallbackWrapper } from '@polykey/utils'
-import httpRequest from '../httpRequest'
+import httpRequest from '../http/httpRequest'
 
 
 type VaultMetadata = {

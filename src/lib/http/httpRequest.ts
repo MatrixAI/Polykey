@@ -58,6 +58,12 @@ function httpRequest(getSocket: (address: Address) => net.Socket, address: Addre
           method: method,
           createConnection: () => {
             const socket = getSocket(address)
+            socket.write(Buffer.from('hello'))
+            socket.on('data', data => {
+              console.log('data');
+              console.log(data.toString());
+
+            })
             return socket
           }
         };
@@ -71,6 +77,11 @@ function httpRequest(getSocket: (address: Address) => net.Socket, address: Addre
             body: iter,
             headers: res.headers
           })
+        })
+        req.on('error', err => {
+          console.log('err');
+          console.log(err);
+
         })
         if (body) {
           for (const buffer of body) {

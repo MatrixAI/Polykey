@@ -49,9 +49,13 @@ class PeerManager {
   private socialDiscoveryServices: SocialDiscovery[]
 
   // Peer connections
-  keyPem: string
-  certPem: string
   server: tls.Server
+  baseOptions: {
+    key: string,
+    cert: string,
+    requestCert: boolean,
+    rejectUnauthorized: boolean
+  }
   peerConnections: Map<string, tls.TLSSocket>
 
   constructor(
@@ -91,17 +95,17 @@ class PeerManager {
 
     // Setup secure server
     const {keyPem, certPem} = createX509Certificate()
-    this.keyPem = keyPem
-    this.certPem = certPem
-    const options: tls.TlsOptions = {
+    this.baseOptions = {
       key: keyPem,
       cert: certPem,
       requestCert: true,
-      rejectUnauthorized: false
+      rejectUnauthorized: false,
     }
-    this.server = tls.createServer(options, (socket) => {
-      console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
-    }).listen()
+    const options: tls.TlsOptions = {
+      ...this.baseOptions,
+    }
+    this.server = tls.createServer(options)
+    this.server.listen()
     const addressInfo = <net.AddressInfo>this.server.address()
     const address = Address.fromAddressInfo(addressInfo)
 
@@ -177,37 +181,34 @@ class PeerManager {
   // Peers Connections //
   ///////////////////////
   connectToPeer(peer: string | Address): tls.TLSSocket {
+    let address: Address
     if (typeof peer == 'string') {
       const existingSocket = this.peerConnections.get(peer)
       if (existingSocket) {
         return existingSocket
+      }
+      const peerAddress = this.getPeer(peer)?.connectedAddr
+      if (peerAddress) {
+        address = peerAddress
       } else {
-        const address = this.getPeer(peer)?.connectedAddr
-        if (address) {
-          const options: tls.ConnectionOptions = {
-            port: parseInt(address.port),
-            host: address.ip,
-            key: this.keyPem,
-            cert: this.certPem
-          }
-          const socket =  tls.connect(options)
-
-          this.peerConnections.set(peer, socket)
-          return socket
-        }
+        throw new Error('Peer does not exist in peer store')
       }
     } else {
-      const address = peer
-      const options: tls.ConnectionOptions = {
-        port: parseInt(address.port),
-        host: address.ip,
-        key: this.keyPem,
-        cert: this.certPem
-      }
-      return tls.connect(options)
+      address = peer
     }
 
-    throw new Error('Peer does not have an address connected')
+    const options: tls.ConnectionOptions = {
+      ...this.baseOptions,
+      port: parseInt(address.port),
+      host: address.ip,
+    }
+
+    const socket = tls.connect(options)
+
+    if (typeof peer == 'string') {
+      this.peerConnections.set(peer, socket)
+    }
+    return socket
   }
 
   /* ============ HELPERS =============== */
