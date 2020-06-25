@@ -51,8 +51,7 @@ class PeerManager {
   // Peer connections
   keyPem: string
   certPem: string
-  // server: tls.Server
-  server: net.Server
+  server: tls.Server
   peerConnections: Map<string, tls.TLSSocket>
 
   constructor(
@@ -90,31 +89,25 @@ class PeerManager {
 
     this.multicastBroadcaster = new MulticastBroadcaster(this.addPeer, this.localPeerInfo, this.keyManager)
 
-    // // Setup secure server
-    // const {keyPem, certPem} = createX509Certificate()
-    // this.keyPem = keyPem
-    // this.certPem = certPem
-    // const options: tls.TlsOptions = {
-    //   key: keyPem,
-    //   cert: certPem,
-    //   requestCert: true,
-    //   rejectUnauthorized: false
-    // }
-    // this.server = tls.createServer(options, (socket) => {
-    //   console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
-    // }).listen()
-    this.server = net.createServer().listen()
+    // Setup secure server
+    const {keyPem, certPem} = createX509Certificate()
+    this.keyPem = keyPem
+    this.certPem = certPem
+    const options: tls.TlsOptions = {
+      key: keyPem,
+      cert: certPem,
+      requestCert: true,
+      rejectUnauthorized: false
+    }
+    this.server = tls.createServer(options, (socket) => {
+      console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
+    }).listen()
     const addressInfo = <net.AddressInfo>this.server.address()
     const address = Address.fromAddressInfo(addressInfo)
 
-    this.localPeerInfo.connect(address)
-
-
     // This part is for adding the address of the custom tcp server to the localPeerInfo
     // Currently this is replaced by the connection within the git server (NodeJS.http module)
-    // const addressInfo = <net.AddressInfo>this.server.address()
-    // const address = Address.fromAddressInfo(addressInfo)
-    // this.localPeerInfo.connect(address)
+    this.localPeerInfo.connect(address)
   }
 
   ////////////////
@@ -183,7 +176,7 @@ class PeerManager {
   ///////////////////////
   // Peers Connections //
   ///////////////////////
-  connectToPeer(peer: string | Address): net.Socket {
+  connectToPeer(peer: string | Address): tls.TLSSocket {
     if (typeof peer == 'string') {
       const existingSocket = this.peerConnections.get(peer)
       if (existingSocket) {
@@ -191,35 +184,27 @@ class PeerManager {
       } else {
         const address = this.getPeer(peer)?.connectedAddr
         if (address) {
-          // const options: tls.ConnectionOptions = {
-          //   port: parseInt(address.port),
-          //   host: address.ip,
-          //   key: this.keyPem,
-          //   cert: this.certPem
-          // }
-          const options: net.NetConnectOpts = {
+          const options: tls.ConnectionOptions = {
             port: parseInt(address.port),
-            host: address.ip
+            host: address.ip,
+            key: this.keyPem,
+            cert: this.certPem
           }
-          const socket =  net.connect(options)
+          const socket =  tls.connect(options)
 
-          // this.connections.set(peer, socket)
+          this.peerConnections.set(peer, socket)
           return socket
         }
       }
     } else {
       const address = peer
-      // const options: tls.ConnectionOptions = {
-      //   port: parseInt(address.port),
-      //   host: address.ip,
-      //   key: this.keyPem,
-      //   cert: this.certPem
-      // }
-      const options: net.NetConnectOpts = {
+      const options: tls.ConnectionOptions = {
         port: parseInt(address.port),
-        host: address.ip
+        host: address.ip,
+        key: this.keyPem,
+        cert: this.certPem
       }
-      return net.connect(options)
+      return tls.connect(options)
     }
 
     throw new Error('Peer does not have an address connected')

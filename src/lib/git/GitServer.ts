@@ -1,17 +1,15 @@
 import net from 'net'
 import Path from 'path'
-import http from 'http'
+import tls from 'tls'
 import through from 'through';
-import { promisify } from "util";
-import { AddressInfo } from "net";
 import { Readable } from "stream";
 import { parse } from 'querystring'
 import VaultManager from '@polykey/vaults/VaultManager';
 import uploadPack from '@polykey/git/upload-pack/uploadPack';
 import GitSideBand from '@polykey/git/side-band/GitSideBand';
 import packObjects from '@polykey/git/pack-objects/packObjects';
-import HttpWriteStream from './http-message/HttpWriteStream';
-import HttpMessageParser from './http-message/http-message-parser';
+import HttpWriteStream from '../http/HttpWriteStream';
+import HttpMessageParser from '../http/HttpMessageParser';
 
 // Here is the protocol git outlines for sending pack files over http:
 // https://git-scm.com/docs/pack-protocol/2.17.0
@@ -28,12 +26,24 @@ const services = ['upload-pack', 'receive-pack']
 class GitServer {
   private polykeyPath: string;
   private vaultManager: VaultManager;
+  private server: tls.Server
   constructor(
     polykeyPath: string,
-    vaultManager: VaultManager
+    vaultManager: VaultManager,
+    server: tls.Server
   ) {
     this.polykeyPath = polykeyPath
     this.vaultManager = vaultManager
+    this.server = server
+
+    // Add a listener for git over the http protocol
+    this.server.addListener('connection', socket => {
+      socket.on('data', (data: Buffer) => {
+        const req = new HttpMessageParser(data)
+        const res = new HttpWriteStream(socket)
+        this.handleSocket(socket, req, res)
+      })
+    })
   }
 
   /**
@@ -243,19 +253,6 @@ class GitServer {
     // Pipe the data back into response stream
     const readable = Readable.from(generate());
     readable.pipe(res)
-  }
-
-  /**
-   * starts a git server on the given port
-   */
-  listen(server: net.Server, port: number = 0) {
-    server.addListener('connection', socket => {
-      socket.on('data', data => {
-        const req = new HttpMessageParser(data)
-        const res = new HttpWriteStream(socket)
-        this.handleSocket(socket, req, res)
-      })
-    })
   }
 
   // ============ Helper functions ============ //

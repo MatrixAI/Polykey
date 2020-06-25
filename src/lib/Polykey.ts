@@ -31,8 +31,7 @@ class Polykey {
     this.peerManager = peerManager ?? new PeerManager(this.polykeyPath, this.keyManager)
 
     // Start git server
-    this.gitServer = new GitServer(this.polykeyPath, this.vaultManager)
-    this.gitServer.listen(this.peerManager.server)
+    this.gitServer = new GitServer(this.polykeyPath, this.vaultManager, this.peerManager.server)
   }
 }
 
