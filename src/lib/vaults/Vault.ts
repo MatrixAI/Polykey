@@ -1,14 +1,10 @@
 import fs from 'fs'
-import tls from 'tls'
-import net from 'net'
 import Path from 'path'
 import hkdf from 'futoin-hkdf'
 import git from 'isomorphic-git'
 import { EncryptedFS } from 'encryptedfs'
-import { Address } from '@polykey/peers/PeerInfo'
 import { efsCallbackWrapper } from '@polykey/utils'
-import httpRequest from '../http/httpRequest'
-
+import GitClient from '@polykey/git/GitClient'
 
 type VaultMetadata = {
   sharedPubKeys: string[]
@@ -259,8 +255,7 @@ class Vault {
     })
   }
 
-  async pullVault(getSocket: (address: Address) => net.Socket, address: Address) {
-    const remoteUrl = "http://" + address.toString() + '/' + this.name
+  async pullVault(gitClient: GitClient) {
 
     // Strangely enough this is needed for pulls along with ref set to 'HEAD'
     // In isogit's documentation, this is just to get the currentBranch name
@@ -274,9 +269,9 @@ class Vault {
     // First pull
     await git.pull({
       fs: efsCallbackWrapper(this.efs),
-      http: httpRequest(getSocket, address),
+      http: gitClient,
       dir: this.vaultPath,
-      url: remoteUrl,
+      url: "http://" + '0.0.0.0:0' + '/' + this.name,
       ref: 'HEAD',
       singleBranch: true,
       author: {

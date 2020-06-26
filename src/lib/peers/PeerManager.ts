@@ -1,7 +1,6 @@
 import os from 'os'
 import fs from 'fs'
-import net from 'net'
-import tls from 'tls'
+import grpc from 'grpc'
 import Path from 'path'
 import KeyManager from "@polykey/keys/KeyManager";
 import PeerInfo, { Address } from "@polykey/peers/PeerInfo";
@@ -9,6 +8,9 @@ import { firstPromiseFulfilled } from '@polykey/utils';
 import MulticastBroadcaster from "@polykey/peers/MulticastBroadcaster";
 import RPCMessage from '@polykey/rpc/RPCMessage';
 import createX509Certificate from '@polykey/pki/PublicKeyInfrastructure'
+import GitClient from '@polykey/git/GitClient';
+import GitBackend from '@polykey/git/GitBackend';
+import PublicKeyInfrastructure from '@polykey/pki/PublicKeyInfrastructure';
 
 interface SocialDiscovery {
   // Must return a public pgp key
@@ -49,20 +51,19 @@ class PeerManager {
   private socialDiscoveryServices: SocialDiscovery[]
 
   // Peer connections
-  server: tls.Server
-  baseOptions: {
-    key: string,
-    cert: string,
-    requestCert: boolean,
-    rejectUnauthorized: boolean
-  }
-  peerConnections: Map<string, tls.TLSSocket>
+  server: grpc.Server
+  credentials: grpc.ServerCredentials
+  private peerConnections: Map<string, GitClient>
+  handleInfoRequest: (vaultName: string) => Promise<Buffer>
+  handlePackRequest: (vaultName: string, body: Buffer) => Promise<Buffer>
 
   constructor(
     polykeyPath: string = `${os.homedir()}/.polykey`,
     keyManager: KeyManager,
+    gitBackend: GitBackend,
+    pki: PublicKeyInfrastructure,
     peerInfo?: PeerInfo,
-    socialDiscoveryServices: SocialDiscovery[] = []
+    socialDiscoveryServices: SocialDiscovery[] = [],
   ) {
     fs.mkdirSync(polykeyPath, {recursive: true})
     this.metadataPath = Path.join(polykeyPath, '.peerMetadata')
@@ -93,24 +94,55 @@ class PeerManager {
 
     this.multicastBroadcaster = new MulticastBroadcaster(this.addPeer, this.localPeerInfo, this.keyManager)
 
-    // Setup secure server
-    const {keyPem, certPem} = createX509Certificate()
-    this.baseOptions = {
-      key: keyPem,
-      cert: certPem,
-      requestCert: true,
-      rejectUnauthorized: false,
-    }
-    const options: tls.TlsOptions = {
-      ...this.baseOptions,
-    }
-    this.server = tls.createServer(options)
-    this.server.listen()
-    const addressInfo = <net.AddressInfo>this.server.address()
-    const address = Address.fromAddressInfo(addressInfo)
+    /////////////////
+    // GRPC Server //
+    /////////////////
 
-    // This part is for adding the address of the custom tcp server to the localPeerInfo
-    // Currently this is replaced by the connection within the git server (NodeJS.http module)
+    this.server = new grpc.Server();
+
+
+    const protoLoader = require('@grpc/proto-loader')
+    const PROTO_PATH = __dirname + '/../../proto/git_server.proto';
+
+    const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+      keepCase: true,
+      longs: String,
+      enums: String,
+      defaults: true,
+      oneofs: true
+    });
+
+    const git_server_proto = grpc.loadPackageDefinition(packageDefinition);
+
+    // Add service
+    async function requestInfo(call, callback) {
+      const vaultName = call.request.vaultName
+      const body = await gitBackend.handleInfoRequest(vaultName)
+      callback(null, { vaultName: vaultName, body: body });
+    }
+
+    async function requestPack(call, callback) {
+      const vaultName = call.request.vaultName
+      const body = call.request.body.toString()
+      callback(null, { vaultName: vaultName, body: await gitBackend.handlePackRequest(vaultName, body) });
+    }
+    this.server.addService((git_server_proto.GitServer as any).service, {
+      requestInfo: requestInfo,
+      requestPack: requestPack
+    });
+
+    // Bind server and set address
+    this.credentials = grpc.ServerCredentials.createSsl(
+      pki.caPrivateKey!,
+      [{
+        private_key: pki.key,
+        cert_chain: pki.cert
+      }],
+      false,
+    )
+    const port = this.server.bind('0.0.0.0:0', this.credentials);
+    const address = new Address('127.0.0.1', port.toString())
+    this.server.start();
     this.localPeerInfo.connect(address)
   }
 
@@ -180,7 +212,11 @@ class PeerManager {
   ///////////////////////
   // Peers Connections //
   ///////////////////////
-  connectToPeer(peer: string | Address): tls.TLSSocket {
+  connectToPeer(peer: string | Address): GitClient {
+    // Throw error if trying to connect to self
+    if (peer == this.localPeerInfo.connectedAddr || peer == this.localPeerInfo.publicKey) {
+      throw new Error('Cannot connect to self')
+    }
     let address: Address
     if (typeof peer == 'string') {
       const existingSocket = this.peerConnections.get(peer)
@@ -197,18 +233,13 @@ class PeerManager {
       address = peer
     }
 
-    const options: tls.ConnectionOptions = {
-      ...this.baseOptions,
-      port: parseInt(address.port),
-      host: address.ip,
-    }
-
-    const socket = tls.connect(options)
+    const conn = new GitClient(address)
 
     if (typeof peer == 'string') {
-      this.peerConnections.set(peer, socket)
+      this.peerConnections.set(peer, conn)
     }
-    return socket
+
+    return conn
   }
 
   /* ============ HELPERS =============== */

@@ -1,15 +1,13 @@
 
 import fs from 'fs'
 import os from 'os'
-import net from 'net'
 import Path from 'path'
 import crypto from 'crypto'
 import git from 'isomorphic-git'
 import { EncryptedFS } from 'encryptedfs'
 import Vault from "@polykey/vaults/Vault";
-import httpRequest from '@polykey/http/httpRequest';
-import { Address } from '@polykey/peers/PeerInfo'
 import { efsCallbackWrapper } from '@polykey/utils'
+import GitClient from '@polykey/git/GitClient'
 
 class VaultManager {
   polykeyPath: string
@@ -84,7 +82,7 @@ class VaultManager {
       const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
       await vault.initRepository()
       this.vaults.set(vaultName, vault)
-      return await this.getVault(vaultName)
+      return this.getVault(vaultName)
     } catch (err) {
       // Delete vault dir and garbage collect
       this.destroyVault(vaultName)
@@ -92,18 +90,17 @@ class VaultManager {
     }
   }
 
-  async cloneVault(vaultName: string, address: Address, getSocket: (address: Address) => net.Socket): Promise<Vault> {
+  async cloneVault(vaultName: string, gitClient: GitClient): Promise<Vault> {
     // Confirm it doesn't exist locally already
     if (this.vaultExists(vaultName)) {
       throw new Error('Vault name already exists locally, try pulling instead')
     }
 
-    const vaultUrl = `http://${address.toString()}/${vaultName}`
+    const vaultUrl = `http://0.0.0.0/${vaultName}`
 
-    // const getSocket = this.peerManager.connectionManager.connect.bind(this.peerManager.connectionManager)
     // First check if it exists on remote
     const info = await git.getRemoteInfo({
-      http: httpRequest(getSocket, address),
+      http: gitClient,
       url: vaultUrl
     })
 
@@ -128,7 +125,7 @@ class VaultManager {
     // Clone vault from address
     await git.clone({
       fs: efsCallbackWrapper(newEfs),
-      http: httpRequest(getSocket, address),
+      http: gitClient,
       dir: Path.join(this.polykeyPath, vaultName),
       url: vaultUrl,
       ref: 'master',
