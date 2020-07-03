@@ -5,7 +5,7 @@ import inquirer from 'inquirer'
 import Configstore from 'configstore'
 import PolyKey from '../lib/Polykey'
 import cliProgress from 'cli-progress'
-import KeyManager from '@polykey/KeyManager'
+import KeyManager from '../lib/keys/KeyManager'
 import { actionRunner, pkLogger, PKMessageType } from './polykey'
 
 const configStore = new Configstore('PolyKeyConfig')
@@ -23,7 +23,9 @@ async function askQuestions(prompts: any[]) {
       .prompt(prompts)
       .then((answers: any[]) => {
         for (const prompt of prompts) {
-          if (answers[prompt.name]) { configStore.set(prompt.name, answers[prompt.name]) }
+          if (answers[prompt.name]) {
+            configStore.set(prompt.name, answers[prompt.name])
+          }
         }
         resolve()
       })
@@ -44,7 +46,7 @@ async function askForMissingParameters() {
   const initialPrompts: any[] = []
   inquirer.registerPrompt('fuzzypath', require('inquirer-fuzzy-path'))
 
-  if (!configStore.has('polykeyPath')) {
+  if (!configStore.get('polykeyPath')) {
     initialPrompts.push(
       {
         type: 'fuzzypath',
@@ -53,7 +55,6 @@ async function askForMissingParameters() {
         default: `${os.homedir()}/.polykey`,
         rootPath: os.homedir(),
         itemType: 'directory',
-        suggestOnly: true,
         depthLimit: 1
       }
     )
@@ -76,8 +77,36 @@ async function askForMissingParameters() {
 
   const finalPrompts: any[] = []
 
-  if (!configStore.get('generateKeyPair')) {
-    if (!configStore.has('publicKeyPath')) {
+  if (configStore.get('generateKeyPair')) {
+    if (!configStore.get('keyGenerationName')) {
+      finalPrompts.push(
+        {
+          type: 'input',
+          name: 'keyGenerationName',
+          message: 'Please provide your full name for key generation?'
+        }
+      )
+    }
+    if (!configStore.get('keyGenerationEmail')) {
+      finalPrompts.push(
+        {
+          type: 'input',
+          name: 'keyGenerationEmail',
+          message: 'Please provide an email for key generation?'
+        }
+      )
+    }
+    if (!configStore.get('keyGenerationPassphrase')) {
+      finalPrompts.push(
+        {
+          type: 'input',
+          name: 'keyGenerationPassphrase',
+          message: 'Please provide a secure passphrase for key generation?'
+        }
+      )
+    }
+  } else {
+    if (!configStore.get('publicKeyPath')) {
       finalPrompts.push(
         {
           type: 'fuzzypath',
@@ -89,7 +118,7 @@ async function askForMissingParameters() {
         }
       )
     }
-    if (!configStore.has('privateKeyPath')) {
+    if (!configStore.get('privateKeyPath')) {
       finalPrompts.push(
         {
           type: 'fuzzypath',
@@ -101,40 +130,12 @@ async function askForMissingParameters() {
         }
       )
     }
-    if (!configStore.has('privatePassphrase')) {
+    if (!configStore.get('privatePassphrase')) {
       finalPrompts.push(
         {
           type: 'input',
           name: 'privatePassphrase',
           message: 'Please provide your private key passphrase?'
-        }
-      )
-    }
-  } else {
-    if (!configStore.has('keyGenerationName')) {
-      finalPrompts.push(
-        {
-          type: 'input',
-          name: 'keyGenerationName',
-          message: 'Please provide your full name for key generation?'
-        }
-      )
-    }
-    if (!configStore.has('keyGenerationEmail')) {
-      finalPrompts.push(
-        {
-          type: 'input',
-          name: 'keyGenerationEmail',
-          message: 'Please provide an email for key generation?'
-        }
-      )
-    }
-    if (!configStore.has('keyGenerationPassphrase')) {
-      finalPrompts.push(
-        {
-          type: 'input',
-          name: 'keyGenerationPassphrase',
-          message: 'Please provide a secure passphrase for key generation?'
         }
       )
     }
@@ -153,9 +154,13 @@ async function initPolyKey(): Promise<PolyKey> {
 
     const polykeyPath = configStore.get('polykeyPath')
     const generateKeyPair = configStore.get('generateKeyPair')
+    console.log(configStore.get('generateKeyPair'));
 
-    const keyManager = new KeyManager(polykeyPath)
+
+    const keyManager = new KeyManager(polykeyPath, fs)
     if (generateKeyPair) {
+      console.log('im here');
+
       const keyGenerationName = configStore.get('keyGenerationName')
       const keyGenerationEmail = configStore.get('keyGenerationEmail')
       const keyGenerationPassphrase = configStore.get('keyGenerationPassphrase')
@@ -167,14 +172,31 @@ async function initPolyKey(): Promise<PolyKey> {
         pkLogger('passphrase score for new keypair is below 2!', PKMessageType.WARNING)
       }
 
-      const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic)
-      bar.start(200, 0)
-      bar.update(100)
-      bar.stop()
-      await keyManager.generateKeyPair(keyGenerationName, keyGenerationEmail, keyGenerationPassphrase, true)
+      const multibar = new cliProgress.MultiBar({
+        clearOnComplete: false,
+        hideCursor: true,
+        format: "Finding '{type}' Prime | [{bar} | {value}/{total} iterations"
+      }, cliProgress.Presets.shades_classic)
+      const pPrimeBar = multibar.create(10, 0, {type: 'p'})
+      const qPrimeBar = multibar.create(10, 0, {type: 'q'})
+
+
+      await keyManager.generateKeyPair(keyGenerationName, keyGenerationEmail, keyGenerationPassphrase, undefined, true, (info) => {
+        if (info.what == 'mr' && info.section == 'p') {
+          pPrimeBar.update(info.i, {type: 'p'})
+        } else if (info.what == 'mr' && info.section == 'q') {
+          qPrimeBar.update(info.i, {type: 'q'})
+        }
+      })
+
+      pPrimeBar.stop()
+      qPrimeBar.stop()
+      pkLogger('')
+      pkLogger('')
+      pkLogger('')
 
       // Store the keys in the key manager's storePath
-      const storePath = `${resolveTilde(keyManager.storePath)}/.keypair`
+      const storePath = `${resolveTilde(keyManager.polykeyPath)}/.keypair`
       fs.mkdirSync(storePath, {recursive: true})
       const pubKeyPath = `${storePath}/public_key`
       const privKeyPath = `${storePath}/private_key`
@@ -187,7 +209,9 @@ async function initPolyKey(): Promise<PolyKey> {
       configStore.set('privatePassphrase', keyGenerationPassphrase)
 
       // Remove temporary parameters from configStore
-      configStore.set('generateKeyPair',  false)
+
+      console.log(configStore.get('generateKeyPair'));
+      configStore.set('generateKeyPair', false)
       configStore.delete('keyGenerationName')
       configStore.delete('keyGenerationEmail')
       configStore.delete('keyGenerationPassphrase')
@@ -198,7 +222,7 @@ async function initPolyKey(): Promise<PolyKey> {
       await keyManager.loadKeyPair(publicKeyPath, privateKeyPath, privatePassphrase)
     }
 
-    const pk = new PolyKey(keyManager, polykeyPath)
+    const pk = new PolyKey(polykeyPath, fs, keyManager)
     resolve(pk)
   }))
 }
