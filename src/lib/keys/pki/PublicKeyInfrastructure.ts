@@ -1,8 +1,12 @@
-import forge from 'node-forge'
+import forge, { pki } from 'node-forge'
 
+/**
+ * This class manages X.509 certificates for secure and authenticated communication between peers.
+ */
 class PublicKeyInfrastructure {
+  // Cert defaults
   static N_BITS: number = 2048
-  static COMMON_NAME: string = 'polykey'
+  static COMMON_NAME: string = 'localhost'
   static ORGANIZATION_NAME: string = 'MatrixAI'
 
   /**
@@ -10,12 +14,17 @@ class PublicKeyInfrastructure {
    * @param nbits The number of bits for keypair generation
    * @param organizationName The name of the organization
    */
-  static createX509Certificate(nbits: number = this.N_BITS, commonName: string = this.COMMON_NAME, organizationName: string = this.ORGANIZATION_NAME) {
+  static createX509Certificate(
+    nbits: number = PublicKeyInfrastructure.N_BITS,
+    commonName: string = PublicKeyInfrastructure.COMMON_NAME,
+    organizationName: string = PublicKeyInfrastructure.ORGANIZATION_NAME,
+    sign?: (cert: pki.Certificate) => pki.Certificate
+  ) {
     const pki = forge.pki;
 
     // generate a keypair and create an X.509v3 certificate
     const keys = pki.rsa.generateKeyPair(nbits);
-    const cert = pki.createCertificate();
+    let cert = pki.createCertificate();
     cert.publicKey = keys.publicKey;
     // alternatively set public key from a csr
     //cert.publicKey = csr.publicKey;
@@ -24,13 +33,16 @@ class PublicKeyInfrastructure {
     cert.validity.notAfter = new Date();
     cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
 
-    const attrs = [{
-      name: 'commonName',
-      value: commonName
-    }, {
-      name: 'organizationName',
-      value: organizationName
-    }];
+    const attrs = [
+      {
+        name: 'commonName',
+        value: commonName
+      },
+      {
+        name: 'organizationName',
+        value: organizationName
+      }
+    ];
     cert.setSubject(attrs);
     // alternatively set subject from a csr
     //cert.setSubject(csr.subject.attributes);
@@ -70,12 +82,17 @@ class PublicKeyInfrastructure {
     }, {
       name: 'subjectKeyIdentifier'
     }]);
-    // self-sign certificate
-    cert.sign(keys.privateKey);
+
+    // Self-sign or sign with provided key
+    if (sign) {
+      cert = sign(cert)
+    } else {
+      cert.sign(keys.privateKey);
+    }
 
     // convert a Forge certificate to PEM
-    const keyPem = pki.privateKeyToPem(keys.privateKey)
-    const certPem = pki.certificateToPem(cert);
+    const keyPem = Buffer.from(pki.privateKeyToPem(keys.privateKey))
+    const certPem = Buffer.from(pki.certificateToPem(cert))
     return {
       keyPem,
       certPem

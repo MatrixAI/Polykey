@@ -6,9 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const os_1 = __importDefault(require("os"));
 const path_1 = __importDefault(require("path"));
 const isomorphic_git_1 = __importDefault(require("isomorphic-git"));
-const encryptedfs_1 = require("encryptedfs");
 const Vault_1 = __importDefault(require("../vaults/Vault"));
-const HttpRequest_1 = __importDefault(require("../HttpRequest"));
+const encryptedfs_1 = require("encryptedfs");
 class VaultManager {
     constructor(polykeyPath = `${os_1.default.homedir()}/.polykey`, fileSystem, keyManager) {
         this.polykeyPath = polykeyPath;
@@ -94,16 +93,15 @@ class VaultManager {
      * @param address Address of polykey node that owns vault to be cloned
      * @param getSocket Function to get an active connection to provided address
      */
-    async cloneVault(vaultName, address, getSocket) {
+    async cloneVault(vaultName, gitClient) {
         // Confirm it doesn't exist locally already
         if (this.vaultExists(vaultName)) {
             throw new Error('Vault name already exists locally, try pulling instead');
         }
-        const vaultUrl = `http://${address.toString()}/${vaultName}`;
-        const httpRequest = new HttpRequest_1.default(address, getSocket);
+        const vaultUrl = `http://0.0.0.0/${vaultName}`;
         // First check if it exists on remote
         const info = await isomorphic_git_1.default.getRemoteInfo({
-            http: httpRequest,
+            http: gitClient,
             url: vaultUrl
         });
         if (!info.refs) {
@@ -118,7 +116,7 @@ class VaultManager {
         // Clone vault from address
         await isomorphic_git_1.default.clone({
             fs: { promises: newEfs.promises },
-            http: httpRequest,
+            http: gitClient,
             dir: path_1.default.join(this.polykeyPath, vaultName),
             url: vaultUrl,
             ref: 'master',

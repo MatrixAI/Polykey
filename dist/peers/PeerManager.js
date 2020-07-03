@@ -2,16 +2,23 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const os_1 = __importDefault(require("os"));
-const net_1 = __importDefault(require("net"));
-const tls_1 = __importDefault(require("tls"));
 const path_1 = __importDefault(require("path"));
+const grpc_1 = __importDefault(require("grpc"));
+const GitClient_1 = __importDefault(require("../git/GitClient"));
+const GitBackend_1 = __importDefault(require("../git/GitBackend"));
 const RPCMessage_1 = __importDefault(require("../rpc/RPCMessage"));
 const utils_1 = require("../utils");
-const PeerInfo_1 = __importDefault(require("../peers/PeerInfo"));
+const PeerInfo_1 = __importStar(require("../peers/PeerInfo"));
 const MulticastBroadcaster_1 = __importDefault(require("../peers/MulticastBroadcaster"));
-const PublicKeyInfrastructure_1 = __importDefault(require("../pki/PublicKeyInfrastructure"));
 const keybaseDiscovery = {
     name: 'Keybase',
     findUser: async (handle, service) => {
@@ -28,7 +35,7 @@ const keybaseDiscovery = {
     }
 };
 class PeerManager {
-    constructor(polykeyPath = `${os_1.default.homedir()}/.polykey`, fileSystem, keyManager, peerInfo, socialDiscoveryServices = []) {
+    constructor(polykeyPath = `${os_1.default.homedir()}/.polykey`, fileSystem, keyManager, vaultManager, peerInfo, socialDiscoveryServices = [], customPort) {
         this.metadata = { localPeerInfo: null };
         this.fileSystem = fileSystem;
         this.fileSystem.mkdirSync(polykeyPath, { recursive: true });
@@ -56,24 +63,53 @@ class PeerManager {
             this.socialDiscoveryServices.push(service);
         }
         this.multicastBroadcaster = new MulticastBroadcaster_1.default(this.addPeer, this.localPeerInfo, this.keyManager);
-        // Setup secure server
-        const { keyPem, certPem } = PublicKeyInfrastructure_1.default.createX509Certificate();
-        this.keyPem = keyPem;
-        this.certPem = certPem;
-        const options = {
-            key: keyPem,
-            cert: certPem,
-            requestCert: true,
-            rejectUnauthorized: false
-        };
-        this.server = tls_1.default.createServer(options, (socket) => {
-            console.log('server connected', socket.authorized ? 'authorized' : 'unauthorized');
-        }).listen();
-        // This part is for adding the address of the custom tcp server to the localPeerInfo
-        // Currently this is replaced by the connection within the git server (NodeJS.http module)
-        // const addressInfo = <net.AddressInfo>this.server.address()
-        // const address = Address.fromAddressInfo(addressInfo)
-        // this.localPeerInfo.connect(address)
+        this.peerConnections = new Map();
+        /////////////////
+        // GRPC Server //
+        /////////////////
+        this.gitBackend = new GitBackend_1.default(polykeyPath, vaultManager);
+        this.server = new grpc_1.default.Server();
+        const protoLoader = require('@grpc/proto-loader');
+        const PROTO_PATH = __dirname + '/../../proto/git_server.proto';
+        const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+            keepCase: true,
+            longs: String,
+            enums: String,
+            defaults: true,
+            oneofs: true
+        });
+        const git_server_proto = grpc_1.default.loadPackageDefinition(packageDefinition);
+        // Add service
+        async function requestInfo(call, callback) {
+            const vaultName = call.request.vaultName;
+            const body = await this.gitBackend.handleInfoRequest(vaultName);
+            callback(null, { vaultName: vaultName, body: body });
+        }
+        async function requestPack(call, callback) {
+            const vaultName = call.request.vaultName;
+            const body = call.request.body.toString();
+            callback(null, { vaultName: vaultName, body: await this.gitBackend.handlePackRequest(vaultName, body) });
+        }
+        this.server.addService(git_server_proto.GitServer.service, {
+            requestInfo: requestInfo.bind(this),
+            requestPack: requestPack.bind(this)
+        });
+        // Create the server credentials. SSL only if ca cert exists
+        const pkiInfo = this.keyManager.PKIInfo;
+        if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
+            this.credentials = grpc_1.default.ServerCredentials.createSsl(pkiInfo.caCert, [{
+                    private_key: pkiInfo.key,
+                    cert_chain: pkiInfo.cert,
+                }], true);
+        }
+        else {
+            this.credentials = grpc_1.default.ServerCredentials.createInsecure();
+        }
+        // Bind server and set address
+        const port = this.server.bind('0.0.0.0:0', this.credentials);
+        const address = new PeerInfo_1.Address('localhost', port.toString());
+        this.server.start();
+        this.localPeerInfo.connect(address);
     }
     ////////////////
     // Peer store //
@@ -167,45 +203,32 @@ class PeerManager {
      */
     connectToPeer(peer) {
         var _a;
+        // Throw error if trying to connect to self
+        if (peer == this.localPeerInfo.connectedAddr || peer == this.localPeerInfo.publicKey) {
+            throw new Error('Cannot connect to self');
+        }
+        let address;
         if (typeof peer == 'string') {
             const existingSocket = this.peerConnections.get(peer);
             if (existingSocket) {
                 return existingSocket;
             }
+            const peerAddress = (_a = this.getPeer(peer)) === null || _a === void 0 ? void 0 : _a.connectedAddr;
+            if (peerAddress) {
+                address = peerAddress;
+            }
             else {
-                const address = (_a = this.getPeer(peer)) === null || _a === void 0 ? void 0 : _a.connectedAddr;
-                if (address) {
-                    // const options: tls.ConnectionOptions = {
-                    //   port: parseInt(address.port),
-                    //   host: address.ip,
-                    //   key: this.keyPem,
-                    //   cert: this.certPem
-                    // }
-                    const options = {
-                        port: parseInt(address.port),
-                        host: address.ip
-                    };
-                    const socket = net_1.default.connect(options);
-                    // this.connections.set(peer, socket)
-                    return socket;
-                }
+                throw new Error('Peer does not exist in peer store');
             }
         }
         else {
-            const address = peer;
-            // const options: tls.ConnectionOptions = {
-            //   port: parseInt(address.port),
-            //   host: address.ip,
-            //   key: this.keyPem,
-            //   cert: this.certPem
-            // }
-            const options = {
-                port: parseInt(address.port),
-                host: address.ip
-            };
-            return net_1.default.connect(options);
+            address = peer;
         }
-        throw new Error('Peer does not have an address connected');
+        const conn = new GitClient_1.default(address, this.keyManager);
+        if (typeof peer == 'string') {
+            this.peerConnections.set(peer, conn);
+        }
+        return conn;
     }
     /* ============ HELPERS =============== */
     writeMetadata() {

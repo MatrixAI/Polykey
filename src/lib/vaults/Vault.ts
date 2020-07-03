@@ -1,10 +1,8 @@
-import fs from 'fs'
-import net from 'net'
-import Path from 'path'
-import git from 'isomorphic-git'
-import { EncryptedFS } from 'encryptedfs'
-import { Address } from '../peers/PeerInfo'
-import HttpRequest from '../HttpRequest'
+import fs from 'fs';
+import Path from 'path';
+import git from 'isomorphic-git';
+import GitClient from '../git/GitClient';
+import { EncryptedFS } from 'encryptedfs';
 
 
 type VaultMetadata = {
@@ -211,9 +209,7 @@ class Vault {
    * @param address Address of polykey node that owns vault to be pulled
    * @param getSocket Function to get an active connection to provided address
    */
-  async pullVault(address: Address, getSocket: (address: Address) => net.Socket) {
-    const remoteUrl = "http://" + address.toString() + '/' + this.name
-
+  async pullVault(gitClient: GitClient) {
     // Strangely enough this is needed for pulls along with ref set to 'HEAD'
     // In isogit's documentation, this is just to get the currentBranch name
     // But it solves a bug whereby if not used, git.pull complains that it can't
@@ -223,14 +219,12 @@ class Vault {
       dir: this.vaultPath,
       fullname: true
     })
-
-    const httpRequest = new HttpRequest(address, getSocket)
     // First pull
     await git.pull({
       fs: { promises: this.efs.promises },
-      http: httpRequest,
+      http: gitClient,
       dir: this.vaultPath,
-      url: remoteUrl,
+      url: "http://" + '0.0.0.0:0' + '/' + this.name,
       ref: 'HEAD',
       singleBranch: true,
       author: {

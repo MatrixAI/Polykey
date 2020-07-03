@@ -1,7 +1,7 @@
-import fs from 'fs'
-import os from 'os'
-import { randomString } from '../src/lib/utils'
-import KeyManager from '../src/lib/keys/KeyManager'
+import fs from 'fs';
+import os from 'os';
+import { randomString } from '../src/lib/utils';
+import KeyManager from '../src/lib/keys/KeyManager';
 
 describe('KeyManager class', () => {
 

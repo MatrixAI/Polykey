@@ -1,14 +1,12 @@
 
-import fs from 'fs'
-import os from 'os'
-import net from 'net'
-import Path from 'path'
-import git from 'isomorphic-git'
-import { EncryptedFS } from 'encryptedfs'
-import Vault from '../vaults/Vault'
-import HttpRequest from '../HttpRequest'
-import KeyManager from '../keys/KeyManager'
-import { Address } from '../peers/PeerInfo'
+import fs from 'fs';
+import os from 'os';
+import Path from 'path';
+import git from 'isomorphic-git';
+import Vault from '../vaults/Vault';
+import GitClient from '../git/GitClient';
+import { EncryptedFS } from 'encryptedfs';
+import KeyManager from '../keys/KeyManager';
 
 class VaultManager {
   polykeyPath: string
@@ -113,18 +111,17 @@ class VaultManager {
    * @param address Address of polykey node that owns vault to be cloned
    * @param getSocket Function to get an active connection to provided address
    */
-  async cloneVault(vaultName: string, address: Address, getSocket: (address: Address) => net.Socket): Promise<Vault> {
+  async cloneVault(vaultName: string, gitClient: GitClient): Promise<Vault> {
     // Confirm it doesn't exist locally already
     if (this.vaultExists(vaultName)) {
       throw new Error('Vault name already exists locally, try pulling instead')
     }
 
-    const vaultUrl = `http://${address.toString()}/${vaultName}`
+    const vaultUrl = `http://0.0.0.0/${vaultName}`
 
-    const httpRequest = new HttpRequest(address, getSocket)
     // First check if it exists on remote
     const info = await git.getRemoteInfo({
-      http: httpRequest,
+      http: gitClient,
       url: vaultUrl
     })
 
@@ -150,7 +147,7 @@ class VaultManager {
     // Clone vault from address
     await git.clone({
       fs: { promises: newEfs.promises },
-      http: httpRequest,
+      http: gitClient,
       dir: Path.join(this.polykeyPath, vaultName),
       url: vaultUrl,
       ref: 'master',

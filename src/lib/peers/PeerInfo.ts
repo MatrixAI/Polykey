@@ -1,4 +1,4 @@
-import { AddressInfo } from 'net'
+import { AddressInfo } from 'net';
 
 class Address {
   ip: string
@@ -28,7 +28,7 @@ class Address {
    * @param addressInfo AddressInfo of desired address
    */
   static fromAddressInfo(addressInfo: AddressInfo) {
-    const ip = (addressInfo.address == '::') ? '127.0.0.1' : addressInfo.address
+    const ip = (addressInfo.address == '::') ? 'localhost' : addressInfo.address
     return new Address(ip, addressInfo.port.toString())
   }
 

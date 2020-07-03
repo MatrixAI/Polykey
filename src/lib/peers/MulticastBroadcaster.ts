@@ -119,7 +119,6 @@ class MulticastBroadcaster extends EventEmitter {
       const decodedMessage = RPCMessage.decodeHandshakeMessage(message)
       console.info(`Message from: ${rinfo.address}:${rinfo.port}`);
 
-
       // Try to decrypt message and pubKey
       const decryptedMessage = await this.keyManager.decryptData(decodedMessage.message)
       const decryptedTargetPubKey = await this.keyManager.decryptData(decodedMessage.targetPubKey)

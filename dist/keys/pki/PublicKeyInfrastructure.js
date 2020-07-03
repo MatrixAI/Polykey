@@ -4,17 +4,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_forge_1 = __importDefault(require("node-forge"));
+/**
+ * This class manages X.509 certificates for secure and authenticated communication between peers.
+ */
 class PublicKeyInfrastructure {
     /**
      * Creates an X.509 certificate for transport layer security
      * @param nbits The number of bits for keypair generation
      * @param organizationName The name of the organization
      */
-    static createX509Certificate(nbits = this.N_BITS, commonName = this.COMMON_NAME, organizationName = this.ORGANIZATION_NAME) {
+    static createX509Certificate(nbits = PublicKeyInfrastructure.N_BITS, commonName = PublicKeyInfrastructure.COMMON_NAME, organizationName = PublicKeyInfrastructure.ORGANIZATION_NAME, sign) {
         const pki = node_forge_1.default.pki;
         // generate a keypair and create an X.509v3 certificate
         const keys = pki.rsa.generateKeyPair(nbits);
-        const cert = pki.createCertificate();
+        let cert = pki.createCertificate();
         cert.publicKey = keys.publicKey;
         // alternatively set public key from a csr
         //cert.publicKey = csr.publicKey;
@@ -22,13 +25,12 @@ class PublicKeyInfrastructure {
         cert.validity.notBefore = new Date();
         cert.validity.notAfter = new Date();
         cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
-        const attrs = [{
+        const attrs = [
+            {
                 name: 'commonName',
                 value: commonName
-            }, {
-                name: 'organizationName',
-                value: organizationName
-            }];
+            },
+        ];
         cert.setSubject(attrs);
         // alternatively set subject from a csr
         //cert.setSubject(csr.subject.attributes);
@@ -68,19 +70,25 @@ class PublicKeyInfrastructure {
             }, {
                 name: 'subjectKeyIdentifier'
             }]);
-        // self-sign certificate
-        cert.sign(keys.privateKey);
+        // Self-sign or sign with provided key
+        if (sign) {
+            cert = sign(cert);
+        }
+        else {
+            cert.sign(keys.privateKey);
+        }
         // convert a Forge certificate to PEM
-        const keyPem = pki.privateKeyToPem(keys.privateKey);
-        const certPem = pki.certificateToPem(cert);
+        const keyPem = Buffer.from(pki.privateKeyToPem(keys.privateKey));
+        const certPem = Buffer.from(pki.certificateToPem(cert));
         return {
             keyPem,
             certPem
         };
     }
 }
+// Cert defaults
 PublicKeyInfrastructure.N_BITS = 2048;
-PublicKeyInfrastructure.COMMON_NAME = 'polykey';
+PublicKeyInfrastructure.COMMON_NAME = 'localhost';
 PublicKeyInfrastructure.ORGANIZATION_NAME = 'MatrixAI';
 exports.default = PublicKeyInfrastructure;
 //# sourceMappingURL=PublicKeyInfrastructure.js.map
