@@ -7,7 +7,6 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const isomorphic_git_1 = __importDefault(require("isomorphic-git"));
 const encryptedfs_1 = require("encryptedfs");
-const HttpRequest_1 = __importDefault(require("../HttpRequest"));
 class Vault {
     constructor(name, symKey, baseDir) {
         // how do we create pub/priv key pair?
@@ -166,8 +165,7 @@ class Vault {
      * @param address Address of polykey node that owns vault to be pulled
      * @param getSocket Function to get an active connection to provided address
      */
-    async pullVault(address, getSocket) {
-        const remoteUrl = "http://" + address.toString() + '/' + this.name;
+    async pullVault(gitClient) {
         // Strangely enough this is needed for pulls along with ref set to 'HEAD'
         // In isogit's documentation, this is just to get the currentBranch name
         // But it solves a bug whereby if not used, git.pull complains that it can't
@@ -177,13 +175,12 @@ class Vault {
             dir: this.vaultPath,
             fullname: true
         });
-        const httpRequest = new HttpRequest_1.default(address, getSocket);
         // First pull
         await isomorphic_git_1.default.pull({
             fs: { promises: this.efs.promises },
-            http: httpRequest,
+            http: gitClient,
             dir: this.vaultPath,
-            url: remoteUrl,
+            url: "http://" + '0.0.0.0:0' + '/' + this.name,
             ref: 'HEAD',
             singleBranch: true,
             author: {

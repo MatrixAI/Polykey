@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+service GitServer {
+  // Request info about a vault as a git repo
+  rpc RequestInfo (InfoRequest) returns (InfoReply) {}
+  // Request a particular pack from remote
+  rpc RequestPack (PackRequest) returns (PackReply) {}
+}
+
+// ==== Vault Info ==== //
+message InfoRequest {
+  string vaultName = 1;
+}
+message InfoReply {
+  string vaultName = 1;
+  bytes body = 2;
+}
+
+// ==== PackRequest ==== //
+message PackRequest {
+  string vaultName = 1;
+  bytes body = 2;
+}
+message PackReply {
+  string vaultName = 1;
+  bytes body = 2;
+}

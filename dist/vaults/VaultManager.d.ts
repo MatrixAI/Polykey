@@ -1,9 +1,8 @@
 /// <reference types="node" />
 import fs from 'fs';
-import net from 'net';
 import Vault from '../vaults/Vault';
+import GitClient from '../git/GitClient';
 import KeyManager from '../keys/KeyManager';
-import { Address } from '../peers/PeerInfo';
 declare class VaultManager {
     polykeyPath: string;
     fileSystem: typeof fs;
@@ -29,7 +28,7 @@ declare class VaultManager {
      * @param address Address of polykey node that owns vault to be cloned
      * @param getSocket Function to get an active connection to provided address
      */
-    cloneVault(vaultName: string, address: Address, getSocket: (address: Address) => net.Socket): Promise<Vault>;
+    cloneVault(vaultName: string, gitClient: GitClient): Promise<Vault>;
     /**
      * Determines whether the vault exists
      * @param vaultName Name of desired vault

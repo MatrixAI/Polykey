@@ -67,7 +67,6 @@
 							<h3>Classes</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-class"><a href="classes/address.html" class="tsd-kind-icon">Address</a></li>
-								<li class="tsd-kind-class"><a href="classes/httprequest.html" class="tsd-kind-icon">Http<wbr>Request</a></li>
 								<li class="tsd-kind-class"><a href="classes/keymanager.html" class="tsd-kind-icon">Key<wbr>Manager</a></li>
 								<li class="tsd-kind-class"><a href="classes/multicastbroadcaster.html" class="tsd-kind-icon">Multicast<wbr>Broadcaster</a></li>
 								<li class="tsd-kind-class"><a href="classes/peerinfo.html" class="tsd-kind-icon">Peer<wbr>Info</a></li>
@@ -92,6 +91,7 @@
 								<li class="tsd-kind-type-alias"><a href="globals.html#keymanagermetadata" class="tsd-kind-icon">Key<wbr>Manager<wbr>Metadata</a></li>
 								<li class="tsd-kind-type-alias"><a href="globals.html#keymanagerworker" class="tsd-kind-icon">Key<wbr>Manager<wbr>Worker</a></li>
 								<li class="tsd-kind-type-alias"><a href="globals.html#keypair" class="tsd-kind-icon">Key<wbr>Pair</a></li>
+								<li class="tsd-kind-type-alias"><a href="globals.html#pkinfo" class="tsd-kind-icon">PKInfo</a></li>
 								<li class="tsd-kind-type-alias"><a href="globals.html#peermanagermetadata" class="tsd-kind-icon">Peer<wbr>Manager<wbr>Metadata</a></li>
 								<li class="tsd-kind-type-alias"><a href="globals.html#peermessage" class="tsd-kind-icon">Peer<wbr>Message</a></li>
 								<li class="tsd-kind-type-alias"><a href="globals.html#vaultmetadata" class="tsd-kind-icon">Vault<wbr>Metadata</a></li>
@@ -130,7 +130,7 @@
 					<div class="tsd-signature tsd-kind-icon">Handshake<wbr>Message<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>message<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">; </span>requestingPubKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">; </span>responsePeerInfo<span class="tsd-signature-symbol">?: </span><a href="classes/peerinfo.html" class="tsd-signature-type">PeerInfo</a><span class="tsd-signature-symbol">; </span>targetPubKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> }</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/rpc/RPCMessage.ts#L5">src/lib/rpc/RPCMessage.ts:5</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/rpc/RPCMessage.ts#L5">src/lib/rpc/RPCMessage.ts:5</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -154,15 +154,24 @@
 				<section class="tsd-panel tsd-member tsd-kind-type-alias">
 					<a name="keymanagermetadata" class="tsd-anchor"></a>
 					<h3>Key<wbr>Manager<wbr>Metadata</h3>
-					<div class="tsd-signature tsd-kind-icon">Key<wbr>Manager<wbr>Metadata<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>privateKeyPath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>publicKeyPath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> }</span></div>
+					<div class="tsd-signature tsd-kind-icon">Key<wbr>Manager<wbr>Metadata<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>caCertPath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>pkiCertPath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>pkiKeyPath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>privateKeyPath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>publicKeyPath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> }</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManager.ts#L10">src/lib/keys/KeyManager.ts:10</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L12">src/lib/keys/KeyManager.ts:12</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
 						<h4>Type declaration</h4>
 						<ul class="tsd-parameters">
+							<li class="tsd-parameter">
+								<h5>ca<wbr>Cert<wbr>Path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
+							</li>
+							<li class="tsd-parameter">
+								<h5>pki<wbr>Cert<wbr>Path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
+							</li>
+							<li class="tsd-parameter">
+								<h5>pki<wbr>Key<wbr>Path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
+							</li>
 							<li class="tsd-parameter">
 								<h5>private<wbr>Key<wbr>Path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
 							</li>
@@ -178,7 +187,7 @@
 					<div class="tsd-signature tsd-kind-icon">Key<wbr>Manager<wbr>Worker<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">typeof </span><a href="globals.html#keymanagerworker" class="tsd-signature-type">keyManagerWorker</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManagerWorker.ts#L86">src/lib/keys/KeyManagerWorker.ts:86</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManagerWorker.ts#L86">src/lib/keys/KeyManagerWorker.ts:86</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -188,7 +197,7 @@
 					<div class="tsd-signature tsd-kind-icon">Key<wbr>Pair<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>private<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>public<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> }</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManager.ts#L15">src/lib/keys/KeyManager.ts:15</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L20">src/lib/keys/KeyManager.ts:20</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -204,12 +213,36 @@
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-type-alias">
+					<a name="pkinfo" class="tsd-anchor"></a>
+					<h3>PKInfo</h3>
+					<div class="tsd-signature tsd-kind-icon">PKInfo<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>caCert<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>cert<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">; </span>key<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> }</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L24">src/lib/keys/KeyManager.ts:24</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter">
+								<h5>ca<wbr>Cert<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
+							</li>
+							<li class="tsd-parameter">
+								<h5>cert<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
+							</li>
+							<li class="tsd-parameter">
+								<h5>key<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
+							</li>
+						</ul>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-type-alias">
 					<a name="peermanagermetadata" class="tsd-anchor"></a>
 					<h3>Peer<wbr>Manager<wbr>Metadata</h3>
 					<div class="tsd-signature tsd-kind-icon">Peer<wbr>Manager<wbr>Metadata<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>localPeerInfo<span class="tsd-signature-symbol">: </span><a href="classes/peerinfo.html" class="tsd-signature-type">PeerInfo</a><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> }</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/peers/PeerManager.ts#L36">src/lib/peers/PeerManager.ts:36</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/peers/PeerManager.ts#L37">src/lib/peers/PeerManager.ts:37</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -227,7 +260,7 @@
 					<div class="tsd-signature tsd-kind-icon">Peer<wbr>Message<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>encryptedLocalPubKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">; </span>encryptedPeerPubKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">; </span>encryptedRandomMessage<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">; </span>rawRandomMessage<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> }</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/peers/MulticastBroadcaster.ts#L23">src/lib/peers/MulticastBroadcaster.ts:23</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/peers/MulticastBroadcaster.ts#L23">src/lib/peers/MulticastBroadcaster.ts:23</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -254,7 +287,7 @@
 					<div class="tsd-signature tsd-kind-icon">Vault<wbr>Metadata<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>sharedPubKeys<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> }</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/vaults/Vault.ts#L10">src/lib/vaults/Vault.ts:10</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/vaults/Vault.ts#L8">src/lib/vaults/Vault.ts:8</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -275,7 +308,7 @@
 					<div class="tsd-signature tsd-kind-icon">UDP_<wbr>MULTICAST_<wbr>ADDR<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = process.env.UDP_MULTICAST_ADDR ?? &quot;224.0.0.251&quot;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/peers/MulticastBroadcaster.ts#L21">src/lib/peers/MulticastBroadcaster.ts:21</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/peers/MulticastBroadcaster.ts#L21">src/lib/peers/MulticastBroadcaster.ts:21</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -285,7 +318,7 @@
 					<div class="tsd-signature tsd-kind-icon">UDP_<wbr>MULTICAST_<wbr>PORT<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = parseInt(process.env.UDP_MULTICAST_PORT ?? &#x27;5353&#x27;)</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/peers/MulticastBroadcaster.ts#L20">src/lib/peers/MulticastBroadcaster.ts:20</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/peers/MulticastBroadcaster.ts#L20">src/lib/peers/MulticastBroadcaster.ts:20</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -302,7 +335,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/utils.ts#L20">src/lib/utils.ts:20</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/utils.ts#L20">src/lib/utils.ts:20</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -339,7 +372,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/utils.ts#L12">src/lib/utils.ts:12</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/utils.ts#L12">src/lib/utils.ts:12</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -376,7 +409,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/utils.ts#L4">src/lib/utils.ts:4</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/utils.ts#L4">src/lib/utils.ts:4</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -397,7 +430,7 @@
 					<div class="tsd-signature tsd-kind-icon">key<wbr>Manager<wbr>Worker<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManagerWorker.ts#L5">src/lib/keys/KeyManagerWorker.ts:5</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManagerWorker.ts#L5">src/lib/keys/KeyManagerWorker.ts:5</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal">
@@ -410,7 +443,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManagerWorker.ts#L72">src/lib/keys/KeyManagerWorker.ts:72</a></li>
+										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManagerWorker.ts#L72">src/lib/keys/KeyManagerWorker.ts:72</a></li>
 									</ul>
 								</aside>
 								<div class="tsd-comment tsd-typography">
@@ -447,7 +480,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManagerWorker.ts#L59">src/lib/keys/KeyManagerWorker.ts:59</a></li>
+										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManagerWorker.ts#L59">src/lib/keys/KeyManagerWorker.ts:59</a></li>
 									</ul>
 								</aside>
 								<div class="tsd-comment tsd-typography">
@@ -484,7 +517,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManagerWorker.ts#L11">src/lib/keys/KeyManagerWorker.ts:11</a></li>
+										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManagerWorker.ts#L11">src/lib/keys/KeyManagerWorker.ts:11</a></li>
 									</ul>
 								</aside>
 								<div class="tsd-comment tsd-typography">
@@ -521,7 +554,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/keys/KeyManagerWorker.ts#L25">src/lib/keys/KeyManagerWorker.ts:25</a></li>
+										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManagerWorker.ts#L25">src/lib/keys/KeyManagerWorker.ts:25</a></li>
 									</ul>
 								</aside>
 								<div class="tsd-comment tsd-typography">
@@ -561,7 +594,7 @@
 					<div class="tsd-signature tsd-kind-icon">keybase<wbr>Discovery<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/peers/PeerManager.ts#L19">src/lib/peers/PeerManager.ts:19</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/peers/PeerManager.ts#L20">src/lib/peers/PeerManager.ts:20</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
@@ -570,7 +603,7 @@
 						<div class="tsd-signature tsd-kind-icon">name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &quot;Keybase&quot;</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/peers/PeerManager.ts#L20">src/lib/peers/PeerManager.ts:20</a></li>
+								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/peers/PeerManager.ts#L21">src/lib/peers/PeerManager.ts:21</a></li>
 							</ul>
 						</aside>
 					</section>
@@ -584,7 +617,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/2b53258/src/lib/peers/PeerManager.ts#L21">src/lib/peers/PeerManager.ts:21</a></li>
+										<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/peers/PeerManager.ts#L22">src/lib/peers/PeerManager.ts:22</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -615,9 +648,6 @@
 				<ul class="before-current">
 					<li class=" tsd-kind-class">
 						<a href="classes/address.html" class="tsd-kind-icon">Address</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="classes/httprequest.html" class="tsd-kind-icon">Http<wbr>Request</a>
 					</li>
 					<li class=" tsd-kind-class">
 						<a href="classes/keymanager.html" class="tsd-kind-icon">Key<wbr>Manager</a>
@@ -660,6 +690,9 @@
 					</li>
 					<li class=" tsd-kind-type-alias">
 						<a href="globals.html#keypair" class="tsd-kind-icon">Key<wbr>Pair</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="globals.html#pkinfo" class="tsd-kind-icon">PKInfo</a>
 					</li>
 					<li class=" tsd-kind-type-alias">
 						<a href="globals.html#peermanagermetadata" class="tsd-kind-icon">Peer<wbr>Manager<wbr>Metadata</a>

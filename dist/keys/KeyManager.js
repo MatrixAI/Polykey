@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const os_1 = __importDefault(require("os"));
+const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const kbpgp_1 = __importDefault(require("kbpgp"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -11,7 +12,17 @@ const util_1 = require("util");
 class KeyManager {
     constructor(polyKeyPath = `${os_1.default.homedir()}/.polykey`, fileSystem, passphrase, useWebWorkers = false, workerPool) {
         this.primaryKeyPair = { private: null, public: null };
-        this.metadata = { privateKeyPath: null, publicKeyPath: null };
+        this.metadata = {
+            privateKeyPath: null,
+            publicKeyPath: null,
+            pkiKeyPath: null,
+            pkiCertPath: null,
+            caCertPath: null,
+        };
+        /////////
+        // PKI //
+        /////////
+        this.pkiInfo = { key: null, cert: null, caCert: null };
         this.useWebWorkers = useWebWorkers;
         this.workerPool = workerPool;
         this.derivedKeys = new Map();
@@ -32,6 +43,20 @@ class KeyManager {
             // Load private and public keys
             this.loadKeyPair(publicKey, privateKey, passphrase);
         }
+        /////////
+        // PKI //
+        /////////
+        // Load pki keys and certs
+        if (this.metadata.pkiKeyPath) {
+            this.pkiInfo.key = fs_1.default.readFileSync(this.metadata.pkiKeyPath);
+        }
+        if (this.metadata.pkiCertPath) {
+            this.pkiInfo.cert = fs_1.default.readFileSync(this.metadata.pkiCertPath);
+        }
+        if (this.metadata.caCertPath) {
+            this.pkiInfo.caCert = fs_1.default.readFileSync(this.metadata.caCertPath);
+        }
+        this.loadPKIInfo(this.pkiInfo.key, this.pkiInfo.cert, this.pkiInfo.caCert, true);
     }
     /**
      * Generates a new assymetric key pair (publicKey and privateKey).
@@ -43,6 +68,10 @@ class KeyManager {
      * @param progressCallback A progress hook for keypair generation
      */
     async generateKeyPair(name, email, passphrase, nbits = 4096, replacePrimary = false, progressCallback) {
+        // kbpgp doesn't seem to work for small nbits so set a minimum of 1024
+        if (nbits < 1024) {
+            throw new Error('nbits must be greater than 1024 for keypair generation');
+        }
         // Define options
         const flags = kbpgp_1.default["const"].openpgp;
         const params = {
@@ -480,6 +509,39 @@ class KeyManager {
             const literals = await util_1.promisify(kbpgp_1.default.unbox)(params);
             const decryptedData = Buffer.from(literals[0].toString());
             return decryptedData;
+        }
+    }
+    /////////
+    // PKI //
+    /////////
+    get PKIInfo() {
+        return this.pkiInfo;
+    }
+    loadPKIInfo(key, cert, caCert, writeToFile = false) {
+        if (key) {
+            this.pkiInfo.key = key;
+        }
+        if (cert) {
+            this.pkiInfo.cert = cert;
+        }
+        if (caCert) {
+            this.pkiInfo.caCert = caCert;
+        }
+        if (writeToFile) {
+            // Store in the metadata path folder
+            const storagePath = path_1.default.dirname(this.metadataPath);
+            if (key) {
+                this.metadata.pkiKeyPath = path_1.default.join(storagePath, 'pki_private_key');
+                fs_1.default.writeFileSync(this.metadata.pkiKeyPath, key);
+            }
+            if (cert) {
+                this.metadata.pkiCertPath = path_1.default.join(storagePath, 'pki_cert');
+                fs_1.default.writeFileSync(this.metadata.pkiCertPath, cert);
+            }
+            if (caCert) {
+                this.metadata.caCertPath = path_1.default.join(storagePath, 'ca_cert');
+                fs_1.default.writeFileSync(this.metadata.caCertPath, caCert);
+            }
         }
     }
     /* ============ HELPERS =============== */

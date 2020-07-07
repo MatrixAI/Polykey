@@ -8,7 +8,6 @@ declare class Polykey {
     vaultManager: VaultManager;
     keyManager: KeyManager;
     peerManager: PeerManager;
-    private gitServer;
-    constructor(polykeyPath: string | undefined, fileSystem: typeof fs, keyManager?: KeyManager, vaultManager?: VaultManager, peerManager?: PeerManager);
+    constructor(polykeyPath: string | undefined, fileSystem: typeof fs, keyManager?: KeyManager, vaultManager?: VaultManager, peerManager?: PeerManager, port?: number);
 }
 export default Polykey;

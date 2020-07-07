@@ -1,21 +1,26 @@
-import os from 'os'
-import fs from 'fs'
-import Path from 'path'
-import kbpgp from 'kbpgp'
-import crypto from 'crypto'
-import { promisify } from 'util'
-import { Pool, ModuleThread } from 'threads'
-import { KeyManagerWorker } from '../keys/KeyManagerWorker'
+import os from 'os';
+import fs from 'fs';
+import Path from 'path';
+import kbpgp from 'kbpgp';
+import crypto from 'crypto';
+import { promisify } from 'util';
+import { Pool, ModuleThread } from 'threads';
+import { KeyManagerWorker } from '../keys/KeyManagerWorker';
 
 type KeyManagerMetadata = {
   privateKeyPath: string | null,
-  publicKeyPath: string | null
+  publicKeyPath: string | null,
+  pkiKeyPath: string | null,
+  pkiCertPath: string | null,
+  caCertPath: string | null,
 }
 
 type KeyPair = {
   private: string | null,
   public: string | null
 }
+
+type PKInfo = { key: Buffer | null, cert: Buffer | null, caCert: Buffer | null }
 
 class KeyManager {
   private primaryKeyPair: KeyPair = { private: null, public: null }
@@ -28,7 +33,18 @@ class KeyManager {
   private fileSystem: typeof fs
 
   private metadataPath: string
-  private metadata: KeyManagerMetadata = { privateKeyPath: null, publicKeyPath: null }
+  private metadata: KeyManagerMetadata = {
+    privateKeyPath: null,
+    publicKeyPath: null,
+    pkiKeyPath: null,
+    pkiCertPath: null,
+    caCertPath: null,
+  }
+
+  /////////
+  // PKI //
+  /////////
+  pkiInfo: PKInfo = { key: null, cert: null, caCert: null }
 
   constructor(
     polyKeyPath: string = `${os.homedir()}/.polykey`,
@@ -61,6 +77,20 @@ class KeyManager {
       this.loadKeyPair(publicKey, privateKey, passphrase)
     }
 
+    /////////
+    // PKI //
+    /////////
+    // Load pki keys and certs
+    if (this.metadata.pkiKeyPath) {
+      this.pkiInfo.key = fs.readFileSync(this.metadata.pkiKeyPath)
+    }
+    if (this.metadata.pkiCertPath) {
+      this.pkiInfo.cert = fs.readFileSync(this.metadata.pkiCertPath)
+    }
+    if (this.metadata.caCertPath) {
+      this.pkiInfo.caCert = fs.readFileSync(this.metadata.caCertPath)
+    }
+    this.loadPKIInfo(this.pkiInfo.key, this.pkiInfo.cert, this.pkiInfo.caCert, true)
   }
 
   /**
@@ -80,6 +110,10 @@ class KeyManager {
     replacePrimary: boolean = false,
     progressCallback?: (info) => void
   ): Promise<KeyPair> {
+    // kbpgp doesn't seem to work for small nbits so set a minimum of 1024
+    if (nbits < 1024) {
+      throw new Error('nbits must be greater than 1024 for keypair generation')
+    }
     // Define options
     const flags = kbpgp["const"].openpgp
     const params = {
@@ -537,6 +571,47 @@ class KeyManager {
       const literals = await promisify(kbpgp.unbox)(params)
       const decryptedData = Buffer.from(literals[0].toString())
       return decryptedData
+    }
+  }
+
+  /////////
+  // PKI //
+  /////////
+  public get PKIInfo(): PKInfo {
+    return this.pkiInfo
+  }
+
+  loadPKIInfo(key?: Buffer | null, cert?: Buffer | null, caCert?: Buffer | null, writeToFile: boolean = false) {
+    if (key) {
+      this.pkiInfo.key = key
+    }
+
+    if (cert) {
+      this.pkiInfo.cert = cert
+    }
+
+    if (caCert) {
+      this.pkiInfo.caCert = caCert
+    }
+
+    if (writeToFile) {
+      // Store in the metadata path folder
+      const storagePath = Path.dirname(this.metadataPath)
+
+      if (key) {
+        this.metadata.pkiKeyPath = Path.join(storagePath, 'pki_private_key')
+        fs.writeFileSync(this.metadata.pkiKeyPath, key)
+      }
+
+      if (cert) {
+        this.metadata.pkiCertPath = Path.join(storagePath, 'pki_cert')
+        fs.writeFileSync(this.metadata.pkiCertPath, cert)
+      }
+
+      if (caCert) {
+        this.metadata.caCertPath = Path.join(storagePath, 'ca_cert')
+        fs.writeFileSync(this.metadata.caCertPath, caCert)
+      }
     }
   }
 

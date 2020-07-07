@@ -11,6 +11,7 @@ in
   drv.overrideAttrs (attrs: {
     src = null;
     nativeBuildInputs = [
+      step-cli
       nodePackages.node2nix
     ] ++ (lib.attrByPath [ "nativeBuildInputs" ] [] attrs);
     shellHook = ''

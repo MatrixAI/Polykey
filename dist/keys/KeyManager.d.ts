@@ -6,6 +6,11 @@ declare type KeyPair = {
     private: string | null;
     public: string | null;
 };
+declare type PKInfo = {
+    key: Buffer | null;
+    cert: Buffer | null;
+    caCert: Buffer | null;
+};
 declare class KeyManager {
     private primaryKeyPair;
     private primaryIdentity?;
@@ -16,6 +21,7 @@ declare class KeyManager {
     private fileSystem;
     private metadataPath;
     private metadata;
+    pkiInfo: PKInfo;
     constructor(polyKeyPath: string | undefined, fileSystem: typeof fs, passphrase?: string, useWebWorkers?: boolean, workerPool?: Pool<ModuleThread<KeyManagerWorker>>);
     /**
      * Generates a new assymetric key pair (publicKey and privateKey).
@@ -164,6 +170,8 @@ declare class KeyManager {
      * @param keyPassphrase Required if privateKey is provided.
      */
     decryptData(data: Buffer, privateKey?: Buffer, keyPassphrase?: string): Promise<Buffer>;
+    get PKIInfo(): PKInfo;
+    loadPKIInfo(key?: Buffer | null, cert?: Buffer | null, caCert?: Buffer | null, writeToFile?: boolean): void;
     /**
      * Get the key for a given name
      * @param name The unique name of the desired key

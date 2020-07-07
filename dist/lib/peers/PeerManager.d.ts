@@ -1,8 +1,9 @@
 /// <reference types="node" />
 import fs from 'fs';
-import net from 'net';
-import tls from 'tls';
+import grpc from 'grpc';
+import GitClient from '../git/GitClient';
 import KeyManager from '../keys/KeyManager';
+import VaultManager from '../vaults/VaultManager';
 import PeerInfo, { Address } from '../peers/PeerInfo';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
 interface SocialDiscovery {
@@ -18,11 +19,11 @@ declare class PeerManager {
     private keyManager;
     multicastBroadcaster: MulticastBroadcaster;
     private socialDiscoveryServices;
-    keyPem: string;
-    certPem: string;
-    server: tls.Server;
-    peerConnections: Map<string, tls.TLSSocket>;
-    constructor(polykeyPath: string | undefined, fileSystem: typeof fs, keyManager: KeyManager, peerInfo?: PeerInfo, socialDiscoveryServices?: SocialDiscovery[]);
+    server: grpc.Server;
+    private gitBackend;
+    private credentials;
+    private peerConnections;
+    constructor(polykeyPath: string | undefined, fileSystem: typeof fs, keyManager: KeyManager, vaultManager: VaultManager, peerInfo?: PeerInfo, socialDiscoveryServices?: SocialDiscovery[], customPort?: number);
     /**
      * Get the peer info of the current keynode
      */
@@ -62,7 +63,7 @@ declare class PeerManager {
      * Get a secure connection to the peer
      * @param peer Public key of an existing peer or address of new peer
      */
-    connectToPeer(peer: string | Address): net.Socket;
+    connectToPeer(peer: string | Address): GitClient;
     private writeMetadata;
     private loadMetadata;
 }

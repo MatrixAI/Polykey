@@ -1,9 +1,8 @@
-import os from 'os'
-import fs from 'fs'
-import GitServer from './git/GitServer'
-import KeyManager from './keys/KeyManager'
-import PeerManager from './peers/PeerManager'
-import VaultManager from './vaults/VaultManager'
+import os from 'os';
+import fs from 'fs';
+import KeyManager from './keys/KeyManager';
+import PeerManager from './peers/PeerManager';
+import VaultManager from './vaults/VaultManager';
 
 class Polykey {
   polykeyPath: string
@@ -11,7 +10,6 @@ class Polykey {
   vaultManager: VaultManager
   keyManager: KeyManager
   peerManager: PeerManager
-  private gitServer: GitServer
 
   constructor(
     polykeyPath: string = `${os.homedir()}/.polykey`,
@@ -29,11 +27,12 @@ class Polykey {
     this.vaultManager = vaultManager ?? new VaultManager(this.polykeyPath, fileSystem, this.keyManager)
 
     // Initialize peer store and peer discovery classes
-    this.peerManager = peerManager ?? new PeerManager(this.polykeyPath, fileSystem, this.keyManager)
-
-    // Start git server
-    this.gitServer = new GitServer(this.polykeyPath, this.vaultManager)
-    this.peerManager.connectLocalPeerInfo(this.gitServer.address)
+    this.peerManager = peerManager ?? new PeerManager(
+      this.polykeyPath,
+      fileSystem,
+      this.keyManager,
+      this.vaultManager
+    )
   }
 }
 

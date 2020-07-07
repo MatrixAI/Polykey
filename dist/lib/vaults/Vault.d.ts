@@ -1,7 +1,6 @@
 /// <reference types="node" />
-import net from 'net';
+import GitClient from '../git/GitClient';
 import { EncryptedFS } from 'encryptedfs';
-import { Address } from '../peers/PeerInfo';
 declare class Vault {
     private key;
     private keyLen;
@@ -69,7 +68,7 @@ declare class Vault {
      * @param address Address of polykey node that owns vault to be pulled
      * @param getSocket Function to get an active connection to provided address
      */
-    pullVault(address: Address, getSocket: (address: Address) => net.Socket): Promise<void>;
+    pullVault(gitClient: GitClient): Promise<void>;
     /**
      * Initializes the git repository for new vaults
      */
