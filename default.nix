@@ -14,6 +14,7 @@
     stdenv.mkDerivation {
       name = "js-polykey";
       version = "0.0.1";
+
       src = lib.cleanSourceWith {
         filter = (path: type:
           ! (builtins.any
@@ -23,7 +24,7 @@
               "\.env"
             ])
         );
-        src = lib.cleanSource attrs.src;
+        src = lib.cleanSource attr.src;
       };
       buildInputs = [ nodejs dos2unix ];
       checkInputs = [ webpack ];

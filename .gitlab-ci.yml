@@ -1,0 +1,20 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+
+stages:
+  - check
+
+before_script:
+  - node --version
+  - npm install
+
+prettier:
+  stage: check
+  image: node:12
+  script:
+    - npm run lint
