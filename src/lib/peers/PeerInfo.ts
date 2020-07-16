@@ -78,6 +78,14 @@ class PeerInfo {
   disconnect() {
     this.connectedAddr = undefined
   }
+
+
+  public get AdressStringList() : string[] {
+    return Array.from(this.addresses.values()).map((addr) => {
+      return addr.toString()
+    })
+  }
+
 }
 
 export default PeerInfo

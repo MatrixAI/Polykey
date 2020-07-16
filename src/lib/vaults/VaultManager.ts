@@ -227,7 +227,7 @@ class VaultManager {
   }
   private async loadMetadata(): Promise<void> {
     // Check if file exists
-    if (this.fileSystem.existsSync(this.metadataPath)) {
+    if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.identityLoaded) {
       const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath)
       const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString()
 

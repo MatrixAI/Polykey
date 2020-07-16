@@ -1,15 +1,17 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import grpc from 'grpc';
+import * as grpc from '@grpc/grpc-js'
 import GitClient from '../git/GitClient';
 import GitBackend from '../git/GitBackend';
-import RPCMessage from '../rpc/RPCMessage';
 import KeyManager from '../keys/KeyManager';
+import { peer } from '../../../proto/js/Peer';
 import { firstPromiseFulfilled } from '../utils';
 import VaultManager from '../vaults/VaultManager';
 import PeerInfo, { Address } from '../peers/PeerInfo';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
+import { GitServerService } from '../../../proto/compiled/Git_grpc_pb';
+import { InfoRequest, PackRequest, PackReply, InfoReply } from '../../../proto/compiled/Git_pb';
 
 interface SocialDiscovery {
   // Must return a public pgp key
@@ -52,6 +54,7 @@ class PeerManager {
 
   // Peer connections
   server: grpc.Server
+  serverStarted: boolean = false
   private gitBackend: GitBackend
   private credentials: grpc.ServerCredentials
   private peerConnections: Map<string, GitClient>
@@ -101,56 +104,61 @@ class PeerManager {
     /////////////////
     this.gitBackend = new GitBackend(polykeyPath, vaultManager)
     this.server = new grpc.Server();
-    const protoLoader = require('@grpc/proto-loader')
-    const PROTO_PATH = __dirname + '/../../proto/git_server.proto';
-
-    const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-      keepCase: true,
-      longs: String,
-      enums: String,
-      defaults: true,
-      oneofs: true
-    });
-
-    const git_server_proto = grpc.loadPackageDefinition(packageDefinition);
 
     // Add service
-    async function requestInfo(call, callback) {
-      const vaultName = call.request.vaultName
-      const body = await this.gitBackend.handleInfoRequest(vaultName)
-      callback(null, { vaultName: vaultName, body: body });
-    }
-
-    async function requestPack(call, callback) {
-      const vaultName = call.request.vaultName
-      const body = call.request.body.toString()
-      callback(null, { vaultName: vaultName, body: await this.gitBackend.handlePackRequest(vaultName, body) });
-    }
-    this.server.addService((git_server_proto.GitServer as any).service, {
-      requestInfo: requestInfo.bind(this),
-      requestPack: requestPack.bind(this)
+    this.server.addService(GitServerService, {
+      requestInfo: this.requestInfo.bind(this),
+      requestPack: this.requestPack.bind(this)
     });
 
     // Create the server credentials. SSL only if ca cert exists
     const pkiInfo = this.keyManager.PKIInfo
-    if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
-      this.credentials = grpc.ServerCredentials.createSsl(
-        pkiInfo.caCert,
-        [{
-          private_key: pkiInfo.key,
-          cert_chain: pkiInfo.cert,
-        }],
-        true
-      )
-    } else {
-      this.credentials = grpc.ServerCredentials.createInsecure()
-    }
 
-    // Bind server and set address
-    const port = this.server.bind('0.0.0.0:0', this.credentials);
-    const address = new Address('localhost', port.toString())
-    this.server.start();
-    this.localPeerInfo.connect(address)
+    // if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
+    //   this.credentials = grpc.ServerCredentials.createSsl(
+    //     pkiInfo.caCert,
+    //     [{
+    //       private_key: pkiInfo.key,
+    //       cert_chain: pkiInfo.cert,
+    //     }],
+    //     true
+    //   )
+    // } else {
+      this.credentials = grpc.ServerCredentials.createInsecure()
+    // }
+
+    this.server.bindAsync(`0.0.0.0:${process.env.PK_PORT ?? 0}`, this.credentials, (err, boundPort) => {
+      if (err) {
+        throw err
+      } else {
+        const address = new Address('localhost', boundPort.toString())
+        this.server.start();
+        this.localPeerInfo.connect(address)
+        this.serverStarted = true
+      }
+    });
+  }
+
+  private async requestInfo(call, callback) {
+    const infoRequest: InfoRequest = call.request
+
+    const vaultName = infoRequest.getVaultname()
+
+    const infoReply = new InfoReply()
+    infoReply.setVaultname(vaultName)
+    infoReply.setBody(await this.gitBackend.handleInfoRequest(vaultName))
+    callback(null, infoReply);
+  }
+
+   private async requestPack(call, callback) {
+    const packRequest: PackRequest = call.request
+    const vaultName = packRequest.getVaultname()
+    const body = Buffer.from(packRequest.getBody_asB64(), 'base64')
+
+    const reply = new PackReply()
+    reply.setVaultname(vaultName)
+    reply.setBody(await this.gitBackend.handlePackRequest(vaultName, body))
+    callback(null, reply);
   }
 
   ////////////////
@@ -177,6 +185,7 @@ class PeerManager {
    */
   addPeer(peerInfo: PeerInfo): void {
     this.peerStore.set(peerInfo.publicKey, peerInfo)
+
   }
 
   /**
@@ -285,14 +294,20 @@ class PeerManager {
 
   /* ============ HELPERS =============== */
   private writeMetadata(): void {
-    const metadata = JSON.stringify(RPCMessage.encodePeerInfo(this.localPeerInfo))
+    const peerInfo = this.localPeerInfo
+    const metadata = peer.PeerInfoMessage.encode({
+      addresses: peerInfo.AdressStringList,
+      connectedAddr: peerInfo.connectedAddr?.toString(),
+      pubKey: peerInfo.publicKey
+    }).finish()
     this.fileSystem.writeFileSync(this.metadataPath, metadata)
   }
   private loadMetadata(): void {
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath)) {
-      const metadata = this.fileSystem.readFileSync(this.metadataPath).toString()
-      this.localPeerInfo = RPCMessage.decodePeerInfo(Buffer.from(metadata))
+      const metadata = <Uint8Array>this.fileSystem.readFileSync(this.metadataPath)
+      const { addresses, connectedAddr, pubKey } = peer.PeerInfoMessage.decode(metadata)
+      this.localPeerInfo = new PeerInfo(pubKey, addresses, connectedAddr)
     }
   }
 }

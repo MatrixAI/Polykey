@@ -1,76 +1,57 @@
-import fs from 'fs'
 import commander from 'commander'
-import initPolyKey from "./initPolykey"
-import { actionRunner, pkLogger, PKMessageType } from './polykey'
+import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '.'
+import { PolykeyAgent } from '../lib/Polykey';
 
 function makeListSecretsCommand() {
   return new commander.Command('list')
-  .description('list all available secrets for a given vault')
-  .alias('ls')
-  .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
-  .option('--verbose', 'increase verbosity level by one')
-  .action(actionRunner(async (options) => {
-    const pk = await initPolyKey()
-    const isVerbose: boolean = options.verbose ?? false
-    const vaultName: string = options.vaultName
-    try {
-      // Check if vault exists
-      if (!(await pk.vaultManager.vaultExists(vaultName))) {
-        throw new Error(`vault '${vaultName}' does not exist!`)
-      }
+    .description('list all available secrets for a given vault')
+    .alias('ls')
+    .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
+    .option('--node-path <nodePath>', 'node path')
+    .option('--verbose', 'increase verbosity level by one')
+    .action(actionRunner(async (options) => {
+      const client = PolykeyAgent.connectToAgent()
+
+      const nodePath = determineNodePath(options)
+      const isVerbose: boolean = options.verbose ?? false
+      const vaultName: string = options.vaultName
       // Get list of secrets from pk
-      const vault = await pk.vaultManager.getVault(vaultName)
-      const secretsList = vault.listSecrets()
+      const secretNames = await client.listSecrets(nodePath, vaultName)
 
       // List secrets
-      if (isVerbose) {
-        pkLogger(`secrets contained within the ${vaultName} vault:`, PKMessageType.INFO)
-      }
-      if (secretsList.length == 0) {
+      if (secretNames.length == 0) {
         pkLogger(`no secrets found for vault '${vaultName}'`, PKMessageType.INFO)
       } else {
-        secretsList.forEach((secretName) => {
+        if (isVerbose) {
+          pkLogger(`secrets contained within the ${vaultName} vault:`, PKMessageType.INFO)
+        }
+        secretNames.forEach((secretName) => {
           pkLogger(secretName, PKMessageType.INFO)
         })
       }
-    } catch (err) {
-      throw new Error(`Error when listing secrets: ${err.message}`)
-    }
-  }))
+    }))
 }
 
 function makeAddSecretCommand() {
-  return new commander.Command('add')
-    .description('add a secret to a given vault')
+  return new commander.Command('create')
+    .description('create a secret within a given vault')
     .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
     .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
-    .requiredOption('-p, --secret-path <secretPath>', 'path to the secret to be removed')
+    .requiredOption('-p, --secret-path <secretPath>', 'path to the secret to be added')
+    .option('--node-path <nodePath>', 'node path')
     .option('--verbose', 'increase verbosity level by one')
     .action(actionRunner(async (options) => {
-      const pk = await initPolyKey()
+      const client = PolykeyAgent.connectToAgent()
+      const nodePath = determineNodePath(options)
+
       const isVerbose: boolean = options.verbose ?? false
       const vaultName: string = options.vaultName
       const secretName: string = options.secretName
       const secretPath: string = options.secretPath
       try {
-        // Check if vault exists
-        if (!(await pk.vaultManager.vaultExists(vaultName))) {
-          throw new Error(`vault '${vaultName}' does not exist!`)
-        }
-        const vault = await pk.vaultManager.getVault(secretName)
-        // Check if secret exists
-        if (await vault.secretExists(secretName)) {
-          throw new Error(`secret '${secretName}' already exists in vault ${vaultName}!`)
-        }
-        // Load up secret
-        const secretBuffer = fs.readFileSync(secretPath)
         // Add the secret
-        await vault.addSecret(secretName, secretBuffer)
-        if (await vault.secretExists(secretName)) {
-          pkLogger(`secret '${secretName}' was sucessfully added to vault '${vaultName}'`, PKMessageType.SUCCESS)
-        } else {
-          throw new Error(`something went wrong, secret '${secretName}' was not added to vault '${vaultName}'`)
-        }
+        const successful = await client.createSecret(nodePath, vaultName, secretName, secretPath)
+        pkLogger(`secret '${secretName}' was ${(successful) ? '' : 'un-'}sucessfully added to vault '${vaultName}'`, PKMessageType.SUCCESS)
       } catch (err) {
         throw new Error(`Error when adding secret: ${err.message}`)
       }
@@ -84,35 +65,53 @@ function makeRemoveSecretCommand() {
     .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
     .option('--verbose', 'increase verbosity level by one')
     .action(actionRunner(async (options) => {
-      const pk = await initPolyKey()
+      const client = PolykeyAgent.connectToAgent()
+      const nodePath = determineNodePath(options)
+
       const isVerbose: boolean = options.verbose ?? false
       const vaultName: string = options.vaultName
       const secretName: string = options.secretName
       try {
-        // Check if vault exists
-        if (!(await pk.vaultManager.vaultExists(vaultName))) {
-          throw new Error(`vault '${vaultName}' does not exist!`)
-        }
-        const vault = await pk.vaultManager.getVault(secretName)
         // Remove secret
-        await vault.removeSecret(secretName)
-        if (!(await vault.secretExists(secretName))) {
-          pkLogger(`secret '${secretName}' was sucessfully removed from vault '${vaultName}'`,  PKMessageType.SUCCESS)
-        } else {
-          throw new Error(`something went wrong, secret '${secretName}' was not removed from vault '${vaultName}'`)
-        }
+        const successful = await client.destroySecret(nodePath, vaultName, secretName)
+        pkLogger(`secret '${secretName}' was ${(successful) ? '' : 'un-'}sucessfully removed from vault '${vaultName}'`, PKMessageType.SUCCESS)
       } catch (err) {
         throw new Error(`Error when removing secret: ${err.message}`)
       }
     }))
 }
 
+function makeGetSecretCommand() {
+  return new commander.Command('get')
+    .description('retrieve a secret from a given vault')
+    .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
+    .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
+    .option('--verbose', 'increase verbosity level by one')
+    .action(actionRunner(async (options) => {
+      const client = PolykeyAgent.connectToAgent()
+      const nodePath = determineNodePath(options)
+
+      const isVerbose: boolean = options.verbose ?? false
+      const vaultName: string = options.vaultName
+      const secretName: string = options.secretName
+      try {
+        // Remove secret
+        const secret = await client.getSecret(nodePath, vaultName, secretName)
+        pkLogger(`secret '${secretName}' from vault '${vaultName}':`, PKMessageType.SUCCESS)
+        pkLogger(secret.toString(), PKMessageType.none)
+      } catch (err) {
+        throw new Error(`Error when retrieving secret: ${err.message}`)
+      }
+    }))
+}
+
 function makeSecretsCommand() {
   return new commander.Command('secrets')
-  .description('manipulate secrets for a given vault')
-  .addCommand(makeListSecretsCommand())
-  .addCommand(makeAddSecretCommand())
-  .addCommand(makeRemoveSecretCommand())
+    .description('manipulate secrets for a given vault')
+    .addCommand(makeListSecretsCommand())
+    .addCommand(makeAddSecretCommand())
+    .addCommand(makeRemoveSecretCommand())
+    .addCommand(makeGetSecretCommand())
 }
 
 export default makeSecretsCommand

@@ -1,44 +1,31 @@
-import fs from 'fs';
-import path from 'path';
-import grpc from 'grpc';
+import * as grpc from '@grpc/grpc-js';
 import { Address } from '../peers/PeerInfo';
 import KeyManager from '../keys/KeyManager';
+import { GitServerClient } from '../../../proto/compiled/Git_grpc_pb';
+import { InfoRequest, PackRequest } from '../../../proto/compiled/Git_pb';
 
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
  */
 class GitClient {
-  private client: any
+  private client: GitServerClient
   private credentials: grpc.ChannelCredentials
 
   constructor(
     address: Address,
     keyManager: KeyManager
   ) {
-    const PROTO_PATH = __dirname + '/../../proto/git_server.proto';
-
-    const protoLoader = require('@grpc/proto-loader');
-    const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-      keepCase: true,
-      longs: String,
-      enums: String,
-      defaults: true,
-      oneofs: true
-    });
-    const git_server_proto = grpc.loadPackageDefinition(packageDefinition);
-
-    const pkiInfo = keyManager.PKIInfo
-    if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
-      this.credentials = grpc.credentials.createSsl(
-        pkiInfo.caCert,
-        pkiInfo.key,
-        pkiInfo.cert,
-      )
-    } else {
+    // const pkiInfo = keyManager.PKIInfo
+    // if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
+    //   this.credentials = grpc.credentials.createSsl(
+    //     pkiInfo.caCert,
+    //     pkiInfo.key,
+    //     pkiInfo.cert,
+    //   )
+    // } else {
       this.credentials = grpc.credentials.createInsecure()
-    }
-
-    this.client = new (git_server_proto.GitServer as any)(address.toString(), this.credentials);
+    // }
+    this.client = new GitServerClient(address.toString(), this.credentials)
   }
 
   /**
@@ -106,14 +93,13 @@ class GitClient {
    */
   private async requestInfo(vaultName: string): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
-      this.client.requestInfo({ vaultName: vaultName }, function (err, response) {
+      const request = new InfoRequest()
+      request.setVaultname(vaultName)
+      this.client.requestInfo(request, function (err, response) {
         if (err) {
-          console.log('err');
-          console.log(err);
-
           reject(err)
         } else {
-          resolve(response.body);
+          resolve(Buffer.from(response.getBody_asB64(), 'base64'));
         }
       });
     })
@@ -123,16 +109,16 @@ class GitClient {
    * Requests a pack from the connected peer for the named vault.
    * @param vaultName Name of the desired vault
    */
-  private async requestPack(vaultName: string, body: Buffer): Promise<Buffer> {
+  private async requestPack(vaultName: string, body: Uint8Array): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
-      this.client.requestPack({ vaultName: vaultName, body: body }, function (err, response) {
+      const request = new PackRequest
+      request.setVaultname(vaultName)
+      request.setBody(body)
+      this.client.requestPack(request, function (err, response) {
         if (err) {
-          console.log('err');
-          console.log(err);
-
           reject(err)
         } else {
-          resolve(response.body);
+          resolve(Buffer.from(response.getBody_asB64(), 'base64'));
         }
       });
     })
@@ -142,7 +128,7 @@ class GitClient {
    * Converts a buffer into an iterator expected by isomorphic git.
    * @param data Data to be turned into an iterator
    */
-  private iteratorFromData(data: Buffer) {
+  private iteratorFromData(data: Uint8Array) {
     let ended = false
     return {
       next(): Promise<any> {
