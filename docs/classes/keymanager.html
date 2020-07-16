@@ -90,6 +90,7 @@
 							<h3>Accessors</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-get-signature tsd-parent-kind-class"><a href="keymanager.html#pkiinfo" class="tsd-kind-icon">PKIInfo</a></li>
+								<li class="tsd-kind-get-signature tsd-parent-kind-class"><a href="keymanager.html#identityloaded" class="tsd-kind-icon">identity<wbr>Loaded</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
@@ -114,13 +115,13 @@
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#haspublickey" class="tsd-kind-icon">has<wbr>Public<wbr>Key</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#importkey" class="tsd-kind-icon">import<wbr>Key</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#importkeysync" class="tsd-kind-icon">import<wbr>Key<wbr>Sync</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#loadidentity" class="tsd-kind-icon">load<wbr>Identity</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#loadkeypair" class="tsd-kind-icon">load<wbr>Key<wbr>Pair</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#loadpkiinfo" class="tsd-kind-icon">loadPKIInfo</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#loadprivatekey" class="tsd-kind-icon">load<wbr>Private<wbr>Key</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#loadpublickey" class="tsd-kind-icon">load<wbr>Public<wbr>Key</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#signdata" class="tsd-kind-icon">sign<wbr>Data</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#signfile" class="tsd-kind-icon">sign<wbr>File</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#unlockidentity" class="tsd-kind-icon">unlock<wbr>Identity</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#verifydata" class="tsd-kind-icon">verify<wbr>Data</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="keymanager.html#verifyfile" class="tsd-kind-icon">verify<wbr>File</a></li>
 							</ul>
@@ -140,13 +141,13 @@
 					<a name="constructor" class="tsd-anchor"></a>
 					<h3>constructor</h3>
 					<ul class="tsd-signatures tsd-kind-constructor tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">new <wbr>Key<wbr>Manager<span class="tsd-signature-symbol">(</span>polyKeyPath<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span>, fileSystem<span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">typeof </span><span class="tsd-signature-type">fs</span>, passphrase<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span>, useWebWorkers<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span>, workerPool<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">Pool</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">ModuleThread</span><span class="tsd-signature-symbol">&lt;</span><a href="../globals.html#keymanagerworker" class="tsd-signature-type">KeyManagerWorker</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keymanager.html" class="tsd-signature-type">KeyManager</a></li>
+						<li class="tsd-signature tsd-kind-icon">new <wbr>Key<wbr>Manager<span class="tsd-signature-symbol">(</span>polyKeyPath<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span>, fileSystem<span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">typeof </span><span class="tsd-signature-type">fs</span>, useWebWorkers<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">boolean</span>, workerPool<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">Pool</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">ModuleThread</span><span class="tsd-signature-symbol">&lt;</span><a href="../globals.html#keymanagerworker" class="tsd-signature-type">KeyManagerWorker</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keymanager.html" class="tsd-signature-type">KeyManager</a></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -156,9 +157,6 @@
 								</li>
 								<li>
 									<h5>fileSystem: <span class="tsd-signature-symbol">typeof </span><span class="tsd-signature-type">fs</span></h5>
-								</li>
-								<li>
-									<h5><span class="tsd-flag ts-flagOptional">Optional</span> passphrase: <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></h5>
 								</li>
 								<li>
 									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> useWebWorkers: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></h5>
@@ -180,7 +178,7 @@
 					<div class="tsd-signature tsd-kind-icon">polykey<wbr>Path<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L33">src/lib/keys/KeyManager.ts:33</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L32">src/lib/keys/KeyManager.ts:32</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -197,10 +195,27 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L581">src/lib/keys/KeyManager.ts:581</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L590">src/lib/keys/KeyManager.ts:590</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-returns-title">Returns <a href="../globals.html#pkinfo" class="tsd-signature-type">PKInfo</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-get-signature tsd-parent-kind-class">
+					<a name="identityloaded" class="tsd-anchor"></a>
+					<h3>identity<wbr>Loaded</h3>
+					<ul class="tsd-signatures tsd-kind-get-signature tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">get</span> identityLoaded<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L95">src/lib/keys/KeyManager.ts:95</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -217,7 +232,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L546">src/lib/keys/KeyManager.ts:546</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L555">src/lib/keys/KeyManager.ts:555</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -260,7 +275,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L515">src/lib/keys/KeyManager.ts:515</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L524">src/lib/keys/KeyManager.ts:524</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -291,13 +306,13 @@
 					<a name="exportkey" class="tsd-anchor"></a>
 					<h3>export<wbr>Key</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">export<wbr>Key<span class="tsd-signature-symbol">(</span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, createPath<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">export<wbr>Key<span class="tsd-signature-symbol">(</span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, dest<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, createPath<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L342">src/lib/keys/KeyManager.ts:342</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L351">src/lib/keys/KeyManager.ts:351</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -314,7 +329,7 @@
 									</div>
 								</li>
 								<li>
-									<h5>path: <span class="tsd-signature-type">string</span></h5>
+									<h5>dest: <span class="tsd-signature-type">string</span></h5>
 									<div class="tsd-comment tsd-typography">
 										<p>Destination path</p>
 									</div>
@@ -334,13 +349,13 @@
 					<a name="exportkeysync" class="tsd-anchor"></a>
 					<h3>export<wbr>Key<wbr>Sync</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">export<wbr>Key<wbr>Sync<span class="tsd-signature-symbol">(</span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, createPath<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+						<li class="tsd-signature tsd-kind-icon">export<wbr>Key<wbr>Sync<span class="tsd-signature-symbol">(</span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, dest<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, createPath<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L326">src/lib/keys/KeyManager.ts:326</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L335">src/lib/keys/KeyManager.ts:335</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -357,7 +372,7 @@
 									</div>
 								</li>
 								<li>
-									<h5>path: <span class="tsd-signature-type">string</span></h5>
+									<h5>dest: <span class="tsd-signature-type">string</span></h5>
 									<div class="tsd-comment tsd-typography">
 										<p>Destination path</p>
 									</div>
@@ -377,13 +392,13 @@
 					<a name="exportprivatekey" class="tsd-anchor"></a>
 					<h3>export<wbr>Private<wbr>Key</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">export<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">export<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L254">src/lib/keys/KeyManager.ts:254</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L263">src/lib/keys/KeyManager.ts:263</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -400,7 +415,7 @@
 									</div>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -408,13 +423,13 @@
 					<a name="exportpublickey" class="tsd-anchor"></a>
 					<h3>export<wbr>Public<wbr>Key</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">export<wbr>Public<wbr>Key<span class="tsd-signature-symbol">(</span>path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">export<wbr>Public<wbr>Key<span class="tsd-signature-symbol">(</span>path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L264">src/lib/keys/KeyManager.ts:264</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L273">src/lib/keys/KeyManager.ts:273</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -431,7 +446,7 @@
 									</div>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -445,7 +460,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L287">src/lib/keys/KeyManager.ts:287</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L296">src/lib/keys/KeyManager.ts:296</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -482,7 +497,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L106">src/lib/keys/KeyManager.ts:106</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L108">src/lib/keys/KeyManager.ts:108</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -543,7 +558,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L275">src/lib/keys/KeyManager.ts:275</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L284">src/lib/keys/KeyManager.ts:284</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -580,7 +595,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L365">src/lib/keys/KeyManager.ts:365</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L374">src/lib/keys/KeyManager.ts:374</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -611,7 +626,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L356">src/lib/keys/KeyManager.ts:356</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L365">src/lib/keys/KeyManager.ts:365</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -642,7 +657,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L624">src/lib/keys/KeyManager.ts:624</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L633">src/lib/keys/KeyManager.ts:633</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -673,7 +688,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L156">src/lib/keys/KeyManager.ts:156</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L167">src/lib/keys/KeyManager.ts:167</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -695,7 +710,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L180">src/lib/keys/KeyManager.ts:180</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L191">src/lib/keys/KeyManager.ts:191</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -717,7 +732,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L170">src/lib/keys/KeyManager.ts:170</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L181">src/lib/keys/KeyManager.ts:181</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -739,7 +754,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L632">src/lib/keys/KeyManager.ts:632</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L641">src/lib/keys/KeyManager.ts:641</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -770,7 +785,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L163">src/lib/keys/KeyManager.ts:163</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L174">src/lib/keys/KeyManager.ts:174</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -792,7 +807,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L312">src/lib/keys/KeyManager.ts:312</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L321">src/lib/keys/KeyManager.ts:321</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -829,7 +844,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L299">src/lib/keys/KeyManager.ts:299</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L308">src/lib/keys/KeyManager.ts:308</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -857,47 +872,16 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
-					<a name="loadidentity" class="tsd-anchor"></a>
-					<h3>load<wbr>Identity</h3>
-					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">load<wbr>Identity<span class="tsd-signature-symbol">(</span>passphrase<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L235">src/lib/keys/KeyManager.ts:235</a></li>
-								</ul>
-							</aside>
-							<div class="tsd-comment tsd-typography">
-								<div class="lead">
-									<p>Loads the primary identity into the key manager from the existing keypair</p>
-								</div>
-							</div>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>passphrase: <span class="tsd-signature-type">string</span></h5>
-									<div class="tsd-comment tsd-typography">
-										<p>Passphrase to unlock the private key</p>
-									</div>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="loadkeypair" class="tsd-anchor"></a>
 					<h3>load<wbr>Key<wbr>Pair</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">load<wbr>Key<wbr>Pair<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span>, privateKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span>, passphrase<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">load<wbr>Key<wbr>Pair<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span>, privateKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L193">src/lib/keys/KeyManager.ts:193</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L203">src/lib/keys/KeyManager.ts:203</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -919,14 +903,8 @@
 										<p>Private Key</p>
 									</div>
 								</li>
-								<li>
-									<h5>passphrase: <span class="tsd-signature-type">string</span></h5>
-									<div class="tsd-comment tsd-typography">
-										<p>Passphrase to unlock the private key</p>
-									</div>
-								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -940,7 +918,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L585">src/lib/keys/KeyManager.ts:585</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L594">src/lib/keys/KeyManager.ts:594</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -966,13 +944,13 @@
 					<a name="loadprivatekey" class="tsd-anchor"></a>
 					<h3>load<wbr>Private<wbr>Key</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">load<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">load<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L203">src/lib/keys/KeyManager.ts:203</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L212">src/lib/keys/KeyManager.ts:212</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -989,7 +967,7 @@
 									</div>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -997,13 +975,13 @@
 					<a name="loadpublickey" class="tsd-anchor"></a>
 					<h3>load<wbr>Public<wbr>Key</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">load<wbr>Public<wbr>Key<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">load<wbr>Public<wbr>Key<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L219">src/lib/keys/KeyManager.ts:219</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L228">src/lib/keys/KeyManager.ts:228</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -1020,7 +998,7 @@
 									</div>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -1034,7 +1012,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L379">src/lib/keys/KeyManager.ts:379</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L388">src/lib/keys/KeyManager.ts:388</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -1077,7 +1055,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L414">src/lib/keys/KeyManager.ts:414</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L423">src/lib/keys/KeyManager.ts:423</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -1111,6 +1089,37 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="unlockidentity" class="tsd-anchor"></a>
+					<h3>unlock<wbr>Identity</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">unlock<wbr>Identity<span class="tsd-signature-symbol">(</span>passphrase<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L244">src/lib/keys/KeyManager.ts:244</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Loads the primary identity into the key manager from the existing keypair</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>passphrase: <span class="tsd-signature-type">string</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>Passphrase to unlock the private key</p>
+									</div>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="verifydata" class="tsd-anchor"></a>
 					<h3>verify<wbr>Data</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -1120,7 +1129,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L441">src/lib/keys/KeyManager.ts:441</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L450">src/lib/keys/KeyManager.ts:450</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -1163,7 +1172,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L492">src/lib/keys/KeyManager.ts:492</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L501">src/lib/keys/KeyManager.ts:501</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -1205,7 +1214,7 @@
 					<div class="tsd-signature tsd-kind-icon">pki<wbr>Info<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
@@ -1214,7 +1223,7 @@
 						<div class="tsd-signature tsd-kind-icon">ca<wbr>Cert<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> = null</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
+								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
 							</ul>
 						</aside>
 					</section>
@@ -1224,7 +1233,7 @@
 						<div class="tsd-signature tsd-kind-icon">cert<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> = null</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
+								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
 							</ul>
 						</aside>
 					</section>
@@ -1234,7 +1243,7 @@
 						<div class="tsd-signature tsd-kind-icon">key<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> = null</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/335fdbf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
+								<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/47099bf/src/lib/keys/KeyManager.ts#L48">src/lib/keys/KeyManager.ts:48</a></li>
 							</ul>
 						</aside>
 					</section>
@@ -1251,9 +1260,6 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
-					<li class=" tsd-kind-class">
-						<a href="address.html" class="tsd-kind-icon">Address</a>
-					</li>
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-class">
@@ -1267,6 +1273,9 @@
 							</li>
 							<li class=" tsd-kind-get-signature tsd-parent-kind-class">
 								<a href="keymanager.html#pkiinfo" class="tsd-kind-icon">PKIInfo</a>
+							</li>
+							<li class=" tsd-kind-get-signature tsd-parent-kind-class">
+								<a href="keymanager.html#identityloaded" class="tsd-kind-icon">identity<wbr>Loaded</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="keymanager.html#decryptdata" class="tsd-kind-icon">decrypt<wbr>Data</a>
@@ -1326,9 +1335,6 @@
 								<a href="keymanager.html#importkeysync" class="tsd-kind-icon">import<wbr>Key<wbr>Sync</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
-								<a href="keymanager.html#loadidentity" class="tsd-kind-icon">load<wbr>Identity</a>
-							</li>
-							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="keymanager.html#loadkeypair" class="tsd-kind-icon">load<wbr>Key<wbr>Pair</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
@@ -1347,6 +1353,9 @@
 								<a href="keymanager.html#signfile" class="tsd-kind-icon">sign<wbr>File</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="keymanager.html#unlockidentity" class="tsd-kind-icon">unlock<wbr>Identity</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="keymanager.html#verifydata" class="tsd-kind-icon">verify<wbr>Data</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
@@ -1359,78 +1368,6 @@
 					</li>
 				</ul>
 				<ul class="after-current">
-					<li class=" tsd-kind-class">
-						<a href="multicastbroadcaster.html" class="tsd-kind-icon">Multicast<wbr>Broadcaster</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="peerinfo.html" class="tsd-kind-icon">Peer<wbr>Info</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="peermanager.html" class="tsd-kind-icon">Peer<wbr>Manager</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="polykey.html" class="tsd-kind-icon">Polykey</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="publickeyinfrastructure.html" class="tsd-kind-icon">Public<wbr>Key<wbr>Infrastructure</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="rpcmessage.html" class="tsd-kind-icon">RPCMessage</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="vault.html" class="tsd-kind-icon">Vault</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="vaultmanager.html" class="tsd-kind-icon">Vault<wbr>Manager</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="../interfaces/socialdiscovery.html" class="tsd-kind-icon">Social<wbr>Discovery</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#handshakemessage" class="tsd-kind-icon">Handshake<wbr>Message</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#keymanagermetadata" class="tsd-kind-icon">Key<wbr>Manager<wbr>Metadata</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#keymanagerworker" class="tsd-kind-icon">Key<wbr>Manager<wbr>Worker</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#keypair" class="tsd-kind-icon">Key<wbr>Pair</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#pkinfo" class="tsd-kind-icon">PKInfo</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#peermanagermetadata" class="tsd-kind-icon">Peer<wbr>Manager<wbr>Metadata</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#peermessage" class="tsd-kind-icon">Peer<wbr>Message</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="../globals.html#vaultmetadata" class="tsd-kind-icon">Vault<wbr>Metadata</a>
-					</li>
-					<li class=" tsd-kind-variable">
-						<a href="../globals.html#udp_multicast_addr" class="tsd-kind-icon">UDP_<wbr>MULTICAST_<wbr>ADDR</a>
-					</li>
-					<li class=" tsd-kind-variable">
-						<a href="../globals.html#udp_multicast_port" class="tsd-kind-icon">UDP_<wbr>MULTICAST_<wbr>PORT</a>
-					</li>
-					<li class=" tsd-kind-function tsd-has-type-parameter">
-						<a href="../globals.html#firstpromisefulfilled" class="tsd-kind-icon">first<wbr>Promise<wbr>Fulfilled</a>
-					</li>
-					<li class=" tsd-kind-function tsd-has-type-parameter">
-						<a href="../globals.html#invertpromise" class="tsd-kind-icon">invert<wbr>Promise</a>
-					</li>
-					<li class=" tsd-kind-function">
-						<a href="../globals.html#randomstring" class="tsd-kind-icon">random<wbr>String</a>
-					</li>
-					<li class=" tsd-kind-object-literal">
-						<a href="../globals.html#keymanagerworker" class="tsd-kind-icon">key<wbr>Manager<wbr>Worker</a>
-					</li>
-					<li class=" tsd-kind-object-literal">
-						<a href="../globals.html#keybasediscovery" class="tsd-kind-icon">keybase<wbr>Discovery</a>
-					</li>
 				</ul>
 			</nav>
 		</div>

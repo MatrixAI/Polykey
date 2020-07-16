@@ -1,9 +1,0 @@
-package handshakepackage;
-syntax = "proto3";
-
-message HandshakeMessage {
-  bytes target_pub_key = 1;
-  bytes requesting_pub_key = 2;
-  bytes message = 3;
-  bytes response_peer_info = 4;
-}
