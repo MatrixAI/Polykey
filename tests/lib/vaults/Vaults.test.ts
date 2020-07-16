@@ -1,13 +1,12 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import Polykey from "../src/lib/Polykey";
-import { randomString } from '../src/lib/utils';
-import KeyManager from '../src/lib/keys/KeyManager';
-import VaultManager from '../src/lib/vaults/VaultManager';
-import PublicKeyInfrastructure from '../src/lib/keys/pki/PublicKeyInfrastructure';
+import Polykey from "../../../src/lib/Polykey";
+import { randomString } from '../../../src/lib/utils';
+import KeyManager from '../../../src/lib/keys/KeyManager';
+import VaultManager from '../../../src/lib/vaults/VaultManager';
 
-describe('vaults', () => {
+describe('VaultManager class', () => {
   let randomVaultName: string
 
   let tempDir: string
@@ -25,8 +24,9 @@ describe('vaults', () => {
     await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', 1024, true)
 
     // Load pki info
-    const peer1Path = path.join(__dirname, '..', 'tmp', 'secrets', 'peer1')
-    const caPath = path.join(__dirname, '..', 'tmp', 'secrets', 'CA')
+    const cwd = process.cwd()
+    const peer1Path = path.join(cwd, 'tmp', 'secrets', 'peer1')
+    const caPath = path.join(cwd, 'tmp', 'secrets', 'CA')
     km.loadPKIInfo(
       fs.readFileSync(path.join(peer1Path, 'server.key')),
       fs.readFileSync(path.join(peer1Path, 'server.crt')),
@@ -117,8 +117,9 @@ describe('vaults', () => {
       await km2.generateKeyPair('Jane Doe', 'jane.doe@email.com', 'passphrase', 1024, true)
 
       // Load pki info
-      const peer2Path = path.join(__dirname, '..', 'tmp', 'secrets', 'peer2')
-      const caPath = path.join(__dirname, '..', 'tmp', 'secrets', 'CA')
+      const cwd = process.cwd()
+      const peer2Path = path.join(cwd, 'tmp', 'secrets', 'peer2')
+      const caPath = path.join(cwd, 'tmp', 'secrets', 'CA')
       km2.loadPKIInfo(
         fs.readFileSync(path.join(peer2Path, 'server.key')),
         fs.readFileSync(path.join(peer2Path, 'server.crt')),
@@ -158,9 +159,6 @@ describe('vaults', () => {
       await clonedVault.pullVault(gitClient)
 
       const peerPkSecret = clonedVault.getSecret(initialSecretName).toString()
-      console.log(pkSecret);
-      console.log(peerPkSecret);
-
 
       expect(peerPkSecret).toStrictEqual(pkSecret)
       expect(peerPkSecret).toStrictEqual(initialSecret)

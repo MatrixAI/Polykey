@@ -1,8 +1,8 @@
 import fs from 'fs'
 import os from 'os'
-import Polykey from "../../src/lib/Polykey"
-import { randomString } from '../../src/lib/utils'
-import KeyManager from '../../src/lib/keys/KeyManager'
+import Polykey from "../../../src/lib/Polykey"
+import { randomString } from '../../../src/lib/utils'
+import KeyManager from '../../../src/lib/keys/KeyManager'
 
 // TODO expand tests as part of testing PR
 describe('PeerManager class', () => {
@@ -27,6 +27,11 @@ describe('PeerManager class', () => {
       fs,
       keyManagerA
     )
+    while (!peerA.peerManager.serverStarted) {
+      await new Promise((resolve, reject) => {
+        setTimeout(() => resolve(), 500)
+      })
+    }
 
     // ======== PEER A ======== //
 		// Define temp directory
@@ -42,6 +47,12 @@ describe('PeerManager class', () => {
       fs,
       keyManagerB
     )
+    while (!peerB.peerManager.serverStarted) {
+      await new Promise((resolve, reject) => {
+        setTimeout(() => resolve(), 500)
+      })
+    }
+
 	})
 
 	afterAll(() => {
