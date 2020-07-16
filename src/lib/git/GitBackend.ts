@@ -32,11 +32,15 @@ class GitBackend {
    * @param publicKey Public key of peer trying to access vault
    */
   private exists(vaultName: string, publicKey: string) {
-    const vault = this.vaultManager.getVault(vaultName)
-    if (vault) {
-      return vault.peerCanAccess(publicKey)
+    try {
+      const vault = this.vaultManager.getVault(vaultName)
+      if (vault) {
+        return vault.peerCanAccess(publicKey)
+      }
+      return false
+    } catch (error) {
+      return false
     }
-    return false
   }
 
   async handleInfoRequest(vaultName: string): Promise<Buffer> {

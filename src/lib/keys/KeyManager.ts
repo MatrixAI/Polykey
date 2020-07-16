@@ -1,6 +1,6 @@
 import os from 'os';
 import fs from 'fs';
-import Path from 'path';
+import path from 'path';
 import kbpgp from 'kbpgp';
 import crypto from 'crypto';
 import { promisify } from 'util';
@@ -32,6 +32,7 @@ class KeyManager {
   polykeyPath: string
   private fileSystem: typeof fs
 
+  private keypairPath: string
   private metadataPath: string
   private metadata: KeyManagerMetadata = {
     privateKeyPath: null,
@@ -49,7 +50,6 @@ class KeyManager {
   constructor(
     polyKeyPath: string = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
-    passphrase?: string,
     useWebWorkers: boolean = false,
     workerPool?: Pool<ModuleThread<KeyManagerWorker>>
   ) {
@@ -60,21 +60,20 @@ class KeyManager {
 
     // Load key manager metadata
     this.polykeyPath = polyKeyPath
-    const keypairPath = Path.join(polyKeyPath, '.keypair')
-    if (!this.fileSystem.existsSync(keypairPath)) {
-      this.fileSystem.mkdirSync(keypairPath)
+    this.keypairPath = path.join(polyKeyPath, '.keypair')
+    if (!this.fileSystem.existsSync(this.keypairPath)) {
+      this.fileSystem.mkdirSync(this.keypairPath, { recursive: true })
     }
-    this.metadataPath = Path.join(keypairPath, 'metadata')
+    this.metadataPath = path.join(this.keypairPath, 'metadata')
     this.loadMetadata()
 
     // Load keys if they were provided
-    if (this.metadata.privateKeyPath && this.metadata.publicKeyPath && passphrase) {
+    if (this.metadata.privateKeyPath && this.metadata.publicKeyPath) {
       // Load files into memory
-      const publicKey = this.fileSystem.readFileSync(this.metadata.publicKeyPath)
-      const privateKey = this.fileSystem.readFileSync(this.metadata.privateKeyPath)
-
-      // Load private and public keys
-      this.loadKeyPair(publicKey, privateKey, passphrase)
+      this.loadKeyPair(
+        this.metadata.publicKeyPath,
+        this.metadata.privateKeyPath
+      )
     }
 
     /////////
@@ -91,6 +90,10 @@ class KeyManager {
       this.pkiInfo.caCert = fs.readFileSync(this.metadata.caCertPath)
     }
     this.loadPKIInfo(this.pkiInfo.key, this.pkiInfo.cert, this.pkiInfo.caCert, true)
+  }
+
+  public get identityLoaded(): boolean {
+    return (this.primaryIdentity) ? true : false
   }
 
   /**
@@ -144,6 +147,15 @@ class KeyManager {
       this.primaryKeyPair = keypair
       // Set the new identity
       this.primaryIdentity = identity
+      // Overwrite in memory
+      const privateKeyPath = path.join(this.keypairPath, 'private_key')
+      const publicKeyPath = path.join(this.keypairPath, 'public_key')
+      await this.fileSystem.promises.writeFile(privateKeyPath, keypair.private)
+      await this.fileSystem.promises.writeFile(publicKeyPath, keypair.public)
+      // Set metadata
+      this.metadata.privateKeyPath = privateKeyPath
+      this.metadata.publicKeyPath = publicKeyPath
+      this.writeMetadata()
     }
 
     return keypair
@@ -187,22 +199,20 @@ class KeyManager {
    * Loads the keypair into the key manager as the primary identity
    * @param publicKey Public Key
    * @param privateKey Private Key
-   * @param passphrase Passphrase to unlock the private key
    */
-  async loadKeyPair(publicKey: string | Buffer, privateKey: string | Buffer, passphrase: string): Promise<void> {
-    await this.loadPrivateKey(privateKey)
-    await this.loadPublicKey(publicKey)
-    await this.loadIdentity(passphrase)
+  loadKeyPair(publicKey: string | Buffer, privateKey: string | Buffer): void {
+    this.loadPrivateKey(privateKey)
+    this.loadPublicKey(publicKey)
   }
 
   /**
    * Loads the private key into the primary keypair
    * @param privateKey Private Key
    */
-  async loadPrivateKey(privateKey: string | Buffer): Promise<void> {
+  loadPrivateKey(privateKey: string | Buffer): void {
     let keyBuffer: Buffer
     if (typeof privateKey === 'string') {
-      keyBuffer = Buffer.from(await this.fileSystem.promises.readFile(privateKey))
+      keyBuffer = this.fileSystem.readFileSync(privateKey)
       this.metadata.privateKeyPath = privateKey
       this.writeMetadata()
     } else {
@@ -215,10 +225,10 @@ class KeyManager {
    * Loads the public key into the primary keypair
    * @param publicKey Public Key
    */
-  async loadPublicKey(publicKey: string | Buffer): Promise<void> {
+  loadPublicKey(publicKey: string | Buffer): void {
     let keyBuffer: Buffer
     if (typeof publicKey === 'string') {
-      keyBuffer = Buffer.from(await this.fileSystem.promises.readFile(publicKey))
+      keyBuffer = this.fileSystem.readFileSync(publicKey)
       this.metadata.publicKeyPath = publicKey
       this.writeMetadata()
     } else {
@@ -231,7 +241,7 @@ class KeyManager {
    * Loads the primary identity into the key manager from the existing keypair
    * @param passphrase Passphrase to unlock the private key
    */
-  async loadIdentity(passphrase: string): Promise<void> {
+  async unlockIdentity(passphrase: string): Promise<void> {
     const publicKey: string = this.getPublicKey()
     const privateKey: string = this.getPrivateKey()
 
@@ -250,8 +260,8 @@ class KeyManager {
    * Export the primary private key to a specified location
    * @param path Destination path
    */
-  async exportPrivateKey(path: string): Promise<void> {
-    await this.fileSystem.promises.writeFile(path, this.primaryKeyPair.private)
+  exportPrivateKey(path: string): void {
+    this.fileSystem.writeFileSync(path, this.primaryKeyPair.private)
     this.metadata.privateKeyPath = path
     this.writeMetadata()
   }
@@ -260,8 +270,8 @@ class KeyManager {
    * Export the primary public key to a specified location
    * @param path Destination path
    */
-  async exportPublicKey(path: string): Promise<void> {
-    await this.fileSystem.promises.writeFile(path, this.primaryKeyPair.public)
+  exportPublicKey(path: string): void {
+    this.fileSystem.writeFileSync(path, this.primaryKeyPair.public)
     this.metadata.publicKeyPath = path
     this.writeMetadata()
   }
@@ -319,33 +329,33 @@ class KeyManager {
   /**
    * Synchronously exports an existing key from file or Buffer
    * @param name Name of the key to be exported
-   * @param path Destination path
+   * @param dest Destination path
    * @param createPath If set to true, the path is recursively created
    */
-  exportKeySync(name: string, path: string, createPath?: boolean): void {
+  exportKeySync(name: string, dest: string, createPath?: boolean): void {
     if (!this.derivedKeys.has(name)) {
       throw Error(`There is no key loaded for name: ${name}`)
     }
     if (createPath) {
-      this.fileSystem.mkdirSync(Path.dirname(path), { recursive: true })
+      this.fileSystem.mkdirSync(path.dirname(dest), { recursive: true })
     }
-    this.fileSystem.writeFileSync(path, this.derivedKeys[name])
+    this.fileSystem.writeFileSync(dest, this.derivedKeys[name])
   }
 
   /**
    * Asynchronously exports an existing key from file or Buffer
    * @param name Name of the key to be exported
-   * @param path Destination path
+   * @param dest Destination path
    * @param createPath If set to true, the path is recursively created
    */
-  async exportKey(name: string, path: string, createPath?: boolean): Promise<void> {
+  async exportKey(name: string, dest: string, createPath?: boolean): Promise<void> {
     if (!this.derivedKeys.has(name)) {
       throw Error(`There is no key loaded for name: ${name}`)
     }
     if (createPath) {
-      await this.fileSystem.promises.mkdir(Path.dirname(path), { recursive: true })
+      await this.fileSystem.promises.mkdir(path.dirname(dest), { recursive: true })
     }
-    await this.fileSystem.promises.writeFile(path, this.derivedKeys[name])
+    await this.fileSystem.promises.writeFile(dest, this.derivedKeys[name])
   }
 
   /**
@@ -385,7 +395,7 @@ class KeyManager {
     } else if (this.primaryIdentity) {
       resolvedIdentity = this.primaryIdentity
     } else {
-      throw new Error('no identity available for signing')
+      throw new Error('key pair is not loaded')
     }
 
     if (this.useWebWorkers && this.workerPool) {
@@ -416,13 +426,13 @@ class KeyManager {
     if (privateKey) {
       if (typeof privateKey === 'string') {  // Path
         // Read in from fs
-        keyBuffer = Buffer.from(this.fileSystem.readFileSync(privateKey))
+        keyBuffer = this.fileSystem.readFileSync(privateKey)
       } else {  // Buffer
         keyBuffer = privateKey
       }
     }
     // Read file into buffer
-    const buffer = Buffer.from(this.fileSystem.readFileSync(filePath))
+    const buffer = this.fileSystem.readFileSync(filePath)
     // Sign the buffer
     const signedBuffer = await this.signData(buffer, keyBuffer!, keyPassphrase)
     // Write buffer to signed file
@@ -445,7 +455,7 @@ class KeyManager {
     } else if (this.primaryIdentity) {
       resolvedIdentity = this.primaryIdentity
     } else {
-      throw new Error('no identity available for verifying')
+      throw new Error('key pair is not loaded')
     }
     ring.add_key_manager(resolvedIdentity)
 
@@ -554,7 +564,7 @@ class KeyManager {
     } else if (this.primaryIdentity) {
       resolvedIdentity = this.primaryIdentity
     } else {
-      throw (Error('no identity available for signing'))
+      throw Error('no identity available for decrypting')
     }
 
     if (this.useWebWorkers && this.workerPool) {
@@ -596,20 +606,20 @@ class KeyManager {
 
     if (writeToFile) {
       // Store in the metadata path folder
-      const storagePath = Path.dirname(this.metadataPath)
+      const storagePath = path.dirname(this.metadataPath)
 
       if (key) {
-        this.metadata.pkiKeyPath = Path.join(storagePath, 'pki_private_key')
+        this.metadata.pkiKeyPath = path.join(storagePath, 'pki_private_key')
         fs.writeFileSync(this.metadata.pkiKeyPath, key)
       }
 
       if (cert) {
-        this.metadata.pkiCertPath = Path.join(storagePath, 'pki_cert')
+        this.metadata.pkiCertPath = path.join(storagePath, 'pki_cert')
         fs.writeFileSync(this.metadata.pkiCertPath, cert)
       }
 
       if (caCert) {
-        this.metadata.caCertPath = Path.join(storagePath, 'ca_cert')
+        this.metadata.caCertPath = path.join(storagePath, 'ca_cert')
         fs.writeFileSync(this.metadata.caCertPath, caCert)
       }
     }

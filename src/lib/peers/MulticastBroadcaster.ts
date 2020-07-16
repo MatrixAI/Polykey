@@ -2,8 +2,9 @@ import dgram from 'dgram'
 import crypto from 'crypto'
 import PeerInfo from './PeerInfo'
 import { EventEmitter } from 'events'
-import RPCMessage from '../rpc/RPCMessage'
 import KeyManager from '../keys/KeyManager'
+import { peer } from '../../../proto/js/Peer.js';
+const { HandshakeMessage, PeerInfoMessage } = peer
 
 // This module is based heavily on libp2p's mDNS module:
 // https://github.com/libp2p/js-libp2p-mdns
@@ -95,15 +96,13 @@ class MulticastBroadcaster extends EventEmitter {
       for (const pubKey of this.peerPubKeyMessages.keys()) {
         const peerMessage = this.peerPubKeyMessages.get(pubKey)
         if (peerMessage) {
-          const handshakeMessage = RPCMessage.encodeHandshakeMessage(
-            peerMessage.encryptedPeerPubKey,
-            peerMessage.encryptedLocalPubKey,
-            peerMessage.encryptedRandomMessage
-          )
+          const handshakeMessage = HandshakeMessage.encode({
+            targetPubKey: peerMessage.encryptedPeerPubKey,
+            requestingPubKey: peerMessage.encryptedLocalPubKey,
+            message: peerMessage.encryptedRandomMessage
+          }).finish()
 
-          this.socket.send(handshakeMessage, 0, handshakeMessage.length, UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR, () => {
-            console.info(`Sending message to peer`);
-          });
+          this.socket.send(handshakeMessage, 0, handshakeMessage.length, UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
         }
 
       }
@@ -114,15 +113,14 @@ class MulticastBroadcaster extends EventEmitter {
     return setInterval(query, this.interval)
   }
 
-  private async handleHandshakeMessages(message: any, rinfo: any) {
+  private async handleHandshakeMessages(request: any, rinfo: any) {
     try {
-      const decodedMessage = RPCMessage.decodeHandshakeMessage(message)
-      console.info(`Message from: ${rinfo.address}:${rinfo.port}`);
+      const { message, requestingPubKey, responsePeerInfo, targetPubKey } = HandshakeMessage.decode(request)
 
       // Try to decrypt message and pubKey
-      const decryptedMessage = await this.keyManager.decryptData(decodedMessage.message)
-      const decryptedTargetPubKey = await this.keyManager.decryptData(decodedMessage.targetPubKey)
-      const decryptedRequestingPubKey = await this.keyManager.decryptData(decodedMessage.requestingPubKey)
+      const decryptedMessage = await this.keyManager.decryptData(Buffer.from(message))
+      const decryptedTargetPubKey = await this.keyManager.decryptData(Buffer.from(targetPubKey))
+      const decryptedRequestingPubKey = await this.keyManager.decryptData(Buffer.from(requestingPubKey))
 
       const myPubKey = this.keyManager.getPublicKey()
 
@@ -132,7 +130,8 @@ class MulticastBroadcaster extends EventEmitter {
 
         if (decryptedMessage.toString() == originalMessage?.toString()) {  // Validated!
           // Add peer info to peerStore
-          const newPeerInfo = decodedMessage.responsePeerInfo
+          const { addresses, connectedAddr, pubKey } = PeerInfoMessage.decode(responsePeerInfo)
+          const newPeerInfo = new PeerInfo(pubKey, addresses, connectedAddr)
           if (newPeerInfo) {
             this.addPeer(newPeerInfo)
             // Remove peerId from requested messages
@@ -151,12 +150,17 @@ class MulticastBroadcaster extends EventEmitter {
         const encryptedTargetPubKey = await this.keyManager.encryptData(Buffer.from(myPubKey), decryptedRequestingPubKey)
         const encryptedMessage = await this.keyManager.encryptData(decryptedMessage, decryptedRequestingPubKey)
         const encryptedPubKey = await this.keyManager.encryptData(decryptedRequestingPubKey, decryptedRequestingPubKey)
-        const handshakeMessage = RPCMessage.encodeHandshakeMessage(
-          Buffer.from(encryptedTargetPubKey),
-          Buffer.from(encryptedPubKey),
-          Buffer.from(encryptedMessage),
-          this.localPeerInfo
-        )
+        const encodedLocalPeerInfo = PeerInfoMessage.encode({
+          addresses:this.localPeerInfo.AdressStringList,
+          connectedAddr: this.localPeerInfo.connectedAddr?.toString(),
+          pubKey: this.localPeerInfo.publicKey
+        }).finish()
+        const handshakeMessage = HandshakeMessage.encode({
+          targetPubKey: Buffer.from(encryptedTargetPubKey),
+          requestingPubKey: Buffer.from(encryptedPubKey),
+          message: Buffer.from(encryptedMessage),
+          responsePeerInfo: encodedLocalPeerInfo
+        }).finish()
         this.socket.send(handshakeMessage, 0, handshakeMessage.length, <number>UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
       }
     } catch (err) { // Couldn't decode message

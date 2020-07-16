@@ -3,6 +3,8 @@ import fs from 'fs';
 import KeyManager from './keys/KeyManager';
 import PeerManager from './peers/PeerManager';
 import VaultManager from './vaults/VaultManager';
+import PolykeyAgent from './agent/PolykeyAgent';
+import PolykeyClient from './agent/PolykeyClient';
 
 class Polykey {
   polykeyPath: string
@@ -37,3 +39,4 @@ class Polykey {
 }
 
 export default Polykey
+export { KeyManager, VaultManager, PeerManager, PolykeyAgent, PolykeyClient }
