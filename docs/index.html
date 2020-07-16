@@ -104,9 +104,12 @@ const newKey = await keyManager.generateKey('secret passphrase')
 				<pre style="white-space:pre !important; overflow-x:scroll !important">
 jest
 </pre>
+				<p>The tests also rely on certificates being available in the tmp folder and environment variables set to a valid certificate authority run on the network somewhere. Please see <code>.env.example</code> for an example of these environment variables. Certificates can be generated with <code>./scripts/generate_ssl_certs.sh</code> as long as a step-ca is running on the specified url in <code>.env</code>.</p>
+				<p>Note: sometimes grpc-js can complain about the ssl certificates in <code>tmp/</code> with a non-descriptive error of &quot;No connection established&quot;. Best way to solve this is to remove the certs, start the CA server and re-issue the certs with <code>./scripts/generate_ssl_certs.sh</code>.</p>
 				<a href="#command-line-interface-cli" id="command-line-interface-cli" style="color: inherit; text-decoration: none;">
 					<h1>Command Line Interface (CLI)</h1>
 				</a>
+				<p>Here is a demo of the CLI on <a href="https://asciinema.org/a/347434">asciinema</a>.</p>
 				<p>The PolyKey CLI exposes various git-style sub commands that can be used to manipulate the PolyKey node:</p>
 				<pre style="white-space:pre !important; overflow-x:scroll !important">
 Commands:
@@ -253,6 +256,14 @@ pk crypto verify <span class="hljs-string">./signed_file</span> <span class="hlj
 					<h2>Verbosity</h2>
 				</a>
 				<p>TODO: explain verbosity levels when it is implemented</p>
+				<a href="#build" id="build" style="color: inherit; text-decoration: none;">
+					<h1>Build</h1>
+				</a>
+				<a href="#proto-files" id="proto-files" style="color: inherit; text-decoration: none;">
+					<h2>Proto Files</h2>
+				</a>
+				<p>All <code>.proto</code> files are stored in the the <code>proto</code> directory. JavaScript and type definition files are build using the following command:</p>
+				<pre><code>npm <span class="hljs-keyword">run</span><span class="bash"> build:proto</span></code></pre>
 			</div>
 		</div>
 		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
@@ -284,10 +295,13 @@ pk crypto verify <span class="hljs-string">./signed_file</span> <span class="hlj
 						<a href="classes/polykey.html" class="tsd-kind-icon">Polykey</a>
 					</li>
 					<li class=" tsd-kind-class">
-						<a href="classes/publickeyinfrastructure.html" class="tsd-kind-icon">Public<wbr>Key<wbr>Infrastructure</a>
+						<a href="classes/polykeyagent.html" class="tsd-kind-icon">Polykey<wbr>Agent</a>
 					</li>
 					<li class=" tsd-kind-class">
-						<a href="classes/rpcmessage.html" class="tsd-kind-icon">RPCMessage</a>
+						<a href="classes/polykeyclient.html" class="tsd-kind-icon">Polykey<wbr>Client</a>
+					</li>
+					<li class=" tsd-kind-class">
+						<a href="classes/publickeyinfrastructure.html" class="tsd-kind-icon">Public<wbr>Key<wbr>Infrastructure</a>
 					</li>
 					<li class=" tsd-kind-class">
 						<a href="classes/vault.html" class="tsd-kind-icon">Vault</a>
@@ -297,9 +311,6 @@ pk crypto verify <span class="hljs-string">./signed_file</span> <span class="hlj
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/socialdiscovery.html" class="tsd-kind-icon">Social<wbr>Discovery</a>
-					</li>
-					<li class=" tsd-kind-type-alias">
-						<a href="globals.html#handshakemessage" class="tsd-kind-icon">Handshake<wbr>Message</a>
 					</li>
 					<li class=" tsd-kind-type-alias">
 						<a href="globals.html#keymanagermetadata" class="tsd-kind-icon">Key<wbr>Manager<wbr>Metadata</a>
@@ -323,10 +334,118 @@ pk crypto verify <span class="hljs-string">./signed_file</span> <span class="hlj
 						<a href="globals.html#vaultmetadata" class="tsd-kind-icon">Vault<wbr>Metadata</a>
 					</li>
 					<li class=" tsd-kind-variable">
+						<a href="globals.html#_reader" class="tsd-kind-icon">$<wbr>Reader</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#_writer" class="tsd-kind-icon">$<wbr>Writer</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#_protobuf" class="tsd-kind-icon">$protobuf</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#_root" class="tsd-kind-icon">$root</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#_util" class="tsd-kind-icon">$util</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#agentmessage" class="tsd-kind-icon">Agent<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#createsecretrequestmessage" class="tsd-kind-icon">Create<wbr>Secret<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#createsecretresponsemessage" class="tsd-kind-icon">Create<wbr>Secret<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#derivekeyrequestmessage" class="tsd-kind-icon">Derive<wbr>Key<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#derivekeyresponsemessage" class="tsd-kind-icon">Derive<wbr>Key<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#destroysecretrequestmessage" class="tsd-kind-icon">Destroy<wbr>Secret<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#destroysecretresponsemessage" class="tsd-kind-icon">Destroy<wbr>Secret<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#destroyvaultrequestmessage" class="tsd-kind-icon">Destroy<wbr>Vault<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#destroyvaultresponsemessage" class="tsd-kind-icon">Destroy<wbr>Vault<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#errormessage" class="tsd-kind-icon">Error<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#getsecretrequestmessage" class="tsd-kind-icon">Get<wbr>Secret<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#getsecretresponsemessage" class="tsd-kind-icon">Get<wbr>Secret<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#handshakemessage" class="tsd-kind-icon">Handshake<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#listnodesrequestmessage" class="tsd-kind-icon">List<wbr>Nodes<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#listnodesresponsemessage" class="tsd-kind-icon">List<wbr>Nodes<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#listsecretsrequestmessage" class="tsd-kind-icon">List<wbr>Secrets<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#listsecretsresponsemessage" class="tsd-kind-icon">List<wbr>Secrets<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#listvaultsrequestmessage" class="tsd-kind-icon">List<wbr>Vaults<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#listvaultsresponsemessage" class="tsd-kind-icon">List<wbr>Vaults<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#newnoderequestmessage" class="tsd-kind-icon">New<wbr>Node<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#newnoderesponsemessage" class="tsd-kind-icon">New<wbr>Node<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#newvaultrequestmessage" class="tsd-kind-icon">New<wbr>Vault<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#newvaultresponsemessage" class="tsd-kind-icon">New<wbr>Vault<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#peerinfomessage" class="tsd-kind-icon">Peer<wbr>Info<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#registernoderequestmessage" class="tsd-kind-icon">Register<wbr>Node<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#registernoderesponsemessage" class="tsd-kind-icon">Register<wbr>Node<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#signfilerequestmessage" class="tsd-kind-icon">Sign<wbr>File<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#signfileresponsemessage" class="tsd-kind-icon">Sign<wbr>File<wbr>Response<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#type" class="tsd-kind-icon">Type</a>
+					</li>
+					<li class=" tsd-kind-variable">
 						<a href="globals.html#udp_multicast_addr" class="tsd-kind-icon">UDP_<wbr>MULTICAST_<wbr>ADDR</a>
 					</li>
 					<li class=" tsd-kind-variable">
 						<a href="globals.html#udp_multicast_port" class="tsd-kind-icon">UDP_<wbr>MULTICAST_<wbr>PORT</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#verifyfilerequestmessage" class="tsd-kind-icon">Verify<wbr>File<wbr>Request<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="globals.html#verifyfileresponsemessage" class="tsd-kind-icon">Verify<wbr>File<wbr>Response<wbr>Message</a>
 					</li>
 					<li class=" tsd-kind-function tsd-has-type-parameter">
 						<a href="globals.html#firstpromisefulfilled" class="tsd-kind-icon">first<wbr>Promise<wbr>Fulfilled</a>
