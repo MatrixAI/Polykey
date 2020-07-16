@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package peer;
+
+message HandshakeMessage {
+  bytes target_pub_key = 1;
+  bytes requesting_pub_key = 2;
+  bytes message = 3;
+  bytes response_peer_info = 4;
+}
+
+message PeerInfoMessage {
+  string pub_key = 1;
+  repeated string addresses = 2;
+  string connected_addr = 3;
+}

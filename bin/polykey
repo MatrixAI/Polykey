@@ -4,5 +4,5 @@
 // we expect that this can be used as a CLI
 // application directly as js-polykey
 
-require('../dist/bin/pk.js')(process.argv)
+require('../dist/cli/cli.js')(process.argv)
 

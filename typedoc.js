@@ -1,10 +1,10 @@
 module.exports = {
   out: 'docs',
 
-  includes: 'src/lib/**/*',
+  includes: './src/lib',
   exclude: [
-    'src/cli/**/*',
-    'src/lib/git/**/*'
+    './src/cli/**/*',
+    './src/lib/git/**/*'
   ],
 
   mode: 'file',
