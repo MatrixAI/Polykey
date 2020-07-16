@@ -7,8 +7,5 @@ module.exports = {
   ],
   "transform": {
     "^.+\\.tsx?$": "ts-jest"
-  },
-  moduleNameMapper: {
-    '@polykey/(.*)$': '<rootDir>/src/lib/$1'
   }
 };

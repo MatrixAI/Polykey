@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package agent;
+
+enum Type {
+  ERROR = 0;
+  STOP_AGENT = 1;
+  STATUS = 2;
+  REGISTER_NODE = 3;
+  NEW_NODE = 4;
+  LIST_NODES = 5;
+  DERIVE_KEY = 6;
+  SIGN_FILE = 7;
+  VERIFY_FILE = 8;
+  LIST_VAULTS = 9;
+  NEW_VAULT = 10;
+  DESTROY_VAULT = 11;
+  LIST_SECRETS = 12;
+  CREATE_SECRET = 13;
+  DESTROY_SECRET = 14;
+  GET_SECRET = 15;
+}
+message AgentMessage {
+  Type type = 1;
+  bool isResponse = 2;
+  string node_path = 3;
+  bytes sub_message = 4;
+}
+message ErrorMessage {
+  string error = 1;
+}
+
+// ==== RegisterNode ==== //
+message RegisterNodeRequestMessage {
+  string passphrase = 1;
+}
+message RegisterNodeResponseMessage {
+  bool successful = 1;
+}
+
+// ==== NewNode ==== //
+message NewNodeRequestMessage {
+  string name = 1;
+  string email = 2;
+  string passphrase = 3;
+  int32 nbits = 4;
+}
+message NewNodeResponseMessage {
+  bool successful = 1;
+}
+
+// ==== ListNodes ==== //
+message ListNodesRequestMessage {
+  bool unlocked_only = 1;
+}
+message ListNodesResponseMessage {
+  repeated string nodes = 1;
+}
+
+// ==== SignFile ==== //
+message SignFileRequestMessage {
+  string file_path = 1;
+  string private_key_path = 2;
+  string passphrase = 3;
+}
+message SignFileResponseMessage {
+  string signature_path = 1;
+}
+
+// ==== VerifyFile ==== //
+message VerifyFileRequestMessage {
+  string file_path = 1;
+  string signature_path = 2;
+}
+message VerifyFileResponseMessage {
+  bool verified = 1;
+}
+
+// ==== ListVaults ==== //
+message ListVaultsRequestMessage {
+}
+message ListVaultsResponseMessage {
+  repeated string vault_names = 1;
+}
+
+// ==== NewVault ==== //
+message NewVaultRequestMessage {
+  string vault_name = 1;
+}
+message NewVaultResponseMessage {
+  bool successful = 1;
+}
+
+// ==== DestroyVault ==== //
+message DestroyVaultRequestMessage {
+  string vault_name = 1;
+}
+message DestroyVaultResponseMessage {
+  bool successful = 1;
+}
+
+// ==== ListSecrets ==== //
+message ListSecretsRequestMessage {
+  string vault_name = 1;
+}
+message ListSecretsResponseMessage {
+  repeated string secret_names = 1;
+}
+
+// ==== CreateSecret ==== //
+message CreateSecretRequestMessage {
+  string vault_name = 1;
+  string secret_name = 2;
+  string secret_path = 3;
+}
+message CreateSecretResponseMessage {
+  bool successful = 1;
+}
+
+// ==== DestroySecret ==== //
+message DestroySecretRequestMessage {
+  string vault_name = 1;
+  string secret_name = 2;
+}
+message DestroySecretResponseMessage {
+  bool successful = 1;
+}
+
+// ==== GetSecret ==== //
+message GetSecretRequestMessage {
+  string vault_name = 1;
+  string secret_name = 2;
+}
+message GetSecretResponseMessage {
+  bytes secret = 1;
+}
+
+// ==== DeriveKey ==== //
+message DeriveKeyRequestMessage {
+  string vault_name = 1;
+  string key_name = 2;
+  string passphrase = 3;
+}
+message DeriveKeyResponseMessage {
+  bool successful = 1;
+}

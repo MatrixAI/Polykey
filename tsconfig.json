@@ -1,17 +1,22 @@
 {
   "compilerOptions": {
     "outDir": "./dist",
-    "sourceMap": true,
     "declaration": true,
+    "allowJs": true,
     "strictNullChecks": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "module": "CommonJS",
     "target": "ES2018",
+    "module": "CommonJS",
     "baseUrl": "./src/lib",
+    "types": [
+      "node",
+      "jest"
+    ],
   },
   "include": [
-    "./src/lib/**/*"
-  ]
+    "./src/lib/**/*",
+    "./proto/js/**/*"
+  ],
 }
