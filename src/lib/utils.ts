@@ -2,7 +2,10 @@
  * Returns a 5 character long random string of lower case letters
  */
 function randomString(): string {
-	return Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)
+  return Math.random()
+    .toString(36)
+    .replace(/[^a-z]+/g, '')
+    .substr(0, 5);
 }
 
 /**
@@ -18,7 +21,7 @@ function invertPromise<T>(p: Promise<T>): Promise<T> {
  * @param ps List of promises
  */
 function firstPromiseFulfilled<T>(ps: Promise<T>[]) {
-  return invertPromise(Promise.all(ps.map(invertPromise)))
+  return invertPromise(Promise.all(ps.map(invertPromise)));
 }
 
-export { randomString, firstPromiseFulfilled }
+export { randomString, firstPromiseFulfilled };

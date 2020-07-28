@@ -70,6 +70,9 @@ const libraryConfig = {
   ],
   watchOptions: {
     ignored: /node_modules/
+  },
+  optimization: {
+    minimize: false
   }
 }
 
@@ -116,6 +119,9 @@ const polykeyClientConfig = {
   ],
   watchOptions: {
     ignored: /node_modules/
+  },
+  optimization: {
+    minimize: false
   }
 }
 
@@ -157,6 +163,9 @@ const cliConfig = {
   ],
   watchOptions: {
     ignored: /node_modules/
+  },
+  optimization: {
+    minimize: false
   }
 }
 
@@ -193,6 +202,9 @@ const agentDaemonScriptConfig = {
     { "../../Polykey": "commonjs ../polykey.js" },
     nodeExternals()
   ],
+  optimization: {
+    minimize: false
+  }
 }
 
 

@@ -1,14 +1,11 @@
 import { AddressInfo } from 'net';
 
 class Address {
-  ip: string
-  port: string
-  constructor(
-    ip: string,
-    port: string
-  ) {
-    this.ip = ip
-    this.port = port
+  ip: string;
+  port: string;
+  constructor(ip: string, port: string) {
+    this.ip = ip;
+    this.port = port;
   }
 
   /**
@@ -16,11 +13,11 @@ class Address {
    * @param addressString Address string in the format of `${this.ip}:${this.port}`
    */
   static parse(addressString: string): Address {
-    const components = addressString.split(':')
-    const ip = components[0]
-    const port = components[1]
+    const components = addressString.split(':');
+    const ip = components[0];
+    const port = components[1];
 
-    return new Address(ip, port)
+    return new Address(ip, port);
   }
 
   /**
@@ -28,36 +25,34 @@ class Address {
    * @param addressInfo AddressInfo of desired address
    */
   static fromAddressInfo(addressInfo: AddressInfo) {
-    const ip = (addressInfo.address == '::') ? 'localhost' : addressInfo.address
-    return new Address(ip, addressInfo.port.toString())
+    const ip = addressInfo.address == '::' ? 'localhost' : addressInfo.address;
+    return new Address(ip, addressInfo.port.toString());
   }
 
   /**
    * Convert address into string of format `${this.ip}:${this.port}`
    */
   toString() {
-    return `${this.ip}:${this.port}`
+    return `${this.ip}:${this.port}`;
   }
 }
 
-Address.prototype.toString = function() {
-  return `${this.ip}:${this.port}`
-}
+Address.prototype.toString = function () {
+  return `${this.ip}:${this.port}`;
+};
 
 class PeerInfo {
-  publicKey: string
-  addresses: Set<Address>
-  connectedAddr?: Address
-  constructor(
-    pubKey: string,
-    addresses: string[] = [],
-    connectedAddr?: string
-  ) {
-    this.publicKey = pubKey
-    this.addresses = new Set(addresses.map((addr) => {
-      return Address.parse(addr)
-    }))
-    this.connectedAddr = (connectedAddr) ? Address.parse(connectedAddr) : undefined
+  publicKey: string;
+  addresses: Set<Address>;
+  connectedAddr?: Address;
+  constructor(pubKey: string, addresses: string[] = [], connectedAddr?: string) {
+    this.publicKey = pubKey;
+    this.addresses = new Set(
+      addresses.map((addr) => {
+        return Address.parse(addr);
+      }),
+    );
+    this.connectedAddr = connectedAddr ? Address.parse(connectedAddr) : undefined;
   }
 
   /**
@@ -66,27 +61,25 @@ class PeerInfo {
    */
   connect(address: Address) {
     if (!this.addresses.has(address)) {
-      this.addresses.add(address)
+      this.addresses.add(address);
     }
 
-    this.connectedAddr = address
+    this.connectedAddr = address;
   }
 
   /**
    * Clears the main server address for the peer
    */
   disconnect() {
-    this.connectedAddr = undefined
+    this.connectedAddr = undefined;
   }
 
-
-  public get AdressStringList() : string[] {
+  public get AdressStringList(): string[] {
     return Array.from(this.addresses.values()).map((addr) => {
-      return addr.toString()
-    })
+      return addr.toString();
+    });
   }
-
 }
 
-export default PeerInfo
-export { Address }
+export default PeerInfo;
+export { Address };

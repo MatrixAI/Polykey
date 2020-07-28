@@ -112,6 +112,7 @@ message CreateSecretRequestMessage {
   string vault_name = 1;
   string secret_name = 2;
   string secret_path = 3;
+  bytes secret_content = 4;
 }
 message CreateSecretResponseMessage {
   bool successful = 1;

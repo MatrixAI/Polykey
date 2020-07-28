@@ -19,122 +19,116 @@ information.
 If no 'side-band' capability was specified, the server will stream the
 entire packfile without multiplexing.
 */
-import { Buffer } from 'buffer'
-import { PassThrough } from 'readable-stream'
+import { Buffer } from 'buffer';
+import { PassThrough } from 'readable-stream';
 
-import GitPktLine from '../upload-pack/GitPktLine'
+import GitPktLine from '../upload-pack/GitPktLine';
 
 function splitBuffer(buffer: Buffer, maxBytes: number) {
   const result: Buffer[] = [];
-  let index = 0
+  let index = 0;
   while (index < buffer.length) {
-    const buf = buffer.slice(index, index+maxBytes)
-    result.push(buf)
-    index += buf.length
+    const buf = buffer.slice(index, index + maxBytes);
+    result.push(buf);
+    index += buf.length;
   }
-  result.push(buffer.slice(index))
+  result.push(buffer.slice(index));
   return result;
 }
 
 class GitSideBand {
-  static demux (input) {
-    let read = GitPktLine.streamReader(input)
+  static demux(input) {
+    let read = GitPktLine.streamReader(input);
     // And now for the ridiculous side-band or side-band-64k protocol
-    let packetlines = new PassThrough()
-    let packfile = new PassThrough()
-    let progress = new PassThrough()
+    let packetlines = new PassThrough();
+    let packfile = new PassThrough();
+    let progress = new PassThrough();
     // TODO: Use a proper through stream?
     const nextBit = async function () {
-      let line = await read()
+      let line = await read();
       // Skip over flush packets
-      if (line === null) return nextBit()
+      if (line === null) return nextBit();
       // A made up convention to signal there's no more to read.
       if (line === true) {
-        packetlines.end()
-        progress.end()
-        packfile.end()
-        return
+        packetlines.end();
+        progress.end();
+        packfile.end();
+        return;
       }
       // Examine first byte to determine which output "stream" to use
       switch (line[0]) {
         case 1: // pack data
-          packfile.write(line.slice(1))
-          break
+          packfile.write(line.slice(1));
+          break;
         case 2: // progress message
-          progress.write(line.slice(1))
-          break
+          progress.write(line.slice(1));
+          break;
         case 3: // fatal error message just before stream aborts
-          let error = line.slice(1)
-          progress.write(error)
-          packfile.destroy(new Error(error.toString('utf8')))
-          return
+          // eslint-disable-next-line
+          const error = line.slice(1);
+          progress.write(error);
+          packfile.destroy(new Error(error.toString('utf8')));
+          return;
         default:
           // Not part of the side-band-64k protocol
-          packetlines.write(line.slice(0))
+          packetlines.write(line.slice(0));
       }
       // Careful not to blow up the stack.
       // I think Promises in a tail-call position should be OK.
-      nextBit()
-    }
-    nextBit()
+      nextBit();
+    };
+    nextBit();
     return {
       packetlines,
       packfile,
-      progress
-    }
+      progress,
+    };
   }
-  static mux (
+  static mux(
     protocol, // 'side-band' or 'side-band-64k'
     packetlines,
     packfile,
     progress,
-    error
+    error,
   ) {
-    const MAX_PACKET_LENGTH = protocol === 'side-band-64k' ? 999 : 65519
-    let output = new PassThrough()
-    packetlines.on('data', data => {
+    const MAX_PACKET_LENGTH = protocol === 'side-band-64k' ? 999 : 65519;
+    let output = new PassThrough();
+    packetlines.on('data', (data) => {
       if (data === null) {
-        output.write(GitPktLine.flush())
+        output.write(GitPktLine.flush());
       } else {
-        output.write(GitPktLine.encode(data))
+        output.write(GitPktLine.encode(data));
       }
-    })
-    let packfileWasEmpty = true
-    let packfileEnded = false
-    let progressEnded = false
-    let errorEnded = true
-    let goodbye = Buffer.concat([
-      GitPktLine.encode(Buffer.from('010A', 'hex')),
-      GitPktLine.flush()
-    ])
+    });
+    let packfileWasEmpty = true;
+    let packfileEnded = false;
+    let progressEnded = false;
+    let errorEnded = true;
+    let goodbye = Buffer.concat([GitPktLine.encode(Buffer.from('010A', 'hex')), GitPktLine.flush()]);
     packfile
-      .on('data', data => {
-        packfileWasEmpty = false
-        const buffers = splitBuffer(data, MAX_PACKET_LENGTH)
+      .on('data', (data) => {
+        packfileWasEmpty = false;
+        const buffers = splitBuffer(data, MAX_PACKET_LENGTH);
         for (const buffer of buffers) {
-          output.write(
-            GitPktLine.encode(Buffer.concat([Buffer.from('01', 'hex'), buffer]))
-          )
+          output.write(GitPktLine.encode(Buffer.concat([Buffer.from('01', 'hex'), buffer])));
         }
       })
       .on('end', () => {
-        packfileEnded = true
-        if (!packfileWasEmpty) output.write(goodbye)
-        if (progressEnded && errorEnded) output.end()
-      })
+        packfileEnded = true;
+        if (!packfileWasEmpty) output.write(goodbye);
+        if (progressEnded && errorEnded) output.end();
+      });
     progress
-      .on('data', data => {
-        const buffers = splitBuffer(data, MAX_PACKET_LENGTH)
+      .on('data', (data) => {
+        const buffers = splitBuffer(data, MAX_PACKET_LENGTH);
         for (const buffer of buffers) {
-          output.write(
-            GitPktLine.encode(Buffer.concat([Buffer.from('02', 'hex'), buffer]))
-          )
+          output.write(GitPktLine.encode(Buffer.concat([Buffer.from('02', 'hex'), buffer])));
         }
       })
       .on('end', () => {
-        progressEnded = true
-        if (packfileEnded && errorEnded) output.end()
-      })
+        progressEnded = true;
+        if (packfileEnded && errorEnded) output.end();
+      });
     // error
     //   .on('data', data => {
     //     const buffers = splitBuffer(data, MAX_PACKET_LENGTH)
@@ -148,8 +142,8 @@ class GitSideBand {
     //     errorEnded = true
     //     if (progressEnded && packfileEnded) output.end()
     //   })
-    return output
+    return output;
   }
 }
 
-export default GitSideBand
+export default GitSideBand;

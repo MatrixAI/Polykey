@@ -18,12 +18,9 @@ import packObjects from './pack-objects/packObjects';
 class GitBackend {
   private polykeyPath: string;
   private vaultManager: VaultManager;
-  constructor(
-    polykeyPath: string,
-    vaultManager: VaultManager
-  ) {
-    this.polykeyPath = polykeyPath
-    this.vaultManager = vaultManager
+  constructor(polykeyPath: string, vaultManager: VaultManager) {
+    this.polykeyPath = polykeyPath;
+    this.vaultManager = vaultManager;
   }
 
   /**
@@ -33,103 +30,92 @@ class GitBackend {
    */
   private exists(vaultName: string, publicKey: string) {
     try {
-      const vault = this.vaultManager.getVault(vaultName)
+      const vault = this.vaultManager.getVault(vaultName);
       if (vault) {
-        return vault.peerCanAccess(publicKey)
+        return vault.peerCanAccess(publicKey);
       }
-      return false
+      return false;
     } catch (error) {
-      return false
+      return false;
     }
   }
 
   async handleInfoRequest(vaultName: string): Promise<Buffer> {
     // Only handle upload-pack for now
-    const service = 'upload-pack'
+    const service = 'upload-pack';
 
-    const connectingPublicKey = ''
+    const connectingPublicKey = '';
 
-    const responseBuffers: Buffer[] = []
+    const responseBuffers: Buffer[] = [];
 
     if (!this.exists(vaultName, connectingPublicKey)) {
-      throw new Error('Vault does not exist')
+      throw Error('Vault does not exist');
     } else {
-      responseBuffers.push(Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')))
-      responseBuffers.push(Buffer.from('0000'))
+      responseBuffers.push(Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')));
+      responseBuffers.push(Buffer.from('0000'));
 
-      const fileSystem = this.vaultManager.getVault(vaultName)?.EncryptedFS
+      const fileSystem = this.vaultManager.getVault(vaultName)?.EncryptedFS;
 
-      const buffers = await uploadPack(
-        fileSystem,
-        Path.join(this.polykeyPath, vaultName),
-        undefined,
-        true
-      )
-      const buffersToWrite = buffers ?? []
-      responseBuffers.push(...buffersToWrite)
+      const buffers = await uploadPack(fileSystem, Path.join(this.polykeyPath, vaultName), undefined, true);
+      const buffersToWrite = buffers ?? [];
+      responseBuffers.push(...buffersToWrite);
     }
 
-    return Buffer.concat(responseBuffers)
+    return Buffer.concat(responseBuffers);
   }
   async handlePackRequest(vaultName: string, body: Buffer): Promise<Buffer> {
+    // eslint-disable-next-line
     return new Promise<Buffer>(async (resolve, reject) => {
-      const responseBuffers: Buffer[] = []
+      const responseBuffers: Buffer[] = [];
 
       // Check if vault exists
-      const connectingPublicKey = ''
+      const connectingPublicKey = '';
       if (!this.exists(vaultName, connectingPublicKey)) {
-        throw new Error('Vault does not exist')
+        throw Error('Vault does not exist');
       }
 
-      const fileSystem = this.vaultManager.getVault(vaultName)?.EncryptedFS
+      const fileSystem = this.vaultManager.getVault(vaultName)?.EncryptedFS;
 
       if (fileSystem) {
         if (body.toString().slice(4, 8) == 'want') {
-          const wantedObjectId = body.toString().slice(9, 49)
+          const wantedObjectId = body.toString().slice(9, 49);
           const packResult = await packObjects(
             fileSystem,
             Path.join(this.polykeyPath, vaultName),
             [wantedObjectId],
-            undefined
-          )
+            undefined,
+          );
 
           // This the 'wait for more data' line as I understand it
-          responseBuffers.push(Buffer.from('0008NAK\n'))
+          responseBuffers.push(Buffer.from('0008NAK\n'));
 
           // This is to get the side band stuff working
-          const readable = new PassThrough()
-          const progressStream = new PassThrough()
-          const sideBand = GitSideBand.mux(
-            'side-band-64',
-            readable,
-            packResult.packstream,
-            progressStream,
-            []
-          )
+          const readable = new PassThrough();
+          const progressStream = new PassThrough();
+          const sideBand = GitSideBand.mux('side-band-64', readable, packResult.packstream, progressStream, []);
           sideBand.on('data', (data: Buffer) => {
-            responseBuffers.push(data)
-          })
+            responseBuffers.push(data);
+          });
           sideBand.on('end', () => {
-            resolve(Buffer.concat(responseBuffers))
-          })
+            resolve(Buffer.concat(responseBuffers));
+          });
           sideBand.on('error', (err) => {
-            reject(err)
-          })
-
+            reject(err);
+          });
 
           // Write progress to the client
-          progressStream.write(Buffer.from('0014progress is at 50%\n'))
-          progressStream.end()
+          progressStream.write(Buffer.from('0014progress is at 50%\n'));
+          progressStream.end();
         }
       }
-    })
+    });
   }
 
   // ============ Helper functions ============ //
   private createGitPacketLine(line: string) {
-    const hexPrefix = (4 + line.length).toString(16)
-    return Array(4 - hexPrefix.length + 1).join('0') + hexPrefix + line
+    const hexPrefix = (4 + line.length).toString(16);
+    return Array(4 - hexPrefix.length + 1).join('0') + hexPrefix + line;
   }
 }
 
-export default GitBackend
+export default GitBackend;

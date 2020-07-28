@@ -25,7 +25,6 @@ class DeclarationBundlePlugin {
 
   log(message: string) {
     console.log(`[DeclarationBundlePlugin] ${message}`);
-
   }
 
   apply(compiler: webpack.Compiler) {
@@ -80,15 +79,10 @@ class DeclarationBundlePlugin {
         fs.writeFileSync(this.outputFilePath, newContents)
       }
     } else if (this.singleFile) {
-      const split = this.entryFilePath.split('/')
-      const filename = split[split.length-1].split('.')[0]
-      console.log(filename);
+      const split = this.entryFilePath.split('.')
+      const filename = split[split.length-2]
 
-      const entryFile = path.join(tempDir, `${path.join('agent', filename)}.d.ts`)
-      console.log('==========');
-      console.log(entryFile);
-      console.log('==========');
-
+      const entryFile = path.join(tempDir, `${filename}.d.ts`)
       fs.copyFileSync(entryFile, this.outputFilePath)
     }
 

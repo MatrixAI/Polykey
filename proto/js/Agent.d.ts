@@ -981,6 +981,9 @@ export namespace agent {
 
         /** CreateSecretRequestMessage secretPath */
         secretPath?: (string|null);
+
+        /** CreateSecretRequestMessage secretContent */
+        secretContent?: (Uint8Array|null);
     }
 
     /** Represents a CreateSecretRequestMessage. */
@@ -1000,6 +1003,9 @@ export namespace agent {
 
         /** CreateSecretRequestMessage secretPath. */
         public secretPath: string;
+
+        /** CreateSecretRequestMessage secretContent. */
+        public secretContent: Uint8Array;
 
         /**
          * Creates a new CreateSecretRequestMessage instance using the specified properties.

@@ -1,4 +1,3 @@
-
 import fs from 'fs';
 import os from 'os';
 import Path from 'path';
@@ -9,39 +8,35 @@ import { EncryptedFS } from 'encryptedfs';
 import KeyManager from '../keys/KeyManager';
 
 class VaultManager {
-  polykeyPath: string
-  fileSystem: typeof fs
-  keyManager: KeyManager
+  polykeyPath: string;
+  fileSystem: typeof fs;
+  keyManager: KeyManager;
 
-  metadataPath: string
-  vaults: Map<string, Vault>
-  vaultKeys: Map<string, Buffer>
-  constructor(
-    polykeyPath: string = `${os.homedir()}/.polykey`,
-    fileSystem: typeof fs,
-    keyManager: KeyManager
-  ) {
-    this.polykeyPath = polykeyPath
-    this.fileSystem = fileSystem
-    this.keyManager = keyManager
-    this.metadataPath = Path.join(polykeyPath, '.vaultKeys')
+  metadataPath: string;
+  vaults: Map<string, Vault>;
+  vaultKeys: Map<string, Buffer>;
+  constructor(polykeyPath: string = `${os.homedir()}/.polykey`, fileSystem: typeof fs, keyManager: KeyManager) {
+    this.polykeyPath = polykeyPath;
+    this.fileSystem = fileSystem;
+    this.keyManager = keyManager;
+    this.metadataPath = Path.join(polykeyPath, '.vaultKeys');
 
     // Make polykeyPath if it doesn't exist
-    this.fileSystem.mkdirSync(this.polykeyPath, { recursive: true })
+    this.fileSystem.mkdirSync(this.polykeyPath, { recursive: true });
 
     // Initialize stateful variables
-    this.vaults = new Map()
-    this.vaultKeys = new Map()
+    this.vaults = new Map();
+    this.vaultKeys = new Map();
 
     // Read in vault keys
-    this.loadMetadata()
+    this.loadMetadata();
 
     // Initialize vaults in memory
     for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
-      const path = Path.join(this.polykeyPath, vaultName)
+      const path = Path.join(this.polykeyPath, vaultName);
       if (this.fileSystem.existsSync(path)) {
-        const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-        this.vaults.set(vaultName, vault)
+        const vault = new Vault(vaultName, vaultKey, this.polykeyPath);
+        this.vaults.set(vaultName, vault);
       }
     }
   }
@@ -52,19 +47,19 @@ class VaultManager {
    */
   getVault(vaultName: string): Vault {
     if (this.vaults.has(vaultName)) {
-      const vault = this.vaults.get(vaultName)
-      return vault!
+      const vault = this.vaults.get(vaultName);
+      return vault!;
     } else if (this.vaultKeys.has(vaultName)) {
       // vault not in map, create new instance
-      this.validateVault(vaultName)
+      this.validateVault(vaultName);
 
-      const vaultKey = this.vaultKeys.get(vaultName)
+      const vaultKey = this.vaultKeys.get(vaultName);
 
-      const vault = new Vault(vaultName, vaultKey!, this.polykeyPath)
-      this.vaults.set(vaultName, vault)
-      return vault
+      const vault = new Vault(vaultName, vaultKey!, this.polykeyPath);
+      this.vaults.set(vaultName, vault);
+      return vault;
     } else {
-      throw new Error('Vault does not exist in memory')
+      throw Error('Vault does not exist in memory');
     }
   }
 
@@ -74,34 +69,58 @@ class VaultManager {
    * @param key Optional key to use for the vault encryption, otherwise it is generated
    */
   async createVault(vaultName: string, key?: Buffer): Promise<Vault> {
-
     if (this.vaultExists(vaultName)) {
-      throw Error('Vault already exists!')
+      throw Error('Vault already exists!');
     }
 
     try {
-      const path = Path.join(this.polykeyPath, vaultName)
+      const path = Path.join(this.polykeyPath, vaultName);
       // Directory not present, create one
-      this.fileSystem.mkdirSync(path, { recursive: true })
+      this.fileSystem.mkdirSync(path, { recursive: true });
       // Create key if not provided
-      let vaultKey: Buffer
+      let vaultKey: Buffer;
       if (!key) {
         // Generate new key
-        vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey())
+        vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey());
       } else {
         // Assign key if it is provided
-        vaultKey = key
+        vaultKey = key;
       }
-      this.vaultKeys.set(vaultName, vaultKey)
-      this.writeMetadata()
-      const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-      await vault.initRepository()
-      this.vaults.set(vaultName, vault)
-      return this.getVault(vaultName)
+      this.vaultKeys.set(vaultName, vaultKey);
+      this.writeMetadata();
+
+      // Create vault
+      const vault = new Vault(vaultName, vaultKey, this.polykeyPath);
+
+      // Init repository for vault
+      const vaultPath = Path.join(this.polykeyPath, vaultName);
+      const efs = vault.EncryptedFS;
+      const fileSystem = { promises: efs.promises };
+      await git.init({
+        fs: fileSystem,
+        dir: vaultPath,
+      });
+
+      // Initial commit
+      await git.commit({
+        fs: fileSystem,
+        dir: vaultPath,
+        author: {
+          name: vaultName,
+        },
+        message: 'init commit',
+      });
+      // Write packed-refs file because isomorphic git goes searching for it
+      // and apparently its not autogenerated
+      efs.writeFileSync(Path.join(vaultPath, '.git', 'packed-refs'), '# pack-refs with: peeled fully-peeled sorted');
+
+      // Set vault
+      this.vaults.set(vaultName, vault);
+      return this.getVault(vaultName);
     } catch (err) {
       // Delete vault dir and garbage collect
-      this.destroyVault(vaultName)
-      throw err
+      this.destroyVault(vaultName);
+      throw err;
     }
   }
 
@@ -114,35 +133,29 @@ class VaultManager {
   async cloneVault(vaultName: string, gitClient: GitClient): Promise<Vault> {
     // Confirm it doesn't exist locally already
     if (this.vaultExists(vaultName)) {
-      throw new Error('Vault name already exists locally, try pulling instead')
+      throw Error('Vault name already exists locally, try pulling instead');
     }
 
-    const vaultUrl = `http://0.0.0.0/${vaultName}`
+    const vaultUrl = `http://0.0.0.0/${vaultName}`;
 
     // First check if it exists on remote
     const info = await git.getRemoteInfo({
       http: gitClient,
-      url: vaultUrl
-    })
+      url: vaultUrl,
+    });
 
     if (!info.refs) {
-      throw new Error(`Peer does not have vault: '${vaultName}'`)
+      throw Error(`Peer does not have vault: '${vaultName}'`);
     }
 
     // Create new efs first
     // Generate new key
-    const vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey())
+    const vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey());
 
     // Set filesystem
-    const vfsInstance = new (require('virtualfs')).VirtualFS
+    const vfsInstance = new (require('virtualfs').VirtualFS)();
 
-    const newEfs = new EncryptedFS(
-      vaultKey,
-      vfsInstance,
-      vfsInstance,
-      this.fileSystem,
-      process
-    )
+    const newEfs = new EncryptedFS(vaultKey, vfsInstance, vfsInstance, this.fileSystem, process);
 
     // Clone vault from address
     await git.clone({
@@ -151,13 +164,13 @@ class VaultManager {
       dir: Path.join(this.polykeyPath, vaultName),
       url: vaultUrl,
       ref: 'master',
-      singleBranch: true
-    })
+      singleBranch: true,
+    });
 
     // Finally return the vault
-    const vault = new Vault(vaultName, vaultKey, this.polykeyPath)
-    this.vaults.set(vaultName, vault)
-    return vault
+    const vault = new Vault(vaultName, vaultKey, this.polykeyPath);
+    this.vaults.set(vaultName, vault);
+    return vault;
   }
 
   /**
@@ -165,10 +178,10 @@ class VaultManager {
    * @param vaultName Name of desired vault
    */
   vaultExists(vaultName: string): boolean {
-    const path = Path.join(this.polykeyPath, vaultName)
-    const vaultExists = this.fileSystem.existsSync(path)
+    const path = Path.join(this.polykeyPath, vaultName);
+    const vaultExists = this.fileSystem.existsSync(path);
 
-    return vaultExists
+    return vaultExists;
   }
 
   /**
@@ -176,27 +189,26 @@ class VaultManager {
    * @param vaultName Name of vault to be destroyed
    */
   destroyVault(vaultName: string) {
-
     // this is convenience function for removing all tags
     // and triggering garbage collection
     // destruction is a better word as we should ensure all traces is removed
 
-    const path = Path.join(this.polykeyPath, vaultName)
+    const path = Path.join(this.polykeyPath, vaultName);
     // Remove directory on file system
     if (this.fileSystem.existsSync(path)) {
-      this.fileSystem.rmdirSync(path, { recursive: true })
+      this.fileSystem.rmdirSync(path, { recursive: true });
     }
 
     // Remove from maps
-    this.vaults.delete(vaultName)
-    this.vaultKeys.delete(vaultName)
+    this.vaults.delete(vaultName);
+    this.vaultKeys.delete(vaultName);
 
     // Write to metadata file
-    this.writeMetadata()
+    this.writeMetadata();
 
-    const vaultPathExists = this.fileSystem.existsSync(path)
+    const vaultPathExists = this.fileSystem.existsSync(path);
     if (vaultPathExists) {
-      throw new Error('Vault folder could not be destroyed!')
+      throw Error('Vault folder could not be destroyed!');
     }
   }
 
@@ -204,38 +216,38 @@ class VaultManager {
    * List the names of all vaults in memory
    */
   listVaults(): string[] {
-    return Array.from(this.vaults.keys())
+    return Array.from(this.vaults.keys());
   }
 
   /* ============ HELPERS =============== */
   private validateVault(vaultName: string): void {
     if (!this.vaults.has(vaultName)) {
-      throw Error('Vault does not exist in memory')
+      throw Error('Vault does not exist in memory');
     }
     if (!this.vaultKeys.has(vaultName)) {
-      throw Error('Vault key does not exist in memory')
+      throw Error('Vault key does not exist in memory');
     }
-    const vaultPath = Path.join(this.polykeyPath, vaultName)
+    const vaultPath = Path.join(this.polykeyPath, vaultName);
     if (!this.fileSystem.existsSync(vaultPath)) {
-      throw Error('Vault directory does not exist')
+      throw Error('Vault directory does not exist');
     }
   }
   private async writeMetadata(): Promise<void> {
-    const metadata = JSON.stringify([...this.vaultKeys])
-    const encryptedMetadata = await this.keyManager.encryptData(Buffer.from(metadata))
-    await this.fileSystem.promises.writeFile(this.metadataPath, encryptedMetadata)
+    const metadata = JSON.stringify([...this.vaultKeys]);
+    const encryptedMetadata = await this.keyManager.encryptData(Buffer.from(metadata));
+    await this.fileSystem.promises.writeFile(this.metadataPath, encryptedMetadata);
   }
   private async loadMetadata(): Promise<void> {
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.identityLoaded) {
-      const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath)
-      const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString()
+      const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
+      const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString();
 
       for (const [key, value] of new Map<string, any>(JSON.parse(metadata))) {
-        this.vaultKeys[key] = Buffer.from(value)
+        this.vaultKeys[key] = Buffer.from(value);
       }
     }
   }
 }
 
-export default VaultManager
+export default VaultManager;

@@ -3,60 +3,50 @@ import Path from 'path';
 import git from 'isomorphic-git';
 import GitClient from '../git/GitClient';
 import { EncryptedFS } from 'encryptedfs';
-
+import { Mutex } from 'async-mutex';
 
 type VaultMetadata = {
-  sharedPubKeys: string[]
-}
+  sharedPubKeys: string[];
+};
 
 class Vault {
+  private key: Buffer;
+  name: string;
+  private efs: EncryptedFS;
+  vaultPath: string;
+  private secrets: Map<string, any>;
+  private sharedPubKeys: Set<string>;
+  private metadataPath: string;
 
-  private key: Buffer
-  private keyLen: number
-  name: string
-  private efs: EncryptedFS
-  vaultPath: string
-  private secrets: Map<string, any>
-  private sharedPubKeys: Set<string>
-  private metadataPath: string
-  constructor(
-    name: string,
-    symKey: Buffer,
-    baseDir: string
-  ) {
+  // Concurrency
+  private mutex: Mutex = new Mutex();
+  constructor(name: string, symKey: Buffer, baseDir: string) {
     // how do we create pub/priv key pair?
     // do we use the same gpg pub/priv keypair
-    this.key = symKey
-    this.keyLen = symKey.length
+    this.key = symKey;
     // Set filesystem
-    const vfsInstance = new (require('virtualfs')).VirtualFS
+    const vfsInstance = new (require('virtualfs').VirtualFS)();
 
-    this.efs = new EncryptedFS(
-      this.key,
-      vfsInstance,
-      vfsInstance,
-      fs,
-      process
-    )
+    this.efs = new EncryptedFS(this.key, vfsInstance, vfsInstance, fs, process);
 
-    this.name = name
-    this.vaultPath = Path.join(baseDir, name)
+    this.name = name;
+    this.vaultPath = Path.join(baseDir, name);
     // make the vault directory
-    this.efs.mkdirSync(this.vaultPath, { recursive: true })
-    this.secrets = new Map()
+    this.efs.mkdirSync(this.vaultPath, { recursive: true });
+    this.secrets = new Map();
 
-    this.loadSecrets()
+    this.loadSecrets();
 
     // Load metadata
-    this.metadataPath = Path.join(this.vaultPath, '.vault', 'metadata')
-    this.loadMetadata()
+    this.metadataPath = Path.join(this.vaultPath, '.vault', 'metadata');
+    this.loadMetadata();
   }
 
   /**
    * Returns the Encrypted File System used for vault operations
    */
   public get EncryptedFS(): EncryptedFS {
-    return this.efs
+    return this.efs;
   }
 
   /**
@@ -64,8 +54,8 @@ class Vault {
    * @param secretName Name of desired secret
    */
   secretExists(secretName: string): boolean {
-    const secretPath = Path.join(this.vaultPath, secretName)
-    return this.secrets.has(secretName) && this.efs.existsSync(secretPath)
+    const secretPath = Path.join(this.vaultPath, secretName);
+    return this.secrets.has(secretName) && this.efs.existsSync(secretPath);
   }
 
   /**
@@ -74,17 +64,25 @@ class Vault {
    * @param secret Content of new secret
    */
   async addSecret(secretName: string, secret: Buffer): Promise<void> {
-    // Check if secret already exists
-    if (this.secrets.has(secretName)) {
-      throw new Error('Secret already exists, try updating it instead.')
+    const release = await this.mutex.acquire();
+    try {
+      // Check if secret already exists
+      if (this.secrets.has(secretName)) {
+        throw Error('Secret already exists, try updating it instead.');
+      }
+      const writePath = Path.join(this.vaultPath, secretName);
+      // Write secret
+      await this.efs.promises.writeFile(writePath, secret, {});
+      // Update secrets map
+      this.secrets.set(secretName, secret);
+      // Auto commit message
+      await this.commitChanges(`Add secret: ${secretName}`, secretName, 'added');
+    } catch (error) {
+      release();
+      throw error;
+    } finally {
+      release();
     }
-    const writePath = Path.join(this.vaultPath, secretName)
-    // Write secret
-    await this.efs.promises.writeFile(writePath, secret, {})
-    // Update secrets map
-    this.secrets.set(secretName, secret)
-    // Auto commit message
-    await this.commitChanges(`Add secret: ${secretName}`, secretName, 'added')
   }
 
   /**
@@ -93,17 +91,25 @@ class Vault {
    * @param secret Content of updated secret
    */
   async updateSecret(secretName: string, secret: Buffer): Promise<void> {
-    // Check if secret already exists
-    if (!this.secrets.has(secretName)) {
-      throw new Error('Secret does not exist, try adding it instead.')
+    const release = await this.mutex.acquire();
+    try {
+      // Check if secret already exists
+      if (!this.secrets.has(secretName)) {
+        throw Error('Secret does not exist, try adding it instead.');
+      }
+      const writePath = Path.join(this.vaultPath, secretName);
+      // Write secret
+      await this.efs.promises.writeFile(writePath, secret, {});
+      // Update secrets map
+      this.secrets.set(secretName, secret);
+      // Auto commit message
+      await this.commitChanges(`Update secret: ${secretName}`, secretName, 'modified');
+    } catch (error) {
+      release();
+      throw error;
+    } finally {
+      release();
     }
-    const writePath = Path.join(this.vaultPath, secretName)
-    // Write secret
-    await this.efs.promises.writeFile(writePath, secret, {})
-    // Update secrets map
-    this.secrets.set(secretName, secret)
-    // Auto commit message
-    await this.commitChanges(`Update secret: ${secretName}`, secretName, 'modified')
   }
 
   /**
@@ -112,18 +118,18 @@ class Vault {
    */
   getSecret(secretName: string): Buffer | string {
     if (this.secrets.has(secretName)) {
-      const secret = this.secrets.get(secretName)
+      const secret = this.secrets.get(secretName);
       if (secret) {
-        return secret
+        return secret;
       } else {
-        const secretPath = Path.join(this.vaultPath, secretName)
+        const secretPath = Path.join(this.vaultPath, secretName);
         // TODO: this should be async
-        const secretBuf = this.efs.readFileSync(secretPath, {})
-        this.secrets.set(secretName, secretBuf)
-        return secretBuf
+        const secretBuf = this.efs.readFileSync(secretPath, {});
+        this.secrets.set(secretName, secretBuf);
+        return secretBuf;
       }
     }
-    throw Error('Secret: ' + secretName + ' does not exist')
+    throw Error('Secret: ' + secretName + ' does not exist');
   }
 
   /**
@@ -131,36 +137,40 @@ class Vault {
    * @param secretName Name of secret to be removed
    */
   async removeSecret(secretName: string): Promise<void> {
-    if (this.secrets.has(secretName)) {
-      const successful = this.secrets.delete(secretName)
-      // Remove from fs
-      await this.efs.promises.unlink(Path.join(this.vaultPath, secretName))
-      // Auto commit message
-      await this.commitChanges(`Remove secret: ${secretName}`, secretName, 'removed')
+    const release = await this.mutex.acquire();
+    try {
+      if (this.secrets.has(secretName)) {
+        const successful = this.secrets.delete(secretName);
+        // Remove from fs
+        await this.efs.promises.unlink(Path.join(this.vaultPath, secretName));
+        // Auto commit message
+        await this.commitChanges(`Remove secret: ${secretName}`, secretName, 'removed');
 
-      if (successful) {
-        return
+        if (successful) {
+          return;
+        }
+        throw Error('Secret: ' + secretName + ' was not removed');
       }
-      throw Error('Secret: ' + secretName + ' was not removed')
+      throw Error('Secret: ' + secretName + ' does not exist');
+    } catch (error) {
+      release();
+      throw error;
+    } finally {
+      release();
     }
-    throw Error('Secret: ' + secretName + ' does not exist')
   }
 
   /**
    * Lists all the secrets currently in the vault
    */
   listSecrets(): string[] {
-    let secrets: string[] = Array.from(this.secrets.keys())
-    return secrets
+    let secrets: string[] = Array.from(this.secrets.keys());
+    return secrets;
   }
 
-  tagVault() {
+  tagVault() {}
 
-  }
-
-  untagVault() {
-
-  }
+  untagVault() {}
 
   /////////////
   // Sharing //
@@ -171,13 +181,13 @@ class Vault {
    */
   shareVault(publicKey: string) {
     if (this.sharedPubKeys.has(name)) {
-      throw new Error('Vault is already shared with given public key')
+      throw Error('Vault is already shared with given public key');
     }
 
-    this.sharedPubKeys.add(publicKey)
+    this.sharedPubKeys.add(publicKey);
 
     // Write metadata
-    this.writeMetadata()
+    this.writeMetadata();
   }
 
   /**
@@ -186,13 +196,13 @@ class Vault {
    */
   unshareVault(publicKey: string) {
     if (!this.sharedPubKeys.has(publicKey)) {
-      throw new Error('Vault is not shared with given public key')
+      throw Error('Vault is not shared with given public key');
     }
 
-    this.sharedPubKeys.delete(publicKey)
+    this.sharedPubKeys.delete(publicKey);
 
     // Write metadata
-    this.writeMetadata()
+    this.writeMetadata();
   }
 
   /**
@@ -201,7 +211,7 @@ class Vault {
    */
   peerCanAccess(publicKey: string): boolean {
     // return this.sharedPubKeys.has(publicKey)
-    return true
+    return true;
   }
 
   /**
@@ -210,113 +220,113 @@ class Vault {
    * @param getSocket Function to get an active connection to provided address
    */
   async pullVault(gitClient: GitClient) {
-    // Strangely enough this is needed for pulls along with ref set to 'HEAD'
-    // In isogit's documentation, this is just to get the currentBranch name
-    // But it solves a bug whereby if not used, git.pull complains that it can't
-    // find the master branch or HEAD
-    await git.currentBranch({
-      fs: { promises: this.efs.promises },
-      dir: this.vaultPath,
-      fullname: true
-    })
-    // First pull
-    await git.pull({
-      fs: { promises: this.efs.promises },
-      http: gitClient,
-      dir: this.vaultPath,
-      url: "http://" + '0.0.0.0:0' + '/' + this.name,
-      ref: 'HEAD',
-      singleBranch: true,
-      author: {
-        name: this.name
-      }
-    })
+    const release = await this.mutex.acquire();
+    try {
+      // Strangely enough this is needed for pulls along with ref set to 'HEAD'
+      // In isogit's documentation, this is just to get the currentBranch name
+      // But it solves a bug whereby if not used, git.pull complains that it can't
+      // find the master branch or HEAD
+      await git.currentBranch({
+        fs: { promises: this.efs.promises },
+        dir: this.vaultPath,
+        fullname: true,
+      });
+      // First pull
+      await git.pull({
+        fs: { promises: this.efs.promises },
+        http: gitClient,
+        dir: this.vaultPath,
+        url: 'http://' + '0.0.0.0:0' + '/' + this.name,
+        ref: 'HEAD',
+        singleBranch: true,
+        author: {
+          name: this.name,
+        },
+      });
 
-    // Load any new secrets
-    this.loadSecrets()
+      // Load any new secrets
+      this.loadSecrets();
+    } catch (error) {
+      release();
+      throw error;
+    } finally {
+      release();
+    }
   }
 
-  /**
-   * Initializes the git repository for new vaults
-   */
-  async initRepository() {
-    const fileSystem = this.efs
-    await git.init({
-      fs: fileSystem,
-      dir: this.vaultPath
-    })
-
-    // Initial commit
-    await git.commit({
-      fs: fileSystem,
+  async getVaultHistory(depth?: number) {
+    const logs = await git.log({
+      fs: { promises: this.efs.promises },
       dir: this.vaultPath,
-      author: {
-        name: this.name
-      },
-      message: "init commit"
-    })
-
-    // Write packed-refs file because isomorphic git goes searching for it
-    // and apparently its not autogenerated
-    this.efs.writeFileSync(Path.join(this.vaultPath, '.git', 'packed-refs'), '# pack-refs with: peeled fully-peeled sorted')
+      depth,
+    });
+    return logs.map((commit) => {
+      return commit.commit.message;
+    });
   }
 
   // ============== Helper methods ============== //
   private writeMetadata(): void {
     // mkdir first
-    this.efs.mkdirSync(Path.dirname(this.metadataPath), { recursive: true })
+    this.efs.mkdirSync(Path.dirname(this.metadataPath), { recursive: true });
 
     // Create and write metadata
     const metadata: VaultMetadata = {
-      sharedPubKeys: Array.from(this.sharedPubKeys.keys())
-    }
-    this.efs.writeFileSync(this.metadataPath, JSON.stringify(metadata))
+      sharedPubKeys: Array.from(this.sharedPubKeys.keys()),
+    };
+    this.efs.writeFileSync(this.metadataPath, JSON.stringify(metadata));
   }
 
   private loadMetadata(): void {
     if (this.efs.existsSync(this.metadataPath)) {
-      const fileContents = this.efs.readFileSync(this.metadataPath).toString()
-      const metadata: VaultMetadata = JSON.parse(fileContents)
-      this.sharedPubKeys = new Set(metadata.sharedPubKeys)
+      const fileContents = this.efs.readFileSync(this.metadataPath).toString();
+      const metadata: VaultMetadata = JSON.parse(fileContents);
+      this.sharedPubKeys = new Set(metadata.sharedPubKeys);
     } else {
       // Need to create it
-      this.sharedPubKeys = new Set()
-      this.writeMetadata()
+      this.sharedPubKeys = new Set();
+      this.writeMetadata();
     }
   }
 
-  private async commitChanges(message: string, secretName: string, action: 'added' | 'modified' | 'removed'): Promise<string> {
+  private async commitChanges(
+    message: string,
+    secretName: string,
+    action: 'added' | 'modified' | 'removed',
+  ): Promise<string> {
     if (action == 'removed') {
       await git.remove({
-        fs: this.efs,
+        fs: { promises: this.efs.promises },
         dir: this.vaultPath,
-        filepath: secretName
-      })
+        filepath: secretName,
+      });
     } else {
       await git.add({
-        fs: this.efs,
+        fs: { promises: this.efs.promises },
         dir: this.vaultPath,
-        filepath: secretName
-      })
+        filepath: secretName,
+      });
     }
 
     return await git.commit({
-      fs: this.efs,
+      fs: { promises: this.efs.promises },
       dir: this.vaultPath,
       author: {
-        name: this.name
+        name: this.name,
       },
-      message: message
-    })
+      message: message,
+    });
   }
 
   private loadSecrets(): void {
-    const secrets = fs.readdirSync(this.vaultPath, undefined)
-
+    const secrets = fs.readdirSync(this.vaultPath, undefined);
+    // Remove all secrets first
+    this.secrets.clear();
+    // Load secrets
     for (const secret of secrets.filter((s) => s[0] != '.')) {
-      this.secrets.set(secret, null)
+      this.secrets.set(secret, null);
     }
   }
 }
 
-export default Vault
+export default Vault;

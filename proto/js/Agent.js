@@ -2056,6 +2056,7 @@ $root.agent = (function() {
          * @property {string|null} [vaultName] CreateSecretRequestMessage vaultName
          * @property {string|null} [secretName] CreateSecretRequestMessage secretName
          * @property {string|null} [secretPath] CreateSecretRequestMessage secretPath
+         * @property {Uint8Array|null} [secretContent] CreateSecretRequestMessage secretContent
          */
 
         /**
@@ -2098,6 +2099,14 @@ $root.agent = (function() {
         CreateSecretRequestMessage.prototype.secretPath = "";
 
         /**
+         * CreateSecretRequestMessage secretContent.
+         * @member {Uint8Array} secretContent
+         * @memberof agent.CreateSecretRequestMessage
+         * @instance
+         */
+        CreateSecretRequestMessage.prototype.secretContent = $util.newBuffer([]);
+
+        /**
          * Creates a new CreateSecretRequestMessage instance using the specified properties.
          * @function create
          * @memberof agent.CreateSecretRequestMessage
@@ -2127,6 +2136,8 @@ $root.agent = (function() {
                 w.uint32(18).string(m.secretName);
             if (m.secretPath != null && Object.hasOwnProperty.call(m, "secretPath"))
                 w.uint32(26).string(m.secretPath);
+            if (m.secretContent != null && Object.hasOwnProperty.call(m, "secretContent"))
+                w.uint32(34).bytes(m.secretContent);
             return w;
         };
 
@@ -2156,6 +2167,9 @@ $root.agent = (function() {
                     break;
                 case 3:
                     m.secretPath = r.string();
+                    break;
+                case 4:
+                    m.secretContent = r.bytes();
                     break;
                 default:
                     r.skipType(t & 7);

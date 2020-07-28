@@ -50,10 +50,9 @@ Examples (as C-style strings):
 ----
 */
 
-
 function padHex(b, n) {
-  const s = n.toString(16)
-  return '0'.repeat(b - s.length) + s
+  const s = n.toString(16);
+  return '0'.repeat(b - s.length) + s;
 }
 
 // I'm really using this more as a namespace.
@@ -61,34 +60,34 @@ function padHex(b, n) {
 
 class GitPktLine {
   static flush() {
-    return Buffer.from('0000', 'utf8')
+    return Buffer.from('0000', 'utf8');
   }
 
   static encode(line) {
     if (typeof line === 'string') {
-      line = Buffer.from(line)
+      line = Buffer.from(line);
     }
-    const length = line.length + 4
-    const hexlength = padHex(4, length)
-    return Buffer.concat([Buffer.from(hexlength, 'utf8'), line])
+    const length = line.length + 4;
+    const hexlength = padHex(4, length);
+    return Buffer.concat([Buffer.from(hexlength, 'utf8'), line]);
   }
 
-  static streamReader (stream) {
-    return async function read () {
+  static streamReader(stream) {
+    return async function read() {
       try {
-        let length = await stream.slice(4)
-        if (length === null) return true
-        length = parseInt(length.toString('utf8'), 16)
-        if (length === 0) return null
-        let buffer = await stream.slice(length - 4)
-        if (buffer === null) return true
-        return buffer
+        let length = await stream.slice(4);
+        if (length === null) return true;
+        length = parseInt(length.toString('utf8'), 16);
+        if (length === 0) return null;
+        let buffer = await stream.slice(length - 4);
+        if (buffer === null) return true;
+        return buffer;
       } catch (err) {
-        console.log('error', err)
-        return true
+        console.log('error', err);
+        return true;
       }
-    }
+    };
   }
 }
 
-export default GitPktLine
+export default GitPktLine;
