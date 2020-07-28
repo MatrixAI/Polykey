@@ -4,7 +4,7 @@
     "polykey": "bin/polykey",
     "pk": "bin/polykey"
   },
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Roger Qiu",
   "description": "Polykey Core Library",
   "keywords": [
