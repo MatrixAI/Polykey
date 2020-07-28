@@ -23,7 +23,10 @@
   "types": "./dist/lib/polykey.d.ts",
   "module": "./dist/lib/polykey.js",
   "files": [
-    "proto"
+    "proto",
+    "dist",
+    "docs",
+    "nix"
   ],
   "scripts": {
     "develop": "webpack --mode=development --watch & webpack-dev-server --mode=development & wait",
