@@ -3356,7 +3356,7 @@ let
   args = {
     name = "polykey";
     packageName = "polykey";
-    version = "0.0.2";
+    version = "0.0.3";
     src = ./..;
     dependencies = [
       sources."@babel/code-frame-7.0.0"

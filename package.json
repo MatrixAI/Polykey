@@ -4,7 +4,7 @@
     "polykey": "bin/polykey",
     "pk": "bin/polykey"
   },
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "Roger Qiu",
   "description": "Polykey Core Library",
   "keywords": [
@@ -23,7 +23,10 @@
   "types": "./dist/lib/polykey.d.ts",
   "module": "./dist/lib/polykey.js",
   "files": [
-    "proto"
+    "proto",
+    "dist",
+    "docs",
+    "nix"
   ],
   "scripts": {
     "develop": "webpack --mode=development --watch & webpack-dev-server --mode=development & wait",
