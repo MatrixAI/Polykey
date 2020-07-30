@@ -1,10 +1,10 @@
 {
-  "name": "polykey",
+  "name": "js-polykey",
   "bin": {
     "polykey": "bin/polykey",
     "pk": "bin/polykey"
   },
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "Roger Qiu",
   "description": "Polykey Core Library",
   "keywords": [
