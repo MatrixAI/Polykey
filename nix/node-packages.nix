@@ -3552,9 +3552,9 @@ let
     };
   };
   args = {
-    name = "polykey";
-    packageName = "polykey";
-    version = "0.0.4";
+    name = "js-polykey";
+    packageName = "js-polykey";
+    version = "0.0.6";
     src = ./..;
     dependencies = [
       sources."@babel/code-frame-7.0.0"
