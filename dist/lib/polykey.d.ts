@@ -1,26 +1,26 @@
-declare module 'polykey/proto/js/Agent' {
+declare module 'js-polykey/proto/js/Agent' {
   export = $root;
   var $root: protobuf.Root;
 
 }
-declare module 'polykey/proto/js/Git' {
+declare module 'js-polykey/proto/js/Git' {
   export = $root;
   var $root: protobuf.Root;
 
 }
-declare module 'polykey/proto/js/Peer' {
+declare module 'js-polykey/proto/js/Peer' {
   export = $root;
   var $root: protobuf.Root;
 
 }
-declare module 'polykey/src/lib/Polykey' {
+declare module 'js-polykey/src/lib/Polykey' {
   /// <reference types="node" />
   import fs from 'fs';
-  import KeyManager from 'polykey/src/lib/keys/KeyManager';
-  import PeerManager from 'polykey/src/lib/peers/PeerManager';
-  import VaultManager from 'polykey/src/lib/vaults/VaultManager';
-  import PolykeyAgent from 'polykey/src/lib/agent/PolykeyAgent';
-  import PolykeyClient from 'polykey/src/lib/agent/PolykeyClient';
+  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
+  import PeerManager from 'js-polykey/src/lib/peers/PeerManager';
+  import VaultManager from 'js-polykey/src/lib/vaults/VaultManager';
+  import PolykeyAgent from 'js-polykey/src/lib/agent/PolykeyAgent';
+  import PolykeyClient from 'js-polykey/src/lib/agent/PolykeyClient';
   class Polykey {
       polykeyPath: string;
       vaultManager: VaultManager;
@@ -32,8 +32,8 @@ declare module 'polykey/src/lib/Polykey' {
   export { KeyManager, VaultManager, PeerManager, PolykeyAgent, PolykeyClient };
 
 }
-declare module 'polykey/src/lib/agent/PolykeyAgent' {
-  import PolykeyClient from 'polykey/src/lib/agent/PolykeyClient';
+declare module 'js-polykey/src/lib/agent/PolykeyAgent' {
+  import PolykeyClient from 'js-polykey/src/lib/agent/PolykeyClient';
   import { Duplex } from 'readable-stream';
   class PolykeyAgent {
       private socketPath;
@@ -70,7 +70,7 @@ declare module 'polykey/src/lib/agent/PolykeyAgent' {
   export default PolykeyAgent;
 
 }
-declare module 'polykey/src/lib/agent/PolykeyClient' {
+declare module 'js-polykey/src/lib/agent/PolykeyClient' {
   /// <reference types="node" />
   import { Duplex } from 'readable-stream';
   class PolykeyClient {
@@ -97,13 +97,13 @@ declare module 'polykey/src/lib/agent/PolykeyClient' {
   export default PolykeyClient;
 
 }
-declare module 'polykey/src/lib/agent/internal/daemon-script' {
+declare module 'js-polykey/src/lib/agent/internal/daemon-script' {
   export {};
 
 }
-declare module 'polykey/src/lib/git/GitBackend' {
+declare module 'js-polykey/src/lib/git/GitBackend' {
   /// <reference types="node" />
-  import VaultManager from 'polykey/src/lib/vaults/VaultManager';
+  import VaultManager from 'js-polykey/src/lib/vaults/VaultManager';
   class GitBackend {
       private polykeyPath;
       private vaultManager;
@@ -121,9 +121,9 @@ declare module 'polykey/src/lib/git/GitBackend' {
   export default GitBackend;
 
 }
-declare module 'polykey/src/lib/git/GitClient' {
-  import { Address } from 'polykey/src/lib/peers/PeerInfo';
-  import KeyManager from 'polykey/src/lib/keys/KeyManager';
+declare module 'js-polykey/src/lib/git/GitClient' {
+  import { Address } from 'js-polykey/src/lib/peers/PeerInfo';
+  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
   /**
    * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
    */
@@ -160,7 +160,7 @@ declare module 'polykey/src/lib/git/GitClient' {
   export default GitClient;
 
 }
-declare module 'polykey/src/lib/git/pack-objects/GitCommit' {
+declare module 'js-polykey/src/lib/git/pack-objects/GitCommit' {
   /// <reference types="node" />
   class GitCommit {
       _commit: string;
@@ -186,7 +186,7 @@ declare module 'polykey/src/lib/git/pack-objects/GitCommit' {
   export default GitCommit;
 
 }
-declare module 'polykey/src/lib/git/pack-objects/GitObject' {
+declare module 'js-polykey/src/lib/git/pack-objects/GitObject' {
   /// <reference types="node" />
   class GitObject {
       static hash({ type, object }: {
@@ -211,7 +211,7 @@ declare module 'polykey/src/lib/git/pack-objects/GitObject' {
   export default GitObject;
 
 }
-declare module 'polykey/src/lib/git/pack-objects/GitObjectManager' {
+declare module 'js-polykey/src/lib/git/pack-objects/GitObjectManager' {
   import { EncryptedFS } from 'encryptedfs';
   class GitObjectManager {
       static read(fileSystem: EncryptedFS, gitdir: string, oid: string, format?: string): Promise<any>;
@@ -219,7 +219,7 @@ declare module 'polykey/src/lib/git/pack-objects/GitObjectManager' {
   export default GitObjectManager;
 
 }
-declare module 'polykey/src/lib/git/pack-objects/GitTree' {
+declare module 'js-polykey/src/lib/git/pack-objects/GitTree' {
   /// <reference types="node" />
   class GitTree {
       _entries: any[];
@@ -233,7 +233,7 @@ declare module 'polykey/src/lib/git/pack-objects/GitTree' {
   export default GitTree;
 
 }
-declare module 'polykey/src/lib/git/pack-objects/log' {
+declare module 'js-polykey/src/lib/git/pack-objects/log' {
   import { EncryptedFS } from 'encryptedfs';
   function logCommit(fileSystem: EncryptedFS, gitdir: string, oid: string, signing: boolean): Promise<any>;
   /**
@@ -247,7 +247,7 @@ declare module 'polykey/src/lib/git/pack-objects/log' {
   export { logCommit };
 
 }
-declare module 'polykey/src/lib/git/pack-objects/packObjects' {
+declare module 'js-polykey/src/lib/git/pack-objects/packObjects' {
   import { EncryptedFS } from 'encryptedfs';
   import { PassThrough } from 'readable-stream';
   type Ack = {
@@ -270,13 +270,13 @@ declare module 'polykey/src/lib/git/pack-objects/packObjects' {
   export { listObjects, pack };
 
 }
-declare module 'polykey/src/lib/git/pack-objects/shasum' {
+declare module 'js-polykey/src/lib/git/pack-objects/shasum' {
   /// <reference types="node" />
   function shasum(buffer: Buffer): any;
   export default shasum;
 
 }
-declare module 'polykey/src/lib/git/side-band/GitSideBand' {
+declare module 'js-polykey/src/lib/git/side-band/GitSideBand' {
   import { PassThrough } from 'readable-stream';
   class GitSideBand {
       static demux(input: any): {
@@ -290,7 +290,7 @@ declare module 'polykey/src/lib/git/side-band/GitSideBand' {
   export default GitSideBand;
 
 }
-declare module 'polykey/src/lib/git/upload-pack/GitPackedRefs' {
+declare module 'js-polykey/src/lib/git/upload-pack/GitPackedRefs' {
   type Config = {
       line: string;
       ref?: string;
@@ -307,7 +307,7 @@ declare module 'polykey/src/lib/git/upload-pack/GitPackedRefs' {
   export default GitPackedRefs;
 
 }
-declare module 'polykey/src/lib/git/upload-pack/GitPktLine' {
+declare module 'js-polykey/src/lib/git/upload-pack/GitPktLine' {
   /**
   pkt-line Format
   ---------------
@@ -368,7 +368,7 @@ declare module 'polykey/src/lib/git/upload-pack/GitPktLine' {
   export default GitPktLine;
 
 }
-declare module 'polykey/src/lib/git/upload-pack/GitRefManager' {
+declare module 'js-polykey/src/lib/git/upload-pack/GitRefManager' {
   import { EncryptedFS } from 'encryptedfs';
   class GitRefManager {
       static packedRefs(fileSystem: EncryptedFS, gitdir: string): Promise<Map<string, string>>;
@@ -378,18 +378,18 @@ declare module 'polykey/src/lib/git/upload-pack/GitRefManager' {
   export default GitRefManager;
 
 }
-declare module 'polykey/src/lib/git/upload-pack/uploadPack' {
+declare module 'js-polykey/src/lib/git/upload-pack/uploadPack' {
   /// <reference types="node" />
   import { EncryptedFS } from 'encryptedfs';
   function uploadPack(fileSystem: EncryptedFS, dir: string, gitdir?: string, advertiseRefs?: boolean): Promise<Buffer[] | undefined>;
   export default uploadPack;
 
 }
-declare module 'polykey/src/lib/keys/KeyManager' {
+declare module 'js-polykey/src/lib/keys/KeyManager' {
   /// <reference types="node" />
   import fs from 'fs';
   import { Pool, ModuleThread } from 'threads';
-  import { KeyManagerWorker } from 'polykey/src/lib/keys/KeyManagerWorker';
+  import { KeyManagerWorker } from 'js-polykey/src/lib/keys/KeyManagerWorker';
   type KeyPair = {
       private: string | null;
       public: string | null;
@@ -578,7 +578,7 @@ declare module 'polykey/src/lib/keys/KeyManager' {
   export { KeyPair };
 
 }
-declare module 'polykey/src/lib/keys/KeyManagerWorker' {
+declare module 'js-polykey/src/lib/keys/KeyManagerWorker' {
   /// <reference types="node" />
   const keyManagerWorker: {
       /**
@@ -611,7 +611,7 @@ declare module 'polykey/src/lib/keys/KeyManagerWorker' {
   export {};
 
 }
-declare module 'polykey/src/lib/keys/pki/PublicKeyInfrastructure' {
+declare module 'js-polykey/src/lib/keys/pki/PublicKeyInfrastructure' {
   /// <reference types="node" />
   import { pki } from 'node-forge';
   /**
@@ -634,12 +634,12 @@ declare module 'polykey/src/lib/keys/pki/PublicKeyInfrastructure' {
   export default PublicKeyInfrastructure;
 
 }
-declare module 'polykey/src/lib/peers/MulticastBroadcaster' {
+declare module 'js-polykey/src/lib/peers/MulticastBroadcaster' {
   /// <reference types="node" />
   import dgram from 'dgram';
-  import PeerInfo from 'polykey/src/lib/peers/PeerInfo';
+  import PeerInfo from 'js-polykey/src/lib/peers/PeerInfo';
   import { EventEmitter } from 'events';
-  import KeyManager from 'polykey/src/lib/keys/KeyManager';
+  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
   type PeerMessage = {
       encryptedLocalPubKey: Buffer;
       encryptedPeerPubKey: Buffer;
@@ -666,7 +666,7 @@ declare module 'polykey/src/lib/peers/MulticastBroadcaster' {
   export default MulticastBroadcaster;
 
 }
-declare module 'polykey/src/lib/peers/PeerInfo' {
+declare module 'js-polykey/src/lib/peers/PeerInfo' {
   /// <reference types="node" />
   import { AddressInfo } from 'net';
   class Address {
@@ -708,15 +708,15 @@ declare module 'polykey/src/lib/peers/PeerInfo' {
   export { Address };
 
 }
-declare module 'polykey/src/lib/peers/PeerManager' {
+declare module 'js-polykey/src/lib/peers/PeerManager' {
   /// <reference types="node" />
   import fs from 'fs';
   import * as grpc from '@grpc/grpc-js';
-  import GitClient from 'polykey/src/lib/git/GitClient';
-  import KeyManager from 'polykey/src/lib/keys/KeyManager';
-  import VaultManager from 'polykey/src/lib/vaults/VaultManager';
-  import PeerInfo, { Address } from 'polykey/src/lib/peers/PeerInfo';
-  import MulticastBroadcaster from 'polykey/src/lib/peers/MulticastBroadcaster';
+  import GitClient from 'js-polykey/src/lib/git/GitClient';
+  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
+  import VaultManager from 'js-polykey/src/lib/vaults/VaultManager';
+  import PeerInfo, { Address } from 'js-polykey/src/lib/peers/PeerInfo';
+  import MulticastBroadcaster from 'js-polykey/src/lib/peers/MulticastBroadcaster';
   interface SocialDiscovery {
       name: string;
       findUser(handle: string, service: string): Promise<string>;
@@ -785,7 +785,7 @@ declare module 'polykey/src/lib/peers/PeerManager' {
   export { SocialDiscovery };
 
 }
-declare module 'polykey/src/lib/utils' {
+declare module 'js-polykey/src/lib/utils' {
   /**
    * Returns a 5 character long random string of lower case letters
    */
@@ -798,9 +798,9 @@ declare module 'polykey/src/lib/utils' {
   export { randomString, firstPromiseFulfilled };
 
 }
-declare module 'polykey/src/lib/vaults/Vault' {
+declare module 'js-polykey/src/lib/vaults/Vault' {
   /// <reference types="node" />
-  import GitClient from 'polykey/src/lib/git/GitClient';
+  import GitClient from 'js-polykey/src/lib/git/GitClient';
   import { EncryptedFS } from 'encryptedfs';
   class Vault {
       private key;
@@ -879,12 +879,12 @@ declare module 'polykey/src/lib/vaults/Vault' {
   export default Vault;
 
 }
-declare module 'polykey/src/lib/vaults/VaultManager' {
+declare module 'js-polykey/src/lib/vaults/VaultManager' {
   /// <reference types="node" />
   import fs from 'fs';
-  import Vault from 'polykey/src/lib/vaults/Vault';
-  import GitClient from 'polykey/src/lib/git/GitClient';
-  import KeyManager from 'polykey/src/lib/keys/KeyManager';
+  import Vault from 'js-polykey/src/lib/vaults/Vault';
+  import GitClient from 'js-polykey/src/lib/git/GitClient';
+  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
   class VaultManager {
       polykeyPath: string;
       fileSystem: typeof fs;
@@ -932,7 +932,7 @@ declare module 'polykey/src/lib/vaults/VaultManager' {
   export default VaultManager;
 
 }
-declare module 'polykey' {
-  import main = require('polykey/Polykey');
+declare module 'js-polykey' {
+  import main = require('js-polykey/Polykey');
   export = main;
 }
