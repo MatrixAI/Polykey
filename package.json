@@ -1,5 +1,5 @@
 {
-  "name": "polykey",
+  "name": "js-polykey",
   "bin": {
     "polykey": "bin/polykey",
     "pk": "bin/polykey"
