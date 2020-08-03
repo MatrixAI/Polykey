@@ -485,8 +485,8 @@ function makeListVaultsCommand() {
             _1.pkLogger('no vaults found', _1.PKMessageType.INFO);
         }
         else {
-            vaultNames.forEach((vaultName) => {
-                _1.pkLogger(vaultName, _1.PKMessageType.INFO);
+            vaultNames.forEach((vaultName, index) => {
+                _1.pkLogger(`${index + 1}: ${vaultName}`, _1.PKMessageType.INFO);
             });
         }
     }));

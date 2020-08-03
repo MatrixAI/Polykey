@@ -572,7 +572,7 @@ declare module 'js-polykey/src/lib/keys/KeyManager' {
        */
       hasKey(name: string): boolean;
       private writeMetadata;
-      private loadMetadata;
+      loadMetadata(): void;
   }
   export default KeyManager;
   export { KeyPair };
@@ -779,7 +779,7 @@ declare module 'js-polykey/src/lib/peers/PeerManager' {
        */
       connectToPeer(peer: string | Address): GitClient;
       private writeMetadata;
-      private loadMetadata;
+      loadMetadata(): void;
   }
   export default PeerManager;
   export { SocialDiscovery };
@@ -927,7 +927,7 @@ declare module 'js-polykey/src/lib/vaults/VaultManager' {
       listVaults(): string[];
       private validateVault;
       private writeMetadata;
-      private loadMetadata;
+      loadMetadata(): Promise<void>;
   }
   export default VaultManager;
 

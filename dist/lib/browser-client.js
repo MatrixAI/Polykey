@@ -334,8 +334,10 @@ class PolykeyClient {
             return status;
         }
         catch (err) {
-            console.log(err);
-            return 'stopped';
+            if (err.toString().match(/ECONNRESET|ENOENT|ECONNRESET/)) {
+                return 'stopped';
+            }
+            throw err;
         }
     }
     async stopAgent() {

@@ -1008,8 +1008,10 @@ class PolykeyClient {
             return status;
         }
         catch (err) {
-            console.log(err);
-            return 'stopped';
+            if (err.toString().match(/ECONNRESET|ENOENT|ECONNRESET/)) {
+                return 'stopped';
+            }
+            throw err;
         }
     }
     async stopAgent() {
@@ -2099,7 +2101,7 @@ class GitBackend {
         const connectingPublicKey = '';
         const responseBuffers = [];
         if (!this.exists(vaultName, connectingPublicKey)) {
-            throw Error('Vault does not exist');
+            throw Error(`vault does not exist: '${vaultName}'`);
         }
         else {
             responseBuffers.push(Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')));
@@ -2119,7 +2121,7 @@ class GitBackend {
             // Check if vault exists
             const connectingPublicKey = '';
             if (!this.exists(vaultName, connectingPublicKey)) {
-                throw Error('Vault does not exist');
+                throw Error(`vault does not exist: '${vaultName}'`);
             }
             const fileSystem = (_a = this.vaultManager.getVault(vaultName)) === null || _a === void 0 ? void 0 : _a.EncryptedFS;
             if (fileSystem) {
@@ -3120,14 +3122,6 @@ class VaultManager {
         this.vaultKeys = new Map();
         // Read in vault keys
         this.loadMetadata();
-        // Initialize vaults in memory
-        for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
-            const path = path_1.default.join(this.polykeyPath, vaultName);
-            if (this.fileSystem.existsSync(path)) {
-                const vault = new Vault_1.default(vaultName, vaultKey, this.polykeyPath);
-                this.vaults.set(vaultName, vault);
-            }
-        }
     }
     /**
      * Get a vault from the vault manager
@@ -3147,7 +3141,7 @@ class VaultManager {
             return vault;
         }
         else {
-            throw Error('Vault does not exist in memory');
+            throw Error(`vault does not exist in memory: '${vaultName}'`);
         }
     }
     /**
@@ -3288,14 +3282,14 @@ class VaultManager {
     /* ============ HELPERS =============== */
     validateVault(vaultName) {
         if (!this.vaults.has(vaultName)) {
-            throw Error('Vault does not exist in memory');
+            throw Error(`vault does not exist in memory: '${vaultName}'`);
         }
         if (!this.vaultKeys.has(vaultName)) {
-            throw Error('Vault key does not exist in memory');
+            throw Error(`vault key does not exist in memory: '${vaultName}'`);
         }
         const vaultPath = path_1.default.join(this.polykeyPath, vaultName);
         if (!this.fileSystem.existsSync(vaultPath)) {
-            throw Error('Vault directory does not exist');
+            throw Error(`vault directory does not exist: '${vaultPath}'`);
         }
     }
     async writeMetadata() {
@@ -3309,8 +3303,17 @@ class VaultManager {
             const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
             const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString();
             for (const [key, value] of new Map(JSON.parse(metadata))) {
-                this.vaultKeys[key] = Buffer.from(value);
+                this.vaultKeys.set(key, Buffer.from(value));
             }
+            // Initialize vaults in memory
+            for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
+                const path = path_1.default.join(this.polykeyPath, vaultName);
+                if (this.fileSystem.existsSync(path)) {
+                    const vault = new Vault_1.default(vaultName, vaultKey, this.polykeyPath);
+                    this.vaults.set(vaultName, vault);
+                }
+            }
+            console.log(this.vaults);
         }
     }
 }
@@ -3827,6 +3830,11 @@ class PolykeyAgent {
             // Create polykey class
             pk = new Polykey_1.default(nodePath, fs_1.default, km);
         }
+        // Load all metadata
+        pk.keyManager.loadMetadata();
+        pk.peerManager.loadMetadata();
+        await pk.vaultManager.loadMetadata();
+        console.log(pk.vaultManager.listVaults());
         // Set polykey class
         this.addToNodePaths(nodePath, pk);
         // Encode and send response
@@ -4000,19 +4008,17 @@ class PolykeyAgent {
     static async startAgent(daemon = false) {
         return new Promise((resolve, reject) => {
             try {
+                fs_1.default.rmdirSync(PolykeyAgent.LogPath, { recursive: true });
+                fs_1.default.mkdirSync(PolykeyAgent.LogPath, { recursive: true });
                 let options = {
                     uid: process_1.default.getuid(),
                     detached: daemon,
-                };
-                if (daemon) {
-                    fs_1.default.rmdirSync(PolykeyAgent.LogPath, { recursive: true });
-                    fs_1.default.mkdirSync(PolykeyAgent.LogPath, { recursive: true });
-                    options.stdio = [
+                    stdio: [
                         'ipc',
                         fs_1.default.openSync(path_1.default.join(PolykeyAgent.LogPath, 'output.log'), 'a'),
                         fs_1.default.openSync(path_1.default.join(PolykeyAgent.LogPath, 'error.log'), 'a'),
-                    ];
-                }
+                    ]
+                };
                 const agentProcess = child_process_1.fork(PolykeyAgent.DAEMON_SCRIPT_PATH, undefined, options);
                 const pid = agentProcess.pid;
                 agentProcess.unref();
