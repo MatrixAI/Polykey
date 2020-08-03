@@ -49,7 +49,7 @@ class GitBackend {
     const responseBuffers: Buffer[] = [];
 
     if (!this.exists(vaultName, connectingPublicKey)) {
-      throw Error('Vault does not exist');
+      throw Error(`vault does not exist: '${vaultName}'`);
     } else {
       responseBuffers.push(Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')));
       responseBuffers.push(Buffer.from('0000'));
@@ -71,7 +71,7 @@ class GitBackend {
       // Check if vault exists
       const connectingPublicKey = '';
       if (!this.exists(vaultName, connectingPublicKey)) {
-        throw Error('Vault does not exist');
+        throw Error(`vault does not exist: '${vaultName}'`);
       }
 
       const fileSystem = this.vaultManager.getVault(vaultName)?.EncryptedFS;

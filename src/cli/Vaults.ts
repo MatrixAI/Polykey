@@ -22,8 +22,8 @@ function makeListVaultsCommand() {
         if (vaultNames === undefined || vaultNames.length == 0) {
           pkLogger('no vaults found', PKMessageType.INFO);
         } else {
-          vaultNames.forEach((vaultName: string) => {
-            pkLogger(vaultName, PKMessageType.INFO);
+          vaultNames.forEach((vaultName: string, index: number) => {
+            pkLogger(`${index + 1}: ${vaultName}`, PKMessageType.INFO);
           });
         }
       }),

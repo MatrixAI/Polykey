@@ -305,9 +305,10 @@ class PolykeyClient {
       const status = Buffer.from(subMessage).toString();
       return status;
     } catch (err) {
-      console.log(err);
-
-      return 'stopped';
+      if ((<Error>err).toString().match(/ECONNRESET|ENOENT|ECONNRESET/)) {
+        return 'stopped';
+      }
+      throw err
     }
   }
   async stopAgent(): Promise<boolean> {

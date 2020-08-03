@@ -650,7 +650,7 @@ class KeyManager {
     const metadata = JSON.stringify(this.metadata);
     this.fileSystem.writeFileSync(this.metadataPath, metadata);
   }
-  private loadMetadata(): void {
+  loadMetadata(): void {
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath)) {
       const metadata = this.fileSystem.readFileSync(this.metadataPath).toString();

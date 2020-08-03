@@ -221,6 +221,12 @@ class PolykeyAgent {
       // Create polykey class
       pk = new Polykey(nodePath, fs, km);
     }
+    // Load all metadata
+    pk.keyManager.loadMetadata()
+    pk.peerManager.loadMetadata()
+    await pk.vaultManager.loadMetadata()
+    console.log(pk.vaultManager.listVaults());
+
 
     // Set polykey class
     this.addToNodePaths(nodePath, pk);
@@ -411,20 +417,18 @@ class PolykeyAgent {
   public static async startAgent(daemon: boolean = false) {
     return new Promise<number>((resolve, reject) => {
       try {
+        fs.rmdirSync(PolykeyAgent.LogPath, { recursive: true });
+        fs.mkdirSync(PolykeyAgent.LogPath, { recursive: true });
+
         let options: ForkOptions = {
           uid: process.getuid(),
           detached: daemon,
-        };
-        if (daemon) {
-          fs.rmdirSync(PolykeyAgent.LogPath, { recursive: true });
-          fs.mkdirSync(PolykeyAgent.LogPath, { recursive: true });
-          options.stdio = [
+          stdio: [
             'ipc',
             fs.openSync(path.join(PolykeyAgent.LogPath, 'output.log'), 'a'),
             fs.openSync(path.join(PolykeyAgent.LogPath, 'error.log'), 'a'),
-          ];
-        }
-
+          ]
+        };
         const agentProcess = fork(PolykeyAgent.DAEMON_SCRIPT_PATH, undefined, options);
 
         const pid = agentProcess.pid;

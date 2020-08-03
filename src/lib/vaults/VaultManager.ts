@@ -30,15 +30,6 @@ class VaultManager {
 
     // Read in vault keys
     this.loadMetadata();
-
-    // Initialize vaults in memory
-    for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
-      const path = Path.join(this.polykeyPath, vaultName);
-      if (this.fileSystem.existsSync(path)) {
-        const vault = new Vault(vaultName, vaultKey, this.polykeyPath);
-        this.vaults.set(vaultName, vault);
-      }
-    }
   }
 
   /**
@@ -59,7 +50,7 @@ class VaultManager {
       this.vaults.set(vaultName, vault);
       return vault;
     } else {
-      throw Error('Vault does not exist in memory');
+      throw Error(`vault does not exist in memory: '${vaultName}'`);
     }
   }
 
@@ -222,14 +213,14 @@ class VaultManager {
   /* ============ HELPERS =============== */
   private validateVault(vaultName: string): void {
     if (!this.vaults.has(vaultName)) {
-      throw Error('Vault does not exist in memory');
+      throw Error(`vault does not exist in memory: '${vaultName}'`);
     }
     if (!this.vaultKeys.has(vaultName)) {
-      throw Error('Vault key does not exist in memory');
+      throw Error(`vault key does not exist in memory: '${vaultName}'`);
     }
     const vaultPath = Path.join(this.polykeyPath, vaultName);
     if (!this.fileSystem.existsSync(vaultPath)) {
-      throw Error('Vault directory does not exist');
+      throw Error(`vault directory does not exist: '${vaultPath}'`);
     }
   }
   private async writeMetadata(): Promise<void> {
@@ -237,15 +228,26 @@ class VaultManager {
     const encryptedMetadata = await this.keyManager.encryptData(Buffer.from(metadata));
     await this.fileSystem.promises.writeFile(this.metadataPath, encryptedMetadata);
   }
-  private async loadMetadata(): Promise<void> {
+  async loadMetadata(): Promise<void> {
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.identityLoaded) {
       const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
       const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString();
 
       for (const [key, value] of new Map<string, any>(JSON.parse(metadata))) {
-        this.vaultKeys[key] = Buffer.from(value);
+        this.vaultKeys.set(key, Buffer.from(value));
       }
+      // Initialize vaults in memory
+      for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
+        const path = Path.join(this.polykeyPath, vaultName);
+
+        if (this.fileSystem.existsSync(path)) {
+          const vault = new Vault(vaultName, vaultKey, this.polykeyPath);
+          this.vaults.set(vaultName, vault);
+        }
+      }
+      console.log(this.vaults);
+
     }
   }
 }
