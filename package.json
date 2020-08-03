@@ -4,7 +4,7 @@
     "polykey": "bin/polykey",
     "pk": "bin/polykey"
   },
-  "version": "0.0.7",
+  "version": "0.0.8",
   "author": "Roger Qiu",
   "description": "Polykey Core Library",
   "keywords": [
@@ -36,7 +36,8 @@
     "build:all": "npm run build:proto && npm run build:webpack && npm run build:documentation",
     "generate:sslcerts": "./scripts/generate_ssl_certs.sh",
     "test": "jest",
-    "lint": "eslint '{src,tests}/**/*.{js,ts}' --quiet --fix"
+    "lint": "eslint '{src,tests}/**/*.{js,ts}' --quiet --fix",
+    "postversion": "git push --tags origin"
   },
   "jest": {
     "verbose": true,

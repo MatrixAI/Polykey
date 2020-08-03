@@ -8,6 +8,8 @@ cache:
 
 stages:
   - check
+  - build
+  - deploy
 
 before_script:
   - node --version
@@ -18,3 +20,26 @@ prettier:
   image: node:12
   script:
     - npm run lint
+
+jest:
+  stage: check
+  image: node:12
+  script:
+    - npm run test
+
+build_all:
+  stage: build
+  image: node:12
+  script:
+    - npm run build:all
+
+deploy_npm:
+  stage: deploy
+  image: node:12
+  only:
+    - tags
+    - triggers
+  script:
+    - npm run build:all
+    - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}'>.npmrc
+    - npm publish
