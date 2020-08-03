@@ -37,7 +37,7 @@
     "generate:sslcerts": "./scripts/generate_ssl_certs.sh",
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}' --quiet --fix",
-    "postversion": "git push --tags origin"
+    "npm:version:patch": "./scripts/npm_version_patch.sh"
   },
   "jest": {
     "verbose": true,
