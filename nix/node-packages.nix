@@ -3554,7 +3554,7 @@ let
   args = {
     name = "js-polykey";
     packageName = "js-polykey";
-    version = "0.0.13";
+    version = "0.0.14";
     src = ./..;
     dependencies = [
       sources."@babel/code-frame-7.0.0"
