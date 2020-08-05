@@ -5,6 +5,9 @@ cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - node_modules/
+    - dist/
+    - proto/
+    - docs/
 
 stages:
   - check
@@ -41,5 +44,5 @@ deploy_npm:
     - triggers
   script:
     - npm run build:all
-    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}\nregistry=https://registry.npmjs.org/" > .npmrc
+    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
     - npm publish

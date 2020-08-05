@@ -2,6 +2,9 @@
 /result
 /result-*
 
+# gitlab-runner exec
+/builds
+
 # Logs
 logs
 *.log
