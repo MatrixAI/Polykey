@@ -19,6 +19,9 @@
     "type": "git",
     "url": "https://github.com/MatrixAI/js-polykey.git"
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "main": "./dist/lib/polykey.js",
   "types": "./dist/lib/polykey.d.ts",
   "module": "./dist/lib/polykey.js",
