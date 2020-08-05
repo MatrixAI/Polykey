@@ -41,5 +41,5 @@ deploy_npm:
     - triggers
   script:
     - npm run build:all
-    - echo "//registry.npmjs.com/:_authToken=${NPM_TOKEN}\nregistry=https://registry.npmjs.com/" > .npmrc
+    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}\nregistry=https://registry.npmjs.org/" > .npmrc
     - npm publish
