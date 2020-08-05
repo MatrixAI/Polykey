@@ -44,11 +44,11 @@ function makeVerifyCommand() {
     .description('verification operations')
     .option('--node-path <nodePath>', 'node path')
     .option(
-      '-k, --verifying-key <verifyingKey>',
+      '-k, --public-key <publicKey>',
       'path to public key that will be used to verify files, defaults to primary key',
     )
     .option('-s, --detach-sig <detachSig>', 'path to detached signature for file, defaults to [filename].sig')
-    .requiredOption('-f, --signed-file <signedFile>', 'file to be signed')
+    .requiredOption('-f, --verified-file <verifiedFile>', 'file to be verified')
     .action(
       actionRunner(async (options) => {
         const client = PolykeyAgent.connectToAgent();
@@ -58,7 +58,7 @@ function makeVerifyCommand() {
         }
 
         const nodePath = determineNodePath(options);
-        const verifyingKeyPath = options.verifyingKey;
+        const publicKey = options.publicKey;
         const filePath = options.signedFile;
         const signaturePath = options.detachSig ?? filePath + '.sig';
 
@@ -77,12 +77,10 @@ function makeEncryptCommand() {
     .description('encryption operations')
     .option('--node-path <nodePath>', 'node path')
     .option(
-      '-k, --encrypting-key <encryptingKey>',
+      '-k, --public-key <publicKey>',
       'path to public key that will be used to encrypt files, defaults to primary key',
     )
-    .option('-s, --detach-sig <detachSig>', 'path to detached signature for file, defaults to [filename].sig')
-    .arguments('file(s) to be encrypted')
-    .requiredOption('-f, --signed-file <signedFile>', 'file to be signed')
+    .requiredOption('-f, --file-path <filePath>', 'file to be encrypted')
     .action(
       actionRunner(async (options) => {
         const client = PolykeyAgent.connectToAgent();
@@ -92,16 +90,47 @@ function makeEncryptCommand() {
         }
         const nodePath = determineNodePath(options);
 
-        const filePathList = options.args.values();
-        if (filePathList.length == 0) {
-          throw Error('no files provided');
-        }
+        const publicKey = options.publicKey;
+        const filePath = options.filePath
 
-        const encrypted = await client.encryp(nodePath, filePath, signaturePath);
-        if (verified) {
-          pkLogger(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
-        } else {
-          pkLogger(`file '${filePath}' was not verified`, PKMessageType.WARNING);
+        try {
+          const encryptedPath = await client.encryptFile(nodePath, filePath, publicKey);
+          pkLogger(`file successfully encrypted: '${encryptedPath}'`, PKMessageType.SUCCESS);
+        } catch (err) {
+          throw Error(`failed to encrypt '${filePath}': ${err}`);
+        }
+      }),
+    );
+}
+
+function makeDecryptCommand() {
+  return new commander.Command('decrypt')
+    .description('decryption operations')
+    .option('--node-path <nodePath>', 'node path')
+    .option(
+      '-k, --private-key <privateKey>',
+      'path to private key that will be used to decrypt files, defaults to primary key',
+    )
+    .option('-p, --key-passphrase <keyPassphrase>', 'passphrase to unlock the provided private key')
+    .requiredOption('-f, --file-path <filePath>', 'file to be decrypted')
+    .action(
+      actionRunner(async (options) => {
+        const client = PolykeyAgent.connectToAgent();
+        const status = await client.getAgentStatus();
+        if (status != 'online') {
+          throw Error(`agent status is: ${status}`);
+        }
+        const nodePath = determineNodePath(options);
+
+        const privateKey = options.privateKey;
+        const keyPassphrase = options.keyPassphrase;
+        const filePath = options.filePath
+
+        try {
+          const decryptedPath = await client.decryptFile(nodePath, filePath, privateKey, keyPassphrase);
+          pkLogger(`file successfully decrypted: '${decryptedPath}'`, PKMessageType.SUCCESS);
+        } catch (err) {
+          throw Error(`failed to decrypt '${filePath}': ${err}`);
         }
       }),
     );
@@ -111,7 +140,9 @@ function makeCryptoCommand() {
   return new commander.Command('crypto')
     .description('crypto operations')
     .addCommand(makeVerifyCommand())
-    .addCommand(makeSignCommand());
+    .addCommand(makeSignCommand())
+    .addCommand(makeEncryptCommand())
+    .addCommand(makeDecryptCommand())
 }
 
 export default makeCryptoCommand;

@@ -24,6 +24,7 @@ enum AgentMessageType {
   DELETE_KEY = 18;
   ENCRYPT_FILE = 19;
   DECRYPT_FILE = 20;
+  GET_PRIMARY_KEYPAIR = 21;
 }
 message AgentMessage {
   AgentMessageType type = 1;
@@ -76,6 +77,7 @@ message SignFileResponseMessage {
 message VerifyFileRequestMessage {
   string file_path = 1;
   string signature_path = 2;
+  string public_key_path = 3;
 }
 message VerifyFileResponseMessage {
   bool verified = 1;
@@ -87,7 +89,7 @@ message EncryptFileRequestMessage {
   string public_key_path = 2;
 }
 message EncryptFileResponseMessage {
-  bool encrypted = 1;
+  string encryptedPath = 1;
 }
 
 // ==== DecryptFile ==== //
@@ -97,7 +99,7 @@ message DecryptFileRequestMessage {
   string passphrase = 3;
 }
 message DecryptFileResponseMessage {
-  bool decrypted = 1;
+  string decryptedPath = 1;
 }
 
 // ==== ListVaults ==== //
@@ -184,4 +186,13 @@ message GetKeyRequestMessage {
 message GetKeyResponseMessage {
   string key_name = 1;
   string key_content = 2;
+}
+
+// ==== GetPrimaryKeyPair ==== //
+message GetPrimaryKeyPairRequestMessage {
+  bool include_private_key = 1;
+}
+message GetPrimaryKeyPairResponseMessage {
+  string public_key = 1;
+  string private_key = 2;
 }

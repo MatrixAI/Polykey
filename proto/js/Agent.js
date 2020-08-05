@@ -43,6 +43,7 @@ $root.agent = (function() {
      * @property {number} DELETE_KEY=18 DELETE_KEY value
      * @property {number} ENCRYPT_FILE=19 ENCRYPT_FILE value
      * @property {number} DECRYPT_FILE=20 DECRYPT_FILE value
+     * @property {number} GET_PRIMARY_KEYPAIR=21 GET_PRIMARY_KEYPAIR value
      */
     agent.AgentMessageType = (function() {
         var valuesById = {}, values = Object.create(valuesById);
@@ -67,6 +68,7 @@ $root.agent = (function() {
         values[valuesById[18] = "DELETE_KEY"] = 18;
         values[valuesById[19] = "ENCRYPT_FILE"] = 19;
         values[valuesById[20] = "DECRYPT_FILE"] = 20;
+        values[valuesById[21] = "GET_PRIMARY_KEYPAIR"] = 21;
         return values;
     })();
 
@@ -1125,6 +1127,7 @@ $root.agent = (function() {
          * @interface IVerifyFileRequestMessage
          * @property {string|null} [filePath] VerifyFileRequestMessage filePath
          * @property {string|null} [signaturePath] VerifyFileRequestMessage signaturePath
+         * @property {string|null} [publicKeyPath] VerifyFileRequestMessage publicKeyPath
          */
 
         /**
@@ -1159,6 +1162,14 @@ $root.agent = (function() {
         VerifyFileRequestMessage.prototype.signaturePath = "";
 
         /**
+         * VerifyFileRequestMessage publicKeyPath.
+         * @member {string} publicKeyPath
+         * @memberof agent.VerifyFileRequestMessage
+         * @instance
+         */
+        VerifyFileRequestMessage.prototype.publicKeyPath = "";
+
+        /**
          * Creates a new VerifyFileRequestMessage instance using the specified properties.
          * @function create
          * @memberof agent.VerifyFileRequestMessage
@@ -1186,6 +1197,8 @@ $root.agent = (function() {
                 w.uint32(10).string(m.filePath);
             if (m.signaturePath != null && Object.hasOwnProperty.call(m, "signaturePath"))
                 w.uint32(18).string(m.signaturePath);
+            if (m.publicKeyPath != null && Object.hasOwnProperty.call(m, "publicKeyPath"))
+                w.uint32(26).string(m.publicKeyPath);
             return w;
         };
 
@@ -1212,6 +1225,9 @@ $root.agent = (function() {
                     break;
                 case 2:
                     m.signaturePath = r.string();
+                    break;
+                case 3:
+                    m.publicKeyPath = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1430,7 +1446,7 @@ $root.agent = (function() {
          * Properties of an EncryptFileResponseMessage.
          * @memberof agent
          * @interface IEncryptFileResponseMessage
-         * @property {boolean|null} [encrypted] EncryptFileResponseMessage encrypted
+         * @property {string|null} [encryptedPath] EncryptFileResponseMessage encryptedPath
          */
 
         /**
@@ -1449,12 +1465,12 @@ $root.agent = (function() {
         }
 
         /**
-         * EncryptFileResponseMessage encrypted.
-         * @member {boolean} encrypted
+         * EncryptFileResponseMessage encryptedPath.
+         * @member {string} encryptedPath
          * @memberof agent.EncryptFileResponseMessage
          * @instance
          */
-        EncryptFileResponseMessage.prototype.encrypted = false;
+        EncryptFileResponseMessage.prototype.encryptedPath = "";
 
         /**
          * Creates a new EncryptFileResponseMessage instance using the specified properties.
@@ -1480,8 +1496,8 @@ $root.agent = (function() {
         EncryptFileResponseMessage.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
-            if (m.encrypted != null && Object.hasOwnProperty.call(m, "encrypted"))
-                w.uint32(8).bool(m.encrypted);
+            if (m.encryptedPath != null && Object.hasOwnProperty.call(m, "encryptedPath"))
+                w.uint32(10).string(m.encryptedPath);
             return w;
         };
 
@@ -1504,7 +1520,7 @@ $root.agent = (function() {
                 var t = r.uint32();
                 switch (t >>> 3) {
                 case 1:
-                    m.encrypted = r.bool();
+                    m.encryptedPath = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1644,7 +1660,7 @@ $root.agent = (function() {
          * Properties of a DecryptFileResponseMessage.
          * @memberof agent
          * @interface IDecryptFileResponseMessage
-         * @property {boolean|null} [decrypted] DecryptFileResponseMessage decrypted
+         * @property {string|null} [decryptedPath] DecryptFileResponseMessage decryptedPath
          */
 
         /**
@@ -1663,12 +1679,12 @@ $root.agent = (function() {
         }
 
         /**
-         * DecryptFileResponseMessage decrypted.
-         * @member {boolean} decrypted
+         * DecryptFileResponseMessage decryptedPath.
+         * @member {string} decryptedPath
          * @memberof agent.DecryptFileResponseMessage
          * @instance
          */
-        DecryptFileResponseMessage.prototype.decrypted = false;
+        DecryptFileResponseMessage.prototype.decryptedPath = "";
 
         /**
          * Creates a new DecryptFileResponseMessage instance using the specified properties.
@@ -1694,8 +1710,8 @@ $root.agent = (function() {
         DecryptFileResponseMessage.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
-            if (m.decrypted != null && Object.hasOwnProperty.call(m, "decrypted"))
-                w.uint32(8).bool(m.decrypted);
+            if (m.decryptedPath != null && Object.hasOwnProperty.call(m, "decryptedPath"))
+                w.uint32(10).string(m.decryptedPath);
             return w;
         };
 
@@ -1718,7 +1734,7 @@ $root.agent = (function() {
                 var t = r.uint32();
                 switch (t >>> 3) {
                 case 1:
-                    m.decrypted = r.bool();
+                    m.decryptedPath = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -3688,6 +3704,206 @@ $root.agent = (function() {
         };
 
         return GetKeyResponseMessage;
+    })();
+
+    agent.GetPrimaryKeyPairRequestMessage = (function() {
+
+        /**
+         * Properties of a GetPrimaryKeyPairRequestMessage.
+         * @memberof agent
+         * @interface IGetPrimaryKeyPairRequestMessage
+         * @property {boolean|null} [includePrivateKey] GetPrimaryKeyPairRequestMessage includePrivateKey
+         */
+
+        /**
+         * Constructs a new GetPrimaryKeyPairRequestMessage.
+         * @memberof agent
+         * @classdesc Represents a GetPrimaryKeyPairRequestMessage.
+         * @implements IGetPrimaryKeyPairRequestMessage
+         * @constructor
+         * @param {agent.IGetPrimaryKeyPairRequestMessage=} [p] Properties to set
+         */
+        function GetPrimaryKeyPairRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * GetPrimaryKeyPairRequestMessage includePrivateKey.
+         * @member {boolean} includePrivateKey
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @instance
+         */
+        GetPrimaryKeyPairRequestMessage.prototype.includePrivateKey = false;
+
+        /**
+         * Creates a new GetPrimaryKeyPairRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairRequestMessage=} [properties] Properties to set
+         * @returns {agent.GetPrimaryKeyPairRequestMessage} GetPrimaryKeyPairRequestMessage instance
+         */
+        GetPrimaryKeyPairRequestMessage.create = function create(properties) {
+            return new GetPrimaryKeyPairRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified GetPrimaryKeyPairRequestMessage message. Does not implicitly {@link agent.GetPrimaryKeyPairRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairRequestMessage} m GetPrimaryKeyPairRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetPrimaryKeyPairRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.includePrivateKey != null && Object.hasOwnProperty.call(m, "includePrivateKey"))
+                w.uint32(8).bool(m.includePrivateKey);
+            return w;
+        };
+
+        /**
+         * Decodes a GetPrimaryKeyPairRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.GetPrimaryKeyPairRequestMessage} GetPrimaryKeyPairRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetPrimaryKeyPairRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.GetPrimaryKeyPairRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.includePrivateKey = r.bool();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return GetPrimaryKeyPairRequestMessage;
+    })();
+
+    agent.GetPrimaryKeyPairResponseMessage = (function() {
+
+        /**
+         * Properties of a GetPrimaryKeyPairResponseMessage.
+         * @memberof agent
+         * @interface IGetPrimaryKeyPairResponseMessage
+         * @property {string|null} [publicKey] GetPrimaryKeyPairResponseMessage publicKey
+         * @property {string|null} [privateKey] GetPrimaryKeyPairResponseMessage privateKey
+         */
+
+        /**
+         * Constructs a new GetPrimaryKeyPairResponseMessage.
+         * @memberof agent
+         * @classdesc Represents a GetPrimaryKeyPairResponseMessage.
+         * @implements IGetPrimaryKeyPairResponseMessage
+         * @constructor
+         * @param {agent.IGetPrimaryKeyPairResponseMessage=} [p] Properties to set
+         */
+        function GetPrimaryKeyPairResponseMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * GetPrimaryKeyPairResponseMessage publicKey.
+         * @member {string} publicKey
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @instance
+         */
+        GetPrimaryKeyPairResponseMessage.prototype.publicKey = "";
+
+        /**
+         * GetPrimaryKeyPairResponseMessage privateKey.
+         * @member {string} privateKey
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @instance
+         */
+        GetPrimaryKeyPairResponseMessage.prototype.privateKey = "";
+
+        /**
+         * Creates a new GetPrimaryKeyPairResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairResponseMessage=} [properties] Properties to set
+         * @returns {agent.GetPrimaryKeyPairResponseMessage} GetPrimaryKeyPairResponseMessage instance
+         */
+        GetPrimaryKeyPairResponseMessage.create = function create(properties) {
+            return new GetPrimaryKeyPairResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified GetPrimaryKeyPairResponseMessage message. Does not implicitly {@link agent.GetPrimaryKeyPairResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairResponseMessage} m GetPrimaryKeyPairResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetPrimaryKeyPairResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
+                w.uint32(10).string(m.publicKey);
+            if (m.privateKey != null && Object.hasOwnProperty.call(m, "privateKey"))
+                w.uint32(18).string(m.privateKey);
+            return w;
+        };
+
+        /**
+         * Decodes a GetPrimaryKeyPairResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.GetPrimaryKeyPairResponseMessage} GetPrimaryKeyPairResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetPrimaryKeyPairResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.GetPrimaryKeyPairResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.publicKey = r.string();
+                    break;
+                case 2:
+                    m.privateKey = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return GetPrimaryKeyPairResponseMessage;
     })();
 
     return agent;

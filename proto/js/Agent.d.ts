@@ -24,7 +24,8 @@ export namespace agent {
         GET_KEY = 17,
         DELETE_KEY = 18,
         ENCRYPT_FILE = 19,
-        DECRYPT_FILE = 20
+        DECRYPT_FILE = 20,
+        GET_PRIMARY_KEYPAIR = 21
     }
 
     /** Properties of an AgentMessage. */
@@ -533,6 +534,9 @@ export namespace agent {
 
         /** VerifyFileRequestMessage signaturePath */
         signaturePath?: (string|null);
+
+        /** VerifyFileRequestMessage publicKeyPath */
+        publicKeyPath?: (string|null);
     }
 
     /** Represents a VerifyFileRequestMessage. */
@@ -549,6 +553,9 @@ export namespace agent {
 
         /** VerifyFileRequestMessage signaturePath. */
         public signaturePath: string;
+
+        /** VerifyFileRequestMessage publicKeyPath. */
+        public publicKeyPath: string;
 
         /**
          * Creates a new VerifyFileRequestMessage instance using the specified properties.
@@ -675,8 +682,8 @@ export namespace agent {
     /** Properties of an EncryptFileResponseMessage. */
     interface IEncryptFileResponseMessage {
 
-        /** EncryptFileResponseMessage encrypted */
-        encrypted?: (boolean|null);
+        /** EncryptFileResponseMessage encryptedPath */
+        encryptedPath?: (string|null);
     }
 
     /** Represents an EncryptFileResponseMessage. */
@@ -688,8 +695,8 @@ export namespace agent {
          */
         constructor(p?: agent.IEncryptFileResponseMessage);
 
-        /** EncryptFileResponseMessage encrypted. */
-        public encrypted: boolean;
+        /** EncryptFileResponseMessage encryptedPath. */
+        public encryptedPath: string;
 
         /**
          * Creates a new EncryptFileResponseMessage instance using the specified properties.
@@ -777,8 +784,8 @@ export namespace agent {
     /** Properties of a DecryptFileResponseMessage. */
     interface IDecryptFileResponseMessage {
 
-        /** DecryptFileResponseMessage decrypted */
-        decrypted?: (boolean|null);
+        /** DecryptFileResponseMessage decryptedPath */
+        decryptedPath?: (string|null);
     }
 
     /** Represents a DecryptFileResponseMessage. */
@@ -790,8 +797,8 @@ export namespace agent {
          */
         constructor(p?: agent.IDecryptFileResponseMessage);
 
-        /** DecryptFileResponseMessage decrypted. */
-        public decrypted: boolean;
+        /** DecryptFileResponseMessage decryptedPath. */
+        public decryptedPath: string;
 
         /**
          * Creates a new DecryptFileResponseMessage instance using the specified properties.
@@ -1753,5 +1760,101 @@ export namespace agent {
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.GetKeyResponseMessage;
+    }
+
+    /** Properties of a GetPrimaryKeyPairRequestMessage. */
+    interface IGetPrimaryKeyPairRequestMessage {
+
+        /** GetPrimaryKeyPairRequestMessage includePrivateKey */
+        includePrivateKey?: (boolean|null);
+    }
+
+    /** Represents a GetPrimaryKeyPairRequestMessage. */
+    class GetPrimaryKeyPairRequestMessage implements IGetPrimaryKeyPairRequestMessage {
+
+        /**
+         * Constructs a new GetPrimaryKeyPairRequestMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IGetPrimaryKeyPairRequestMessage);
+
+        /** GetPrimaryKeyPairRequestMessage includePrivateKey. */
+        public includePrivateKey: boolean;
+
+        /**
+         * Creates a new GetPrimaryKeyPairRequestMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetPrimaryKeyPairRequestMessage instance
+         */
+        public static create(properties?: agent.IGetPrimaryKeyPairRequestMessage): agent.GetPrimaryKeyPairRequestMessage;
+
+        /**
+         * Encodes the specified GetPrimaryKeyPairRequestMessage message. Does not implicitly {@link agent.GetPrimaryKeyPairRequestMessage.verify|verify} messages.
+         * @param m GetPrimaryKeyPairRequestMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IGetPrimaryKeyPairRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetPrimaryKeyPairRequestMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns GetPrimaryKeyPairRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.GetPrimaryKeyPairRequestMessage;
+    }
+
+    /** Properties of a GetPrimaryKeyPairResponseMessage. */
+    interface IGetPrimaryKeyPairResponseMessage {
+
+        /** GetPrimaryKeyPairResponseMessage publicKey */
+        publicKey?: (string|null);
+
+        /** GetPrimaryKeyPairResponseMessage privateKey */
+        privateKey?: (string|null);
+    }
+
+    /** Represents a GetPrimaryKeyPairResponseMessage. */
+    class GetPrimaryKeyPairResponseMessage implements IGetPrimaryKeyPairResponseMessage {
+
+        /**
+         * Constructs a new GetPrimaryKeyPairResponseMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IGetPrimaryKeyPairResponseMessage);
+
+        /** GetPrimaryKeyPairResponseMessage publicKey. */
+        public publicKey: string;
+
+        /** GetPrimaryKeyPairResponseMessage privateKey. */
+        public privateKey: string;
+
+        /**
+         * Creates a new GetPrimaryKeyPairResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetPrimaryKeyPairResponseMessage instance
+         */
+        public static create(properties?: agent.IGetPrimaryKeyPairResponseMessage): agent.GetPrimaryKeyPairResponseMessage;
+
+        /**
+         * Encodes the specified GetPrimaryKeyPairResponseMessage message. Does not implicitly {@link agent.GetPrimaryKeyPairResponseMessage.verify|verify} messages.
+         * @param m GetPrimaryKeyPairResponseMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IGetPrimaryKeyPairResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetPrimaryKeyPairResponseMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns GetPrimaryKeyPairResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.GetPrimaryKeyPairResponseMessage;
     }
 }

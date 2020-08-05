@@ -421,9 +421,9 @@ function makeVerifyCommand() {
     return new commander_1.default.Command('verify')
         .description('verification operations')
         .option('--node-path <nodePath>', 'node path')
-        .option('-k, --verifying-key <verifyingKey>', 'path to public key that will be used to verify files, defaults to primary key')
+        .option('-k, --public-key <publicKey>', 'path to public key that will be used to verify files, defaults to primary key')
         .option('-s, --detach-sig <detachSig>', 'path to detached signature for file, defaults to [filename].sig')
-        .requiredOption('-f, --signed-file <signedFile>', 'file to be signed')
+        .requiredOption('-f, --verified-file <verifiedFile>', 'file to be verified')
         .action(_1.actionRunner(async (options) => {
         var _a;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
@@ -432,7 +432,7 @@ function makeVerifyCommand() {
             throw Error(`agent status is: ${status}`);
         }
         const nodePath = _1.determineNodePath(options);
-        const verifyingKeyPath = options.verifyingKey;
+        const publicKey = options.publicKey;
         const filePath = options.signedFile;
         const signaturePath = (_a = options.detachSig) !== null && _a !== void 0 ? _a : filePath + '.sig';
         const verified = await client.verifyFile(nodePath, filePath, signaturePath);
@@ -444,11 +444,63 @@ function makeVerifyCommand() {
         }
     }));
 }
+function makeEncryptCommand() {
+    return new commander_1.default.Command('encrypt')
+        .description('encryption operations')
+        .option('--node-path <nodePath>', 'node path')
+        .option('-k, --public-key <publicKey>', 'path to public key that will be used to encrypt files, defaults to primary key')
+        .requiredOption('-f, --file-path <filePath>', 'file to be encrypted')
+        .action(_1.actionRunner(async (options) => {
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const status = await client.getAgentStatus();
+        if (status != 'online') {
+            throw Error(`agent status is: ${status}`);
+        }
+        const nodePath = _1.determineNodePath(options);
+        const publicKey = options.publicKey;
+        const filePath = options.filePath;
+        try {
+            const encryptedPath = await client.encryptFile(nodePath, filePath, publicKey);
+            _1.pkLogger(`file successfully encrypted: '${encryptedPath}'`, _1.PKMessageType.SUCCESS);
+        }
+        catch (err) {
+            throw Error(`failed to encrypt '${filePath}': ${err}`);
+        }
+    }));
+}
+function makeDecryptCommand() {
+    return new commander_1.default.Command('decrypt')
+        .description('decryption operations')
+        .option('--node-path <nodePath>', 'node path')
+        .option('-k, --private-key <privateKey>', 'path to private key that will be used to decrypt files, defaults to primary key')
+        .option('-p, --key-passphrase <keyPassphrase>', 'passphrase to unlock the provided private key')
+        .requiredOption('-f, --file-path <filePath>', 'file to be decrypted')
+        .action(_1.actionRunner(async (options) => {
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const status = await client.getAgentStatus();
+        if (status != 'online') {
+            throw Error(`agent status is: ${status}`);
+        }
+        const nodePath = _1.determineNodePath(options);
+        const privateKey = options.privateKey;
+        const keyPassphrase = options.keyPassphrase;
+        const filePath = options.filePath;
+        try {
+            const decryptedPath = await client.decryptFile(nodePath, filePath, privateKey, keyPassphrase);
+            _1.pkLogger(`file successfully decrypted: '${decryptedPath}'`, _1.PKMessageType.SUCCESS);
+        }
+        catch (err) {
+            throw Error(`failed to decrypt '${filePath}': ${err}`);
+        }
+    }));
+}
 function makeCryptoCommand() {
     return new commander_1.default.Command('crypto')
         .description('crypto operations')
         .addCommand(makeVerifyCommand())
-        .addCommand(makeSignCommand());
+        .addCommand(makeSignCommand())
+        .addCommand(makeEncryptCommand())
+        .addCommand(makeDecryptCommand());
 }
 exports.default = makeCryptoCommand;
 
@@ -508,6 +560,7 @@ function makeAddVaultCommand() {
 }
 function makeRemoveVaultCommand() {
     return new commander_1.default.Command('remove')
+        .alias('rm')
         .description('destroy an existing vault')
         .option('-n, --vault-name <vaultName>', 'name of vault')
         .option('-a, --all', 'remove all vaults')
@@ -594,8 +647,8 @@ function makeListSecretsCommand() {
         }
     }));
 }
-function makeAddSecretCommand() {
-    return new commander_1.default.Command('create')
+function makeNewSecretCommand() {
+    return new commander_1.default.Command('new')
         .description('create a secret within a given vault')
         .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
         .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
@@ -622,6 +675,7 @@ function makeAddSecretCommand() {
 }
 function makeRemoveSecretCommand() {
     return new commander_1.default.Command('remove')
+        .alias('rm')
         .description('remove a secret from a given vault')
         .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
         .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
@@ -671,7 +725,7 @@ function makeSecretsCommand() {
     return new commander_1.default.Command('secrets')
         .description('manipulate secrets for a given vault')
         .addCommand(makeListSecretsCommand())
-        .addCommand(makeAddSecretCommand())
+        .addCommand(makeNewSecretCommand())
         .addCommand(makeRemoveSecretCommand())
         .addCommand(makeGetSecretCommand());
 }
@@ -691,9 +745,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const commander_1 = __importDefault(__webpack_require__(1));
 const Polykey_1 = __webpack_require__(2);
 const _1 = __webpack_require__(0);
-function makeDeriveKeyCommand() {
-    return new commander_1.default.Command('derive')
-        .description('manipulate the keymanager')
+function makeNewKeyCommand() {
+    return new commander_1.default.Command('new')
+        .description('derive a new symmetric key')
         .option('--node-path <nodePath>', 'node path')
         .requiredOption('-n, --key-name <keyName>', 'the name of the new key')
         .requiredOption('-p, --key-passphrase <keyPassphrase>', 'the passphrase for the new key')
@@ -706,11 +760,66 @@ function makeDeriveKeyCommand() {
         _1.pkLogger(`'${keyName}' was added to the Key Manager`, _1.PKMessageType.SUCCESS);
     }));
 }
+function makeListKeysCommand() {
+    return new commander_1.default.Command('list')
+        .alias('ls')
+        .description('list all symmetric keys in the keynode')
+        .option('--node-path <nodePath>', 'node path')
+        .action(_1.actionRunner(async (options) => {
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const nodePath = _1.determineNodePath(options);
+        const keyNames = await client.listKeys(nodePath);
+        for (const name of keyNames) {
+            _1.pkLogger(name, _1.PKMessageType.INFO);
+        }
+    }));
+}
+function makeGetKeyCommand() {
+    return new commander_1.default.Command('get')
+        .description('get the contents of a specific symmetric key')
+        .option('--node-path <nodePath>', 'node path')
+        .requiredOption('-n, --key-name <keyName>', 'the name of the new key')
+        .action(_1.actionRunner(async (options) => {
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const nodePath = _1.determineNodePath(options);
+        const keyName = options.keyName;
+        const keyContent = await client.getKey(nodePath, keyName);
+        _1.pkLogger(keyContent, _1.PKMessageType.INFO);
+    }));
+}
+function makeListPrimaryKeyPairCommand() {
+    return new commander_1.default.Command('primary')
+        .description('get the contents of the primary keypair')
+        .option('--node-path <nodePath>', 'node path')
+        .option('-p, --private-key', 'include private key')
+        .option('-j, --output-json', 'output in JSON format')
+        .action(_1.actionRunner(async (options) => {
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const nodePath = _1.determineNodePath(options);
+        const privateKey = options.privateKey;
+        const outputJson = options.outputJson;
+        const keypair = await client.getPrimaryKeyPair(nodePath, privateKey);
+        if (outputJson) {
+            _1.pkLogger(JSON.stringify(keypair), _1.PKMessageType.INFO);
+        }
+        else {
+            _1.pkLogger("Public Key:", _1.PKMessageType.SUCCESS);
+            _1.pkLogger(keypair.publicKey, _1.PKMessageType.INFO);
+            if (privateKey) {
+                _1.pkLogger("Private Key:", _1.PKMessageType.SUCCESS);
+                _1.pkLogger(keypair.privateKey, _1.PKMessageType.INFO);
+            }
+        }
+    }));
+}
 function makeKeyManagerCommand() {
     return new commander_1.default.Command('keymanager')
         .alias('km')
         .description('manipulate the keymanager')
-        .addCommand(makeDeriveKeyCommand());
+        .addCommand(makeNewKeyCommand())
+        .addCommand(makeListKeysCommand())
+        .addCommand(makeGetKeyCommand())
+        .addCommand(makeListPrimaryKeyPairCommand());
 }
 exports.default = makeKeyManagerCommand;
 

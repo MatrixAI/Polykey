@@ -40,20 +40,25 @@ declare module 'js-polykey/src/lib/agent/PolykeyAgent' {
       private server;
       private persistentStore;
       private polykeyMap;
+      private setPolyKey;
+      private removeNodePath;
+      private getPolyKey;
       get AllNodePaths(): string[];
       get UnlockedNodePaths(): string[];
       constructor();
       stop(): void;
-      private addToNodePaths;
-      private removeFromNodePaths;
       private handleClientCommunication;
       private registerNode;
       private newNode;
       private listNodes;
-      private getPolykey;
       private deriveKey;
+      private listKeys;
+      private getKey;
+      private getPrimaryKeyPair;
       private signFile;
       private verifyFile;
+      private encryptFile;
+      private decryptFile;
       private listVaults;
       private newVault;
       private destroyVault;
@@ -82,8 +87,16 @@ declare module 'js-polykey/src/lib/agent/PolykeyClient' {
       newNode(path: string, name: string, email: string, passphrase: string, nbits?: number): Promise<boolean>;
       listNodes(unlockedOnly?: boolean): Promise<string[]>;
       deriveKey(nodePath: string, keyName: string, passphrase: string): Promise<boolean>;
+      listKeys(nodePath: string): Promise<string[]>;
+      getKey(nodePath: string, keyName: string): Promise<string>;
+      getPrimaryKeyPair(nodePath: string, includePrivateKey?: boolean): Promise<{
+          publicKey: string;
+          privateKey: string;
+      }>;
       signFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string): Promise<string>;
       verifyFile(nodePath: string, filePath: string, signaturePath?: string): Promise<boolean>;
+      encryptFile(nodePath: string, filePath: string, publicKeyPath?: string): Promise<string>;
+      decryptFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string): Promise<string>;
       listVaults(nodePath: string): Promise<string[]>;
       newVault(nodePath: string, vaultName: string): Promise<boolean>;
       destroyVault(nodePath: string, vaultName: string): Promise<boolean>;
@@ -403,6 +416,7 @@ declare module 'js-polykey/src/lib/keys/KeyManager' {
       private primaryKeyPair;
       private primaryIdentity?;
       private derivedKeys;
+      private derivedKeysPath;
       private useWebWorkers;
       private workerPool?;
       polykeyPath: string;
@@ -483,6 +497,10 @@ declare module 'js-polykey/src/lib/keys/KeyManager' {
        */
       generateKey(name: string, passphrase: string): Promise<Buffer>;
       /**
+       * List all keys in the current keymanager
+       */
+      listKeys(): string[];
+      /**
        * Synchronously imports an existing key from file or Buffer
        * @param name Unique name of the imported key
        * @param key Key to be imported
@@ -553,12 +571,25 @@ declare module 'js-polykey/src/lib/keys/KeyManager' {
        */
       encryptData(data: Buffer, publicKey?: Buffer): Promise<string>;
       /**
+       * Encrypts the given file for a specific public key
+       * @param filePath Path to file containing the data to be encrypted
+       * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
+       */
+      encryptFile(filePath: string, publicKey?: string | Buffer): Promise<string>;
+      /**
        * Decrypts the given data with the provided key or the primary key if none is given
        * @param data The data to be decrypted
        * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
        * @param keyPassphrase Required if privateKey is provided.
        */
       decryptData(data: Buffer, privateKey?: Buffer, keyPassphrase?: string): Promise<Buffer>;
+      /**
+       * Decrypts the given file with the provided key or the primary key if none is given
+       * @param filePath Path to file containing the data to be decrypted
+       * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
+       * @param keyPassphrase Required if privateKey is provided.
+       */
+      decryptFile(filePath: string, privateKey?: string | Buffer, keyPassphrase?: string): Promise<string>;
       get PKIInfo(): PKInfo;
       loadPKIInfo(key?: Buffer | null, cert?: Buffer | null, caCert?: Buffer | null, writeToFile?: boolean): void;
       /**
@@ -572,7 +603,7 @@ declare module 'js-polykey/src/lib/keys/KeyManager' {
        */
       hasKey(name: string): boolean;
       private writeMetadata;
-      loadMetadata(): void;
+      loadMetadata(): Promise<void>;
   }
   export default KeyManager;
   export { KeyPair };

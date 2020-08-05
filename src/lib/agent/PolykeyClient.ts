@@ -5,7 +5,7 @@ const {
   CreateSecretRequestMessage,
   CreateSecretResponseMessage,
   DecryptFileRequestMessage,
-  DecryptFileResponseMessage
+  DecryptFileResponseMessage,
   DeriveKeyRequestMessage,
   DeriveKeyResponseMessage,
   DestroySecretRequestMessage,
@@ -15,6 +15,8 @@ const {
   EncryptFileRequestMessage,
   EncryptFileResponseMessage,
   ErrorMessage,
+  GetPrimaryKeyPairRequestMessage,
+  GetPrimaryKeyPairResponseMessage,
   GetSecretRequestMessage,
   GetSecretResponseMessage,
   GetKeyRequestMessage,
@@ -192,6 +194,19 @@ class PolykeyClient {
     const { keyContent } = GetKeyResponseMessage.decode(subMessage);
     return keyContent;
   }
+  async getPrimaryKeyPair(nodePath: string, includePrivateKey: boolean = false) {
+    const request = GetPrimaryKeyPairRequestMessage.encode({ includePrivateKey }).finish();
+
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.GET_PRIMARY_KEYPAIR, nodePath, request);
+
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.GET_PRIMARY_KEYPAIR)?.subMessage
+    if (!subMessage) {
+      throw Error('agent did not respond');
+    }
+
+    const { publicKey, privateKey } = GetPrimaryKeyPairResponseMessage.decode(subMessage);
+    return { publicKey, privateKey };
+  }
 
   /////////////////////
   // Crypto commands //
@@ -227,13 +242,26 @@ class PolykeyClient {
 
     const encodedResponse = await this.handleAgentCommunication(AgentMessageType.ENCRYPT_FILE, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.SIGN_FILE)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.ENCRYPT_FILE)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
 
-    const { signaturePath } = SignFileResponseMessage.decode(subMessage);
-    return signaturePath;
+    const { encryptedPath } = EncryptFileResponseMessage.decode(subMessage);
+    return encryptedPath;
+  }
+  async decryptFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string) {
+    const request = DecryptFileRequestMessage.encode({ filePath, privateKeyPath, passphrase }).finish();
+
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DECRYPT_FILE, nodePath, request);
+
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.DECRYPT_FILE)?.subMessage
+    if (!subMessage) {
+      throw Error('agent did not respond');
+    }
+
+    const { decryptedPath } = DecryptFileResponseMessage.decode(subMessage);
+    return decryptedPath;
   }
 
   //////////////////////

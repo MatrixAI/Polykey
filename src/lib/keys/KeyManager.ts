@@ -559,6 +559,32 @@ class KeyManager {
   }
 
   /**
+   * Encrypts the given file for a specific public key
+   * @param filePath Path to file containing the data to be encrypted
+   * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
+   */
+  async encryptFile(filePath: string, publicKey?: string | Buffer): Promise<string> {
+    // Get key if provided
+    let keyBuffer: Buffer;
+    if (publicKey) {
+      if (typeof publicKey === 'string') {
+        // Read in from fs
+        keyBuffer = this.fileSystem.readFileSync(publicKey);
+      } else {
+        // Buffer
+        keyBuffer = publicKey;
+      }
+    }
+    // Read file into buffer
+    const buffer = this.fileSystem.readFileSync(filePath);
+    // Encrypt the buffer
+    const encryptedBuffer = await this.encryptData(buffer, keyBuffer!);
+    // Write buffer to encrypted file
+    this.fileSystem.writeFileSync(filePath, encryptedBuffer);
+    return filePath;
+  }
+
+  /**
    * Decrypts the given data with the provided key or the primary key if none is given
    * @param data The data to be decrypted
    * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
@@ -594,6 +620,33 @@ class KeyManager {
       const decryptedData = Buffer.from(literals[0].toString());
       return decryptedData;
     }
+  }
+
+  /**
+   * Decrypts the given file with the provided key or the primary key if none is given
+   * @param filePath Path to file containing the data to be decrypted
+   * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
+   * @param keyPassphrase Required if privateKey is provided.
+   */
+  async decryptFile(filePath: string, privateKey?: string | Buffer, keyPassphrase?: string): Promise<string> {
+    // Get key if provided
+    let keyBuffer: Buffer;
+    if (privateKey) {
+      if (typeof privateKey === 'string') {
+        // Read in from fs
+        keyBuffer = this.fileSystem.readFileSync(privateKey);
+      } else {
+        // Buffer
+        keyBuffer = privateKey;
+      }
+    }
+    // Read in file buffer
+    const fileBuffer = this.fileSystem.readFileSync(filePath);
+    // Decrypt file buffer
+    const decryptedData = await this.decryptData(fileBuffer, keyBuffer!, keyPassphrase);
+    // Write buffer to decrypted file
+    this.fileSystem.writeFileSync(filePath, decryptedData);
+    return filePath;
   }
 
   /////////

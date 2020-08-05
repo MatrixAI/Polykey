@@ -102,7 +102,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /* WEBPACK VAR INJECTION */(function(Buffer) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Agent_1 = __webpack_require__(6);
-const { AgentMessage, CreateSecretRequestMessage, CreateSecretResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, ErrorMessage, GetSecretRequestMessage, GetSecretResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, Type, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
+const { AgentMessage, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, AgentMessageType, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
 class PolykeyClient {
     constructor(getStream) {
         this.getStream = getStream;
@@ -148,7 +148,7 @@ class PolykeyClient {
         const agentMessageList = [];
         for (const response of responseList.values()) {
             const { subMessage, type } = AgentMessage.decode(response);
-            if (type == Type.ERROR) {
+            if (type == AgentMessageType.ERROR) {
                 const { error } = ErrorMessage.decode(subMessage);
                 const reason = new Error(`Agent Error: ${error}`);
                 throw reason;
@@ -162,8 +162,8 @@ class PolykeyClient {
     async registerNode(path, passphrase) {
         var _a;
         const registerNodeRequest = RegisterNodeRequestMessage.encode({ passphrase }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.REGISTER_NODE, path, registerNodeRequest);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.REGISTER_NODE)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.REGISTER_NODE, path, registerNodeRequest);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.REGISTER_NODE)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -173,8 +173,8 @@ class PolykeyClient {
     async newNode(path, name, email, passphrase, nbits) {
         var _a;
         const newNodeRequest = NewNodeRequestMessage.encode({ name, email, passphrase, nbits }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.NEW_NODE, path, newNodeRequest);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.NEW_NODE)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.NEW_NODE, path, newNodeRequest);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.NEW_NODE)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -184,8 +184,8 @@ class PolykeyClient {
     async listNodes(unlockedOnly = true) {
         var _a;
         const newNodeRequest = ListNodesRequestMessage.encode({ unlockedOnly }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.LIST_NODES, undefined, newNodeRequest);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.LIST_NODES)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_NODES, undefined, newNodeRequest);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.LIST_NODES)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -193,18 +193,51 @@ class PolykeyClient {
         return nodes;
     }
     /////////////////////
-    // Crypto commands //
+    // Key commands //
     /////////////////////
     async deriveKey(nodePath, keyName, passphrase) {
         var _a;
         const request = DeriveKeyRequestMessage.encode({ keyName, passphrase }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.DERIVE_KEY, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.DERIVE_KEY)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DERIVE_KEY, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.DERIVE_KEY)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
         const { successful } = DeriveKeyResponseMessage.decode(subMessage);
         return successful;
+    }
+    async listKeys(nodePath) {
+        var _a;
+        const request = ListKeysRequestMessage.encode({}).finish();
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_KEYS, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.LIST_KEYS)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { keyNames } = ListKeysResponseMessage.decode(subMessage);
+        return keyNames;
+    }
+    async getKey(nodePath, keyName) {
+        var _a;
+        const request = GetKeyRequestMessage.encode({ keyName }).finish();
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.GET_KEY, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.GET_KEY)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { keyContent } = GetKeyResponseMessage.decode(subMessage);
+        return keyContent;
+    }
+    async getPrimaryKeyPair(nodePath, includePrivateKey = false) {
+        var _a;
+        const request = GetPrimaryKeyPairRequestMessage.encode({ includePrivateKey }).finish();
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.GET_PRIMARY_KEYPAIR, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.GET_PRIMARY_KEYPAIR)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { publicKey, privateKey } = GetPrimaryKeyPairResponseMessage.decode(subMessage);
+        return { publicKey, privateKey };
     }
     /////////////////////
     // Crypto commands //
@@ -212,8 +245,8 @@ class PolykeyClient {
     async signFile(nodePath, filePath, privateKeyPath, passphrase) {
         var _a;
         const request = SignFileRequestMessage.encode({ filePath, privateKeyPath, passphrase }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.SIGN_FILE, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.SIGN_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.SIGN_FILE, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.SIGN_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -223,21 +256,43 @@ class PolykeyClient {
     async verifyFile(nodePath, filePath, signaturePath) {
         var _a;
         const request = VerifyFileRequestMessage.encode({ filePath, signaturePath }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.VERIFY_FILE, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.VERIFY_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.VERIFY_FILE, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.VERIFY_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
         const { verified } = VerifyFileResponseMessage.decode(subMessage);
         return verified;
     }
+    async encryptFile(nodePath, filePath, publicKeyPath) {
+        var _a;
+        const request = EncryptFileRequestMessage.encode({ filePath, publicKeyPath }).finish();
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.ENCRYPT_FILE, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.ENCRYPT_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { encryptedPath } = EncryptFileResponseMessage.decode(subMessage);
+        return encryptedPath;
+    }
+    async decryptFile(nodePath, filePath, privateKeyPath, passphrase) {
+        var _a;
+        const request = DecryptFileRequestMessage.encode({ filePath, privateKeyPath, passphrase }).finish();
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DECRYPT_FILE, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.DECRYPT_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { decryptedPath } = DecryptFileResponseMessage.decode(subMessage);
+        return decryptedPath;
+    }
     //////////////////////
     // Vault Operations //
     //////////////////////
     async listVaults(nodePath) {
         var _a;
-        const encodedResponse = await this.handleAgentCommunication(Type.LIST_VAULTS, nodePath);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.LIST_VAULTS)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_VAULTS, nodePath);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.LIST_VAULTS)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -247,8 +302,8 @@ class PolykeyClient {
     async newVault(nodePath, vaultName) {
         var _a;
         const request = NewVaultRequestMessage.encode({ vaultName }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.NEW_VAULT, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.NEW_VAULT)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.NEW_VAULT, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.NEW_VAULT)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -258,8 +313,8 @@ class PolykeyClient {
     async destroyVault(nodePath, vaultName) {
         var _a;
         const request = DestroyVaultRequestMessage.encode({ vaultName }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.DESTROY_VAULT, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.DESTROY_VAULT)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DESTROY_VAULT, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.DESTROY_VAULT)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -272,8 +327,8 @@ class PolykeyClient {
     async listSecrets(nodePath, vaultName) {
         var _a;
         const request = ListSecretsRequestMessage.encode({ vaultName }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.LIST_SECRETS, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.LIST_SECRETS)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_SECRETS, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.LIST_SECRETS)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -289,8 +344,8 @@ class PolykeyClient {
         else {
             request = CreateSecretRequestMessage.encode({ vaultName, secretName, secretContent: secret }).finish();
         }
-        const encodedResponse = await this.handleAgentCommunication(Type.CREATE_SECRET, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.CREATE_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.CREATE_SECRET, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.CREATE_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -300,8 +355,8 @@ class PolykeyClient {
     async destroySecret(nodePath, vaultName, secretName) {
         var _a;
         const request = DestroySecretRequestMessage.encode({ vaultName, secretName }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.DESTROY_SECRET, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.DESTROY_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DESTROY_SECRET, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.DESTROY_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -311,8 +366,8 @@ class PolykeyClient {
     async getSecret(nodePath, vaultName, secretName) {
         var _a;
         const request = GetSecretRequestMessage.encode({ vaultName, secretName }).finish();
-        const encodedResponse = await this.handleAgentCommunication(Type.GET_SECRET, nodePath, request);
-        const subMessage = (_a = encodedResponse.find((r) => r.type == Type.GET_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.GET_SECRET, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.GET_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
             throw Error('agent did not respond');
         }
@@ -325,8 +380,8 @@ class PolykeyClient {
     async getAgentStatus() {
         var _a;
         try {
-            const encodedResponse = await this.handleAgentCommunication(Type.STATUS);
-            const subMessage = (_a = encodedResponse.find((r) => r.type == Type.STATUS)) === null || _a === void 0 ? void 0 : _a.subMessage;
+            const encodedResponse = await this.handleAgentCommunication(AgentMessageType.STATUS);
+            const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.STATUS)) === null || _a === void 0 ? void 0 : _a.subMessage;
             if (!subMessage) {
                 throw Error('agent did not respond');
             }
@@ -343,7 +398,7 @@ class PolykeyClient {
     async stopAgent() {
         try {
             // Tell it to start shutting and wait for response
-            await this.handleAgentCommunication(Type.STOP_AGENT);
+            await this.handleAgentCommunication(AgentMessageType.STOP_AGENT);
             return true;
         }
         catch (err) {
@@ -2222,8 +2277,8 @@ $root.agent = (function() {
     var agent = {};
 
     /**
-     * Type enum.
-     * @name agent.Type
+     * AgentMessageType enum.
+     * @name agent.AgentMessageType
      * @enum {number}
      * @property {number} ERROR=0 ERROR value
      * @property {number} STOP_AGENT=1 STOP_AGENT value
@@ -2241,8 +2296,14 @@ $root.agent = (function() {
      * @property {number} CREATE_SECRET=13 CREATE_SECRET value
      * @property {number} DESTROY_SECRET=14 DESTROY_SECRET value
      * @property {number} GET_SECRET=15 GET_SECRET value
+     * @property {number} LIST_KEYS=16 LIST_KEYS value
+     * @property {number} GET_KEY=17 GET_KEY value
+     * @property {number} DELETE_KEY=18 DELETE_KEY value
+     * @property {number} ENCRYPT_FILE=19 ENCRYPT_FILE value
+     * @property {number} DECRYPT_FILE=20 DECRYPT_FILE value
+     * @property {number} GET_PRIMARY_KEYPAIR=21 GET_PRIMARY_KEYPAIR value
      */
-    agent.Type = (function() {
+    agent.AgentMessageType = (function() {
         var valuesById = {}, values = Object.create(valuesById);
         values[valuesById[0] = "ERROR"] = 0;
         values[valuesById[1] = "STOP_AGENT"] = 1;
@@ -2260,6 +2321,12 @@ $root.agent = (function() {
         values[valuesById[13] = "CREATE_SECRET"] = 13;
         values[valuesById[14] = "DESTROY_SECRET"] = 14;
         values[valuesById[15] = "GET_SECRET"] = 15;
+        values[valuesById[16] = "LIST_KEYS"] = 16;
+        values[valuesById[17] = "GET_KEY"] = 17;
+        values[valuesById[18] = "DELETE_KEY"] = 18;
+        values[valuesById[19] = "ENCRYPT_FILE"] = 19;
+        values[valuesById[20] = "DECRYPT_FILE"] = 20;
+        values[valuesById[21] = "GET_PRIMARY_KEYPAIR"] = 21;
         return values;
     })();
 
@@ -2269,7 +2336,7 @@ $root.agent = (function() {
          * Properties of an AgentMessage.
          * @memberof agent
          * @interface IAgentMessage
-         * @property {agent.Type|null} [type] AgentMessage type
+         * @property {agent.AgentMessageType|null} [type] AgentMessage type
          * @property {boolean|null} [isResponse] AgentMessage isResponse
          * @property {string|null} [nodePath] AgentMessage nodePath
          * @property {Uint8Array|null} [subMessage] AgentMessage subMessage
@@ -2292,7 +2359,7 @@ $root.agent = (function() {
 
         /**
          * AgentMessage type.
-         * @member {agent.Type} type
+         * @member {agent.AgentMessageType} type
          * @memberof agent.AgentMessage
          * @instance
          */
@@ -3318,6 +3385,7 @@ $root.agent = (function() {
          * @interface IVerifyFileRequestMessage
          * @property {string|null} [filePath] VerifyFileRequestMessage filePath
          * @property {string|null} [signaturePath] VerifyFileRequestMessage signaturePath
+         * @property {string|null} [publicKeyPath] VerifyFileRequestMessage publicKeyPath
          */
 
         /**
@@ -3352,6 +3420,14 @@ $root.agent = (function() {
         VerifyFileRequestMessage.prototype.signaturePath = "";
 
         /**
+         * VerifyFileRequestMessage publicKeyPath.
+         * @member {string} publicKeyPath
+         * @memberof agent.VerifyFileRequestMessage
+         * @instance
+         */
+        VerifyFileRequestMessage.prototype.publicKeyPath = "";
+
+        /**
          * Creates a new VerifyFileRequestMessage instance using the specified properties.
          * @function create
          * @memberof agent.VerifyFileRequestMessage
@@ -3379,6 +3455,8 @@ $root.agent = (function() {
                 w.uint32(10).string(m.filePath);
             if (m.signaturePath != null && Object.hasOwnProperty.call(m, "signaturePath"))
                 w.uint32(18).string(m.signaturePath);
+            if (m.publicKeyPath != null && Object.hasOwnProperty.call(m, "publicKeyPath"))
+                w.uint32(26).string(m.publicKeyPath);
             return w;
         };
 
@@ -3405,6 +3483,9 @@ $root.agent = (function() {
                     break;
                 case 2:
                     m.signaturePath = r.string();
+                    break;
+                case 3:
+                    m.publicKeyPath = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -3508,6 +3589,420 @@ $root.agent = (function() {
         };
 
         return VerifyFileResponseMessage;
+    })();
+
+    agent.EncryptFileRequestMessage = (function() {
+
+        /**
+         * Properties of an EncryptFileRequestMessage.
+         * @memberof agent
+         * @interface IEncryptFileRequestMessage
+         * @property {string|null} [filePath] EncryptFileRequestMessage filePath
+         * @property {string|null} [publicKeyPath] EncryptFileRequestMessage publicKeyPath
+         */
+
+        /**
+         * Constructs a new EncryptFileRequestMessage.
+         * @memberof agent
+         * @classdesc Represents an EncryptFileRequestMessage.
+         * @implements IEncryptFileRequestMessage
+         * @constructor
+         * @param {agent.IEncryptFileRequestMessage=} [p] Properties to set
+         */
+        function EncryptFileRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * EncryptFileRequestMessage filePath.
+         * @member {string} filePath
+         * @memberof agent.EncryptFileRequestMessage
+         * @instance
+         */
+        EncryptFileRequestMessage.prototype.filePath = "";
+
+        /**
+         * EncryptFileRequestMessage publicKeyPath.
+         * @member {string} publicKeyPath
+         * @memberof agent.EncryptFileRequestMessage
+         * @instance
+         */
+        EncryptFileRequestMessage.prototype.publicKeyPath = "";
+
+        /**
+         * Creates a new EncryptFileRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.EncryptFileRequestMessage
+         * @static
+         * @param {agent.IEncryptFileRequestMessage=} [properties] Properties to set
+         * @returns {agent.EncryptFileRequestMessage} EncryptFileRequestMessage instance
+         */
+        EncryptFileRequestMessage.create = function create(properties) {
+            return new EncryptFileRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified EncryptFileRequestMessage message. Does not implicitly {@link agent.EncryptFileRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.EncryptFileRequestMessage
+         * @static
+         * @param {agent.IEncryptFileRequestMessage} m EncryptFileRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        EncryptFileRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.filePath != null && Object.hasOwnProperty.call(m, "filePath"))
+                w.uint32(10).string(m.filePath);
+            if (m.publicKeyPath != null && Object.hasOwnProperty.call(m, "publicKeyPath"))
+                w.uint32(18).string(m.publicKeyPath);
+            return w;
+        };
+
+        /**
+         * Decodes an EncryptFileRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.EncryptFileRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.EncryptFileRequestMessage} EncryptFileRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        EncryptFileRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.EncryptFileRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.filePath = r.string();
+                    break;
+                case 2:
+                    m.publicKeyPath = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return EncryptFileRequestMessage;
+    })();
+
+    agent.EncryptFileResponseMessage = (function() {
+
+        /**
+         * Properties of an EncryptFileResponseMessage.
+         * @memberof agent
+         * @interface IEncryptFileResponseMessage
+         * @property {string|null} [encryptedPath] EncryptFileResponseMessage encryptedPath
+         */
+
+        /**
+         * Constructs a new EncryptFileResponseMessage.
+         * @memberof agent
+         * @classdesc Represents an EncryptFileResponseMessage.
+         * @implements IEncryptFileResponseMessage
+         * @constructor
+         * @param {agent.IEncryptFileResponseMessage=} [p] Properties to set
+         */
+        function EncryptFileResponseMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * EncryptFileResponseMessage encryptedPath.
+         * @member {string} encryptedPath
+         * @memberof agent.EncryptFileResponseMessage
+         * @instance
+         */
+        EncryptFileResponseMessage.prototype.encryptedPath = "";
+
+        /**
+         * Creates a new EncryptFileResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.EncryptFileResponseMessage
+         * @static
+         * @param {agent.IEncryptFileResponseMessage=} [properties] Properties to set
+         * @returns {agent.EncryptFileResponseMessage} EncryptFileResponseMessage instance
+         */
+        EncryptFileResponseMessage.create = function create(properties) {
+            return new EncryptFileResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified EncryptFileResponseMessage message. Does not implicitly {@link agent.EncryptFileResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.EncryptFileResponseMessage
+         * @static
+         * @param {agent.IEncryptFileResponseMessage} m EncryptFileResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        EncryptFileResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.encryptedPath != null && Object.hasOwnProperty.call(m, "encryptedPath"))
+                w.uint32(10).string(m.encryptedPath);
+            return w;
+        };
+
+        /**
+         * Decodes an EncryptFileResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.EncryptFileResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.EncryptFileResponseMessage} EncryptFileResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        EncryptFileResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.EncryptFileResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.encryptedPath = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return EncryptFileResponseMessage;
+    })();
+
+    agent.DecryptFileRequestMessage = (function() {
+
+        /**
+         * Properties of a DecryptFileRequestMessage.
+         * @memberof agent
+         * @interface IDecryptFileRequestMessage
+         * @property {string|null} [filePath] DecryptFileRequestMessage filePath
+         * @property {string|null} [privateKeyPath] DecryptFileRequestMessage privateKeyPath
+         * @property {string|null} [passphrase] DecryptFileRequestMessage passphrase
+         */
+
+        /**
+         * Constructs a new DecryptFileRequestMessage.
+         * @memberof agent
+         * @classdesc Represents a DecryptFileRequestMessage.
+         * @implements IDecryptFileRequestMessage
+         * @constructor
+         * @param {agent.IDecryptFileRequestMessage=} [p] Properties to set
+         */
+        function DecryptFileRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * DecryptFileRequestMessage filePath.
+         * @member {string} filePath
+         * @memberof agent.DecryptFileRequestMessage
+         * @instance
+         */
+        DecryptFileRequestMessage.prototype.filePath = "";
+
+        /**
+         * DecryptFileRequestMessage privateKeyPath.
+         * @member {string} privateKeyPath
+         * @memberof agent.DecryptFileRequestMessage
+         * @instance
+         */
+        DecryptFileRequestMessage.prototype.privateKeyPath = "";
+
+        /**
+         * DecryptFileRequestMessage passphrase.
+         * @member {string} passphrase
+         * @memberof agent.DecryptFileRequestMessage
+         * @instance
+         */
+        DecryptFileRequestMessage.prototype.passphrase = "";
+
+        /**
+         * Creates a new DecryptFileRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.DecryptFileRequestMessage
+         * @static
+         * @param {agent.IDecryptFileRequestMessage=} [properties] Properties to set
+         * @returns {agent.DecryptFileRequestMessage} DecryptFileRequestMessage instance
+         */
+        DecryptFileRequestMessage.create = function create(properties) {
+            return new DecryptFileRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified DecryptFileRequestMessage message. Does not implicitly {@link agent.DecryptFileRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.DecryptFileRequestMessage
+         * @static
+         * @param {agent.IDecryptFileRequestMessage} m DecryptFileRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        DecryptFileRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.filePath != null && Object.hasOwnProperty.call(m, "filePath"))
+                w.uint32(10).string(m.filePath);
+            if (m.privateKeyPath != null && Object.hasOwnProperty.call(m, "privateKeyPath"))
+                w.uint32(18).string(m.privateKeyPath);
+            if (m.passphrase != null && Object.hasOwnProperty.call(m, "passphrase"))
+                w.uint32(26).string(m.passphrase);
+            return w;
+        };
+
+        /**
+         * Decodes a DecryptFileRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.DecryptFileRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.DecryptFileRequestMessage} DecryptFileRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        DecryptFileRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.DecryptFileRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.filePath = r.string();
+                    break;
+                case 2:
+                    m.privateKeyPath = r.string();
+                    break;
+                case 3:
+                    m.passphrase = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return DecryptFileRequestMessage;
+    })();
+
+    agent.DecryptFileResponseMessage = (function() {
+
+        /**
+         * Properties of a DecryptFileResponseMessage.
+         * @memberof agent
+         * @interface IDecryptFileResponseMessage
+         * @property {string|null} [decryptedPath] DecryptFileResponseMessage decryptedPath
+         */
+
+        /**
+         * Constructs a new DecryptFileResponseMessage.
+         * @memberof agent
+         * @classdesc Represents a DecryptFileResponseMessage.
+         * @implements IDecryptFileResponseMessage
+         * @constructor
+         * @param {agent.IDecryptFileResponseMessage=} [p] Properties to set
+         */
+        function DecryptFileResponseMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * DecryptFileResponseMessage decryptedPath.
+         * @member {string} decryptedPath
+         * @memberof agent.DecryptFileResponseMessage
+         * @instance
+         */
+        DecryptFileResponseMessage.prototype.decryptedPath = "";
+
+        /**
+         * Creates a new DecryptFileResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.DecryptFileResponseMessage
+         * @static
+         * @param {agent.IDecryptFileResponseMessage=} [properties] Properties to set
+         * @returns {agent.DecryptFileResponseMessage} DecryptFileResponseMessage instance
+         */
+        DecryptFileResponseMessage.create = function create(properties) {
+            return new DecryptFileResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified DecryptFileResponseMessage message. Does not implicitly {@link agent.DecryptFileResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.DecryptFileResponseMessage
+         * @static
+         * @param {agent.IDecryptFileResponseMessage} m DecryptFileResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        DecryptFileResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.decryptedPath != null && Object.hasOwnProperty.call(m, "decryptedPath"))
+                w.uint32(10).string(m.decryptedPath);
+            return w;
+        };
+
+        /**
+         * Decodes a DecryptFileResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.DecryptFileResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.DecryptFileResponseMessage} DecryptFileResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        DecryptFileResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.DecryptFileResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.decryptedPath = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return DecryptFileResponseMessage;
     })();
 
     agent.ListVaultsRequestMessage = (function() {
@@ -5090,6 +5585,583 @@ $root.agent = (function() {
         };
 
         return DeriveKeyResponseMessage;
+    })();
+
+    agent.ListKeysRequestMessage = (function() {
+
+        /**
+         * Properties of a ListKeysRequestMessage.
+         * @memberof agent
+         * @interface IListKeysRequestMessage
+         */
+
+        /**
+         * Constructs a new ListKeysRequestMessage.
+         * @memberof agent
+         * @classdesc Represents a ListKeysRequestMessage.
+         * @implements IListKeysRequestMessage
+         * @constructor
+         * @param {agent.IListKeysRequestMessage=} [p] Properties to set
+         */
+        function ListKeysRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * Creates a new ListKeysRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.ListKeysRequestMessage
+         * @static
+         * @param {agent.IListKeysRequestMessage=} [properties] Properties to set
+         * @returns {agent.ListKeysRequestMessage} ListKeysRequestMessage instance
+         */
+        ListKeysRequestMessage.create = function create(properties) {
+            return new ListKeysRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified ListKeysRequestMessage message. Does not implicitly {@link agent.ListKeysRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.ListKeysRequestMessage
+         * @static
+         * @param {agent.IListKeysRequestMessage} m ListKeysRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ListKeysRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            return w;
+        };
+
+        /**
+         * Decodes a ListKeysRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.ListKeysRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.ListKeysRequestMessage} ListKeysRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ListKeysRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.ListKeysRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return ListKeysRequestMessage;
+    })();
+
+    agent.ListKeysResponseMessage = (function() {
+
+        /**
+         * Properties of a ListKeysResponseMessage.
+         * @memberof agent
+         * @interface IListKeysResponseMessage
+         * @property {Array.<string>|null} [keyNames] ListKeysResponseMessage keyNames
+         */
+
+        /**
+         * Constructs a new ListKeysResponseMessage.
+         * @memberof agent
+         * @classdesc Represents a ListKeysResponseMessage.
+         * @implements IListKeysResponseMessage
+         * @constructor
+         * @param {agent.IListKeysResponseMessage=} [p] Properties to set
+         */
+        function ListKeysResponseMessage(p) {
+            this.keyNames = [];
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * ListKeysResponseMessage keyNames.
+         * @member {Array.<string>} keyNames
+         * @memberof agent.ListKeysResponseMessage
+         * @instance
+         */
+        ListKeysResponseMessage.prototype.keyNames = $util.emptyArray;
+
+        /**
+         * Creates a new ListKeysResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.ListKeysResponseMessage
+         * @static
+         * @param {agent.IListKeysResponseMessage=} [properties] Properties to set
+         * @returns {agent.ListKeysResponseMessage} ListKeysResponseMessage instance
+         */
+        ListKeysResponseMessage.create = function create(properties) {
+            return new ListKeysResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified ListKeysResponseMessage message. Does not implicitly {@link agent.ListKeysResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.ListKeysResponseMessage
+         * @static
+         * @param {agent.IListKeysResponseMessage} m ListKeysResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ListKeysResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.keyNames != null && m.keyNames.length) {
+                for (var i = 0; i < m.keyNames.length; ++i)
+                    w.uint32(10).string(m.keyNames[i]);
+            }
+            return w;
+        };
+
+        /**
+         * Decodes a ListKeysResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.ListKeysResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.ListKeysResponseMessage} ListKeysResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ListKeysResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.ListKeysResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    if (!(m.keyNames && m.keyNames.length))
+                        m.keyNames = [];
+                    m.keyNames.push(r.string());
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return ListKeysResponseMessage;
+    })();
+
+    agent.GetKeyRequestMessage = (function() {
+
+        /**
+         * Properties of a GetKeyRequestMessage.
+         * @memberof agent
+         * @interface IGetKeyRequestMessage
+         * @property {string|null} [keyName] GetKeyRequestMessage keyName
+         */
+
+        /**
+         * Constructs a new GetKeyRequestMessage.
+         * @memberof agent
+         * @classdesc Represents a GetKeyRequestMessage.
+         * @implements IGetKeyRequestMessage
+         * @constructor
+         * @param {agent.IGetKeyRequestMessage=} [p] Properties to set
+         */
+        function GetKeyRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * GetKeyRequestMessage keyName.
+         * @member {string} keyName
+         * @memberof agent.GetKeyRequestMessage
+         * @instance
+         */
+        GetKeyRequestMessage.prototype.keyName = "";
+
+        /**
+         * Creates a new GetKeyRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.GetKeyRequestMessage
+         * @static
+         * @param {agent.IGetKeyRequestMessage=} [properties] Properties to set
+         * @returns {agent.GetKeyRequestMessage} GetKeyRequestMessage instance
+         */
+        GetKeyRequestMessage.create = function create(properties) {
+            return new GetKeyRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified GetKeyRequestMessage message. Does not implicitly {@link agent.GetKeyRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.GetKeyRequestMessage
+         * @static
+         * @param {agent.IGetKeyRequestMessage} m GetKeyRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetKeyRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.keyName != null && Object.hasOwnProperty.call(m, "keyName"))
+                w.uint32(10).string(m.keyName);
+            return w;
+        };
+
+        /**
+         * Decodes a GetKeyRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.GetKeyRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.GetKeyRequestMessage} GetKeyRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetKeyRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.GetKeyRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.keyName = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return GetKeyRequestMessage;
+    })();
+
+    agent.GetKeyResponseMessage = (function() {
+
+        /**
+         * Properties of a GetKeyResponseMessage.
+         * @memberof agent
+         * @interface IGetKeyResponseMessage
+         * @property {string|null} [keyName] GetKeyResponseMessage keyName
+         * @property {string|null} [keyContent] GetKeyResponseMessage keyContent
+         */
+
+        /**
+         * Constructs a new GetKeyResponseMessage.
+         * @memberof agent
+         * @classdesc Represents a GetKeyResponseMessage.
+         * @implements IGetKeyResponseMessage
+         * @constructor
+         * @param {agent.IGetKeyResponseMessage=} [p] Properties to set
+         */
+        function GetKeyResponseMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * GetKeyResponseMessage keyName.
+         * @member {string} keyName
+         * @memberof agent.GetKeyResponseMessage
+         * @instance
+         */
+        GetKeyResponseMessage.prototype.keyName = "";
+
+        /**
+         * GetKeyResponseMessage keyContent.
+         * @member {string} keyContent
+         * @memberof agent.GetKeyResponseMessage
+         * @instance
+         */
+        GetKeyResponseMessage.prototype.keyContent = "";
+
+        /**
+         * Creates a new GetKeyResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.GetKeyResponseMessage
+         * @static
+         * @param {agent.IGetKeyResponseMessage=} [properties] Properties to set
+         * @returns {agent.GetKeyResponseMessage} GetKeyResponseMessage instance
+         */
+        GetKeyResponseMessage.create = function create(properties) {
+            return new GetKeyResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified GetKeyResponseMessage message. Does not implicitly {@link agent.GetKeyResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.GetKeyResponseMessage
+         * @static
+         * @param {agent.IGetKeyResponseMessage} m GetKeyResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetKeyResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.keyName != null && Object.hasOwnProperty.call(m, "keyName"))
+                w.uint32(10).string(m.keyName);
+            if (m.keyContent != null && Object.hasOwnProperty.call(m, "keyContent"))
+                w.uint32(18).string(m.keyContent);
+            return w;
+        };
+
+        /**
+         * Decodes a GetKeyResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.GetKeyResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.GetKeyResponseMessage} GetKeyResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetKeyResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.GetKeyResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.keyName = r.string();
+                    break;
+                case 2:
+                    m.keyContent = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return GetKeyResponseMessage;
+    })();
+
+    agent.GetPrimaryKeyPairRequestMessage = (function() {
+
+        /**
+         * Properties of a GetPrimaryKeyPairRequestMessage.
+         * @memberof agent
+         * @interface IGetPrimaryKeyPairRequestMessage
+         * @property {boolean|null} [includePrivateKey] GetPrimaryKeyPairRequestMessage includePrivateKey
+         */
+
+        /**
+         * Constructs a new GetPrimaryKeyPairRequestMessage.
+         * @memberof agent
+         * @classdesc Represents a GetPrimaryKeyPairRequestMessage.
+         * @implements IGetPrimaryKeyPairRequestMessage
+         * @constructor
+         * @param {agent.IGetPrimaryKeyPairRequestMessage=} [p] Properties to set
+         */
+        function GetPrimaryKeyPairRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * GetPrimaryKeyPairRequestMessage includePrivateKey.
+         * @member {boolean} includePrivateKey
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @instance
+         */
+        GetPrimaryKeyPairRequestMessage.prototype.includePrivateKey = false;
+
+        /**
+         * Creates a new GetPrimaryKeyPairRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairRequestMessage=} [properties] Properties to set
+         * @returns {agent.GetPrimaryKeyPairRequestMessage} GetPrimaryKeyPairRequestMessage instance
+         */
+        GetPrimaryKeyPairRequestMessage.create = function create(properties) {
+            return new GetPrimaryKeyPairRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified GetPrimaryKeyPairRequestMessage message. Does not implicitly {@link agent.GetPrimaryKeyPairRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairRequestMessage} m GetPrimaryKeyPairRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetPrimaryKeyPairRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.includePrivateKey != null && Object.hasOwnProperty.call(m, "includePrivateKey"))
+                w.uint32(8).bool(m.includePrivateKey);
+            return w;
+        };
+
+        /**
+         * Decodes a GetPrimaryKeyPairRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.GetPrimaryKeyPairRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.GetPrimaryKeyPairRequestMessage} GetPrimaryKeyPairRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetPrimaryKeyPairRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.GetPrimaryKeyPairRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.includePrivateKey = r.bool();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return GetPrimaryKeyPairRequestMessage;
+    })();
+
+    agent.GetPrimaryKeyPairResponseMessage = (function() {
+
+        /**
+         * Properties of a GetPrimaryKeyPairResponseMessage.
+         * @memberof agent
+         * @interface IGetPrimaryKeyPairResponseMessage
+         * @property {string|null} [publicKey] GetPrimaryKeyPairResponseMessage publicKey
+         * @property {string|null} [privateKey] GetPrimaryKeyPairResponseMessage privateKey
+         */
+
+        /**
+         * Constructs a new GetPrimaryKeyPairResponseMessage.
+         * @memberof agent
+         * @classdesc Represents a GetPrimaryKeyPairResponseMessage.
+         * @implements IGetPrimaryKeyPairResponseMessage
+         * @constructor
+         * @param {agent.IGetPrimaryKeyPairResponseMessage=} [p] Properties to set
+         */
+        function GetPrimaryKeyPairResponseMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * GetPrimaryKeyPairResponseMessage publicKey.
+         * @member {string} publicKey
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @instance
+         */
+        GetPrimaryKeyPairResponseMessage.prototype.publicKey = "";
+
+        /**
+         * GetPrimaryKeyPairResponseMessage privateKey.
+         * @member {string} privateKey
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @instance
+         */
+        GetPrimaryKeyPairResponseMessage.prototype.privateKey = "";
+
+        /**
+         * Creates a new GetPrimaryKeyPairResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairResponseMessage=} [properties] Properties to set
+         * @returns {agent.GetPrimaryKeyPairResponseMessage} GetPrimaryKeyPairResponseMessage instance
+         */
+        GetPrimaryKeyPairResponseMessage.create = function create(properties) {
+            return new GetPrimaryKeyPairResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified GetPrimaryKeyPairResponseMessage message. Does not implicitly {@link agent.GetPrimaryKeyPairResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @static
+         * @param {agent.IGetPrimaryKeyPairResponseMessage} m GetPrimaryKeyPairResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        GetPrimaryKeyPairResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
+                w.uint32(10).string(m.publicKey);
+            if (m.privateKey != null && Object.hasOwnProperty.call(m, "privateKey"))
+                w.uint32(18).string(m.privateKey);
+            return w;
+        };
+
+        /**
+         * Decodes a GetPrimaryKeyPairResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.GetPrimaryKeyPairResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.GetPrimaryKeyPairResponseMessage} GetPrimaryKeyPairResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        GetPrimaryKeyPairResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.GetPrimaryKeyPairResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.publicKey = r.string();
+                    break;
+                case 2:
+                    m.privateKey = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return GetPrimaryKeyPairResponseMessage;
     })();
 
     return agent;

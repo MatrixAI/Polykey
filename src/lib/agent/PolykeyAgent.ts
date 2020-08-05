@@ -13,13 +13,19 @@ const {
   AgentMessage,
   CreateSecretRequestMessage,
   CreateSecretResponseMessage,
+  DecryptFileRequestMessage,
+  DecryptFileResponseMessage,
   DeriveKeyRequestMessage,
   DeriveKeyResponseMessage,
   DestroySecretRequestMessage,
   DestroySecretResponseMessage,
   DestroyVaultRequestMessage,
   DestroyVaultResponseMessage,
+  EncryptFileRequestMessage,
+  EncryptFileResponseMessage,
   ErrorMessage,
+  GetPrimaryKeyPairRequestMessage,
+  GetPrimaryKeyPairResponseMessage,
   GetSecretRequestMessage,
   GetSecretResponseMessage,
   GetKeyRequestMessage,
@@ -174,11 +180,20 @@ class PolykeyAgent {
           case AgentMessageType.GET_KEY:
             response = await this.getKey(nodePath, subMessage);
             break;
+          case AgentMessageType.GET_PRIMARY_KEYPAIR:
+            response = await this.getPrimaryKeyPair(nodePath, subMessage);
+            break;
           case AgentMessageType.SIGN_FILE:
             response = await this.signFile(nodePath, subMessage);
             break;
           case AgentMessageType.VERIFY_FILE:
             response = await this.verifyFile(nodePath, subMessage);
+            break;
+          case AgentMessageType.ENCRYPT_FILE:
+            response = await this.encryptFile(nodePath, subMessage);
+            break;
+          case AgentMessageType.DECRYPT_FILE:
+            response = await this.decryptFile(nodePath, subMessage);
             break;
           case AgentMessageType.LIST_VAULTS:
             response = await this.listVaults(nodePath);
@@ -321,6 +336,12 @@ class PolykeyAgent {
     const keyContent = pk.keyManager.getKey(keyName).toString();
     return GetKeyResponseMessage.encode({ keyContent }).finish();
   }
+  private async getPrimaryKeyPair(nodePath: string, request: Uint8Array) {
+    const { includePrivateKey } = GetPrimaryKeyPairRequestMessage.decode(request);
+    const pk = this.getPolyKey(nodePath);
+    const keypair = pk.keyManager.getKeyPair();
+    return GetPrimaryKeyPairResponseMessage.encode({ publicKey: keypair.public, privateKey: includePrivateKey ? keypair.private : undefined }).finish();
+  }
 
   /////////////////////
   // Crypto commands //
@@ -336,6 +357,18 @@ class PolykeyAgent {
     const pk = this.getPolyKey(nodePath);
     const verified = await pk.keyManager.verifyFile(filePath, signaturePath);
     return VerifyFileResponseMessage.encode({ verified }).finish();
+  }
+  private async encryptFile(nodePath: string, request: Uint8Array) {
+    const { filePath, publicKeyPath } = EncryptFileRequestMessage.decode(request);
+    const pk = this.getPolyKey(nodePath);
+    const encryptedPath = await pk.keyManager.encryptFile(filePath, publicKeyPath);
+    return EncryptFileResponseMessage.encode({ encryptedPath }).finish();
+  }
+  private async decryptFile(nodePath: string, request: Uint8Array) {
+    const { filePath, privateKeyPath, passphrase } = DecryptFileRequestMessage.decode(request);
+    const pk = this.getPolyKey(nodePath);
+    const decryptedPath = await pk.keyManager.decryptFile(filePath, privateKeyPath, passphrase);
+    return DecryptFileResponseMessage.encode({ decryptedPath }).finish();
   }
 
   //////////////////////

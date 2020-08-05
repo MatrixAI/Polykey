@@ -56,6 +56,35 @@ function makeGetKeyCommand() {
     );
 }
 
+function makeListPrimaryKeyPairCommand() {
+  return new commander.Command('primary')
+    .description('get the contents of the primary keypair')
+    .option('--node-path <nodePath>', 'node path')
+    .option('-p, --private-key', 'include private key')
+    .option('-j, --output-json', 'output in JSON format')
+    .action(
+      actionRunner(async (options) => {
+        const client = PolykeyAgent.connectToAgent();
+        const nodePath = determineNodePath(options);
+        const privateKey: boolean = options.privateKey;
+        const outputJson: boolean = options.outputJson;
+
+        const keypair = await client.getPrimaryKeyPair(nodePath, privateKey);
+        if (outputJson) {
+          pkLogger(JSON.stringify(keypair), PKMessageType.INFO);
+        } else {
+          pkLogger("Public Key:", PKMessageType.SUCCESS);
+          pkLogger(keypair.publicKey, PKMessageType.INFO);
+          if (privateKey) {
+            pkLogger("Private Key:", PKMessageType.SUCCESS);
+            pkLogger(keypair.privateKey, PKMessageType.INFO);
+          }
+        }
+      }),
+
+    );
+}
+
 function makeKeyManagerCommand() {
   return new commander.Command('keymanager')
     .alias('km')
@@ -63,6 +92,7 @@ function makeKeyManagerCommand() {
     .addCommand(makeNewKeyCommand())
     .addCommand(makeListKeysCommand())
     .addCommand(makeGetKeyCommand())
+    .addCommand(makeListPrimaryKeyPairCommand())
 }
 
 export default makeKeyManagerCommand;
