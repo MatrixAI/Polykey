@@ -34,8 +34,8 @@ function makeListSecretsCommand() {
     );
 }
 
-function makeAddSecretCommand() {
-  return new commander.Command('create')
+function makeNewSecretCommand() {
+  return new commander.Command('new')
     .description('create a secret within a given vault')
     .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
     .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
@@ -67,6 +67,7 @@ function makeAddSecretCommand() {
 
 function makeRemoveSecretCommand() {
   return new commander.Command('remove')
+    .alias('rm')
     .description('remove a secret from a given vault')
     .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
     .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
@@ -123,7 +124,7 @@ function makeSecretsCommand() {
   return new commander.Command('secrets')
     .description('manipulate secrets for a given vault')
     .addCommand(makeListSecretsCommand())
-    .addCommand(makeAddSecretCommand())
+    .addCommand(makeNewSecretCommand())
     .addCommand(makeRemoveSecretCommand())
     .addCommand(makeGetSecretCommand());
 }

@@ -4,15 +4,23 @@ const {
   AgentMessage,
   CreateSecretRequestMessage,
   CreateSecretResponseMessage,
+  DecryptFileRequestMessage,
+  DecryptFileResponseMessage
   DeriveKeyRequestMessage,
   DeriveKeyResponseMessage,
   DestroySecretRequestMessage,
   DestroySecretResponseMessage,
   DestroyVaultRequestMessage,
   DestroyVaultResponseMessage,
+  EncryptFileRequestMessage,
+  EncryptFileResponseMessage,
   ErrorMessage,
   GetSecretRequestMessage,
   GetSecretResponseMessage,
+  GetKeyRequestMessage,
+  GetKeyResponseMessage,
+  ListKeysRequestMessage,
+  ListKeysResponseMessage,
   ListNodesRequestMessage,
   ListNodesResponseMessage,
   ListSecretsRequestMessage,
@@ -27,7 +35,7 @@ const {
   RegisterNodeResponseMessage,
   SignFileRequestMessage,
   SignFileResponseMessage,
-  Type,
+  AgentMessageType,
   VerifyFileRequestMessage,
   VerifyFileResponseMessage,
 } = agent;
@@ -70,7 +78,7 @@ class PolykeyClient {
   }
 
   private async handleAgentCommunication(
-    type: agent.Type,
+    type: agent.AgentMessageType,
     nodePath?: string,
     request?: Uint8Array,
   ): Promise<agent.AgentMessage[]> {
@@ -86,7 +94,7 @@ class PolykeyClient {
     const agentMessageList: agent.AgentMessage[] = [];
     for (const response of responseList.values()) {
       const { subMessage, type } = AgentMessage.decode(response);
-      if (type == Type.ERROR) {
+      if (type == AgentMessageType.ERROR) {
         const { error } = ErrorMessage.decode(subMessage);
         const reason = new Error(`Agent Error: ${error}`);
         throw reason;
@@ -101,9 +109,9 @@ class PolykeyClient {
   async registerNode(path: string, passphrase: string) {
     const registerNodeRequest = RegisterNodeRequestMessage.encode({ passphrase }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.REGISTER_NODE, path, registerNodeRequest);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.REGISTER_NODE, path, registerNodeRequest);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.REGISTER_NODE)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.REGISTER_NODE)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -116,9 +124,9 @@ class PolykeyClient {
   async newNode(path: string, name: string, email: string, passphrase: string, nbits?: number) {
     const newNodeRequest = NewNodeRequestMessage.encode({ name, email, passphrase, nbits }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.NEW_NODE, path, newNodeRequest);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.NEW_NODE, path, newNodeRequest);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.NEW_NODE)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.NEW_NODE)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -131,9 +139,9 @@ class PolykeyClient {
   async listNodes(unlockedOnly: boolean = true) {
     const newNodeRequest = ListNodesRequestMessage.encode({ unlockedOnly }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.LIST_NODES, undefined, newNodeRequest);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_NODES, undefined, newNodeRequest);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.LIST_NODES)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.LIST_NODES)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -143,20 +151,46 @@ class PolykeyClient {
   }
 
   /////////////////////
-  // Crypto commands //
+  // Key commands //
   /////////////////////
   async deriveKey(nodePath: string, keyName: string, passphrase: string) {
     const request = DeriveKeyRequestMessage.encode({ keyName, passphrase }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.DERIVE_KEY, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DERIVE_KEY, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.DERIVE_KEY)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.DERIVE_KEY)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
 
     const { successful } = DeriveKeyResponseMessage.decode(subMessage);
     return successful;
+  }
+  async listKeys(nodePath: string) {
+    const request = ListKeysRequestMessage.encode({}).finish();
+
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_KEYS, nodePath, request);
+
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.LIST_KEYS)?.subMessage
+    if (!subMessage) {
+      throw Error('agent did not respond');
+    }
+
+    const { keyNames } = ListKeysResponseMessage.decode(subMessage);
+    return keyNames;
+  }
+  async getKey(nodePath: string, keyName: string) {
+    const request = GetKeyRequestMessage.encode({ keyName }).finish();
+
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.GET_KEY, nodePath, request);
+
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.GET_KEY)?.subMessage
+    if (!subMessage) {
+      throw Error('agent did not respond');
+    }
+
+    const { keyContent } = GetKeyResponseMessage.decode(subMessage);
+    return keyContent;
   }
 
   /////////////////////
@@ -165,9 +199,9 @@ class PolykeyClient {
   async signFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string) {
     const request = SignFileRequestMessage.encode({ filePath, privateKeyPath, passphrase }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.SIGN_FILE, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.SIGN_FILE, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.SIGN_FILE)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.SIGN_FILE)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -178,9 +212,9 @@ class PolykeyClient {
   async verifyFile(nodePath: string, filePath: string, signaturePath?: string) {
     const request = VerifyFileRequestMessage.encode({ filePath, signaturePath }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.VERIFY_FILE, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.VERIFY_FILE, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.VERIFY_FILE)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.VERIFY_FILE)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -188,14 +222,27 @@ class PolykeyClient {
     const { verified } = VerifyFileResponseMessage.decode(subMessage);
     return verified;
   }
+  async encryptFile(nodePath: string, filePath: string, publicKeyPath?: string) {
+    const request = EncryptFileRequestMessage.encode({ filePath, publicKeyPath }).finish();
+
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.ENCRYPT_FILE, nodePath, request);
+
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.SIGN_FILE)?.subMessage
+    if (!subMessage) {
+      throw Error('agent did not respond');
+    }
+
+    const { signaturePath } = SignFileResponseMessage.decode(subMessage);
+    return signaturePath;
+  }
 
   //////////////////////
   // Vault Operations //
   //////////////////////
   async listVaults(nodePath: string) {
-    const encodedResponse = await this.handleAgentCommunication(Type.LIST_VAULTS, nodePath);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_VAULTS, nodePath);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.LIST_VAULTS)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.LIST_VAULTS)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -206,9 +253,9 @@ class PolykeyClient {
   async newVault(nodePath: string, vaultName: string) {
     const request = NewVaultRequestMessage.encode({ vaultName }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.NEW_VAULT, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.NEW_VAULT, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.NEW_VAULT)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.NEW_VAULT)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -219,9 +266,9 @@ class PolykeyClient {
   async destroyVault(nodePath: string, vaultName: string) {
     const request = DestroyVaultRequestMessage.encode({ vaultName }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.DESTROY_VAULT, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DESTROY_VAULT, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.DESTROY_VAULT)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.DESTROY_VAULT)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -235,9 +282,9 @@ class PolykeyClient {
   ///////////////////////
   async listSecrets(nodePath: string, vaultName: string) {
     const request = ListSecretsRequestMessage.encode({ vaultName }).finish();
-    const encodedResponse = await this.handleAgentCommunication(Type.LIST_SECRETS, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.LIST_SECRETS, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.LIST_SECRETS)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.LIST_SECRETS)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -253,9 +300,9 @@ class PolykeyClient {
       request = CreateSecretRequestMessage.encode({ vaultName, secretName, secretContent: secret }).finish();
     }
 
-    const encodedResponse = await this.handleAgentCommunication(Type.CREATE_SECRET, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.CREATE_SECRET, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.CREATE_SECRET)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.CREATE_SECRET)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -266,9 +313,9 @@ class PolykeyClient {
   async destroySecret(nodePath: string, vaultName: string, secretName: string) {
     const request = DestroySecretRequestMessage.encode({ vaultName, secretName }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.DESTROY_SECRET, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DESTROY_SECRET, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.DESTROY_SECRET)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.DESTROY_SECRET)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -279,9 +326,9 @@ class PolykeyClient {
   async getSecret(nodePath: string, vaultName: string, secretName: string) {
     const request = GetSecretRequestMessage.encode({ vaultName, secretName }).finish();
 
-    const encodedResponse = await this.handleAgentCommunication(Type.GET_SECRET, nodePath, request);
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.GET_SECRET, nodePath, request);
 
-    const subMessage = encodedResponse.find((r) => r.type == Type.GET_SECRET)?.subMessage
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.GET_SECRET)?.subMessage
     if (!subMessage) {
       throw Error('agent did not respond');
     }
@@ -295,9 +342,9 @@ class PolykeyClient {
   ///////////////////
   async getAgentStatus(): Promise<string> {
     try {
-      const encodedResponse = await this.handleAgentCommunication(Type.STATUS);
+      const encodedResponse = await this.handleAgentCommunication(AgentMessageType.STATUS);
 
-      const subMessage = encodedResponse.find((r) => r.type == Type.STATUS)?.subMessage
+      const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.STATUS)?.subMessage
       if (!subMessage) {
         throw Error('agent did not respond');
       }
@@ -314,7 +361,7 @@ class PolykeyClient {
   async stopAgent(): Promise<boolean> {
     try {
       // Tell it to start shutting and wait for response
-      await this.handleAgentCommunication(Type.STOP_AGENT);
+      await this.handleAgentCommunication(AgentMessageType.STOP_AGENT);
       return true;
     } catch (err) {
       return (await this.getAgentStatus()) != 'online';

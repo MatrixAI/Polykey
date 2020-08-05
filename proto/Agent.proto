@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package agent;
 
-enum Type {
+enum AgentMessageType {
   ERROR = 0;
   STOP_AGENT = 1;
   STATUS = 2;
@@ -19,9 +19,14 @@ enum Type {
   CREATE_SECRET = 13;
   DESTROY_SECRET = 14;
   GET_SECRET = 15;
+  LIST_KEYS = 16;
+  GET_KEY = 17;
+  DELETE_KEY = 18;
+  ENCRYPT_FILE = 19;
+  DECRYPT_FILE = 20;
 }
 message AgentMessage {
-  Type type = 1;
+  AgentMessageType type = 1;
   bool isResponse = 2;
   string node_path = 3;
   bytes sub_message = 4;
@@ -74,6 +79,25 @@ message VerifyFileRequestMessage {
 }
 message VerifyFileResponseMessage {
   bool verified = 1;
+}
+
+// ==== EncryptFile ==== //
+message EncryptFileRequestMessage {
+  string file_path = 1;
+  string public_key_path = 2;
+}
+message EncryptFileResponseMessage {
+  bool encrypted = 1;
+}
+
+// ==== DecryptFile ==== //
+message DecryptFileRequestMessage {
+  string file_path = 1;
+  string private_key_path = 2;
+  string passphrase = 3;
+}
+message DecryptFileResponseMessage {
+  bool decrypted = 1;
 }
 
 // ==== ListVaults ==== //
@@ -144,4 +168,20 @@ message DeriveKeyRequestMessage {
 }
 message DeriveKeyResponseMessage {
   bool successful = 1;
+}
+
+// ==== ListKeys ==== //
+message ListKeysRequestMessage {
+}
+message ListKeysResponseMessage {
+  repeated string key_names = 1;
+}
+
+// ==== GetKey ==== //
+message GetKeyRequestMessage {
+  string key_name = 1;
+}
+message GetKeyResponseMessage {
+  string key_name = 1;
+  string key_content = 2;
 }

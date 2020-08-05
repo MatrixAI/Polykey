@@ -2,8 +2,8 @@ import * as $protobuf from "protobufjs";
 /** Namespace agent. */
 export namespace agent {
 
-    /** Type enum. */
-    enum Type {
+    /** AgentMessageType enum. */
+    enum AgentMessageType {
         ERROR = 0,
         STOP_AGENT = 1,
         STATUS = 2,
@@ -19,14 +19,19 @@ export namespace agent {
         LIST_SECRETS = 12,
         CREATE_SECRET = 13,
         DESTROY_SECRET = 14,
-        GET_SECRET = 15
+        GET_SECRET = 15,
+        LIST_KEYS = 16,
+        GET_KEY = 17,
+        DELETE_KEY = 18,
+        ENCRYPT_FILE = 19,
+        DECRYPT_FILE = 20
     }
 
     /** Properties of an AgentMessage. */
     interface IAgentMessage {
 
         /** AgentMessage type */
-        type?: (agent.Type|null);
+        type?: (agent.AgentMessageType|null);
 
         /** AgentMessage isResponse */
         isResponse?: (boolean|null);
@@ -48,7 +53,7 @@ export namespace agent {
         constructor(p?: agent.IAgentMessage);
 
         /** AgentMessage type. */
-        public type: agent.Type;
+        public type: agent.AgentMessageType;
 
         /** AgentMessage isResponse. */
         public isResponse: boolean;
@@ -614,6 +619,204 @@ export namespace agent {
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.VerifyFileResponseMessage;
+    }
+
+    /** Properties of an EncryptFileRequestMessage. */
+    interface IEncryptFileRequestMessage {
+
+        /** EncryptFileRequestMessage filePath */
+        filePath?: (string|null);
+
+        /** EncryptFileRequestMessage publicKeyPath */
+        publicKeyPath?: (string|null);
+    }
+
+    /** Represents an EncryptFileRequestMessage. */
+    class EncryptFileRequestMessage implements IEncryptFileRequestMessage {
+
+        /**
+         * Constructs a new EncryptFileRequestMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IEncryptFileRequestMessage);
+
+        /** EncryptFileRequestMessage filePath. */
+        public filePath: string;
+
+        /** EncryptFileRequestMessage publicKeyPath. */
+        public publicKeyPath: string;
+
+        /**
+         * Creates a new EncryptFileRequestMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns EncryptFileRequestMessage instance
+         */
+        public static create(properties?: agent.IEncryptFileRequestMessage): agent.EncryptFileRequestMessage;
+
+        /**
+         * Encodes the specified EncryptFileRequestMessage message. Does not implicitly {@link agent.EncryptFileRequestMessage.verify|verify} messages.
+         * @param m EncryptFileRequestMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IEncryptFileRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an EncryptFileRequestMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns EncryptFileRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.EncryptFileRequestMessage;
+    }
+
+    /** Properties of an EncryptFileResponseMessage. */
+    interface IEncryptFileResponseMessage {
+
+        /** EncryptFileResponseMessage encrypted */
+        encrypted?: (boolean|null);
+    }
+
+    /** Represents an EncryptFileResponseMessage. */
+    class EncryptFileResponseMessage implements IEncryptFileResponseMessage {
+
+        /**
+         * Constructs a new EncryptFileResponseMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IEncryptFileResponseMessage);
+
+        /** EncryptFileResponseMessage encrypted. */
+        public encrypted: boolean;
+
+        /**
+         * Creates a new EncryptFileResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns EncryptFileResponseMessage instance
+         */
+        public static create(properties?: agent.IEncryptFileResponseMessage): agent.EncryptFileResponseMessage;
+
+        /**
+         * Encodes the specified EncryptFileResponseMessage message. Does not implicitly {@link agent.EncryptFileResponseMessage.verify|verify} messages.
+         * @param m EncryptFileResponseMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IEncryptFileResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an EncryptFileResponseMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns EncryptFileResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.EncryptFileResponseMessage;
+    }
+
+    /** Properties of a DecryptFileRequestMessage. */
+    interface IDecryptFileRequestMessage {
+
+        /** DecryptFileRequestMessage filePath */
+        filePath?: (string|null);
+
+        /** DecryptFileRequestMessage privateKeyPath */
+        privateKeyPath?: (string|null);
+
+        /** DecryptFileRequestMessage passphrase */
+        passphrase?: (string|null);
+    }
+
+    /** Represents a DecryptFileRequestMessage. */
+    class DecryptFileRequestMessage implements IDecryptFileRequestMessage {
+
+        /**
+         * Constructs a new DecryptFileRequestMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IDecryptFileRequestMessage);
+
+        /** DecryptFileRequestMessage filePath. */
+        public filePath: string;
+
+        /** DecryptFileRequestMessage privateKeyPath. */
+        public privateKeyPath: string;
+
+        /** DecryptFileRequestMessage passphrase. */
+        public passphrase: string;
+
+        /**
+         * Creates a new DecryptFileRequestMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns DecryptFileRequestMessage instance
+         */
+        public static create(properties?: agent.IDecryptFileRequestMessage): agent.DecryptFileRequestMessage;
+
+        /**
+         * Encodes the specified DecryptFileRequestMessage message. Does not implicitly {@link agent.DecryptFileRequestMessage.verify|verify} messages.
+         * @param m DecryptFileRequestMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IDecryptFileRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a DecryptFileRequestMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns DecryptFileRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.DecryptFileRequestMessage;
+    }
+
+    /** Properties of a DecryptFileResponseMessage. */
+    interface IDecryptFileResponseMessage {
+
+        /** DecryptFileResponseMessage decrypted */
+        decrypted?: (boolean|null);
+    }
+
+    /** Represents a DecryptFileResponseMessage. */
+    class DecryptFileResponseMessage implements IDecryptFileResponseMessage {
+
+        /**
+         * Constructs a new DecryptFileResponseMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IDecryptFileResponseMessage);
+
+        /** DecryptFileResponseMessage decrypted. */
+        public decrypted: boolean;
+
+        /**
+         * Creates a new DecryptFileResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns DecryptFileResponseMessage instance
+         */
+        public static create(properties?: agent.IDecryptFileResponseMessage): agent.DecryptFileResponseMessage;
+
+        /**
+         * Encodes the specified DecryptFileResponseMessage message. Does not implicitly {@link agent.DecryptFileResponseMessage.verify|verify} messages.
+         * @param m DecryptFileResponseMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IDecryptFileResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a DecryptFileResponseMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns DecryptFileResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.DecryptFileResponseMessage;
     }
 
     /** Properties of a ListVaultsRequestMessage. */
@@ -1370,5 +1573,185 @@ export namespace agent {
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.DeriveKeyResponseMessage;
+    }
+
+    /** Properties of a ListKeysRequestMessage. */
+    interface IListKeysRequestMessage {
+    }
+
+    /** Represents a ListKeysRequestMessage. */
+    class ListKeysRequestMessage implements IListKeysRequestMessage {
+
+        /**
+         * Constructs a new ListKeysRequestMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IListKeysRequestMessage);
+
+        /**
+         * Creates a new ListKeysRequestMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns ListKeysRequestMessage instance
+         */
+        public static create(properties?: agent.IListKeysRequestMessage): agent.ListKeysRequestMessage;
+
+        /**
+         * Encodes the specified ListKeysRequestMessage message. Does not implicitly {@link agent.ListKeysRequestMessage.verify|verify} messages.
+         * @param m ListKeysRequestMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IListKeysRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a ListKeysRequestMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns ListKeysRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.ListKeysRequestMessage;
+    }
+
+    /** Properties of a ListKeysResponseMessage. */
+    interface IListKeysResponseMessage {
+
+        /** ListKeysResponseMessage keyNames */
+        keyNames?: (string[]|null);
+    }
+
+    /** Represents a ListKeysResponseMessage. */
+    class ListKeysResponseMessage implements IListKeysResponseMessage {
+
+        /**
+         * Constructs a new ListKeysResponseMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IListKeysResponseMessage);
+
+        /** ListKeysResponseMessage keyNames. */
+        public keyNames: string[];
+
+        /**
+         * Creates a new ListKeysResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns ListKeysResponseMessage instance
+         */
+        public static create(properties?: agent.IListKeysResponseMessage): agent.ListKeysResponseMessage;
+
+        /**
+         * Encodes the specified ListKeysResponseMessage message. Does not implicitly {@link agent.ListKeysResponseMessage.verify|verify} messages.
+         * @param m ListKeysResponseMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IListKeysResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a ListKeysResponseMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns ListKeysResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.ListKeysResponseMessage;
+    }
+
+    /** Properties of a GetKeyRequestMessage. */
+    interface IGetKeyRequestMessage {
+
+        /** GetKeyRequestMessage keyName */
+        keyName?: (string|null);
+    }
+
+    /** Represents a GetKeyRequestMessage. */
+    class GetKeyRequestMessage implements IGetKeyRequestMessage {
+
+        /**
+         * Constructs a new GetKeyRequestMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IGetKeyRequestMessage);
+
+        /** GetKeyRequestMessage keyName. */
+        public keyName: string;
+
+        /**
+         * Creates a new GetKeyRequestMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetKeyRequestMessage instance
+         */
+        public static create(properties?: agent.IGetKeyRequestMessage): agent.GetKeyRequestMessage;
+
+        /**
+         * Encodes the specified GetKeyRequestMessage message. Does not implicitly {@link agent.GetKeyRequestMessage.verify|verify} messages.
+         * @param m GetKeyRequestMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IGetKeyRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetKeyRequestMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns GetKeyRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.GetKeyRequestMessage;
+    }
+
+    /** Properties of a GetKeyResponseMessage. */
+    interface IGetKeyResponseMessage {
+
+        /** GetKeyResponseMessage keyName */
+        keyName?: (string|null);
+
+        /** GetKeyResponseMessage keyContent */
+        keyContent?: (string|null);
+    }
+
+    /** Represents a GetKeyResponseMessage. */
+    class GetKeyResponseMessage implements IGetKeyResponseMessage {
+
+        /**
+         * Constructs a new GetKeyResponseMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IGetKeyResponseMessage);
+
+        /** GetKeyResponseMessage keyName. */
+        public keyName: string;
+
+        /** GetKeyResponseMessage keyContent. */
+        public keyContent: string;
+
+        /**
+         * Creates a new GetKeyResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns GetKeyResponseMessage instance
+         */
+        public static create(properties?: agent.IGetKeyResponseMessage): agent.GetKeyResponseMessage;
+
+        /**
+         * Encodes the specified GetKeyResponseMessage message. Does not implicitly {@link agent.GetKeyResponseMessage.verify|verify} messages.
+         * @param m GetKeyResponseMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IGetKeyResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a GetKeyResponseMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns GetKeyResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.GetKeyResponseMessage;
     }
 }

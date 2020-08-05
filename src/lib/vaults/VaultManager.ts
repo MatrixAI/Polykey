@@ -246,8 +246,6 @@ class VaultManager {
           this.vaults.set(vaultName, vault);
         }
       }
-      console.log(this.vaults);
-
     }
   }
 }

@@ -22,6 +22,10 @@ const {
   ErrorMessage,
   GetSecretRequestMessage,
   GetSecretResponseMessage,
+  GetKeyRequestMessage,
+  GetKeyResponseMessage,
+  ListKeysRequestMessage,
+  ListKeysResponseMessage,
   ListNodesRequestMessage,
   ListNodesResponseMessage,
   ListSecretsRequestMessage,
@@ -36,7 +40,7 @@ const {
   RegisterNodeResponseMessage,
   SignFileRequestMessage,
   SignFileResponseMessage,
-  Type,
+  AgentMessageType,
   VerifyFileRequestMessage,
   VerifyFileResponseMessage,
 } = agent;
@@ -49,11 +53,41 @@ class PolykeyAgent {
   // For storing the state of each polykey node
   // Keys are the paths to the polykey node, e.g. '~/.polykey'
   private polykeyMap: Map<string, Polykey> = new Map();
+  private setPolyKey(nodePath: string, pk: Polykey) {
+    this.polykeyMap.set(nodePath, pk);
+    const nodePathSet = new Set(this.persistentStore.get('nodePaths'));
+    nodePathSet.add(nodePath);
+    this.persistentStore.set('nodePaths', Array.from(nodePathSet.values()));
+  }
+  private removeNodePath(nodePath: string) {
+    this.polykeyMap.delete(nodePath);
+    const nodePathSet = new Set(this.persistentStore.get('nodePaths'));
+    nodePathSet.delete(nodePath);
+    this.persistentStore.set('nodePaths', Array.from(nodePathSet.values()));
+  }
+  private getPolyKey(nodePath: string, failOnLocked: boolean = true): Polykey {
+    const pk = this.polykeyMap.get(nodePath)
+    if (this.polykeyMap.has(nodePath) && pk) {
+      if (fs.existsSync(nodePath)) {
+        if (failOnLocked && !pk.keyManager.identityLoaded) {
+          throw Error(`node path exists in memory but is locked: ${nodePath}`)
+        } else {
+          return pk
+        }
+      } else {
+        this.removeNodePath(nodePath)
+        throw Error(`node path exists in memory but does not exist on file system: ${nodePath}`)
+      }
+    } else {
+      this.removeNodePath(nodePath)
+      throw Error(`node path does not exist inn memory: ${nodePath}`)
+    }
+  }
 
   public get AllNodePaths(): string[] {
     return Array.from(this.polykeyMap.keys()).filter((nodePath) => {
       try {
-        this.getPolykey(nodePath);
+        this.getPolyKey(nodePath, false);
         return true;
       } catch {
         return false;
@@ -64,7 +98,7 @@ class PolykeyAgent {
   public get UnlockedNodePaths(): string[] {
     return this.AllNodePaths.filter((nodePath) => {
       try {
-        return this.getPolykey(nodePath).keyManager.identityLoaded;
+        return this.getPolyKey(nodePath, false).keyManager.identityLoaded;
       } catch {
         return false;
       }
@@ -89,9 +123,9 @@ class PolykeyAgent {
     if (nodePaths?.values) {
       for (const path of nodePaths) {
         if (fs.existsSync(path)) {
-          this.polykeyMap.set(path, new Polykey(path, fs));
+          this.setPolyKey(path, new Polykey(path, fs));
         } else {
-          this.removeFromNodePaths(path);
+          this.removeNodePath(path);
         }
       }
     } else {
@@ -109,74 +143,66 @@ class PolykeyAgent {
     this.server.close();
   }
 
-  private addToNodePaths(nodePath: string, pk: Polykey) {
-    this.polykeyMap.set(nodePath, pk);
-    const nodePathSet = new Set(this.persistentStore.get('nodePaths'));
-    nodePathSet.add(nodePath);
-    this.persistentStore.set('nodePaths', Array.from(nodePathSet.values()));
-  }
-
-  private removeFromNodePaths(nodePath: string) {
-    this.polykeyMap.delete(nodePath);
-    const nodePathSet = new Set(this.persistentStore.get('nodePaths'));
-    nodePathSet.delete(nodePath);
-    this.persistentStore.set('nodePaths', Array.from(nodePathSet.values()));
-  }
-
   private handleClientCommunication(socket: net.Socket) {
     socket.on('data', async (encodedMessage: Uint8Array) => {
       try {
         const { type, nodePath, subMessage } = AgentMessage.decode(encodedMessage);
         let response: Uint8Array | undefined = undefined;
         switch (type) {
-          case Type.STATUS:
+          case AgentMessageType.STATUS:
             response = Buffer.from('online');
             break;
-          case Type.STOP_AGENT:
+          case AgentMessageType.STOP_AGENT:
             this.stop();
             process.exit();
           // eslint-disable-next-line
-          case Type.REGISTER_NODE:
+          case AgentMessageType.REGISTER_NODE:
             response = await this.registerNode(nodePath, subMessage);
             break;
-          case Type.NEW_NODE:
+          case AgentMessageType.NEW_NODE:
             response = await this.newNode(nodePath, subMessage);
             break;
-          case Type.LIST_NODES:
+          case AgentMessageType.LIST_NODES:
             response = this.listNodes(subMessage);
             break;
-          case Type.DERIVE_KEY:
+          case AgentMessageType.DERIVE_KEY:
             response = await this.deriveKey(nodePath, subMessage);
             break;
-          case Type.SIGN_FILE:
+          case AgentMessageType.LIST_KEYS:
+            response = await this.listKeys(nodePath);
+            break;
+          case AgentMessageType.GET_KEY:
+            response = await this.getKey(nodePath, subMessage);
+            break;
+          case AgentMessageType.SIGN_FILE:
             response = await this.signFile(nodePath, subMessage);
             break;
-          case Type.VERIFY_FILE:
+          case AgentMessageType.VERIFY_FILE:
             response = await this.verifyFile(nodePath, subMessage);
             break;
-          case Type.LIST_VAULTS:
+          case AgentMessageType.LIST_VAULTS:
             response = await this.listVaults(nodePath);
             break;
-          case Type.NEW_VAULT:
+          case AgentMessageType.NEW_VAULT:
             response = await this.newVault(nodePath, subMessage);
             break;
-          case Type.DESTROY_VAULT:
+          case AgentMessageType.DESTROY_VAULT:
             response = await this.destroyVault(nodePath, subMessage);
             break;
-          case Type.LIST_SECRETS:
+          case AgentMessageType.LIST_SECRETS:
             response = await this.listSecrets(nodePath, subMessage);
             break;
-          case Type.CREATE_SECRET:
+          case AgentMessageType.CREATE_SECRET:
             response = await this.createSecret(nodePath, subMessage);
             break;
-          case Type.DESTROY_SECRET:
+          case AgentMessageType.DESTROY_SECRET:
             response = await this.destroySecret(nodePath, subMessage);
             break;
-          case Type.GET_SECRET:
+          case AgentMessageType.GET_SECRET:
             response = await this.getSecret(nodePath, subMessage);
             break;
           default:
-            throw Error(`message type not supported: ${type}`);
+            throw Error(`message type not supported: ${AgentMessageType[type]}`);
         }
 
         if (response) {
@@ -192,7 +218,7 @@ class PolykeyAgent {
         }
       } catch (err) {
         const errorResponse = AgentMessage.encode({
-          type: Type.ERROR,
+          type: AgentMessageType.ERROR,
           isResponse: true,
           nodePath: undefined,
           subMessage: ErrorMessage.encode({ error: (<Error>err).message ?? err }).finish(),
@@ -209,7 +235,7 @@ class PolykeyAgent {
   private async registerNode(nodePath: string, request: Uint8Array) {
     const { passphrase } = RegisterNodeRequestMessage.decode(request);
 
-    let pk: Polykey | undefined = this.polykeyMap.get(nodePath);
+    let pk: Polykey | undefined = this.getPolyKey(nodePath, false);
     if (pk) {
       if (pk.keyManager.identityLoaded) {
         throw Error(`node path is already loaded and unlocked: '${nodePath}'`);
@@ -222,14 +248,12 @@ class PolykeyAgent {
       pk = new Polykey(nodePath, fs, km);
     }
     // Load all metadata
-    pk.keyManager.loadMetadata()
+    await pk.keyManager.loadMetadata()
     pk.peerManager.loadMetadata()
     await pk.vaultManager.loadMetadata()
-    console.log(pk.vaultManager.listVaults());
-
 
     // Set polykey class
-    this.addToNodePaths(nodePath, pk);
+    this.setPolyKey(nodePath, pk);
 
     // Encode and send response
     const response = NewNodeResponseMessage.encode({
@@ -258,7 +282,7 @@ class PolykeyAgent {
 
     // Create and set polykey class
     const pk = new Polykey(nodePath, fs, km);
-    this.addToNodePaths(nodePath, pk);
+    this.setPolyKey(nodePath, pk);
 
     // Encode and send response
     const response = NewNodeResponseMessage.encode({
@@ -277,26 +301,25 @@ class PolykeyAgent {
     }
   }
 
-  private getPolykey(nodePath: string) {
-    if (this.polykeyMap.has(nodePath)) {
-      return this.polykeyMap.get(nodePath)!;
-    } else if (fs.existsSync(nodePath)) {
-      throw Error(`polykey node has not been loaded yet: '${nodePath}'`);
-    } else {
-      const nodePathList = new Set<string>(this.persistentStore.get('nodePaths') ?? []);
-      nodePathList.delete(nodePath);
-      this.persistentStore.set('nodePaths', Array.from(nodePathList.values()));
-      throw Error(`node path does not exist: '${nodePath}'`);
-    }
-  }
   /////////////////////////
   // KeyManager commands //
   /////////////////////////
   private async deriveKey(nodePath: string, request: Uint8Array) {
     const { keyName, passphrase } = DeriveKeyRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     await pk.keyManager.generateKey(keyName, passphrase);
     return DeriveKeyResponseMessage.encode({ successful: true }).finish();
+  }
+  private async listKeys(nodePath: string) {
+    const pk = this.getPolyKey(nodePath);
+    const keyNames = pk.keyManager.listKeys();
+    return ListKeysResponseMessage.encode({ keyNames }).finish();
+  }
+  private async getKey(nodePath: string, request: Uint8Array) {
+    const { keyName } = GetKeyRequestMessage.decode(request);
+    const pk = this.getPolyKey(nodePath);
+    const keyContent = pk.keyManager.getKey(keyName).toString();
+    return GetKeyResponseMessage.encode({ keyContent }).finish();
   }
 
   /////////////////////
@@ -304,13 +327,13 @@ class PolykeyAgent {
   /////////////////////
   private async signFile(nodePath: string, request: Uint8Array) {
     const { filePath, privateKeyPath, passphrase } = SignFileRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     const signaturePath = await pk.keyManager.signFile(filePath, privateKeyPath, passphrase);
     return SignFileResponseMessage.encode({ signaturePath }).finish();
   }
   private async verifyFile(nodePath: string, request: Uint8Array) {
     const { filePath, signaturePath } = VerifyFileRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     const verified = await pk.keyManager.verifyFile(filePath, signaturePath);
     return VerifyFileResponseMessage.encode({ verified }).finish();
   }
@@ -319,19 +342,19 @@ class PolykeyAgent {
   // Vault Operations //
   //////////////////////
   private async listVaults(nodePath: string) {
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     const vaultNames = pk.vaultManager.listVaults();
     return ListVaultsResponseMessage.encode({ vaultNames }).finish();
   }
   private async newVault(nodePath: string, request: Uint8Array) {
     const { vaultName } = NewVaultRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     await pk.vaultManager.createVault(vaultName);
     return NewVaultResponseMessage.encode({ successful: true }).finish();
   }
   private async destroyVault(nodePath: string, request: Uint8Array) {
     const { vaultName } = DestroyVaultRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     pk.vaultManager.destroyVault(vaultName);
     return DestroyVaultResponseMessage.encode({ successful: true }).finish();
   }
@@ -341,14 +364,14 @@ class PolykeyAgent {
   ///////////////////////
   private async listSecrets(nodePath: string, request: Uint8Array) {
     const { vaultName } = ListSecretsRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     const vault = pk.vaultManager.getVault(vaultName);
     const secretNames = vault.listSecrets();
     return ListSecretsResponseMessage.encode({ secretNames }).finish();
   }
   private async createSecret(nodePath: string, request: Uint8Array) {
     const { vaultName, secretName, secretPath, secretContent } = CreateSecretRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     const vault = pk.vaultManager.getVault(vaultName);
     let secretBuffer: Buffer
     if (secretPath) {
@@ -361,14 +384,14 @@ class PolykeyAgent {
   }
   private async destroySecret(nodePath: string, request: Uint8Array) {
     const { vaultName, secretName } = DestroySecretRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     const vault = pk.vaultManager.getVault(vaultName);
     await vault.removeSecret(secretName);
     return DestroySecretResponseMessage.encode({ successful: true }).finish();
   }
   private async getSecret(nodePath: string, request: Uint8Array) {
     const { vaultName, secretName } = GetSecretRequestMessage.decode(request);
-    const pk = this.getPolykey(nodePath);
+    const pk = this.getPolyKey(nodePath);
     const vault = pk.vaultManager.getVault(vaultName);
     const secret = Buffer.from(vault.getSecret(secretName));
     return GetSecretResponseMessage.encode({ secret: secret }).finish();

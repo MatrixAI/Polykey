@@ -26,6 +26,7 @@ class KeyManager {
   private primaryKeyPair: KeyPair = { private: null, public: null };
   private primaryIdentity?: Object;
   private derivedKeys: Map<string, Buffer>;
+  private derivedKeysPath: string;
   private useWebWorkers: boolean;
   private workerPool?: Pool<ModuleThread<KeyManagerWorker>>;
 
@@ -39,7 +40,7 @@ class KeyManager {
     publicKeyPath: null,
     pkiKeyPath: null,
     pkiCertPath: null,
-    caCertPath: null,
+    caCertPath: null
   };
 
   /////////
@@ -60,11 +61,12 @@ class KeyManager {
 
     // Load key manager metadata
     this.polykeyPath = polyKeyPath;
-    this.keypairPath = path.join(polyKeyPath, '.keypair');
+    this.keypairPath = path.join(polyKeyPath, '.keys');
     if (!this.fileSystem.existsSync(this.keypairPath)) {
       this.fileSystem.mkdirSync(this.keypairPath, { recursive: true });
     }
     this.metadataPath = path.join(this.keypairPath, 'metadata');
+    this.derivedKeysPath = path.join(this.keypairPath, 'derived-keys');
     this.loadMetadata();
 
     // Load keys if they were provided
@@ -282,6 +284,7 @@ class KeyManager {
     const salt = crypto.randomBytes(32);
     this.derivedKeys[name] = crypto.pbkdf2Sync(passphrase, salt, 10000, 256 / 8, 'sha256');
 
+    this.writeMetadata()
     return this.derivedKeys[name];
   }
 
@@ -294,7 +297,15 @@ class KeyManager {
     const salt = crypto.randomBytes(32);
     this.derivedKeys[name] = await promisify(crypto.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
 
+    await this.writeMetadata()
     return this.derivedKeys[name];
+  }
+
+  /**
+   * List all keys in the current keymanager
+   */
+  listKeys(): string[] {
+    return Object.keys(this.derivedKeys)
   }
 
   /**
@@ -646,15 +657,28 @@ class KeyManager {
     return false;
   }
 
-  private writeMetadata(): void {
+  private async writeMetadata(): Promise<void> {
     const metadata = JSON.stringify(this.metadata);
     this.fileSystem.writeFileSync(this.metadataPath, metadata);
+    // Store the keys if identity is loaded
+    if (this.identityLoaded) {
+      const derivedKeys = JSON.stringify(this.derivedKeys)
+      const encryptedMetadata = await this.encryptData(Buffer.from(derivedKeys));
+      await this.fileSystem.promises.writeFile(this.derivedKeysPath, encryptedMetadata);
+    }
   }
-  loadMetadata(): void {
+  async loadMetadata(): Promise<void> {
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath)) {
       const metadata = this.fileSystem.readFileSync(this.metadataPath).toString();
       this.metadata = JSON.parse(metadata);
+      if (this.identityLoaded) {
+        const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
+        const metadata = (await this.decryptData(encryptedMetadata)).toString();
+        this.derivedKeys = JSON.parse(metadata);
+        console.log(this.derivedKeys);
+
+      }
     }
   }
 }

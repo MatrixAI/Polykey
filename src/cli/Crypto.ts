@@ -72,6 +72,41 @@ function makeVerifyCommand() {
     );
 }
 
+function makeEncryptCommand() {
+  return new commander.Command('encrypt')
+    .description('encryption operations')
+    .option('--node-path <nodePath>', 'node path')
+    .option(
+      '-k, --encrypting-key <encryptingKey>',
+      'path to public key that will be used to encrypt files, defaults to primary key',
+    )
+    .option('-s, --detach-sig <detachSig>', 'path to detached signature for file, defaults to [filename].sig')
+    .arguments('file(s) to be encrypted')
+    .requiredOption('-f, --signed-file <signedFile>', 'file to be signed')
+    .action(
+      actionRunner(async (options) => {
+        const client = PolykeyAgent.connectToAgent();
+        const status = await client.getAgentStatus();
+        if (status != 'online') {
+          throw Error(`agent status is: ${status}`);
+        }
+        const nodePath = determineNodePath(options);
+
+        const filePathList = options.args.values();
+        if (filePathList.length == 0) {
+          throw Error('no files provided');
+        }
+
+        const encrypted = await client.encryp(nodePath, filePath, signaturePath);
+        if (verified) {
+          pkLogger(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
+        } else {
+          pkLogger(`file '${filePath}' was not verified`, PKMessageType.WARNING);
+        }
+      }),
+    );
+}
+
 function makeCryptoCommand() {
   return new commander.Command('crypto')
     .description('crypto operations')

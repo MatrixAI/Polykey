@@ -2,9 +2,9 @@ import commander from 'commander';
 import { PolykeyAgent } from '../lib/Polykey';
 import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '.';
 
-function makeDeriveKeyCommand() {
-  return new commander.Command('derive')
-    .description('manipulate the keymanager')
+function makeNewKeyCommand() {
+  return new commander.Command('new')
+    .description('derive a new symmetric key')
     .option('--node-path <nodePath>', 'node path')
     .requiredOption('-n, --key-name <keyName>', 'the name of the new key')
     .requiredOption('-p, --key-passphrase <keyPassphrase>', 'the passphrase for the new key')
@@ -21,11 +21,48 @@ function makeDeriveKeyCommand() {
     );
 }
 
+function makeListKeysCommand() {
+  return new commander.Command('list')
+    .alias('ls')
+    .description('list all symmetric keys in the keynode')
+    .option('--node-path <nodePath>', 'node path')
+    .action(
+      actionRunner(async (options) => {
+        const client = PolykeyAgent.connectToAgent();
+        const nodePath = determineNodePath(options);
+
+        const keyNames = await client.listKeys(nodePath);
+        for (const name of keyNames) {
+          pkLogger(name, PKMessageType.INFO);
+        }
+      }),
+    );
+}
+
+function makeGetKeyCommand() {
+  return new commander.Command('get')
+    .description('get the contents of a specific symmetric key')
+    .option('--node-path <nodePath>', 'node path')
+    .requiredOption('-n, --key-name <keyName>', 'the name of the new key')
+    .action(
+      actionRunner(async (options) => {
+        const client = PolykeyAgent.connectToAgent();
+        const nodePath = determineNodePath(options);
+        const keyName = options.keyName;
+
+        const keyContent = await client.getKey(nodePath, keyName);
+        pkLogger(keyContent, PKMessageType.INFO);
+      }),
+    );
+}
+
 function makeKeyManagerCommand() {
   return new commander.Command('keymanager')
     .alias('km')
     .description('manipulate the keymanager')
-    .addCommand(makeDeriveKeyCommand());
+    .addCommand(makeNewKeyCommand())
+    .addCommand(makeListKeysCommand())
+    .addCommand(makeGetKeyCommand())
 }
 
 export default makeKeyManagerCommand;

@@ -50,6 +50,7 @@ function makeAddVaultCommand() {
 
 function makeRemoveVaultCommand() {
   return new commander.Command('remove')
+    .alias('rm')
     .description('destroy an existing vault')
     .option('-n, --vault-name <vaultName>', 'name of vault')
     .option('-a, --all', 'remove all vaults')
