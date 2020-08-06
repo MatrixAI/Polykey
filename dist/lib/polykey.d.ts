@@ -66,6 +66,7 @@ declare module 'js-polykey/src/lib/agent/PolykeyAgent' {
       private createSecret;
       private destroySecret;
       private getSecret;
+      private updateSecret;
       static connectToAgent(getStream?: () => Duplex): PolykeyClient;
       static get SocketPath(): string;
       static get LogPath(): string;
@@ -104,6 +105,7 @@ declare module 'js-polykey/src/lib/agent/PolykeyClient' {
       createSecret(nodePath: string, vaultName: string, secretName: string, secret: string | Buffer): Promise<boolean>;
       destroySecret(nodePath: string, vaultName: string, secretName: string): Promise<boolean>;
       getSecret(nodePath: string, vaultName: string, secretName: string): Promise<Buffer>;
+      updateSecret(nodePath: string, vaultName: string, secretName: string, secret: string | Buffer): Promise<boolean>;
       getAgentStatus(): Promise<string>;
       stopAgent(): Promise<boolean>;
   }

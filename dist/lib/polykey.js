@@ -776,7 +776,7 @@ module.exports = require("virtualfs");
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Agent_1 = __webpack_require__(19);
-const { AgentMessage, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, AgentMessageType, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
+const { AgentMessage, AgentMessageType, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, UpdateSecretRequestMessage, UpdateSecretResponseMessage, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
 class PolykeyClient {
     constructor(getStream) {
         this.getStream = getStream;
@@ -1047,6 +1047,23 @@ class PolykeyClient {
         }
         const { secret } = GetSecretResponseMessage.decode(subMessage);
         return Buffer.from(secret);
+    }
+    async updateSecret(nodePath, vaultName, secretName, secret) {
+        var _a;
+        let request;
+        if (typeof secret == 'string') {
+            request = UpdateSecretRequestMessage.encode({ vaultName, secretName, secretPath: secret }).finish();
+        }
+        else {
+            request = UpdateSecretRequestMessage.encode({ vaultName, secretName, secretContent: secret }).finish();
+        }
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.UPDATE_SECRET, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.UPDATE_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { successful } = UpdateSecretResponseMessage.decode(subMessage);
+        return successful;
     }
     ///////////////////
     // Agent control //
@@ -3787,7 +3804,7 @@ const Polykey_1 = __importStar(__webpack_require__(4));
 const configstore_1 = __importDefault(__webpack_require__(50));
 const PolykeyClient_1 = __importDefault(__webpack_require__(18));
 const Agent_1 = __webpack_require__(19);
-const { AgentMessage, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, AgentMessageType, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
+const { AgentMessage, AgentMessageType, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, UpdateSecretRequestMessage, UpdateSecretResponseMessage, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
 class PolykeyAgent {
     constructor() {
         this.persistentStore = new configstore_1.default('polykey');
@@ -3948,6 +3965,9 @@ class PolykeyAgent {
                         break;
                     case AgentMessageType.GET_SECRET:
                         response = await this.getSecret(nodePath, subMessage);
+                        break;
+                    case AgentMessageType.UPDATE_SECRET:
+                        response = await this.updateSecret(nodePath, subMessage);
                         break;
                     default:
                         throw Error(`message type not supported: ${AgentMessageType[type]}`);
@@ -4149,6 +4169,20 @@ class PolykeyAgent {
         const vault = pk.vaultManager.getVault(vaultName);
         const secret = Buffer.from(vault.getSecret(secretName));
         return GetSecretResponseMessage.encode({ secret: secret }).finish();
+    }
+    async updateSecret(nodePath, request) {
+        const { vaultName, secretName, secretPath, secretContent } = UpdateSecretRequestMessage.decode(request);
+        const pk = this.getPolyKey(nodePath);
+        const vault = pk.vaultManager.getVault(vaultName);
+        let secretBuffer;
+        if (secretPath) {
+            secretBuffer = await fs_1.default.promises.readFile(secretPath);
+        }
+        else {
+            secretBuffer = Buffer.from(secretContent);
+        }
+        await vault.updateSecret(secretName, secretBuffer);
+        return UpdateSecretResponseMessage.encode({ successful: true }).finish();
     }
     ///////////////////////
     // Client Connection //

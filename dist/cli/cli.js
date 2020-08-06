@@ -650,10 +650,10 @@ function makeListSecretsCommand() {
 function makeNewSecretCommand() {
     return new commander_1.default.Command('new')
         .description('create a secret within a given vault')
+        .option('--node-path <nodePath>', 'node path')
         .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
         .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
         .requiredOption('-p, --secret-path <secretPath>', 'path to the secret to be added')
-        .option('--node-path <nodePath>', 'node path')
         .option('--verbose', 'increase verbosity level by one')
         .action(_1.actionRunner(async (options) => {
         var _a;
@@ -670,6 +670,32 @@ function makeNewSecretCommand() {
         }
         catch (err) {
             throw Error(`Error when adding secret: ${err.message}`);
+        }
+    }));
+}
+function makeUpdateSecretCommand() {
+    return new commander_1.default.Command('update')
+        .description('update a secret within a given vault')
+        .option('--node-path <nodePath>', 'node path')
+        .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
+        .requiredOption('-s, --secret-name <secretName>', 'an existing secret name')
+        .requiredOption('-p, --secret-path <secretPath>', 'path to the new secret')
+        .option('--verbose', 'increase verbosity level by one')
+        .action(_1.actionRunner(async (options) => {
+        var _a;
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const nodePath = _1.determineNodePath(options);
+        const isVerbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
+        const vaultName = options.vaultName;
+        const secretName = options.secretName;
+        const secretPath = options.secretPath;
+        try {
+            // Update the secret
+            const successful = await client.updateSecret(nodePath, vaultName, secretName, secretPath);
+            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully updated in vault '${vaultName}'`, _1.PKMessageType.SUCCESS);
+        }
+        catch (err) {
+            throw Error(`Error when updating secret: ${err.message}`);
         }
     }));
 }
@@ -726,6 +752,7 @@ function makeSecretsCommand() {
         .description('manipulate secrets for a given vault')
         .addCommand(makeListSecretsCommand())
         .addCommand(makeNewSecretCommand())
+        .addCommand(makeUpdateSecretCommand())
         .addCommand(makeRemoveSecretCommand())
         .addCommand(makeGetSecretCommand());
 }

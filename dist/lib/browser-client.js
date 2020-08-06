@@ -102,7 +102,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /* WEBPACK VAR INJECTION */(function(Buffer) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Agent_1 = __webpack_require__(6);
-const { AgentMessage, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, AgentMessageType, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
+const { AgentMessage, AgentMessageType, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, UpdateSecretRequestMessage, UpdateSecretResponseMessage, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
 class PolykeyClient {
     constructor(getStream) {
         this.getStream = getStream;
@@ -373,6 +373,23 @@ class PolykeyClient {
         }
         const { secret } = GetSecretResponseMessage.decode(subMessage);
         return Buffer.from(secret);
+    }
+    async updateSecret(nodePath, vaultName, secretName, secret) {
+        var _a;
+        let request;
+        if (typeof secret == 'string') {
+            request = UpdateSecretRequestMessage.encode({ vaultName, secretName, secretPath: secret }).finish();
+        }
+        else {
+            request = UpdateSecretRequestMessage.encode({ vaultName, secretName, secretContent: secret }).finish();
+        }
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.UPDATE_SECRET, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.UPDATE_SECRET)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { successful } = UpdateSecretResponseMessage.decode(subMessage);
+        return successful;
     }
     ///////////////////
     // Agent control //
@@ -2302,6 +2319,7 @@ $root.agent = (function() {
      * @property {number} ENCRYPT_FILE=19 ENCRYPT_FILE value
      * @property {number} DECRYPT_FILE=20 DECRYPT_FILE value
      * @property {number} GET_PRIMARY_KEYPAIR=21 GET_PRIMARY_KEYPAIR value
+     * @property {number} UPDATE_SECRET=22 UPDATE_SECRET value
      */
     agent.AgentMessageType = (function() {
         var valuesById = {}, values = Object.create(valuesById);
@@ -2327,6 +2345,7 @@ $root.agent = (function() {
         values[valuesById[19] = "ENCRYPT_FILE"] = 19;
         values[valuesById[20] = "DECRYPT_FILE"] = 20;
         values[valuesById[21] = "GET_PRIMARY_KEYPAIR"] = 21;
+        values[valuesById[22] = "UPDATE_SECRET"] = 22;
         return values;
     })();
 
@@ -6162,6 +6181,234 @@ $root.agent = (function() {
         };
 
         return GetPrimaryKeyPairResponseMessage;
+    })();
+
+    agent.UpdateSecretRequestMessage = (function() {
+
+        /**
+         * Properties of an UpdateSecretRequestMessage.
+         * @memberof agent
+         * @interface IUpdateSecretRequestMessage
+         * @property {string|null} [vaultName] UpdateSecretRequestMessage vaultName
+         * @property {string|null} [secretName] UpdateSecretRequestMessage secretName
+         * @property {string|null} [secretPath] UpdateSecretRequestMessage secretPath
+         * @property {Uint8Array|null} [secretContent] UpdateSecretRequestMessage secretContent
+         */
+
+        /**
+         * Constructs a new UpdateSecretRequestMessage.
+         * @memberof agent
+         * @classdesc Represents an UpdateSecretRequestMessage.
+         * @implements IUpdateSecretRequestMessage
+         * @constructor
+         * @param {agent.IUpdateSecretRequestMessage=} [p] Properties to set
+         */
+        function UpdateSecretRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * UpdateSecretRequestMessage vaultName.
+         * @member {string} vaultName
+         * @memberof agent.UpdateSecretRequestMessage
+         * @instance
+         */
+        UpdateSecretRequestMessage.prototype.vaultName = "";
+
+        /**
+         * UpdateSecretRequestMessage secretName.
+         * @member {string} secretName
+         * @memberof agent.UpdateSecretRequestMessage
+         * @instance
+         */
+        UpdateSecretRequestMessage.prototype.secretName = "";
+
+        /**
+         * UpdateSecretRequestMessage secretPath.
+         * @member {string} secretPath
+         * @memberof agent.UpdateSecretRequestMessage
+         * @instance
+         */
+        UpdateSecretRequestMessage.prototype.secretPath = "";
+
+        /**
+         * UpdateSecretRequestMessage secretContent.
+         * @member {Uint8Array} secretContent
+         * @memberof agent.UpdateSecretRequestMessage
+         * @instance
+         */
+        UpdateSecretRequestMessage.prototype.secretContent = $util.newBuffer([]);
+
+        /**
+         * Creates a new UpdateSecretRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.UpdateSecretRequestMessage
+         * @static
+         * @param {agent.IUpdateSecretRequestMessage=} [properties] Properties to set
+         * @returns {agent.UpdateSecretRequestMessage} UpdateSecretRequestMessage instance
+         */
+        UpdateSecretRequestMessage.create = function create(properties) {
+            return new UpdateSecretRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified UpdateSecretRequestMessage message. Does not implicitly {@link agent.UpdateSecretRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.UpdateSecretRequestMessage
+         * @static
+         * @param {agent.IUpdateSecretRequestMessage} m UpdateSecretRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        UpdateSecretRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.vaultName != null && Object.hasOwnProperty.call(m, "vaultName"))
+                w.uint32(10).string(m.vaultName);
+            if (m.secretName != null && Object.hasOwnProperty.call(m, "secretName"))
+                w.uint32(18).string(m.secretName);
+            if (m.secretPath != null && Object.hasOwnProperty.call(m, "secretPath"))
+                w.uint32(26).string(m.secretPath);
+            if (m.secretContent != null && Object.hasOwnProperty.call(m, "secretContent"))
+                w.uint32(34).bytes(m.secretContent);
+            return w;
+        };
+
+        /**
+         * Decodes an UpdateSecretRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.UpdateSecretRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.UpdateSecretRequestMessage} UpdateSecretRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        UpdateSecretRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.UpdateSecretRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.vaultName = r.string();
+                    break;
+                case 2:
+                    m.secretName = r.string();
+                    break;
+                case 3:
+                    m.secretPath = r.string();
+                    break;
+                case 4:
+                    m.secretContent = r.bytes();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return UpdateSecretRequestMessage;
+    })();
+
+    agent.UpdateSecretResponseMessage = (function() {
+
+        /**
+         * Properties of an UpdateSecretResponseMessage.
+         * @memberof agent
+         * @interface IUpdateSecretResponseMessage
+         * @property {boolean|null} [successful] UpdateSecretResponseMessage successful
+         */
+
+        /**
+         * Constructs a new UpdateSecretResponseMessage.
+         * @memberof agent
+         * @classdesc Represents an UpdateSecretResponseMessage.
+         * @implements IUpdateSecretResponseMessage
+         * @constructor
+         * @param {agent.IUpdateSecretResponseMessage=} [p] Properties to set
+         */
+        function UpdateSecretResponseMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * UpdateSecretResponseMessage successful.
+         * @member {boolean} successful
+         * @memberof agent.UpdateSecretResponseMessage
+         * @instance
+         */
+        UpdateSecretResponseMessage.prototype.successful = false;
+
+        /**
+         * Creates a new UpdateSecretResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.UpdateSecretResponseMessage
+         * @static
+         * @param {agent.IUpdateSecretResponseMessage=} [properties] Properties to set
+         * @returns {agent.UpdateSecretResponseMessage} UpdateSecretResponseMessage instance
+         */
+        UpdateSecretResponseMessage.create = function create(properties) {
+            return new UpdateSecretResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified UpdateSecretResponseMessage message. Does not implicitly {@link agent.UpdateSecretResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.UpdateSecretResponseMessage
+         * @static
+         * @param {agent.IUpdateSecretResponseMessage} m UpdateSecretResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        UpdateSecretResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.successful != null && Object.hasOwnProperty.call(m, "successful"))
+                w.uint32(8).bool(m.successful);
+            return w;
+        };
+
+        /**
+         * Decodes an UpdateSecretResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.UpdateSecretResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.UpdateSecretResponseMessage} UpdateSecretResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        UpdateSecretResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.UpdateSecretResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.successful = r.bool();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return UpdateSecretResponseMessage;
     })();
 
     return agent;

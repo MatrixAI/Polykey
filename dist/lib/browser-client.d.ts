@@ -26,6 +26,7 @@ declare class PolykeyClient {
     createSecret(nodePath: string, vaultName: string, secretName: string, secret: string | Buffer): Promise<boolean>;
     destroySecret(nodePath: string, vaultName: string, secretName: string): Promise<boolean>;
     getSecret(nodePath: string, vaultName: string, secretName: string): Promise<Buffer>;
+    updateSecret(nodePath: string, vaultName: string, secretName: string, secret: string | Buffer): Promise<boolean>;
     getAgentStatus(): Promise<string>;
     stopAgent(): Promise<boolean>;
 }
