@@ -25,6 +25,7 @@ enum AgentMessageType {
   ENCRYPT_FILE = 19;
   DECRYPT_FILE = 20;
   GET_PRIMARY_KEYPAIR = 21;
+  UPDATE_SECRET = 22;
 }
 message AgentMessage {
   AgentMessageType type = 1;
@@ -195,4 +196,15 @@ message GetPrimaryKeyPairRequestMessage {
 message GetPrimaryKeyPairResponseMessage {
   string public_key = 1;
   string private_key = 2;
+}
+
+// ==== UpdateSecret ==== //
+message UpdateSecretRequestMessage {
+  string vault_name = 1;
+  string secret_name = 2;
+  string secret_path = 3;
+  bytes secret_content = 4;
+}
+message UpdateSecretResponseMessage {
+  bool successful = 1;
 }

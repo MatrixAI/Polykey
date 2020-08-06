@@ -11,6 +11,7 @@ import { agent } from '../../../proto/js/Agent';
 import { Duplex } from 'readable-stream';
 const {
   AgentMessage,
+  AgentMessageType,
   CreateSecretRequestMessage,
   CreateSecretResponseMessage,
   DecryptFileRequestMessage,
@@ -46,7 +47,8 @@ const {
   RegisterNodeResponseMessage,
   SignFileRequestMessage,
   SignFileResponseMessage,
-  AgentMessageType,
+  UpdateSecretRequestMessage,
+  UpdateSecretResponseMessage,
   VerifyFileRequestMessage,
   VerifyFileResponseMessage,
 } = agent;
@@ -215,6 +217,9 @@ class PolykeyAgent {
             break;
           case AgentMessageType.GET_SECRET:
             response = await this.getSecret(nodePath, subMessage);
+            break;
+          case AgentMessageType.UPDATE_SECRET:
+            response = await this.updateSecret(nodePath, subMessage);
             break;
           default:
             throw Error(`message type not supported: ${AgentMessageType[type]}`);
@@ -428,6 +433,19 @@ class PolykeyAgent {
     const vault = pk.vaultManager.getVault(vaultName);
     const secret = Buffer.from(vault.getSecret(secretName));
     return GetSecretResponseMessage.encode({ secret: secret }).finish();
+  }
+  private async updateSecret(nodePath: string, request: Uint8Array) {
+    const { vaultName, secretName, secretPath, secretContent } = UpdateSecretRequestMessage.decode(request);
+    const pk = this.getPolyKey(nodePath);
+    const vault = pk.vaultManager.getVault(vaultName);
+    let secretBuffer: Buffer
+    if (secretPath) {
+      secretBuffer = await fs.promises.readFile(secretPath);
+    } else {
+      secretBuffer = Buffer.from(secretContent)
+    }
+    await vault.updateSecret(secretName, secretBuffer);
+    return UpdateSecretResponseMessage.encode({ successful: true }).finish();
   }
 
   ///////////////////////

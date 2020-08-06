@@ -2,6 +2,7 @@ import { agent } from '../../../proto/js/Agent';
 import { Duplex } from 'readable-stream';
 const {
   AgentMessage,
+  AgentMessageType,
   CreateSecretRequestMessage,
   CreateSecretResponseMessage,
   DecryptFileRequestMessage,
@@ -37,7 +38,8 @@ const {
   RegisterNodeResponseMessage,
   SignFileRequestMessage,
   SignFileResponseMessage,
-  AgentMessageType,
+  UpdateSecretRequestMessage,
+  UpdateSecretResponseMessage,
   VerifyFileRequestMessage,
   VerifyFileResponseMessage,
 } = agent;
@@ -363,6 +365,24 @@ class PolykeyClient {
 
     const { secret } = GetSecretResponseMessage.decode(subMessage);
     return Buffer.from(secret);
+  }
+  async updateSecret(nodePath: string, vaultName: string, secretName: string, secret: string | Buffer) {
+    let request: Uint8Array
+    if (typeof secret == 'string') {
+      request = UpdateSecretRequestMessage.encode({ vaultName, secretName, secretPath: secret }).finish();
+    } else {
+      request = UpdateSecretRequestMessage.encode({ vaultName, secretName, secretContent: secret }).finish();
+    }
+
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.UPDATE_SECRET, nodePath, request);
+
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.UPDATE_SECRET)?.subMessage
+    if (!subMessage) {
+      throw Error('agent did not respond');
+    }
+
+    const { successful } = UpdateSecretResponseMessage.decode(subMessage);
+    return successful;
   }
 
   ///////////////////

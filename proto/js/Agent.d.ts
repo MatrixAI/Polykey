@@ -25,7 +25,8 @@ export namespace agent {
         DELETE_KEY = 18,
         ENCRYPT_FILE = 19,
         DECRYPT_FILE = 20,
-        GET_PRIMARY_KEYPAIR = 21
+        GET_PRIMARY_KEYPAIR = 21,
+        UPDATE_SECRET = 22
     }
 
     /** Properties of an AgentMessage. */
@@ -1856,5 +1857,113 @@ export namespace agent {
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.GetPrimaryKeyPairResponseMessage;
+    }
+
+    /** Properties of an UpdateSecretRequestMessage. */
+    interface IUpdateSecretRequestMessage {
+
+        /** UpdateSecretRequestMessage vaultName */
+        vaultName?: (string|null);
+
+        /** UpdateSecretRequestMessage secretName */
+        secretName?: (string|null);
+
+        /** UpdateSecretRequestMessage secretPath */
+        secretPath?: (string|null);
+
+        /** UpdateSecretRequestMessage secretContent */
+        secretContent?: (Uint8Array|null);
+    }
+
+    /** Represents an UpdateSecretRequestMessage. */
+    class UpdateSecretRequestMessage implements IUpdateSecretRequestMessage {
+
+        /**
+         * Constructs a new UpdateSecretRequestMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IUpdateSecretRequestMessage);
+
+        /** UpdateSecretRequestMessage vaultName. */
+        public vaultName: string;
+
+        /** UpdateSecretRequestMessage secretName. */
+        public secretName: string;
+
+        /** UpdateSecretRequestMessage secretPath. */
+        public secretPath: string;
+
+        /** UpdateSecretRequestMessage secretContent. */
+        public secretContent: Uint8Array;
+
+        /**
+         * Creates a new UpdateSecretRequestMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns UpdateSecretRequestMessage instance
+         */
+        public static create(properties?: agent.IUpdateSecretRequestMessage): agent.UpdateSecretRequestMessage;
+
+        /**
+         * Encodes the specified UpdateSecretRequestMessage message. Does not implicitly {@link agent.UpdateSecretRequestMessage.verify|verify} messages.
+         * @param m UpdateSecretRequestMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IUpdateSecretRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an UpdateSecretRequestMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns UpdateSecretRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.UpdateSecretRequestMessage;
+    }
+
+    /** Properties of an UpdateSecretResponseMessage. */
+    interface IUpdateSecretResponseMessage {
+
+        /** UpdateSecretResponseMessage successful */
+        successful?: (boolean|null);
+    }
+
+    /** Represents an UpdateSecretResponseMessage. */
+    class UpdateSecretResponseMessage implements IUpdateSecretResponseMessage {
+
+        /**
+         * Constructs a new UpdateSecretResponseMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IUpdateSecretResponseMessage);
+
+        /** UpdateSecretResponseMessage successful. */
+        public successful: boolean;
+
+        /**
+         * Creates a new UpdateSecretResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns UpdateSecretResponseMessage instance
+         */
+        public static create(properties?: agent.IUpdateSecretResponseMessage): agent.UpdateSecretResponseMessage;
+
+        /**
+         * Encodes the specified UpdateSecretResponseMessage message. Does not implicitly {@link agent.UpdateSecretResponseMessage.verify|verify} messages.
+         * @param m UpdateSecretResponseMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IUpdateSecretResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an UpdateSecretResponseMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns UpdateSecretResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.UpdateSecretResponseMessage;
     }
 }
