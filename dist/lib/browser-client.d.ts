@@ -9,6 +9,7 @@ declare class PolykeyClient {
     newNode(path: string, name: string, email: string, passphrase: string, nbits?: number): Promise<boolean>;
     listNodes(unlockedOnly?: boolean): Promise<string[]>;
     deriveKey(nodePath: string, keyName: string, passphrase: string): Promise<boolean>;
+    deleteKey(nodePath: string, keyName: string): Promise<boolean>;
     listKeys(nodePath: string): Promise<string[]>;
     getKey(nodePath: string, keyName: string): Promise<string>;
     getPrimaryKeyPair(nodePath: string, includePrivateKey?: boolean): Promise<{

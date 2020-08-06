@@ -85,6 +85,7 @@
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="polykeyclient.html#createsecret" class="tsd-kind-icon">create<wbr>Secret</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="polykeyclient.html#decryptfile" class="tsd-kind-icon">decrypt<wbr>File</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="polykeyclient.html#deletekey" class="tsd-kind-icon">delete<wbr>Key</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="polykeyclient.html#derivekey" class="tsd-kind-icon">derive<wbr>Key</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="polykeyclient.html#destroysecret" class="tsd-kind-icon">destroy<wbr>Secret</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="polykeyclient.html#destroyvault" class="tsd-kind-icon">destroy<wbr>Vault</a></li>
@@ -122,7 +123,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L48">src/lib/agent/PolykeyClient.ts:48</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L50">src/lib/agent/PolykeyClient.ts:50</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -160,7 +161,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L325">src/lib/agent/PolykeyClient.ts:325</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L340">src/lib/agent/PolykeyClient.ts:340</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -192,7 +193,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L255">src/lib/agent/PolykeyClient.ts:255</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L270">src/lib/agent/PolykeyClient.ts:270</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -215,6 +216,32 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="deletekey" class="tsd-anchor"></a>
+					<h3>delete<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">delete<wbr>Key<span class="tsd-signature-symbol">(</span>nodePath<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, keyName<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L175">src/lib/agent/PolykeyClient.ts:175</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>nodePath: <span class="tsd-signature-type">string</span></h5>
+								</li>
+								<li>
+									<h5>keyName: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="derivekey" class="tsd-anchor"></a>
 					<h3>derive<wbr>Key</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -224,7 +251,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L160">src/lib/agent/PolykeyClient.ts:160</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L162">src/lib/agent/PolykeyClient.ts:162</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -253,7 +280,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L343">src/lib/agent/PolykeyClient.ts:343</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L358">src/lib/agent/PolykeyClient.ts:358</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -282,7 +309,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L296">src/lib/agent/PolykeyClient.ts:296</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L311">src/lib/agent/PolykeyClient.ts:311</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -308,7 +335,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L242">src/lib/agent/PolykeyClient.ts:242</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L257">src/lib/agent/PolykeyClient.ts:257</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -337,7 +364,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L391">src/lib/agent/PolykeyClient.ts:391</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L406">src/lib/agent/PolykeyClient.ts:406</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></h4>
@@ -354,7 +381,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L186">src/lib/agent/PolykeyClient.ts:186</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L201">src/lib/agent/PolykeyClient.ts:201</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -380,7 +407,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L199">src/lib/agent/PolykeyClient.ts:199</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L214">src/lib/agent/PolykeyClient.ts:214</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -406,7 +433,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L356">src/lib/agent/PolykeyClient.ts:356</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L371">src/lib/agent/PolykeyClient.ts:371</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -435,7 +462,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L173">src/lib/agent/PolykeyClient.ts:173</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L188">src/lib/agent/PolykeyClient.ts:188</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -458,7 +485,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L143">src/lib/agent/PolykeyClient.ts:143</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L145">src/lib/agent/PolykeyClient.ts:145</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -481,7 +508,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L313">src/lib/agent/PolykeyClient.ts:313</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L328">src/lib/agent/PolykeyClient.ts:328</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -507,7 +534,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L272">src/lib/agent/PolykeyClient.ts:272</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L287">src/lib/agent/PolykeyClient.ts:287</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -530,7 +557,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L128">src/lib/agent/PolykeyClient.ts:128</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L130">src/lib/agent/PolykeyClient.ts:130</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -565,7 +592,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L283">src/lib/agent/PolykeyClient.ts:283</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L298">src/lib/agent/PolykeyClient.ts:298</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -591,7 +618,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L113">src/lib/agent/PolykeyClient.ts:113</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L115">src/lib/agent/PolykeyClient.ts:115</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -617,7 +644,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L54">src/lib/agent/PolykeyClient.ts:54</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L56">src/lib/agent/PolykeyClient.ts:56</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -640,7 +667,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L216">src/lib/agent/PolykeyClient.ts:216</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L231">src/lib/agent/PolykeyClient.ts:231</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -672,7 +699,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L409">src/lib/agent/PolykeyClient.ts:409</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L424">src/lib/agent/PolykeyClient.ts:424</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4>
@@ -689,7 +716,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L369">src/lib/agent/PolykeyClient.ts:369</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L384">src/lib/agent/PolykeyClient.ts:384</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -721,7 +748,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/bdca2a7/src/lib/agent/PolykeyClient.ts#L229">src/lib/agent/PolykeyClient.ts:229</a></li>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/4a03969/src/lib/agent/PolykeyClient.ts#L244">src/lib/agent/PolykeyClient.ts:244</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -765,6 +792,9 @@
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="polykeyclient.html#decryptfile" class="tsd-kind-icon">decrypt<wbr>File</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="polykeyclient.html#deletekey" class="tsd-kind-icon">delete<wbr>Key</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="polykeyclient.html#derivekey" class="tsd-kind-icon">derive<wbr>Key</a>

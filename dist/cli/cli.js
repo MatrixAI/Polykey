@@ -111,7 +111,7 @@ const Agent_1 = __importDefault(__webpack_require__(5));
 const Crypto_1 = __importDefault(__webpack_require__(7));
 const Vaults_1 = __importDefault(__webpack_require__(8));
 const Secrets_1 = __importDefault(__webpack_require__(9));
-const KeyManager_1 = __importDefault(__webpack_require__(10));
+const Keys_1 = __importDefault(__webpack_require__(10));
 /*******************************************/
 // Error handler
 function actionErrorHanlder(error) {
@@ -168,7 +168,7 @@ exports.determineNodePath = determineNodePath;
 const polykey = new commander_1.program.Command();
 polykey
     .version(__webpack_require__(11).version, '--version', 'output the current version')
-    .addCommand(KeyManager_1.default())
+    .addCommand(Keys_1.default())
     .addCommand(Secrets_1.default())
     .addCommand(Vaults_1.default())
     .addCommand(Crypto_1.default())
@@ -692,7 +692,7 @@ function makeUpdateSecretCommand() {
         try {
             // Update the secret
             const successful = await client.updateSecret(nodePath, vaultName, secretName, secretPath);
-            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully updated in vault '${vaultName}'`, _1.PKMessageType.SUCCESS);
+            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully updated in vault '${vaultName}'`, successful ? _1.PKMessageType.SUCCESS : _1.PKMessageType.WARNING);
         }
         catch (err) {
             throw Error(`Error when updating secret: ${err.message}`);
@@ -787,6 +787,19 @@ function makeNewKeyCommand() {
         _1.pkLogger(`'${keyName}' was added to the Key Manager`, _1.PKMessageType.SUCCESS);
     }));
 }
+function makeDeleteKeyCommand() {
+    return new commander_1.default.Command('delete')
+        .description('delete a symmetric key from the key manager')
+        .option('--node-path <nodePath>', 'node path')
+        .requiredOption('-n, --key-name <keyName>', 'the name of the symmetric key to be deleted')
+        .action(_1.actionRunner(async (options) => {
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const nodePath = _1.determineNodePath(options);
+        const keyName = options.keyName;
+        const successful = await client.deleteKey(nodePath, keyName);
+        _1.pkLogger(`key '${keyName}' was ${successful ? '' : 'un-'}sucessfully deleted`, successful ? _1.PKMessageType.SUCCESS : _1.PKMessageType.INFO);
+    }));
+}
 function makeListKeysCommand() {
     return new commander_1.default.Command('list')
         .alias('ls')
@@ -840,10 +853,10 @@ function makeListPrimaryKeyPairCommand() {
     }));
 }
 function makeKeyManagerCommand() {
-    return new commander_1.default.Command('keymanager')
-        .alias('km')
-        .description('manipulate the keymanager')
+    return new commander_1.default.Command('keys')
+        .description('manipulate keys')
         .addCommand(makeNewKeyCommand())
+        .addCommand(makeDeleteKeyCommand())
         .addCommand(makeListKeysCommand())
         .addCommand(makeGetKeyCommand())
         .addCommand(makeListPrimaryKeyPairCommand());

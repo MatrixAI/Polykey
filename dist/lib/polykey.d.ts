@@ -55,6 +55,7 @@ declare module 'js-polykey/src/lib/agent/PolykeyAgent' {
       private listKeys;
       private getKey;
       private getPrimaryKeyPair;
+      private deleteKey;
       private signFile;
       private verifyFile;
       private encryptFile;
@@ -88,6 +89,7 @@ declare module 'js-polykey/src/lib/agent/PolykeyClient' {
       newNode(path: string, name: string, email: string, passphrase: string, nbits?: number): Promise<boolean>;
       listNodes(unlockedOnly?: boolean): Promise<string[]>;
       deriveKey(nodePath: string, keyName: string, passphrase: string): Promise<boolean>;
+      deleteKey(nodePath: string, keyName: string): Promise<boolean>;
       listKeys(nodePath: string): Promise<string[]>;
       getKey(nodePath: string, keyName: string): Promise<string>;
       getPrimaryKeyPair(nodePath: string, includePrivateKey?: boolean): Promise<{
@@ -487,17 +489,17 @@ declare module 'js-polykey/src/lib/keys/KeyManager' {
        */
       exportPublicKey(path: string): void;
       /**
-       * Synchronously generates a new symmetric key and stores it in the key manager
-       * @param name Unique name of the generated key
-       * @param passphrase Passphrase to derive the key from
-       */
-      generateKeySync(name: string, passphrase: string): Buffer;
-      /**
        * Asynchronously Generates a new symmetric key and stores it in the key manager
        * @param name Unique name of the generated key
        * @param passphrase Passphrase to derive the key from
+       * @param storeKey Whether to store the key in the key manager
        */
-      generateKey(name: string, passphrase: string): Promise<Buffer>;
+      generateKey(name: string, passphrase: string, storeKey?: boolean): Promise<Buffer>;
+      /**
+       * Deletes a derived symmetric key from the key manager
+       * @param name Name of the key to be deleted
+       */
+      deleteKey(name: string): Promise<boolean>;
       /**
        * List all keys in the current keymanager
        */

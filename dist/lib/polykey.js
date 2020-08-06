@@ -776,7 +776,7 @@ module.exports = require("virtualfs");
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const Agent_1 = __webpack_require__(19);
-const { AgentMessage, AgentMessageType, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, UpdateSecretRequestMessage, UpdateSecretResponseMessage, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
+const { AgentMessage, AgentMessageType, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeleteKeyRequestMessage, DeleteKeyResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, UpdateSecretRequestMessage, UpdateSecretResponseMessage, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
 class PolykeyClient {
     constructor(getStream) {
         this.getStream = getStream;
@@ -878,6 +878,17 @@ class PolykeyClient {
             throw Error('agent did not respond');
         }
         const { successful } = DeriveKeyResponseMessage.decode(subMessage);
+        return successful;
+    }
+    async deleteKey(nodePath, keyName) {
+        var _a;
+        const request = DeleteKeyRequestMessage.encode({ keyName }).finish();
+        const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DELETE_KEY, nodePath, request);
+        const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.DELETE_KEY)) === null || _a === void 0 ? void 0 : _a.subMessage;
+        if (!subMessage) {
+            throw Error('agent did not respond');
+        }
+        const { successful } = DeleteKeyResponseMessage.decode(subMessage);
         return successful;
     }
     async listKeys(nodePath) {
@@ -1327,26 +1338,28 @@ class KeyManager {
         this.writeMetadata();
     }
     /**
-     * Synchronously generates a new symmetric key and stores it in the key manager
-     * @param name Unique name of the generated key
-     * @param passphrase Passphrase to derive the key from
-     */
-    generateKeySync(name, passphrase) {
-        const salt = crypto_1.default.randomBytes(32);
-        this.derivedKeys[name] = crypto_1.default.pbkdf2Sync(passphrase, salt, 10000, 256 / 8, 'sha256');
-        this.writeMetadata();
-        return this.derivedKeys[name];
-    }
-    /**
      * Asynchronously Generates a new symmetric key and stores it in the key manager
      * @param name Unique name of the generated key
      * @param passphrase Passphrase to derive the key from
+     * @param storeKey Whether to store the key in the key manager
      */
-    async generateKey(name, passphrase) {
+    async generateKey(name, passphrase, storeKey = true) {
         const salt = crypto_1.default.randomBytes(32);
-        this.derivedKeys[name] = await util_1.promisify(crypto_1.default.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
+        const key = await util_1.promisify(crypto_1.default.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
+        if (storeKey) {
+            this.derivedKeys[name] = key;
+            await this.writeMetadata();
+        }
+        return key;
+    }
+    /**
+     * Deletes a derived symmetric key from the key manager
+     * @param name Name of the key to be deleted
+     */
+    async deleteKey(name) {
+        const successful = delete this.derivedKeys[name];
         await this.writeMetadata();
-        return this.derivedKeys[name];
+        return successful;
     }
     /**
      * List all keys in the current keymanager
@@ -1766,8 +1779,10 @@ class KeyManager {
             if (this.identityLoaded) {
                 const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
                 const metadata = (await this.decryptData(encryptedMetadata)).toString();
-                this.derivedKeys = JSON.parse(metadata);
-                console.log(this.derivedKeys);
+                const derivedKeys = JSON.parse(metadata);
+                for (const key of Object.keys(derivedKeys)) {
+                    this.derivedKeys[key] = derivedKeys[key];
+                }
             }
         }
     }
@@ -3307,7 +3322,7 @@ class VaultManager {
             let vaultKey;
             if (!key) {
                 // Generate new key
-                vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey());
+                vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey(), false);
             }
             else {
                 // Assign key if it is provided
@@ -3804,7 +3819,7 @@ const Polykey_1 = __importStar(__webpack_require__(4));
 const configstore_1 = __importDefault(__webpack_require__(50));
 const PolykeyClient_1 = __importDefault(__webpack_require__(18));
 const Agent_1 = __webpack_require__(19);
-const { AgentMessage, AgentMessageType, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, UpdateSecretRequestMessage, UpdateSecretResponseMessage, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
+const { AgentMessage, AgentMessageType, CreateSecretRequestMessage, CreateSecretResponseMessage, DecryptFileRequestMessage, DecryptFileResponseMessage, DeleteKeyRequestMessage, DeleteKeyResponseMessage, DeriveKeyRequestMessage, DeriveKeyResponseMessage, DestroySecretRequestMessage, DestroySecretResponseMessage, DestroyVaultRequestMessage, DestroyVaultResponseMessage, EncryptFileRequestMessage, EncryptFileResponseMessage, ErrorMessage, GetPrimaryKeyPairRequestMessage, GetPrimaryKeyPairResponseMessage, GetSecretRequestMessage, GetSecretResponseMessage, GetKeyRequestMessage, GetKeyResponseMessage, ListKeysRequestMessage, ListKeysResponseMessage, ListNodesRequestMessage, ListNodesResponseMessage, ListSecretsRequestMessage, ListSecretsResponseMessage, ListVaultsRequestMessage, ListVaultsResponseMessage, NewNodeRequestMessage, NewNodeResponseMessage, NewVaultRequestMessage, NewVaultResponseMessage, RegisterNodeRequestMessage, RegisterNodeResponseMessage, SignFileRequestMessage, SignFileResponseMessage, UpdateSecretRequestMessage, UpdateSecretResponseMessage, VerifyFileRequestMessage, VerifyFileResponseMessage, } = Agent_1.agent;
 class PolykeyAgent {
     constructor() {
         this.persistentStore = new configstore_1.default('polykey');
@@ -3932,6 +3947,9 @@ class PolykeyAgent {
                         break;
                     case AgentMessageType.GET_PRIMARY_KEYPAIR:
                         response = await this.getPrimaryKeyPair(nodePath, subMessage);
+                        break;
+                    case AgentMessageType.DELETE_KEY:
+                        response = await this.deleteKey(nodePath, subMessage);
                         break;
                     case AgentMessageType.SIGN_FILE:
                         response = await this.signFile(nodePath, subMessage);
@@ -4084,6 +4102,12 @@ class PolykeyAgent {
         const pk = this.getPolyKey(nodePath);
         const keypair = pk.keyManager.getKeyPair();
         return GetPrimaryKeyPairResponseMessage.encode({ publicKey: keypair.public, privateKey: includePrivateKey ? keypair.private : undefined }).finish();
+    }
+    async deleteKey(nodePath, request) {
+        const { keyName } = DeleteKeyRequestMessage.decode(request);
+        const pk = this.getPolyKey(nodePath);
+        const successful = await pk.keyManager.deleteKey(keyName);
+        return DeleteKeyResponseMessage.encode({ successful }).finish();
     }
     /////////////////////
     // Crypto commands //
