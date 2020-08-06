@@ -87,7 +87,7 @@ function makeUpdateSecretCommand() {
           const successful = await client.updateSecret(nodePath, vaultName, secretName, secretPath);
           pkLogger(
             `secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully updated in vault '${vaultName}'`,
-            PKMessageType.SUCCESS,
+            successful ? PKMessageType.SUCCESS : PKMessageType.WARNING,
           );
         } catch (err) {
           throw Error(`Error when updating secret: ${err.message}`);

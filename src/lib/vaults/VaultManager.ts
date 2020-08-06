@@ -72,7 +72,7 @@ class VaultManager {
       let vaultKey: Buffer;
       if (!key) {
         // Generate new key
-        vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey());
+        vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey(), false);
       } else {
         // Assign key if it is provided
         vaultKey = key;

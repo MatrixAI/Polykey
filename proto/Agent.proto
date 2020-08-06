@@ -208,3 +208,11 @@ message UpdateSecretRequestMessage {
 message UpdateSecretResponseMessage {
   bool successful = 1;
 }
+
+// ==== DeleteKey ==== //
+message DeleteKeyRequestMessage {
+  string key_name = 1;
+}
+message DeleteKeyResponseMessage {
+  bool successful = 1;
+}

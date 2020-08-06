@@ -16,6 +16,8 @@ const {
   CreateSecretResponseMessage,
   DecryptFileRequestMessage,
   DecryptFileResponseMessage,
+  DeleteKeyRequestMessage,
+  DeleteKeyResponseMessage,
   DeriveKeyRequestMessage,
   DeriveKeyResponseMessage,
   DestroySecretRequestMessage,
@@ -185,6 +187,9 @@ class PolykeyAgent {
           case AgentMessageType.GET_PRIMARY_KEYPAIR:
             response = await this.getPrimaryKeyPair(nodePath, subMessage);
             break;
+          case AgentMessageType.DELETE_KEY:
+            response = await this.deleteKey(nodePath, subMessage);
+            break;
           case AgentMessageType.SIGN_FILE:
             response = await this.signFile(nodePath, subMessage);
             break;
@@ -346,6 +351,12 @@ class PolykeyAgent {
     const pk = this.getPolyKey(nodePath);
     const keypair = pk.keyManager.getKeyPair();
     return GetPrimaryKeyPairResponseMessage.encode({ publicKey: keypair.public, privateKey: includePrivateKey ? keypair.private : undefined }).finish();
+  }
+  private async deleteKey(nodePath: string, request: Uint8Array) {
+    const { keyName } = DeleteKeyRequestMessage.decode(request);
+    const pk = this.getPolyKey(nodePath);
+    const successful = await pk.keyManager.deleteKey(keyName);
+    return DeleteKeyResponseMessage.encode({ successful }).finish();
   }
 
   /////////////////////

@@ -276,29 +276,29 @@ class KeyManager {
   }
 
   /**
-   * Synchronously generates a new symmetric key and stores it in the key manager
-   * @param name Unique name of the generated key
-   * @param passphrase Passphrase to derive the key from
-   */
-  generateKeySync(name: string, passphrase: string): Buffer {
-    const salt = crypto.randomBytes(32);
-    this.derivedKeys[name] = crypto.pbkdf2Sync(passphrase, salt, 10000, 256 / 8, 'sha256');
-
-    this.writeMetadata()
-    return this.derivedKeys[name];
-  }
-
-  /**
    * Asynchronously Generates a new symmetric key and stores it in the key manager
    * @param name Unique name of the generated key
    * @param passphrase Passphrase to derive the key from
+   * @param storeKey Whether to store the key in the key manager
    */
-  async generateKey(name: string, passphrase: string): Promise<Buffer> {
+  async generateKey(name: string, passphrase: string, storeKey: boolean = true): Promise<Buffer> {
     const salt = crypto.randomBytes(32);
-    this.derivedKeys[name] = await promisify(crypto.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
+    const key = await promisify(crypto.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
+    if (storeKey) {
+      this.derivedKeys[name] = key
+      await this.writeMetadata()
+    }
+    return key
+  }
 
+  /**
+   * Deletes a derived symmetric key from the key manager
+   * @param name Name of the key to be deleted
+   */
+  async deleteKey(name: string): Promise<boolean> {
+    const successful = delete this.derivedKeys[name]
     await this.writeMetadata()
-    return this.derivedKeys[name];
+    return successful
   }
 
   /**
@@ -728,9 +728,10 @@ class KeyManager {
       if (this.identityLoaded) {
         const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
         const metadata = (await this.decryptData(encryptedMetadata)).toString();
-        this.derivedKeys = JSON.parse(metadata);
-        console.log(this.derivedKeys);
-
+        const derivedKeys = JSON.parse(metadata);
+        for (const key of Object.keys(derivedKeys)) {
+          this.derivedKeys[key] = derivedKeys[key]
+        }
       }
     }
   }

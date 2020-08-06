@@ -21,6 +21,26 @@ function makeNewKeyCommand() {
     );
 }
 
+function makeDeleteKeyCommand() {
+  return new commander.Command('delete')
+    .description('delete a symmetric key from the key manager')
+    .option('--node-path <nodePath>', 'node path')
+    .requiredOption('-n, --key-name <keyName>', 'the name of the symmetric key to be deleted')
+    .action(
+      actionRunner(async (options) => {
+        const client = PolykeyAgent.connectToAgent();
+        const nodePath = determineNodePath(options);
+        const keyName = options.keyName;
+
+        const successful = await client.deleteKey(nodePath, keyName);
+        pkLogger(
+          `key '${keyName}' was ${successful ? '' : 'un-'}sucessfully deleted`,
+          successful ? PKMessageType.SUCCESS : PKMessageType.INFO,
+        );
+      }),
+    );
+}
+
 function makeListKeysCommand() {
   return new commander.Command('list')
     .alias('ls')
@@ -80,16 +100,15 @@ function makeListPrimaryKeyPairCommand() {
             pkLogger(keypair.privateKey, PKMessageType.INFO);
           }
         }
-      }),
-
+      })
     );
 }
 
 function makeKeyManagerCommand() {
-  return new commander.Command('keymanager')
-    .alias('km')
-    .description('manipulate the keymanager')
+  return new commander.Command('keys')
+    .description('manipulate keys')
     .addCommand(makeNewKeyCommand())
+    .addCommand(makeDeleteKeyCommand())
     .addCommand(makeListKeysCommand())
     .addCommand(makeGetKeyCommand())
     .addCommand(makeListPrimaryKeyPairCommand())

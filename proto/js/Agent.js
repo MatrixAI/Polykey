@@ -4136,6 +4136,192 @@ $root.agent = (function() {
         return UpdateSecretResponseMessage;
     })();
 
+    agent.DeleteKeyRequestMessage = (function() {
+
+        /**
+         * Properties of a DeleteKeyRequestMessage.
+         * @memberof agent
+         * @interface IDeleteKeyRequestMessage
+         * @property {string|null} [keyName] DeleteKeyRequestMessage keyName
+         */
+
+        /**
+         * Constructs a new DeleteKeyRequestMessage.
+         * @memberof agent
+         * @classdesc Represents a DeleteKeyRequestMessage.
+         * @implements IDeleteKeyRequestMessage
+         * @constructor
+         * @param {agent.IDeleteKeyRequestMessage=} [p] Properties to set
+         */
+        function DeleteKeyRequestMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * DeleteKeyRequestMessage keyName.
+         * @member {string} keyName
+         * @memberof agent.DeleteKeyRequestMessage
+         * @instance
+         */
+        DeleteKeyRequestMessage.prototype.keyName = "";
+
+        /**
+         * Creates a new DeleteKeyRequestMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.DeleteKeyRequestMessage
+         * @static
+         * @param {agent.IDeleteKeyRequestMessage=} [properties] Properties to set
+         * @returns {agent.DeleteKeyRequestMessage} DeleteKeyRequestMessage instance
+         */
+        DeleteKeyRequestMessage.create = function create(properties) {
+            return new DeleteKeyRequestMessage(properties);
+        };
+
+        /**
+         * Encodes the specified DeleteKeyRequestMessage message. Does not implicitly {@link agent.DeleteKeyRequestMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.DeleteKeyRequestMessage
+         * @static
+         * @param {agent.IDeleteKeyRequestMessage} m DeleteKeyRequestMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        DeleteKeyRequestMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.keyName != null && Object.hasOwnProperty.call(m, "keyName"))
+                w.uint32(10).string(m.keyName);
+            return w;
+        };
+
+        /**
+         * Decodes a DeleteKeyRequestMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.DeleteKeyRequestMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.DeleteKeyRequestMessage} DeleteKeyRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        DeleteKeyRequestMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.DeleteKeyRequestMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.keyName = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return DeleteKeyRequestMessage;
+    })();
+
+    agent.DeleteKeyResponseMessage = (function() {
+
+        /**
+         * Properties of a DeleteKeyResponseMessage.
+         * @memberof agent
+         * @interface IDeleteKeyResponseMessage
+         * @property {boolean|null} [successful] DeleteKeyResponseMessage successful
+         */
+
+        /**
+         * Constructs a new DeleteKeyResponseMessage.
+         * @memberof agent
+         * @classdesc Represents a DeleteKeyResponseMessage.
+         * @implements IDeleteKeyResponseMessage
+         * @constructor
+         * @param {agent.IDeleteKeyResponseMessage=} [p] Properties to set
+         */
+        function DeleteKeyResponseMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * DeleteKeyResponseMessage successful.
+         * @member {boolean} successful
+         * @memberof agent.DeleteKeyResponseMessage
+         * @instance
+         */
+        DeleteKeyResponseMessage.prototype.successful = false;
+
+        /**
+         * Creates a new DeleteKeyResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof agent.DeleteKeyResponseMessage
+         * @static
+         * @param {agent.IDeleteKeyResponseMessage=} [properties] Properties to set
+         * @returns {agent.DeleteKeyResponseMessage} DeleteKeyResponseMessage instance
+         */
+        DeleteKeyResponseMessage.create = function create(properties) {
+            return new DeleteKeyResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified DeleteKeyResponseMessage message. Does not implicitly {@link agent.DeleteKeyResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agent.DeleteKeyResponseMessage
+         * @static
+         * @param {agent.IDeleteKeyResponseMessage} m DeleteKeyResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        DeleteKeyResponseMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.successful != null && Object.hasOwnProperty.call(m, "successful"))
+                w.uint32(8).bool(m.successful);
+            return w;
+        };
+
+        /**
+         * Decodes a DeleteKeyResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agent.DeleteKeyResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agent.DeleteKeyResponseMessage} DeleteKeyResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        DeleteKeyResponseMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agent.DeleteKeyResponseMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.successful = r.bool();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        return DeleteKeyResponseMessage;
+    })();
+
     return agent;
 })();
 

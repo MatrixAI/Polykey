@@ -5,7 +5,7 @@ import makeAgentCommand from './Agent';
 import makeCryptoCommand from './Crypto';
 import makeVaultsCommand from './Vaults';
 import makeSecretsCommand from './Secrets';
-import makeKeyManagerCommand from './KeyManager';
+import makeKeyManagerCommand from './Keys';
 
 /*******************************************/
 // Error handler

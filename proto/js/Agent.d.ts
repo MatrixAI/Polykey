@@ -1966,4 +1966,94 @@ export namespace agent {
          */
         public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.UpdateSecretResponseMessage;
     }
+
+    /** Properties of a DeleteKeyRequestMessage. */
+    interface IDeleteKeyRequestMessage {
+
+        /** DeleteKeyRequestMessage keyName */
+        keyName?: (string|null);
+    }
+
+    /** Represents a DeleteKeyRequestMessage. */
+    class DeleteKeyRequestMessage implements IDeleteKeyRequestMessage {
+
+        /**
+         * Constructs a new DeleteKeyRequestMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IDeleteKeyRequestMessage);
+
+        /** DeleteKeyRequestMessage keyName. */
+        public keyName: string;
+
+        /**
+         * Creates a new DeleteKeyRequestMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns DeleteKeyRequestMessage instance
+         */
+        public static create(properties?: agent.IDeleteKeyRequestMessage): agent.DeleteKeyRequestMessage;
+
+        /**
+         * Encodes the specified DeleteKeyRequestMessage message. Does not implicitly {@link agent.DeleteKeyRequestMessage.verify|verify} messages.
+         * @param m DeleteKeyRequestMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IDeleteKeyRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a DeleteKeyRequestMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns DeleteKeyRequestMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.DeleteKeyRequestMessage;
+    }
+
+    /** Properties of a DeleteKeyResponseMessage. */
+    interface IDeleteKeyResponseMessage {
+
+        /** DeleteKeyResponseMessage successful */
+        successful?: (boolean|null);
+    }
+
+    /** Represents a DeleteKeyResponseMessage. */
+    class DeleteKeyResponseMessage implements IDeleteKeyResponseMessage {
+
+        /**
+         * Constructs a new DeleteKeyResponseMessage.
+         * @param [p] Properties to set
+         */
+        constructor(p?: agent.IDeleteKeyResponseMessage);
+
+        /** DeleteKeyResponseMessage successful. */
+        public successful: boolean;
+
+        /**
+         * Creates a new DeleteKeyResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns DeleteKeyResponseMessage instance
+         */
+        public static create(properties?: agent.IDeleteKeyResponseMessage): agent.DeleteKeyResponseMessage;
+
+        /**
+         * Encodes the specified DeleteKeyResponseMessage message. Does not implicitly {@link agent.DeleteKeyResponseMessage.verify|verify} messages.
+         * @param m DeleteKeyResponseMessage message or plain object to encode
+         * @param [w] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(m: agent.IDeleteKeyResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a DeleteKeyResponseMessage message from the specified reader or buffer.
+         * @param r Reader or buffer to decode from
+         * @param [l] Message length if known beforehand
+         * @returns DeleteKeyResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): agent.DeleteKeyResponseMessage;
+    }
 }

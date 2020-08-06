@@ -7,6 +7,8 @@ const {
   CreateSecretResponseMessage,
   DecryptFileRequestMessage,
   DecryptFileResponseMessage,
+  DeleteKeyRequestMessage,
+  DeleteKeyResponseMessage,
   DeriveKeyRequestMessage,
   DeriveKeyResponseMessage,
   DestroySecretRequestMessage,
@@ -168,6 +170,19 @@ class PolykeyClient {
     }
 
     const { successful } = DeriveKeyResponseMessage.decode(subMessage);
+    return successful;
+  }
+  async deleteKey(nodePath: string, keyName: string) {
+    const request = DeleteKeyRequestMessage.encode({ keyName }).finish();
+
+    const encodedResponse = await this.handleAgentCommunication(AgentMessageType.DELETE_KEY, nodePath, request);
+
+    const subMessage = encodedResponse.find((r) => r.type == AgentMessageType.DELETE_KEY)?.subMessage
+    if (!subMessage) {
+      throw Error('agent did not respond');
+    }
+
+    const { successful } = DeleteKeyResponseMessage.decode(subMessage);
     return successful;
   }
   async listKeys(nodePath: string) {
