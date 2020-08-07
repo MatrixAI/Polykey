@@ -1781,7 +1781,7 @@ class KeyManager {
                 const metadata = (await this.decryptData(encryptedMetadata)).toString();
                 const derivedKeys = JSON.parse(metadata);
                 for (const key of Object.keys(derivedKeys)) {
-                    this.derivedKeys[key] = derivedKeys[key];
+                    this.derivedKeys[key] = Buffer.from(derivedKeys[key]);
                 }
             }
         }
@@ -3886,7 +3886,7 @@ class PolykeyAgent {
         }
         else {
             this.removeNodePath(nodePath);
-            throw Error(`node path does not exist inn memory: ${nodePath}`);
+            throw Error(`node path does not exist in memory: ${nodePath}`);
         }
     }
     get AllNodePaths() {
