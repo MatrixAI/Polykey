@@ -90,7 +90,7 @@ class PolykeyAgent {
       }
     } else {
       this.removeNodePath(nodePath)
-      throw Error(`node path does not exist inn memory: ${nodePath}`)
+      throw Error(`node path does not exist in memory: ${nodePath}`)
     }
   }
 

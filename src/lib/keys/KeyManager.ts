@@ -730,7 +730,7 @@ class KeyManager {
         const metadata = (await this.decryptData(encryptedMetadata)).toString();
         const derivedKeys = JSON.parse(metadata);
         for (const key of Object.keys(derivedKeys)) {
-          this.derivedKeys[key] = derivedKeys[key]
+          this.derivedKeys[key] = Buffer.from(derivedKeys[key])
         }
       }
     }
