@@ -7,7 +7,6 @@ cache:
     - node_modules/
     - dist/
     - proto/
-    - docs/
 
 stages:
   - check
@@ -46,3 +45,26 @@ deploy_npm:
     - npm run build:all
     - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
     - npm publish
+
+deploy_docs:
+  stage: deploy
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  before_script:
+    # get nixpkgs
+    - nix-channel --add https://nixos.org/channels/nixos-20.03 nixpkgs
+    - nix-channel --update
+    # need npm available for npm install (this is necessary for generating docs, but it might be cached, I haven't tried it out)
+    - nix-env -i nodejs-12_x.all
+    - npm install
+    # set up ssh for git push later
+    - mkdir -p ~/.ssh
+    - echo $SSH_PRIVATE_KEY > ~/.ssh/id_rsa
+    - echo "Host github.com" > ~/.ssh/config
+    - echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+    # set up for git push
+    - git config user.email "ci-build@matrix.ai"
+    - git config user.name "ci-build"
+  script:
+    - typedoc --out temp_docs
+    # this might be insecure, we want to be able to use the actual gh command from github
+    - gh-pages --dist temp_docs

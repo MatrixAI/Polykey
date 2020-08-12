@@ -2,6 +2,9 @@
 /result
 /result-*
 
+# docs folder
+/docs
+
 # gitlab-runner exec
 /builds
 
