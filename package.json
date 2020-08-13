@@ -1,5 +1,5 @@
 {
-  "name": "js-polykey",
+  "name": "@matrixai/polykey",
   "bin": {
     "polykey": "bin/polykey",
     "pk": "bin/polykey"

@@ -1,26 +1,26 @@
-declare module 'js-polykey/proto/js/Agent' {
+declare module '@matrixai/polykey/proto/js/Agent' {
   export = $root;
   var $root: protobuf.Root;
 
 }
-declare module 'js-polykey/proto/js/Git' {
+declare module '@matrixai/polykey/proto/js/Git' {
   export = $root;
   var $root: protobuf.Root;
 
 }
-declare module 'js-polykey/proto/js/Peer' {
+declare module '@matrixai/polykey/proto/js/Peer' {
   export = $root;
   var $root: protobuf.Root;
 
 }
-declare module 'js-polykey/src/lib/Polykey' {
+declare module '@matrixai/polykey/src/lib/Polykey' {
   /// <reference types="node" />
   import fs from 'fs';
-  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
-  import PeerManager from 'js-polykey/src/lib/peers/PeerManager';
-  import VaultManager from 'js-polykey/src/lib/vaults/VaultManager';
-  import PolykeyAgent from 'js-polykey/src/lib/agent/PolykeyAgent';
-  import PolykeyClient from 'js-polykey/src/lib/agent/PolykeyClient';
+  import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
+  import PeerManager from '@matrixai/polykey/src/lib/peers/PeerManager';
+  import VaultManager from '@matrixai/polykey/src/lib/vaults/VaultManager';
+  import PolykeyAgent from '@matrixai/polykey/src/lib/agent/PolykeyAgent';
+  import PolykeyClient from '@matrixai/polykey/src/lib/agent/PolykeyClient';
   class Polykey {
       polykeyPath: string;
       vaultManager: VaultManager;
@@ -32,8 +32,8 @@ declare module 'js-polykey/src/lib/Polykey' {
   export { KeyManager, VaultManager, PeerManager, PolykeyAgent, PolykeyClient };
 
 }
-declare module 'js-polykey/src/lib/agent/PolykeyAgent' {
-  import PolykeyClient from 'js-polykey/src/lib/agent/PolykeyClient';
+declare module '@matrixai/polykey/src/lib/agent/PolykeyAgent' {
+  import PolykeyClient from '@matrixai/polykey/src/lib/agent/PolykeyClient';
   import { Duplex } from 'readable-stream';
   class PolykeyAgent {
       private socketPath;
@@ -77,7 +77,7 @@ declare module 'js-polykey/src/lib/agent/PolykeyAgent' {
   export default PolykeyAgent;
 
 }
-declare module 'js-polykey/src/lib/agent/PolykeyClient' {
+declare module '@matrixai/polykey/src/lib/agent/PolykeyClient' {
   /// <reference types="node" />
   import { Duplex } from 'readable-stream';
   class PolykeyClient {
@@ -114,13 +114,13 @@ declare module 'js-polykey/src/lib/agent/PolykeyClient' {
   export default PolykeyClient;
 
 }
-declare module 'js-polykey/src/lib/agent/internal/daemon-script' {
+declare module '@matrixai/polykey/src/lib/agent/internal/daemon-script' {
   export {};
 
 }
-declare module 'js-polykey/src/lib/git/GitBackend' {
+declare module '@matrixai/polykey/src/lib/git/GitBackend' {
   /// <reference types="node" />
-  import VaultManager from 'js-polykey/src/lib/vaults/VaultManager';
+  import VaultManager from '@matrixai/polykey/src/lib/vaults/VaultManager';
   class GitBackend {
       private polykeyPath;
       private vaultManager;
@@ -138,9 +138,9 @@ declare module 'js-polykey/src/lib/git/GitBackend' {
   export default GitBackend;
 
 }
-declare module 'js-polykey/src/lib/git/GitClient' {
-  import { Address } from 'js-polykey/src/lib/peers/PeerInfo';
-  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
+declare module '@matrixai/polykey/src/lib/git/GitClient' {
+  import { Address } from '@matrixai/polykey/src/lib/peers/PeerInfo';
+  import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
   /**
    * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
    */
@@ -177,7 +177,7 @@ declare module 'js-polykey/src/lib/git/GitClient' {
   export default GitClient;
 
 }
-declare module 'js-polykey/src/lib/git/pack-objects/GitCommit' {
+declare module '@matrixai/polykey/src/lib/git/pack-objects/GitCommit' {
   /// <reference types="node" />
   class GitCommit {
       _commit: string;
@@ -203,7 +203,7 @@ declare module 'js-polykey/src/lib/git/pack-objects/GitCommit' {
   export default GitCommit;
 
 }
-declare module 'js-polykey/src/lib/git/pack-objects/GitObject' {
+declare module '@matrixai/polykey/src/lib/git/pack-objects/GitObject' {
   /// <reference types="node" />
   class GitObject {
       static hash({ type, object }: {
@@ -228,7 +228,7 @@ declare module 'js-polykey/src/lib/git/pack-objects/GitObject' {
   export default GitObject;
 
 }
-declare module 'js-polykey/src/lib/git/pack-objects/GitObjectManager' {
+declare module '@matrixai/polykey/src/lib/git/pack-objects/GitObjectManager' {
   import { EncryptedFS } from 'encryptedfs';
   class GitObjectManager {
       static read(fileSystem: EncryptedFS, gitdir: string, oid: string, format?: string): Promise<any>;
@@ -236,7 +236,7 @@ declare module 'js-polykey/src/lib/git/pack-objects/GitObjectManager' {
   export default GitObjectManager;
 
 }
-declare module 'js-polykey/src/lib/git/pack-objects/GitTree' {
+declare module '@matrixai/polykey/src/lib/git/pack-objects/GitTree' {
   /// <reference types="node" />
   class GitTree {
       _entries: any[];
@@ -250,7 +250,7 @@ declare module 'js-polykey/src/lib/git/pack-objects/GitTree' {
   export default GitTree;
 
 }
-declare module 'js-polykey/src/lib/git/pack-objects/log' {
+declare module '@matrixai/polykey/src/lib/git/pack-objects/log' {
   import { EncryptedFS } from 'encryptedfs';
   function logCommit(fileSystem: EncryptedFS, gitdir: string, oid: string, signing: boolean): Promise<any>;
   /**
@@ -264,7 +264,7 @@ declare module 'js-polykey/src/lib/git/pack-objects/log' {
   export { logCommit };
 
 }
-declare module 'js-polykey/src/lib/git/pack-objects/packObjects' {
+declare module '@matrixai/polykey/src/lib/git/pack-objects/packObjects' {
   import { EncryptedFS } from 'encryptedfs';
   import { PassThrough } from 'readable-stream';
   type Ack = {
@@ -287,13 +287,13 @@ declare module 'js-polykey/src/lib/git/pack-objects/packObjects' {
   export { listObjects, pack };
 
 }
-declare module 'js-polykey/src/lib/git/pack-objects/shasum' {
+declare module '@matrixai/polykey/src/lib/git/pack-objects/shasum' {
   /// <reference types="node" />
   function shasum(buffer: Buffer): any;
   export default shasum;
 
 }
-declare module 'js-polykey/src/lib/git/side-band/GitSideBand' {
+declare module '@matrixai/polykey/src/lib/git/side-band/GitSideBand' {
   import { PassThrough } from 'readable-stream';
   class GitSideBand {
       static demux(input: any): {
@@ -307,7 +307,7 @@ declare module 'js-polykey/src/lib/git/side-band/GitSideBand' {
   export default GitSideBand;
 
 }
-declare module 'js-polykey/src/lib/git/upload-pack/GitPackedRefs' {
+declare module '@matrixai/polykey/src/lib/git/upload-pack/GitPackedRefs' {
   type Config = {
       line: string;
       ref?: string;
@@ -324,7 +324,7 @@ declare module 'js-polykey/src/lib/git/upload-pack/GitPackedRefs' {
   export default GitPackedRefs;
 
 }
-declare module 'js-polykey/src/lib/git/upload-pack/GitPktLine' {
+declare module '@matrixai/polykey/src/lib/git/upload-pack/GitPktLine' {
   /**
   pkt-line Format
   ---------------
@@ -385,7 +385,7 @@ declare module 'js-polykey/src/lib/git/upload-pack/GitPktLine' {
   export default GitPktLine;
 
 }
-declare module 'js-polykey/src/lib/git/upload-pack/GitRefManager' {
+declare module '@matrixai/polykey/src/lib/git/upload-pack/GitRefManager' {
   import { EncryptedFS } from 'encryptedfs';
   class GitRefManager {
       static packedRefs(fileSystem: EncryptedFS, gitdir: string): Promise<Map<string, string>>;
@@ -395,18 +395,18 @@ declare module 'js-polykey/src/lib/git/upload-pack/GitRefManager' {
   export default GitRefManager;
 
 }
-declare module 'js-polykey/src/lib/git/upload-pack/uploadPack' {
+declare module '@matrixai/polykey/src/lib/git/upload-pack/uploadPack' {
   /// <reference types="node" />
   import { EncryptedFS } from 'encryptedfs';
   function uploadPack(fileSystem: EncryptedFS, dir: string, gitdir?: string, advertiseRefs?: boolean): Promise<Buffer[] | undefined>;
   export default uploadPack;
 
 }
-declare module 'js-polykey/src/lib/keys/KeyManager' {
+declare module '@matrixai/polykey/src/lib/keys/KeyManager' {
   /// <reference types="node" />
   import fs from 'fs';
   import { Pool, ModuleThread } from 'threads';
-  import { KeyManagerWorker } from 'js-polykey/src/lib/keys/KeyManagerWorker';
+  import { KeyManagerWorker } from '@matrixai/polykey/src/lib/keys/KeyManagerWorker';
   type KeyPair = {
       private: string | null;
       public: string | null;
@@ -613,7 +613,7 @@ declare module 'js-polykey/src/lib/keys/KeyManager' {
   export { KeyPair };
 
 }
-declare module 'js-polykey/src/lib/keys/KeyManagerWorker' {
+declare module '@matrixai/polykey/src/lib/keys/KeyManagerWorker' {
   /// <reference types="node" />
   const keyManagerWorker: {
       /**
@@ -646,7 +646,7 @@ declare module 'js-polykey/src/lib/keys/KeyManagerWorker' {
   export {};
 
 }
-declare module 'js-polykey/src/lib/keys/pki/PublicKeyInfrastructure' {
+declare module '@matrixai/polykey/src/lib/keys/pki/PublicKeyInfrastructure' {
   /// <reference types="node" />
   import { pki } from 'node-forge';
   /**
@@ -669,12 +669,12 @@ declare module 'js-polykey/src/lib/keys/pki/PublicKeyInfrastructure' {
   export default PublicKeyInfrastructure;
 
 }
-declare module 'js-polykey/src/lib/peers/MulticastBroadcaster' {
+declare module '@matrixai/polykey/src/lib/peers/MulticastBroadcaster' {
   /// <reference types="node" />
   import dgram from 'dgram';
-  import PeerInfo from 'js-polykey/src/lib/peers/PeerInfo';
+  import PeerInfo from '@matrixai/polykey/src/lib/peers/PeerInfo';
   import { EventEmitter } from 'events';
-  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
+  import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
   type PeerMessage = {
       encryptedLocalPubKey: Buffer;
       encryptedPeerPubKey: Buffer;
@@ -701,7 +701,7 @@ declare module 'js-polykey/src/lib/peers/MulticastBroadcaster' {
   export default MulticastBroadcaster;
 
 }
-declare module 'js-polykey/src/lib/peers/PeerInfo' {
+declare module '@matrixai/polykey/src/lib/peers/PeerInfo' {
   /// <reference types="node" />
   import { AddressInfo } from 'net';
   class Address {
@@ -743,15 +743,15 @@ declare module 'js-polykey/src/lib/peers/PeerInfo' {
   export { Address };
 
 }
-declare module 'js-polykey/src/lib/peers/PeerManager' {
+declare module '@matrixai/polykey/src/lib/peers/PeerManager' {
   /// <reference types="node" />
   import fs from 'fs';
   import * as grpc from '@grpc/grpc-js';
-  import GitClient from 'js-polykey/src/lib/git/GitClient';
-  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
-  import VaultManager from 'js-polykey/src/lib/vaults/VaultManager';
-  import PeerInfo, { Address } from 'js-polykey/src/lib/peers/PeerInfo';
-  import MulticastBroadcaster from 'js-polykey/src/lib/peers/MulticastBroadcaster';
+  import GitClient from '@matrixai/polykey/src/lib/git/GitClient';
+  import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
+  import VaultManager from '@matrixai/polykey/src/lib/vaults/VaultManager';
+  import PeerInfo, { Address } from '@matrixai/polykey/src/lib/peers/PeerInfo';
+  import MulticastBroadcaster from '@matrixai/polykey/src/lib/peers/MulticastBroadcaster';
   interface SocialDiscovery {
       name: string;
       findUser(handle: string, service: string): Promise<string>;
@@ -820,7 +820,7 @@ declare module 'js-polykey/src/lib/peers/PeerManager' {
   export { SocialDiscovery };
 
 }
-declare module 'js-polykey/src/lib/utils' {
+declare module '@matrixai/polykey/src/lib/utils' {
   /**
    * Returns a 5 character long random string of lower case letters
    */
@@ -833,9 +833,9 @@ declare module 'js-polykey/src/lib/utils' {
   export { randomString, firstPromiseFulfilled };
 
 }
-declare module 'js-polykey/src/lib/vaults/Vault' {
+declare module '@matrixai/polykey/src/lib/vaults/Vault' {
   /// <reference types="node" />
-  import GitClient from 'js-polykey/src/lib/git/GitClient';
+  import GitClient from '@matrixai/polykey/src/lib/git/GitClient';
   import { EncryptedFS } from 'encryptedfs';
   class Vault {
       private key;
@@ -914,12 +914,12 @@ declare module 'js-polykey/src/lib/vaults/Vault' {
   export default Vault;
 
 }
-declare module 'js-polykey/src/lib/vaults/VaultManager' {
+declare module '@matrixai/polykey/src/lib/vaults/VaultManager' {
   /// <reference types="node" />
   import fs from 'fs';
-  import Vault from 'js-polykey/src/lib/vaults/Vault';
-  import GitClient from 'js-polykey/src/lib/git/GitClient';
-  import KeyManager from 'js-polykey/src/lib/keys/KeyManager';
+  import Vault from '@matrixai/polykey/src/lib/vaults/Vault';
+  import GitClient from '@matrixai/polykey/src/lib/git/GitClient';
+  import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
   class VaultManager {
       polykeyPath: string;
       fileSystem: typeof fs;
@@ -967,7 +967,7 @@ declare module 'js-polykey/src/lib/vaults/VaultManager' {
   export default VaultManager;
 
 }
-declare module 'js-polykey' {
-  import main = require('js-polykey/Polykey');
+declare module '@matrixai/polykey' {
+  import main = require('@matrixai/Polykey');
   export = main;
 }
