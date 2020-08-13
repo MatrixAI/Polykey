@@ -3552,9 +3552,9 @@ let
     };
   };
   args = {
-    name = "js-polykey";
-    packageName = "js-polykey";
-    version = "0.0.16";
+    name = "_at_matrixai_slash_polykey";
+    packageName = "@matrixai/polykey";
+    version = "0.0.17";
     src = ./..;
     dependencies = [
       sources."@babel/code-frame-7.0.0"
