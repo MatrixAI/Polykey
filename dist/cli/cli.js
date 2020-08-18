@@ -104,14 +104,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const os_1 = __importDefault(__webpack_require__(4));
-const chalk_1 = __importDefault(__webpack_require__(3));
+const os_1 = __importDefault(__webpack_require__(3));
+const chalk_1 = __importDefault(__webpack_require__(4));
 const commander_1 = __webpack_require__(1);
 const Agent_1 = __importDefault(__webpack_require__(5));
 const Crypto_1 = __importDefault(__webpack_require__(7));
 const Vaults_1 = __importDefault(__webpack_require__(8));
 const Secrets_1 = __importDefault(__webpack_require__(9));
-const Keys_1 = __importDefault(__webpack_require__(10));
+const Keys_1 = __importDefault(__webpack_require__(12));
 /*******************************************/
 // Error handler
 function actionErrorHanlder(error) {
@@ -167,7 +167,7 @@ exports.determineNodePath = determineNodePath;
 /*******************************************/
 const polykey = new commander_1.program.Command();
 polykey
-    .version(__webpack_require__(11).version, '--version', 'output the current version')
+    .version(__webpack_require__(13).version, '--version', 'output the current version')
     .addCommand(Keys_1.default())
     .addCommand(Secrets_1.default())
     .addCommand(Vaults_1.default())
@@ -194,13 +194,13 @@ module.exports = require("../lib/polykey.js");
 /* 3 */
 /***/ (function(module, exports) {
 
-module.exports = require("chalk");
+module.exports = require("os");
 
 /***/ }),
 /* 4 */
 /***/ (function(module, exports) {
 
-module.exports = require("os");
+module.exports = require("chalk");
 
 /***/ }),
 /* 5 */
@@ -515,7 +515,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const chalk_1 = __importDefault(__webpack_require__(3));
 const commander_1 = __importDefault(__webpack_require__(1));
 const _1 = __webpack_require__(0);
 const Polykey_1 = __webpack_require__(2);
@@ -558,41 +557,26 @@ function makeAddVaultCommand() {
         }
     }));
 }
-function makeRemoveVaultCommand() {
-    return new commander_1.default.Command('remove')
-        .alias('rm')
-        .description('destroy an existing vault')
+function makeDeleteVaultCommand() {
+    return new commander_1.default.Command('delete')
+        .alias('del')
+        .description('delete an existing vault')
         .option('-n, --vault-name <vaultName>', 'name of vault')
-        .option('-a, --all', 'remove all vaults')
         .option('-v, --verbose', 'increase verbosity by one level')
+        .arguments('name of vault to remove')
         .action(_1.actionRunner(async (options) => {
-        var _a, _b;
+        var _a;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const nodePath = _1.determineNodePath(options);
         const verbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
-        const deleteAll = (_b = options.all) !== null && _b !== void 0 ? _b : false;
-        if (deleteAll) {
-            const vaultNames = await client.listVaults(nodePath);
-            if (vaultNames === undefined || vaultNames.length == 0) {
-                _1.pkLogger('no vaults found', _1.PKMessageType.INFO);
-            }
-            else {
-                for (const vaultName of vaultNames) {
-                    await client.destroyVault(nodePath, vaultName);
-                    if (verbose) {
-                        _1.pkLogger(`destroyed ${vaultName}`, _1.PKMessageType.SUCCESS);
-                    }
-                }
-                _1.pkLogger('all vaults destroyed successfully', _1.PKMessageType.SUCCESS);
-            }
-            return;
+        const vaultNames = options.args.values();
+        if (!vaultNames) {
+            throw Error('error: did not receive any vault name');
         }
-        const vaultName = options.vaultName;
-        if (!vaultName) {
-            throw Error(chalk_1.default.red('error: did not receive vault name'));
+        for (const vaultName of vaultNames) {
+            const successful = await client.destroyVault(nodePath, vaultName);
+            _1.pkLogger(`vault '${vaultName}' destroyed ${successful ? 'un-' : ''}successfully`, _1.PKMessageType.SUCCESS);
         }
-        const successful = await client.destroyVault(nodePath, vaultName);
-        _1.pkLogger(`vault '${vaultName}' destroyed ${successful ? 'un-' : ''}successfully`, _1.PKMessageType.SUCCESS);
     }));
 }
 function makeVaultsCommand() {
@@ -600,7 +584,7 @@ function makeVaultsCommand() {
         .description('manipulate vaults')
         .addCommand(makeListVaultsCommand())
         .addCommand(makeAddVaultCommand())
-        .addCommand(makeRemoveVaultCommand());
+        .addCommand(makeDeleteVaultCommand());
 }
 exports.default = makeVaultsCommand;
 
@@ -615,35 +599,43 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const process_1 = __importDefault(__webpack_require__(10));
 const commander_1 = __importDefault(__webpack_require__(1));
-const _1 = __webpack_require__(0);
+const child_process_1 = __webpack_require__(11);
 const Polykey_1 = __webpack_require__(2);
+const _1 = __webpack_require__(0);
+const pathRegex = /^([a-zA-Z0-9_ -]+)(?::)([a-zA-Z0-9_ -]+)(?:=)?([a-zA-Z_][a-zA-Z0-9_]+)?$/;
 function makeListSecretsCommand() {
     return new commander_1.default.Command('list')
         .description('list all available secrets for a given vault')
         .alias('ls')
-        .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
         .option('--node-path <nodePath>', 'node path')
         .option('--verbose', 'increase verbosity level by one')
+        .arguments('vault name(s) to list')
         .action(_1.actionRunner(async (options) => {
         var _a;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const nodePath = _1.determineNodePath(options);
         const isVerbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
-        const vaultName = options.vaultName;
-        // Get list of secrets from pk
-        const secretNames = await client.listSecrets(nodePath, vaultName);
-        // List secrets
-        if (secretNames.length == 0) {
-            _1.pkLogger(`no secrets found for vault '${vaultName}'`, _1.PKMessageType.INFO);
+        const vaultNames = Array.from(options.args.values());
+        if (!vaultNames.length) {
+            throw Error('no vault names provided');
         }
-        else {
-            if (isVerbose) {
-                _1.pkLogger(`secrets contained within the ${vaultName} vault:`, _1.PKMessageType.INFO);
+        for (const vaultName of vaultNames) {
+            // Get list of secrets from pk
+            const secretNames = await client.listSecrets(nodePath, vaultName);
+            // List secrets
+            if (secretNames.length == 0 && isVerbose) {
+                _1.pkLogger(`no secrets found for vault '${vaultName}'`, _1.PKMessageType.INFO);
             }
-            secretNames.forEach((secretName) => {
-                _1.pkLogger(secretName, _1.PKMessageType.INFO);
-            });
+            else {
+                if (isVerbose) {
+                    _1.pkLogger(`secrets contained within the ${vaultName} vault:`, _1.PKMessageType.INFO);
+                }
+                secretNames.forEach((secretName) => {
+                    _1.pkLogger(`${vaultName}:${secretName}`, _1.PKMessageType.INFO);
+                });
+            }
         }
     }));
 }
@@ -651,21 +643,27 @@ function makeNewSecretCommand() {
     return new commander_1.default.Command('new')
         .description('create a secret within a given vault')
         .option('--node-path <nodePath>', 'node path')
-        .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
-        .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
-        .requiredOption('-p, --secret-path <secretPath>', 'path to the secret to be added')
+        .arguments("secret path of the format '<vaultName>:<secretName>'")
+        .requiredOption('-f, --file-path <filePath>', 'path to the secret to be added')
         .option('--verbose', 'increase verbosity level by one')
         .action(_1.actionRunner(async (options) => {
         var _a;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const nodePath = _1.determineNodePath(options);
         const isVerbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
-        const vaultName = options.vaultName;
-        const secretName = options.secretName;
-        const secretPath = options.secretPath;
+        const secretPath = Array.from(options.args.values());
+        if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
+            throw Error("please specify a new secret name using the format: '<existingVaultName>:<secretName>'");
+        }
+        else if (secretPath.length > 1) {
+            throw Error('you can only add one secret at a time');
+        }
+        const firstEntry = secretPath[0];
+        const [_, vaultName, secretName] = firstEntry.match(pathRegex);
+        const filePath = options.filePath;
         try {
             // Add the secret
-            const successful = await client.createSecret(nodePath, vaultName, secretName, secretPath);
+            const successful = await client.createSecret(nodePath, vaultName, secretName, filePath);
             _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully added to vault '${vaultName}'`, _1.PKMessageType.SUCCESS);
         }
         catch (err) {
@@ -677,21 +675,27 @@ function makeUpdateSecretCommand() {
     return new commander_1.default.Command('update')
         .description('update a secret within a given vault')
         .option('--node-path <nodePath>', 'node path')
-        .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
-        .requiredOption('-s, --secret-name <secretName>', 'an existing secret name')
-        .requiredOption('-p, --secret-path <secretPath>', 'path to the new secret')
+        .arguments("secret path of the format '<vaultName>:<secretName>'")
+        .requiredOption('-f, --file-path <filePath>', 'path to the new secret')
         .option('--verbose', 'increase verbosity level by one')
         .action(_1.actionRunner(async (options) => {
         var _a;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const nodePath = _1.determineNodePath(options);
         const isVerbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
-        const vaultName = options.vaultName;
-        const secretName = options.secretName;
-        const secretPath = options.secretPath;
+        const secretPath = Array.from(options.args.values());
+        if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
+            throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
+        }
+        else if (secretPath.length > 1) {
+            throw Error('you can only update one secret at a time');
+        }
+        const firstEntry = secretPath[0];
+        const [_, vaultName, secretName] = firstEntry.match(pathRegex);
+        const filePath = options.filePath;
         try {
             // Update the secret
-            const successful = await client.updateSecret(nodePath, vaultName, secretName, secretPath);
+            const successful = await client.updateSecret(nodePath, vaultName, secretName, filePath);
             _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully updated in vault '${vaultName}'`, successful ? _1.PKMessageType.SUCCESS : _1.PKMessageType.WARNING);
         }
         catch (err) {
@@ -699,20 +703,26 @@ function makeUpdateSecretCommand() {
         }
     }));
 }
-function makeRemoveSecretCommand() {
-    return new commander_1.default.Command('remove')
-        .alias('rm')
-        .description('remove a secret from a given vault')
-        .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
-        .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
+function makeDeleteSecretCommand() {
+    return new commander_1.default.Command('delete')
+        .alias('del')
+        .description('delete a secret from a given vault')
+        .arguments("secret path of the format '<vaultName>:<secretName>'")
         .option('--verbose', 'increase verbosity level by one')
         .action(_1.actionRunner(async (options) => {
         var _a;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const nodePath = _1.determineNodePath(options);
         const isVerbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
-        const vaultName = options.vaultName;
-        const secretName = options.secretName;
+        const secretPath = Array.from(options.args.values());
+        if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
+            throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
+        }
+        else if (secretPath.length > 1) {
+            throw Error('you can only delete one secret at a time');
+        }
+        const firstEntry = secretPath[0];
+        const [_, vaultName, secretName] = firstEntry.match(pathRegex);
         try {
             // Remove secret
             const successful = await client.destroySecret(nodePath, vaultName, secretName);
@@ -726,24 +736,109 @@ function makeRemoveSecretCommand() {
 function makeGetSecretCommand() {
     return new commander_1.default.Command('get')
         .description('retrieve a secret from a given vault')
-        .requiredOption('-n, --vault-name <vaultName>', 'the vault name')
-        .requiredOption('-s, --secret-name <secretName>', 'the new secret name')
-        .option('--verbose', 'increase verbosity level by one')
+        .arguments("secret path of the format '<vaultName>:<secretName>'")
+        .option('-e, --env', 'wrap the secret in an environment variable declaration')
         .action(_1.actionRunner(async (options) => {
-        var _a;
+        var _a, _b;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const nodePath = _1.determineNodePath(options);
-        const isVerbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
-        const vaultName = options.vaultName;
-        const secretName = options.secretName;
+        const isEnv = (_a = options.env) !== null && _a !== void 0 ? _a : false;
+        const isVerbose = (_b = options.verbose) !== null && _b !== void 0 ? _b : false;
+        const secretPath = Array.from(options.args.values());
+        if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
+            throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
+        }
+        else if (secretPath.length > 1) {
+            throw Error('you can only get one secret at a time');
+        }
+        const firstEntry = secretPath[0];
+        const [_, vaultName, secretName] = firstEntry.match(pathRegex);
         try {
-            // Remove secret
+            // Retrieve secret
             const secret = await client.getSecret(nodePath, vaultName, secretName);
-            _1.pkLogger(`secret '${secretName}' from vault '${vaultName}':`, _1.PKMessageType.SUCCESS);
-            _1.pkLogger(secret.toString(), _1.PKMessageType.none);
+            if (isEnv) {
+                _1.pkLogger(`export ${secretName.toUpperCase().replace('-', '_')}='${secret.toString()}'`, _1.PKMessageType.none);
+            }
+            else {
+                _1.pkLogger(secret.toString(), _1.PKMessageType.none);
+            }
         }
         catch (err) {
             throw Error(`Error when retrieving secret: ${err.message}`);
+        }
+    }));
+}
+function makeSecretEnvCommand() {
+    return new commander_1.default.Command('env')
+        .storeOptionsAsProperties(false)
+        .description('run a modified environment with injected secrets')
+        .option('--command <command>', 'In the environment of the derivation, run the shell command cmd. This command is executed in an interactive shell. (Use --run to use a non-interactive shell instead.)')
+        .option('--run <run>', 'Like --command, but executes the command in a non-interactive shell. This means (among other things) that if you hit Ctrl-C while the command is running, the shell exits.')
+        .arguments("secrets to inject into env, of the format '<vaultName>:<secretName>'. you can also control what the environment variable will be called using '<vaultName>:<secretName>=<variableName>', defaults to upper, snake case of the original secret name.")
+        .action(_1.actionRunner(async (cmd) => {
+        var _a;
+        const options = cmd.opts();
+        const client = Polykey_1.PolykeyAgent.connectToAgent();
+        const nodePath = _1.determineNodePath(options);
+        const isVerbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
+        const command = options.command;
+        const run = options.run;
+        const secretPathList = Array.from(cmd.args.values());
+        if (secretPathList.length < 1) {
+            throw Error("please specify at least one secret");
+        }
+        // Parse secret paths in list
+        const parsedPathList = [];
+        for (const path of secretPathList) {
+            if (!pathRegex.test(path)) {
+                throw Error(`secret path was not of the format '<vaultName>:<secretName>[=<variableName>]': ${path}`);
+            }
+            const [_, vaultName, secretName, variableName] = path.match(pathRegex);
+            parsedPathList.push({
+                vaultName,
+                secretName,
+                variableName: variableName !== null && variableName !== void 0 ? variableName : secretName.toUpperCase().replace('-', '_')
+            });
+        }
+        const secretEnv = { ...process_1.default.env };
+        try {
+            // Get all the secrets
+            for (const obj of parsedPathList) {
+                const secret = await client.getSecret(nodePath, obj.vaultName, obj.secretName);
+                secretEnv[obj.variableName] = secret.toString();
+            }
+        }
+        catch (err) {
+            throw Error(`Error when retrieving secret: ${err.message}`);
+        }
+        try {
+            const shellPath = process_1.default.env.SHELL;
+            const args = [];
+            if (command && run) {
+                throw Error('only one of --command or --run can be specified');
+            }
+            else if (command) {
+                args.push('-i');
+                args.push('-c');
+                args.push(`"${command}"`);
+            }
+            else if (run) {
+                args.push('-c');
+                args.push(`"${run}"`);
+            }
+            const shell = child_process_1.spawn(shellPath, args, {
+                stdio: 'inherit',
+                env: secretEnv,
+                shell: true
+            });
+            shell.on('close', (code) => {
+                if (code != 0) {
+                    _1.pkLogger(`polykey: environment terminated with code: ${code}`, _1.PKMessageType.WARNING);
+                }
+            });
+        }
+        catch (err) {
+            throw Error(`Error when running environment: ${err.message}`);
         }
     }));
 }
@@ -753,14 +848,27 @@ function makeSecretsCommand() {
         .addCommand(makeListSecretsCommand())
         .addCommand(makeNewSecretCommand())
         .addCommand(makeUpdateSecretCommand())
-        .addCommand(makeRemoveSecretCommand())
-        .addCommand(makeGetSecretCommand());
+        .addCommand(makeDeleteSecretCommand())
+        .addCommand(makeGetSecretCommand())
+        .addCommand(makeSecretEnvCommand());
 }
 exports.default = makeSecretsCommand;
 
 
 /***/ }),
 /* 10 */
+/***/ (function(module, exports) {
+
+module.exports = require("process");
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports) {
+
+module.exports = require("child_process");
+
+/***/ }),
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -865,7 +973,7 @@ exports.default = makeKeyManagerCommand;
 
 
 /***/ }),
-/* 11 */
+/* 13 */
 /***/ (function(module, exports) {
 
 module.exports = require("../../package.json");
