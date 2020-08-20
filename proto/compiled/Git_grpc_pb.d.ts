@@ -4,7 +4,7 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import * as grpc from "grpc";
+import * as grpc from "@grpc/grpc-js";
 import * as Git_pb from "./Git_pb";
 
 interface IGitServerService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {

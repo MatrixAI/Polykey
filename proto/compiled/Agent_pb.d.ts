@@ -7,8 +7,8 @@
 import * as jspb from "google-protobuf";
 
 export class AgentMessage extends jspb.Message { 
-    getType(): AgentMessageType;
-    setType(value: AgentMessageType): AgentMessage;
+    getType(): Type;
+    setType(value: Type): AgentMessage;
 
     getIsresponse(): boolean;
     setIsresponse(value: boolean): AgentMessage;
@@ -34,7 +34,7 @@ export class AgentMessage extends jspb.Message {
 
 export namespace AgentMessage {
     export type AsObject = {
-        type: AgentMessageType,
+        type: Type,
         isresponse: boolean,
         nodePath: string,
         subMessage: Uint8Array | string,
@@ -259,9 +259,6 @@ export class VerifyFileRequestMessage extends jspb.Message {
     getSignaturePath(): string;
     setSignaturePath(value: string): VerifyFileRequestMessage;
 
-    getPublicKeyPath(): string;
-    setPublicKeyPath(value: string): VerifyFileRequestMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VerifyFileRequestMessage.AsObject;
@@ -277,7 +274,6 @@ export namespace VerifyFileRequestMessage {
     export type AsObject = {
         filePath: string,
         signaturePath: string,
-        publicKeyPath: string,
     }
 }
 
@@ -299,102 +295,6 @@ export class VerifyFileResponseMessage extends jspb.Message {
 export namespace VerifyFileResponseMessage {
     export type AsObject = {
         verified: boolean,
-    }
-}
-
-export class EncryptFileRequestMessage extends jspb.Message { 
-    getFilePath(): string;
-    setFilePath(value: string): EncryptFileRequestMessage;
-
-    getPublicKeyPath(): string;
-    setPublicKeyPath(value: string): EncryptFileRequestMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): EncryptFileRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: EncryptFileRequestMessage): EncryptFileRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: EncryptFileRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): EncryptFileRequestMessage;
-    static deserializeBinaryFromReader(message: EncryptFileRequestMessage, reader: jspb.BinaryReader): EncryptFileRequestMessage;
-}
-
-export namespace EncryptFileRequestMessage {
-    export type AsObject = {
-        filePath: string,
-        publicKeyPath: string,
-    }
-}
-
-export class EncryptFileResponseMessage extends jspb.Message { 
-    getEncryptedpath(): string;
-    setEncryptedpath(value: string): EncryptFileResponseMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): EncryptFileResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: EncryptFileResponseMessage): EncryptFileResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: EncryptFileResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): EncryptFileResponseMessage;
-    static deserializeBinaryFromReader(message: EncryptFileResponseMessage, reader: jspb.BinaryReader): EncryptFileResponseMessage;
-}
-
-export namespace EncryptFileResponseMessage {
-    export type AsObject = {
-        encryptedpath: string,
-    }
-}
-
-export class DecryptFileRequestMessage extends jspb.Message { 
-    getFilePath(): string;
-    setFilePath(value: string): DecryptFileRequestMessage;
-
-    getPrivateKeyPath(): string;
-    setPrivateKeyPath(value: string): DecryptFileRequestMessage;
-
-    getPassphrase(): string;
-    setPassphrase(value: string): DecryptFileRequestMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): DecryptFileRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: DecryptFileRequestMessage): DecryptFileRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: DecryptFileRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): DecryptFileRequestMessage;
-    static deserializeBinaryFromReader(message: DecryptFileRequestMessage, reader: jspb.BinaryReader): DecryptFileRequestMessage;
-}
-
-export namespace DecryptFileRequestMessage {
-    export type AsObject = {
-        filePath: string,
-        privateKeyPath: string,
-        passphrase: string,
-    }
-}
-
-export class DecryptFileResponseMessage extends jspb.Message { 
-    getDecryptedpath(): string;
-    setDecryptedpath(value: string): DecryptFileResponseMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): DecryptFileResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: DecryptFileResponseMessage): DecryptFileResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: DecryptFileResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): DecryptFileResponseMessage;
-    static deserializeBinaryFromReader(message: DecryptFileResponseMessage, reader: jspb.BinaryReader): DecryptFileResponseMessage;
-}
-
-export namespace DecryptFileResponseMessage {
-    export type AsObject = {
-        decryptedpath: string,
     }
 }
 
@@ -576,11 +476,6 @@ export class CreateSecretRequestMessage extends jspb.Message {
     getSecretPath(): string;
     setSecretPath(value: string): CreateSecretRequestMessage;
 
-    getSecretContent(): Uint8Array | string;
-    getSecretContent_asU8(): Uint8Array;
-    getSecretContent_asB64(): string;
-    setSecretContent(value: Uint8Array | string): CreateSecretRequestMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateSecretRequestMessage.AsObject;
@@ -597,7 +492,6 @@ export namespace CreateSecretRequestMessage {
         vaultName: string,
         secretName: string,
         secretPath: string,
-        secretContent: Uint8Array | string,
     }
 }
 
@@ -668,54 +562,6 @@ export namespace DestroySecretResponseMessage {
     }
 }
 
-export class GetSecretRequestMessage extends jspb.Message { 
-    getVaultName(): string;
-    setVaultName(value: string): GetSecretRequestMessage;
-
-    getSecretName(): string;
-    setSecretName(value: string): GetSecretRequestMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetSecretRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: GetSecretRequestMessage): GetSecretRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetSecretRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetSecretRequestMessage;
-    static deserializeBinaryFromReader(message: GetSecretRequestMessage, reader: jspb.BinaryReader): GetSecretRequestMessage;
-}
-
-export namespace GetSecretRequestMessage {
-    export type AsObject = {
-        vaultName: string,
-        secretName: string,
-    }
-}
-
-export class GetSecretResponseMessage extends jspb.Message { 
-    getSecret(): Uint8Array | string;
-    getSecret_asU8(): Uint8Array;
-    getSecret_asB64(): string;
-    setSecret(value: Uint8Array | string): GetSecretResponseMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetSecretResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: GetSecretResponseMessage): GetSecretResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetSecretResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetSecretResponseMessage;
-    static deserializeBinaryFromReader(message: GetSecretResponseMessage, reader: jspb.BinaryReader): GetSecretResponseMessage;
-}
-
-export namespace GetSecretResponseMessage {
-    export type AsObject = {
-        secret: Uint8Array | string,
-    }
-}
-
 export class DeriveKeyRequestMessage extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): DeriveKeyRequestMessage;
@@ -766,237 +612,7 @@ export namespace DeriveKeyResponseMessage {
     }
 }
 
-export class ListKeysRequestMessage extends jspb.Message { 
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ListKeysRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: ListKeysRequestMessage): ListKeysRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ListKeysRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ListKeysRequestMessage;
-    static deserializeBinaryFromReader(message: ListKeysRequestMessage, reader: jspb.BinaryReader): ListKeysRequestMessage;
-}
-
-export namespace ListKeysRequestMessage {
-    export type AsObject = {
-    }
-}
-
-export class ListKeysResponseMessage extends jspb.Message { 
-    clearKeyNamesList(): void;
-    getKeyNamesList(): Array<string>;
-    setKeyNamesList(value: Array<string>): ListKeysResponseMessage;
-    addKeyNames(value: string, index?: number): string;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ListKeysResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: ListKeysResponseMessage): ListKeysResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ListKeysResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ListKeysResponseMessage;
-    static deserializeBinaryFromReader(message: ListKeysResponseMessage, reader: jspb.BinaryReader): ListKeysResponseMessage;
-}
-
-export namespace ListKeysResponseMessage {
-    export type AsObject = {
-        keyNamesList: Array<string>,
-    }
-}
-
-export class GetKeyRequestMessage extends jspb.Message { 
-    getKeyName(): string;
-    setKeyName(value: string): GetKeyRequestMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetKeyRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: GetKeyRequestMessage): GetKeyRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetKeyRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetKeyRequestMessage;
-    static deserializeBinaryFromReader(message: GetKeyRequestMessage, reader: jspb.BinaryReader): GetKeyRequestMessage;
-}
-
-export namespace GetKeyRequestMessage {
-    export type AsObject = {
-        keyName: string,
-    }
-}
-
-export class GetKeyResponseMessage extends jspb.Message { 
-    getKeyName(): string;
-    setKeyName(value: string): GetKeyResponseMessage;
-
-    getKeyContent(): string;
-    setKeyContent(value: string): GetKeyResponseMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetKeyResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: GetKeyResponseMessage): GetKeyResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetKeyResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetKeyResponseMessage;
-    static deserializeBinaryFromReader(message: GetKeyResponseMessage, reader: jspb.BinaryReader): GetKeyResponseMessage;
-}
-
-export namespace GetKeyResponseMessage {
-    export type AsObject = {
-        keyName: string,
-        keyContent: string,
-    }
-}
-
-export class GetPrimaryKeyPairRequestMessage extends jspb.Message { 
-    getIncludePrivateKey(): boolean;
-    setIncludePrivateKey(value: boolean): GetPrimaryKeyPairRequestMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetPrimaryKeyPairRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: GetPrimaryKeyPairRequestMessage): GetPrimaryKeyPairRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetPrimaryKeyPairRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetPrimaryKeyPairRequestMessage;
-    static deserializeBinaryFromReader(message: GetPrimaryKeyPairRequestMessage, reader: jspb.BinaryReader): GetPrimaryKeyPairRequestMessage;
-}
-
-export namespace GetPrimaryKeyPairRequestMessage {
-    export type AsObject = {
-        includePrivateKey: boolean,
-    }
-}
-
-export class GetPrimaryKeyPairResponseMessage extends jspb.Message { 
-    getPublicKey(): string;
-    setPublicKey(value: string): GetPrimaryKeyPairResponseMessage;
-
-    getPrivateKey(): string;
-    setPrivateKey(value: string): GetPrimaryKeyPairResponseMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetPrimaryKeyPairResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: GetPrimaryKeyPairResponseMessage): GetPrimaryKeyPairResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetPrimaryKeyPairResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetPrimaryKeyPairResponseMessage;
-    static deserializeBinaryFromReader(message: GetPrimaryKeyPairResponseMessage, reader: jspb.BinaryReader): GetPrimaryKeyPairResponseMessage;
-}
-
-export namespace GetPrimaryKeyPairResponseMessage {
-    export type AsObject = {
-        publicKey: string,
-        privateKey: string,
-    }
-}
-
-export class UpdateSecretRequestMessage extends jspb.Message { 
-    getVaultName(): string;
-    setVaultName(value: string): UpdateSecretRequestMessage;
-
-    getSecretName(): string;
-    setSecretName(value: string): UpdateSecretRequestMessage;
-
-    getSecretPath(): string;
-    setSecretPath(value: string): UpdateSecretRequestMessage;
-
-    getSecretContent(): Uint8Array | string;
-    getSecretContent_asU8(): Uint8Array;
-    getSecretContent_asB64(): string;
-    setSecretContent(value: Uint8Array | string): UpdateSecretRequestMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): UpdateSecretRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: UpdateSecretRequestMessage): UpdateSecretRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: UpdateSecretRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): UpdateSecretRequestMessage;
-    static deserializeBinaryFromReader(message: UpdateSecretRequestMessage, reader: jspb.BinaryReader): UpdateSecretRequestMessage;
-}
-
-export namespace UpdateSecretRequestMessage {
-    export type AsObject = {
-        vaultName: string,
-        secretName: string,
-        secretPath: string,
-        secretContent: Uint8Array | string,
-    }
-}
-
-export class UpdateSecretResponseMessage extends jspb.Message { 
-    getSuccessful(): boolean;
-    setSuccessful(value: boolean): UpdateSecretResponseMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): UpdateSecretResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: UpdateSecretResponseMessage): UpdateSecretResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: UpdateSecretResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): UpdateSecretResponseMessage;
-    static deserializeBinaryFromReader(message: UpdateSecretResponseMessage, reader: jspb.BinaryReader): UpdateSecretResponseMessage;
-}
-
-export namespace UpdateSecretResponseMessage {
-    export type AsObject = {
-        successful: boolean,
-    }
-}
-
-export class DeleteKeyRequestMessage extends jspb.Message { 
-    getKeyName(): string;
-    setKeyName(value: string): DeleteKeyRequestMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): DeleteKeyRequestMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: DeleteKeyRequestMessage): DeleteKeyRequestMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: DeleteKeyRequestMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): DeleteKeyRequestMessage;
-    static deserializeBinaryFromReader(message: DeleteKeyRequestMessage, reader: jspb.BinaryReader): DeleteKeyRequestMessage;
-}
-
-export namespace DeleteKeyRequestMessage {
-    export type AsObject = {
-        keyName: string,
-    }
-}
-
-export class DeleteKeyResponseMessage extends jspb.Message { 
-    getSuccessful(): boolean;
-    setSuccessful(value: boolean): DeleteKeyResponseMessage;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): DeleteKeyResponseMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: DeleteKeyResponseMessage): DeleteKeyResponseMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: DeleteKeyResponseMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): DeleteKeyResponseMessage;
-    static deserializeBinaryFromReader(message: DeleteKeyResponseMessage, reader: jspb.BinaryReader): DeleteKeyResponseMessage;
-}
-
-export namespace DeleteKeyResponseMessage {
-    export type AsObject = {
-        successful: boolean,
-    }
-}
-
-export enum AgentMessageType {
+export enum Type {
     ERROR = 0,
     STOP_AGENT = 1,
     STATUS = 2,
@@ -1012,12 +628,4 @@ export enum AgentMessageType {
     LIST_SECRETS = 12,
     CREATE_SECRET = 13,
     DESTROY_SECRET = 14,
-    GET_SECRET = 15,
-    LIST_KEYS = 16,
-    GET_KEY = 17,
-    DELETE_KEY = 18,
-    ENCRYPT_FILE = 19,
-    DECRYPT_FILE = 20,
-    GET_PRIMARY_KEYPAIR = 21,
-    UPDATE_SECRET = 22,
 }
