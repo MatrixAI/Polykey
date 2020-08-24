@@ -34,7 +34,7 @@ function makeDeleteKeyCommand() {
 
         const successful = await client.deleteKey(nodePath, keyName);
         pkLogger(
-          `key '${keyName}' was ${successful ? '' : 'un-'}sucessfully deleted`,
+          `key '${keyName}' was ${successful ? '' : 'un-'}successfully deleted`,
           successful ? PKMessageType.SUCCESS : PKMessageType.INFO,
         );
       }),
@@ -93,14 +93,14 @@ function makeListPrimaryKeyPairCommand() {
         if (outputJson) {
           pkLogger(JSON.stringify(keypair), PKMessageType.INFO);
         } else {
-          pkLogger("Public Key:", PKMessageType.SUCCESS);
+          pkLogger('Public Key:', PKMessageType.SUCCESS);
           pkLogger(keypair.publicKey, PKMessageType.INFO);
           if (privateKey) {
-            pkLogger("Private Key:", PKMessageType.SUCCESS);
+            pkLogger('Private Key:', PKMessageType.SUCCESS);
             pkLogger(keypair.privateKey, PKMessageType.INFO);
           }
         }
-      })
+      }),
     );
 }
 
@@ -111,7 +111,7 @@ function makeKeyManagerCommand() {
     .addCommand(makeDeleteKeyCommand())
     .addCommand(makeListKeysCommand())
     .addCommand(makeGetKeyCommand())
-    .addCommand(makeListPrimaryKeyPairCommand())
+    .addCommand(makeListPrimaryKeyPairCommand());
 }
 
 export default makeKeyManagerCommand;

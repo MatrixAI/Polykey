@@ -69,7 +69,6 @@ function makeDeleteVaultCommand() {
           const successful = await client.destroyVault(nodePath, vaultName);
           pkLogger(`vault '${vaultName}' destroyed ${successful ? 'un-' : ''}successfully`, PKMessageType.SUCCESS);
         }
-
       }),
     );
 }

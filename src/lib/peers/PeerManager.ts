@@ -2,7 +2,8 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import * as grpc from '@grpc/grpc-js';
-import GitClient from '../git/GitClient';
+import GitRequest from '../git/GitRequest';
+import GitFrontend from '../git/GitFrontend';
 import GitBackend from '../git/GitBackend';
 import KeyManager from '../keys/KeyManager';
 import { peer } from '../../../proto/js/Peer';
@@ -57,7 +58,7 @@ class PeerManager {
   serverStarted: boolean = false;
   private gitBackend: GitBackend;
   private credentials: grpc.ServerCredentials;
-  private peerConnections: Map<string, GitClient>;
+  private peerConnections: Map<string, GitFrontend>;
 
   constructor(
     polykeyPath: string = `${os.homedir()}/.polykey`,
@@ -102,7 +103,10 @@ class PeerManager {
     /////////////////
     // GRPC Server //
     /////////////////
-    this.gitBackend = new GitBackend(polykeyPath, vaultManager);
+    this.gitBackend = new GitBackend(
+      polykeyPath,
+      ((vaultName: string) => vaultManager.getVault(vaultName).EncryptedFS).bind(vaultManager),
+    );
     this.server = new grpc.Server();
 
     // Add service
@@ -113,7 +117,6 @@ class PeerManager {
 
     // Create the server credentials. SSL only if ca cert exists
     const pkiInfo = this.keyManager.PKIInfo;
-
     if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
       this.credentials = grpc.ServerCredentials.createSsl(
         pkiInfo.caCert,
@@ -128,13 +131,15 @@ class PeerManager {
     } else {
       this.credentials = grpc.ServerCredentials.createInsecure();
     }
-
-    this.server.bindAsync(`0.0.0.0:${process.env.PK_PORT ?? 0}`, this.credentials, (err, boundPort) => {
+    this.server.bindAsync(`0.0.0.0:${process.env.PK_PORT ?? 0}`, this.credentials, async (err, boundPort) => {
       if (err) {
         throw err;
       } else {
         const address = new Address('localhost', boundPort.toString());
         this.server.start();
+        while (!this.localPeerInfo) {
+          await new Promise((r, _) => setTimeout(() => r(), 1000));
+        }
         this.localPeerInfo.connect(address);
         this.serverStarted = true;
       }
@@ -143,9 +148,7 @@ class PeerManager {
 
   private async requestInfo(call, callback) {
     const infoRequest: InfoRequest = call.request;
-
     const vaultName = infoRequest.getVaultname();
-
     const infoReply = new InfoReply();
     infoReply.setVaultname(vaultName);
     infoReply.setBody(await this.gitBackend.handleInfoRequest(vaultName));
@@ -156,7 +159,6 @@ class PeerManager {
     const packRequest: PackRequest = call.request;
     const vaultName = packRequest.getVaultname();
     const body = Buffer.from(packRequest.getBody_asB64(), 'base64');
-
     const reply = new PackReply();
     reply.setVaultname(vaultName);
     reply.setBody(await this.gitBackend.handlePackRequest(vaultName, body));
@@ -261,16 +263,16 @@ class PeerManager {
    * Get a secure connection to the peer
    * @param peer Public key of an existing peer or address of new peer
    */
-  connectToPeer(peer: string | Address): GitClient {
+  connectToPeer(peer: string | Address): GitFrontend {
     // Throw error if trying to connect to self
     if (peer == this.localPeerInfo.connectedAddr || peer == this.localPeerInfo.publicKey) {
       throw Error('Cannot connect to self');
     }
     let address: Address;
     if (typeof peer == 'string') {
-      const existingSocket = this.peerConnections.get(peer);
-      if (existingSocket) {
-        return existingSocket;
+      const existingConnection = this.peerConnections.get(peer);
+      if (existingConnection) {
+        return existingConnection;
       }
       const peerAddress = this.getPeer(peer)?.connectedAddr;
 
@@ -283,7 +285,7 @@ class PeerManager {
       address = peer;
     }
 
-    const conn = new GitClient(address, this.keyManager);
+    const conn = new GitFrontend(address, this.keyManager);
 
     if (typeof peer == 'string') {
       this.peerConnections.set(peer, conn);

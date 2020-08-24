@@ -40,7 +40,7 @@ class KeyManager {
     publicKeyPath: null,
     pkiKeyPath: null,
     pkiCertPath: null,
-    caCertPath: null
+    caCertPath: null,
   };
 
   /////////
@@ -285,10 +285,10 @@ class KeyManager {
     const salt = crypto.randomBytes(32);
     const key = await promisify(crypto.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
     if (storeKey) {
-      this.derivedKeys[name] = key
-      await this.writeMetadata()
+      this.derivedKeys[name] = key;
+      await this.writeMetadata();
     }
-    return key
+    return key;
   }
 
   /**
@@ -296,16 +296,16 @@ class KeyManager {
    * @param name Name of the key to be deleted
    */
   async deleteKey(name: string): Promise<boolean> {
-    const successful = delete this.derivedKeys[name]
-    await this.writeMetadata()
-    return successful
+    const successful = delete this.derivedKeys[name];
+    await this.writeMetadata();
+    return successful;
   }
 
   /**
    * List all keys in the current keymanager
    */
   listKeys(): string[] {
-    return Object.keys(this.derivedKeys)
+    return Object.keys(this.derivedKeys);
   }
 
   /**
@@ -382,7 +382,7 @@ class KeyManager {
   async getIdentityFromPrivateKey(privateKey: Buffer, passphrase: string): Promise<Object> {
     const identity = await promisify(kbpgp.KeyManager.import_from_armored_pgp)({ armored: privateKey });
     if (identity.is_pgp_locked()) {
-      await promisify(identity.unlock_pgp)({ passphrase: passphrase });
+      await promisify(identity.unlock_pgp.bind(identity))({ passphrase });
     }
     return identity;
   }
@@ -454,10 +454,9 @@ class KeyManager {
   /**
    * Verifies the given data with the provided key or the primary key if none is specified
    * @param data Buffer or file containing the data to be verified
-   * @param signature The PGP signature
    * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
    */
-  async verifyData(data: Buffer | string, signature: Buffer, publicKey?: Buffer): Promise<boolean> {
+  async verifyData(data: Buffer | string, publicKey?: Buffer): Promise<boolean> {
     const ring = new kbpgp.keyring.KeyRing();
     let resolvedIdentity: Object;
     if (publicKey) {
@@ -471,13 +470,12 @@ class KeyManager {
 
     if (this.useWebWorkers && this.workerPool) {
       const workerResponse = await this.workerPool.queue(async (workerCrypto) => {
-        return await workerCrypto.verifyData(data, signature, resolvedIdentity);
+        return await workerCrypto.verifyData(data, resolvedIdentity);
       });
       return workerResponse;
     } else {
       const params = {
-        armored: signature,
-        data: data,
+        armored: data,
         keyfetch: ring,
       };
       const literals = await promisify(kbpgp.unbox)(params);
@@ -505,10 +503,9 @@ class KeyManager {
   /**
    * Verifies the given file with the provided key or the primary key if none is specified
    * @param filePath Path to file containing the data to be verified
-   * @param signaturePath The path to the file containing the PGP signature
    * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
    */
-  async verifyFile(filePath: string, signaturePath: string, publicKey?: string | Buffer): Promise<boolean> {
+  async verifyFile(filePath: string, publicKey?: string | Buffer): Promise<boolean> {
     // Get key if provided
     let keyBuffer: Buffer;
     if (publicKey) {
@@ -523,8 +520,7 @@ class KeyManager {
     }
     // Read in file buffer and signature
     const fileBuffer = this.fileSystem.readFileSync(filePath);
-    const signatureBuffer = this.fileSystem.readFileSync(signaturePath);
-    const isVerified = await this.verifyData(fileBuffer, signatureBuffer, keyBuffer!);
+    const isVerified = await this.verifyData(fileBuffer, keyBuffer!);
     return isVerified;
   }
 
@@ -715,7 +711,7 @@ class KeyManager {
     this.fileSystem.writeFileSync(this.metadataPath, metadata);
     // Store the keys if identity is loaded
     if (this.identityLoaded) {
-      const derivedKeys = JSON.stringify(this.derivedKeys)
+      const derivedKeys = JSON.stringify(this.derivedKeys);
       const encryptedMetadata = await this.encryptData(Buffer.from(derivedKeys));
       await this.fileSystem.promises.writeFile(this.derivedKeysPath, encryptedMetadata);
     }
@@ -725,12 +721,12 @@ class KeyManager {
     if (this.fileSystem.existsSync(this.metadataPath)) {
       const metadata = this.fileSystem.readFileSync(this.metadataPath).toString();
       this.metadata = JSON.parse(metadata);
-      if (this.identityLoaded) {
+      if (this.identityLoaded && this.fileSystem.existsSync(this.derivedKeysPath)) {
         const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
         const metadata = (await this.decryptData(encryptedMetadata)).toString();
         const derivedKeys = JSON.parse(metadata);
         for (const key of Object.keys(derivedKeys)) {
-          this.derivedKeys[key] = Buffer.from(derivedKeys[key])
+          this.derivedKeys[key] = Buffer.from(derivedKeys[key]);
         }
       }
     }

@@ -3,7 +3,7 @@ import os from 'os';
 import Path from 'path';
 import git from 'isomorphic-git';
 import Vault from '../vaults/Vault';
-import GitClient from '../git/GitClient';
+import GitRequest from '../git/GitRequest';
 import { EncryptedFS } from 'encryptedfs';
 import KeyManager from '../keys/KeyManager';
 
@@ -121,7 +121,7 @@ class VaultManager {
    * @param address Address of polykey node that owns vault to be cloned
    * @param getSocket Function to get an active connection to provided address
    */
-  async cloneVault(vaultName: string, gitClient: GitClient): Promise<Vault> {
+  async cloneVault(vaultName: string, gitRequest: GitRequest): Promise<Vault> {
     // Confirm it doesn't exist locally already
     if (this.vaultExists(vaultName)) {
       throw Error('Vault name already exists locally, try pulling instead');
@@ -131,7 +131,7 @@ class VaultManager {
 
     // First check if it exists on remote
     const info = await git.getRemoteInfo({
-      http: gitClient,
+      http: gitRequest,
       url: vaultUrl,
     });
 
@@ -151,7 +151,7 @@ class VaultManager {
     // Clone vault from address
     await git.clone({
       fs: { promises: newEfs.promises },
-      http: gitClient,
+      http: gitRequest,
       dir: Path.join(this.polykeyPath, vaultName),
       url: vaultUrl,
       ref: 'master',
