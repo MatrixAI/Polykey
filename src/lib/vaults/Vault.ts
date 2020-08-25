@@ -1,7 +1,7 @@
 import fs from 'fs';
 import Path from 'path';
 import git from 'isomorphic-git';
-import GitClient from '../git/GitClient';
+import GitRequest from '../git/GitRequest';
 import { EncryptedFS } from 'encryptedfs';
 import { Mutex } from 'async-mutex';
 
@@ -219,7 +219,7 @@ class Vault {
    * @param address Address of polykey node that owns vault to be pulled
    * @param getSocket Function to get an active connection to provided address
    */
-  async pullVault(gitClient: GitClient) {
+  async pullVault(gitClient: GitRequest) {
     const release = await this.mutex.acquire();
     try {
       // Strangely enough this is needed for pulls along with ref set to 'HEAD'

@@ -1128,7 +1128,6 @@ $root.agent = (function() {
          * @memberof agent
          * @interface IVerifyFileRequestMessage
          * @property {string|null} [filePath] VerifyFileRequestMessage filePath
-         * @property {string|null} [signaturePath] VerifyFileRequestMessage signaturePath
          * @property {string|null} [publicKeyPath] VerifyFileRequestMessage publicKeyPath
          */
 
@@ -1154,14 +1153,6 @@ $root.agent = (function() {
          * @instance
          */
         VerifyFileRequestMessage.prototype.filePath = "";
-
-        /**
-         * VerifyFileRequestMessage signaturePath.
-         * @member {string} signaturePath
-         * @memberof agent.VerifyFileRequestMessage
-         * @instance
-         */
-        VerifyFileRequestMessage.prototype.signaturePath = "";
 
         /**
          * VerifyFileRequestMessage publicKeyPath.
@@ -1197,10 +1188,8 @@ $root.agent = (function() {
                 w = $Writer.create();
             if (m.filePath != null && Object.hasOwnProperty.call(m, "filePath"))
                 w.uint32(10).string(m.filePath);
-            if (m.signaturePath != null && Object.hasOwnProperty.call(m, "signaturePath"))
-                w.uint32(18).string(m.signaturePath);
             if (m.publicKeyPath != null && Object.hasOwnProperty.call(m, "publicKeyPath"))
-                w.uint32(26).string(m.publicKeyPath);
+                w.uint32(18).string(m.publicKeyPath);
             return w;
         };
 
@@ -1226,9 +1215,6 @@ $root.agent = (function() {
                     m.filePath = r.string();
                     break;
                 case 2:
-                    m.signaturePath = r.string();
-                    break;
-                case 3:
                     m.publicKeyPath = r.string();
                     break;
                 default:

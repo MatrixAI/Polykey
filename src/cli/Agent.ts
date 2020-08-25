@@ -19,7 +19,6 @@ function makeStartAgentCommand() {
           const pid = await PolykeyAgent.startAgent(daemon);
           pkLogger(`agent has started with pid of ${pid}`, PKMessageType.SUCCESS);
         }
-        process.exit();
       }),
     );
 }
@@ -36,7 +35,6 @@ function makeRestartAgentCommand() {
         const daemon: boolean = options.daemon;
         const pid = await PolykeyAgent.startAgent(daemon);
         pkLogger(`agent has restarted with pid of ${pid}`, PKMessageType.SUCCESS);
-        process.exit();
       }),
     );
 }
@@ -47,7 +45,6 @@ function makeAgentStatusCommand() {
       const client = PolykeyAgent.connectToAgent();
       const status = await client.getAgentStatus();
       pkLogger(`agent status is: '${status}'`, PKMessageType.INFO);
-      process.exit();
     }),
   );
 }
@@ -76,7 +73,6 @@ function makeStopAgentCommand() {
             throw Error('agent failed to stop');
           }
         }
-        process.exit();
       }),
     );
 }
@@ -98,7 +94,6 @@ function makeListNodesCommand() {
             pkLogger(node, PKMessageType.INFO);
           }
         }
-        process.exit();
       }),
     );
 }
@@ -127,8 +122,6 @@ function makeNewNodeCommand() {
         } else {
           throw Error('something went wrong with node creation');
         }
-
-        process.exit();
       }),
     );
 }
@@ -150,8 +143,6 @@ function makeLoadNodeCommand() {
         } else {
           throw Error('something went wrong when loading node');
         }
-
-        process.exit();
       }),
     );
 }

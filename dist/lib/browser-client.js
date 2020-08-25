@@ -264,9 +264,9 @@ class PolykeyClient {
         const { signaturePath } = SignFileResponseMessage.decode(subMessage);
         return signaturePath;
     }
-    async verifyFile(nodePath, filePath, signaturePath) {
+    async verifyFile(nodePath, filePath, publicKeyPath) {
         var _a;
-        const request = VerifyFileRequestMessage.encode({ filePath, signaturePath }).finish();
+        const request = VerifyFileRequestMessage.encode({ filePath, publicKeyPath }).finish();
         const encodedResponse = await this.handleAgentCommunication(AgentMessageType.VERIFY_FILE, nodePath, request);
         const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.VERIFY_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
@@ -3414,7 +3414,6 @@ $root.agent = (function() {
          * @memberof agent
          * @interface IVerifyFileRequestMessage
          * @property {string|null} [filePath] VerifyFileRequestMessage filePath
-         * @property {string|null} [signaturePath] VerifyFileRequestMessage signaturePath
          * @property {string|null} [publicKeyPath] VerifyFileRequestMessage publicKeyPath
          */
 
@@ -3440,14 +3439,6 @@ $root.agent = (function() {
          * @instance
          */
         VerifyFileRequestMessage.prototype.filePath = "";
-
-        /**
-         * VerifyFileRequestMessage signaturePath.
-         * @member {string} signaturePath
-         * @memberof agent.VerifyFileRequestMessage
-         * @instance
-         */
-        VerifyFileRequestMessage.prototype.signaturePath = "";
 
         /**
          * VerifyFileRequestMessage publicKeyPath.
@@ -3483,10 +3474,8 @@ $root.agent = (function() {
                 w = $Writer.create();
             if (m.filePath != null && Object.hasOwnProperty.call(m, "filePath"))
                 w.uint32(10).string(m.filePath);
-            if (m.signaturePath != null && Object.hasOwnProperty.call(m, "signaturePath"))
-                w.uint32(18).string(m.signaturePath);
             if (m.publicKeyPath != null && Object.hasOwnProperty.call(m, "publicKeyPath"))
-                w.uint32(26).string(m.publicKeyPath);
+                w.uint32(18).string(m.publicKeyPath);
             return w;
         };
 
@@ -3512,9 +3501,6 @@ $root.agent = (function() {
                     m.filePath = r.string();
                     break;
                 case 2:
-                    m.signaturePath = r.string();
-                    break;
-                case 3:
                     m.publicKeyPath = r.string();
                     break;
                 default:

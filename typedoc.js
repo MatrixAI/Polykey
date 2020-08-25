@@ -1,15 +1,21 @@
 module.exports = {
   out: 'docs',
 
-  includes: './src/lib',
-  exclude: [
+  includes: [
+    './src/lib/**/*',
     './src/cli/**/*',
-    './src/lib/git/**/*'
+    './proto/js/**/*.d.ts',
+  ],
+  exclude: [
+    './src/lib/git/**/*',
+    './src/lib/agent/internal/**/*',
+    './proto/js/**/*.js'
   ],
 
-  mode: 'file',
+  mode: 'modules',
+  includeDeclarations: true,
   excludeExternals: true,
-  excludeNotExported: true,
+  excludeNotExported: false,
   excludePrivate: true,
   name: 'PolyKey (library)'
 };

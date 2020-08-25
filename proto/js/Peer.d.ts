@@ -1,124 +1,130 @@
 import * as $protobuf from "protobufjs";
-/** Namespace peer. */
-export namespace peer {
+export = Peer;
 
-    /** Properties of a HandshakeMessage. */
-    interface IHandshakeMessage {
+declare namespace Peer {
 
-        /** HandshakeMessage targetPubKey */
-        targetPubKey?: (Uint8Array|null);
 
-        /** HandshakeMessage requestingPubKey */
-        requestingPubKey?: (Uint8Array|null);
+    /** Namespace peer. */
+    namespace peer {
 
-        /** HandshakeMessage message */
-        message?: (Uint8Array|null);
+        /** Properties of a HandshakeMessage. */
+        interface IHandshakeMessage {
 
-        /** HandshakeMessage responsePeerInfo */
-        responsePeerInfo?: (Uint8Array|null);
-    }
+            /** HandshakeMessage targetPubKey */
+            targetPubKey?: (Uint8Array|null);
 
-    /** Represents a HandshakeMessage. */
-    class HandshakeMessage implements IHandshakeMessage {
+            /** HandshakeMessage requestingPubKey */
+            requestingPubKey?: (Uint8Array|null);
 
-        /**
-         * Constructs a new HandshakeMessage.
-         * @param [p] Properties to set
-         */
-        constructor(p?: peer.IHandshakeMessage);
+            /** HandshakeMessage message */
+            message?: (Uint8Array|null);
 
-        /** HandshakeMessage targetPubKey. */
-        public targetPubKey: Uint8Array;
+            /** HandshakeMessage responsePeerInfo */
+            responsePeerInfo?: (Uint8Array|null);
+        }
 
-        /** HandshakeMessage requestingPubKey. */
-        public requestingPubKey: Uint8Array;
+        /** Represents a HandshakeMessage. */
+        class HandshakeMessage implements IHandshakeMessage {
 
-        /** HandshakeMessage message. */
-        public message: Uint8Array;
+            /**
+             * Constructs a new HandshakeMessage.
+             * @param [p] Properties to set
+             */
+            constructor(p?: peer.IHandshakeMessage);
 
-        /** HandshakeMessage responsePeerInfo. */
-        public responsePeerInfo: Uint8Array;
+            /** HandshakeMessage targetPubKey. */
+            public targetPubKey: Uint8Array;
 
-        /**
-         * Creates a new HandshakeMessage instance using the specified properties.
-         * @param [properties] Properties to set
-         * @returns HandshakeMessage instance
-         */
-        public static create(properties?: peer.IHandshakeMessage): peer.HandshakeMessage;
+            /** HandshakeMessage requestingPubKey. */
+            public requestingPubKey: Uint8Array;
 
-        /**
-         * Encodes the specified HandshakeMessage message. Does not implicitly {@link peer.HandshakeMessage.verify|verify} messages.
-         * @param m HandshakeMessage message or plain object to encode
-         * @param [w] Writer to encode to
-         * @returns Writer
-         */
-        public static encode(m: peer.IHandshakeMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            /** HandshakeMessage message. */
+            public message: Uint8Array;
 
-        /**
-         * Decodes a HandshakeMessage message from the specified reader or buffer.
-         * @param r Reader or buffer to decode from
-         * @param [l] Message length if known beforehand
-         * @returns HandshakeMessage
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peer.HandshakeMessage;
-    }
+            /** HandshakeMessage responsePeerInfo. */
+            public responsePeerInfo: Uint8Array;
 
-    /** Properties of a PeerInfoMessage. */
-    interface IPeerInfoMessage {
+            /**
+             * Creates a new HandshakeMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns HandshakeMessage instance
+             */
+            public static create(properties?: peer.IHandshakeMessage): peer.HandshakeMessage;
 
-        /** PeerInfoMessage pubKey */
-        pubKey?: (string|null);
+            /**
+             * Encodes the specified HandshakeMessage message. Does not implicitly {@link peer.HandshakeMessage.verify|verify} messages.
+             * @param m HandshakeMessage message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: peer.IHandshakeMessage, w?: $protobuf.Writer): $protobuf.Writer;
 
-        /** PeerInfoMessage addresses */
-        addresses?: (string[]|null);
+            /**
+             * Decodes a HandshakeMessage message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns HandshakeMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peer.HandshakeMessage;
+        }
 
-        /** PeerInfoMessage connectedAddr */
-        connectedAddr?: (string|null);
-    }
+        /** Properties of a PeerInfoMessage. */
+        interface IPeerInfoMessage {
 
-    /** Represents a PeerInfoMessage. */
-    class PeerInfoMessage implements IPeerInfoMessage {
+            /** PeerInfoMessage pubKey */
+            pubKey?: (string|null);
 
-        /**
-         * Constructs a new PeerInfoMessage.
-         * @param [p] Properties to set
-         */
-        constructor(p?: peer.IPeerInfoMessage);
+            /** PeerInfoMessage addresses */
+            addresses?: (string[]|null);
 
-        /** PeerInfoMessage pubKey. */
-        public pubKey: string;
+            /** PeerInfoMessage connectedAddr */
+            connectedAddr?: (string|null);
+        }
 
-        /** PeerInfoMessage addresses. */
-        public addresses: string[];
+        /** Represents a PeerInfoMessage. */
+        class PeerInfoMessage implements IPeerInfoMessage {
 
-        /** PeerInfoMessage connectedAddr. */
-        public connectedAddr: string;
+            /**
+             * Constructs a new PeerInfoMessage.
+             * @param [p] Properties to set
+             */
+            constructor(p?: peer.IPeerInfoMessage);
 
-        /**
-         * Creates a new PeerInfoMessage instance using the specified properties.
-         * @param [properties] Properties to set
-         * @returns PeerInfoMessage instance
-         */
-        public static create(properties?: peer.IPeerInfoMessage): peer.PeerInfoMessage;
+            /** PeerInfoMessage pubKey. */
+            public pubKey: string;
 
-        /**
-         * Encodes the specified PeerInfoMessage message. Does not implicitly {@link peer.PeerInfoMessage.verify|verify} messages.
-         * @param m PeerInfoMessage message or plain object to encode
-         * @param [w] Writer to encode to
-         * @returns Writer
-         */
-        public static encode(m: peer.IPeerInfoMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            /** PeerInfoMessage addresses. */
+            public addresses: string[];
 
-        /**
-         * Decodes a PeerInfoMessage message from the specified reader or buffer.
-         * @param r Reader or buffer to decode from
-         * @param [l] Message length if known beforehand
-         * @returns PeerInfoMessage
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peer.PeerInfoMessage;
+            /** PeerInfoMessage connectedAddr. */
+            public connectedAddr: string;
+
+            /**
+             * Creates a new PeerInfoMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns PeerInfoMessage instance
+             */
+            public static create(properties?: peer.IPeerInfoMessage): peer.PeerInfoMessage;
+
+            /**
+             * Encodes the specified PeerInfoMessage message. Does not implicitly {@link peer.PeerInfoMessage.verify|verify} messages.
+             * @param m PeerInfoMessage message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: peer.IPeerInfoMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a PeerInfoMessage message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns PeerInfoMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peer.PeerInfoMessage;
+        }
     }
 }

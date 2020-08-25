@@ -47,8 +47,7 @@ function makeVerifyCommand() {
       '-k, --public-key <publicKey>',
       'path to public key that will be used to verify files, defaults to primary key',
     )
-    .option('-s, --detach-sig <detachSig>', 'path to detached signature for file, defaults to [filename].sig')
-    .requiredOption('-f, --verified-file <verifiedFile>', 'file to be verified')
+    .requiredOption('-f, --signed-file <signedFile>', 'file to be verified')
     .action(
       actionRunner(async (options) => {
         const client = PolykeyAgent.connectToAgent();
@@ -60,9 +59,8 @@ function makeVerifyCommand() {
         const nodePath = determineNodePath(options);
         const publicKey = options.publicKey;
         const filePath = options.signedFile;
-        const signaturePath = options.detachSig ?? filePath + '.sig';
 
-        const verified = await client.verifyFile(nodePath, filePath, signaturePath);
+        const verified = await client.verifyFile(nodePath, filePath, publicKey);
         if (verified) {
           pkLogger(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
         } else {
@@ -91,7 +89,7 @@ function makeEncryptCommand() {
         const nodePath = determineNodePath(options);
 
         const publicKey = options.publicKey;
-        const filePath = options.filePath
+        const filePath = options.filePath;
 
         try {
           const encryptedPath = await client.encryptFile(nodePath, filePath, publicKey);
@@ -124,7 +122,7 @@ function makeDecryptCommand() {
 
         const privateKey = options.privateKey;
         const keyPassphrase = options.keyPassphrase;
-        const filePath = options.filePath
+        const filePath = options.filePath;
 
         try {
           const decryptedPath = await client.decryptFile(nodePath, filePath, privateKey, keyPassphrase);
@@ -142,7 +140,7 @@ function makeCryptoCommand() {
     .addCommand(makeVerifyCommand())
     .addCommand(makeSignCommand())
     .addCommand(makeEncryptCommand())
-    .addCommand(makeDecryptCommand())
+    .addCommand(makeDecryptCommand());
 }
 
 export default makeCryptoCommand;

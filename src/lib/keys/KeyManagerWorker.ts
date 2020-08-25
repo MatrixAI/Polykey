@@ -22,13 +22,12 @@ const keyManagerWorker = {
    * @param signature The PGP signature
    * @param identity Identity with which to verify with.
    */
-  async verifyData(data: Buffer | string, signature: Buffer, identity: any): Promise<boolean> {
+  async verifyData(data: Buffer | string, identity: any): Promise<boolean> {
     const ring = new kbpgp.keyring.KeyRing();
 
     ring.add_key_manager(identity);
     const params = {
-      armored: signature,
-      data: data,
+      armored: data,
       keyfetch: ring,
     };
     const literals = await promisify(kbpgp.unbox)(params);

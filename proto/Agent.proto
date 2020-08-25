@@ -77,8 +77,7 @@ message SignFileResponseMessage {
 // ==== VerifyFile ==== //
 message VerifyFileRequestMessage {
   string file_path = 1;
-  string signature_path = 2;
-  string public_key_path = 3;
+  string public_key_path = 2;
 }
 message VerifyFileResponseMessage {
   bool verified = 1;

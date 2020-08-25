@@ -562,15 +562,6 @@ let
         sha1 = "73926771923b5a19747ad666aa5cd4bf9c6e9ce8";
       };
     };
-    "base64-js-0.0.2" = {
-      name = "base64-js";
-      packageName = "base64-js";
-      version = "0.0.2";
-      src = fetchurl {
-        url = "https://registry.npmjs.org/base64-js/-/base64-js-0.0.2.tgz";
-        sha1 = "024f0f72afa25b75f9c0ee73cd4f55ec1bed9784";
-      };
-    };
     "base64-js-1.3.0" = {
       name = "base64-js";
       packageName = "base64-js";
@@ -641,15 +632,6 @@ let
       src = fetchurl {
         url = "https://registry.npmjs.org/body-parser/-/body-parser-1.19.0.tgz";
         sha512 = "dhEPs72UPbDnAQJ9ZKMNTP6ptJaionhP5cBb541nXPlW60Jepo9RV/a4fX4XWW9CuFNK22krhrj1+rgzifNCsw==";
-      };
-    };
-    "bops-0.0.7" = {
-      name = "bops";
-      packageName = "bops";
-      version = "0.0.7";
-      src = fetchurl {
-        url = "https://registry.npmjs.org/bops/-/bops-0.0.7.tgz";
-        sha1 = "b4a0a5a839a406454af0fe05a8b91a7a766a54e2";
       };
     };
     "brace-expansion-1.1.11" = {
@@ -1543,15 +1525,6 @@ let
         sha512 = "jp4tHawyV7+fkkSKyvjuLZswblUtz+SQKzSWnBbii16BuZksJlU1wuBYXY75r+duh/llF1ur6oNwi+2ZzjKZ7g==";
       };
     };
-    "git-apply-delta-0.0.7" = {
-      name = "git-apply-delta";
-      packageName = "git-apply-delta";
-      version = "0.0.7";
-      src = fetchurl {
-        url = "https://registry.npmjs.org/git-apply-delta/-/git-apply-delta-0.0.7.tgz";
-        sha1 = "fb76ae144540d79440b52b31de03e63c993c7219";
-      };
-    };
     "glob-7.1.6" = {
       name = "glob";
       packageName = "glob";
@@ -1903,13 +1876,13 @@ let
         sha1 = "e8fbf374dc556ff8947a10dcb0572d633f2cfa10";
       };
     };
-    "isomorphic-git-1.5.0" = {
+    "isomorphic-git-1.7.4" = {
       name = "isomorphic-git";
       packageName = "isomorphic-git";
-      version = "1.5.0";
+      version = "1.7.4";
       src = fetchurl {
-        url = "https://registry.npmjs.org/isomorphic-git/-/isomorphic-git-1.5.0.tgz";
-        sha512 = "h4SrvkV6+P776NQdoLhaYGvIB9721JCJ3iT+QWHQjG0xio7eWWszqFfSzIDUAykBR9Muv/zx6Bg73TW5r9YZUg==";
+        url = "https://registry.npmjs.org/isomorphic-git/-/isomorphic-git-1.7.4.tgz";
+        sha512 = "gzVg61bZLmfojR287p+nT9bbuFhSH0Us9f6pRVp4J9CA/1A/mghBEvcsCgRxalv+XKJ1sQMxWTc90tzn8WnYVA==";
       };
     };
     "js-tokens-4.0.0" = {
@@ -2299,13 +2272,13 @@ let
         sha512 = "FM9nNUYrRBAELZQT3xeZQ7fmMOBg6nWNmJKTcgsJeaLstP/UODVpGsr5OhXhhXg6f+qtJ8uiZ+PUxkDWcgIXLw==";
       };
     };
-    "minimisted-2.0.0" = {
+    "minimisted-2.0.1" = {
       name = "minimisted";
       packageName = "minimisted";
-      version = "2.0.0";
+      version = "2.0.1";
       src = fetchurl {
-        url = "https://registry.npmjs.org/minimisted/-/minimisted-2.0.0.tgz";
-        sha512 = "oP88Dw3LK/pdrKyMdlbmg3W50969UNr4ctISzJfPl+YPYHTAOrS+dihXnsgRNKSRIzDsrnV3eE2CCVlZbpOKdQ==";
+        url = "https://registry.npmjs.org/minimisted/-/minimisted-2.0.1.tgz";
+        sha512 = "1oPjfuLQa2caorJUM8HV8lGgWCc0qqAO1MNv/k05G4qslmsndV/5WdNZrqCiyqiz3wohia2Ij2B7w2Dr7/IyrA==";
       };
     };
     "mkdirp-0.5.1" = {
@@ -2956,13 +2929,13 @@ let
         sha1 = "b5fdc08f1287ea1178628e415e25132b73646c6d";
       };
     };
-    "simple-concat-1.0.0" = {
+    "simple-concat-1.0.1" = {
       name = "simple-concat";
       packageName = "simple-concat";
-      version = "1.0.0";
+      version = "1.0.1";
       src = fetchurl {
-        url = "https://registry.npmjs.org/simple-concat/-/simple-concat-1.0.0.tgz";
-        sha1 = "7344cbb8b6e26fb27d66b2fc86f9f6d5997521c6";
+        url = "https://registry.npmjs.org/simple-concat/-/simple-concat-1.0.1.tgz";
+        sha512 = "cSFtAPtRhljv69IK0hTVZQ+OfE9nePi/rtJmw5UjHeVyVroEqJXP1sFztKUy1qU+xvz3u/sfYJLa947b7nAN2Q==";
       };
     };
     "simple-get-3.1.0" = {
@@ -3199,15 +3172,6 @@ let
         sha1 = "17e6c11f73dd4f3d74cda7a4ff3238e9ad9bf890";
       };
     };
-    "to-utf8-0.0.1" = {
-      name = "to-utf8";
-      packageName = "to-utf8";
-      version = "0.0.1";
-      src = fetchurl {
-        url = "https://registry.npmjs.org/to-utf8/-/to-utf8-0.0.1.tgz";
-        sha1 = "d17aea72ff2fba39b9e43601be7b3ff72e089852";
-      };
-    };
     "toidentifier-1.0.0" = {
       name = "toidentifier";
       packageName = "toidentifier";
@@ -3386,15 +3350,6 @@ let
       src = fetchurl {
         url = "https://registry.npmjs.org/v8-compile-cache/-/v8-compile-cache-2.0.3.tgz";
         sha512 = "CNmdbwQMBjwr9Gsmohvm0pbL954tJrNzf6gWL3K+QMQf00PF7ERGrEiLgjuU3mKreLC2MeGhUsNV9ybTbLgd3w==";
-      };
-    };
-    "varint-0.0.3" = {
-      name = "varint";
-      packageName = "varint";
-      version = "0.0.3";
-      src = fetchurl {
-        url = "https://registry.npmjs.org/varint/-/varint-0.0.3.tgz";
-        sha1 = "b821de9b04b38b3cd22f72c18d94a9fb72ab3518";
       };
     };
     "vary-1.1.2" = {
@@ -3711,6 +3666,7 @@ let
       sources."crypto-random-string-2.0.0"
       sources."dayjs-1.8.30"
       sources."debug-2.6.9"
+      sources."decompress-response-4.2.1"
       sources."deep-is-0.1.3"
       sources."depd-1.1.2"
       sources."destroy-1.0.4"
@@ -3834,12 +3790,6 @@ let
       sources."gcp-metadata-4.1.4"
       sources."get-random-values-1.2.0"
       sources."get-stdin-6.0.0"
-      (sources."git-apply-delta-0.0.7" // {
-        dependencies = [
-          sources."base64-js-0.0.2"
-          sources."bops-0.0.7"
-        ];
-      })
       sources."glob-parent-5.1.1"
       sources."global-4.3.2"
       (sources."google-auth-library-6.0.5" // {
@@ -3896,16 +3846,10 @@ let
       sources."is-typedarray-1.0.0"
       sources."isarray-1.0.0"
       sources."isexe-2.0.0"
-      (sources."isomorphic-git-1.5.0" // {
+      (sources."isomorphic-git-1.7.4" // {
         dependencies = [
-          sources."decompress-response-4.2.1"
-          sources."mimic-response-2.1.0"
           sources."pako-1.0.11"
           sources."pify-4.0.1"
-          sources."readable-stream-3.6.0"
-          sources."safe-buffer-5.2.1"
-          sources."simple-get-3.1.0"
-          sources."string_decoder-1.3.0"
         ];
       })
       sources."json-bigint-1.0.0"
@@ -3950,10 +3894,11 @@ let
       sources."mime-2.3.1"
       sources."mime-db-1.44.0"
       sources."mime-types-2.1.27"
+      sources."mimic-response-2.1.0"
       sources."min-document-2.19.0"
       sources."minimatch-3.0.4"
       sources."minimist-0.0.8"
-      (sources."minimisted-2.0.0" // {
+      (sources."minimisted-2.0.1" // {
         dependencies = [
           sources."minimist-1.2.5"
         ];
@@ -4019,7 +3964,8 @@ let
       sources."setprototypeof-1.1.1"
       sources."sha.js-2.4.11"
       sources."signal-exit-3.0.2"
-      sources."simple-concat-1.0.0"
+      sources."simple-concat-1.0.1"
+      sources."simple-get-3.1.0"
       (sources."slice-ansi-2.1.0" // {
         dependencies = [
           sources."ansi-styles-3.2.1"
@@ -4078,7 +4024,6 @@ let
       })
       sources."tiny-worker-2.3.0"
       sources."to-array-0.1.4"
-      sources."to-utf8-0.0.1"
       sources."toidentifier-1.0.0"
       sources."triplesec-3.0.27"
       sources."tslib-1.11.1"
@@ -4107,7 +4052,6 @@ let
       sources."util-deprecate-1.0.2"
       sources."utils-merge-1.0.1"
       sources."v8-compile-cache-2.0.3"
-      sources."varint-0.0.3"
       sources."vary-1.1.2"
       (sources."virtualfs-2.2.0" // {
         dependencies = [

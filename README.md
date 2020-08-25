@@ -44,24 +44,29 @@ Here is a demo of the CLI on [asciinema](https://asciinema.org/a/347434).
 
 The PolyKey CLI exposes various git-style sub commands that can be used to manipulate the PolyKey node:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
+Usage: polykey [options] [command]
+
+Options:
+  --version       output the current version
+  -h, --help      display help for command
+
 Commands:
-  config [options]  configure polykey
-  keymanager        manipulate the keymanager
-  node              network operations on the current polykey node
-  secrets           manipulate secrets for a given vault
-  vaults            manipulate vaults
-  crypto            crypto operations
-  help [command]    display help for command
+  keys            manipulate keys
+  secrets         manipulate secrets for a given vault
+  vaults          manipulate vaults
+  crypto          crypto operations
+  agent           control the polykey agent
+  help [command]  display help for command
 </pre>
 
 Usage looks like the following:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
-polykey node ...
+polykey agent ...
 polykey vaults ...
 
 # Sub commands are heirarchical like so:
-polykey vaults add ...
-polykey secrets remove ...
+polykey vaults new ...
+polykey secrets delete ...
 </pre>
 
 PolyKey also exposes a helpful alias, `pk`, to make typing out commands a little quicker:
@@ -75,122 +80,203 @@ If you ever get stuck, every sub command has a help flag:
 # Either one of -h or --help will do
 pk -h
 pk vaults --help
-pk secrets add -h
+pk secrets new -h
 </pre>
 
-## Config
-With this command you can manipulate the configuration of PolyKey including changing the password, importing new private and public keys and changing the path to polykey.
+## Agent
+With this command you can manipulate the polykey agent including starting/restarting/stopping the agent, creating/importing a new polykey node, and getting the agent status.
 <pre style="white-space:pre !important; overflow-x:scroll !important">
+Usage: polykey agent [options] [command]
+
+control the polykey agent
+
 Options:
-  -pub, --public-key <publicKey>                   provide the path to an existing public key
-  -priv, --private-key <privateKey>                provide the path to an existing private key
-  -pass, --private-passphrase <privatePassphrase>  provide the passphrase to the private key
-  -path, --polykey-path <polykeyPath>              provide the polykey path. defaults to ~/.polykey
-  -v, --verbose                                    increase verbosity by one level
+  -h, --help         display help for command
+
+Commands:
+  start [options]    start the agent
+  restart [options]  restart the agent
+  status             retrieve the status of the agent
+  stop [options]     stop the agent
+  list|ls [options]  list all the nodes controlled by the node
+  create [options]   create a new polykey node
+  load [options]     load an existing polykey node
+  help [command]     display help for command
 </pre>
 Example  usage:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
-# Change the location of PolyKey, perhaps to another node on the same computer
-pk config --polykey-path='~/PolyKeyNode2'
+# managing the polykey agent
+pk agent stop
+pk agent start
+# restart the agent as a daemon
+pk agent restart -d
+pk agent status # agent status is 'online'
 
-# Import a new public key
-pk config -pub ./keys/publicKey.txt
+# create a new polykey node
+pk agent create -k '~/NewPolykeyNode' -n 'John Smith' -e 'john@email.com' -p 'passphrase'
+
+# load an existing node
+pk agent load -k '~/NewPolykeyNode' -p 'passphrase'
+
+# list the nodes managed by agent
+pk agent list # ~/NewPolykeyNode
 </pre>
 
-You can also easily clear the config to start fresh:
-<pre style="white-space:pre !important; overflow-x:scroll !important">
-pk config clear
-</pre>
-If one of the required configuration parameters is missing from the config store, PolyKey will prompt you for it on the next command.
+Note: Polykey also provides the ability to set an environment variable, `KEYNODE_PATH`, instead of specifying the node path with `-k '~/NewPolykeyNode'`
 
-## KeyManager
-This command is used to interact with PolyKey's KeyManager. With this command you can generate new keys, import keys and more.
-TODO: add commands to interact with the keymanager
+## Keys
+This command is used to interact with PolyKey's KeyManager. With this command you can generate new keys, list keys and more.
 <pre style="white-space:pre !important; overflow-x:scroll !important">
+Usage: polykey keys [options] [command]
+
+manipulate keys
+
+Options:
+  -h, --help         display help for command
+
 Commands:
-  derive [options]  manipulate the keymanager
+  new [options]      derive a new symmetric key
+  delete [options]   delete a symmetric key from the key manager
+  list|ls [options]  list all symmetric keys in the keynode
+  get [options]      get the contents of a specific symmetric key
+  primary [options]  get the contents of the primary keypair
+  help [command]     display help for command
 </pre>
-
-## Node
-The node sub command lets you control the daemon responsible for network operations.
+Example  usage:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
-Commands:
-  start           start the polykey node
-  stop            stop the polykey node
-</pre>
+# create a new key
+pk keys new -n 'NewKey' -p 'Key Passphrase'
 
-TODO: add commands to interact with the node
-<pre style="white-space:pre !important; overflow-x:scroll !important">
+# deleting an existing key
+pk keys delete -n 'NewKey'
+
+# list all existing keys
+pk keys list # 'NewKey'
+
+# list primary key with private key included
+pk keys primary -p
+# Public Key:
+# -----BEGIN PGP PUBLIC KEY BLOCK-----
+# ...
+# -----END PGP PUBLIC KEY BLOCK-----
+#
+# Private Key:
+# -----BEGIN PGP PRIVATE KEY BLOCK-----
+# ...
+# -----END PGP PRIVATE KEY BLOCK-----
 </pre>
 
 ## Vaults
 The vaults sub command lets you manipulate vaults, e.g. to list the existing vaults, add a new vault or destroy an old vault.
 <pre style="white-space:pre !important; overflow-x:scroll !important">
+Usage: polykey vaults [options] [command]
+
+manipulate vaults
+
+Options:
+  -h, --help            display help for command
+
 Commands:
-  list|ls [options]  list all available vaults
-  add                create new vault(s)
-  remove [options]   destroy an existing vault
+  list|ls [options]     list all available vaults
+  new [options]         create new vault(s)
+  delete|del [options]  delete an existing vault
+  help [command]        display help for command
 </pre>
 
-Command examples:
+Example usage:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
-# List names of all existing vaults
-pk vaults ls
+# create a new vault
+pk vaults add 'NewVault'
 
-# Create a new vault called 'SecureVault'
-pk vaults add 'SecureVault'
+# list all existing vaults
+pk vaults ls # 'NewVault'
 
-# Remove 'SecureVault'
-pk vaults remove --vault-name='SecureVault'
-
-# Remove all vaults at once
-pk vaults remove -a
+# delete a vault
+pk vaults delete 'NewVault'
 </pre>
 
 ## Secrets
-The secrets sub command lets you manipulate secrets in a specific vault including to add new secrets, remove old secrets and modify existing secrets.
+The secrets sub command lets you manipulate secrets in a specific vault such as adding new secrets, removing old secrets or modifying existing secrets. In addition, polykey can inject variables into a modified environment with the `pk secrets env` command.
 <pre style="white-space:pre !important; overflow-x:scroll !important">
+Usage: polykey secrets [options] [command]
+
+manipulate secrets for a given vault
+
+Options:
+  -h, --help            display help for command
+
 Commands:
-  list|ls [options]  list all available secrets for a given vault
-  add [options]      add a secret to a given vault
-  remove [options]   remove a secret from a given vault
+  list|ls [options]     list all available secrets for a given vault
+  new [options]         create a secret within a given vault, specify an secret
+                        path with '&lt;vaultName>:&lt;secretName>'
+  update [options]      update a secret within a given vault, specify an secret
+                        path with '&lt;vaultName>:&lt;secretName>'
+  delete|del [options]  delete a secret from a given vault, specify an secret
+                        path with '&lt;vaultName>:&lt;secretName>'
+  get [options]         retrieve a secret from a given vault, specify an secret
+                        path with '&lt;vaultName>:&lt;secretName>'
+  env [options]         run a modified environment with injected secrets,
+                        specify an secret path with '&lt;vaultName>:&lt;secretName>'
+  help [command]        display help for command
 </pre>
 
-Command examples:
+Example usage:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
-# List names of all secrets within 'SecureVault'
-pk secrets list --vault-name='SecureVault'
+# add a new secret
+pk secrets add -f '~/SeretFile' NewVault:NewSecret
 
-# Add a new secret named 'Secret' to 'SecureVault
-pk secrets add --vault-name='SecureVault' --secret-name='Secret'
+# list names of all secrets within specific vaults
+pk secrets list NewVault AnotherVault
+# 1. NewVault:NewSecret
+# 2. AnotherVault:AnotherSecret
 
-# Remove 'Secret' from 'SecureVault'
-pk secrets remove --vault-name='SecureVault' --secret-name='Secret'
+# delete secrets
+pk secrets delete NewVault:NewSecret AnotherVault:AnotherSecret
+
+# retreive a secret
+pk secrets get NewVault:NewSecret
+# &lt;NewSecretContent>
+
+# enter a modified environment with injected secrets
+pk secrets env NewVault:NewSecret=SECRET_1 AnotherVault:AnotherSecret=SECRET_2
+
+# enter a modified environment with injected secrets and execute a command
+pk secrets env NewVault:NewSecret=SECRET_1 --command="echo $SECRET_1"
 </pre>
 
 ## Crypto
 The crypto sub command allows you to perform asymmetric cryptography operations (sign/encrypt/verify/decrypt) on files using the loaded public/prvate keypair.
-PolyKey signs and verifies files using a [detached signature](https://en.wikipedia.org/wiki/Detached_signature)
-TODO: add encryption and decryption
-```
+
+<pre style="white-space:pre !important; overflow-x:scroll !important">
+Usage: polykey crypto [options] [command]
+
+crypto operations
+
+Options:
+  -h, --help         display help for command
+
 Commands:
-  sign [options]    verification operations
-  verify [options]  signing operations
-```
+  verify [options]   verification operations
+  sign [options]     signing operations [files]
+  encrypt [options]  encryption operations
+  decrypt [options]  decryption operations
+  help [command]     display help for command
+</pre>
 
-Command examples:
-```
-pk crypto sign ./file --signing-key='./my_priv_key' --key-passphrase='password'
+Example usage:
+<pre style="white-space:pre !important; overflow-x:scroll !important">
+# sign a file and store as a detached signature
+pk crypto sign ./file # creates ./file.sig
 
-# If no signing key is provided, polykey will use the loaded private key
-pk crypto sign ./file
+# verify a file
+pk crypto verify -f ./file.sig
 
+# encrypt a file
+pk crypto encrypt ./file
 
-pk crypto verify ./signed_file --verifying-key='./my_pub_key' --detach-sig='./signed_file.sig'
-
-# If no  verifying key is provided, polykey will use the loaded public key
-pk crypto verify ./signed_file --detach-sig='./signed_file.sig'
-```
+# decrypt a file
+pk crypto decrypt ./file
+</pre>
 
 ## Verbosity
 TODO: explain verbosity levels when it is implemented

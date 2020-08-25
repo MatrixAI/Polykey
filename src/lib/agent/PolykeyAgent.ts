@@ -75,22 +75,23 @@ class PolykeyAgent {
     nodePathSet.delete(nodePath);
     this.persistentStore.set('nodePaths', Array.from(nodePathSet.values()));
   }
+
   private getPolyKey(nodePath: string, failOnLocked: boolean = true): Polykey {
-    const pk = this.polykeyMap.get(nodePath)
+    const pk = this.polykeyMap.get(nodePath);
     if (this.polykeyMap.has(nodePath) && pk) {
       if (fs.existsSync(nodePath)) {
         if (failOnLocked && !pk.keyManager.identityLoaded) {
-          throw Error(`node path exists in memory but is locked: ${nodePath}`)
+          throw Error(`node path exists in memory but is locked: ${nodePath}`);
         } else {
-          return pk
+          return pk;
         }
       } else {
-        this.removeNodePath(nodePath)
-        throw Error(`node path exists in memory but does not exist on file system: ${nodePath}`)
+        this.removeNodePath(nodePath);
+        throw Error(`node path exists in memory but does not exist on file system: ${nodePath}`);
       }
     } else {
-      this.removeNodePath(nodePath)
-      throw Error(`node path does not exist in memory: ${nodePath}`)
+      this.removeNodePath(nodePath);
+      throw Error(`node path does not exist in memory: ${nodePath}`);
     }
   }
 
@@ -150,6 +151,10 @@ class PolykeyAgent {
   }
 
   stop() {
+    this.polykeyMap.forEach((pk) => {
+      pk.peerManager.multicastBroadcaster.socket.close()
+      pk.peerManager.server.forceShutdown()
+    })
     this.server.close();
   }
 
@@ -260,8 +265,9 @@ class PolykeyAgent {
   private async registerNode(nodePath: string, request: Uint8Array) {
     const { passphrase } = RegisterNodeRequestMessage.decode(request);
 
-    let pk: Polykey | undefined = this.getPolyKey(nodePath, false);
-    if (pk) {
+    let pk: Polykey;
+    if (this.polykeyMap.has(nodePath)) {
+      pk = this.getPolyKey(nodePath, false);
       if (pk.keyManager.identityLoaded) {
         throw Error(`node path is already loaded and unlocked: '${nodePath}'`);
       }
@@ -273,9 +279,9 @@ class PolykeyAgent {
       pk = new Polykey(nodePath, fs, km);
     }
     // Load all metadata
-    await pk.keyManager.loadMetadata()
-    pk.peerManager.loadMetadata()
-    await pk.vaultManager.loadMetadata()
+    await pk.keyManager.loadMetadata();
+    pk.peerManager.loadMetadata();
+    await pk.vaultManager.loadMetadata();
 
     // Set polykey class
     this.setPolyKey(nodePath, pk);
@@ -350,7 +356,10 @@ class PolykeyAgent {
     const { includePrivateKey } = GetPrimaryKeyPairRequestMessage.decode(request);
     const pk = this.getPolyKey(nodePath);
     const keypair = pk.keyManager.getKeyPair();
-    return GetPrimaryKeyPairResponseMessage.encode({ publicKey: keypair.public, privateKey: includePrivateKey ? keypair.private : undefined }).finish();
+    return GetPrimaryKeyPairResponseMessage.encode({
+      publicKey: keypair.public,
+      privateKey: includePrivateKey ? keypair.private : undefined,
+    }).finish();
   }
   private async deleteKey(nodePath: string, request: Uint8Array) {
     const { keyName } = DeleteKeyRequestMessage.decode(request);
@@ -369,9 +378,9 @@ class PolykeyAgent {
     return SignFileResponseMessage.encode({ signaturePath }).finish();
   }
   private async verifyFile(nodePath: string, request: Uint8Array) {
-    const { filePath, signaturePath } = VerifyFileRequestMessage.decode(request);
+    const { filePath, publicKeyPath } = VerifyFileRequestMessage.decode(request);
     const pk = this.getPolyKey(nodePath);
-    const verified = await pk.keyManager.verifyFile(filePath, signaturePath);
+    const verified = await pk.keyManager.verifyFile(filePath, publicKeyPath);
     return VerifyFileResponseMessage.encode({ verified }).finish();
   }
   private async encryptFile(nodePath: string, request: Uint8Array) {
@@ -422,11 +431,11 @@ class PolykeyAgent {
     const { vaultName, secretName, secretPath, secretContent } = CreateSecretRequestMessage.decode(request);
     const pk = this.getPolyKey(nodePath);
     const vault = pk.vaultManager.getVault(vaultName);
-    let secretBuffer: Buffer
+    let secretBuffer: Buffer;
     if (secretPath) {
       secretBuffer = await fs.promises.readFile(secretPath);
     } else {
-      secretBuffer = Buffer.from(secretContent)
+      secretBuffer = Buffer.from(secretContent);
     }
     await vault.addSecret(secretName, secretBuffer);
     return CreateSecretResponseMessage.encode({ successful: true }).finish();
@@ -449,11 +458,11 @@ class PolykeyAgent {
     const { vaultName, secretName, secretPath, secretContent } = UpdateSecretRequestMessage.decode(request);
     const pk = this.getPolyKey(nodePath);
     const vault = pk.vaultManager.getVault(vaultName);
-    let secretBuffer: Buffer
+    let secretBuffer: Buffer;
     if (secretPath) {
       secretBuffer = await fs.promises.readFile(secretPath);
     } else {
-      secretBuffer = Buffer.from(secretContent)
+      secretBuffer = Buffer.from(secretContent);
     }
     await vault.updateSecret(secretName, secretBuffer);
     return UpdateSecretResponseMessage.encode({ successful: true }).finish();
@@ -477,7 +486,9 @@ class PolykeyAgent {
   static get SocketPath(): string {
     const platform = os.platform();
     const userInfo = os.userInfo();
-    if (platform == 'win32') {
+    if (process.env.PK_SOCKET_PATH) {
+      return process.env.PK_SOCKET_PATH;
+    } else if (platform == 'win32') {
       return path.join('\\\\?\\pipe', process.cwd(), 'polykey-agent');
     } else {
       return `/run/user/${userInfo.uid}/polykey/S.polykey-agent`;
@@ -487,7 +498,9 @@ class PolykeyAgent {
   public static get LogPath(): string {
     const platform = os.platform();
     const userInfo = os.userInfo();
-    if (platform == 'win32') {
+    if (process.env.PK_LOG_PATH) {
+      return process.env.PK_LOG_PATH;
+    } else if (platform == 'win32') {
       return path.join(os.tmpdir(), 'polykey', 'log');
     } else {
       return `/run/user/${userInfo.uid}/polykey/log`;
@@ -512,12 +525,14 @@ class PolykeyAgent {
             'ipc',
             fs.openSync(path.join(PolykeyAgent.LogPath, 'output.log'), 'a'),
             fs.openSync(path.join(PolykeyAgent.LogPath, 'error.log'), 'a'),
-          ]
+          ],
+          silent: true,
         };
         const agentProcess = fork(PolykeyAgent.DAEMON_SCRIPT_PATH, undefined, options);
 
         const pid = agentProcess.pid;
         agentProcess.unref();
+        agentProcess.disconnect();
         resolve(pid);
       } catch (err) {
         reject(err);
