@@ -17,7 +17,7 @@ declare class PolykeyClient {
         privateKey: string;
     }>;
     signFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string): Promise<string>;
-    verifyFile(nodePath: string, filePath: string, signaturePath?: string): Promise<boolean>;
+    verifyFile(nodePath: string, filePath: string, publicKeyPath?: string): Promise<boolean>;
     encryptFile(nodePath: string, filePath: string, publicKeyPath?: string): Promise<string>;
     decryptFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string): Promise<string>;
     listVaults(nodePath: string): Promise<string[]>;

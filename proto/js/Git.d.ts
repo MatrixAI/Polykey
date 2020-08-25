@@ -1,268 +1,274 @@
 import * as $protobuf from "protobufjs";
-/** Namespace git. */
-export namespace git {
+export = Git;
 
-    /** Represents a GitServer */
-    class GitServer extends $protobuf.rpc.Service {
+declare namespace Git {
 
-        /**
-         * Constructs a new GitServer service.
-         * @param rpcImpl RPC implementation
-         * @param [requestDelimited=false] Whether requests are length-delimited
-         * @param [responseDelimited=false] Whether responses are length-delimited
-         */
-        constructor(rpcImpl: $protobuf.RPCImpl, requestDelimited?: boolean, responseDelimited?: boolean);
 
-        /**
-         * Creates new GitServer service using the specified rpc implementation.
-         * @param rpcImpl RPC implementation
-         * @param [requestDelimited=false] Whether requests are length-delimited
-         * @param [responseDelimited=false] Whether responses are length-delimited
-         * @returns RPC service. Useful where requests and/or responses are streamed.
-         */
-        public static create(rpcImpl: $protobuf.RPCImpl, requestDelimited?: boolean, responseDelimited?: boolean): GitServer;
+    /** Namespace git. */
+    namespace git {
 
-        /**
-         * Calls RequestInfo.
-         * @param request InfoRequest message or plain object
-         * @param callback Node-style callback called with the error, if any, and InfoReply
-         */
-        public requestInfo(request: git.IInfoRequest, callback: git.GitServer.RequestInfoCallback): void;
+        /** Represents a GitServer */
+        class GitServer extends $protobuf.rpc.Service {
 
-        /**
-         * Calls RequestInfo.
-         * @param request InfoRequest message or plain object
-         * @returns Promise
-         */
-        public requestInfo(request: git.IInfoRequest): Promise<git.InfoReply>;
+            /**
+             * Constructs a new GitServer service.
+             * @param rpcImpl RPC implementation
+             * @param [requestDelimited=false] Whether requests are length-delimited
+             * @param [responseDelimited=false] Whether responses are length-delimited
+             */
+            constructor(rpcImpl: $protobuf.RPCImpl, requestDelimited?: boolean, responseDelimited?: boolean);
 
-        /**
-         * Calls RequestPack.
-         * @param request PackRequest message or plain object
-         * @param callback Node-style callback called with the error, if any, and PackReply
-         */
-        public requestPack(request: git.IPackRequest, callback: git.GitServer.RequestPackCallback): void;
+            /**
+             * Creates new GitServer service using the specified rpc implementation.
+             * @param rpcImpl RPC implementation
+             * @param [requestDelimited=false] Whether requests are length-delimited
+             * @param [responseDelimited=false] Whether responses are length-delimited
+             * @returns RPC service. Useful where requests and/or responses are streamed.
+             */
+            public static create(rpcImpl: $protobuf.RPCImpl, requestDelimited?: boolean, responseDelimited?: boolean): GitServer;
 
-        /**
-         * Calls RequestPack.
-         * @param request PackRequest message or plain object
-         * @returns Promise
-         */
-        public requestPack(request: git.IPackRequest): Promise<git.PackReply>;
-    }
+            /**
+             * Calls RequestInfo.
+             * @param request InfoRequest message or plain object
+             * @param callback Node-style callback called with the error, if any, and InfoReply
+             */
+            public requestInfo(request: git.IInfoRequest, callback: git.GitServer.RequestInfoCallback): void;
 
-    namespace GitServer {
+            /**
+             * Calls RequestInfo.
+             * @param request InfoRequest message or plain object
+             * @returns Promise
+             */
+            public requestInfo(request: git.IInfoRequest): Promise<git.InfoReply>;
 
-        /**
-         * Callback as used by {@link git.GitServer#requestInfo}.
-         * @param error Error, if any
-         * @param [response] InfoReply
-         */
-        type RequestInfoCallback = (error: (Error|null), response?: git.InfoReply) => void;
+            /**
+             * Calls RequestPack.
+             * @param request PackRequest message or plain object
+             * @param callback Node-style callback called with the error, if any, and PackReply
+             */
+            public requestPack(request: git.IPackRequest, callback: git.GitServer.RequestPackCallback): void;
 
-        /**
-         * Callback as used by {@link git.GitServer#requestPack}.
-         * @param error Error, if any
-         * @param [response] PackReply
-         */
-        type RequestPackCallback = (error: (Error|null), response?: git.PackReply) => void;
-    }
+            /**
+             * Calls RequestPack.
+             * @param request PackRequest message or plain object
+             * @returns Promise
+             */
+            public requestPack(request: git.IPackRequest): Promise<git.PackReply>;
+        }
 
-    /** Properties of an InfoRequest. */
-    interface IInfoRequest {
+        namespace GitServer {
 
-        /** InfoRequest vaultName */
-        vaultName?: (string|null);
-    }
+            /**
+             * Callback as used by {@link git.GitServer#requestInfo}.
+             * @param error Error, if any
+             * @param [response] InfoReply
+             */
+            type RequestInfoCallback = (error: (Error|null), response?: git.InfoReply) => void;
 
-    /** Represents an InfoRequest. */
-    class InfoRequest implements IInfoRequest {
+            /**
+             * Callback as used by {@link git.GitServer#requestPack}.
+             * @param error Error, if any
+             * @param [response] PackReply
+             */
+            type RequestPackCallback = (error: (Error|null), response?: git.PackReply) => void;
+        }
 
-        /**
-         * Constructs a new InfoRequest.
-         * @param [p] Properties to set
-         */
-        constructor(p?: git.IInfoRequest);
+        /** Properties of an InfoRequest. */
+        interface IInfoRequest {
 
-        /** InfoRequest vaultName. */
-        public vaultName: string;
+            /** InfoRequest vaultName */
+            vaultName?: (string|null);
+        }
 
-        /**
-         * Creates a new InfoRequest instance using the specified properties.
-         * @param [properties] Properties to set
-         * @returns InfoRequest instance
-         */
-        public static create(properties?: git.IInfoRequest): git.InfoRequest;
+        /** Represents an InfoRequest. */
+        class InfoRequest implements IInfoRequest {
 
-        /**
-         * Encodes the specified InfoRequest message. Does not implicitly {@link git.InfoRequest.verify|verify} messages.
-         * @param m InfoRequest message or plain object to encode
-         * @param [w] Writer to encode to
-         * @returns Writer
-         */
-        public static encode(m: git.IInfoRequest, w?: $protobuf.Writer): $protobuf.Writer;
+            /**
+             * Constructs a new InfoRequest.
+             * @param [p] Properties to set
+             */
+            constructor(p?: git.IInfoRequest);
 
-        /**
-         * Decodes an InfoRequest message from the specified reader or buffer.
-         * @param r Reader or buffer to decode from
-         * @param [l] Message length if known beforehand
-         * @returns InfoRequest
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.InfoRequest;
-    }
+            /** InfoRequest vaultName. */
+            public vaultName: string;
 
-    /** Properties of an InfoReply. */
-    interface IInfoReply {
+            /**
+             * Creates a new InfoRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns InfoRequest instance
+             */
+            public static create(properties?: git.IInfoRequest): git.InfoRequest;
 
-        /** InfoReply vaultName */
-        vaultName?: (string|null);
+            /**
+             * Encodes the specified InfoRequest message. Does not implicitly {@link git.InfoRequest.verify|verify} messages.
+             * @param m InfoRequest message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: git.IInfoRequest, w?: $protobuf.Writer): $protobuf.Writer;
 
-        /** InfoReply body */
-        body?: (Uint8Array|null);
-    }
+            /**
+             * Decodes an InfoRequest message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns InfoRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.InfoRequest;
+        }
 
-    /** Represents an InfoReply. */
-    class InfoReply implements IInfoReply {
+        /** Properties of an InfoReply. */
+        interface IInfoReply {
 
-        /**
-         * Constructs a new InfoReply.
-         * @param [p] Properties to set
-         */
-        constructor(p?: git.IInfoReply);
+            /** InfoReply vaultName */
+            vaultName?: (string|null);
 
-        /** InfoReply vaultName. */
-        public vaultName: string;
+            /** InfoReply body */
+            body?: (Uint8Array|null);
+        }
 
-        /** InfoReply body. */
-        public body: Uint8Array;
+        /** Represents an InfoReply. */
+        class InfoReply implements IInfoReply {
 
-        /**
-         * Creates a new InfoReply instance using the specified properties.
-         * @param [properties] Properties to set
-         * @returns InfoReply instance
-         */
-        public static create(properties?: git.IInfoReply): git.InfoReply;
+            /**
+             * Constructs a new InfoReply.
+             * @param [p] Properties to set
+             */
+            constructor(p?: git.IInfoReply);
 
-        /**
-         * Encodes the specified InfoReply message. Does not implicitly {@link git.InfoReply.verify|verify} messages.
-         * @param m InfoReply message or plain object to encode
-         * @param [w] Writer to encode to
-         * @returns Writer
-         */
-        public static encode(m: git.IInfoReply, w?: $protobuf.Writer): $protobuf.Writer;
+            /** InfoReply vaultName. */
+            public vaultName: string;
 
-        /**
-         * Decodes an InfoReply message from the specified reader or buffer.
-         * @param r Reader or buffer to decode from
-         * @param [l] Message length if known beforehand
-         * @returns InfoReply
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.InfoReply;
-    }
+            /** InfoReply body. */
+            public body: Uint8Array;
 
-    /** Properties of a PackRequest. */
-    interface IPackRequest {
+            /**
+             * Creates a new InfoReply instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns InfoReply instance
+             */
+            public static create(properties?: git.IInfoReply): git.InfoReply;
 
-        /** PackRequest vaultName */
-        vaultName?: (string|null);
+            /**
+             * Encodes the specified InfoReply message. Does not implicitly {@link git.InfoReply.verify|verify} messages.
+             * @param m InfoReply message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: git.IInfoReply, w?: $protobuf.Writer): $protobuf.Writer;
 
-        /** PackRequest body */
-        body?: (Uint8Array|null);
-    }
+            /**
+             * Decodes an InfoReply message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns InfoReply
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.InfoReply;
+        }
 
-    /** Represents a PackRequest. */
-    class PackRequest implements IPackRequest {
+        /** Properties of a PackRequest. */
+        interface IPackRequest {
 
-        /**
-         * Constructs a new PackRequest.
-         * @param [p] Properties to set
-         */
-        constructor(p?: git.IPackRequest);
+            /** PackRequest vaultName */
+            vaultName?: (string|null);
 
-        /** PackRequest vaultName. */
-        public vaultName: string;
+            /** PackRequest body */
+            body?: (Uint8Array|null);
+        }
 
-        /** PackRequest body. */
-        public body: Uint8Array;
+        /** Represents a PackRequest. */
+        class PackRequest implements IPackRequest {
 
-        /**
-         * Creates a new PackRequest instance using the specified properties.
-         * @param [properties] Properties to set
-         * @returns PackRequest instance
-         */
-        public static create(properties?: git.IPackRequest): git.PackRequest;
+            /**
+             * Constructs a new PackRequest.
+             * @param [p] Properties to set
+             */
+            constructor(p?: git.IPackRequest);
 
-        /**
-         * Encodes the specified PackRequest message. Does not implicitly {@link git.PackRequest.verify|verify} messages.
-         * @param m PackRequest message or plain object to encode
-         * @param [w] Writer to encode to
-         * @returns Writer
-         */
-        public static encode(m: git.IPackRequest, w?: $protobuf.Writer): $protobuf.Writer;
+            /** PackRequest vaultName. */
+            public vaultName: string;
 
-        /**
-         * Decodes a PackRequest message from the specified reader or buffer.
-         * @param r Reader or buffer to decode from
-         * @param [l] Message length if known beforehand
-         * @returns PackRequest
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.PackRequest;
-    }
+            /** PackRequest body. */
+            public body: Uint8Array;
 
-    /** Properties of a PackReply. */
-    interface IPackReply {
+            /**
+             * Creates a new PackRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns PackRequest instance
+             */
+            public static create(properties?: git.IPackRequest): git.PackRequest;
 
-        /** PackReply vaultName */
-        vaultName?: (string|null);
+            /**
+             * Encodes the specified PackRequest message. Does not implicitly {@link git.PackRequest.verify|verify} messages.
+             * @param m PackRequest message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: git.IPackRequest, w?: $protobuf.Writer): $protobuf.Writer;
 
-        /** PackReply body */
-        body?: (Uint8Array|null);
-    }
+            /**
+             * Decodes a PackRequest message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns PackRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.PackRequest;
+        }
 
-    /** Represents a PackReply. */
-    class PackReply implements IPackReply {
+        /** Properties of a PackReply. */
+        interface IPackReply {
 
-        /**
-         * Constructs a new PackReply.
-         * @param [p] Properties to set
-         */
-        constructor(p?: git.IPackReply);
+            /** PackReply vaultName */
+            vaultName?: (string|null);
 
-        /** PackReply vaultName. */
-        public vaultName: string;
+            /** PackReply body */
+            body?: (Uint8Array|null);
+        }
 
-        /** PackReply body. */
-        public body: Uint8Array;
+        /** Represents a PackReply. */
+        class PackReply implements IPackReply {
 
-        /**
-         * Creates a new PackReply instance using the specified properties.
-         * @param [properties] Properties to set
-         * @returns PackReply instance
-         */
-        public static create(properties?: git.IPackReply): git.PackReply;
+            /**
+             * Constructs a new PackReply.
+             * @param [p] Properties to set
+             */
+            constructor(p?: git.IPackReply);
 
-        /**
-         * Encodes the specified PackReply message. Does not implicitly {@link git.PackReply.verify|verify} messages.
-         * @param m PackReply message or plain object to encode
-         * @param [w] Writer to encode to
-         * @returns Writer
-         */
-        public static encode(m: git.IPackReply, w?: $protobuf.Writer): $protobuf.Writer;
+            /** PackReply vaultName. */
+            public vaultName: string;
 
-        /**
-         * Decodes a PackReply message from the specified reader or buffer.
-         * @param r Reader or buffer to decode from
-         * @param [l] Message length if known beforehand
-         * @returns PackReply
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.PackReply;
+            /** PackReply body. */
+            public body: Uint8Array;
+
+            /**
+             * Creates a new PackReply instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns PackReply instance
+             */
+            public static create(properties?: git.IPackReply): git.PackReply;
+
+            /**
+             * Encodes the specified PackReply message. Does not implicitly {@link git.PackReply.verify|verify} messages.
+             * @param m PackReply message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: git.IPackReply, w?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a PackReply message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns PackReply
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): git.PackReply;
+        }
     }
 }

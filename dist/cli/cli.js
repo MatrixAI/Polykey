@@ -232,7 +232,6 @@ function makeStartAgentCommand() {
             const pid = await Polykey_1.PolykeyAgent.startAgent(daemon);
             _1.pkLogger(`agent has started with pid of ${pid}`, _1.PKMessageType.SUCCESS);
         }
-        process.exit();
     }));
 }
 function makeRestartAgentCommand() {
@@ -246,7 +245,6 @@ function makeRestartAgentCommand() {
         const daemon = options.daemon;
         const pid = await Polykey_1.PolykeyAgent.startAgent(daemon);
         _1.pkLogger(`agent has restarted with pid of ${pid}`, _1.PKMessageType.SUCCESS);
-        process.exit();
     }));
 }
 function makeAgentStatusCommand() {
@@ -254,7 +252,6 @@ function makeAgentStatusCommand() {
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const status = await client.getAgentStatus();
         _1.pkLogger(`agent status is: '${status}'`, _1.PKMessageType.INFO);
-        process.exit();
     }));
 }
 function makeStopAgentCommand() {
@@ -282,7 +279,6 @@ function makeStopAgentCommand() {
                 throw Error('agent failed to stop');
             }
         }
-        process.exit();
     }));
 }
 function makeListNodesCommand() {
@@ -302,7 +298,6 @@ function makeListNodesCommand() {
                 _1.pkLogger(node, _1.PKMessageType.INFO);
             }
         }
-        process.exit();
     }));
 }
 function makeNewNodeCommand() {
@@ -328,7 +323,6 @@ function makeNewNodeCommand() {
         else {
             throw Error('something went wrong with node creation');
         }
-        process.exit();
     }));
 }
 function makeLoadNodeCommand() {
@@ -347,7 +341,6 @@ function makeLoadNodeCommand() {
         else {
             throw Error('something went wrong when loading node');
         }
-        process.exit();
     }));
 }
 function makeAgentCommand() {
@@ -422,10 +415,8 @@ function makeVerifyCommand() {
         .description('verification operations')
         .option('--node-path <nodePath>', 'node path')
         .option('-k, --public-key <publicKey>', 'path to public key that will be used to verify files, defaults to primary key')
-        .option('-s, --detach-sig <detachSig>', 'path to detached signature for file, defaults to [filename].sig')
-        .requiredOption('-f, --verified-file <verifiedFile>', 'file to be verified')
+        .requiredOption('-f, --signed-file <signedFile>', 'file to be verified')
         .action(_1.actionRunner(async (options) => {
-        var _a;
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const status = await client.getAgentStatus();
         if (status != 'online') {
@@ -434,8 +425,7 @@ function makeVerifyCommand() {
         const nodePath = _1.determineNodePath(options);
         const publicKey = options.publicKey;
         const filePath = options.signedFile;
-        const signaturePath = (_a = options.detachSig) !== null && _a !== void 0 ? _a : filePath + '.sig';
-        const verified = await client.verifyFile(nodePath, filePath, signaturePath);
+        const verified = await client.verifyFile(nodePath, filePath, publicKey);
         if (verified) {
             _1.pkLogger(`file '${filePath}' was successfully verified`, _1.PKMessageType.SUCCESS);
         }
@@ -641,7 +631,7 @@ function makeListSecretsCommand() {
 }
 function makeNewSecretCommand() {
     return new commander_1.default.Command('new')
-        .description('create a secret within a given vault')
+        .description("create a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
         .option('--node-path <nodePath>', 'node path')
         .arguments("secret path of the format '<vaultName>:<secretName>'")
         .requiredOption('-f, --file-path <filePath>', 'path to the secret to be added')
@@ -664,7 +654,7 @@ function makeNewSecretCommand() {
         try {
             // Add the secret
             const successful = await client.createSecret(nodePath, vaultName, secretName, filePath);
-            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully added to vault '${vaultName}'`, _1.PKMessageType.SUCCESS);
+            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}successfully added to vault '${vaultName}'`, _1.PKMessageType.SUCCESS);
         }
         catch (err) {
             throw Error(`Error when adding secret: ${err.message}`);
@@ -673,7 +663,7 @@ function makeNewSecretCommand() {
 }
 function makeUpdateSecretCommand() {
     return new commander_1.default.Command('update')
-        .description('update a secret within a given vault')
+        .description("update a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
         .option('--node-path <nodePath>', 'node path')
         .arguments("secret path of the format '<vaultName>:<secretName>'")
         .requiredOption('-f, --file-path <filePath>', 'path to the new secret')
@@ -696,7 +686,7 @@ function makeUpdateSecretCommand() {
         try {
             // Update the secret
             const successful = await client.updateSecret(nodePath, vaultName, secretName, filePath);
-            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully updated in vault '${vaultName}'`, successful ? _1.PKMessageType.SUCCESS : _1.PKMessageType.WARNING);
+            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}successfully updated in vault '${vaultName}'`, successful ? _1.PKMessageType.SUCCESS : _1.PKMessageType.WARNING);
         }
         catch (err) {
             throw Error(`Error when updating secret: ${err.message}`);
@@ -706,7 +696,7 @@ function makeUpdateSecretCommand() {
 function makeDeleteSecretCommand() {
     return new commander_1.default.Command('delete')
         .alias('del')
-        .description('delete a secret from a given vault')
+        .description("delete a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
         .arguments("secret path of the format '<vaultName>:<secretName>'")
         .option('--verbose', 'increase verbosity level by one')
         .action(_1.actionRunner(async (options) => {
@@ -726,7 +716,7 @@ function makeDeleteSecretCommand() {
         try {
             // Remove secret
             const successful = await client.destroySecret(nodePath, vaultName, secretName);
-            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}sucessfully removed from vault '${vaultName}'`, _1.PKMessageType.SUCCESS);
+            _1.pkLogger(`secret '${secretName}' was ${successful ? '' : 'un-'}successfully removed from vault '${vaultName}'`, _1.PKMessageType.SUCCESS);
         }
         catch (err) {
             throw Error(`Error when removing secret: ${err.message}`);
@@ -735,7 +725,7 @@ function makeDeleteSecretCommand() {
 }
 function makeGetSecretCommand() {
     return new commander_1.default.Command('get')
-        .description('retrieve a secret from a given vault')
+        .description("retrieve a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
         .arguments("secret path of the format '<vaultName>:<secretName>'")
         .option('-e, --env', 'wrap the secret in an environment variable declaration')
         .action(_1.actionRunner(async (options) => {
@@ -771,12 +761,12 @@ function makeGetSecretCommand() {
 function makeSecretEnvCommand() {
     return new commander_1.default.Command('env')
         .storeOptionsAsProperties(false)
-        .description('run a modified environment with injected secrets')
+        .description("run a modified environment with injected secrets, specify a secret path with '<vaultName>:<secretName>'")
         .option('--command <command>', 'In the environment of the derivation, run the shell command cmd. This command is executed in an interactive shell. (Use --run to use a non-interactive shell instead.)')
         .option('--run <run>', 'Like --command, but executes the command in a non-interactive shell. This means (among other things) that if you hit Ctrl-C while the command is running, the shell exits.')
         .arguments("secrets to inject into env, of the format '<vaultName>:<secretName>'. you can also control what the environment variable will be called using '<vaultName>:<secretName>=<variableName>', defaults to upper, snake case of the original secret name.")
         .action(_1.actionRunner(async (cmd) => {
-        var _a;
+        var _a, _b;
         const options = cmd.opts();
         const client = Polykey_1.PolykeyAgent.connectToAgent();
         const nodePath = _1.determineNodePath(options);
@@ -785,7 +775,7 @@ function makeSecretEnvCommand() {
         const run = options.run;
         const secretPathList = Array.from(cmd.args.values());
         if (secretPathList.length < 1) {
-            throw Error("please specify at least one secret");
+            throw Error('please specify at least one secret');
         }
         // Parse secret paths in list
         const parsedPathList = [];
@@ -797,7 +787,7 @@ function makeSecretEnvCommand() {
             parsedPathList.push({
                 vaultName,
                 secretName,
-                variableName: variableName !== null && variableName !== void 0 ? variableName : secretName.toUpperCase().replace('-', '_')
+                variableName: variableName !== null && variableName !== void 0 ? variableName : secretName.toUpperCase().replace('-', '_'),
             });
         }
         const secretEnv = { ...process_1.default.env };
@@ -812,7 +802,7 @@ function makeSecretEnvCommand() {
             throw Error(`Error when retrieving secret: ${err.message}`);
         }
         try {
-            const shellPath = process_1.default.env.SHELL;
+            const shellPath = (_b = process_1.default.env.SHELL) !== null && _b !== void 0 ? _b : "sh";
             const args = [];
             if (command && run) {
                 throw Error('only one of --command or --run can be specified');
@@ -829,7 +819,7 @@ function makeSecretEnvCommand() {
             const shell = child_process_1.spawn(shellPath, args, {
                 stdio: 'inherit',
                 env: secretEnv,
-                shell: true
+                shell: true,
             });
             shell.on('close', (code) => {
                 if (code != 0) {
@@ -905,7 +895,7 @@ function makeDeleteKeyCommand() {
         const nodePath = _1.determineNodePath(options);
         const keyName = options.keyName;
         const successful = await client.deleteKey(nodePath, keyName);
-        _1.pkLogger(`key '${keyName}' was ${successful ? '' : 'un-'}sucessfully deleted`, successful ? _1.PKMessageType.SUCCESS : _1.PKMessageType.INFO);
+        _1.pkLogger(`key '${keyName}' was ${successful ? '' : 'un-'}successfully deleted`, successful ? _1.PKMessageType.SUCCESS : _1.PKMessageType.INFO);
     }));
 }
 function makeListKeysCommand() {
@@ -951,10 +941,10 @@ function makeListPrimaryKeyPairCommand() {
             _1.pkLogger(JSON.stringify(keypair), _1.PKMessageType.INFO);
         }
         else {
-            _1.pkLogger("Public Key:", _1.PKMessageType.SUCCESS);
+            _1.pkLogger('Public Key:', _1.PKMessageType.SUCCESS);
             _1.pkLogger(keypair.publicKey, _1.PKMessageType.INFO);
             if (privateKey) {
-                _1.pkLogger("Private Key:", _1.PKMessageType.SUCCESS);
+                _1.pkLogger('Private Key:', _1.PKMessageType.SUCCESS);
                 _1.pkLogger(keypair.privateKey, _1.PKMessageType.INFO);
             }
         }

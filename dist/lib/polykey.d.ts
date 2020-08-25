@@ -97,7 +97,7 @@ declare module '@matrixai/polykey/src/lib/agent/PolykeyClient' {
           privateKey: string;
       }>;
       signFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string): Promise<string>;
-      verifyFile(nodePath: string, filePath: string, signaturePath?: string): Promise<boolean>;
+      verifyFile(nodePath: string, filePath: string, publicKeyPath?: string): Promise<boolean>;
       encryptFile(nodePath: string, filePath: string, publicKeyPath?: string): Promise<string>;
       decryptFile(nodePath: string, filePath: string, privateKeyPath?: string, passphrase?: string): Promise<string>;
       listVaults(nodePath: string): Promise<string[]>;
@@ -120,34 +120,51 @@ declare module '@matrixai/polykey/src/lib/agent/internal/daemon-script' {
 }
 declare module '@matrixai/polykey/src/lib/git/GitBackend' {
   /// <reference types="node" />
-  import VaultManager from '@matrixai/polykey/src/lib/vaults/VaultManager';
   class GitBackend {
-      private polykeyPath;
-      private vaultManager;
-      constructor(polykeyPath: string, vaultManager: VaultManager);
-      /**
-       * Find out whether vault exists.
-       * @param vaultName Name of vault to check
-       * @param publicKey Public key of peer trying to access vault
-       */
-      private exists;
-      handleInfoRequest(vaultName: string): Promise<Buffer>;
-      handlePackRequest(vaultName: string, body: Buffer): Promise<Buffer>;
+      private repoDirectoryPath;
+      private getFileSystem;
+      constructor(repoDirectoryPath: string, getFileSystem: (repoName: string) => any);
+      handleInfoRequest(repoName: string): Promise<Buffer>;
+      handlePackRequest(repoName: string, body: Buffer): Promise<Buffer>;
       private createGitPacketLine;
   }
   export default GitBackend;
 
 }
-declare module '@matrixai/polykey/src/lib/git/GitClient' {
+declare module '@matrixai/polykey/src/lib/git/GitFrontend' {
+  /// <reference types="node" />
   import { Address } from '@matrixai/polykey/src/lib/peers/PeerInfo';
   import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
   /**
    * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
    */
-  class GitClient {
+  class GitFrontend {
       private client;
       private credentials;
       constructor(address: Address, keyManager: KeyManager);
+      /**
+       * Requests remote info from the connected peer for the named vault.
+       * @param vaultName Name of the desired vault
+       */
+      requestInfo(vaultName: string): Promise<Buffer>;
+      /**
+       * Requests a pack from the connected peer for the named vault.
+       * @param vaultName Name of the desired vault
+       */
+      requestPack(vaultName: string, body: Uint8Array): Promise<Buffer>;
+  }
+  export default GitFrontend;
+
+}
+declare module '@matrixai/polykey/src/lib/git/GitRequest' {
+  /// <reference types="node" />
+  /**
+   * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
+   */
+  class GitRequest {
+      private requestInfo;
+      private requestPack;
+      constructor(requestInfo: (vaultName: string) => Promise<Buffer>, requestPack: (vaultName: string, body: Buffer) => Promise<Buffer>);
       /**
        * The custom http request method to feed into isomorphic-git's [custom http object](https://isomorphic-git.org/docs/en/http)
        */
@@ -159,22 +176,12 @@ declare module '@matrixai/polykey/src/lib/git/GitClient' {
           onProgress: any;
       }): Promise<any>;
       /**
-       * Requests remote info from the connected peer for the named vault.
-       * @param vaultName Name of the desired vault
-       */
-      private requestInfo;
-      /**
-       * Requests a pack from the connected peer for the named vault.
-       * @param vaultName Name of the desired vault
-       */
-      private requestPack;
-      /**
        * Converts a buffer into an iterator expected by isomorphic git.
        * @param data Data to be turned into an iterator
        */
       private iteratorFromData;
   }
-  export default GitClient;
+  export default GitRequest;
 
 }
 declare module '@matrixai/polykey/src/lib/git/pack-objects/GitCommit' {
@@ -557,17 +564,15 @@ declare module '@matrixai/polykey/src/lib/keys/KeyManager' {
       /**
        * Verifies the given data with the provided key or the primary key if none is specified
        * @param data Buffer or file containing the data to be verified
-       * @param signature The PGP signature
        * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
        */
-      verifyData(data: Buffer | string, signature: Buffer, publicKey?: Buffer): Promise<boolean>;
+      verifyData(data: Buffer | string, publicKey?: Buffer): Promise<boolean>;
       /**
        * Verifies the given file with the provided key or the primary key if none is specified
        * @param filePath Path to file containing the data to be verified
-       * @param signaturePath The path to the file containing the PGP signature
        * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
        */
-      verifyFile(filePath: string, signaturePath: string, publicKey?: string | Buffer): Promise<boolean>;
+      verifyFile(filePath: string, publicKey?: string | Buffer): Promise<boolean>;
       /**
        * Encrypts the given data for a specific public key
        * @param data The data to be encrypted
@@ -628,7 +633,7 @@ declare module '@matrixai/polykey/src/lib/keys/KeyManagerWorker' {
        * @param signature The PGP signature
        * @param identity Identity with which to verify with.
        */
-      verifyData(data: string | Buffer, signature: Buffer, identity: any): Promise<boolean>;
+      verifyData(data: string | Buffer, identity: any): Promise<boolean>;
       /**
        * Encrypts the given data for the provided identity
        * @param data The data to be encrypted
@@ -747,7 +752,7 @@ declare module '@matrixai/polykey/src/lib/peers/PeerManager' {
   /// <reference types="node" />
   import fs from 'fs';
   import * as grpc from '@grpc/grpc-js';
-  import GitClient from '@matrixai/polykey/src/lib/git/GitClient';
+  import GitFrontend from '@matrixai/polykey/src/lib/git/GitFrontend';
   import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
   import VaultManager from '@matrixai/polykey/src/lib/vaults/VaultManager';
   import PeerInfo, { Address } from '@matrixai/polykey/src/lib/peers/PeerInfo';
@@ -812,7 +817,7 @@ declare module '@matrixai/polykey/src/lib/peers/PeerManager' {
        * Get a secure connection to the peer
        * @param peer Public key of an existing peer or address of new peer
        */
-      connectToPeer(peer: string | Address): GitClient;
+      connectToPeer(peer: string | Address): GitFrontend;
       private writeMetadata;
       loadMetadata(): void;
   }
@@ -835,7 +840,7 @@ declare module '@matrixai/polykey/src/lib/utils' {
 }
 declare module '@matrixai/polykey/src/lib/vaults/Vault' {
   /// <reference types="node" />
-  import GitClient from '@matrixai/polykey/src/lib/git/GitClient';
+  import GitRequest from '@matrixai/polykey/src/lib/git/GitRequest';
   import { EncryptedFS } from 'encryptedfs';
   class Vault {
       private key;
@@ -904,7 +909,7 @@ declare module '@matrixai/polykey/src/lib/vaults/Vault' {
        * @param address Address of polykey node that owns vault to be pulled
        * @param getSocket Function to get an active connection to provided address
        */
-      pullVault(gitClient: GitClient): Promise<void>;
+      pullVault(gitClient: GitRequest): Promise<void>;
       getVaultHistory(depth?: number): Promise<string[]>;
       private writeMetadata;
       private loadMetadata;
@@ -918,7 +923,7 @@ declare module '@matrixai/polykey/src/lib/vaults/VaultManager' {
   /// <reference types="node" />
   import fs from 'fs';
   import Vault from '@matrixai/polykey/src/lib/vaults/Vault';
-  import GitClient from '@matrixai/polykey/src/lib/git/GitClient';
+  import GitRequest from '@matrixai/polykey/src/lib/git/GitRequest';
   import KeyManager from '@matrixai/polykey/src/lib/keys/KeyManager';
   class VaultManager {
       polykeyPath: string;
@@ -945,7 +950,7 @@ declare module '@matrixai/polykey/src/lib/vaults/VaultManager' {
        * @param address Address of polykey node that owns vault to be cloned
        * @param getSocket Function to get an active connection to provided address
        */
-      cloneVault(vaultName: string, gitClient: GitClient): Promise<Vault>;
+      cloneVault(vaultName: string, gitRequest: GitRequest): Promise<Vault>;
       /**
        * Determines whether the vault exists
        * @param vaultName Name of desired vault

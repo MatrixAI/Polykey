@@ -938,9 +938,9 @@ class PolykeyClient {
         const { signaturePath } = SignFileResponseMessage.decode(subMessage);
         return signaturePath;
     }
-    async verifyFile(nodePath, filePath, signaturePath) {
+    async verifyFile(nodePath, filePath, publicKeyPath) {
         var _a;
-        const request = VerifyFileRequestMessage.encode({ filePath, signaturePath }).finish();
+        const request = VerifyFileRequestMessage.encode({ filePath, publicKeyPath }).finish();
         const encodedResponse = await this.handleAgentCommunication(AgentMessageType.VERIFY_FILE, nodePath, request);
         const subMessage = (_a = encodedResponse.find((r) => r.type == AgentMessageType.VERIFY_FILE)) === null || _a === void 0 ? void 0 : _a.subMessage;
         if (!subMessage) {
@@ -1141,7 +1141,7 @@ class KeyManager {
             publicKeyPath: null,
             pkiKeyPath: null,
             pkiCertPath: null,
-            caCertPath: null
+            caCertPath: null,
         };
         /////////
         // PKI //
@@ -1438,7 +1438,7 @@ class KeyManager {
     async getIdentityFromPrivateKey(privateKey, passphrase) {
         const identity = await util_1.promisify(kbpgp_1.default.KeyManager.import_from_armored_pgp)({ armored: privateKey });
         if (identity.is_pgp_locked()) {
-            await util_1.promisify(identity.unlock_pgp)({ passphrase: passphrase });
+            await util_1.promisify(identity.unlock_pgp.bind(identity))({ passphrase });
         }
         return identity;
     }
@@ -1509,10 +1509,9 @@ class KeyManager {
     /**
      * Verifies the given data with the provided key or the primary key if none is specified
      * @param data Buffer or file containing the data to be verified
-     * @param signature The PGP signature
      * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
      */
-    async verifyData(data, signature, publicKey) {
+    async verifyData(data, publicKey) {
         const ring = new kbpgp_1.default.keyring.KeyRing();
         let resolvedIdentity;
         if (publicKey) {
@@ -1527,14 +1526,13 @@ class KeyManager {
         ring.add_key_manager(resolvedIdentity);
         if (this.useWebWorkers && this.workerPool) {
             const workerResponse = await this.workerPool.queue(async (workerCrypto) => {
-                return await workerCrypto.verifyData(data, signature, resolvedIdentity);
+                return await workerCrypto.verifyData(data, resolvedIdentity);
             });
             return workerResponse;
         }
         else {
             const params = {
-                armored: signature,
-                data: data,
+                armored: data,
                 keyfetch: ring,
             };
             const literals = await util_1.promisify(kbpgp_1.default.unbox)(params);
@@ -1563,10 +1561,9 @@ class KeyManager {
     /**
      * Verifies the given file with the provided key or the primary key if none is specified
      * @param filePath Path to file containing the data to be verified
-     * @param signaturePath The path to the file containing the PGP signature
      * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
      */
-    async verifyFile(filePath, signaturePath, publicKey) {
+    async verifyFile(filePath, publicKey) {
         // Get key if provided
         let keyBuffer;
         if (publicKey) {
@@ -1582,8 +1579,7 @@ class KeyManager {
         }
         // Read in file buffer and signature
         const fileBuffer = this.fileSystem.readFileSync(filePath);
-        const signatureBuffer = this.fileSystem.readFileSync(signaturePath);
-        const isVerified = await this.verifyData(fileBuffer, signatureBuffer, keyBuffer);
+        const isVerified = await this.verifyData(fileBuffer, keyBuffer);
         return isVerified;
     }
     /**
@@ -1776,7 +1772,7 @@ class KeyManager {
         if (this.fileSystem.existsSync(this.metadataPath)) {
             const metadata = this.fileSystem.readFileSync(this.metadataPath).toString();
             this.metadata = JSON.parse(metadata);
-            if (this.identityLoaded) {
+            if (this.identityLoaded && this.fileSystem.existsSync(this.derivedKeysPath)) {
                 const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
                 const metadata = (await this.decryptData(encryptedMetadata)).toString();
                 const derivedKeys = JSON.parse(metadata);
@@ -1822,7 +1818,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const os_1 = __importDefault(__webpack_require__(1));
 const path_1 = __importDefault(__webpack_require__(0));
 const grpc = __importStar(__webpack_require__(6));
-const GitClient_1 = __importDefault(__webpack_require__(24));
+const GitFrontend_1 = __importDefault(__webpack_require__(24));
 const GitBackend_1 = __importDefault(__webpack_require__(25));
 const Peer_1 = __webpack_require__(37);
 const utils_1 = __webpack_require__(38);
@@ -1880,7 +1876,7 @@ class PeerManager {
         /////////////////
         // GRPC Server //
         /////////////////
-        this.gitBackend = new GitBackend_1.default(polykeyPath, vaultManager);
+        this.gitBackend = new GitBackend_1.default(polykeyPath, ((vaultName) => vaultManager.getVault(vaultName).EncryptedFS).bind(vaultManager));
         this.server = new grpc.Server();
         // Add service
         this.server.addService(Git_grpc_pb_1.GitServerService, {
@@ -1900,13 +1896,16 @@ class PeerManager {
         else {
             this.credentials = grpc.ServerCredentials.createInsecure();
         }
-        this.server.bindAsync(`0.0.0.0:${(_a = process.env.PK_PORT) !== null && _a !== void 0 ? _a : 0}`, this.credentials, (err, boundPort) => {
+        this.server.bindAsync(`0.0.0.0:${(_a = process.env.PK_PORT) !== null && _a !== void 0 ? _a : 0}`, this.credentials, async (err, boundPort) => {
             if (err) {
                 throw err;
             }
             else {
                 const address = new PeerInfo_1.Address('localhost', boundPort.toString());
                 this.server.start();
+                while (!this.localPeerInfo) {
+                    await new Promise((r, _) => setTimeout(() => r(), 1000));
+                }
                 this.localPeerInfo.connect(address);
                 this.serverStarted = true;
             }
@@ -2027,9 +2026,9 @@ class PeerManager {
         }
         let address;
         if (typeof peer == 'string') {
-            const existingSocket = this.peerConnections.get(peer);
-            if (existingSocket) {
-                return existingSocket;
+            const existingConnection = this.peerConnections.get(peer);
+            if (existingConnection) {
+                return existingConnection;
             }
             const peerAddress = (_a = this.getPeer(peer)) === null || _a === void 0 ? void 0 : _a.connectedAddr;
             if (peerAddress) {
@@ -2042,7 +2041,7 @@ class PeerManager {
         else {
             address = peer;
         }
-        const conn = new GitClient_1.default(address, this.keyManager);
+        const conn = new GitFrontend_1.default(address, this.keyManager);
         if (typeof peer == 'string') {
             this.peerConnections.set(peer, conn);
         }
@@ -2091,7 +2090,7 @@ const Git_pb_1 = __webpack_require__(8);
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
  */
-class GitClient {
+class GitFrontend {
     constructor(address, keyManager) {
         const pkiInfo = keyManager.PKIInfo;
         if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
@@ -2102,54 +2101,6 @@ class GitClient {
         }
         this.client = new Git_grpc_pb_1.GitServerClient(address.toString(), this.credentials);
     }
-    /**
-     * The custom http request method to feed into isomorphic-git's [custom http object](https://isomorphic-git.org/docs/en/http)
-     */
-    async request({ url, method, headers, body, onProgress }) {
-        // eslint-disable-next-line
-        return new Promise(async (resolve, reject) => {
-            const u = new URL(url);
-            // Parse request
-            if (method == 'GET') {
-                // Info request
-                const match = u.pathname.match(/\/(.+)\/info\/refs$/);
-                if (!match || /\.\./.test(match[1])) {
-                    reject(new Error('Error'));
-                }
-                const vaultName = match[1];
-                const infoResponse = await this.requestInfo(vaultName);
-                resolve({
-                    url: url,
-                    method: method,
-                    statusCode: 200,
-                    statusMessage: 'OK',
-                    body: this.iteratorFromData(infoResponse),
-                    headers: headers,
-                });
-            }
-            else if (method == 'POST') {
-                // Info request
-                const match = u.pathname.match(/\/(.+)\/git-(.+)/);
-                if (!match || /\.\./.test(match[1])) {
-                    reject(new Error('Error'));
-                }
-                const vaultName = match[1];
-                const packResponse = await this.requestPack(vaultName, body[0]);
-                resolve({
-                    url: url,
-                    method: method,
-                    statusCode: 200,
-                    statusMessage: 'OK',
-                    body: this.iteratorFromData(packResponse),
-                    headers: headers,
-                });
-            }
-            else {
-                reject(new Error('Method not supported'));
-            }
-        });
-    }
-    // ==== HELPER METHODS ==== //
     /**
      * Requests remote info from the connected peer for the named vault.
      * @param vaultName Name of the desired vault
@@ -2187,28 +2138,8 @@ class GitClient {
             });
         });
     }
-    /**
-     * Converts a buffer into an iterator expected by isomorphic git.
-     * @param data Data to be turned into an iterator
-     */
-    iteratorFromData(data) {
-        let ended = false;
-        return {
-            next() {
-                return new Promise((resolve, reject) => {
-                    if (ended) {
-                        return resolve({ done: true });
-                    }
-                    else {
-                        ended = true;
-                        resolve({ value: data, done: false });
-                    }
-                });
-            },
-        };
-    }
 }
-exports.default = GitClient;
+exports.default = GitFrontend;
 
 
 /***/ }),
@@ -2234,80 +2165,55 @@ const packObjects_1 = __importDefault(__webpack_require__(30));
 // https://github.com/gabrielcsapo/node-git-server
 // We need someway to notify other agents about what vaults we have based on some type of authorisation because they don't explicitly know about them
 class GitBackend {
-    constructor(polykeyPath, vaultManager) {
-        this.polykeyPath = polykeyPath;
-        this.vaultManager = vaultManager;
+    constructor(repoDirectoryPath, getFileSystem) {
+        this.repoDirectoryPath = repoDirectoryPath;
+        this.getFileSystem = getFileSystem;
     }
-    /**
-     * Find out whether vault exists.
-     * @param vaultName Name of vault to check
-     * @param publicKey Public key of peer trying to access vault
-     */
-    exists(vaultName, publicKey) {
-        try {
-            const vault = this.vaultManager.getVault(vaultName);
-            if (vault) {
-                return vault.peerCanAccess(publicKey);
-            }
-            return false;
-        }
-        catch (error) {
-            return false;
-        }
-    }
-    async handleInfoRequest(vaultName) {
-        var _a;
+    async handleInfoRequest(repoName) {
         // Only handle upload-pack for now
         const service = 'upload-pack';
-        const connectingPublicKey = '';
+        const fileSystem = this.getFileSystem(repoName);
         const responseBuffers = [];
-        if (!this.exists(vaultName, connectingPublicKey)) {
-            throw Error(`vault does not exist: '${vaultName}'`);
+        if (!fileSystem.existsSync(path_1.default.join(this.repoDirectoryPath, repoName))) {
+            throw Error(`repository does not exist: '${repoName}'`);
         }
-        else {
-            responseBuffers.push(Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')));
-            responseBuffers.push(Buffer.from('0000'));
-            const fileSystem = (_a = this.vaultManager.getVault(vaultName)) === null || _a === void 0 ? void 0 : _a.EncryptedFS;
-            const buffers = await uploadPack_1.default(fileSystem, path_1.default.join(this.polykeyPath, vaultName), undefined, true);
-            const buffersToWrite = buffers !== null && buffers !== void 0 ? buffers : [];
-            responseBuffers.push(...buffersToWrite);
-        }
+        responseBuffers.push(Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')));
+        responseBuffers.push(Buffer.from('0000'));
+        const buffers = await uploadPack_1.default(fileSystem, path_1.default.join(this.repoDirectoryPath, repoName), undefined, true);
+        const buffersToWrite = buffers !== null && buffers !== void 0 ? buffers : [];
+        responseBuffers.push(...buffersToWrite);
         return Buffer.concat(responseBuffers);
     }
-    async handlePackRequest(vaultName, body) {
+    async handlePackRequest(repoName, body) {
         // eslint-disable-next-line
         return new Promise(async (resolve, reject) => {
-            var _a;
             const responseBuffers = [];
-            // Check if vault exists
-            const connectingPublicKey = '';
-            if (!this.exists(vaultName, connectingPublicKey)) {
-                throw Error(`vault does not exist: '${vaultName}'`);
+            const fileSystem = this.getFileSystem(repoName);
+            // Check if repo exists
+            if (!fileSystem.existsSync(path_1.default.join(this.repoDirectoryPath, repoName))) {
+                throw Error(`repository does not exist: '${repoName}'`);
             }
-            const fileSystem = (_a = this.vaultManager.getVault(vaultName)) === null || _a === void 0 ? void 0 : _a.EncryptedFS;
-            if (fileSystem) {
-                if (body.toString().slice(4, 8) == 'want') {
-                    const wantedObjectId = body.toString().slice(9, 49);
-                    const packResult = await packObjects_1.default(fileSystem, path_1.default.join(this.polykeyPath, vaultName), [wantedObjectId], undefined);
-                    // This the 'wait for more data' line as I understand it
-                    responseBuffers.push(Buffer.from('0008NAK\n'));
-                    // This is to get the side band stuff working
-                    const readable = new readable_stream_1.PassThrough();
-                    const progressStream = new readable_stream_1.PassThrough();
-                    const sideBand = GitSideBand_1.default.mux('side-band-64', readable, packResult.packstream, progressStream, []);
-                    sideBand.on('data', (data) => {
-                        responseBuffers.push(data);
-                    });
-                    sideBand.on('end', () => {
-                        resolve(Buffer.concat(responseBuffers));
-                    });
-                    sideBand.on('error', (err) => {
-                        reject(err);
-                    });
-                    // Write progress to the client
-                    progressStream.write(Buffer.from('0014progress is at 50%\n'));
-                    progressStream.end();
-                }
+            if (body.toString().slice(4, 8) == 'want') {
+                const wantedObjectId = body.toString().slice(9, 49);
+                const packResult = await packObjects_1.default(fileSystem, path_1.default.join(this.repoDirectoryPath, repoName), [wantedObjectId], undefined);
+                // This the 'wait for more data' line as I understand it
+                responseBuffers.push(Buffer.from('0008NAK\n'));
+                // This is to get the side band stuff working
+                const readable = new readable_stream_1.PassThrough();
+                const progressStream = new readable_stream_1.PassThrough();
+                const sideBand = GitSideBand_1.default.mux('side-band-64', readable, packResult.packstream, progressStream, []);
+                sideBand.on('data', (data) => {
+                    responseBuffers.push(data);
+                });
+                sideBand.on('end', () => {
+                    resolve(Buffer.concat(responseBuffers));
+                });
+                sideBand.on('error', (err) => {
+                    reject(err);
+                });
+                // Write progress to the client
+                progressStream.write(Buffer.from('0014progress is at 50%\n'));
+                progressStream.end();
             }
         });
     }
@@ -3368,7 +3274,7 @@ class VaultManager {
      * @param address Address of polykey node that owns vault to be cloned
      * @param getSocket Function to get an active connection to provided address
      */
-    async cloneVault(vaultName, gitClient) {
+    async cloneVault(vaultName, gitRequest) {
         // Confirm it doesn't exist locally already
         if (this.vaultExists(vaultName)) {
             throw Error('Vault name already exists locally, try pulling instead');
@@ -3376,7 +3282,7 @@ class VaultManager {
         const vaultUrl = `http://0.0.0.0/${vaultName}`;
         // First check if it exists on remote
         const info = await isomorphic_git_1.default.getRemoteInfo({
-            http: gitClient,
+            http: gitRequest,
             url: vaultUrl,
         });
         if (!info.refs) {
@@ -3391,7 +3297,7 @@ class VaultManager {
         // Clone vault from address
         await isomorphic_git_1.default.clone({
             fs: { promises: newEfs.promises },
-            http: gitClient,
+            http: gitRequest,
             dir: path_1.default.join(this.polykeyPath, vaultName),
             url: vaultUrl,
             ref: 'master',
@@ -3911,6 +3817,10 @@ class PolykeyAgent {
         });
     }
     stop() {
+        this.polykeyMap.forEach((pk) => {
+            pk.peerManager.multicastBroadcaster.socket.close();
+            pk.peerManager.server.forceShutdown();
+        });
         this.server.close();
     }
     handleClientCommunication(socket) {
@@ -4019,8 +3929,9 @@ class PolykeyAgent {
     // Register an existing polykey agent
     async registerNode(nodePath, request) {
         const { passphrase } = RegisterNodeRequestMessage.decode(request);
-        let pk = this.getPolyKey(nodePath, false);
-        if (pk) {
+        let pk;
+        if (this.polykeyMap.has(nodePath)) {
+            pk = this.getPolyKey(nodePath, false);
             if (pk.keyManager.identityLoaded) {
                 throw Error(`node path is already loaded and unlocked: '${nodePath}'`);
             }
@@ -4101,7 +4012,10 @@ class PolykeyAgent {
         const { includePrivateKey } = GetPrimaryKeyPairRequestMessage.decode(request);
         const pk = this.getPolyKey(nodePath);
         const keypair = pk.keyManager.getKeyPair();
-        return GetPrimaryKeyPairResponseMessage.encode({ publicKey: keypair.public, privateKey: includePrivateKey ? keypair.private : undefined }).finish();
+        return GetPrimaryKeyPairResponseMessage.encode({
+            publicKey: keypair.public,
+            privateKey: includePrivateKey ? keypair.private : undefined,
+        }).finish();
     }
     async deleteKey(nodePath, request) {
         const { keyName } = DeleteKeyRequestMessage.decode(request);
@@ -4119,9 +4033,9 @@ class PolykeyAgent {
         return SignFileResponseMessage.encode({ signaturePath }).finish();
     }
     async verifyFile(nodePath, request) {
-        const { filePath, signaturePath } = VerifyFileRequestMessage.decode(request);
+        const { filePath, publicKeyPath } = VerifyFileRequestMessage.decode(request);
         const pk = this.getPolyKey(nodePath);
-        const verified = await pk.keyManager.verifyFile(filePath, signaturePath);
+        const verified = await pk.keyManager.verifyFile(filePath, publicKeyPath);
         return VerifyFileResponseMessage.encode({ verified }).finish();
     }
     async encryptFile(nodePath, request) {
@@ -4223,7 +4137,10 @@ class PolykeyAgent {
     static get SocketPath() {
         const platform = os_1.default.platform();
         const userInfo = os_1.default.userInfo();
-        if (platform == 'win32') {
+        if (process_1.default.env.PK_SOCKET_PATH) {
+            return process_1.default.env.PK_SOCKET_PATH;
+        }
+        else if (platform == 'win32') {
             return path_1.default.join('\\\\?\\pipe', process_1.default.cwd(), 'polykey-agent');
         }
         else {
@@ -4233,7 +4150,10 @@ class PolykeyAgent {
     static get LogPath() {
         const platform = os_1.default.platform();
         const userInfo = os_1.default.userInfo();
-        if (platform == 'win32') {
+        if (process_1.default.env.PK_LOG_PATH) {
+            return process_1.default.env.PK_LOG_PATH;
+        }
+        else if (platform == 'win32') {
             return path_1.default.join(os_1.default.tmpdir(), 'polykey', 'log');
         }
         else {
@@ -4252,11 +4172,13 @@ class PolykeyAgent {
                         'ipc',
                         fs_1.default.openSync(path_1.default.join(PolykeyAgent.LogPath, 'output.log'), 'a'),
                         fs_1.default.openSync(path_1.default.join(PolykeyAgent.LogPath, 'error.log'), 'a'),
-                    ]
+                    ],
+                    silent: true,
                 };
                 const agentProcess = child_process_1.fork(PolykeyAgent.DAEMON_SCRIPT_PATH, undefined, options);
                 const pid = agentProcess.pid;
                 agentProcess.unref();
+                agentProcess.disconnect();
                 resolve(pid);
             }
             catch (err) {
