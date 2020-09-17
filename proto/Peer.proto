@@ -1,16 +1,107 @@
 syntax = "proto3";
 
-package peer;
+package peerInterface;
 
-message HandshakeMessage {
-  bytes target_pub_key = 1;
-  bytes requesting_pub_key = 2;
-  bytes message = 3;
-  bytes response_peer_info = 4;
+//////////////////
+// Peer Service //
+//////////////////
+service Peer {
+  rpc MessagePeer (PeerMessage) returns (PeerMessage) {};
+}
+message PeerMessage {
+  string public_key = 1;
+  SubServiceType type = 2;
+  string sub_message = 3;
+}
+enum SubServiceType {
+  PING_PEER = 0;
+  GIT = 1;
+  NAT_TRAVERSAL = 2;
 }
 
+///////////////
+// Ping Peer //
+///////////////
+message PingPeerMessage {
+  string public_key = 1;
+  string challenge = 2;
+  PeerInfoMessage peerInfo = 3;
+}
 message PeerInfoMessage {
-  string pub_key = 1;
-  repeated string addresses = 2;
-  string connected_addr = 3;
+  string public_key = 1;
+  string peer_address = 2;
+  string relay_public_key = 3;
+}
+message PeerInfoListMessage {
+  repeated PeerInfoMessage peer_info_list = 1;
+}
+
+///////////
+// Error //
+///////////
+message ErrorMessage {
+  string error = 1;
+}
+
+///////////////////
+// NAT Traversal //
+///////////////////
+enum NatMessageType {
+  ERROR = 0;
+  RELAY_CONNECTION = 1;
+  PEER_CONNECTION = 2;
+  UDP_ADDRESS = 3;
+  PEER_UDP_ADDRESS = 4;
+}
+message NatMessage {
+  NatMessageType type = 1;
+  bool is_response = 2;
+  bytes sub_message = 3;
+}
+
+//////////////////////
+// Relay Connection //
+//////////////////////
+message RelayConnectionRequest {
+  string public_key = 1;
+}
+message RelayConnectionResponse {
+  string server_address = 1;
+}
+
+/////////////////////
+// Peer Connection //
+/////////////////////
+message PeerConnectionRequest {
+  string public_key = 1;
+}
+message PeerConnectionResponse {
+  string peer_address = 1;
+}
+
+/////////////////
+// UDP Address //
+/////////////////
+message UDPAddressResponse {
+  string address = 1;
+}
+
+/////////////////////////
+// Hole Punch Register //
+/////////////////////////
+message HolePunchRegisterRequest {
+  string public_key = 1;
+}
+message HolePunchRegisterResponse {
+  string connected_address = 1;
+}
+
+//////////////////////
+// Peer UDP Address //
+//////////////////////
+message PeerUdpAddressRequest {
+  string public_key = 1;
+}
+message PeerUdpAddressResponse {
+  string address = 1;
 }

@@ -1,12 +1,16 @@
 syntax = "proto3";
 
-package git;
+package gitInterface;
 
-service GitServer {
-  // Request info about a vault as a git repo
-  rpc RequestInfo (InfoRequest) returns (InfoReply) {}
-  // Request a particular pack from remote
-  rpc RequestPack (PackRequest) returns (PackReply) {}
+// ==== GitMessage ==== //
+enum GitMessageType {
+  INFO = 0;
+  PACK = 1;
+  VAULT_NAMES = 2;
+}
+message GitMessage {
+  GitMessageType type = 0;
+  bytes subMessage = 1;
 }
 
 // ==== Vault Info ==== //
@@ -26,4 +30,9 @@ message PackRequest {
 message PackReply {
   string vaultName = 1;
   bytes body = 2;
+}
+
+// ==== VaultNamesRequest ==== //
+message VaultNamesReply {
+  repeated string vault_name_list = 1;
 }

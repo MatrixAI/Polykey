@@ -6,6 +6,37 @@
 
 import * as jspb from "google-protobuf";
 
+export class GitMessage extends jspb.Message { 
+    getType(): GitMessageType;
+    setType(value: GitMessageType): GitMessage;
+
+    getIsresponse(): boolean;
+    setIsresponse(value: boolean): GitMessage;
+
+    getSubMessage(): Uint8Array | string;
+    getSubMessage_asU8(): Uint8Array;
+    getSubMessage_asB64(): string;
+    setSubMessage(value: Uint8Array | string): GitMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GitMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GitMessage): GitMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GitMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GitMessage;
+    static deserializeBinaryFromReader(message: GitMessage, reader: jspb.BinaryReader): GitMessage;
+}
+
+export namespace GitMessage {
+    export type AsObject = {
+        type: GitMessageType,
+        isresponse: boolean,
+        subMessage: Uint8Array | string,
+    }
+}
+
 export class InfoRequest extends jspb.Message { 
     getVaultname(): string;
     setVaultname(value: string): InfoRequest;
@@ -106,4 +137,9 @@ export namespace PackReply {
         vaultname: string,
         body: Uint8Array | string,
     }
+}
+
+export enum GitMessageType {
+    INFO = 0,
+    PACK = 1,
 }

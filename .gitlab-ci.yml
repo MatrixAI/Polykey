@@ -1,48 +1,52 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - node_modules/
-    - dist/
-    - proto/
-    - docs/
-
 stages:
   - check
   - build
   - deploy
 
-before_script:
-  - node --version
-  - npm install
-
-prettier:
+lint:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: check
-  image: node:12
   script:
-    - npm run lint
+    - >
+        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+        npm install;
+        npm run lint;
+        '
 
-jest:
-  stage: check
+test-npm:
   image: node:12
+  stage: check
   script:
+    - npm install
     - npm run test
 
-build_all:
-  stage: build
-  image: node:12
+nix-dry:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
   script:
-    - npm run build:all
+    - nix-build -v -v --dry-run ./release.nix --attr application
+    - nix-build -v -v --dry-run ./release.nix --attr docker
 
+nix:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: build
+  script:
+    - >
+      nix-build ./release.nix
+      --attr application
+      --attr docker
+
+# TODO: get this deploy phase working
 deploy_npm:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: deploy
-  image: node:12
   only:
     - tags
     - triggers
   script:
+    - nix-shell --packages nodejs --run "npm install"
     - npm run build:all
-    - echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
-    - npm publish
+    # - npm publish

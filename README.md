@@ -5,11 +5,9 @@ js-polykey is the library used in the distributed secret sharing `PolyKey` app. 
 
 PolyKey requires a public/private keypair for all crypto operations, this can be provided to a pre-initialized KeyManager instance before polykey is initialized or it can be generated (this is the default).
 
-## Dependencies
-The major dependencies of js-polykey are:
-- [kbpgp](https://github.com/keybase/kbpgp) for all asymmetric cryptography.
-- [EncryptedFS](https://github.com/MatrixAI/js-encryptedfs) for symmetric encryption within Vaults.
-- [isomorphi-git](https://github.com/isomorphic-git/isomorphic-git) for version control within Vaults.
+## Class Dependencies
+In order to better understand how the pieces of PolyKey fit together, use this dependency DAG as reference:
+<img src="./media/dependencies.png">
 
 ## KeyManager
 This class is responsible for managing the public and private keys as well as any crypto operations using those keys. The symmetric vault keys are also managed by this instance.

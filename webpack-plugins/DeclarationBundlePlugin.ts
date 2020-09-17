@@ -4,7 +4,6 @@ import path from 'path'
 import webpack from 'webpack'
 import * as dts from 'npm-dts'
 
-
 class DeclarationBundlePlugin {
   ignoreDeclarations: boolean;
   entryFilePath: string;
@@ -40,8 +39,7 @@ class DeclarationBundlePlugin {
 
     for (const name in compilation.assets) {
       if (name.indexOf('.d.ts') != -1) {
-        const matches = /(?:..)(.*)/.exec(name)
-        const filename = matches![1]
+        const filename = name
         const filepath = path.join(tempDir, filename)
         fs.mkdirSync(path.dirname(filepath), { recursive: true })
         fs.writeFileSync(filepath, compilation.assets[name].source())

@@ -1,10 +1,10 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { randomString } from '../../../src/lib/utils';
-import Polykey, { PolykeyAgent, PolykeyClient } from '../../../src/lib/Polykey';
+import { randomString } from '../../../src/utils';
+import Polykey, { PolykeyAgent, PolykeyClient, KeyManager } from '../../../src/Polykey';
+import { agentInterface } from '../../../proto/js/Agent'
 
-// TODO add tests as part of testing PR
 describe('Agent class', () => {
   let pkCliEnv: {}
   let tempPkAgentDir: string
@@ -13,13 +13,13 @@ describe('Agent class', () => {
   let client: PolykeyClient
   let tempDir: string
 
-  beforeAll(async () => {
+  beforeAll(async done => {
     tempPkAgentDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
     pkCliEnv = {
       PK_LOG_PATH: path.join(tempPkAgentDir, 'log'),
       PK_SOCKET_PATH: path.join(tempPkAgentDir, 'S.testing-socket')
     }
-    process.env = {...process.env, ...pkCliEnv}
+    process.env = { ...process.env, ...pkCliEnv }
 
     // Start the agent running
     agent = new PolykeyAgent()
@@ -28,6 +28,8 @@ describe('Agent class', () => {
     // connect to agent
     client = PolykeyAgent.connectToAgent()
     tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+
+    done()
   })
 
   afterAll(() => {
@@ -37,7 +39,7 @@ describe('Agent class', () => {
   })
 
   test('can get agent status', async () => {
-    expect(await client.getAgentStatus()).toEqual('online')
+    expect(await client.getAgentStatus()).toEqual(agentInterface.AgentStatusType.ONLINE)
   })
 
   describe('Node Specific Operations', () => {
@@ -45,7 +47,7 @@ describe('Agent class', () => {
 
     beforeAll(async () => {
       nodePath = path.join(tempDir, `PolykeyNode-${randomString()}`)
-      const successful = await client.newNode(nodePath, 'John Smith', 'john@email.com', 'very password', 1024)
+      const successful = await client.newNode(nodePath, 'John Smith', 'very password', 1024)
       expect(successful).toEqual(true)
     })
 
@@ -55,14 +57,13 @@ describe('Agent class', () => {
 
     test('can register node', async () => {
       const nonAgentNodePath = path.join(tempDir, `SomePolykey-${randomString()}`)
-      const pk = new Polykey(nonAgentNodePath, fs)
-      await pk.keyManager.generateKeyPair('John Smith', 'john@email.com', 'very password', 1024, true)
+      const km = new KeyManager(nonAgentNodePath, fs)
+      await km.generateKeyPair('John Smith', 'very password', 1024, true)
+      const pk = new Polykey(nonAgentNodePath, fs, km)
 
       expect(await client.registerNode(nonAgentNodePath, 'very password')).toEqual(true)
       expect(await client.listNodes()).toContainEqual(nonAgentNodePath)
-      
-      // cleanup
-      pk.peerManager.multicastBroadcaster.socket.close()
+
     })
 
     describe('Crypto Specific Operations', () => {
@@ -81,6 +82,7 @@ describe('Agent class', () => {
 
         const decryptedFilePath = await client.decryptFile(nodePath, encryptedFilePath)
         const decryptedData = fs.readFileSync(decryptedFilePath)
+
         expect(decryptedData).toEqual(fileContent)
       })
 

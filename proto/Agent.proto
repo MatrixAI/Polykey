@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package agent;
+package agentInterface;
 
 enum AgentMessageType {
   ERROR = 0;
@@ -26,6 +26,18 @@ enum AgentMessageType {
   DECRYPT_FILE = 20;
   GET_PRIMARY_KEYPAIR = 21;
   UPDATE_SECRET = 22;
+  GET_PEER_INFO = 23;
+  ADD_PEER = 24;
+  PULL_VAULT = 26;
+  PING_PEER = 27;
+  FIND_PEER = 28;
+  FIND_SOCIAL_PEER = 29;
+  LIST_PEERS = 30;
+  TOGGLE_STEALTH = 31;
+  UPDATE_PEER_INFO = 32;
+  REQUEST_RELAY = 33;
+  REQUEST_PUNCH = 34;
+  SCAN_VAULT_NAMES = 35;
 }
 message AgentMessage {
   AgentMessageType type = 1;
@@ -35,6 +47,16 @@ message AgentMessage {
 }
 message ErrorMessage {
   string error = 1;
+}
+
+// ==== AgentStatus ==== //
+enum AgentStatusType {
+  ONLINE = 0;
+  OFFLINE = 1;
+  ERRORED = 2;
+}
+message AgentStatusResponseMessage {
+  AgentStatusType status = 1;
 }
 
 // ==== RegisterNode ==== //
@@ -47,10 +69,9 @@ message RegisterNodeResponseMessage {
 
 // ==== NewNode ==== //
 message NewNodeRequestMessage {
-  string name = 1;
-  string email = 2;
-  string passphrase = 3;
-  int32 nbits = 4;
+  string userId = 1;
+  string passphrase = 2;
+  int32 nbits = 3;
 }
 message NewNodeResponseMessage {
   bool successful = 1;
@@ -109,11 +130,28 @@ message ListVaultsResponseMessage {
   repeated string vault_names = 1;
 }
 
+// ==== ScanVaultNames ==== //
+message ScanVaultNamesRequestMessage {
+  string public_key = 1;
+}
+message ScanVaultNamesResponseMessage {
+  repeated string vault_names = 1;
+}
+
 // ==== NewVault ==== //
 message NewVaultRequestMessage {
   string vault_name = 1;
 }
 message NewVaultResponseMessage {
+  bool successful = 1;
+}
+
+// ==== PullVault ==== //
+message PullVaultRequestMessage {
+  string vault_name = 1;
+  string public_key = 2;
+}
+message PullVaultResponseMessage {
   bool successful = 1;
 }
 
@@ -214,4 +252,97 @@ message DeleteKeyRequestMessage {
 }
 message DeleteKeyResponseMessage {
   bool successful = 1;
+}
+
+// ==== PeerInfo ==== //
+message PeerInfoRequestMessage {
+  bool current = 1;
+  string public_key = 2;
+}
+message PeerInfoResponseMessage {
+  string public_key = 1;
+  string peer_address = 2;
+  string relay_public_key = 3;
+}
+
+// ==== AddPeer ==== //
+message AddPeerRequestMessage {
+  string public_key = 1;
+  string peer_address = 2;
+  string relay_public_key = 3;
+}
+message AddPeerResponseMessage {
+  bool successful = 1;
+}
+
+// ==== PingPeer ==== //
+message PingPeerRequestMessage {
+  string public_key = 1;
+  int32 timeout = 2;
+}
+message PingPeerResponseMessage {
+  bool successful = 1;
+}
+
+// ==== FindPeer ==== //
+message FindPeerRequestMessage {
+  string public_key = 1;
+  int32 timeout = 2;
+}
+message FindPeerResponseMessage {
+  bool successful = 1;
+}
+
+// ==== FindPeer ==== //
+message FindSocialPeerRequestMessage {
+  string handle = 1;
+  string service = 2;
+  int32 timeout = 3;
+}
+message FindSocialPeerResponseMessage {
+  bool successful = 1;
+}
+
+// ==== ListPeers ==== //
+message ListPeersRequestMessage {
+}
+message ListPeersResponseMessage {
+  repeated string public_keys = 1;
+}
+
+
+// ==== ToggleStealth ==== //
+message ToggleStealthRequestMessage {
+  bool active = 1;
+}
+message ToggleStealthResponseMessage {
+  bool successful = 1;
+}
+
+// ==== UpdatePeerInfo ==== //
+message UpdatePeerInfoRequestMessage {
+  string public_key = 1;
+  bool current_node = 2;
+  string peer_host = 3;
+  int32 peer_port = 4;
+  string relay_public_key = 5;
+}
+message UpdatePeerInfoResponseMessage {
+  bool successful = 1;
+}
+
+// ==== RequestRelay ==== //
+message RequestRelayRequestMessage {
+  string public_key = 1;
+}
+message RequestRelayResponseMessage {
+  bool successful = 1;
+}
+
+// ==== RequestPunch ==== //
+message RequestPunchRequestMessage {
+  string public_key = 1;
+}
+message RequestPunchResponseMessage {
+  string address = 1;
 }

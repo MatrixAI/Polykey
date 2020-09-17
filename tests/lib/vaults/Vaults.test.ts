@@ -1,12 +1,11 @@
-import fs, { write } from 'fs';
+import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import Polykey from "../../../src/lib/Polykey";
-import { randomString } from '../../../src/lib/utils';
-import KeyManager from '../../../src/lib/keys/KeyManager';
-import VaultManager from '../../../src/lib/vaults/VaultManager';
 import crypto from 'crypto';
-import GitRequest from '../../../src/lib/git/GitRequest';
+import Polykey from "../../../src/Polykey";
+import { randomString } from '../../../src/utils';
+import KeyManager from '../../../src/keys/KeyManager';
+import VaultManager from '../../../src/vaults/VaultManager';
 
 describe('VaultManager class', () => {
   let randomVaultName: string
@@ -23,7 +22,7 @@ describe('VaultManager class', () => {
     const km = new KeyManager(tempDir, fs)
 
     // Generate keypair
-    await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', 1024, true)
+    await km.generateKeyPair('John Smith', 'passphrase', 1024, true)
 
     // Load pki info
     const cwd = process.cwd()
@@ -118,7 +117,7 @@ describe('VaultManager class', () => {
       const km2 = new KeyManager(tempDir2, fs)
 
       // Generate keypair
-      await km2.generateKeyPair('Jane Doe', 'jane.doe@email.com', 'passphrase', 1024, true)
+      await km2.generateKeyPair('Jane Doe', 'passphrase', 1024, true)
 
       // Load pki info
       const cwd = process.cwd()
@@ -140,6 +139,11 @@ describe('VaultManager class', () => {
         km2
       )
       peerVm = peerPk.vaultManager
+
+      // add to peer stores
+      peerPk.peerManager.addPeer(pk.peerManager.peerInfo)
+      pk.peerManager.addPeer(peerPk.peerManager.peerInfo)
+
       done()
     })
 
@@ -157,17 +161,11 @@ describe('VaultManager class', () => {
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // Pull from pk in peerPk
-
-      const gitFrontend = peerPk.peerManager.connectToPeer(pk.peerManager.getLocalPeerInfo().connectedAddr!)
-      const gitRequest = new GitRequest(
-        gitFrontend.requestInfo.bind(gitFrontend),
-        gitFrontend.requestPack.bind(gitFrontend)
-      )
-      const clonedVault = await peerVm.cloneVault(randomVaultName, gitRequest)
+      const clonedVault = await peerVm.cloneVault(randomVaultName, pk.peerManager.peerInfo.publicKey)
 
       const pkSecret = vault.getSecret(initialSecretName).toString()
 
-      await clonedVault.pullVault(gitRequest)
+      await clonedVault.pullVault(pk.peerManager.peerInfo.publicKey)
 
       const peerPkSecret = clonedVault.getSecret(initialSecretName).toString()
 
@@ -192,15 +190,9 @@ describe('VaultManager class', () => {
         await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
       }
 
-      const gitFrontend = peerPk.peerManager.connectToPeer(pk.peerManager.getLocalPeerInfo().connectedAddr!)
-      const gitRequest = new GitRequest(
-        gitFrontend.requestInfo.bind(gitFrontend),
-        gitFrontend.requestPack.bind(gitFrontend)
-      )
-
       // clone all vaults asynchronously
       const clonedVaults = await Promise.all(vaultNameList.map(async (v) => {
-        return peerVm.cloneVault(v, gitRequest)
+        return peerVm.cloneVault(v, pk.peerManager.peerInfo.publicKey)
       }))
       const clonedVaultNameList = clonedVaults.map((v) => {
         return v.name
@@ -209,7 +201,7 @@ describe('VaultManager class', () => {
       expect(clonedVaultNameList).toEqual(vaultNameList)
 
       done()
-    }, 20000)
+    }, 25000)
 
     test('can pull changes', async done => {
       // Create vault
@@ -220,18 +212,13 @@ describe('VaultManager class', () => {
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // First clone from pk in peerPk
-      const gitFrontend = peerPk.peerManager.connectToPeer(pk.peerManager.getLocalPeerInfo().connectedAddr!)
-      const gitRequest = new GitRequest(
-        gitFrontend.requestInfo.bind(gitFrontend),
-        gitFrontend.requestPack.bind(gitFrontend)
-      )
-      const clonedVault = await peerVm.cloneVault(randomVaultName, gitRequest)
+      const clonedVault = await peerVm.cloneVault(randomVaultName, pk.peerManager.peerInfo.publicKey)
 
       // Add secret to pk
       await vault.addSecret('NewSecret', Buffer.from('some other secret information'))
 
       // Pull from vault
-      await clonedVault.pullVault(gitRequest)
+      await clonedVault.pullVault(pk.peerManager.peerInfo.publicKey)
 
       // Compare new secret
       const pkNewSecret = vault.getSecret(initialSecretName).toString()
@@ -249,12 +236,7 @@ describe('VaultManager class', () => {
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
       // First clone from pk in peerPk
-      const gitFrontend = peerPk.peerManager.connectToPeer(pk.peerManager.getLocalPeerInfo().connectedAddr!)
-      const gitRequest = new GitRequest(
-        gitFrontend.requestInfo.bind(gitFrontend),
-        gitFrontend.requestPack.bind(gitFrontend)
-      )
-      const clonedVault = await peerVm.cloneVault(randomVaultName, gitRequest)
+      const clonedVault = await peerVm.cloneVault(randomVaultName, pk.peerManager.peerInfo.publicKey)
 
       // Confirm secrets list only contains InitialSecret
       const secretList = vault.listSecrets()
@@ -266,7 +248,7 @@ describe('VaultManager class', () => {
       await vault.removeSecret(initialSecretName)
 
       // Pull clonedVault
-      await clonedVault.pullVault(gitRequest)
+      await clonedVault.pullVault(pk.peerManager.peerInfo.publicKey)
 
       // Confirm secrets list is now empty
       const removedSecretList = vault.listSecrets()
