@@ -81,15 +81,11 @@ class DeclarationBundlePlugin {
       const filename = split[split.length-2]
 
       const entryFile = path.join(tempDir, `${filename}.d.ts`)
-      console.log(fs.readdirSync(tempDir));
-      console.log(entryFile);
-
-
       fs.copyFileSync(entryFile, this.outputFilePath)
     }
 
     // Garbage collection
-    // fs.rmdirSync(tempDir, { recursive: true })
+    fs.rmdirSync(tempDir, { recursive: true })
   }
 }
 
