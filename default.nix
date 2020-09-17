@@ -1,31 +1,8 @@
-{
-  pkgs ? import ./pkgs.nix,
-  nodeVersion ? "12_x"
-}:
-  with pkgs;
-  let
-    nodejs = lib.getAttrFromPath
-            (lib.splitString "." ("nodejs-" + nodeVersion))
-            pkgs;
-    nodePackages = lib.getAttrFromPath
-                   (lib.splitString "." ("nodePackages_" + nodeVersion))
-                   pkgs;
-  in
-    stdenv.mkDerivation {
-      name = "js-polykey";
-      version = "0.0.1";
+{ pkgs, nix-gitignore }:
 
-      src = lib.cleanSourceWith {
-        filter = (path: type:
-          ! (builtins.any
-            (r: (builtins.match r (builtins.baseNameOf path)) != null)
-            [
-              "node_modules"
-              "\.env"
-            ])
-        );
-        src = lib.cleanSource attr.src;
-      };
-      buildInputs = [ nodejs dos2unix ];
-      checkInputs = [ webpack ];
-    }
+let
+  drv = (import ./nix/default.nix { inherit pkgs; }).package;
+in
+  drv.overrideAttrs (attrs: {
+    src = nix-gitignore.gitignoreSource [] attrs.src;
+  })

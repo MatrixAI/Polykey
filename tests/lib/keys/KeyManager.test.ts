@@ -1,76 +1,85 @@
 import fs from 'fs';
 import os from 'os';
-import { randomString } from '../../../src/lib/utils';
-import KeyManager from '../../../src/lib/keys/KeyManager';
+import { randomString } from '../../../src/utils';
+import KeyManager from '../../../src/keys/KeyManager';
 
 describe('KeyManager class', () => {
 
   let tempDir: string
   let km: KeyManager
 
-  beforeAll(async done => {
+  beforeAll(async () => {
     // Define temp directory
     tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
     // Create keyManager
     km = new KeyManager(tempDir, fs)
-    await km.generateKeyPair('John Smith', 'john.smith@email.com', 'passphrase', 1024, true)
-
-    done()
+    await km.generateKeyPair('John Smith', 'passphrase', 1024, true)
   })
 
   afterAll(() => {
     fs.rmdirSync(tempDir, { recursive: true })
   })
 
-  test('can create keypairs', async done => {
+  test('can create keypairs', async () => {
     // Create private keys (async)
-    expect(km.generateKeyPair('John Smith', 'john.smith@gmail.com', 'passphrase', 1024)).resolves.not.toThrow()
-
-    done()
+    expect(km.generateKeyPair('John Smith', 'passphrase', 1024)).resolves.not.toThrow()
   })
 
-  test('can create symmetric keys', async done => {
+  test('can create symmetric keys', async () => {
     const generatedKey = await km.generateKey('new-key', 'passphrase', true)
 
     const retreivedKey = km.getKey('new-key')
 
     expect(retreivedKey).toEqual(generatedKey)
-
-    done()
   })
 
-  test('can load an identity from a public key', async done => {
+  test('can load an identity from a public key', async () => {
 
-    const keypair = await km.generateKeyPair('John Smith', 'john@email.com', 'passphrase', 1024)
+    const keypair = await km.generateKeyPair('John Smith', 'passphrase', 1024)
 
     const identity = await km.getIdentityFromPublicKey(Buffer.from(keypair.public!))
 
     expect(identity).not.toEqual(undefined)
-
-    done()
   })
 
-  test('can load an identity from a private key', async done => {
+  test('can load an identity from a private key', async () => {
 
-    const keypair = await km.generateKeyPair('John Smith', 'john@email.com', 'passphrase', 1024)
+    const keypair = await km.generateKeyPair('John Smith', 'passphrase', 1024)
 
     const identity = await km.getIdentityFromPrivateKey(Buffer.from(keypair.private!), 'passphrase')
 
     expect(identity).not.toEqual(undefined)
-
-    done()
   })
 
-  test('can sign and verify data', async done => {
+  test('can sign and verify data', async () => {
     const originalData = Buffer.from('I am to be signed')
     const signedData = await km.signData(originalData)
-    const isVerified = await km.verifyData(signedData)
-    expect(isVerified).toEqual(true)
-    done()
+    const verifiedData = await km.verifyData(signedData)
+    expect(verifiedData).toEqual(originalData)
+	})
+
+  test('can sign and verify data', async () => {
+    const originalData = Buffer.from('I am to be signed')
+    const detachedSignature = await km.signData(originalData)
+    const isVerified = await km.verifyData(detachedSignature)
+    expect(isVerified).toEqual(originalData)
   })
 
-  test('can sign and verify files', async done => {
+  test('can box and unbox a Uint8Array', async () => {
+    const originalData = Uint8Array.from([23,1,44,23,54,23,24,4,3,4,5,3,46,45,64,5,2,34,35])
+    // box
+    const boxedData = await km.signData(
+      await km.encryptData(Buffer.from(originalData))
+    )
+    // unbox
+    const unboxedData = await km.decryptData(
+      await km.verifyData(boxedData)
+    )
+    expect(Uint8Array.from(unboxedData)).toStrictEqual(originalData)
+  })
+
+  test('can sign and verify files', async () => {
     const originalData = Buffer.from('I am to be signed')
     const filePath = `${tempDir}/file`
     fs.writeFileSync(filePath, originalData)
@@ -79,6 +88,5 @@ describe('KeyManager class', () => {
     // Verify file
     const isVerified = await km.verifyFile(signedFilePath)
     expect(isVerified).toEqual(true)
-    done()
   })
 })

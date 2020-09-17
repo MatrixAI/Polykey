@@ -2,9 +2,9 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import git from 'isomorphic-git'
-import { randomString } from '../../../src/lib/utils';
-import GitBackend from '../../../src/lib/git/GitBackend';
-import GitRequest from '../../../src/lib/git/GitRequest';
+import { randomString } from '../../../src/utils';
+import GitBackend from '../../../src/git/GitBackend';
+import GitRequest from '../../../src/git/GitRequest';
 
 describe('GitBackend and GitRequest classes', () => {
   let sourceDir: string
@@ -67,11 +67,18 @@ describe('GitBackend and GitRequest classes', () => {
     });
 
     // set up git backend
-    gitBackend = new GitBackend(sourceDir, (_) => fs)
+    gitBackend = new GitBackend(
+      sourceDir,
+      (_) => fs,
+      (publicKey: string) => {
+        return ['vault1', 'vault2']
+      }
+    )
     // create git request object
     gitRequest = new GitRequest(
       gitBackend.handleInfoRequest.bind(gitBackend),
       gitBackend.handlePackRequest.bind(gitBackend),
+      gitBackend.handleVaultNamesRequest.bind(gitBackend),
     )
   })
 

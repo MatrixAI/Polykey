@@ -79,5 +79,5 @@ typings/
 # Serverless directories
 .serverless
 
-# Temporary certificate files
-tmp/secrets/*
+# Temporary files
+tmp/

@@ -21,6 +21,11 @@
     "no-useless-catch": 1,
     "no-undef": 1,
     "no-empty": 1,
+    "lines-between-class-members": [
+      "error",
+      "always",
+      { "exceptAfterSingleLine": true }
+    ],
     "linebreak-style": ["error", "unix"]
   }
 }

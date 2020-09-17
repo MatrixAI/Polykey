@@ -8,13 +8,13 @@ function resolveProtoJs(context, request: string, callback) {
     // Extract name of js file
     const fileName = request.split('/').pop()
     // Externalize to a commonjs module using the request path
-    const filePath = path.join('..', '..', 'proto', 'js', fileName!)
+    const filePath = path.join('..', 'proto', 'js', fileName!)
     return callback(null, 'commonjs ' + filePath);
   } else if (/.*\/proto\/compiled\/.*/.test(request)) {
     // Extract name of js file
     const fileName = request.split('/').pop()
     // Externalize to a commonjs module using the request path
-    const filePath = path.join('..', '..', 'proto', 'compiled', fileName!)
+    const filePath = path.join('..', 'proto', 'compiled', fileName!)
 
     return callback(null, 'commonjs ' + filePath);
   }
@@ -23,9 +23,10 @@ function resolveProtoJs(context, request: string, callback) {
 
 const libraryConfig = {
   name: 'polykey',
-  entry: './src/lib/Polykey.ts',
+  entry: './src/Polykey.ts',
+  mode: 'production',
   output: {
-    path: path.resolve(__dirname, 'dist', 'lib'),
+    path: path.resolve(__dirname, 'dist'),
     filename: 'polykey.js',
     library: 'polykey',
     libraryTarget: 'umd',
@@ -64,9 +65,9 @@ const libraryConfig = {
       globalObject: false
     }),
     new DeclarationBundlePlugin({
-      entry: './src/lib/Polykey.ts',
-      output: './dist/lib/polykey.d.ts'
-    })
+      entry: './src/Polykey.ts',
+      output: './dist/polykey.d.ts'
+    }),
   ],
   watchOptions: {
     ignored: /node_modules/
@@ -78,9 +79,10 @@ const libraryConfig = {
 
 const polykeyClientConfig = {
   name: 'client',
-  entry: './src/lib/agent/PolykeyClient.ts',
+  entry: './src/agent/PolykeyClient.ts',
+  mode: 'production',
   output: {
-    path: path.resolve(__dirname, 'dist', 'lib'),
+    path: path.resolve(__dirname, 'dist'),
     filename: 'browser-client.js',
     library: 'browser-client',
     libraryTarget: 'umd',
@@ -112,10 +114,10 @@ const polykeyClientConfig = {
       globalObject: false
     }),
     new DeclarationBundlePlugin({
-      entry: './src/lib/agent/PolykeyClient.ts',
-      output: './dist/lib/browser-client.d.ts',
+      entry: './src/agent/PolykeyClient.ts',
+      output: './dist/browser-client.d.ts',
       singleFile: true
-    })
+    }),
   ],
   watchOptions: {
     ignored: /node_modules/
@@ -125,13 +127,14 @@ const polykeyClientConfig = {
   }
 }
 
-const cliConfig = {
-  name: 'cli',
-  entry: './src/cli/index.ts',
+const binConfig = {
+  name: 'bin',
+  entry: './src/bin/index.ts',
+  mode: 'production',
   output: {
-    path: path.resolve(__dirname, 'dist', 'cli'),
-    filename: 'cli.js',
-    library: 'cli',
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'bin.js',
+    library: 'bin',
     libraryTarget: 'umd',
     globalObject: 'this'
   },
@@ -152,14 +155,15 @@ const cliConfig = {
     ]
   },
   externals: [
-    { "../lib/Polykey": "commonjs ../lib/polykey.js" },
-    { "../../package.json": "commonjs ../../package.json" },
+    resolveProtoJs,
+    { "../Polykey": "commonjs ./polykey.js" },
+    { "../../package.json": "commonjs ../package.json" },
     nodeExternals()
   ],
   plugins: [
     new DeclarationBundlePlugin({
       ignoreDeclarations: true
-    })
+    }),
   ],
   watchOptions: {
     ignored: /node_modules/
@@ -171,9 +175,10 @@ const cliConfig = {
 
 const agentDaemonScriptConfig = {
   name: 'daemon-script',
-  entry: './src/lib/agent/internal/daemon-script.js',
+  entry: './src/agent/internal/daemon-script.ts',
+  mode: 'production',
   output: {
-    path: path.resolve(__dirname, 'dist', 'lib', 'internal'),
+    path: path.resolve(__dirname, 'dist', 'internal'),
     filename: 'daemon-script.js',
     globalObject: 'this'
   },
@@ -196,7 +201,7 @@ const agentDaemonScriptConfig = {
   plugins: [
     new DeclarationBundlePlugin({
       ignoreDeclarations: true
-    })
+    }),
   ],
   externals: [
     { "../../Polykey": "commonjs ../polykey.js" },
@@ -208,4 +213,4 @@ const agentDaemonScriptConfig = {
 }
 
 
-module.exports = [libraryConfig, polykeyClientConfig, cliConfig, agentDaemonScriptConfig];
+module.exports = [libraryConfig, polykeyClientConfig, binConfig, agentDaemonScriptConfig];
