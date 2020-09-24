@@ -36,13 +36,42 @@ class Polykey {
 
     // start the api
     this.httpApi = new HttpApi(
-      (() => this.peerManager.peerInfo).bind(this),
       ((apiAddress: Address) => {
         this.peerManager.peerInfo.apiAddress = apiAddress;
       }).bind(this),
       ((csr: string) => this.keyManager.pki.handleCSR(csr)).bind(this),
       (() => this.keyManager.pki.RootCert).bind(this),
       (() => this.keyManager.pki.CertChain).bind(this),
+      (() => this.keyManager.pki.createServerCredentials()).bind(this),
+      (() => this.vaultManager.getVaultNames()).bind(this),
+      ((vaultName: string) => this.vaultManager.newVault(vaultName)).bind(this),
+      ((vaultName: string) => this.vaultManager.deleteVault(vaultName)).bind(this),
+      ((vaultName: string) => {
+        const vault = this.vaultManager.getVault(vaultName)
+        return vault.listSecrets()
+      }).bind(this),
+      ((vaultName: string, secretName: string) => {
+        const vault = this.vaultManager.getVault(vaultName)
+        return vault.getSecret(secretName).toString()
+      }).bind(this),
+      (async (vaultName: string, secretName: string, secretContent: string) => {
+        try {
+          const vault = this.vaultManager.getVault(vaultName)
+          await vault.addSecret(secretName, Buffer.from(secretContent))
+          return true
+        } catch (error) {
+          return false
+        }
+      }).bind(this),
+      (async (vaultName: string, secretName: string) => {
+        try {
+          const vault = this.vaultManager.getVault(vaultName)
+          await vault.removeSecret(secretName)
+          return true
+        } catch (error) {
+          return false
+        }
+      }).bind(this),
     );
   }
 }

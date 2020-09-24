@@ -25,7 +25,7 @@ class PeerConnection {
     if (credentials) {
       this.credentials = grpc.ChannelCredentials.createSsl(
         Buffer.from(credentials.rootCertificate),
-        Buffer.from(credentials.privateKey),
+        Buffer.from(credentials.keypair.private),
         Buffer.from(credentials.certificate),
       );
     } else {

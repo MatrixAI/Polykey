@@ -7,7 +7,7 @@ import { actionRunner, pkLogger, PKMessageType, determineNodePath, promisifyGrpc
 function makeGetRootCertificateCommand() {
   return new commander.Command('root')
     .description('retrieve the root certificate')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -24,10 +24,10 @@ function makeGetRootCertificateCommand() {
 function makeNewCertCommand() {
   return new commander.Command('cert')
     .description('create a new certificate signed by the polykey ca')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-ch, --client-host <clientHost>', 'host of the client')
-    .requiredOption('-cp, --cert-path <certPath>', 'where to write the cert file')
-    .requiredOption('-kp, --key-path <keyPath>', 'where to write the private key file')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-ch, --client-host <clientHost>', '(required) host of the client')
+    .requiredOption('-cp, --cert-path <certPath>', '(required) where to write the cert file')
+    .requiredOption('-kp, --key-path <keyPath>', '(required) where to write the private key file')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);

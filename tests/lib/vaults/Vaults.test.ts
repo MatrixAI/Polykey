@@ -1,6 +1,5 @@
 import fs from 'fs';
 import os from 'os';
-import path from 'path';
 import crypto from 'crypto';
 import Polykey from "../../../src/Polykey";
 import { randomString } from '../../../src/utils';

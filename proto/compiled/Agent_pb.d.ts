@@ -469,6 +469,58 @@ export namespace NewClientCertificateMessage {
     }
 }
 
+export class NewOAuthTokenMessage extends jspb.Message { 
+    clearScopesList(): void;
+    getScopesList(): Array<string>;
+    setScopesList(value: Array<string>): NewOAuthTokenMessage;
+    addScopes(value: string, index?: number): string;
+
+    getExpiry(): number;
+    setExpiry(value: number): NewOAuthTokenMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NewOAuthTokenMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NewOAuthTokenMessage): NewOAuthTokenMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NewOAuthTokenMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NewOAuthTokenMessage;
+    static deserializeBinaryFromReader(message: NewOAuthTokenMessage, reader: jspb.BinaryReader): NewOAuthTokenMessage;
+}
+
+export namespace NewOAuthTokenMessage {
+    export type AsObject = {
+        scopesList: Array<string>,
+        expiry: number,
+    }
+}
+
+export class OAuthClientMessage extends jspb.Message { 
+    getId(): string;
+    setId(value: string): OAuthClientMessage;
+
+    getSecret(): string;
+    setSecret(value: string): OAuthClientMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): OAuthClientMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: OAuthClientMessage): OAuthClientMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: OAuthClientMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): OAuthClientMessage;
+    static deserializeBinaryFromReader(message: OAuthClientMessage, reader: jspb.BinaryReader): OAuthClientMessage;
+}
+
+export namespace OAuthClientMessage {
+    export type AsObject = {
+        id: string,
+        secret: string,
+    }
+}
+
 export enum AgentStatusType {
     ONLINE = 0,
     OFFLINE = 1,

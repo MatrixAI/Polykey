@@ -1,14 +1,13 @@
 import commander from 'commander';
-import { PolykeyAgent } from '../../Polykey';
 import * as pb from '../../../proto/compiled/Agent_pb';
 import { actionRunner, pkLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
 
 function makeNewKeyCommand() {
   return new commander.Command('new')
     .description('derive a new symmetric key')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-n, --key-name <keyName>', 'the name of the new key')
-    .requiredOption('-p, --key-passphrase <keyPassphrase>', 'the passphrase for the new key')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-n, --key-name <keyName>', '(required) the name of the new key')
+    .requiredOption('-p, --key-passphrase <keyPassphrase>', '(required) the passphrase for the new key')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -28,8 +27,8 @@ function makeNewKeyCommand() {
 function makeDeleteKeyCommand() {
   return new commander.Command('delete')
     .description('delete a symmetric key from the key manager')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-n, --key-name <keyName>', 'the name of the symmetric key to be deleted')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-n, --key-name <keyName>', '(required) the name of the symmetric key to be deleted')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -52,7 +51,7 @@ function makeListKeysCommand() {
   return new commander.Command('list')
     .alias('ls')
     .description('list all symmetric keys in the keynode')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -75,8 +74,8 @@ function makeListKeysCommand() {
 function makeGetKeyCommand() {
   return new commander.Command('get')
     .description('get the contents of a specific symmetric key')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-kn, --key-name <keyName>', 'the name of the new key')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-kn, --key-name <keyName>', '(required) the name of the new key')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -93,7 +92,7 @@ function makeGetKeyCommand() {
 function makeListPrimaryKeyPairCommand() {
   return new commander.Command('primary')
     .description('get the contents of the primary keypair')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-pk, --private-key', 'include private key')
     .option('-oj, --output-json', 'output in JSON format')
     .action(

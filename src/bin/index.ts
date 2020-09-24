@@ -6,6 +6,7 @@ import makeCryptoCommand from './crypto';
 import makeVaultsCommand from './vaults';
 import makeSecretsCommand from './secrets';
 import makeKeyManagerCommand from './keys';
+import makeOAuthCommand from './oauth';
 
 /*******************************************/
 const polykey = new program.Command();
@@ -17,7 +18,8 @@ polykey
   .addCommand(makePeersCommand())
   .addCommand(makeCryptoCommand())
   .addCommand(makeAgentCommand())
-  .addCommand(makeCACommand());
+  .addCommand(makeCACommand())
+  .addCommand(makeOAuthCommand());
 
 module.exports = function (argv: any[]) {
   polykey.parse(argv);

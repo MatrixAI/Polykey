@@ -10,7 +10,7 @@ function makeListSecretsCommand() {
   return new commander.Command('list')
     .description('list all available secrets for a given vault')
     .alias('ls')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('--verbose', 'increase verbosity level by one')
     .arguments('vault name(s) to list')
     .action(
@@ -51,9 +51,9 @@ function makeListSecretsCommand() {
 function makeNewSecretCommand() {
   return new commander.Command('new')
     .description("create a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .arguments("secret path of the format '<vaultName>:<secretName>'")
-    .requiredOption('-f, --file-path <filePath>', 'path to the secret to be added')
+    .requiredOption('-f, --file-path <filePath>', '(required) path to the secret to be added')
     .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -93,9 +93,9 @@ function makeNewSecretCommand() {
 function makeUpdateSecretCommand() {
   return new commander.Command('update')
     .description("update a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .arguments("secret path of the format '<vaultName>:<secretName>'")
-    .requiredOption('-f, --file-path <filePath>', 'path to the new secret')
+    .requiredOption('-f, --file-path <filePath>', '(required) path to the new secret')
     .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -136,6 +136,7 @@ function makeDeleteSecretCommand() {
   return new commander.Command('delete')
     .alias('del')
     .description("delete a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .arguments("secret path of the format '<vaultName>:<secretName>'")
     .option('--verbose', 'increase verbosity level by one')
     .action(
@@ -173,6 +174,7 @@ function makeDeleteSecretCommand() {
 function makeGetSecretCommand() {
   return new commander.Command('get')
     .description("retrieve a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .arguments("secret path of the format '<vaultName>:<secretName>'")
     .option('-e, --env', 'wrap the secret in an environment variable declaration')
     .action(
@@ -216,6 +218,7 @@ function makeSecretEnvCommand() {
     .description(
       "run a modified environment with injected secrets, specify a secret path with '<vaultName>:<secretName>'",
     )
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option(
       '--command <command>',
       'In the environment of the derivation, run the shell command cmd. This command is executed in an interactive shell. (Use --run to use a non-interactive shell instead.)',

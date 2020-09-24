@@ -15,6 +15,7 @@ service Agent {
   rpc EncryptFile (EncryptFileMessage) returns (StringMessage) {};
   rpc FindPeer (ContactPeerMessage) returns (BooleanMessage) {};
   rpc FindSocialPeer (ContactPeerMessage) returns (BooleanMessage) {};
+  rpc GetOAuthClient (EmptyMessage) returns (OAuthClientMessage) {};
   rpc GetKey (StringMessage) returns (StringMessage) {};
   rpc GetLocalPeerInfo (EmptyMessage) returns (PeerInfoMessage) {};
   rpc GetPeerInfo (StringMessage) returns (PeerInfoMessage) {};
@@ -22,6 +23,7 @@ service Agent {
   rpc GetRootCertificate (EmptyMessage) returns (StringMessage) {};
   rpc GetSecret (SecretPathMessage) returns (StringMessage) {};
   rpc GetStatus (EmptyMessage) returns (AgentStatusMessage) {};
+  rpc ListOAuthTokens (EmptyMessage) returns (StringListMessage) {};
   rpc ListKeys (EmptyMessage) returns (StringListMessage) {};
   rpc ListNodes (BooleanMessage) returns (StringListMessage) {};
   rpc ListPeers (EmptyMessage) returns (StringListMessage) {};
@@ -30,10 +32,12 @@ service Agent {
   rpc NewClientCertificate (NewClientCertificateMessage) returns (NewClientCertificateMessage) {};
   rpc NewNode (NewNodeMessage) returns (BooleanMessage) {};
   rpc NewSecret (SecretContentMessage) returns (BooleanMessage) {};
+  rpc NewOAuthToken (NewOAuthTokenMessage) returns (StringMessage) {};
   rpc NewVault (StringMessage) returns (BooleanMessage) {};
   rpc PingPeer (ContactPeerMessage) returns (BooleanMessage) {};
   rpc PullVault (VaultPathMessage) returns (BooleanMessage) {};
   rpc RegisterNode (StringMessage) returns (BooleanMessage) {};
+  rpc RevokeOAuthToken (StringMessage) returns (BooleanMessage) {};
   rpc RequestHolePunch (StringMessage) returns (BooleanMessage) {};
   rpc RequestRelay (StringMessage) returns (BooleanMessage) {};
   rpc ScanVaultNames (StringMessage) returns (StringListMessage) {};
@@ -145,10 +149,22 @@ message ContactPeerMessage {
   int32 timeout = 2;
 }
 
-
 // === ContactPeer === //
 message NewClientCertificateMessage {
   string domain = 1;
   string cert_file = 2;
   string key_file = 3;
 }
+
+// === NewAPIToken === //
+message NewOAuthTokenMessage {
+  repeated string scopes = 1;
+  int32 expiry = 2;
+}
+
+// === OAuthClient === //
+message OAuthClientMessage {
+  string id = 1;
+  string secret = 2;
+}
+

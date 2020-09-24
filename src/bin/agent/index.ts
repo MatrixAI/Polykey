@@ -2,12 +2,11 @@ import commander from 'commander';
 import { PolykeyAgent } from '../../Polykey';
 import * as pb from '../../../proto/compiled/Agent_pb';
 import { actionRunner, pkLogger, PKMessageType, determineNodePath, promisifyGrpc, getAgentClient } from '../utils';
-import { AgentClient } from '../../../proto/compiled/Agent_grpc_pb';
 
 function makeStartAgentCommand() {
   return new commander.Command('start')
     .description('start the agent')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-d, --daemon', 'start the agent as a daemon process')
     .action(
       actionRunner(async (options) => {
@@ -15,6 +14,7 @@ function makeStartAgentCommand() {
 
         try {
           const client = PolykeyAgent.connectToAgent(nodePath);
+
           const res = (await promisifyGrpc(client.getStatus.bind(client))(
             new pb.EmptyMessage(),
           )) as pb.AgentStatusMessage;
@@ -25,7 +25,6 @@ function makeStartAgentCommand() {
           }
         } catch (error) {
           const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
-
           const client = PolykeyAgent.connectToAgent(nodePath);
           const res = (await promisifyGrpc(client.getStatus.bind(client))(
             new pb.EmptyMessage(),
@@ -43,14 +42,14 @@ function makeStartAgentCommand() {
 function makeRestartAgentCommand() {
   return new commander.Command('restart')
     .description('restart the agent')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-d, --daemon', 'start the agent as a daemon process')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
         const client = await getAgentClient(nodePath, options.daemon, false, false);
         // Tell agent to stop
-        const res = (await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage())) as pb.BooleanMessage;
+        await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage());
         const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
         pkLogger(`agent has restarted with pid of ${pid}`, PKMessageType.SUCCESS);
       }),
@@ -60,7 +59,7 @@ function makeRestartAgentCommand() {
 function makeAgentStatusCommand() {
   return new commander.Command('status')
     .description('retrieve the status of the agent')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -83,7 +82,7 @@ function makeAgentStatusCommand() {
 function makeStopAgentCommand() {
   return new commander.Command('stop')
     .description('stop the agent')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-f, --force', 'forcibly stop the agent')
     .action(
       actionRunner(async (options) => {
@@ -112,9 +111,9 @@ function makeStopAgentCommand() {
 function makeInitNodeCommand() {
   return new commander.Command('init')
     .description('initialize a new polykey node')
-    .option('-k, --node-path <nodePath>', 'provide the polykey path. defaults to ~/.polykey')
-    .requiredOption('-ui, --user-id <userId>', 'provide an identifier for the keypair to be generated')
-    .requiredOption('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-ui, --user-id <userId>', '(required) provide an identifier for the keypair to be generated')
+    .requiredOption('-pp, --private-passphrase <privatePassphrase>', '(required) provide the passphrase to the private key')
     .option('-nb, --number-of-bits <numberOfBits>', 'number of bits to use for key pair generation')
     .option('-v, --verbose', 'increase verbosity by one level')
     .action(
@@ -139,8 +138,8 @@ function makeInitNodeCommand() {
 function makeUnlockNodeCommand() {
   return new commander.Command('unlock')
     .description('unlock polykey')
-    .option('-k, --node-path <nodePath>', 'provide the polykey path. defaults to ~/.polykey')
-    .requiredOption('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-pp, --private-passphrase <privatePassphrase>', '(required) provide the passphrase to the private key')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);

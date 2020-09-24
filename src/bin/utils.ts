@@ -42,24 +42,24 @@ function pkLogger(message: string, type?: PKMessageType) {
       console.log(chalk.greenBright(message));
       break;
     case PKMessageType.INFO:
-      console.log(chalk.blueBright(message));
+      console.info(chalk.blueBright(message));
       break;
     case PKMessageType.WARNING:
-      console.log(chalk.yellowBright(message));
+      console.warn(chalk.yellowBright(message));
       break;
     case PKMessageType.ERROR:
       console.error(chalk.redBright(message));
       break;
     default:
-      console.log(message);
+      console.debug(message);
       break;
   }
 }
 
-function determineNodePath(nodePath: string | undefined) {
+function determineNodePath(nodePath?: string) {
   const resolvedNodePath = nodePath ?? process.env.PK_PATH;
   if (!resolvedNodePath) {
-    throw Error('no keynode path given, you can set it as an environment variable with "export PK_PATH=\'<path>\'"');
+    throw Error('no keynode path, set as an environment variable "export PK_PATH=\'<path>\'", or as a argument "--node-path \'<path>\'"');
   }
   return resolveTilde(resolvedNodePath);
 }

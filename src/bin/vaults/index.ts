@@ -7,7 +7,7 @@ function makeListVaultsCommand() {
   return new commander.Command('list')
     .description('list all available vaults')
     .alias('ls')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -33,10 +33,9 @@ function makeListVaultsCommand() {
 function makeScanVaultsCommand() {
   return new commander.Command('scan')
     .description('scan a known peer for accessible vaults')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-p, --public-key <publicKey>', 'name of vault')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-p, --public-key <publicKey>', '(required) name of vault')
     .option('-v, --verbose', 'increase verbosity by one level')
-    .arguments('name of vault to remove')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -64,20 +63,18 @@ function makeScanVaultsCommand() {
 
 function makeNewVaultCommand() {
   return new commander.Command('new')
-    .description('create new vault(s)')
-    .option('--node-path <nodePath>', 'node path')
-    .arguments('vault name(s)')
+    .description('create a new vault')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-vn, --vault-name <vaultName>', '(required) unique name of the new vault')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
         const client = await getAgentClient(nodePath);
 
-        for (const vaultName of options.args.values()) {
-          const request = new pb.StringMessage();
-          request.setS(vaultName);
-          const res = (await promisifyGrpc(client.newVault.bind(client))(request)) as pb.BooleanMessage;
-          pkLogger(`vault created at '${nodePath}/${vaultName}'`, PKMessageType.SUCCESS);
-        }
+        const request = new pb.StringMessage();
+        request.setS(options.vaultName);
+        const res = (await promisifyGrpc(client.newVault.bind(client))(request)) as pb.BooleanMessage;
+        pkLogger(`vault created at '${nodePath}/${options.vaultName}'`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -85,9 +82,9 @@ function makeNewVaultCommand() {
 function makePullVaultCommand() {
   return new commander.Command('pull')
     .description('pull a vault from a peer')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-pk, --public-key <publicKey>', 'public key file path of the peer who has the vault')
-    .requiredOption('-vn, --vault-name <vaultName>', 'name of the vault to be cloned')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-pk, --public-key <publicKey>', '(required) public key file path of the peer who has the vault')
+    .requiredOption('-vn, --vault-name <vaultName>', '(required) name of the vault to be cloned')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);

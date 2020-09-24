@@ -6,8 +6,8 @@ import * as pb from '../../../proto/compiled/Agent_pb';
 function makeRelayCommand() {
   return new commander.Command('relay')
     .description('request a relay connection from a public peer')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-pk, --public-key <publicKey>', 'path to the file which contains the public key')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-pk, --public-key <publicKey>', '(required) path to the file which contains the public key')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -32,8 +32,8 @@ function makeRelayCommand() {
 function makePunchCommand() {
   return new commander.Command('punch')
     .description('request a udp hole punched address from a peer')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-pk, --public-key <publicKey>', 'path to the file which contains the public key')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-pk, --public-key <publicKey>', '(required) path to the file which contains the public key')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
