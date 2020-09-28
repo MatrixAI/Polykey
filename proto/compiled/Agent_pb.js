@@ -12,53 +12,25 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
-goog.exportSymbol('proto.agent.AddPeerRequestMessage', null, global);
-goog.exportSymbol('proto.agent.AddPeerResponseMessage', null, global);
-goog.exportSymbol('proto.agent.AgentMessage', null, global);
-goog.exportSymbol('proto.agent.AgentMessageType', null, global);
-goog.exportSymbol('proto.agent.CreateSecretRequestMessage', null, global);
-goog.exportSymbol('proto.agent.CreateSecretResponseMessage', null, global);
-goog.exportSymbol('proto.agent.DecryptFileRequestMessage', null, global);
-goog.exportSymbol('proto.agent.DecryptFileResponseMessage', null, global);
-goog.exportSymbol('proto.agent.DeleteKeyRequestMessage', null, global);
-goog.exportSymbol('proto.agent.DeleteKeyResponseMessage', null, global);
-goog.exportSymbol('proto.agent.DeriveKeyRequestMessage', null, global);
-goog.exportSymbol('proto.agent.DeriveKeyResponseMessage', null, global);
-goog.exportSymbol('proto.agent.DestroySecretRequestMessage', null, global);
-goog.exportSymbol('proto.agent.DestroySecretResponseMessage', null, global);
-goog.exportSymbol('proto.agent.DestroyVaultRequestMessage', null, global);
-goog.exportSymbol('proto.agent.DestroyVaultResponseMessage', null, global);
-goog.exportSymbol('proto.agent.EncryptFileRequestMessage', null, global);
-goog.exportSymbol('proto.agent.EncryptFileResponseMessage', null, global);
-goog.exportSymbol('proto.agent.ErrorMessage', null, global);
-goog.exportSymbol('proto.agent.GetKeyRequestMessage', null, global);
-goog.exportSymbol('proto.agent.GetKeyResponseMessage', null, global);
-goog.exportSymbol('proto.agent.GetPrimaryKeyPairRequestMessage', null, global);
-goog.exportSymbol('proto.agent.GetPrimaryKeyPairResponseMessage', null, global);
-goog.exportSymbol('proto.agent.GetSecretRequestMessage', null, global);
-goog.exportSymbol('proto.agent.GetSecretResponseMessage', null, global);
-goog.exportSymbol('proto.agent.ListKeysRequestMessage', null, global);
-goog.exportSymbol('proto.agent.ListKeysResponseMessage', null, global);
-goog.exportSymbol('proto.agent.ListNodesRequestMessage', null, global);
-goog.exportSymbol('proto.agent.ListNodesResponseMessage', null, global);
-goog.exportSymbol('proto.agent.ListSecretsRequestMessage', null, global);
-goog.exportSymbol('proto.agent.ListSecretsResponseMessage', null, global);
-goog.exportSymbol('proto.agent.ListVaultsRequestMessage', null, global);
-goog.exportSymbol('proto.agent.ListVaultsResponseMessage', null, global);
-goog.exportSymbol('proto.agent.NewNodeRequestMessage', null, global);
-goog.exportSymbol('proto.agent.NewNodeResponseMessage', null, global);
-goog.exportSymbol('proto.agent.NewVaultRequestMessage', null, global);
-goog.exportSymbol('proto.agent.NewVaultResponseMessage', null, global);
-goog.exportSymbol('proto.agent.PeerInfoRequestMessage', null, global);
-goog.exportSymbol('proto.agent.PeerInfoResponseMessage', null, global);
-goog.exportSymbol('proto.agent.RegisterNodeRequestMessage', null, global);
-goog.exportSymbol('proto.agent.RegisterNodeResponseMessage', null, global);
-goog.exportSymbol('proto.agent.SignFileRequestMessage', null, global);
-goog.exportSymbol('proto.agent.SignFileResponseMessage', null, global);
-goog.exportSymbol('proto.agent.UpdateSecretRequestMessage', null, global);
-goog.exportSymbol('proto.agent.UpdateSecretResponseMessage', null, global);
-goog.exportSymbol('proto.agent.VerifyFileRequestMessage', null, global);
-goog.exportSymbol('proto.agent.VerifyFileResponseMessage', null, global);
+goog.exportSymbol('proto.agentInterface.AgentStatusMessage', null, global);
+goog.exportSymbol('proto.agentInterface.AgentStatusType', null, global);
+goog.exportSymbol('proto.agentInterface.BooleanMessage', null, global);
+goog.exportSymbol('proto.agentInterface.ContactPeerMessage', null, global);
+goog.exportSymbol('proto.agentInterface.DecryptFileMessage', null, global);
+goog.exportSymbol('proto.agentInterface.DeriveKeyMessage', null, global);
+goog.exportSymbol('proto.agentInterface.EmptyMessage', null, global);
+goog.exportSymbol('proto.agentInterface.EncryptFileMessage', null, global);
+goog.exportSymbol('proto.agentInterface.KeyPairMessage', null, global);
+goog.exportSymbol('proto.agentInterface.NewClientCertificateMessage', null, global);
+goog.exportSymbol('proto.agentInterface.NewNodeMessage', null, global);
+goog.exportSymbol('proto.agentInterface.PeerInfoMessage', null, global);
+goog.exportSymbol('proto.agentInterface.SecretContentMessage', null, global);
+goog.exportSymbol('proto.agentInterface.SecretPathMessage', null, global);
+goog.exportSymbol('proto.agentInterface.SignFileMessage', null, global);
+goog.exportSymbol('proto.agentInterface.StringListMessage', null, global);
+goog.exportSymbol('proto.agentInterface.StringMessage', null, global);
+goog.exportSymbol('proto.agentInterface.VaultPathMessage', null, global);
+goog.exportSymbol('proto.agentInterface.VerifyFileMessage', null, global);
 /**
  * Generated by JsPbCodeGenerator.
  * @param {Array=} opt_data Optional initial data array, typically from a
@@ -69,16 +41,16 @@ goog.exportSymbol('proto.agent.VerifyFileResponseMessage', null, global);
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.AgentMessage = function(opt_data) {
+proto.agentInterface.EmptyMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.AgentMessage, jspb.Message);
+goog.inherits(proto.agentInterface.EmptyMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.AgentMessage.displayName = 'proto.agent.AgentMessage';
+  proto.agentInterface.EmptyMessage.displayName = 'proto.agentInterface.EmptyMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -90,16 +62,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.ErrorMessage = function(opt_data) {
+proto.agentInterface.StringMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.ErrorMessage, jspb.Message);
+goog.inherits(proto.agentInterface.StringMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.ErrorMessage.displayName = 'proto.agent.ErrorMessage';
+  proto.agentInterface.StringMessage.displayName = 'proto.agentInterface.StringMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -111,16 +83,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.RegisterNodeRequestMessage = function(opt_data) {
+proto.agentInterface.BooleanMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.RegisterNodeRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.BooleanMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.RegisterNodeRequestMessage.displayName = 'proto.agent.RegisterNodeRequestMessage';
+  proto.agentInterface.BooleanMessage.displayName = 'proto.agentInterface.BooleanMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -132,16 +104,37 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.RegisterNodeResponseMessage = function(opt_data) {
+proto.agentInterface.StringListMessage = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.agentInterface.StringListMessage.repeatedFields_, null);
+};
+goog.inherits(proto.agentInterface.StringListMessage, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  /**
+   * @public
+   * @override
+   */
+  proto.agentInterface.StringListMessage.displayName = 'proto.agentInterface.StringListMessage';
+}
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.agentInterface.PeerInfoMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.RegisterNodeResponseMessage, jspb.Message);
+goog.inherits(proto.agentInterface.PeerInfoMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.RegisterNodeResponseMessage.displayName = 'proto.agent.RegisterNodeResponseMessage';
+  proto.agentInterface.PeerInfoMessage.displayName = 'proto.agentInterface.PeerInfoMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -153,16 +146,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.NewNodeRequestMessage = function(opt_data) {
+proto.agentInterface.AgentStatusMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.NewNodeRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.AgentStatusMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.NewNodeRequestMessage.displayName = 'proto.agent.NewNodeRequestMessage';
+  proto.agentInterface.AgentStatusMessage.displayName = 'proto.agentInterface.AgentStatusMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -174,16 +167,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.NewNodeResponseMessage = function(opt_data) {
+proto.agentInterface.NewNodeMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.NewNodeResponseMessage, jspb.Message);
+goog.inherits(proto.agentInterface.NewNodeMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.NewNodeResponseMessage.displayName = 'proto.agent.NewNodeResponseMessage';
+  proto.agentInterface.NewNodeMessage.displayName = 'proto.agentInterface.NewNodeMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -195,16 +188,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.ListNodesRequestMessage = function(opt_data) {
+proto.agentInterface.DeriveKeyMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.ListNodesRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.DeriveKeyMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.ListNodesRequestMessage.displayName = 'proto.agent.ListNodesRequestMessage';
+  proto.agentInterface.DeriveKeyMessage.displayName = 'proto.agentInterface.DeriveKeyMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -216,37 +209,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.ListNodesResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.agent.ListNodesResponseMessage.repeatedFields_, null);
-};
-goog.inherits(proto.agent.ListNodesResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.ListNodesResponseMessage.displayName = 'proto.agent.ListNodesResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.SignFileRequestMessage = function(opt_data) {
+proto.agentInterface.SignFileMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.SignFileRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.SignFileMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.SignFileRequestMessage.displayName = 'proto.agent.SignFileRequestMessage';
+  proto.agentInterface.SignFileMessage.displayName = 'proto.agentInterface.SignFileMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -258,16 +230,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.SignFileResponseMessage = function(opt_data) {
+proto.agentInterface.VerifyFileMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.SignFileResponseMessage, jspb.Message);
+goog.inherits(proto.agentInterface.VerifyFileMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.SignFileResponseMessage.displayName = 'proto.agent.SignFileResponseMessage';
+  proto.agentInterface.VerifyFileMessage.displayName = 'proto.agentInterface.VerifyFileMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -279,16 +251,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.VerifyFileRequestMessage = function(opt_data) {
+proto.agentInterface.SecretPathMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.VerifyFileRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.SecretPathMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.VerifyFileRequestMessage.displayName = 'proto.agent.VerifyFileRequestMessage';
+  proto.agentInterface.SecretPathMessage.displayName = 'proto.agentInterface.SecretPathMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -300,16 +272,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.VerifyFileResponseMessage = function(opt_data) {
+proto.agentInterface.SecretContentMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.VerifyFileResponseMessage, jspb.Message);
+goog.inherits(proto.agentInterface.SecretContentMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.VerifyFileResponseMessage.displayName = 'proto.agent.VerifyFileResponseMessage';
+  proto.agentInterface.SecretContentMessage.displayName = 'proto.agentInterface.SecretContentMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -321,16 +293,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.EncryptFileRequestMessage = function(opt_data) {
+proto.agentInterface.EncryptFileMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.EncryptFileRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.EncryptFileMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.EncryptFileRequestMessage.displayName = 'proto.agent.EncryptFileRequestMessage';
+  proto.agentInterface.EncryptFileMessage.displayName = 'proto.agentInterface.EncryptFileMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -342,16 +314,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.EncryptFileResponseMessage = function(opt_data) {
+proto.agentInterface.DecryptFileMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.EncryptFileResponseMessage, jspb.Message);
+goog.inherits(proto.agentInterface.DecryptFileMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.EncryptFileResponseMessage.displayName = 'proto.agent.EncryptFileResponseMessage';
+  proto.agentInterface.DecryptFileMessage.displayName = 'proto.agentInterface.DecryptFileMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -363,16 +335,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.DecryptFileRequestMessage = function(opt_data) {
+proto.agentInterface.KeyPairMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.DecryptFileRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.KeyPairMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.DecryptFileRequestMessage.displayName = 'proto.agent.DecryptFileRequestMessage';
+  proto.agentInterface.KeyPairMessage.displayName = 'proto.agentInterface.KeyPairMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -384,16 +356,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.DecryptFileResponseMessage = function(opt_data) {
+proto.agentInterface.VaultPathMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.DecryptFileResponseMessage, jspb.Message);
+goog.inherits(proto.agentInterface.VaultPathMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.DecryptFileResponseMessage.displayName = 'proto.agent.DecryptFileResponseMessage';
+  proto.agentInterface.VaultPathMessage.displayName = 'proto.agentInterface.VaultPathMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -405,16 +377,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.ListVaultsRequestMessage = function(opt_data) {
+proto.agentInterface.ContactPeerMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.ListVaultsRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.ContactPeerMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.ListVaultsRequestMessage.displayName = 'proto.agent.ListVaultsRequestMessage';
+  proto.agentInterface.ContactPeerMessage.displayName = 'proto.agentInterface.ContactPeerMessage';
 }
 /**
  * Generated by JsPbCodeGenerator.
@@ -426,604 +398,16 @@ if (goog.DEBUG && !COMPILED) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.agent.ListVaultsResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.agent.ListVaultsResponseMessage.repeatedFields_, null);
-};
-goog.inherits(proto.agent.ListVaultsResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.ListVaultsResponseMessage.displayName = 'proto.agent.ListVaultsResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.NewVaultRequestMessage = function(opt_data) {
+proto.agentInterface.NewClientCertificateMessage = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.agent.NewVaultRequestMessage, jspb.Message);
+goog.inherits(proto.agentInterface.NewClientCertificateMessage, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   /**
    * @public
    * @override
    */
-  proto.agent.NewVaultRequestMessage.displayName = 'proto.agent.NewVaultRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.NewVaultResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.NewVaultResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.NewVaultResponseMessage.displayName = 'proto.agent.NewVaultResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DestroyVaultRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DestroyVaultRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DestroyVaultRequestMessage.displayName = 'proto.agent.DestroyVaultRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DestroyVaultResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DestroyVaultResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DestroyVaultResponseMessage.displayName = 'proto.agent.DestroyVaultResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.ListSecretsRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.ListSecretsRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.ListSecretsRequestMessage.displayName = 'proto.agent.ListSecretsRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.ListSecretsResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.agent.ListSecretsResponseMessage.repeatedFields_, null);
-};
-goog.inherits(proto.agent.ListSecretsResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.ListSecretsResponseMessage.displayName = 'proto.agent.ListSecretsResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.CreateSecretRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.CreateSecretRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.CreateSecretRequestMessage.displayName = 'proto.agent.CreateSecretRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.CreateSecretResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.CreateSecretResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.CreateSecretResponseMessage.displayName = 'proto.agent.CreateSecretResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DestroySecretRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DestroySecretRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DestroySecretRequestMessage.displayName = 'proto.agent.DestroySecretRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DestroySecretResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DestroySecretResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DestroySecretResponseMessage.displayName = 'proto.agent.DestroySecretResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.GetSecretRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.GetSecretRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.GetSecretRequestMessage.displayName = 'proto.agent.GetSecretRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.GetSecretResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.GetSecretResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.GetSecretResponseMessage.displayName = 'proto.agent.GetSecretResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DeriveKeyRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DeriveKeyRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DeriveKeyRequestMessage.displayName = 'proto.agent.DeriveKeyRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DeriveKeyResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DeriveKeyResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DeriveKeyResponseMessage.displayName = 'proto.agent.DeriveKeyResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.ListKeysRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.ListKeysRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.ListKeysRequestMessage.displayName = 'proto.agent.ListKeysRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.ListKeysResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.agent.ListKeysResponseMessage.repeatedFields_, null);
-};
-goog.inherits(proto.agent.ListKeysResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.ListKeysResponseMessage.displayName = 'proto.agent.ListKeysResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.GetKeyRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.GetKeyRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.GetKeyRequestMessage.displayName = 'proto.agent.GetKeyRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.GetKeyResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.GetKeyResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.GetKeyResponseMessage.displayName = 'proto.agent.GetKeyResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.GetPrimaryKeyPairRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.GetPrimaryKeyPairRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.GetPrimaryKeyPairRequestMessage.displayName = 'proto.agent.GetPrimaryKeyPairRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.GetPrimaryKeyPairResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.GetPrimaryKeyPairResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.GetPrimaryKeyPairResponseMessage.displayName = 'proto.agent.GetPrimaryKeyPairResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.UpdateSecretRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.UpdateSecretRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.UpdateSecretRequestMessage.displayName = 'proto.agent.UpdateSecretRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.UpdateSecretResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.UpdateSecretResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.UpdateSecretResponseMessage.displayName = 'proto.agent.UpdateSecretResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DeleteKeyRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DeleteKeyRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DeleteKeyRequestMessage.displayName = 'proto.agent.DeleteKeyRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.DeleteKeyResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.DeleteKeyResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.DeleteKeyResponseMessage.displayName = 'proto.agent.DeleteKeyResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.PeerInfoRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.PeerInfoRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.PeerInfoRequestMessage.displayName = 'proto.agent.PeerInfoRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.PeerInfoResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.agent.PeerInfoResponseMessage.repeatedFields_, null);
-};
-goog.inherits(proto.agent.PeerInfoResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.PeerInfoResponseMessage.displayName = 'proto.agent.PeerInfoResponseMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.AddPeerRequestMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.agent.AddPeerRequestMessage.repeatedFields_, null);
-};
-goog.inherits(proto.agent.AddPeerRequestMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.AddPeerRequestMessage.displayName = 'proto.agent.AddPeerRequestMessage';
-}
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.agent.AddPeerResponseMessage = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
-};
-goog.inherits(proto.agent.AddPeerResponseMessage, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  /**
-   * @public
-   * @override
-   */
-  proto.agent.AddPeerResponseMessage.displayName = 'proto.agent.AddPeerResponseMessage';
+  proto.agentInterface.NewClientCertificateMessage.displayName = 'proto.agentInterface.NewClientCertificateMessage';
 }
 
 
@@ -1041,8 +425,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.AgentMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.AgentMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.EmptyMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.EmptyMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -1051,16 +435,13 @@ proto.agent.AgentMessage.prototype.toObject = function(opt_includeInstance) {
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.AgentMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.EmptyMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.AgentMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.EmptyMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    type: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    isresponse: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-    nodePath: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    subMessage: msg.getSubMessage_asB64()
+
   };
 
   if (includeInstance) {
@@ -1074,23 +455,124 @@ proto.agent.AgentMessage.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.AgentMessage}
+ * @return {!proto.agentInterface.EmptyMessage}
  */
-proto.agent.AgentMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.EmptyMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.AgentMessage;
-  return proto.agent.AgentMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.EmptyMessage;
+  return proto.agentInterface.EmptyMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.AgentMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.EmptyMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.AgentMessage}
+ * @return {!proto.agentInterface.EmptyMessage}
  */
-proto.agent.AgentMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.EmptyMessage.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.EmptyMessage.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.agentInterface.EmptyMessage.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.agentInterface.EmptyMessage} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.EmptyMessage.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+};
+
+
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * Optional fields that are not set will be set to undefined.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
+ * @param {boolean=} opt_includeInstance Deprecated. whether to include the
+ *     JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.agentInterface.StringMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.StringMessage.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Deprecated. Whether to include
+ *     the JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.agentInterface.StringMessage} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.StringMessage.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    s: jspb.Message.getFieldWithDefault(msg, 1, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.agentInterface.StringMessage}
+ */
+proto.agentInterface.StringMessage.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.agentInterface.StringMessage;
+  return proto.agentInterface.StringMessage.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.agentInterface.StringMessage} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.agentInterface.StringMessage}
+ */
+proto.agentInterface.StringMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -1098,20 +580,8 @@ proto.agent.AgentMessage.deserializeBinaryFromReader = function(msg, reader) {
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {!proto.agent.AgentMessageType} */ (reader.readEnum());
-      msg.setType(value);
-      break;
-    case 2:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setIsresponse(value);
-      break;
-    case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setNodePath(value);
-      break;
-    case 4:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setSubMessage(value);
+      msg.setS(value);
       break;
     default:
       reader.skipField();
@@ -1126,9 +596,9 @@ proto.agent.AgentMessage.deserializeBinaryFromReader = function(msg, reader) {
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.AgentMessage.prototype.serializeBinary = function() {
+proto.agentInterface.StringMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.AgentMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.StringMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -1136,36 +606,467 @@ proto.agent.AgentMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.AgentMessage} message
+ * @param {!proto.agentInterface.StringMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.AgentMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.StringMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getType();
-  if (f !== 0.0) {
-    writer.writeEnum(
+  f = message.getS();
+  if (f.length > 0) {
+    writer.writeString(
       1,
       f
     );
   }
-  f = message.getIsresponse();
+};
+
+
+/**
+ * optional string s = 1;
+ * @return {string}
+ */
+proto.agentInterface.StringMessage.prototype.getS = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.StringMessage} returns this
+ */
+proto.agentInterface.StringMessage.prototype.setS = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * Optional fields that are not set will be set to undefined.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
+ * @param {boolean=} opt_includeInstance Deprecated. whether to include the
+ *     JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.agentInterface.BooleanMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.BooleanMessage.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Deprecated. Whether to include
+ *     the JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.agentInterface.BooleanMessage} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.BooleanMessage.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    b: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.agentInterface.BooleanMessage}
+ */
+proto.agentInterface.BooleanMessage.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.agentInterface.BooleanMessage;
+  return proto.agentInterface.BooleanMessage.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.agentInterface.BooleanMessage} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.agentInterface.BooleanMessage}
+ */
+proto.agentInterface.BooleanMessage.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setB(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.BooleanMessage.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.agentInterface.BooleanMessage.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.agentInterface.BooleanMessage} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.BooleanMessage.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getB();
   if (f) {
     writer.writeBool(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional bool b = 1;
+ * @return {boolean}
+ */
+proto.agentInterface.BooleanMessage.prototype.getB = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.agentInterface.BooleanMessage} returns this
+ */
+proto.agentInterface.BooleanMessage.prototype.setB = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 1, value);
+};
+
+
+
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.agentInterface.StringListMessage.repeatedFields_ = [1];
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * Optional fields that are not set will be set to undefined.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
+ * @param {boolean=} opt_includeInstance Deprecated. whether to include the
+ *     JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.agentInterface.StringListMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.StringListMessage.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Deprecated. Whether to include
+ *     the JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.agentInterface.StringListMessage} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.StringListMessage.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    sList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.agentInterface.StringListMessage}
+ */
+proto.agentInterface.StringListMessage.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.agentInterface.StringListMessage;
+  return proto.agentInterface.StringListMessage.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.agentInterface.StringListMessage} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.agentInterface.StringListMessage}
+ */
+proto.agentInterface.StringListMessage.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addS(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.StringListMessage.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.agentInterface.StringListMessage.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.agentInterface.StringListMessage} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.StringListMessage.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getSList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * repeated string s = 1;
+ * @return {!Array<string>}
+ */
+proto.agentInterface.StringListMessage.prototype.getSList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.agentInterface.StringListMessage} returns this
+ */
+proto.agentInterface.StringListMessage.prototype.setSList = function(value) {
+  return jspb.Message.setField(this, 1, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.agentInterface.StringListMessage} returns this
+ */
+proto.agentInterface.StringListMessage.prototype.addS = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.agentInterface.StringListMessage} returns this
+ */
+proto.agentInterface.StringListMessage.prototype.clearSList = function() {
+  return this.setSList([]);
+};
+
+
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * Optional fields that are not set will be set to undefined.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
+ * @param {boolean=} opt_includeInstance Deprecated. whether to include the
+ *     JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.agentInterface.PeerInfoMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.PeerInfoMessage.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Deprecated. Whether to include
+ *     the JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.agentInterface.PeerInfoMessage} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.PeerInfoMessage.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    publicKey: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    relayPublicKey: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    peerAddress: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    apiAddress: jspb.Message.getFieldWithDefault(msg, 4, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.agentInterface.PeerInfoMessage}
+ */
+proto.agentInterface.PeerInfoMessage.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.agentInterface.PeerInfoMessage;
+  return proto.agentInterface.PeerInfoMessage.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.agentInterface.PeerInfoMessage} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.agentInterface.PeerInfoMessage}
+ */
+proto.agentInterface.PeerInfoMessage.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPublicKey(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRelayPublicKey(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPeerAddress(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setApiAddress(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.PeerInfoMessage.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.agentInterface.PeerInfoMessage.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.agentInterface.PeerInfoMessage} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.PeerInfoMessage.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getPublicKey();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getRelayPublicKey();
+  if (f.length > 0) {
+    writer.writeString(
       2,
       f
     );
   }
-  f = message.getNodePath();
+  f = message.getPeerAddress();
   if (f.length > 0) {
     writer.writeString(
       3,
       f
     );
   }
-  f = message.getSubMessage_asU8();
+  f = message.getApiAddress();
   if (f.length > 0) {
-    writer.writeBytes(
+    writer.writeString(
       4,
       f
     );
@@ -1174,228 +1075,74 @@ proto.agent.AgentMessage.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional AgentMessageType type = 1;
- * @return {!proto.agent.AgentMessageType}
- */
-proto.agent.AgentMessage.prototype.getType = function() {
-  return /** @type {!proto.agent.AgentMessageType} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
-};
-
-
-/**
- * @param {!proto.agent.AgentMessageType} value
- * @return {!proto.agent.AgentMessage} returns this
- */
-proto.agent.AgentMessage.prototype.setType = function(value) {
-  return jspb.Message.setProto3EnumField(this, 1, value);
-};
-
-
-/**
- * optional bool isResponse = 2;
- * @return {boolean}
- */
-proto.agent.AgentMessage.prototype.getIsresponse = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.AgentMessage} returns this
- */
-proto.agent.AgentMessage.prototype.setIsresponse = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 2, value);
-};
-
-
-/**
- * optional string node_path = 3;
+ * optional string public_key = 1;
  * @return {string}
  */
-proto.agent.AgentMessage.prototype.getNodePath = function() {
+proto.agentInterface.PeerInfoMessage.prototype.getPublicKey = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.PeerInfoMessage} returns this
+ */
+proto.agentInterface.PeerInfoMessage.prototype.setPublicKey = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string relay_public_key = 2;
+ * @return {string}
+ */
+proto.agentInterface.PeerInfoMessage.prototype.getRelayPublicKey = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.PeerInfoMessage} returns this
+ */
+proto.agentInterface.PeerInfoMessage.prototype.setRelayPublicKey = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string peer_address = 3;
+ * @return {string}
+ */
+proto.agentInterface.PeerInfoMessage.prototype.getPeerAddress = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.AgentMessage} returns this
+ * @return {!proto.agentInterface.PeerInfoMessage} returns this
  */
-proto.agent.AgentMessage.prototype.setNodePath = function(value) {
+proto.agentInterface.PeerInfoMessage.prototype.setPeerAddress = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
- * optional bytes sub_message = 4;
- * @return {!(string|Uint8Array)}
- */
-proto.agent.AgentMessage.prototype.getSubMessage = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * optional bytes sub_message = 4;
- * This is a type-conversion wrapper around `getSubMessage()`
+ * optional string api_address = 4;
  * @return {string}
  */
-proto.agent.AgentMessage.prototype.getSubMessage_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getSubMessage()));
-};
-
-
-/**
- * optional bytes sub_message = 4;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getSubMessage()`
- * @return {!Uint8Array}
- */
-proto.agent.AgentMessage.prototype.getSubMessage_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getSubMessage()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.agent.AgentMessage} returns this
- */
-proto.agent.AgentMessage.prototype.setSubMessage = function(value) {
-  return jspb.Message.setProto3BytesField(this, 4, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ErrorMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ErrorMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ErrorMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ErrorMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    error: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ErrorMessage}
- */
-proto.agent.ErrorMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ErrorMessage;
-  return proto.agent.ErrorMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ErrorMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ErrorMessage}
- */
-proto.agent.ErrorMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setError(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ErrorMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ErrorMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ErrorMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ErrorMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getError();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string error = 1;
- * @return {string}
- */
-proto.agent.ErrorMessage.prototype.getError = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+proto.agentInterface.PeerInfoMessage.prototype.getApiAddress = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.ErrorMessage} returns this
+ * @return {!proto.agentInterface.PeerInfoMessage} returns this
  */
-proto.agent.ErrorMessage.prototype.setError = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
+proto.agentInterface.PeerInfoMessage.prototype.setApiAddress = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -1415,8 +1162,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.RegisterNodeRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.RegisterNodeRequestMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.AgentStatusMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.AgentStatusMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -1425,13 +1172,13 @@ proto.agent.RegisterNodeRequestMessage.prototype.toObject = function(opt_include
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.RegisterNodeRequestMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.AgentStatusMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.RegisterNodeRequestMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.AgentStatusMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    passphrase: jspb.Message.getFieldWithDefault(msg, 1, "")
+    status: jspb.Message.getFieldWithDefault(msg, 1, 0)
   };
 
   if (includeInstance) {
@@ -1445,23 +1192,23 @@ proto.agent.RegisterNodeRequestMessage.toObject = function(includeInstance, msg)
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.RegisterNodeRequestMessage}
+ * @return {!proto.agentInterface.AgentStatusMessage}
  */
-proto.agent.RegisterNodeRequestMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.AgentStatusMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.RegisterNodeRequestMessage;
-  return proto.agent.RegisterNodeRequestMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.AgentStatusMessage;
+  return proto.agentInterface.AgentStatusMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.RegisterNodeRequestMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.AgentStatusMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.RegisterNodeRequestMessage}
+ * @return {!proto.agentInterface.AgentStatusMessage}
  */
-proto.agent.RegisterNodeRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.AgentStatusMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -1469,8 +1216,8 @@ proto.agent.RegisterNodeRequestMessage.deserializeBinaryFromReader = function(ms
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPassphrase(value);
+      var value = /** @type {!proto.agentInterface.AgentStatusType} */ (reader.readEnum());
+      msg.setStatus(value);
       break;
     default:
       reader.skipField();
@@ -1485,9 +1232,9 @@ proto.agent.RegisterNodeRequestMessage.deserializeBinaryFromReader = function(ms
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.RegisterNodeRequestMessage.prototype.serializeBinary = function() {
+proto.agentInterface.AgentStatusMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.RegisterNodeRequestMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.AgentStatusMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -1495,15 +1242,15 @@ proto.agent.RegisterNodeRequestMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.RegisterNodeRequestMessage} message
+ * @param {!proto.agentInterface.AgentStatusMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.RegisterNodeRequestMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.AgentStatusMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getPassphrase();
-  if (f.length > 0) {
-    writer.writeString(
+  f = message.getStatus();
+  if (f !== 0.0) {
+    writer.writeEnum(
       1,
       f
     );
@@ -1512,20 +1259,20 @@ proto.agent.RegisterNodeRequestMessage.serializeBinaryToWriter = function(messag
 
 
 /**
- * optional string passphrase = 1;
- * @return {string}
+ * optional AgentStatusType status = 1;
+ * @return {!proto.agentInterface.AgentStatusType}
  */
-proto.agent.RegisterNodeRequestMessage.prototype.getPassphrase = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+proto.agentInterface.AgentStatusMessage.prototype.getStatus = function() {
+  return /** @type {!proto.agentInterface.AgentStatusType} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
 
 /**
- * @param {string} value
- * @return {!proto.agent.RegisterNodeRequestMessage} returns this
+ * @param {!proto.agentInterface.AgentStatusType} value
+ * @return {!proto.agentInterface.AgentStatusMessage} returns this
  */
-proto.agent.RegisterNodeRequestMessage.prototype.setPassphrase = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
+proto.agentInterface.AgentStatusMessage.prototype.setStatus = function(value) {
+  return jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
@@ -1545,8 +1292,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.RegisterNodeResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.RegisterNodeResponseMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.NewNodeMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.NewNodeMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -1555,13 +1302,15 @@ proto.agent.RegisterNodeResponseMessage.prototype.toObject = function(opt_includ
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.RegisterNodeResponseMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.NewNodeMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.RegisterNodeResponseMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.NewNodeMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
+    userid: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    passphrase: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    nbits: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
 
   if (includeInstance) {
@@ -1575,156 +1324,23 @@ proto.agent.RegisterNodeResponseMessage.toObject = function(includeInstance, msg
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.RegisterNodeResponseMessage}
+ * @return {!proto.agentInterface.NewNodeMessage}
  */
-proto.agent.RegisterNodeResponseMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.NewNodeMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.RegisterNodeResponseMessage;
-  return proto.agent.RegisterNodeResponseMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.NewNodeMessage;
+  return proto.agentInterface.NewNodeMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.RegisterNodeResponseMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.NewNodeMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.RegisterNodeResponseMessage}
+ * @return {!proto.agentInterface.NewNodeMessage}
  */
-proto.agent.RegisterNodeResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.RegisterNodeResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.RegisterNodeResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.RegisterNodeResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.RegisterNodeResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.RegisterNodeResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.RegisterNodeResponseMessage} returns this
- */
-proto.agent.RegisterNodeResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.NewNodeRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.NewNodeRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.NewNodeRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.NewNodeRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    email: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    passphrase: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    nbits: jspb.Message.getFieldWithDefault(msg, 4, 0)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.NewNodeRequestMessage}
- */
-proto.agent.NewNodeRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.NewNodeRequestMessage;
-  return proto.agent.NewNodeRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.NewNodeRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.NewNodeRequestMessage}
- */
-proto.agent.NewNodeRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.NewNodeMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -1733,17 +1349,13 @@ proto.agent.NewNodeRequestMessage.deserializeBinaryFromReader = function(msg, re
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setName(value);
+      msg.setUserid(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setEmail(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
       msg.setPassphrase(value);
       break;
-    case 4:
+    case 3:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setNbits(value);
       break;
@@ -1760,9 +1372,9 @@ proto.agent.NewNodeRequestMessage.deserializeBinaryFromReader = function(msg, re
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.NewNodeRequestMessage.prototype.serializeBinary = function() {
+proto.agentInterface.NewNodeMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.NewNodeRequestMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.NewNodeMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -1770,37 +1382,30 @@ proto.agent.NewNodeRequestMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.NewNodeRequestMessage} message
+ * @param {!proto.agentInterface.NewNodeMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.NewNodeRequestMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.NewNodeMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getName();
+  f = message.getUserid();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getEmail();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
   f = message.getPassphrase();
   if (f.length > 0) {
     writer.writeString(
-      3,
+      2,
       f
     );
   }
   f = message.getNbits();
   if (f !== 0) {
     writer.writeInt32(
-      4,
+      3,
       f
     );
   }
@@ -1808,74 +1413,56 @@ proto.agent.NewNodeRequestMessage.serializeBinaryToWriter = function(message, wr
 
 
 /**
- * optional string name = 1;
+ * optional string userId = 1;
  * @return {string}
  */
-proto.agent.NewNodeRequestMessage.prototype.getName = function() {
+proto.agentInterface.NewNodeMessage.prototype.getUserid = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.NewNodeRequestMessage} returns this
+ * @return {!proto.agentInterface.NewNodeMessage} returns this
  */
-proto.agent.NewNodeRequestMessage.prototype.setName = function(value) {
+proto.agentInterface.NewNodeMessage.prototype.setUserid = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string email = 2;
+ * optional string passphrase = 2;
  * @return {string}
  */
-proto.agent.NewNodeRequestMessage.prototype.getEmail = function() {
+proto.agentInterface.NewNodeMessage.prototype.getPassphrase = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.NewNodeRequestMessage} returns this
+ * @return {!proto.agentInterface.NewNodeMessage} returns this
  */
-proto.agent.NewNodeRequestMessage.prototype.setEmail = function(value) {
+proto.agentInterface.NewNodeMessage.prototype.setPassphrase = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional string passphrase = 3;
- * @return {string}
- */
-proto.agent.NewNodeRequestMessage.prototype.getPassphrase = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.NewNodeRequestMessage} returns this
- */
-proto.agent.NewNodeRequestMessage.prototype.setPassphrase = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional int32 nbits = 4;
+ * optional int32 nbits = 3;
  * @return {number}
  */
-proto.agent.NewNodeRequestMessage.prototype.getNbits = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+proto.agentInterface.NewNodeMessage.prototype.getNbits = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
 
 /**
  * @param {number} value
- * @return {!proto.agent.NewNodeRequestMessage} returns this
+ * @return {!proto.agentInterface.NewNodeMessage} returns this
  */
-proto.agent.NewNodeRequestMessage.prototype.setNbits = function(value) {
-  return jspb.Message.setProto3IntField(this, 4, value);
+proto.agentInterface.NewNodeMessage.prototype.setNbits = function(value) {
+  return jspb.Message.setProto3IntField(this, 3, value);
 };
 
 
@@ -1895,8 +1482,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.NewNodeResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.NewNodeResponseMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.DeriveKeyMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.DeriveKeyMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -1905,3718 +1492,11 @@ proto.agent.NewNodeResponseMessage.prototype.toObject = function(opt_includeInst
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.NewNodeResponseMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.DeriveKeyMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.NewNodeResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.NewNodeResponseMessage}
- */
-proto.agent.NewNodeResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.NewNodeResponseMessage;
-  return proto.agent.NewNodeResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.NewNodeResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.NewNodeResponseMessage}
- */
-proto.agent.NewNodeResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.NewNodeResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.NewNodeResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.NewNodeResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.NewNodeResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.NewNodeResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.NewNodeResponseMessage} returns this
- */
-proto.agent.NewNodeResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListNodesRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListNodesRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListNodesRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListNodesRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    unlockedOnly: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListNodesRequestMessage}
- */
-proto.agent.ListNodesRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListNodesRequestMessage;
-  return proto.agent.ListNodesRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListNodesRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListNodesRequestMessage}
- */
-proto.agent.ListNodesRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setUnlockedOnly(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListNodesRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListNodesRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListNodesRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListNodesRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getUnlockedOnly();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool unlocked_only = 1;
- * @return {boolean}
- */
-proto.agent.ListNodesRequestMessage.prototype.getUnlockedOnly = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.ListNodesRequestMessage} returns this
- */
-proto.agent.ListNodesRequestMessage.prototype.setUnlockedOnly = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.agent.ListNodesResponseMessage.repeatedFields_ = [1];
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListNodesResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListNodesResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListNodesResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListNodesResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    nodesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListNodesResponseMessage}
- */
-proto.agent.ListNodesResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListNodesResponseMessage;
-  return proto.agent.ListNodesResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListNodesResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListNodesResponseMessage}
- */
-proto.agent.ListNodesResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addNodes(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListNodesResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListNodesResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListNodesResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListNodesResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getNodesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * repeated string nodes = 1;
- * @return {!Array<string>}
- */
-proto.agent.ListNodesResponseMessage.prototype.getNodesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.agent.ListNodesResponseMessage} returns this
- */
-proto.agent.ListNodesResponseMessage.prototype.setNodesList = function(value) {
-  return jspb.Message.setField(this, 1, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.agent.ListNodesResponseMessage} returns this
- */
-proto.agent.ListNodesResponseMessage.prototype.addNodes = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.agent.ListNodesResponseMessage} returns this
- */
-proto.agent.ListNodesResponseMessage.prototype.clearNodesList = function() {
-  return this.setNodesList([]);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.SignFileRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.SignFileRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.SignFileRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.SignFileRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    privateKeyPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    passphrase: jspb.Message.getFieldWithDefault(msg, 3, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.SignFileRequestMessage}
- */
-proto.agent.SignFileRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.SignFileRequestMessage;
-  return proto.agent.SignFileRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.SignFileRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.SignFileRequestMessage}
- */
-proto.agent.SignFileRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setFilePath(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPrivateKeyPath(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPassphrase(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.SignFileRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.SignFileRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.SignFileRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.SignFileRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getFilePath();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getPrivateKeyPath();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-  f = message.getPassphrase();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string file_path = 1;
- * @return {string}
- */
-proto.agent.SignFileRequestMessage.prototype.getFilePath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.SignFileRequestMessage} returns this
- */
-proto.agent.SignFileRequestMessage.prototype.setFilePath = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string private_key_path = 2;
- * @return {string}
- */
-proto.agent.SignFileRequestMessage.prototype.getPrivateKeyPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.SignFileRequestMessage} returns this
- */
-proto.agent.SignFileRequestMessage.prototype.setPrivateKeyPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string passphrase = 3;
- * @return {string}
- */
-proto.agent.SignFileRequestMessage.prototype.getPassphrase = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.SignFileRequestMessage} returns this
- */
-proto.agent.SignFileRequestMessage.prototype.setPassphrase = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.SignFileResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.SignFileResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.SignFileResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.SignFileResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    signaturePath: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.SignFileResponseMessage}
- */
-proto.agent.SignFileResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.SignFileResponseMessage;
-  return proto.agent.SignFileResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.SignFileResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.SignFileResponseMessage}
- */
-proto.agent.SignFileResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSignaturePath(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.SignFileResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.SignFileResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.SignFileResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.SignFileResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSignaturePath();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string signature_path = 1;
- * @return {string}
- */
-proto.agent.SignFileResponseMessage.prototype.getSignaturePath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.SignFileResponseMessage} returns this
- */
-proto.agent.SignFileResponseMessage.prototype.setSignaturePath = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.VerifyFileRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.VerifyFileRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.VerifyFileRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.VerifyFileRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    signaturePath: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    publicKeyPath: jspb.Message.getFieldWithDefault(msg, 3, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.VerifyFileRequestMessage}
- */
-proto.agent.VerifyFileRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.VerifyFileRequestMessage;
-  return proto.agent.VerifyFileRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.VerifyFileRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.VerifyFileRequestMessage}
- */
-proto.agent.VerifyFileRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setFilePath(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSignaturePath(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPublicKeyPath(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.VerifyFileRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.VerifyFileRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.VerifyFileRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.VerifyFileRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getFilePath();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getSignaturePath();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-  f = message.getPublicKeyPath();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string file_path = 1;
- * @return {string}
- */
-proto.agent.VerifyFileRequestMessage.prototype.getFilePath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.VerifyFileRequestMessage} returns this
- */
-proto.agent.VerifyFileRequestMessage.prototype.setFilePath = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string signature_path = 2;
- * @return {string}
- */
-proto.agent.VerifyFileRequestMessage.prototype.getSignaturePath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.VerifyFileRequestMessage} returns this
- */
-proto.agent.VerifyFileRequestMessage.prototype.setSignaturePath = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string public_key_path = 3;
- * @return {string}
- */
-proto.agent.VerifyFileRequestMessage.prototype.getPublicKeyPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.VerifyFileRequestMessage} returns this
- */
-proto.agent.VerifyFileRequestMessage.prototype.setPublicKeyPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.VerifyFileResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.VerifyFileResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.VerifyFileResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.VerifyFileResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    verified: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.VerifyFileResponseMessage}
- */
-proto.agent.VerifyFileResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.VerifyFileResponseMessage;
-  return proto.agent.VerifyFileResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.VerifyFileResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.VerifyFileResponseMessage}
- */
-proto.agent.VerifyFileResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setVerified(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.VerifyFileResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.VerifyFileResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.VerifyFileResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.VerifyFileResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVerified();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool verified = 1;
- * @return {boolean}
- */
-proto.agent.VerifyFileResponseMessage.prototype.getVerified = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.VerifyFileResponseMessage} returns this
- */
-proto.agent.VerifyFileResponseMessage.prototype.setVerified = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.EncryptFileRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.EncryptFileRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.EncryptFileRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.EncryptFileRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    publicKeyPath: jspb.Message.getFieldWithDefault(msg, 2, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.EncryptFileRequestMessage}
- */
-proto.agent.EncryptFileRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.EncryptFileRequestMessage;
-  return proto.agent.EncryptFileRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.EncryptFileRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.EncryptFileRequestMessage}
- */
-proto.agent.EncryptFileRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setFilePath(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPublicKeyPath(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.EncryptFileRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.EncryptFileRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.EncryptFileRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.EncryptFileRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getFilePath();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getPublicKeyPath();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string file_path = 1;
- * @return {string}
- */
-proto.agent.EncryptFileRequestMessage.prototype.getFilePath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.EncryptFileRequestMessage} returns this
- */
-proto.agent.EncryptFileRequestMessage.prototype.setFilePath = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string public_key_path = 2;
- * @return {string}
- */
-proto.agent.EncryptFileRequestMessage.prototype.getPublicKeyPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.EncryptFileRequestMessage} returns this
- */
-proto.agent.EncryptFileRequestMessage.prototype.setPublicKeyPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.EncryptFileResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.EncryptFileResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.EncryptFileResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.EncryptFileResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    encryptedpath: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.EncryptFileResponseMessage}
- */
-proto.agent.EncryptFileResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.EncryptFileResponseMessage;
-  return proto.agent.EncryptFileResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.EncryptFileResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.EncryptFileResponseMessage}
- */
-proto.agent.EncryptFileResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setEncryptedpath(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.EncryptFileResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.EncryptFileResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.EncryptFileResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.EncryptFileResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getEncryptedpath();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string encryptedPath = 1;
- * @return {string}
- */
-proto.agent.EncryptFileResponseMessage.prototype.getEncryptedpath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.EncryptFileResponseMessage} returns this
- */
-proto.agent.EncryptFileResponseMessage.prototype.setEncryptedpath = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DecryptFileRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DecryptFileRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DecryptFileRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DecryptFileRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    privateKeyPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    passphrase: jspb.Message.getFieldWithDefault(msg, 3, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DecryptFileRequestMessage}
- */
-proto.agent.DecryptFileRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DecryptFileRequestMessage;
-  return proto.agent.DecryptFileRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DecryptFileRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DecryptFileRequestMessage}
- */
-proto.agent.DecryptFileRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setFilePath(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPrivateKeyPath(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPassphrase(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DecryptFileRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DecryptFileRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DecryptFileRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DecryptFileRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getFilePath();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getPrivateKeyPath();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-  f = message.getPassphrase();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string file_path = 1;
- * @return {string}
- */
-proto.agent.DecryptFileRequestMessage.prototype.getFilePath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DecryptFileRequestMessage} returns this
- */
-proto.agent.DecryptFileRequestMessage.prototype.setFilePath = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string private_key_path = 2;
- * @return {string}
- */
-proto.agent.DecryptFileRequestMessage.prototype.getPrivateKeyPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DecryptFileRequestMessage} returns this
- */
-proto.agent.DecryptFileRequestMessage.prototype.setPrivateKeyPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string passphrase = 3;
- * @return {string}
- */
-proto.agent.DecryptFileRequestMessage.prototype.getPassphrase = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DecryptFileRequestMessage} returns this
- */
-proto.agent.DecryptFileRequestMessage.prototype.setPassphrase = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DecryptFileResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DecryptFileResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DecryptFileResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DecryptFileResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    decryptedpath: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DecryptFileResponseMessage}
- */
-proto.agent.DecryptFileResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DecryptFileResponseMessage;
-  return proto.agent.DecryptFileResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DecryptFileResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DecryptFileResponseMessage}
- */
-proto.agent.DecryptFileResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setDecryptedpath(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DecryptFileResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DecryptFileResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DecryptFileResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DecryptFileResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getDecryptedpath();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string decryptedPath = 1;
- * @return {string}
- */
-proto.agent.DecryptFileResponseMessage.prototype.getDecryptedpath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DecryptFileResponseMessage} returns this
- */
-proto.agent.DecryptFileResponseMessage.prototype.setDecryptedpath = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListVaultsRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListVaultsRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListVaultsRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListVaultsRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListVaultsRequestMessage}
- */
-proto.agent.ListVaultsRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListVaultsRequestMessage;
-  return proto.agent.ListVaultsRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListVaultsRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListVaultsRequestMessage}
- */
-proto.agent.ListVaultsRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListVaultsRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListVaultsRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListVaultsRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListVaultsRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-};
-
-
-
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.agent.ListVaultsResponseMessage.repeatedFields_ = [1];
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListVaultsResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListVaultsResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListVaultsResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListVaultsResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    vaultNamesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListVaultsResponseMessage}
- */
-proto.agent.ListVaultsResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListVaultsResponseMessage;
-  return proto.agent.ListVaultsResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListVaultsResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListVaultsResponseMessage}
- */
-proto.agent.ListVaultsResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addVaultNames(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListVaultsResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListVaultsResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListVaultsResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListVaultsResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultNamesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * repeated string vault_names = 1;
- * @return {!Array<string>}
- */
-proto.agent.ListVaultsResponseMessage.prototype.getVaultNamesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.agent.ListVaultsResponseMessage} returns this
- */
-proto.agent.ListVaultsResponseMessage.prototype.setVaultNamesList = function(value) {
-  return jspb.Message.setField(this, 1, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.agent.ListVaultsResponseMessage} returns this
- */
-proto.agent.ListVaultsResponseMessage.prototype.addVaultNames = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.agent.ListVaultsResponseMessage} returns this
- */
-proto.agent.ListVaultsResponseMessage.prototype.clearVaultNamesList = function() {
-  return this.setVaultNamesList([]);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.NewVaultRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.NewVaultRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.NewVaultRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.NewVaultRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    vaultName: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.NewVaultRequestMessage}
- */
-proto.agent.NewVaultRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.NewVaultRequestMessage;
-  return proto.agent.NewVaultRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.NewVaultRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.NewVaultRequestMessage}
- */
-proto.agent.NewVaultRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVaultName(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.NewVaultRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.NewVaultRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.NewVaultRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.NewVaultRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string vault_name = 1;
- * @return {string}
- */
-proto.agent.NewVaultRequestMessage.prototype.getVaultName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.NewVaultRequestMessage} returns this
- */
-proto.agent.NewVaultRequestMessage.prototype.setVaultName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.NewVaultResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.NewVaultResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.NewVaultResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.NewVaultResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.NewVaultResponseMessage}
- */
-proto.agent.NewVaultResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.NewVaultResponseMessage;
-  return proto.agent.NewVaultResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.NewVaultResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.NewVaultResponseMessage}
- */
-proto.agent.NewVaultResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.NewVaultResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.NewVaultResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.NewVaultResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.NewVaultResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.NewVaultResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.NewVaultResponseMessage} returns this
- */
-proto.agent.NewVaultResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DestroyVaultRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DestroyVaultRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DestroyVaultRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroyVaultRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    vaultName: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DestroyVaultRequestMessage}
- */
-proto.agent.DestroyVaultRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DestroyVaultRequestMessage;
-  return proto.agent.DestroyVaultRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DestroyVaultRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DestroyVaultRequestMessage}
- */
-proto.agent.DestroyVaultRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVaultName(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DestroyVaultRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DestroyVaultRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DestroyVaultRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroyVaultRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string vault_name = 1;
- * @return {string}
- */
-proto.agent.DestroyVaultRequestMessage.prototype.getVaultName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DestroyVaultRequestMessage} returns this
- */
-proto.agent.DestroyVaultRequestMessage.prototype.setVaultName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DestroyVaultResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DestroyVaultResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DestroyVaultResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroyVaultResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DestroyVaultResponseMessage}
- */
-proto.agent.DestroyVaultResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DestroyVaultResponseMessage;
-  return proto.agent.DestroyVaultResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DestroyVaultResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DestroyVaultResponseMessage}
- */
-proto.agent.DestroyVaultResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DestroyVaultResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DestroyVaultResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DestroyVaultResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroyVaultResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.DestroyVaultResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.DestroyVaultResponseMessage} returns this
- */
-proto.agent.DestroyVaultResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListSecretsRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListSecretsRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListSecretsRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListSecretsRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    vaultName: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListSecretsRequestMessage}
- */
-proto.agent.ListSecretsRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListSecretsRequestMessage;
-  return proto.agent.ListSecretsRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListSecretsRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListSecretsRequestMessage}
- */
-proto.agent.ListSecretsRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVaultName(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListSecretsRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListSecretsRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListSecretsRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListSecretsRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string vault_name = 1;
- * @return {string}
- */
-proto.agent.ListSecretsRequestMessage.prototype.getVaultName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.ListSecretsRequestMessage} returns this
- */
-proto.agent.ListSecretsRequestMessage.prototype.setVaultName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.agent.ListSecretsResponseMessage.repeatedFields_ = [1];
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListSecretsResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListSecretsResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListSecretsResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListSecretsResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    secretNamesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListSecretsResponseMessage}
- */
-proto.agent.ListSecretsResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListSecretsResponseMessage;
-  return proto.agent.ListSecretsResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListSecretsResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListSecretsResponseMessage}
- */
-proto.agent.ListSecretsResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addSecretNames(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListSecretsResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListSecretsResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListSecretsResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListSecretsResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSecretNamesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * repeated string secret_names = 1;
- * @return {!Array<string>}
- */
-proto.agent.ListSecretsResponseMessage.prototype.getSecretNamesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.agent.ListSecretsResponseMessage} returns this
- */
-proto.agent.ListSecretsResponseMessage.prototype.setSecretNamesList = function(value) {
-  return jspb.Message.setField(this, 1, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.agent.ListSecretsResponseMessage} returns this
- */
-proto.agent.ListSecretsResponseMessage.prototype.addSecretNames = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.agent.ListSecretsResponseMessage} returns this
- */
-proto.agent.ListSecretsResponseMessage.prototype.clearSecretNamesList = function() {
-  return this.setSecretNamesList([]);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.CreateSecretRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.CreateSecretRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.CreateSecretRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.CreateSecretRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    secretName: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    secretPath: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    secretContent: msg.getSecretContent_asB64()
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.CreateSecretRequestMessage}
- */
-proto.agent.CreateSecretRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.CreateSecretRequestMessage;
-  return proto.agent.CreateSecretRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.CreateSecretRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.CreateSecretRequestMessage}
- */
-proto.agent.CreateSecretRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVaultName(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSecretName(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSecretPath(value);
-      break;
-    case 4:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setSecretContent(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.CreateSecretRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.CreateSecretRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.CreateSecretRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.CreateSecretRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getSecretName();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-  f = message.getSecretPath();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-  f = message.getSecretContent_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      4,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string vault_name = 1;
- * @return {string}
- */
-proto.agent.CreateSecretRequestMessage.prototype.getVaultName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.CreateSecretRequestMessage} returns this
- */
-proto.agent.CreateSecretRequestMessage.prototype.setVaultName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string secret_name = 2;
- * @return {string}
- */
-proto.agent.CreateSecretRequestMessage.prototype.getSecretName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.CreateSecretRequestMessage} returns this
- */
-proto.agent.CreateSecretRequestMessage.prototype.setSecretName = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string secret_path = 3;
- * @return {string}
- */
-proto.agent.CreateSecretRequestMessage.prototype.getSecretPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.CreateSecretRequestMessage} returns this
- */
-proto.agent.CreateSecretRequestMessage.prototype.setSecretPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional bytes secret_content = 4;
- * @return {!(string|Uint8Array)}
- */
-proto.agent.CreateSecretRequestMessage.prototype.getSecretContent = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * optional bytes secret_content = 4;
- * This is a type-conversion wrapper around `getSecretContent()`
- * @return {string}
- */
-proto.agent.CreateSecretRequestMessage.prototype.getSecretContent_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getSecretContent()));
-};
-
-
-/**
- * optional bytes secret_content = 4;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getSecretContent()`
- * @return {!Uint8Array}
- */
-proto.agent.CreateSecretRequestMessage.prototype.getSecretContent_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getSecretContent()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.agent.CreateSecretRequestMessage} returns this
- */
-proto.agent.CreateSecretRequestMessage.prototype.setSecretContent = function(value) {
-  return jspb.Message.setProto3BytesField(this, 4, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.CreateSecretResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.CreateSecretResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.CreateSecretResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.CreateSecretResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.CreateSecretResponseMessage}
- */
-proto.agent.CreateSecretResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.CreateSecretResponseMessage;
-  return proto.agent.CreateSecretResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.CreateSecretResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.CreateSecretResponseMessage}
- */
-proto.agent.CreateSecretResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.CreateSecretResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.CreateSecretResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.CreateSecretResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.CreateSecretResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.CreateSecretResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.CreateSecretResponseMessage} returns this
- */
-proto.agent.CreateSecretResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DestroySecretRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DestroySecretRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DestroySecretRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroySecretRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    secretName: jspb.Message.getFieldWithDefault(msg, 2, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DestroySecretRequestMessage}
- */
-proto.agent.DestroySecretRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DestroySecretRequestMessage;
-  return proto.agent.DestroySecretRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DestroySecretRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DestroySecretRequestMessage}
- */
-proto.agent.DestroySecretRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVaultName(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSecretName(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DestroySecretRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DestroySecretRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DestroySecretRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroySecretRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getSecretName();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string vault_name = 1;
- * @return {string}
- */
-proto.agent.DestroySecretRequestMessage.prototype.getVaultName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DestroySecretRequestMessage} returns this
- */
-proto.agent.DestroySecretRequestMessage.prototype.setVaultName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string secret_name = 2;
- * @return {string}
- */
-proto.agent.DestroySecretRequestMessage.prototype.getSecretName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DestroySecretRequestMessage} returns this
- */
-proto.agent.DestroySecretRequestMessage.prototype.setSecretName = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DestroySecretResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DestroySecretResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DestroySecretResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroySecretResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DestroySecretResponseMessage}
- */
-proto.agent.DestroySecretResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DestroySecretResponseMessage;
-  return proto.agent.DestroySecretResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DestroySecretResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DestroySecretResponseMessage}
- */
-proto.agent.DestroySecretResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DestroySecretResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DestroySecretResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DestroySecretResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DestroySecretResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.DestroySecretResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.DestroySecretResponseMessage} returns this
- */
-proto.agent.DestroySecretResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.GetSecretRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.GetSecretRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.GetSecretRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.GetSecretRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    secretName: jspb.Message.getFieldWithDefault(msg, 2, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.GetSecretRequestMessage}
- */
-proto.agent.GetSecretRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.GetSecretRequestMessage;
-  return proto.agent.GetSecretRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.GetSecretRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.GetSecretRequestMessage}
- */
-proto.agent.GetSecretRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVaultName(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSecretName(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.GetSecretRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.GetSecretRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.GetSecretRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.GetSecretRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getSecretName();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string vault_name = 1;
- * @return {string}
- */
-proto.agent.GetSecretRequestMessage.prototype.getVaultName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.GetSecretRequestMessage} returns this
- */
-proto.agent.GetSecretRequestMessage.prototype.setVaultName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string secret_name = 2;
- * @return {string}
- */
-proto.agent.GetSecretRequestMessage.prototype.getSecretName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.GetSecretRequestMessage} returns this
- */
-proto.agent.GetSecretRequestMessage.prototype.setSecretName = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.GetSecretResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.GetSecretResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.GetSecretResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.GetSecretResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    secret: msg.getSecret_asB64()
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.GetSecretResponseMessage}
- */
-proto.agent.GetSecretResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.GetSecretResponseMessage;
-  return proto.agent.GetSecretResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.GetSecretResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.GetSecretResponseMessage}
- */
-proto.agent.GetSecretResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setSecret(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.GetSecretResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.GetSecretResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.GetSecretResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.GetSecretResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSecret_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bytes secret = 1;
- * @return {!(string|Uint8Array)}
- */
-proto.agent.GetSecretResponseMessage.prototype.getSecret = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * optional bytes secret = 1;
- * This is a type-conversion wrapper around `getSecret()`
- * @return {string}
- */
-proto.agent.GetSecretResponseMessage.prototype.getSecret_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getSecret()));
-};
-
-
-/**
- * optional bytes secret = 1;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getSecret()`
- * @return {!Uint8Array}
- */
-proto.agent.GetSecretResponseMessage.prototype.getSecret_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getSecret()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.agent.GetSecretResponseMessage} returns this
- */
-proto.agent.GetSecretResponseMessage.prototype.setSecret = function(value) {
-  return jspb.Message.setProto3BytesField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DeriveKeyRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DeriveKeyRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DeriveKeyRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DeriveKeyRequestMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.DeriveKeyMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
     vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
     keyName: jspb.Message.getFieldWithDefault(msg, 2, ""),
@@ -5634,23 +1514,23 @@ proto.agent.DeriveKeyRequestMessage.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DeriveKeyRequestMessage}
+ * @return {!proto.agentInterface.DeriveKeyMessage}
  */
-proto.agent.DeriveKeyRequestMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.DeriveKeyMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DeriveKeyRequestMessage;
-  return proto.agent.DeriveKeyRequestMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.DeriveKeyMessage;
+  return proto.agentInterface.DeriveKeyMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.DeriveKeyRequestMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.DeriveKeyMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DeriveKeyRequestMessage}
+ * @return {!proto.agentInterface.DeriveKeyMessage}
  */
-proto.agent.DeriveKeyRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.DeriveKeyMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -5682,9 +1562,9 @@ proto.agent.DeriveKeyRequestMessage.deserializeBinaryFromReader = function(msg, 
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.DeriveKeyRequestMessage.prototype.serializeBinary = function() {
+proto.agentInterface.DeriveKeyMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.DeriveKeyRequestMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.DeriveKeyMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -5692,11 +1572,11 @@ proto.agent.DeriveKeyRequestMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DeriveKeyRequestMessage} message
+ * @param {!proto.agentInterface.DeriveKeyMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.DeriveKeyRequestMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.DeriveKeyMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getVaultName();
   if (f.length > 0) {
@@ -5726,16 +1606,16 @@ proto.agent.DeriveKeyRequestMessage.serializeBinaryToWriter = function(message, 
  * optional string vault_name = 1;
  * @return {string}
  */
-proto.agent.DeriveKeyRequestMessage.prototype.getVaultName = function() {
+proto.agentInterface.DeriveKeyMessage.prototype.getVaultName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.DeriveKeyRequestMessage} returns this
+ * @return {!proto.agentInterface.DeriveKeyMessage} returns this
  */
-proto.agent.DeriveKeyRequestMessage.prototype.setVaultName = function(value) {
+proto.agentInterface.DeriveKeyMessage.prototype.setVaultName = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
@@ -5744,16 +1624,16 @@ proto.agent.DeriveKeyRequestMessage.prototype.setVaultName = function(value) {
  * optional string key_name = 2;
  * @return {string}
  */
-proto.agent.DeriveKeyRequestMessage.prototype.getKeyName = function() {
+proto.agentInterface.DeriveKeyMessage.prototype.getKeyName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.DeriveKeyRequestMessage} returns this
+ * @return {!proto.agentInterface.DeriveKeyMessage} returns this
  */
-proto.agent.DeriveKeyRequestMessage.prototype.setKeyName = function(value) {
+proto.agentInterface.DeriveKeyMessage.prototype.setKeyName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
@@ -5762,16 +1642,16 @@ proto.agent.DeriveKeyRequestMessage.prototype.setKeyName = function(value) {
  * optional string passphrase = 3;
  * @return {string}
  */
-proto.agent.DeriveKeyRequestMessage.prototype.getPassphrase = function() {
+proto.agentInterface.DeriveKeyMessage.prototype.getPassphrase = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.DeriveKeyRequestMessage} returns this
+ * @return {!proto.agentInterface.DeriveKeyMessage} returns this
  */
-proto.agent.DeriveKeyRequestMessage.prototype.setPassphrase = function(value) {
+proto.agentInterface.DeriveKeyMessage.prototype.setPassphrase = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
@@ -5792,8 +1672,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.DeriveKeyResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DeriveKeyResponseMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.SignFileMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.SignFileMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -5802,13 +1682,15 @@ proto.agent.DeriveKeyResponseMessage.prototype.toObject = function(opt_includeIn
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.DeriveKeyResponseMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.SignFileMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.DeriveKeyResponseMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.SignFileMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
+    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    privateKeyPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    passphrase: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -5822,261 +1704,23 @@ proto.agent.DeriveKeyResponseMessage.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DeriveKeyResponseMessage}
+ * @return {!proto.agentInterface.SignFileMessage}
  */
-proto.agent.DeriveKeyResponseMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.SignFileMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DeriveKeyResponseMessage;
-  return proto.agent.DeriveKeyResponseMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.SignFileMessage;
+  return proto.agentInterface.SignFileMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.DeriveKeyResponseMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.SignFileMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DeriveKeyResponseMessage}
+ * @return {!proto.agentInterface.SignFileMessage}
  */
-proto.agent.DeriveKeyResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DeriveKeyResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DeriveKeyResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DeriveKeyResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DeriveKeyResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.DeriveKeyResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.DeriveKeyResponseMessage} returns this
- */
-proto.agent.DeriveKeyResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListKeysRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListKeysRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListKeysRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListKeysRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListKeysRequestMessage}
- */
-proto.agent.ListKeysRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListKeysRequestMessage;
-  return proto.agent.ListKeysRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListKeysRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListKeysRequestMessage}
- */
-proto.agent.ListKeysRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListKeysRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListKeysRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListKeysRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListKeysRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-};
-
-
-
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.agent.ListKeysResponseMessage.repeatedFields_ = [1];
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.ListKeysResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.ListKeysResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.ListKeysResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListKeysResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    keyNamesList: (f = jspb.Message.getRepeatedField(msg, 1)) == null ? undefined : f
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.ListKeysResponseMessage}
- */
-proto.agent.ListKeysResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.ListKeysResponseMessage;
-  return proto.agent.ListKeysResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.ListKeysResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.ListKeysResponseMessage}
- */
-proto.agent.ListKeysResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.SignFileMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -6085,156 +1729,15 @@ proto.agent.ListKeysResponseMessage.deserializeBinaryFromReader = function(msg, 
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.addKeyNames(value);
+      msg.setFilePath(value);
       break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.ListKeysResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.ListKeysResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.ListKeysResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.ListKeysResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getKeyNamesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * repeated string key_names = 1;
- * @return {!Array<string>}
- */
-proto.agent.ListKeysResponseMessage.prototype.getKeyNamesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.agent.ListKeysResponseMessage} returns this
- */
-proto.agent.ListKeysResponseMessage.prototype.setKeyNamesList = function(value) {
-  return jspb.Message.setField(this, 1, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.agent.ListKeysResponseMessage} returns this
- */
-proto.agent.ListKeysResponseMessage.prototype.addKeyNames = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 1, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.agent.ListKeysResponseMessage} returns this
- */
-proto.agent.ListKeysResponseMessage.prototype.clearKeyNamesList = function() {
-  return this.setKeyNamesList([]);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.GetKeyRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.GetKeyRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.GetKeyRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.GetKeyRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    keyName: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.GetKeyRequestMessage}
- */
-proto.agent.GetKeyRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.GetKeyRequestMessage;
-  return proto.agent.GetKeyRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.GetKeyRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.GetKeyRequestMessage}
- */
-proto.agent.GetKeyRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
+    case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setKeyName(value);
+      msg.setPrivateKeyPath(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPassphrase(value);
       break;
     default:
       reader.skipField();
@@ -6249,9 +1752,9 @@ proto.agent.GetKeyRequestMessage.deserializeBinaryFromReader = function(msg, rea
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.GetKeyRequestMessage.prototype.serializeBinary = function() {
+proto.agentInterface.SignFileMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.GetKeyRequestMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.SignFileMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -6259,37 +1762,87 @@ proto.agent.GetKeyRequestMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.GetKeyRequestMessage} message
+ * @param {!proto.agentInterface.SignFileMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.GetKeyRequestMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.SignFileMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getKeyName();
+  f = message.getFilePath();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
+  f = message.getPrivateKeyPath();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+  f = message.getPassphrase();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
 /**
- * optional string key_name = 1;
+ * optional string file_path = 1;
  * @return {string}
  */
-proto.agent.GetKeyRequestMessage.prototype.getKeyName = function() {
+proto.agentInterface.SignFileMessage.prototype.getFilePath = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.GetKeyRequestMessage} returns this
+ * @return {!proto.agentInterface.SignFileMessage} returns this
  */
-proto.agent.GetKeyRequestMessage.prototype.setKeyName = function(value) {
+proto.agentInterface.SignFileMessage.prototype.setFilePath = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string private_key_path = 2;
+ * @return {string}
+ */
+proto.agentInterface.SignFileMessage.prototype.getPrivateKeyPath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.SignFileMessage} returns this
+ */
+proto.agentInterface.SignFileMessage.prototype.setPrivateKeyPath = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string passphrase = 3;
+ * @return {string}
+ */
+proto.agentInterface.SignFileMessage.prototype.getPassphrase = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.SignFileMessage} returns this
+ */
+proto.agentInterface.SignFileMessage.prototype.setPassphrase = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -6309,8 +1862,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.GetKeyResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.GetKeyResponseMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.VerifyFileMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.VerifyFileMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -6319,14 +1872,14 @@ proto.agent.GetKeyResponseMessage.prototype.toObject = function(opt_includeInsta
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.GetKeyResponseMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.VerifyFileMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.GetKeyResponseMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.VerifyFileMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    keyName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    keyContent: jspb.Message.getFieldWithDefault(msg, 2, "")
+    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    publicKeyPath: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -6340,23 +1893,23 @@ proto.agent.GetKeyResponseMessage.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.GetKeyResponseMessage}
+ * @return {!proto.agentInterface.VerifyFileMessage}
  */
-proto.agent.GetKeyResponseMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.VerifyFileMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.GetKeyResponseMessage;
-  return proto.agent.GetKeyResponseMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.VerifyFileMessage;
+  return proto.agentInterface.VerifyFileMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.GetKeyResponseMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.VerifyFileMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.GetKeyResponseMessage}
+ * @return {!proto.agentInterface.VerifyFileMessage}
  */
-proto.agent.GetKeyResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.VerifyFileMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -6365,11 +1918,11 @@ proto.agent.GetKeyResponseMessage.deserializeBinaryFromReader = function(msg, re
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setKeyName(value);
+      msg.setFilePath(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setKeyContent(value);
+      msg.setPublicKeyPath(value);
       break;
     default:
       reader.skipField();
@@ -6384,9 +1937,9 @@ proto.agent.GetKeyResponseMessage.deserializeBinaryFromReader = function(msg, re
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.GetKeyResponseMessage.prototype.serializeBinary = function() {
+proto.agentInterface.VerifyFileMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.GetKeyResponseMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.VerifyFileMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -6394,20 +1947,20 @@ proto.agent.GetKeyResponseMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.GetKeyResponseMessage} message
+ * @param {!proto.agentInterface.VerifyFileMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.GetKeyResponseMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.VerifyFileMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getKeyName();
+  f = message.getFilePath();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getKeyContent();
+  f = message.getPublicKeyPath();
   if (f.length > 0) {
     writer.writeString(
       2,
@@ -6418,37 +1971,37 @@ proto.agent.GetKeyResponseMessage.serializeBinaryToWriter = function(message, wr
 
 
 /**
- * optional string key_name = 1;
+ * optional string file_path = 1;
  * @return {string}
  */
-proto.agent.GetKeyResponseMessage.prototype.getKeyName = function() {
+proto.agentInterface.VerifyFileMessage.prototype.getFilePath = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.GetKeyResponseMessage} returns this
+ * @return {!proto.agentInterface.VerifyFileMessage} returns this
  */
-proto.agent.GetKeyResponseMessage.prototype.setKeyName = function(value) {
+proto.agentInterface.VerifyFileMessage.prototype.setFilePath = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string key_content = 2;
+ * optional string public_key_path = 2;
  * @return {string}
  */
-proto.agent.GetKeyResponseMessage.prototype.getKeyContent = function() {
+proto.agentInterface.VerifyFileMessage.prototype.getPublicKeyPath = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.GetKeyResponseMessage} returns this
+ * @return {!proto.agentInterface.VerifyFileMessage} returns this
  */
-proto.agent.GetKeyResponseMessage.prototype.setKeyContent = function(value) {
+proto.agentInterface.VerifyFileMessage.prototype.setPublicKeyPath = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
@@ -6469,8 +2022,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.GetPrimaryKeyPairRequestMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.SecretPathMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.SecretPathMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -6479,13 +2032,14 @@ proto.agent.GetPrimaryKeyPairRequestMessage.prototype.toObject = function(opt_in
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.GetPrimaryKeyPairRequestMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.SecretPathMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.SecretPathMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    includePrivateKey: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
+    vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    secretName: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -6499,23 +2053,23 @@ proto.agent.GetPrimaryKeyPairRequestMessage.toObject = function(includeInstance,
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.GetPrimaryKeyPairRequestMessage}
+ * @return {!proto.agentInterface.SecretPathMessage}
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.SecretPathMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.GetPrimaryKeyPairRequestMessage;
-  return proto.agent.GetPrimaryKeyPairRequestMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.SecretPathMessage;
+  return proto.agentInterface.SecretPathMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.GetPrimaryKeyPairRequestMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.SecretPathMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.GetPrimaryKeyPairRequestMessage}
+ * @return {!proto.agentInterface.SecretPathMessage}
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.SecretPathMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -6523,8 +2077,12 @@ proto.agent.GetPrimaryKeyPairRequestMessage.deserializeBinaryFromReader = functi
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setIncludePrivateKey(value);
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVaultName(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setSecretName(value);
       break;
     default:
       reader.skipField();
@@ -6539,9 +2097,9 @@ proto.agent.GetPrimaryKeyPairRequestMessage.deserializeBinaryFromReader = functi
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.prototype.serializeBinary = function() {
+proto.agentInterface.SecretPathMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.GetPrimaryKeyPairRequestMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.SecretPathMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -6549,16 +2107,23 @@ proto.agent.GetPrimaryKeyPairRequestMessage.prototype.serializeBinary = function
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.GetPrimaryKeyPairRequestMessage} message
+ * @param {!proto.agentInterface.SecretPathMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.SecretPathMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getIncludePrivateKey();
-  if (f) {
-    writer.writeBool(
+  f = message.getVaultName();
+  if (f.length > 0) {
+    writer.writeString(
       1,
+      f
+    );
+  }
+  f = message.getSecretName();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
       f
     );
   }
@@ -6566,20 +2131,38 @@ proto.agent.GetPrimaryKeyPairRequestMessage.serializeBinaryToWriter = function(m
 
 
 /**
- * optional bool include_private_key = 1;
- * @return {boolean}
+ * optional string vault_name = 1;
+ * @return {string}
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.prototype.getIncludePrivateKey = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
+proto.agentInterface.SecretPathMessage.prototype.getVaultName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
- * @param {boolean} value
- * @return {!proto.agent.GetPrimaryKeyPairRequestMessage} returns this
+ * @param {string} value
+ * @return {!proto.agentInterface.SecretPathMessage} returns this
  */
-proto.agent.GetPrimaryKeyPairRequestMessage.prototype.setIncludePrivateKey = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
+proto.agentInterface.SecretPathMessage.prototype.setVaultName = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string secret_name = 2;
+ * @return {string}
+ */
+proto.agentInterface.SecretPathMessage.prototype.getSecretName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.SecretPathMessage} returns this
+ */
+proto.agentInterface.SecretPathMessage.prototype.setSecretName = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -6599,8 +2182,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.GetPrimaryKeyPairResponseMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.SecretContentMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.SecretContentMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -6609,11 +2192,572 @@ proto.agent.GetPrimaryKeyPairResponseMessage.prototype.toObject = function(opt_i
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.GetPrimaryKeyPairResponseMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.SecretContentMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.SecretContentMessage.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    secretPath: (f = msg.getSecretPath()) && proto.agentInterface.SecretPathMessage.toObject(includeInstance, f),
+    secretFilePath: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    secretContent: jspb.Message.getFieldWithDefault(msg, 3, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.agentInterface.SecretContentMessage}
+ */
+proto.agentInterface.SecretContentMessage.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.agentInterface.SecretContentMessage;
+  return proto.agentInterface.SecretContentMessage.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.agentInterface.SecretContentMessage} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.agentInterface.SecretContentMessage}
+ */
+proto.agentInterface.SecretContentMessage.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = new proto.agentInterface.SecretPathMessage;
+      reader.readMessage(value,proto.agentInterface.SecretPathMessage.deserializeBinaryFromReader);
+      msg.setSecretPath(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setSecretFilePath(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setSecretContent(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.SecretContentMessage.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.agentInterface.SecretContentMessage.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.agentInterface.SecretContentMessage} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.SecretContentMessage.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getSecretPath();
+  if (f != null) {
+    writer.writeMessage(
+      1,
+      f,
+      proto.agentInterface.SecretPathMessage.serializeBinaryToWriter
+    );
+  }
+  f = message.getSecretFilePath();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+  f = message.getSecretContent();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional SecretPathMessage secret_path = 1;
+ * @return {?proto.agentInterface.SecretPathMessage}
+ */
+proto.agentInterface.SecretContentMessage.prototype.getSecretPath = function() {
+  return /** @type{?proto.agentInterface.SecretPathMessage} */ (
+    jspb.Message.getWrapperField(this, proto.agentInterface.SecretPathMessage, 1));
+};
+
+
+/**
+ * @param {?proto.agentInterface.SecretPathMessage|undefined} value
+ * @return {!proto.agentInterface.SecretContentMessage} returns this
+*/
+proto.agentInterface.SecretContentMessage.prototype.setSecretPath = function(value) {
+  return jspb.Message.setWrapperField(this, 1, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.agentInterface.SecretContentMessage} returns this
+ */
+proto.agentInterface.SecretContentMessage.prototype.clearSecretPath = function() {
+  return this.setSecretPath(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.agentInterface.SecretContentMessage.prototype.hasSecretPath = function() {
+  return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * optional string secret_file_path = 2;
+ * @return {string}
+ */
+proto.agentInterface.SecretContentMessage.prototype.getSecretFilePath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.SecretContentMessage} returns this
+ */
+proto.agentInterface.SecretContentMessage.prototype.setSecretFilePath = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string secret_content = 3;
+ * @return {string}
+ */
+proto.agentInterface.SecretContentMessage.prototype.getSecretContent = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.SecretContentMessage} returns this
+ */
+proto.agentInterface.SecretContentMessage.prototype.setSecretContent = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * Optional fields that are not set will be set to undefined.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
+ * @param {boolean=} opt_includeInstance Deprecated. whether to include the
+ *     JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.agentInterface.EncryptFileMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.EncryptFileMessage.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Deprecated. Whether to include
+ *     the JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.agentInterface.EncryptFileMessage} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.EncryptFileMessage.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    publicKeyPath: jspb.Message.getFieldWithDefault(msg, 2, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.agentInterface.EncryptFileMessage}
+ */
+proto.agentInterface.EncryptFileMessage.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.agentInterface.EncryptFileMessage;
+  return proto.agentInterface.EncryptFileMessage.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.agentInterface.EncryptFileMessage} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.agentInterface.EncryptFileMessage}
+ */
+proto.agentInterface.EncryptFileMessage.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFilePath(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPublicKeyPath(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.EncryptFileMessage.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.agentInterface.EncryptFileMessage.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.agentInterface.EncryptFileMessage} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.EncryptFileMessage.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getFilePath();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getPublicKeyPath();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string file_path = 1;
+ * @return {string}
+ */
+proto.agentInterface.EncryptFileMessage.prototype.getFilePath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.EncryptFileMessage} returns this
+ */
+proto.agentInterface.EncryptFileMessage.prototype.setFilePath = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string public_key_path = 2;
+ * @return {string}
+ */
+proto.agentInterface.EncryptFileMessage.prototype.getPublicKeyPath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.EncryptFileMessage} returns this
+ */
+proto.agentInterface.EncryptFileMessage.prototype.setPublicKeyPath = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * Optional fields that are not set will be set to undefined.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
+ * @param {boolean=} opt_includeInstance Deprecated. whether to include the
+ *     JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.agentInterface.DecryptFileMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.DecryptFileMessage.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Deprecated. Whether to include
+ *     the JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.agentInterface.DecryptFileMessage} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.DecryptFileMessage.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    filePath: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    privateKeyPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    passphrase: jspb.Message.getFieldWithDefault(msg, 3, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.agentInterface.DecryptFileMessage}
+ */
+proto.agentInterface.DecryptFileMessage.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.agentInterface.DecryptFileMessage;
+  return proto.agentInterface.DecryptFileMessage.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.agentInterface.DecryptFileMessage} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.agentInterface.DecryptFileMessage}
+ */
+proto.agentInterface.DecryptFileMessage.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFilePath(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPrivateKeyPath(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPassphrase(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.DecryptFileMessage.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.agentInterface.DecryptFileMessage.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.agentInterface.DecryptFileMessage} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.DecryptFileMessage.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getFilePath();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getPrivateKeyPath();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+  f = message.getPassphrase();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string file_path = 1;
+ * @return {string}
+ */
+proto.agentInterface.DecryptFileMessage.prototype.getFilePath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.DecryptFileMessage} returns this
+ */
+proto.agentInterface.DecryptFileMessage.prototype.setFilePath = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string private_key_path = 2;
+ * @return {string}
+ */
+proto.agentInterface.DecryptFileMessage.prototype.getPrivateKeyPath = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.DecryptFileMessage} returns this
+ */
+proto.agentInterface.DecryptFileMessage.prototype.setPrivateKeyPath = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string passphrase = 3;
+ * @return {string}
+ */
+proto.agentInterface.DecryptFileMessage.prototype.getPassphrase = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.agentInterface.DecryptFileMessage} returns this
+ */
+proto.agentInterface.DecryptFileMessage.prototype.setPassphrase = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * Optional fields that are not set will be set to undefined.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
+ * @param {boolean=} opt_includeInstance Deprecated. whether to include the
+ *     JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.agentInterface.KeyPairMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.KeyPairMessage.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Deprecated. Whether to include
+ *     the JSPB instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.agentInterface.KeyPairMessage} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.agentInterface.KeyPairMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
     publicKey: jspb.Message.getFieldWithDefault(msg, 1, ""),
     privateKey: jspb.Message.getFieldWithDefault(msg, 2, "")
@@ -6630,23 +2774,23 @@ proto.agent.GetPrimaryKeyPairResponseMessage.toObject = function(includeInstance
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.GetPrimaryKeyPairResponseMessage}
+ * @return {!proto.agentInterface.KeyPairMessage}
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.KeyPairMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.GetPrimaryKeyPairResponseMessage;
-  return proto.agent.GetPrimaryKeyPairResponseMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.KeyPairMessage;
+  return proto.agentInterface.KeyPairMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.GetPrimaryKeyPairResponseMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.KeyPairMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.GetPrimaryKeyPairResponseMessage}
+ * @return {!proto.agentInterface.KeyPairMessage}
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.KeyPairMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -6674,9 +2818,9 @@ proto.agent.GetPrimaryKeyPairResponseMessage.deserializeBinaryFromReader = funct
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.prototype.serializeBinary = function() {
+proto.agentInterface.KeyPairMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.GetPrimaryKeyPairResponseMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.KeyPairMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -6684,11 +2828,11 @@ proto.agent.GetPrimaryKeyPairResponseMessage.prototype.serializeBinary = functio
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.GetPrimaryKeyPairResponseMessage} message
+ * @param {!proto.agentInterface.KeyPairMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.KeyPairMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getPublicKey();
   if (f.length > 0) {
@@ -6711,16 +2855,16 @@ proto.agent.GetPrimaryKeyPairResponseMessage.serializeBinaryToWriter = function(
  * optional string public_key = 1;
  * @return {string}
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.prototype.getPublicKey = function() {
+proto.agentInterface.KeyPairMessage.prototype.getPublicKey = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.GetPrimaryKeyPairResponseMessage} returns this
+ * @return {!proto.agentInterface.KeyPairMessage} returns this
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.prototype.setPublicKey = function(value) {
+proto.agentInterface.KeyPairMessage.prototype.setPublicKey = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
@@ -6729,16 +2873,16 @@ proto.agent.GetPrimaryKeyPairResponseMessage.prototype.setPublicKey = function(v
  * optional string private_key = 2;
  * @return {string}
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.prototype.getPrivateKey = function() {
+proto.agentInterface.KeyPairMessage.prototype.getPrivateKey = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.GetPrimaryKeyPairResponseMessage} returns this
+ * @return {!proto.agentInterface.KeyPairMessage} returns this
  */
-proto.agent.GetPrimaryKeyPairResponseMessage.prototype.setPrivateKey = function(value) {
+proto.agentInterface.KeyPairMessage.prototype.setPrivateKey = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
@@ -6759,8 +2903,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.UpdateSecretRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.UpdateSecretRequestMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.VaultPathMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.VaultPathMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -6769,647 +2913,13 @@ proto.agent.UpdateSecretRequestMessage.prototype.toObject = function(opt_include
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.UpdateSecretRequestMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.VaultPathMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.UpdateSecretRequestMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.VaultPathMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
     vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    secretName: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    secretPath: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    secretContent: msg.getSecretContent_asB64()
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.UpdateSecretRequestMessage}
- */
-proto.agent.UpdateSecretRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.UpdateSecretRequestMessage;
-  return proto.agent.UpdateSecretRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.UpdateSecretRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.UpdateSecretRequestMessage}
- */
-proto.agent.UpdateSecretRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVaultName(value);
-      break;
-    case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSecretName(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setSecretPath(value);
-      break;
-    case 4:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setSecretContent(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.UpdateSecretRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.UpdateSecretRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.UpdateSecretRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.UpdateSecretRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getVaultName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getSecretName();
-  if (f.length > 0) {
-    writer.writeString(
-      2,
-      f
-    );
-  }
-  f = message.getSecretPath();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-  f = message.getSecretContent_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      4,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string vault_name = 1;
- * @return {string}
- */
-proto.agent.UpdateSecretRequestMessage.prototype.getVaultName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.UpdateSecretRequestMessage} returns this
- */
-proto.agent.UpdateSecretRequestMessage.prototype.setVaultName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string secret_name = 2;
- * @return {string}
- */
-proto.agent.UpdateSecretRequestMessage.prototype.getSecretName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.UpdateSecretRequestMessage} returns this
- */
-proto.agent.UpdateSecretRequestMessage.prototype.setSecretName = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
-};
-
-
-/**
- * optional string secret_path = 3;
- * @return {string}
- */
-proto.agent.UpdateSecretRequestMessage.prototype.getSecretPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.UpdateSecretRequestMessage} returns this
- */
-proto.agent.UpdateSecretRequestMessage.prototype.setSecretPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional bytes secret_content = 4;
- * @return {!(string|Uint8Array)}
- */
-proto.agent.UpdateSecretRequestMessage.prototype.getSecretContent = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * optional bytes secret_content = 4;
- * This is a type-conversion wrapper around `getSecretContent()`
- * @return {string}
- */
-proto.agent.UpdateSecretRequestMessage.prototype.getSecretContent_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getSecretContent()));
-};
-
-
-/**
- * optional bytes secret_content = 4;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getSecretContent()`
- * @return {!Uint8Array}
- */
-proto.agent.UpdateSecretRequestMessage.prototype.getSecretContent_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getSecretContent()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.agent.UpdateSecretRequestMessage} returns this
- */
-proto.agent.UpdateSecretRequestMessage.prototype.setSecretContent = function(value) {
-  return jspb.Message.setProto3BytesField(this, 4, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.UpdateSecretResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.UpdateSecretResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.UpdateSecretResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.UpdateSecretResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.UpdateSecretResponseMessage}
- */
-proto.agent.UpdateSecretResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.UpdateSecretResponseMessage;
-  return proto.agent.UpdateSecretResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.UpdateSecretResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.UpdateSecretResponseMessage}
- */
-proto.agent.UpdateSecretResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.UpdateSecretResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.UpdateSecretResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.UpdateSecretResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.UpdateSecretResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.UpdateSecretResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.UpdateSecretResponseMessage} returns this
- */
-proto.agent.UpdateSecretResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DeleteKeyRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DeleteKeyRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DeleteKeyRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DeleteKeyRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    keyName: jspb.Message.getFieldWithDefault(msg, 1, "")
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DeleteKeyRequestMessage}
- */
-proto.agent.DeleteKeyRequestMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DeleteKeyRequestMessage;
-  return proto.agent.DeleteKeyRequestMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DeleteKeyRequestMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DeleteKeyRequestMessage}
- */
-proto.agent.DeleteKeyRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setKeyName(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DeleteKeyRequestMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DeleteKeyRequestMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DeleteKeyRequestMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DeleteKeyRequestMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getKeyName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional string key_name = 1;
- * @return {string}
- */
-proto.agent.DeleteKeyRequestMessage.prototype.getKeyName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.DeleteKeyRequestMessage} returns this
- */
-proto.agent.DeleteKeyRequestMessage.prototype.setKeyName = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.DeleteKeyResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.DeleteKeyResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.DeleteKeyResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DeleteKeyResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.DeleteKeyResponseMessage}
- */
-proto.agent.DeleteKeyResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.DeleteKeyResponseMessage;
-  return proto.agent.DeleteKeyResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.DeleteKeyResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.DeleteKeyResponseMessage}
- */
-proto.agent.DeleteKeyResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.DeleteKeyResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.DeleteKeyResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.DeleteKeyResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.DeleteKeyResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.DeleteKeyResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.DeleteKeyResponseMessage} returns this
- */
-proto.agent.DeleteKeyResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.PeerInfoRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.PeerInfoRequestMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.PeerInfoRequestMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.PeerInfoRequestMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    current: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
     publicKey: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
@@ -7424,23 +2934,23 @@ proto.agent.PeerInfoRequestMessage.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.PeerInfoRequestMessage}
+ * @return {!proto.agentInterface.VaultPathMessage}
  */
-proto.agent.PeerInfoRequestMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.VaultPathMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.PeerInfoRequestMessage;
-  return proto.agent.PeerInfoRequestMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.VaultPathMessage;
+  return proto.agentInterface.VaultPathMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.PeerInfoRequestMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.VaultPathMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.PeerInfoRequestMessage}
+ * @return {!proto.agentInterface.VaultPathMessage}
  */
-proto.agent.PeerInfoRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.VaultPathMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -7448,8 +2958,8 @@ proto.agent.PeerInfoRequestMessage.deserializeBinaryFromReader = function(msg, r
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setCurrent(value);
+      var value = /** @type {string} */ (reader.readString());
+      msg.setVaultName(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
@@ -7468,9 +2978,9 @@ proto.agent.PeerInfoRequestMessage.deserializeBinaryFromReader = function(msg, r
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.PeerInfoRequestMessage.prototype.serializeBinary = function() {
+proto.agentInterface.VaultPathMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.PeerInfoRequestMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.VaultPathMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -7478,15 +2988,15 @@ proto.agent.PeerInfoRequestMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.PeerInfoRequestMessage} message
+ * @param {!proto.agentInterface.VaultPathMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.PeerInfoRequestMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.VaultPathMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getCurrent();
-  if (f) {
-    writer.writeBool(
+  f = message.getVaultName();
+  if (f.length > 0) {
+    writer.writeString(
       1,
       f
     );
@@ -7502,20 +3012,20 @@ proto.agent.PeerInfoRequestMessage.serializeBinaryToWriter = function(message, w
 
 
 /**
- * optional bool current = 1;
- * @return {boolean}
+ * optional string vault_name = 1;
+ * @return {string}
  */
-proto.agent.PeerInfoRequestMessage.prototype.getCurrent = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
+proto.agentInterface.VaultPathMessage.prototype.getVaultName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
- * @param {boolean} value
- * @return {!proto.agent.PeerInfoRequestMessage} returns this
+ * @param {string} value
+ * @return {!proto.agentInterface.VaultPathMessage} returns this
  */
-proto.agent.PeerInfoRequestMessage.prototype.setCurrent = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
+proto.agentInterface.VaultPathMessage.prototype.setVaultName = function(value) {
+  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -7523,28 +3033,21 @@ proto.agent.PeerInfoRequestMessage.prototype.setCurrent = function(value) {
  * optional string public_key = 2;
  * @return {string}
  */
-proto.agent.PeerInfoRequestMessage.prototype.getPublicKey = function() {
+proto.agentInterface.VaultPathMessage.prototype.getPublicKey = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.PeerInfoRequestMessage} returns this
+ * @return {!proto.agentInterface.VaultPathMessage} returns this
  */
-proto.agent.PeerInfoRequestMessage.prototype.setPublicKey = function(value) {
+proto.agentInterface.VaultPathMessage.prototype.setPublicKey = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.agent.PeerInfoResponseMessage.repeatedFields_ = [2];
-
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -7560,8 +3063,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.PeerInfoResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.PeerInfoResponseMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.ContactPeerMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.ContactPeerMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -7570,16 +3073,14 @@ proto.agent.PeerInfoResponseMessage.prototype.toObject = function(opt_includeIns
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.PeerInfoResponseMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.ContactPeerMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.PeerInfoResponseMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.ContactPeerMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    publicKey: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    addressesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
-    connectedAddress: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    relayAddress: jspb.Message.getFieldWithDefault(msg, 4, "")
+    publicKeyOrHandle: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    timeout: jspb.Message.getFieldWithDefault(msg, 2, 0)
   };
 
   if (includeInstance) {
@@ -7593,23 +3094,23 @@ proto.agent.PeerInfoResponseMessage.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.PeerInfoResponseMessage}
+ * @return {!proto.agentInterface.ContactPeerMessage}
  */
-proto.agent.PeerInfoResponseMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.ContactPeerMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.PeerInfoResponseMessage;
-  return proto.agent.PeerInfoResponseMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.ContactPeerMessage;
+  return proto.agentInterface.ContactPeerMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.PeerInfoResponseMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.ContactPeerMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.PeerInfoResponseMessage}
+ * @return {!proto.agentInterface.ContactPeerMessage}
  */
-proto.agent.PeerInfoResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.ContactPeerMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -7618,19 +3119,11 @@ proto.agent.PeerInfoResponseMessage.deserializeBinaryFromReader = function(msg, 
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPublicKey(value);
+      msg.setPublicKeyOrHandle(value);
       break;
     case 2:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addAddresses(value);
-      break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setConnectedAddress(value);
-      break;
-    case 4:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setRelayAddress(value);
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setTimeout(value);
       break;
     default:
       reader.skipField();
@@ -7645,9 +3138,9 @@ proto.agent.PeerInfoResponseMessage.deserializeBinaryFromReader = function(msg, 
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.PeerInfoResponseMessage.prototype.serializeBinary = function() {
+proto.agentInterface.ContactPeerMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.PeerInfoResponseMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.ContactPeerMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -7655,37 +3148,23 @@ proto.agent.PeerInfoResponseMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.PeerInfoResponseMessage} message
+ * @param {!proto.agentInterface.ContactPeerMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.PeerInfoResponseMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.ContactPeerMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getPublicKey();
+  f = message.getPublicKeyOrHandle();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getAddressesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
+  f = message.getTimeout();
+  if (f !== 0) {
+    writer.writeInt32(
       2,
-      f
-    );
-  }
-  f = message.getConnectedAddress();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-  f = message.getRelayAddress();
-  if (f.length > 0) {
-    writer.writeString(
-      4,
       f
     );
   }
@@ -7693,103 +3172,41 @@ proto.agent.PeerInfoResponseMessage.serializeBinaryToWriter = function(message, 
 
 
 /**
- * optional string public_key = 1;
+ * optional string public_key_or_handle = 1;
  * @return {string}
  */
-proto.agent.PeerInfoResponseMessage.prototype.getPublicKey = function() {
+proto.agentInterface.ContactPeerMessage.prototype.getPublicKeyOrHandle = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.PeerInfoResponseMessage} returns this
+ * @return {!proto.agentInterface.ContactPeerMessage} returns this
  */
-proto.agent.PeerInfoResponseMessage.prototype.setPublicKey = function(value) {
+proto.agentInterface.ContactPeerMessage.prototype.setPublicKeyOrHandle = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * repeated string addresses = 2;
- * @return {!Array<string>}
+ * optional int32 timeout = 2;
+ * @return {number}
  */
-proto.agent.PeerInfoResponseMessage.prototype.getAddressesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
+proto.agentInterface.ContactPeerMessage.prototype.getTimeout = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
 /**
- * @param {!Array<string>} value
- * @return {!proto.agent.PeerInfoResponseMessage} returns this
+ * @param {number} value
+ * @return {!proto.agentInterface.ContactPeerMessage} returns this
  */
-proto.agent.PeerInfoResponseMessage.prototype.setAddressesList = function(value) {
-  return jspb.Message.setField(this, 2, value || []);
+proto.agentInterface.ContactPeerMessage.prototype.setTimeout = function(value) {
+  return jspb.Message.setProto3IntField(this, 2, value);
 };
 
 
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.agent.PeerInfoResponseMessage} returns this
- */
-proto.agent.PeerInfoResponseMessage.prototype.addAddresses = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.agent.PeerInfoResponseMessage} returns this
- */
-proto.agent.PeerInfoResponseMessage.prototype.clearAddressesList = function() {
-  return this.setAddressesList([]);
-};
-
-
-/**
- * optional string connected_address = 3;
- * @return {string}
- */
-proto.agent.PeerInfoResponseMessage.prototype.getConnectedAddress = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.PeerInfoResponseMessage} returns this
- */
-proto.agent.PeerInfoResponseMessage.prototype.setConnectedAddress = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional string relay_address = 4;
- * @return {string}
- */
-proto.agent.PeerInfoResponseMessage.prototype.getRelayAddress = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.PeerInfoResponseMessage} returns this
- */
-proto.agent.PeerInfoResponseMessage.prototype.setRelayAddress = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.agent.AddPeerRequestMessage.repeatedFields_ = [2];
 
 
 
@@ -7806,8 +3223,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.agent.AddPeerRequestMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.AddPeerRequestMessage.toObject(opt_includeInstance, this);
+proto.agentInterface.NewClientCertificateMessage.prototype.toObject = function(opt_includeInstance) {
+  return proto.agentInterface.NewClientCertificateMessage.toObject(opt_includeInstance, this);
 };
 
 
@@ -7816,16 +3233,15 @@ proto.agent.AddPeerRequestMessage.prototype.toObject = function(opt_includeInsta
  * @param {boolean|undefined} includeInstance Deprecated. Whether to include
  *     the JSPB instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.agent.AddPeerRequestMessage} msg The msg instance to transform.
+ * @param {!proto.agentInterface.NewClientCertificateMessage} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.AddPeerRequestMessage.toObject = function(includeInstance, msg) {
+proto.agentInterface.NewClientCertificateMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    publicKey: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    addressesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
-    connectedAddress: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    relayAddress: jspb.Message.getFieldWithDefault(msg, 4, "")
+    domain: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    certFile: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    keyFile: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -7839,23 +3255,23 @@ proto.agent.AddPeerRequestMessage.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.AddPeerRequestMessage}
+ * @return {!proto.agentInterface.NewClientCertificateMessage}
  */
-proto.agent.AddPeerRequestMessage.deserializeBinary = function(bytes) {
+proto.agentInterface.NewClientCertificateMessage.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.AddPeerRequestMessage;
-  return proto.agent.AddPeerRequestMessage.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.agentInterface.NewClientCertificateMessage;
+  return proto.agentInterface.NewClientCertificateMessage.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.agent.AddPeerRequestMessage} msg The message object to deserialize into.
+ * @param {!proto.agentInterface.NewClientCertificateMessage} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.AddPeerRequestMessage}
+ * @return {!proto.agentInterface.NewClientCertificateMessage}
  */
-proto.agent.AddPeerRequestMessage.deserializeBinaryFromReader = function(msg, reader) {
+proto.agentInterface.NewClientCertificateMessage.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -7864,19 +3280,15 @@ proto.agent.AddPeerRequestMessage.deserializeBinaryFromReader = function(msg, re
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPublicKey(value);
+      msg.setDomain(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.addAddresses(value);
+      msg.setCertFile(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setConnectedAddress(value);
-      break;
-    case 4:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setRelayAddress(value);
+      msg.setKeyFile(value);
       break;
     default:
       reader.skipField();
@@ -7891,9 +3303,9 @@ proto.agent.AddPeerRequestMessage.deserializeBinaryFromReader = function(msg, re
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.agent.AddPeerRequestMessage.prototype.serializeBinary = function() {
+proto.agentInterface.NewClientCertificateMessage.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.agent.AddPeerRequestMessage.serializeBinaryToWriter(this, writer);
+  proto.agentInterface.NewClientCertificateMessage.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -7901,293 +3313,97 @@ proto.agent.AddPeerRequestMessage.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.agent.AddPeerRequestMessage} message
+ * @param {!proto.agentInterface.NewClientCertificateMessage} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.agent.AddPeerRequestMessage.serializeBinaryToWriter = function(message, writer) {
+proto.agentInterface.NewClientCertificateMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getPublicKey();
+  f = message.getDomain();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getAddressesList();
+  f = message.getCertFile();
   if (f.length > 0) {
-    writer.writeRepeatedString(
+    writer.writeString(
       2,
       f
     );
   }
-  f = message.getConnectedAddress();
+  f = message.getKeyFile();
   if (f.length > 0) {
     writer.writeString(
       3,
       f
     );
   }
-  f = message.getRelayAddress();
-  if (f.length > 0) {
-    writer.writeString(
-      4,
-      f
-    );
-  }
 };
 
 
 /**
- * optional string public_key = 1;
+ * optional string domain = 1;
  * @return {string}
  */
-proto.agent.AddPeerRequestMessage.prototype.getPublicKey = function() {
+proto.agentInterface.NewClientCertificateMessage.prototype.getDomain = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.AddPeerRequestMessage} returns this
+ * @return {!proto.agentInterface.NewClientCertificateMessage} returns this
  */
-proto.agent.AddPeerRequestMessage.prototype.setPublicKey = function(value) {
+proto.agentInterface.NewClientCertificateMessage.prototype.setDomain = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * repeated string addresses = 2;
- * @return {!Array<string>}
+ * optional string cert_file = 2;
+ * @return {string}
  */
-proto.agent.AddPeerRequestMessage.prototype.getAddressesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.agent.AddPeerRequestMessage} returns this
- */
-proto.agent.AddPeerRequestMessage.prototype.setAddressesList = function(value) {
-  return jspb.Message.setField(this, 2, value || []);
+proto.agentInterface.NewClientCertificateMessage.prototype.getCertFile = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
  * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.agent.AddPeerRequestMessage} returns this
+ * @return {!proto.agentInterface.NewClientCertificateMessage} returns this
  */
-proto.agent.AddPeerRequestMessage.prototype.addAddresses = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
+proto.agentInterface.NewClientCertificateMessage.prototype.setCertFile = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * Clears the list making it empty but non-null.
- * @return {!proto.agent.AddPeerRequestMessage} returns this
- */
-proto.agent.AddPeerRequestMessage.prototype.clearAddressesList = function() {
-  return this.setAddressesList([]);
-};
-
-
-/**
- * optional string connected_address = 3;
+ * optional string key_file = 3;
  * @return {string}
  */
-proto.agent.AddPeerRequestMessage.prototype.getConnectedAddress = function() {
+proto.agentInterface.NewClientCertificateMessage.prototype.getKeyFile = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /**
  * @param {string} value
- * @return {!proto.agent.AddPeerRequestMessage} returns this
+ * @return {!proto.agentInterface.NewClientCertificateMessage} returns this
  */
-proto.agent.AddPeerRequestMessage.prototype.setConnectedAddress = function(value) {
+proto.agentInterface.NewClientCertificateMessage.prototype.setKeyFile = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional string relay_address = 4;
- * @return {string}
- */
-proto.agent.AddPeerRequestMessage.prototype.getRelayAddress = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.agent.AddPeerRequestMessage} returns this
- */
-proto.agent.AddPeerRequestMessage.prototype.setRelayAddress = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * Optional fields that are not set will be set to undefined.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     net/proto2/compiler/js/internal/generator.cc#kKeyword.
- * @param {boolean=} opt_includeInstance Deprecated. whether to include the
- *     JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.agent.AddPeerResponseMessage.prototype.toObject = function(opt_includeInstance) {
-  return proto.agent.AddPeerResponseMessage.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Deprecated. Whether to include
- *     the JSPB instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.agent.AddPeerResponseMessage} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.AddPeerResponseMessage.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    successful: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.agent.AddPeerResponseMessage}
- */
-proto.agent.AddPeerResponseMessage.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.agent.AddPeerResponseMessage;
-  return proto.agent.AddPeerResponseMessage.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.agent.AddPeerResponseMessage} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.agent.AddPeerResponseMessage}
- */
-proto.agent.AddPeerResponseMessage.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSuccessful(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.agent.AddPeerResponseMessage.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.agent.AddPeerResponseMessage.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.agent.AddPeerResponseMessage} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.agent.AddPeerResponseMessage.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getSuccessful();
-  if (f) {
-    writer.writeBool(
-      1,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bool successful = 1;
- * @return {boolean}
- */
-proto.agent.AddPeerResponseMessage.prototype.getSuccessful = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.agent.AddPeerResponseMessage} returns this
- */
-proto.agent.AddPeerResponseMessage.prototype.setSuccessful = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 1, value);
 };
 
 
 /**
  * @enum {number}
  */
-proto.agent.AgentMessageType = {
-  ERROR: 0,
-  STOP_AGENT: 1,
-  STATUS: 2,
-  REGISTER_NODE: 3,
-  NEW_NODE: 4,
-  LIST_NODES: 5,
-  DERIVE_KEY: 6,
-  SIGN_FILE: 7,
-  VERIFY_FILE: 8,
-  LIST_VAULTS: 9,
-  NEW_VAULT: 10,
-  DESTROY_VAULT: 11,
-  LIST_SECRETS: 12,
-  CREATE_SECRET: 13,
-  DESTROY_SECRET: 14,
-  GET_SECRET: 15,
-  LIST_KEYS: 16,
-  GET_KEY: 17,
-  DELETE_KEY: 18,
-  ENCRYPT_FILE: 19,
-  DECRYPT_FILE: 20,
-  GET_PRIMARY_KEYPAIR: 21,
-  UPDATE_SECRET: 22,
-  GET_PEER_INFO: 23,
-  ADD_PEER: 24
+proto.agentInterface.AgentStatusType = {
+  ONLINE: 0,
+  OFFLINE: 1,
+  ERRORED: 2
 };
 
-goog.object.extend(exports, proto.agent);
+goog.object.extend(exports, proto.agentInterface);

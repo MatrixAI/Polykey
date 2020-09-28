@@ -71,14 +71,14 @@ class DeclarationBundlePlugin {
         const moduleName = Array.from(/'(.+?)\//.exec(lineToReplace) ?? [''])[1]
 
         const split = this.entryFilePath.split('/')
-        const entryFileName = (split[split.length-1]).split('.')[0]
+        const entryFileName = (split[split.length - 1]).split('.')[0]
         const newContents = Buffer.from(contents.replace(requireRegex, `require('${moduleName}/${entryFileName}')`))
 
         fs.writeFileSync(this.outputFilePath, newContents)
       }
     } else if (this.singleFile) {
       const split = this.entryFilePath.split('.')
-      const filename = split[split.length-2]
+      const filename = split[split.length - 2]
 
       const entryFile = path.join(tempDir, `${filename}.d.ts`)
       fs.copyFileSync(entryFile, this.outputFilePath)

@@ -4,14 +4,14 @@
 var grpc = require('@grpc/grpc-js');
 var Peer_pb = require('./Peer_pb.js');
 
-function serialize_peer_PeerMessage(arg) {
+function serialize_peerInterface_PeerMessage(arg) {
   if (!(arg instanceof Peer_pb.PeerMessage)) {
-    throw new Error('Expected argument of type peer.PeerMessage');
+    throw new Error('Expected argument of type peerInterface.PeerMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_peer_PeerMessage(buffer_arg) {
+function deserialize_peerInterface_PeerMessage(buffer_arg) {
   return Peer_pb.PeerMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
@@ -21,15 +21,15 @@ function deserialize_peer_PeerMessage(buffer_arg) {
 // ////////////////
 var PeerService = exports.PeerService = {
   messagePeer: {
-    path: '/peer.Peer/MessagePeer',
+    path: '/peerInterface.Peer/MessagePeer',
     requestStream: false,
     responseStream: false,
     requestType: Peer_pb.PeerMessage,
     responseType: Peer_pb.PeerMessage,
-    requestSerialize: serialize_peer_PeerMessage,
-    requestDeserialize: deserialize_peer_PeerMessage,
-    responseSerialize: serialize_peer_PeerMessage,
-    responseDeserialize: deserialize_peer_PeerMessage,
+    requestSerialize: serialize_peerInterface_PeerMessage,
+    requestDeserialize: deserialize_peerInterface_PeerMessage,
+    responseSerialize: serialize_peerInterface_PeerMessage,
+    responseDeserialize: deserialize_peerInterface_PeerMessage,
   },
 };
 

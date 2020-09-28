@@ -1,8 +1,7 @@
 import fs from 'fs';
 import commander from 'commander';
-import { PolykeyAgent } from '../../Polykey';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '../utils';
-import { agentInterface } from '../../../proto/js/Agent';
+import { actionRunner, pkLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
+import * as pb from '../../../proto/compiled/Agent_pb';
 
 function makeRelayCommand() {
   return new commander.Command('relay')
@@ -12,20 +11,16 @@ function makeRelayCommand() {
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status != agentInterface.AgentStatusType.ONLINE) {
-          throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-        }
-
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         // read in publicKey if it exists
         const publicKey = fs.readFileSync(options.publicKey).toString();
 
-        const successful = await client.requestRelay(nodePath, publicKey);
-
-        if (successful) {
+        const request = new pb.StringMessage();
+        request.setS(publicKey);
+        const res = (await promisifyGrpc(client.requestRelay.bind(client))(request)) as pb.BooleanMessage;
+        if (res.getB()) {
           pkLogger('peer server successfully relayed', PKMessageType.SUCCESS);
         } else {
           pkLogger('something went wrong', PKMessageType.WARNING);
@@ -42,23 +37,17 @@ function makePunchCommand() {
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status != agentInterface.AgentStatusType.ONLINE) {
-          throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-        }
-
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         // read in publicKey if it exists
         const publicKey = fs.readFileSync(options.publicKey).toString();
 
-        const address = await client.requestPunch(nodePath, publicKey);
+        const request = new pb.StringMessage();
+        request.setS(publicKey);
+        const res = (await promisifyGrpc(client.requestHolePunch.bind(client))(request)) as pb.BooleanMessage;
 
-        pkLogger(
-          `peer server successfully served at hole punched address: ${address.toString()}`,
-          PKMessageType.SUCCESS,
-        );
+        pkLogger(`peer address successfully hole punched`, PKMessageType.SUCCESS);
       }),
     );
 }

@@ -1,8 +1,7 @@
 import fs from 'fs';
 import commander from 'commander';
-import { PolykeyAgent } from '../../Polykey';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '../utils';
-import { agentInterface } from '../../../proto/js/Agent';
+import * as pb from '../../../proto/compiled/Agent_pb';
+import { actionRunner, pkLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
 
 function makeListVaultsCommand() {
   return new commander.Command('list')
@@ -12,14 +11,14 @@ function makeListVaultsCommand() {
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status != agentInterface.AgentStatusType.ONLINE) {
-          throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-        }
-
         const nodePath = determineNodePath(options.nodePath);
-        const vaultNames = await client.listVaults(nodePath);
+        const client = await getAgentClient(nodePath);
+
+        const res = (await promisifyGrpc(client.listVaults.bind(client))(
+          new pb.EmptyMessage(),
+        )) as pb.StringListMessage;
+        const vaultNames = res.getSList();
+
         if (vaultNames === undefined || vaultNames.length == 0) {
           pkLogger('no vaults found', PKMessageType.INFO);
         } else {
@@ -40,13 +39,17 @@ function makeScanVaultsCommand() {
     .arguments('name of vault to remove')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
+
         const verbose: boolean = options.verbose ?? false;
 
         const publicKey = fs.readFileSync(options.publicKey).toString();
 
-        const vaultNames = await client.scanVaultNames(nodePath, publicKey);
+        const request = new pb.StringMessage();
+        request.setS(publicKey);
+        const res = (await promisifyGrpc(client.scanVaultNames.bind(client))(request)) as pb.StringListMessage;
+        const vaultNames = res.getSList();
 
         if (!vaultNames || vaultNames.length == 0) {
           pkLogger(`no vault names were provided`, PKMessageType.INFO);
@@ -66,10 +69,13 @@ function makeNewVaultCommand() {
     .arguments('vault name(s)')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
+
         for (const vaultName of options.args.values()) {
-          await client.newVault(nodePath, vaultName);
+          const request = new pb.StringMessage();
+          request.setS(vaultName);
+          const res = (await promisifyGrpc(client.newVault.bind(client))(request)) as pb.BooleanMessage;
           pkLogger(`vault created at '${nodePath}/${vaultName}'`, PKMessageType.SUCCESS);
         }
       }),
@@ -84,15 +90,20 @@ function makePullVaultCommand() {
     .requiredOption('-vn, --vault-name <vaultName>', 'name of the vault to be cloned')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
+
         const vaultName = options.vaultName;
 
         // read in public key
         const publicKey = fs.readFileSync(options.publicKey).toString();
 
-        const successful = await client.pullVault(nodePath, vaultName, publicKey.toString());
-        pkLogger(`vault '${vaultName}' pulled ${successful ? 'un-' : ''}successfully`, PKMessageType.SUCCESS);
+        const request = new pb.VaultPathMessage();
+        request.setPublicKey(publicKey.toString());
+        request.setVaultName(vaultName);
+        const res = (await promisifyGrpc(client.pullVault.bind(client))(request)) as pb.BooleanMessage;
+
+        pkLogger(`vault '${vaultName}' pulled ${res.getB() ? 'un-' : ''}successfully`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -106,8 +117,9 @@ function makeDeleteVaultCommand() {
     .arguments('name of vault to remove')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
+
         const verbose: boolean = options.verbose ?? false;
 
         const vaultNames = options.args.values();
@@ -116,8 +128,11 @@ function makeDeleteVaultCommand() {
         }
 
         for (const vaultName of vaultNames) {
-          const successful = await client.destroyVault(nodePath, vaultName);
-          pkLogger(`vault '${vaultName}' destroyed ${successful ? 'un-' : ''}successfully`, PKMessageType.SUCCESS);
+          const request = new pb.StringMessage();
+          request.setS(vaultName);
+          const res = (await promisifyGrpc(client.deleteVault.bind(client))(request)) as pb.BooleanMessage;
+
+          pkLogger(`vault '${vaultName}' deleted ${res.getB() ? 'un-' : ''}successfully`, PKMessageType.SUCCESS);
         }
       }),
     );

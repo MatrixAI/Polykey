@@ -1,7 +1,8 @@
 import commander from 'commander';
 import { PolykeyAgent } from '../../Polykey';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '../utils';
+import { actionRunner, pkLogger, PKMessageType, determineNodePath, promisifyGrpc, getAgentClient } from '../utils';
 import { agentInterface } from '../../../proto/js/Agent';
+import * as pb from '../../../proto/compiled/Agent_pb';
 
 function makeFindSocialPeerCommand() {
   return new commander.Command('social')
@@ -12,17 +13,14 @@ function makeFindSocialPeerCommand() {
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status != agentInterface.AgentStatusType.ONLINE) {
-          throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-        }
-
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
-        const successful = await client.findSocialPeer(nodePath, options.handle, options.service);
+        const request = new pb.ContactPeerMessage();
+        request.setPublicKeyOrHandle(`@${options.service}/${options.handle}`);
+        const res = (await promisifyGrpc(client.findSocialPeer.bind(client))(request)) as pb.BooleanMessage;
 
-        if (successful) {
+        if (res.getB()) {
           pkLogger('peer successfully pinged', PKMessageType.SUCCESS);
         } else {
           pkLogger('ping timed out', PKMessageType.WARNING);

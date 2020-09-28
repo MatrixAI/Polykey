@@ -1,7 +1,9 @@
 import { PolykeyAgent } from '../../Polykey';
 
-process.title = 'polykey-agent';
+let agent: PolykeyAgent;
 
-new PolykeyAgent();
-
-console.log(module);
+process.on('message', async (polykeyPath: string) => {
+  agent = new PolykeyAgent(polykeyPath);
+  await agent.startServer();
+  process.send && process.send('started');
+});

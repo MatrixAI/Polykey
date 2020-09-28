@@ -11,7 +11,7 @@ in
           {
             virtualisation.vlans = [ 1 ];
             environment.variables = {
-              KEYNODE_PATH = "$HOME/.polykey";
+              PK_PATH = "$HOME/.polykey";
             };
             environment.systemPackages = [ pk pkgs.tcpdump ];
             networking.firewall.enable = false;
@@ -22,7 +22,7 @@ in
           {
             virtualisation.vlans = [ 2 ];
             environment.variables = {
-              KEYNODE_PATH = "$HOME/.polykey";
+              PK_PATH = "$HOME/.polykey";
             };
             environment.systemPackages = [ pk pkgs.tcpdump ];
             networking.firewall.enable = false;
@@ -53,7 +53,7 @@ in
           {
             virtualisation.vlans = [ 3 ];
             environment.variables = {
-              KEYNODE_PATH = "$HOME/.polykey";
+              PK_PATH = "$HOME/.polykey";
             };
             environment.systemPackages = [ pk pkgs.tcpdump ];
             networking.firewall.enable = false;

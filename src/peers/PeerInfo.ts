@@ -72,20 +72,25 @@ class Address {
 
 class PeerInfo {
   publicKey: string;
-  // Address where all peer operations occur over (might be obscured by NAT)
-  peerAddress?: Address;
   // Public key that the peer connection is relayed over
   relayPublicKey?: string;
+  // Address where all peer operations occur over (might be obscured by NAT)
+  peerAddress?: Address;
+  // Address over which the polykey HTTP API is server
+  apiAddress?: Address;
 
-  constructor(publicKey: string, connectedAddress?: string, relayPublicKey?: string) {
+  constructor(publicKey: string, relayPublicKey?: string, peerAddress?: string, apiAddress?: string) {
     this.publicKey = PeerInfo.formatPublicKey(publicKey);
-    if (connectedAddress) {
-      const addr = Address.parse(connectedAddress);
-      this.peerAddress = addr;
-    }
-
     if (relayPublicKey) {
       this.relayPublicKey = PeerInfo.formatPublicKey(relayPublicKey);
+    }
+    if (peerAddress) {
+      const addr = Address.parse(peerAddress);
+      this.peerAddress = addr;
+    }
+    if (apiAddress) {
+      const addr = Address.parse(apiAddress);
+      this.apiAddress = addr;
     }
   }
 
@@ -96,14 +101,15 @@ class PeerInfo {
   }
 
   deepCopy(): PeerInfo {
-    return new PeerInfo(this.publicKey, this.peerAddress?.toString(), this.relayPublicKey);
+    return new PeerInfo(this.publicKey, this.relayPublicKey, this.peerAddress?.toString(), this.apiAddress?.toString());
   }
 
   toStringB64(): string {
     const message = peerInterface.PeerInfoMessage.encodeDelimited({
       publicKey: this.publicKey,
-      peerAddress: this.peerAddress?.toString(),
       relayPublicKey: this.relayPublicKey,
+      peerAddress: this.peerAddress?.toString(),
+      apiAddress: this.apiAddress?.toString(),
     }).finish();
     return protobufToString(message);
   }
@@ -113,7 +119,7 @@ class PeerInfo {
 
     const decoded = peerInterface.PeerInfoMessage.decodeDelimited(message);
 
-    return new PeerInfo(decoded.publicKey, decoded.peerAddress, decoded.relayPublicKey);
+    return new PeerInfo(decoded.publicKey, decoded.relayPublicKey, decoded.peerAddress, decoded.apiAddress);
   }
 }
 

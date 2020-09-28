@@ -100,9 +100,9 @@ $root.gitInterface = (function() {
             if (!w)
                 w = $Writer.create();
             if (m.type != null && Object.hasOwnProperty.call(m, "type"))
-                w.uint32(0).int32(m.type);
+                w.uint32(8).int32(m.type);
             if (m.subMessage != null && Object.hasOwnProperty.call(m, "subMessage"))
-                w.uint32(10).bytes(m.subMessage);
+                w.uint32(18).bytes(m.subMessage);
             return w;
         };
 
@@ -137,10 +137,10 @@ $root.gitInterface = (function() {
             while (r.pos < c) {
                 var t = r.uint32();
                 switch (t >>> 3) {
-                case 0:
+                case 1:
                     m.type = r.int32();
                     break;
-                case 1:
+                case 2:
                     m.subMessage = r.bytes();
                     break;
                 default:

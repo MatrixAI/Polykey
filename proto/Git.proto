@@ -9,8 +9,8 @@ enum GitMessageType {
   VAULT_NAMES = 2;
 }
 message GitMessage {
-  GitMessageType type = 0;
-  bytes subMessage = 1;
+  GitMessageType type = 1;
+  bytes subMessage = 2;
 }
 
 // ==== Vault Info ==== //

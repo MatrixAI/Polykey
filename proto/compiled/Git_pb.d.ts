@@ -1,4 +1,4 @@
-// package: git
+// package: gitInterface
 // file: Git.proto
 
 /* tslint:disable */
@@ -10,13 +10,10 @@ export class GitMessage extends jspb.Message {
     getType(): GitMessageType;
     setType(value: GitMessageType): GitMessage;
 
-    getIsresponse(): boolean;
-    setIsresponse(value: boolean): GitMessage;
-
-    getSubMessage(): Uint8Array | string;
-    getSubMessage_asU8(): Uint8Array;
-    getSubMessage_asB64(): string;
-    setSubMessage(value: Uint8Array | string): GitMessage;
+    getSubmessage(): Uint8Array | string;
+    getSubmessage_asU8(): Uint8Array;
+    getSubmessage_asB64(): string;
+    setSubmessage(value: Uint8Array | string): GitMessage;
 
 
     serializeBinary(): Uint8Array;
@@ -32,8 +29,7 @@ export class GitMessage extends jspb.Message {
 export namespace GitMessage {
     export type AsObject = {
         type: GitMessageType,
-        isresponse: boolean,
-        subMessage: Uint8Array | string,
+        submessage: Uint8Array | string,
     }
 }
 
@@ -139,7 +135,31 @@ export namespace PackReply {
     }
 }
 
+export class VaultNamesReply extends jspb.Message { 
+    clearVaultNameListList(): void;
+    getVaultNameListList(): Array<string>;
+    setVaultNameListList(value: Array<string>): VaultNamesReply;
+    addVaultNameList(value: string, index?: number): string;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultNamesReply.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultNamesReply): VaultNamesReply.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultNamesReply, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultNamesReply;
+    static deserializeBinaryFromReader(message: VaultNamesReply, reader: jspb.BinaryReader): VaultNamesReply;
+}
+
+export namespace VaultNamesReply {
+    export type AsObject = {
+        vaultNameListList: Array<string>,
+    }
+}
+
 export enum GitMessageType {
     INFO = 0,
     PACK = 1,
+    VAULT_NAMES = 2,
 }

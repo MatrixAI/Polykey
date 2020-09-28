@@ -9,6 +9,7 @@ in
     src = null;
     nativeBuildInputs = [
       step-cli
+      swagger-codegen
       nodePackages.node2nix
     ] ++ (lib.attrByPath [ "nativeBuildInputs" ] [] attrs);
     shellHook = ''

@@ -5,6 +5,9 @@
 # gitlab-runner exec
 /builds
 
+# dist folder
+/dist
+
 # Logs
 logs
 *.log

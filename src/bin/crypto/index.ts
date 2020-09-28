@@ -1,7 +1,6 @@
 import commander from 'commander';
-import { PolykeyAgent } from '../../Polykey';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '../utils';
-import { agentInterface } from '../../../proto/js/Agent';
+import { actionRunner, pkLogger, PKMessageType, determineNodePath, promisifyGrpc, getAgentClient } from '../utils';
+import * as pb from '../../../proto/compiled/Agent_pb';
 
 function makeSignCommand() {
   return new commander.Command('sign')
@@ -10,34 +9,39 @@ function makeSignCommand() {
     .option('-k, --signing-key <signingKey>', 'path to private key that will be used to sign files')
     .option('-p, --key-passphrase <keyPassphrase>', 'passphrase to unlock the provided signing key')
     .arguments('file(s) to be signed')
-    .action(async (options) => {
-      const client = PolykeyAgent.connectToAgent();
-      const status = await client.getAgentStatus();
-      if (status != agentInterface.AgentStatusType.ONLINE) {
-        throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-      }
+    .action(
+      actionRunner(async (options) => {
+        const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
-      const nodePath = determineNodePath(options.nodePath);
-      const signingKeyPath = options.signingKey;
-      const keyPassphrase = options.keyPassphrase;
-      if ((signingKeyPath || keyPassphrase) && !(signingKeyPath && keyPassphrase)) {
-        throw Error('signing key and passphrase must be specified together');
-      }
-
-      const filePathList = options.args.values();
-      if (filePathList.length == 0) {
-        throw Error('no files provided');
-      }
-
-      for (const filePath of filePathList) {
-        try {
-          const signaturePath = await client.signFile(nodePath, filePath, signingKeyPath, keyPassphrase);
-          pkLogger(`file '${filePath}' successfully signed at '${signaturePath}'`, PKMessageType.SUCCESS);
-        } catch (err) {
-          throw Error(`failed to sign '${filePath}': ${err}`);
+        const signingKeyPath = options.signingKey;
+        const keyPassphrase = options.keyPassphrase;
+        if ((signingKeyPath || keyPassphrase) && !(signingKeyPath && keyPassphrase)) {
+          throw Error('signing key and passphrase must be specified together');
         }
-      }
-    });
+
+        const filePathList = options.args.values();
+        console.log('filePathList');
+        console.log(filePathList);
+
+        if (filePathList.length == 0) {
+          throw Error('no files provided');
+        }
+
+        for (const filePath of filePathList) {
+          try {
+            const request = new pb.SignFileMessage();
+            request.setFilePath(filePath);
+            request.setPrivateKeyPath(signingKeyPath);
+            request.setPassphrase(keyPassphrase);
+            const res = (await promisifyGrpc(client.signFile.bind(client))(request)) as pb.StringMessage;
+            pkLogger(`file '${filePath}' successfully signed at '${res.getS()}'`, PKMessageType.SUCCESS);
+          } catch (err) {
+            throw Error(`failed to sign '${filePath}': ${err}`);
+          }
+        }
+      }),
+    );
 }
 
 function makeVerifyCommand() {
@@ -51,17 +55,16 @@ function makeVerifyCommand() {
     .requiredOption('-f, --signed-file <signedFile>', 'file to be verified')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status != agentInterface.AgentStatusType.ONLINE) {
-          throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-        }
-
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
+
         const filePath = options.signedFile;
 
-        const verified = await client.verifyFile(nodePath, filePath, options.publicKey);
-        if (verified) {
+        const request = new pb.VerifyFileMessage();
+        request.setFilePath(filePath);
+        request.setPublicKeyPath(options.publicKey);
+        const res = (await promisifyGrpc(client.verifyFile.bind(client))(request)) as pb.BooleanMessage;
+        if (res.getB()) {
           pkLogger(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
         } else {
           pkLogger(`file '${filePath}' was not verified`, PKMessageType.WARNING);
@@ -81,18 +84,17 @@ function makeEncryptCommand() {
     .requiredOption('-f, --file-path <filePath>', 'file to be encrypted')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status != agentInterface.AgentStatusType.ONLINE) {
-          throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-        }
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         const filePath = options.filePath;
 
         try {
-          const encryptedPath = await client.encryptFile(nodePath, filePath, options.publicKey);
-          pkLogger(`file successfully encrypted: '${encryptedPath}'`, PKMessageType.SUCCESS);
+          const request = new pb.EncryptFileMessage();
+          request.setFilePath(filePath);
+          request.setPublicKeyPath(options.publicKey);
+          const res = (await promisifyGrpc(client.encryptFile.bind(client))(request)) as pb.StringMessage;
+          pkLogger(`file successfully encrypted: '${res.getS()}'`, PKMessageType.SUCCESS);
         } catch (err) {
           throw Error(`failed to encrypt '${filePath}': ${err}`);
         }
@@ -112,18 +114,18 @@ function makeDecryptCommand() {
     .requiredOption('-f, --file-path <filePath>', 'file to be decrypted')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status != agentInterface.AgentStatusType.ONLINE) {
-          throw Error(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`);
-        }
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         const filePath = options.filePath;
 
         try {
-          const decryptedPath = await client.decryptFile(nodePath, filePath, options.privateKey, options.keyPassphrase);
-          pkLogger(`file successfully decrypted: '${decryptedPath}'`, PKMessageType.SUCCESS);
+          const request = new pb.DecryptFileMessage();
+          request.setFilePath(filePath);
+          request.setPrivateKeyPath(options.privateKey);
+          request.setPassphrase(options.keyPassphrase);
+          const res = (await promisifyGrpc(client.decryptFile.bind(client))(request)) as pb.StringMessage;
+          pkLogger(`file successfully decrypted: '${res.getS()}'`, PKMessageType.SUCCESS);
         } catch (err) {
           throw Error(`failed to decrypt '${filePath}': ${err}`);
         }

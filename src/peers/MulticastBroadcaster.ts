@@ -108,10 +108,12 @@ class MulticastBroadcaster extends EventEmitter {
       const verifiedMessage = await this.keyManager.verifyData(subMessage, Buffer.from(signingKey));
       const encodedMessage = stringToProtobuf(verifiedMessage.toString());
 
-      const { publicKey, peerAddress, relayPublicKey } = peerInterface.PeerInfoMessage.decodeDelimited(encodedMessage);
+      const { publicKey, relayPublicKey, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
+        encodedMessage,
+      );
 
       // construct a peer info object
-      const peerInfo = new PeerInfo(publicKey, peerAddress, relayPublicKey);
+      const peerInfo = new PeerInfo(publicKey, relayPublicKey, peerAddress, apiAddress);
       // update the peer store
       this.peerManager.updatePeer(peerInfo);
 

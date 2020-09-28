@@ -6,21 +6,17 @@ import crypto from 'crypto';
 import { promisify } from 'util';
 import { Pool, ModuleThread } from 'threads';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
+import PublicKeyInfrastructure from './pki/PublicKeyInfrastructure';
 
 type KeyManagerMetadata = {
   privateKeyPath: string | null;
   publicKeyPath: string | null;
-  pkiKeyPath: string | null;
-  pkiCertPath: string | null;
-  caCertPath: string | null;
 };
 
 type KeyPair = {
   private: string | null;
   public: string | null;
 };
-
-type PKInfo = { key: Buffer | null; cert: Buffer | null; caCert: Buffer | null };
 
 class KeyManager {
   private primaryKeyPair: KeyPair = { private: null, public: null };
@@ -38,18 +34,15 @@ class KeyManager {
   private metadata: KeyManagerMetadata = {
     privateKeyPath: null,
     publicKeyPath: null,
-    pkiKeyPath: null,
-    pkiCertPath: null,
-    caCertPath: null,
   };
 
   /////////
   // PKI //
   /////////
-  pkiInfo: PKInfo = { key: null, cert: null, caCert: null };
+  pki: PublicKeyInfrastructure;
 
   constructor(
-    polyKeyPath: string = `${os.homedir()}/.polykey`,
+    polykeyPath: string = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     useWebWorkers: boolean = false,
     workerPool?: Pool<ModuleThread<KeyManagerWorker>>,
@@ -60,8 +53,8 @@ class KeyManager {
     this.fileSystem = fileSystem;
 
     // Load key manager metadata
-    this.polykeyPath = polyKeyPath;
-    this.keypairPath = path.join(polyKeyPath, '.keys');
+    this.polykeyPath = polykeyPath;
+    this.keypairPath = path.join(polykeyPath, '.keys');
     if (!this.fileSystem.existsSync(this.keypairPath)) {
       this.fileSystem.mkdirSync(this.keypairPath, { recursive: true });
     }
@@ -74,21 +67,10 @@ class KeyManager {
       // Load files into memory
       this.loadKeyPair(this.metadata.publicKeyPath, this.metadata.privateKeyPath);
     }
-
     /////////
     // PKI //
     /////////
-    // Load pki keys and certs
-    if (this.metadata.pkiKeyPath) {
-      this.pkiInfo.key = fs.readFileSync(this.metadata.pkiKeyPath);
-    }
-    if (this.metadata.pkiCertPath) {
-      this.pkiInfo.cert = fs.readFileSync(this.metadata.pkiCertPath);
-    }
-    if (this.metadata.caCertPath) {
-      this.pkiInfo.caCert = fs.readFileSync(this.metadata.caCertPath);
-    }
-    this.loadPKIInfo(this.pkiInfo.key, this.pkiInfo.cert, this.pkiInfo.caCert, true);
+    this.pki = new PublicKeyInfrastructure(this.polykeyPath, this.fileSystem);
   }
 
   public get identityLoaded(): boolean {
@@ -174,11 +156,18 @@ class KeyManager {
   }
 
   /**
+   * Determines whether public key is loaded or not
+   */
+  hasPrivateKey(): boolean {
+    return this.primaryKeyPair.private ? true : false;
+  }
+
+  /**
    * Get the public key of the primary keypair
    */
   getPublicKey(): string {
     if (!this.primaryKeyPair.public) {
-      throw Error('Public key does not exist in memory');
+      throw Error('public key does not exist in memory');
     }
     return this.primaryKeyPair.public;
   }
@@ -188,7 +177,7 @@ class KeyManager {
    */
   getPrivateKey(): string {
     if (!this.primaryKeyPair.private) {
-      throw Error('Private key does not exist in memory');
+      throw Error('private key does not exist in memory');
     }
     return this.primaryKeyPair.private;
   }
@@ -286,6 +275,22 @@ class KeyManager {
     if (storeKey) {
       this.derivedKeys[name] = key;
       await this.writeMetadata();
+    }
+    return key;
+  }
+
+  /**
+   * Synchronously Generates a new symmetric key and stores it in the key manager
+   * @param name Unique name of the generated key
+   * @param passphrase Passphrase to derive the key from
+   * @param storeKey Whether to store the key in the key manager
+   */
+  generateKeySync(name: string, passphrase: string, storeKey: boolean = true): Buffer {
+    const salt = crypto.randomBytes(32);
+    const key = crypto.pbkdf2Sync(passphrase, salt, 10000, 256 / 8, 'sha256');
+    if (storeKey) {
+      this.derivedKeys[name] = key;
+      this.writeMetadata();
     }
     return key;
   }
@@ -649,47 +654,6 @@ class KeyManager {
     return filePath;
   }
 
-  /////////
-  // PKI //
-  /////////
-  public get PKIInfo(): PKInfo {
-    return this.pkiInfo;
-  }
-
-  loadPKIInfo(key?: Buffer | null, cert?: Buffer | null, caCert?: Buffer | null, writeToFile: boolean = false) {
-    if (key) {
-      this.pkiInfo.key = key;
-    }
-
-    if (cert) {
-      this.pkiInfo.cert = cert;
-    }
-
-    if (caCert) {
-      this.pkiInfo.caCert = caCert;
-    }
-
-    if (writeToFile) {
-      // Store in the metadata path folder
-      const storagePath = path.dirname(this.metadataPath);
-
-      if (key) {
-        this.metadata.pkiKeyPath = path.join(storagePath, 'pki_private_key');
-        fs.writeFileSync(this.metadata.pkiKeyPath, key);
-      }
-
-      if (cert) {
-        this.metadata.pkiCertPath = path.join(storagePath, 'pki_cert');
-        fs.writeFileSync(this.metadata.pkiCertPath, cert);
-      }
-
-      if (caCert) {
-        this.metadata.caCertPath = path.join(storagePath, 'ca_cert');
-        fs.writeFileSync(this.metadata.caCertPath, caCert);
-      }
-    }
-  }
-
   /* ============ HELPERS =============== */
   /**
    * Get the key for a given name
@@ -713,6 +677,10 @@ class KeyManager {
   private async writeMetadata(): Promise<void> {
     const metadata = JSON.stringify(this.metadata);
     this.fileSystem.writeFileSync(this.metadataPath, metadata);
+    this.writeEncryptedMetadata();
+  }
+
+  private async writeEncryptedMetadata(): Promise<void> {
     // Store the keys if identity is loaded
     if (this.identityLoaded) {
       const derivedKeys = JSON.stringify(this.derivedKeys);
@@ -721,18 +689,22 @@ class KeyManager {
     }
   }
 
-  async loadMetadata(): Promise<void> {
+  loadMetadata(): void {
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath)) {
       const metadata = this.fileSystem.readFileSync(this.metadataPath).toString();
       this.metadata = JSON.parse(metadata);
-      if (this.identityLoaded && this.fileSystem.existsSync(this.derivedKeysPath)) {
-        const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
-        const metadata = (await this.decryptData(encryptedMetadata)).toString();
-        const derivedKeys = JSON.parse(metadata);
-        for (const key of Object.keys(derivedKeys)) {
-          this.derivedKeys[key] = Buffer.from(derivedKeys[key]);
-        }
+      this.loadEncryptedMetadata();
+    }
+  }
+
+  async loadEncryptedMetadata(): Promise<void> {
+    if (this.identityLoaded && this.fileSystem.existsSync(this.derivedKeysPath)) {
+      const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
+      const metadata = (await this.decryptData(encryptedMetadata)).toString();
+      const derivedKeys = JSON.parse(metadata);
+      for (const key of Object.keys(derivedKeys)) {
+        this.derivedKeys[key] = Buffer.from(derivedKeys[key]);
       }
     }
   }
