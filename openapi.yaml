@@ -1,0 +1,75 @@
+swagger: '2.0'
+info:
+  title: Polykey API
+  description: >-
+    Peer to peer distributed secret sharing. HTTP API.
+  version: 0.1.9
+schemes:
+  - http
+  - https
+paths:
+  /ca/root_certificate:
+    get:
+      summary: Returns the root certificate
+      description: Returns the root certificate for the polykey node
+      operationId: rootCertificate
+      responses:
+        '200':
+          description: Root certificate
+          schema:
+            $ref: '#/definitions/RootCert'
+  /ca/certificate_chain:
+    get:
+      summary: Returns the certificate chain for verifying the root certificate
+      description: Returns the certificate chain for the polykey node
+      operationId: certificateChain
+      responses:
+        '200':
+          description: Certificate Chain
+          schema:
+            $ref: '#/definitions/CertChain'
+  /ca/certificate_signing_request:
+    post:
+      description: Request a certificate from the polykey node CA
+      operationId: certificateSigningRequest
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Sign a certificate from a client
+          required: true
+          schema:
+            $ref: '#/definitions/CSR'
+      responses:
+        '200':
+          description: Signed certificate
+          schema:
+            $ref: '#/definitions/CSR'
+definitions:
+  CSR:
+    description: A JSON object containing a certificate signing request
+    required:
+      - publicKey
+      - csr
+    type: object
+    properties:
+      publicKey:
+        type: string
+      csr:
+        type: string
+  RootCert:
+    description: A JSON object containing the root certificate
+    required:
+      - rootCert
+    type: object
+    properties:
+      rootCert:
+        type: string
+  CertChain:
+    description: A JSON object containing the certificates used to create the root cert
+    type: array
+    items:
+      type: string

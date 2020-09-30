@@ -130,7 +130,8 @@ declare namespace Peer {
         enum SubServiceType {
             PING_PEER = 0,
             GIT = 1,
-            NAT_TRAVERSAL = 2
+            NAT_TRAVERSAL = 2,
+            CERTIFICATE_AUTHORITY = 3
         }
 
         /** Properties of a PingPeerMessage. */
@@ -213,11 +214,14 @@ declare namespace Peer {
             /** PeerInfoMessage publicKey */
             publicKey?: (string|null);
 
+            /** PeerInfoMessage relayPublicKey */
+            relayPublicKey?: (string|null);
+
             /** PeerInfoMessage peerAddress */
             peerAddress?: (string|null);
 
-            /** PeerInfoMessage relayPublicKey */
-            relayPublicKey?: (string|null);
+            /** PeerInfoMessage apiAddress */
+            apiAddress?: (string|null);
         }
 
         /** Represents a PeerInfoMessage. */
@@ -232,11 +236,14 @@ declare namespace Peer {
             /** PeerInfoMessage publicKey. */
             public publicKey: string;
 
+            /** PeerInfoMessage relayPublicKey. */
+            public relayPublicKey: string;
+
             /** PeerInfoMessage peerAddress. */
             public peerAddress: string;
 
-            /** PeerInfoMessage relayPublicKey. */
-            public relayPublicKey: string;
+            /** PeerInfoMessage apiAddress. */
+            public apiAddress: string;
 
             /**
              * Creates a new PeerInfoMessage instance using the specified properties.
@@ -1044,6 +1051,87 @@ declare namespace Peer {
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
             public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerUdpAddressResponse;
+        }
+
+        /** CAMessageType enum. */
+        enum CAMessageType {
+            ERROR = 0,
+            ROOT_CERT = 1,
+            REQUEST_CERT = 2
+        }
+
+        /** Properties of a CAMessage. */
+        interface ICAMessage {
+
+            /** CAMessage type */
+            type?: (peerInterface.CAMessageType|null);
+
+            /** CAMessage isResponse */
+            isResponse?: (boolean|null);
+
+            /** CAMessage subMessage */
+            subMessage?: (Uint8Array|null);
+        }
+
+        /** Represents a CAMessage. */
+        class CAMessage implements ICAMessage {
+
+            /**
+             * Constructs a new CAMessage.
+             * @param [p] Properties to set
+             */
+            constructor(p?: peerInterface.ICAMessage);
+
+            /** CAMessage type. */
+            public type: peerInterface.CAMessageType;
+
+            /** CAMessage isResponse. */
+            public isResponse: boolean;
+
+            /** CAMessage subMessage. */
+            public subMessage: Uint8Array;
+
+            /**
+             * Creates a new CAMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CAMessage instance
+             */
+            public static create(properties?: peerInterface.ICAMessage): peerInterface.CAMessage;
+
+            /**
+             * Encodes the specified CAMessage message. Does not implicitly {@link peerInterface.CAMessage.verify|verify} messages.
+             * @param m CAMessage message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: peerInterface.ICAMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CAMessage message, length delimited. Does not implicitly {@link peerInterface.CAMessage.verify|verify} messages.
+             * @param message CAMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: peerInterface.ICAMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CAMessage message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns CAMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.CAMessage;
+
+            /**
+             * Decodes a CAMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CAMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.CAMessage;
         }
     }
 }

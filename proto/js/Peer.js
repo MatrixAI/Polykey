@@ -243,12 +243,14 @@ $root.peerInterface = (function() {
      * @property {number} PING_PEER=0 PING_PEER value
      * @property {number} GIT=1 GIT value
      * @property {number} NAT_TRAVERSAL=2 NAT_TRAVERSAL value
+     * @property {number} CERTIFICATE_AUTHORITY=3 CERTIFICATE_AUTHORITY value
      */
     peerInterface.SubServiceType = (function() {
         var valuesById = {}, values = Object.create(valuesById);
         values[valuesById[0] = "PING_PEER"] = 0;
         values[valuesById[1] = "GIT"] = 1;
         values[valuesById[2] = "NAT_TRAVERSAL"] = 2;
+        values[valuesById[3] = "CERTIFICATE_AUTHORITY"] = 3;
         return values;
     })();
 
@@ -409,8 +411,9 @@ $root.peerInterface = (function() {
          * @memberof peerInterface
          * @interface IPeerInfoMessage
          * @property {string|null} [publicKey] PeerInfoMessage publicKey
-         * @property {string|null} [peerAddress] PeerInfoMessage peerAddress
          * @property {string|null} [relayPublicKey] PeerInfoMessage relayPublicKey
+         * @property {string|null} [peerAddress] PeerInfoMessage peerAddress
+         * @property {string|null} [apiAddress] PeerInfoMessage apiAddress
          */
 
         /**
@@ -437,6 +440,14 @@ $root.peerInterface = (function() {
         PeerInfoMessage.prototype.publicKey = "";
 
         /**
+         * PeerInfoMessage relayPublicKey.
+         * @member {string} relayPublicKey
+         * @memberof peerInterface.PeerInfoMessage
+         * @instance
+         */
+        PeerInfoMessage.prototype.relayPublicKey = "";
+
+        /**
          * PeerInfoMessage peerAddress.
          * @member {string} peerAddress
          * @memberof peerInterface.PeerInfoMessage
@@ -445,12 +456,12 @@ $root.peerInterface = (function() {
         PeerInfoMessage.prototype.peerAddress = "";
 
         /**
-         * PeerInfoMessage relayPublicKey.
-         * @member {string} relayPublicKey
+         * PeerInfoMessage apiAddress.
+         * @member {string} apiAddress
          * @memberof peerInterface.PeerInfoMessage
          * @instance
          */
-        PeerInfoMessage.prototype.relayPublicKey = "";
+        PeerInfoMessage.prototype.apiAddress = "";
 
         /**
          * Creates a new PeerInfoMessage instance using the specified properties.
@@ -478,10 +489,12 @@ $root.peerInterface = (function() {
                 w = $Writer.create();
             if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
                 w.uint32(10).string(m.publicKey);
-            if (m.peerAddress != null && Object.hasOwnProperty.call(m, "peerAddress"))
-                w.uint32(18).string(m.peerAddress);
             if (m.relayPublicKey != null && Object.hasOwnProperty.call(m, "relayPublicKey"))
-                w.uint32(26).string(m.relayPublicKey);
+                w.uint32(18).string(m.relayPublicKey);
+            if (m.peerAddress != null && Object.hasOwnProperty.call(m, "peerAddress"))
+                w.uint32(26).string(m.peerAddress);
+            if (m.apiAddress != null && Object.hasOwnProperty.call(m, "apiAddress"))
+                w.uint32(34).string(m.apiAddress);
             return w;
         };
 
@@ -520,10 +533,13 @@ $root.peerInterface = (function() {
                     m.publicKey = r.string();
                     break;
                 case 2:
-                    m.peerAddress = r.string();
+                    m.relayPublicKey = r.string();
                     break;
                 case 3:
-                    m.relayPublicKey = r.string();
+                    m.peerAddress = r.string();
+                    break;
+                case 4:
+                    m.apiAddress = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -2067,6 +2083,172 @@ $root.peerInterface = (function() {
         };
 
         return PeerUdpAddressResponse;
+    })();
+
+    /**
+     * CAMessageType enum.
+     * @name peerInterface.CAMessageType
+     * @enum {number}
+     * @property {number} ERROR=0 ERROR value
+     * @property {number} ROOT_CERT=1 ROOT_CERT value
+     * @property {number} REQUEST_CERT=2 REQUEST_CERT value
+     */
+    peerInterface.CAMessageType = (function() {
+        var valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "ERROR"] = 0;
+        values[valuesById[1] = "ROOT_CERT"] = 1;
+        values[valuesById[2] = "REQUEST_CERT"] = 2;
+        return values;
+    })();
+
+    peerInterface.CAMessage = (function() {
+
+        /**
+         * Properties of a CAMessage.
+         * @memberof peerInterface
+         * @interface ICAMessage
+         * @property {peerInterface.CAMessageType|null} [type] CAMessage type
+         * @property {boolean|null} [isResponse] CAMessage isResponse
+         * @property {Uint8Array|null} [subMessage] CAMessage subMessage
+         */
+
+        /**
+         * Constructs a new CAMessage.
+         * @memberof peerInterface
+         * @classdesc Represents a CAMessage.
+         * @implements ICAMessage
+         * @constructor
+         * @param {peerInterface.ICAMessage=} [p] Properties to set
+         */
+        function CAMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * CAMessage type.
+         * @member {peerInterface.CAMessageType} type
+         * @memberof peerInterface.CAMessage
+         * @instance
+         */
+        CAMessage.prototype.type = 0;
+
+        /**
+         * CAMessage isResponse.
+         * @member {boolean} isResponse
+         * @memberof peerInterface.CAMessage
+         * @instance
+         */
+        CAMessage.prototype.isResponse = false;
+
+        /**
+         * CAMessage subMessage.
+         * @member {Uint8Array} subMessage
+         * @memberof peerInterface.CAMessage
+         * @instance
+         */
+        CAMessage.prototype.subMessage = $util.newBuffer([]);
+
+        /**
+         * Creates a new CAMessage instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.CAMessage
+         * @static
+         * @param {peerInterface.ICAMessage=} [properties] Properties to set
+         * @returns {peerInterface.CAMessage} CAMessage instance
+         */
+        CAMessage.create = function create(properties) {
+            return new CAMessage(properties);
+        };
+
+        /**
+         * Encodes the specified CAMessage message. Does not implicitly {@link peerInterface.CAMessage.verify|verify} messages.
+         * @function encode
+         * @memberof peerInterface.CAMessage
+         * @static
+         * @param {peerInterface.ICAMessage} m CAMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        CAMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.type != null && Object.hasOwnProperty.call(m, "type"))
+                w.uint32(8).int32(m.type);
+            if (m.isResponse != null && Object.hasOwnProperty.call(m, "isResponse"))
+                w.uint32(16).bool(m.isResponse);
+            if (m.subMessage != null && Object.hasOwnProperty.call(m, "subMessage"))
+                w.uint32(26).bytes(m.subMessage);
+            return w;
+        };
+
+        /**
+         * Encodes the specified CAMessage message, length delimited. Does not implicitly {@link peerInterface.CAMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof peerInterface.CAMessage
+         * @static
+         * @param {peerInterface.ICAMessage} message CAMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        CAMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a CAMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof peerInterface.CAMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {peerInterface.CAMessage} CAMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        CAMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.CAMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.type = r.int32();
+                    break;
+                case 2:
+                    m.isResponse = r.bool();
+                    break;
+                case 3:
+                    m.subMessage = r.bytes();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a CAMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof peerInterface.CAMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {peerInterface.CAMessage} CAMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        CAMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return CAMessage;
     })();
 
     return peerInterface;

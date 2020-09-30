@@ -1,8 +1,8 @@
 import process from 'process';
 import commander from 'commander';
 import { spawn } from 'child_process';
-import { PolykeyAgent } from '../../Polykey';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '../utils';
+import * as pb from '../../../proto/compiled/Agent_pb';
+import { actionRunner, pkLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
 
 const pathRegex = /^([a-zA-Z0-9_ -]+)(?::)([a-zA-Z0-9_ -]+)(?:=)?([a-zA-Z_][a-zA-Z0-9_]+)?$/;
 
@@ -15,9 +15,9 @@ function makeListSecretsCommand() {
     .arguments('vault name(s) to list')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
+
         const isVerbose: boolean = options.verbose ?? false;
         const vaultNames: string[] = Array.from(options.args.values());
 
@@ -27,7 +27,10 @@ function makeListSecretsCommand() {
 
         for (const vaultName of vaultNames) {
           // Get list of secrets from pk
-          const secretNames = await client.listSecrets(nodePath, vaultName);
+          const request = new pb.StringMessage();
+          request.setS(vaultName);
+          const res = (await promisifyGrpc(client.listSecrets.bind(client))(request)) as pb.StringListMessage;
+          const secretNames = res.getSList();
 
           // List secrets
           if (secretNames.length == 0 && isVerbose) {
@@ -54,8 +57,8 @@ function makeNewSecretCommand() {
     .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         const isVerbose: boolean = options.verbose ?? false;
         const secretPath: string[] = Array.from<string>(options.args.values());
@@ -68,9 +71,16 @@ function makeNewSecretCommand() {
         const [_, vaultName, secretName] = firstEntry.match(pathRegex)!;
         try {
           // Add the secret
-          const successful = await client.createSecret(nodePath, vaultName, secretName, options.filePath);
+          const request = new pb.SecretContentMessage();
+          const secretPath = new pb.SecretPathMessage();
+          secretPath.setVaultName(vaultName);
+          secretPath.setSecretName(secretName);
+          request.setSecretPath(secretPath);
+          request.setSecretFilePath(options.filePath);
+          const res = (await promisifyGrpc(client.newSecret.bind(client))(request)) as pb.BooleanMessage;
+
           pkLogger(
-            `secret '${secretName}' was ${successful ? '' : 'un-'}successfully added to vault '${vaultName}'`,
+            `secret '${secretName}' was ${res.getB() ? '' : 'un-'}successfully added to vault '${vaultName}'`,
             PKMessageType.SUCCESS,
           );
         } catch (err) {
@@ -89,8 +99,8 @@ function makeUpdateSecretCommand() {
     .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         const isVerbose: boolean = options.verbose ?? false;
         const secretPath: string[] = Array.from<string>(options.args.values());
@@ -103,10 +113,17 @@ function makeUpdateSecretCommand() {
         const [_, vaultName, secretName] = firstEntry.match(pathRegex)!;
         try {
           // Update the secret
-          const successful = await client.updateSecret(nodePath, vaultName, secretName, options.filePath);
+          const request = new pb.SecretContentMessage();
+          const secretPath = new pb.SecretPathMessage();
+          secretPath.setVaultName(vaultName);
+          secretPath.setSecretName(secretName);
+          request.setSecretPath(secretPath);
+          request.setSecretFilePath(options.filePath);
+          const res = (await promisifyGrpc(client.updateSecret.bind(client))(request)) as pb.BooleanMessage;
+
           pkLogger(
-            `secret '${secretName}' was ${successful ? '' : 'un-'}successfully updated in vault '${vaultName}'`,
-            successful ? PKMessageType.SUCCESS : PKMessageType.WARNING,
+            `secret '${secretName}' was ${res.getB() ? '' : 'un-'}successfully updated in vault '${vaultName}'`,
+            res.getB() ? PKMessageType.SUCCESS : PKMessageType.WARNING,
           );
         } catch (err) {
           throw Error(`Error when updating secret: ${err.message}`);
@@ -123,8 +140,8 @@ function makeDeleteSecretCommand() {
     .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         const isVerbose: boolean = options.verbose ?? false;
         const secretPath: string[] = Array.from<string>(options.args.values());
@@ -137,9 +154,13 @@ function makeDeleteSecretCommand() {
         const [_, vaultName, secretName] = firstEntry.match(pathRegex)!;
         try {
           // Remove secret
-          const successful = await client.destroySecret(nodePath, vaultName, secretName);
+          const request = new pb.SecretPathMessage();
+          request.setVaultName(vaultName);
+          request.setSecretName(secretName);
+          const res = (await promisifyGrpc(client.deleteSecret.bind(client))(request)) as pb.BooleanMessage;
+
           pkLogger(
-            `secret '${secretName}' was ${successful ? '' : 'un-'}successfully removed from vault '${vaultName}'`,
+            `secret '${secretName}' was ${res.getB() ? '' : 'un-'}successfully removed from vault '${vaultName}'`,
             PKMessageType.SUCCESS,
           );
         } catch (err) {
@@ -156,8 +177,8 @@ function makeGetSecretCommand() {
     .option('-e, --env', 'wrap the secret in an environment variable declaration')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         const isEnv: boolean = options.env ?? false;
         const isVerbose: boolean = options.verbose ?? false;
@@ -171,9 +192,14 @@ function makeGetSecretCommand() {
         const [_, vaultName, secretName] = firstEntry.match(pathRegex)!;
         try {
           // Retrieve secret
-          const secret = await client.getSecret(nodePath, vaultName, secretName);
+          const request = new pb.SecretPathMessage();
+          request.setVaultName(vaultName);
+          request.setSecretName(secretName);
+          const res = (await promisifyGrpc(client.getSecret.bind(client))(request)) as pb.StringMessage;
+          const secret = res.getS();
+
           if (isEnv) {
-            pkLogger(`export ${secretName.toUpperCase().replace('-', '_')}='${secret.toString()}'`, PKMessageType.none);
+            pkLogger(`export ${secretName.toUpperCase().replace('-', '_')}='${secret}'`, PKMessageType.none);
           } else {
             pkLogger(secret.toString(), PKMessageType.none);
           }
@@ -205,8 +231,8 @@ function makeSecretEnvCommand() {
       actionRunner(async (cmd) => {
         const options = cmd.opts();
 
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath);
 
         const isVerbose: boolean = options.verbose ?? false;
         const command: string | undefined = options.command;
@@ -236,8 +262,13 @@ function makeSecretEnvCommand() {
         try {
           // Get all the secrets
           for (const obj of parsedPathList) {
-            const secret = await client.getSecret(nodePath, obj.vaultName, obj.secretName);
-            secretEnv[obj.variableName] = secret.toString();
+            const request = new pb.SecretPathMessage();
+            request.setVaultName(obj.vaultName);
+            request.setSecretName(obj.secretName);
+            const res = (await promisifyGrpc(client.getSecret.bind(client))(request)) as pb.StringMessage;
+            const secret = res.getS();
+
+            secretEnv[obj.variableName] = secret;
           }
         } catch (err) {
           throw Error(`Error when retrieving secret: ${err.message}`);

@@ -120,7 +120,7 @@ pk agent load -k '~/NewPolykeyNode' -p 'passphrase'
 pk agent list # ~/NewPolykeyNode
 </pre>
 
-Note: Polykey also provides the ability to set an environment variable, `KEYNODE_PATH`, instead of specifying the node path with `-k '~/NewPolykeyNode'`
+Note: Polykey also provides the ability to set an environment variable, `PK_PATH`, instead of specifying the node path with `-k '~/NewPolykeyNode'`
 
 ## Keys
 This command is used to interact with PolyKey's KeyManager. With this command you can generate new keys, list keys and more.

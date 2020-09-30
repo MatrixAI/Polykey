@@ -1,4 +1,4 @@
-// package: peer
+// package: peerInterface
 // file: Peer.proto
 
 /* tslint:disable */
@@ -12,7 +12,7 @@ interface IPeerService extends grpc.ServiceDefinition<grpc.UntypedServiceImpleme
 }
 
 interface IPeerService_IMessagePeer extends grpc.MethodDefinition<Peer_pb.PeerMessage, Peer_pb.PeerMessage> {
-    path: string; // "/peer.Peer/MessagePeer"
+    path: string; // "/peerInterface.Peer/MessagePeer"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Peer_pb.PeerMessage>;

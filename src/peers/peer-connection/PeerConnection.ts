@@ -2,9 +2,8 @@ import PeerInfo from '../PeerInfo';
 import { randomBytes } from 'crypto';
 import * as grpc from '@grpc/grpc-js';
 import PeerManager from '../PeerManager';
-import TurnClient from '../turn/TurnClient';
 import KeyManager from '../../keys/KeyManager';
-import { stringToProtobuf, protobufToString, promiseAny } from '../../utils';
+import { stringToProtobuf, protobufToString } from '../../utils';
 import { PeerClient } from '../../../proto/compiled/Peer_grpc_pb';
 import { PeerMessage, SubServiceType } from '../../../proto/compiled/Peer_pb';
 
@@ -22,9 +21,13 @@ class PeerConnection {
     this.keyManager = keyManager;
     this.peerManager = peerManager;
 
-    const pkiInfo = keyManager.PKIInfo;
-    if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
-      this.credentials = grpc.credentials.createSsl(pkiInfo.caCert, pkiInfo.key, pkiInfo.cert);
+    const credentials = this.keyManager.pki?.TLSClientCredentials;
+    if (credentials) {
+      this.credentials = grpc.ChannelCredentials.createSsl(
+        Buffer.from(credentials.rootCertificate),
+        Buffer.from(credentials.privateKey),
+        Buffer.from(credentials.certificate),
+      );
     } else {
       this.credentials = grpc.credentials.createInsecure();
     }
@@ -84,11 +87,34 @@ class PeerConnection {
     }
   }
 
+  async connectFirstChannel() {
+    return await new Promise<PeerClient>((resolve, reject) => {
+      const promiseList = [this.connectDirectly(), this.connectHolePunch(), this.connectRelay()];
+
+      const errorList: Error[] = [];
+      for (const promise of promiseList) {
+        promise
+          .then((p) => {
+            resolve(p);
+          })
+          .catch((error) => null);
+
+        promise.catch((error) => {
+          errorList.push(error);
+          // check if all have failed
+          if (errorList.length == promiseList.length) {
+            reject(errorList);
+          }
+        });
+      }
+    });
+  }
+
   private async connect(): Promise<void> {
     // connect if not already connected
     if (!this.connected) {
       try {
-        this.peerClient = await promiseAny([this.connectDirectly(), this.connectHolePunch(), this.connectRelay()]);
+        this.peerClient = await this.connectFirstChannel();
       } catch (error) {
         console.log(error);
       }
@@ -189,22 +215,22 @@ class PeerConnection {
 
     // encode and send message
     const peerRequest = new PeerMessage();
-    peerRequest.setPublickey(this.peerManager.peerInfo.publicKey);
+    peerRequest.setPublicKey(this.peerManager.peerInfo.publicKey);
     peerRequest.setType(type);
-    peerRequest.setSubmessage(subMessage);
+    peerRequest.setSubMessage(subMessage);
     return peerRequest;
   }
 
   private async decodeResponse(response: PeerMessage): Promise<{ type: SubServiceType; response: Uint8Array }> {
-    const { publickey, type: responseType, submessage } = response.toObject();
+    const { publicKey, type: responseType, subMessage } = response.toObject();
     // decode peerResponse
-    if (PeerInfo.formatPublicKey(this.getPeerInfo().publicKey) != PeerInfo.formatPublicKey(publickey)) {
+    if (PeerInfo.formatPublicKey(this.getPeerInfo().publicKey) != PeerInfo.formatPublicKey(publicKey)) {
       // drop packet
       throw Error('response public key does not match request public key');
     }
 
     // verify response
-    const verifiedResponse = await this.keyManager.verifyData(Buffer.from(submessage), Buffer.from(publickey));
+    const verifiedResponse = await this.keyManager.verifyData(Buffer.from(subMessage), Buffer.from(publicKey));
     // decrypt response
     const decryptedResponse = await this.keyManager.decryptData(verifiedResponse);
     const responseBuffer = stringToProtobuf(decryptedResponse.toString());

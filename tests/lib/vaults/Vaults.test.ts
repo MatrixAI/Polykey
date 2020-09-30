@@ -10,11 +10,21 @@ import VaultManager from '../../../src/vaults/VaultManager';
 describe('VaultManager class', () => {
   let randomVaultName: string
 
+  let caTempDir: string
+  let caKm: KeyManager
+
   let tempDir: string
   let pk: Polykey
   let vm: VaultManager
 
   beforeAll(async done => {
+    // Define CA temp directory
+    caTempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+
+    // Create CA keyManager
+    caKm = new KeyManager(caTempDir, fs)
+    await caKm.generateKeyPair('John Smith', 'passphrase', 1024, true)
+
     // Define temp directory
     tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
@@ -24,18 +34,11 @@ describe('VaultManager class', () => {
     // Generate keypair
     await km.generateKeyPair('John Smith', 'passphrase', 1024, true)
 
-    // Load pki info
-    const cwd = process.cwd()
-    const peer1Path = path.join(cwd, 'tmp', 'secrets', 'peer1')
-    const caPath = path.join(cwd, 'tmp', 'secrets', 'CA')
-    if (fs.existsSync(peer1Path) && fs.existsSync(caPath)) {
-      km.loadPKIInfo(
-        fs.readFileSync(path.join(peer1Path, 'server.key')),
-        fs.readFileSync(path.join(peer1Path, 'server.crt')),
-        fs.readFileSync(path.join(caPath, 'root_ca.crt')),
-        true
-      )
-    }
+    // request certificate from CA
+    km.pki.addCA(caKm.pki.RootCert)
+    const csr = km.pki.createCSR('localhost', 'passphrase')
+    const certString = caKm.pki.handleCSR(csr)
+    km.pki.importCertificate(certString)
 
     // Initialize polykey
     pk = new Polykey(
@@ -58,25 +61,25 @@ describe('VaultManager class', () => {
 
   test('can create vault', async () => {
     // Create vault
-    await vm.createVault(randomVaultName)
+    await vm.newVault(randomVaultName)
     const vaultExists = vm.vaultExists(randomVaultName)
     expect(vaultExists).toEqual(true)
   })
 
   test('cannot create same vault twice', async () => {
     // Create vault
-    await vm.createVault(randomVaultName)
+    await vm.newVault(randomVaultName)
     const vaultExists = vm.vaultExists(randomVaultName)
     expect(vaultExists).toEqual(true)
     // Create vault a second time
-    expect(vm.createVault(randomVaultName)).rejects.toThrow('Vault already exists!')
+    expect(vm.newVault(randomVaultName)).rejects.toThrow('Vault already exists!')
   })
   test('can destroy vaults', async () => {
     // Create vault
-    await vm.createVault(randomVaultName)
+    await vm.newVault(randomVaultName)
     expect(vm.vaultExists(randomVaultName)).toStrictEqual(true)
     // Destroy the vault
-    vm.destroyVault(randomVaultName)
+    await vm.deleteVault(randomVaultName)
     expect(vm.vaultExists(randomVaultName)).toStrictEqual(false)
   })
 
@@ -86,7 +89,7 @@ describe('VaultManager class', () => {
   describe('secrets within vaults', () => {
     test('can create secrets and read them back', async () => {
       // Create vault
-      const vault = await vm.createVault(randomVaultName)
+      const vault = await vm.newVault(randomVaultName)
 
       // Run test
       const initialSecretName = 'ASecret'
@@ -119,18 +122,11 @@ describe('VaultManager class', () => {
       // Generate keypair
       await km2.generateKeyPair('Jane Doe', 'passphrase', 1024, true)
 
-      // Load pki info
-      const cwd = process.cwd()
-      const peer2Path = path.join(cwd, 'tmp', 'secrets', 'peer2')
-      const caPath = path.join(cwd, 'tmp', 'secrets', 'CA')
-      if (fs.existsSync(peer2Path) && fs.existsSync(caPath)) {
-        km2.loadPKIInfo(
-          fs.readFileSync(path.join(peer2Path, 'server.key')),
-          fs.readFileSync(path.join(peer2Path, 'server.crt')),
-          fs.readFileSync(path.join(caPath, 'root_ca.crt')),
-          true
-        )
-      }
+      // request certificate from CA
+      km2.pki.addCA(caKm.pki.RootCert)
+      const csr = km2.pki.createCSR('localhost', 'passphrase')
+      const certString = caKm.pki.handleCSR(csr)
+      km2.pki.importCertificate(certString)
 
       // Initialize polykey
       peerPk = new Polykey(
@@ -154,7 +150,7 @@ describe('VaultManager class', () => {
 
     test('can clone vault', async done => {
       // Create vault
-      const vault = await vm.createVault(randomVaultName)
+      const vault = await vm.newVault(randomVaultName)
       // Add secret
       const initialSecretName = 'ASecret'
       const initialSecret = 'super confidential information'
@@ -172,7 +168,6 @@ describe('VaultManager class', () => {
       expect(peerPkSecret).toStrictEqual(pkSecret)
       expect(peerPkSecret).toStrictEqual(initialSecret)
 
-
       done()
     })
 
@@ -183,7 +178,7 @@ describe('VaultManager class', () => {
       })
 
       for (const vaultName of vaultNameList) {
-        const vault = await vm.createVault(vaultName)
+        const vault = await vm.newVault(vaultName)
         // Add secret
         const initialSecretName = 'ASecret'
         const initialSecret = 'super confidential information'
@@ -205,7 +200,7 @@ describe('VaultManager class', () => {
 
     test('can pull changes', async done => {
       // Create vault
-      const vault = await vm.createVault(randomVaultName)
+      const vault = await vm.newVault(randomVaultName)
       // Add secret
       const initialSecretName = 'InitialSecret'
       const initialSecret = 'super confidential information'
@@ -229,7 +224,7 @@ describe('VaultManager class', () => {
 
     test('removing secret is reflected in peer vault', async done => {
       // Create vault
-      const vault = await vm.createVault(randomVaultName)
+      const vault = await vm.newVault(randomVaultName)
       // Add secret
       const initialSecretName = 'InitialSecret'
       const initialSecret = 'super confidential information'
@@ -265,7 +260,7 @@ describe('VaultManager class', () => {
   /////////////////
   describe('concurrency', () => {
     test('parallel write operations are sequentially executed', async done => {
-      const vault = await pk.vaultManager.createVault(randomVaultName)
+      const vault = await pk.vaultManager.newVault(randomVaultName)
       const writeOps: Promise<void>[] = []
       const expectedHistory: number[] = []
       for (const n of Array(50).keys()) {

@@ -2,51 +2,66 @@ syntax = "proto3";
 
 package agentInterface;
 
-enum AgentMessageType {
-  ERROR = 0;
-  STOP_AGENT = 1;
-  STATUS = 2;
-  REGISTER_NODE = 3;
-  NEW_NODE = 4;
-  LIST_NODES = 5;
-  DERIVE_KEY = 6;
-  SIGN_FILE = 7;
-  VERIFY_FILE = 8;
-  LIST_VAULTS = 9;
-  NEW_VAULT = 10;
-  DESTROY_VAULT = 11;
-  LIST_SECRETS = 12;
-  CREATE_SECRET = 13;
-  DESTROY_SECRET = 14;
-  GET_SECRET = 15;
-  LIST_KEYS = 16;
-  GET_KEY = 17;
-  DELETE_KEY = 18;
-  ENCRYPT_FILE = 19;
-  DECRYPT_FILE = 20;
-  GET_PRIMARY_KEYPAIR = 21;
-  UPDATE_SECRET = 22;
-  GET_PEER_INFO = 23;
-  ADD_PEER = 24;
-  PULL_VAULT = 26;
-  PING_PEER = 27;
-  FIND_PEER = 28;
-  FIND_SOCIAL_PEER = 29;
-  LIST_PEERS = 30;
-  TOGGLE_STEALTH = 31;
-  UPDATE_PEER_INFO = 32;
-  REQUEST_RELAY = 33;
-  REQUEST_PUNCH = 34;
-  SCAN_VAULT_NAMES = 35;
+///////////////////
+// Agent Service //
+///////////////////
+service Agent {
+  rpc AddPeer (PeerInfoMessage) returns (BooleanMessage) {};
+  rpc DecryptFile (DecryptFileMessage) returns (StringMessage) {};
+  rpc DeleteKey (StringMessage) returns (BooleanMessage) {};
+  rpc DeleteSecret (SecretPathMessage) returns (BooleanMessage) {};
+  rpc DeleteVault (StringMessage) returns (BooleanMessage) {};
+  rpc DeriveKey (DeriveKeyMessage) returns (BooleanMessage) {};
+  rpc EncryptFile (EncryptFileMessage) returns (StringMessage) {};
+  rpc FindPeer (ContactPeerMessage) returns (BooleanMessage) {};
+  rpc FindSocialPeer (ContactPeerMessage) returns (BooleanMessage) {};
+  rpc GetKey (StringMessage) returns (StringMessage) {};
+  rpc GetLocalPeerInfo (EmptyMessage) returns (PeerInfoMessage) {};
+  rpc GetPeerInfo (StringMessage) returns (PeerInfoMessage) {};
+  rpc GetPrimaryKeyPair (BooleanMessage) returns (KeyPairMessage) {};
+  rpc GetRootCertificate (EmptyMessage) returns (StringMessage) {};
+  rpc GetSecret (SecretPathMessage) returns (StringMessage) {};
+  rpc GetStatus (EmptyMessage) returns (AgentStatusMessage) {};
+  rpc ListKeys (EmptyMessage) returns (StringListMessage) {};
+  rpc ListNodes (BooleanMessage) returns (StringListMessage) {};
+  rpc ListPeers (EmptyMessage) returns (StringListMessage) {};
+  rpc ListSecrets (StringMessage) returns (StringListMessage) {};
+  rpc ListVaults (EmptyMessage) returns (StringListMessage) {};
+  rpc NewClientCertificate (NewClientCertificateMessage) returns (NewClientCertificateMessage) {};
+  rpc NewNode (NewNodeMessage) returns (BooleanMessage) {};
+  rpc NewSecret (SecretContentMessage) returns (BooleanMessage) {};
+  rpc NewVault (StringMessage) returns (BooleanMessage) {};
+  rpc PingPeer (ContactPeerMessage) returns (BooleanMessage) {};
+  rpc PullVault (VaultPathMessage) returns (BooleanMessage) {};
+  rpc RegisterNode (StringMessage) returns (BooleanMessage) {};
+  rpc RequestHolePunch (StringMessage) returns (BooleanMessage) {};
+  rpc RequestRelay (StringMessage) returns (BooleanMessage) {};
+  rpc ScanVaultNames (StringMessage) returns (StringListMessage) {};
+  rpc SignFile (SignFileMessage) returns (StringMessage) {};
+  rpc StopAgent (EmptyMessage) returns (BooleanMessage) {};
+  rpc ToggleStealthMode (BooleanMessage) returns (BooleanMessage) {};
+  rpc UpdateLocalPeerInfo (PeerInfoMessage) returns (BooleanMessage) {};
+  rpc UpdatePeerInfo (PeerInfoMessage) returns (BooleanMessage) {};
+  rpc UpdateSecret (SecretContentMessage) returns (BooleanMessage) {};
+  rpc VerifyFile (VerifyFileMessage) returns (BooleanMessage) {};
 }
-message AgentMessage {
-  AgentMessageType type = 1;
-  bool isResponse = 2;
-  string node_path = 3;
-  bytes sub_message = 4;
+message EmptyMessage {}
+message StringMessage {
+  string s = 1;
 }
-message ErrorMessage {
-  string error = 1;
+message BooleanMessage {
+  bool b = 1;
+}
+message StringListMessage {
+  repeated string s = 1;
+}
+
+// === PeerInfo === //
+message PeerInfoMessage {
+  string public_key = 1;
+  string relay_public_key = 2;
+  string peer_address = 3;
+  string api_address = 4;
 }
 
 // ==== AgentStatus ==== //
@@ -55,294 +70,85 @@ enum AgentStatusType {
   OFFLINE = 1;
   ERRORED = 2;
 }
-message AgentStatusResponseMessage {
+message AgentStatusMessage {
   AgentStatusType status = 1;
 }
 
-// ==== RegisterNode ==== //
-message RegisterNodeRequestMessage {
-  string passphrase = 1;
-}
-message RegisterNodeResponseMessage {
-  bool successful = 1;
-}
-
 // ==== NewNode ==== //
-message NewNodeRequestMessage {
+message NewNodeMessage {
   string userId = 1;
   string passphrase = 2;
   int32 nbits = 3;
 }
-message NewNodeResponseMessage {
-  bool successful = 1;
-}
-
-// ==== ListNodes ==== //
-message ListNodesRequestMessage {
-  bool unlocked_only = 1;
-}
-message ListNodesResponseMessage {
-  repeated string nodes = 1;
-}
-
-// ==== SignFile ==== //
-message SignFileRequestMessage {
-  string file_path = 1;
-  string private_key_path = 2;
-  string passphrase = 3;
-}
-message SignFileResponseMessage {
-  string signature_path = 1;
-}
-
-// ==== VerifyFile ==== //
-message VerifyFileRequestMessage {
-  string file_path = 1;
-  string public_key_path = 2;
-}
-message VerifyFileResponseMessage {
-  bool verified = 1;
-}
-
-// ==== EncryptFile ==== //
-message EncryptFileRequestMessage {
-  string file_path = 1;
-  string public_key_path = 2;
-}
-message EncryptFileResponseMessage {
-  string encryptedPath = 1;
-}
-
-// ==== DecryptFile ==== //
-message DecryptFileRequestMessage {
-  string file_path = 1;
-  string private_key_path = 2;
-  string passphrase = 3;
-}
-message DecryptFileResponseMessage {
-  string decryptedPath = 1;
-}
-
-// ==== ListVaults ==== //
-message ListVaultsRequestMessage {
-}
-message ListVaultsResponseMessage {
-  repeated string vault_names = 1;
-}
-
-// ==== ScanVaultNames ==== //
-message ScanVaultNamesRequestMessage {
-  string public_key = 1;
-}
-message ScanVaultNamesResponseMessage {
-  repeated string vault_names = 1;
-}
-
-// ==== NewVault ==== //
-message NewVaultRequestMessage {
-  string vault_name = 1;
-}
-message NewVaultResponseMessage {
-  bool successful = 1;
-}
-
-// ==== PullVault ==== //
-message PullVaultRequestMessage {
-  string vault_name = 1;
-  string public_key = 2;
-}
-message PullVaultResponseMessage {
-  bool successful = 1;
-}
-
-// ==== DestroyVault ==== //
-message DestroyVaultRequestMessage {
-  string vault_name = 1;
-}
-message DestroyVaultResponseMessage {
-  bool successful = 1;
-}
-
-// ==== ListSecrets ==== //
-message ListSecretsRequestMessage {
-  string vault_name = 1;
-}
-message ListSecretsResponseMessage {
-  repeated string secret_names = 1;
-}
-
-// ==== CreateSecret ==== //
-message CreateSecretRequestMessage {
-  string vault_name = 1;
-  string secret_name = 2;
-  string secret_path = 3;
-  bytes secret_content = 4;
-}
-message CreateSecretResponseMessage {
-  bool successful = 1;
-}
-
-// ==== DestroySecret ==== //
-message DestroySecretRequestMessage {
-  string vault_name = 1;
-  string secret_name = 2;
-}
-message DestroySecretResponseMessage {
-  bool successful = 1;
-}
-
-// ==== GetSecret ==== //
-message GetSecretRequestMessage {
-  string vault_name = 1;
-  string secret_name = 2;
-}
-message GetSecretResponseMessage {
-  bytes secret = 1;
-}
 
 // ==== DeriveKey ==== //
-message DeriveKeyRequestMessage {
+message DeriveKeyMessage {
   string vault_name = 1;
   string key_name = 2;
   string passphrase = 3;
 }
-message DeriveKeyResponseMessage {
-  bool successful = 1;
+
+// ==== SignFile ==== //
+message SignFileMessage {
+  string file_path = 1;
+  string private_key_path = 2;
+  string passphrase = 3;
 }
 
-// ==== ListKeys ==== //
-message ListKeysRequestMessage {
-}
-message ListKeysResponseMessage {
-  repeated string key_names = 1;
-}
-
-// ==== GetKey ==== //
-message GetKeyRequestMessage {
-  string key_name = 1;
-}
-message GetKeyResponseMessage {
-  string key_name = 1;
-  string key_content = 2;
+// ==== VerifyFile ==== //
+message VerifyFileMessage {
+  string file_path = 1;
+  string public_key_path = 2;
 }
 
-// ==== GetPrimaryKeyPair ==== //
-message GetPrimaryKeyPairRequestMessage {
-  bool include_private_key = 1;
+// ==== SecretPath ==== //
+message SecretPathMessage {
+  string vault_name = 1;
+  string secret_name = 2;
 }
-message GetPrimaryKeyPairResponseMessage {
+
+// ==== SecretContent ==== //
+message SecretContentMessage {
+  SecretPathMessage secret_path = 1;
+  string secret_file_path = 2;
+  string secret_content = 3;
+}
+
+// ==== EncryptFile ==== //
+message EncryptFileMessage {
+  string file_path = 1;
+  string public_key_path = 2;
+}
+
+// ==== DecryptFile ==== //
+message DecryptFileMessage {
+  string file_path = 1;
+  string private_key_path = 2;
+  string passphrase = 3;
+}
+
+// === KeyPair === //
+message KeyPairMessage {
   string public_key = 1;
   string private_key = 2;
 }
 
-// ==== UpdateSecret ==== //
-message UpdateSecretRequestMessage {
+// ==== VaultPath ==== //
+message VaultPathMessage {
   string vault_name = 1;
-  string secret_name = 2;
-  string secret_path = 3;
-  bytes secret_content = 4;
-}
-message UpdateSecretResponseMessage {
-  bool successful = 1;
-}
-
-// ==== DeleteKey ==== //
-message DeleteKeyRequestMessage {
-  string key_name = 1;
-}
-message DeleteKeyResponseMessage {
-  bool successful = 1;
-}
-
-// ==== PeerInfo ==== //
-message PeerInfoRequestMessage {
-  bool current = 1;
   string public_key = 2;
 }
-message PeerInfoResponseMessage {
-  string public_key = 1;
-  string peer_address = 2;
-  string relay_public_key = 3;
-}
 
-// ==== AddPeer ==== //
-message AddPeerRequestMessage {
-  string public_key = 1;
-  string peer_address = 2;
-  string relay_public_key = 3;
-}
-message AddPeerResponseMessage {
-  bool successful = 1;
-}
-
-// ==== PingPeer ==== //
-message PingPeerRequestMessage {
-  string public_key = 1;
+// === ContactPeer === //
+message ContactPeerMessage {
+  string public_key_or_handle = 1;
   int32 timeout = 2;
 }
-message PingPeerResponseMessage {
-  bool successful = 1;
-}
-
-// ==== FindPeer ==== //
-message FindPeerRequestMessage {
-  string public_key = 1;
-  int32 timeout = 2;
-}
-message FindPeerResponseMessage {
-  bool successful = 1;
-}
-
-// ==== FindPeer ==== //
-message FindSocialPeerRequestMessage {
-  string handle = 1;
-  string service = 2;
-  int32 timeout = 3;
-}
-message FindSocialPeerResponseMessage {
-  bool successful = 1;
-}
-
-// ==== ListPeers ==== //
-message ListPeersRequestMessage {
-}
-message ListPeersResponseMessage {
-  repeated string public_keys = 1;
-}
 
 
-// ==== ToggleStealth ==== //
-message ToggleStealthRequestMessage {
-  bool active = 1;
-}
-message ToggleStealthResponseMessage {
-  bool successful = 1;
-}
-
-// ==== UpdatePeerInfo ==== //
-message UpdatePeerInfoRequestMessage {
-  string public_key = 1;
-  bool current_node = 2;
-  string peer_host = 3;
-  int32 peer_port = 4;
-  string relay_public_key = 5;
-}
-message UpdatePeerInfoResponseMessage {
-  bool successful = 1;
-}
-
-// ==== RequestRelay ==== //
-message RequestRelayRequestMessage {
-  string public_key = 1;
-}
-message RequestRelayResponseMessage {
-  bool successful = 1;
-}
-
-// ==== RequestPunch ==== //
-message RequestPunchRequestMessage {
-  string public_key = 1;
-}
-message RequestPunchResponseMessage {
-  string address = 1;
+// === ContactPeer === //
+message NewClientCertificateMessage {
+  string domain = 1;
+  string cert_file = 2;
+  string key_file = 3;
 }

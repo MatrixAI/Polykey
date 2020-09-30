@@ -164,7 +164,7 @@ describe('PeerManager class', () => {
       test('can clone a vault through a peer relay connection', async done => {
         // ==== Pull Vault B to C ==== //
         const vaultName = `Vault-${randomString()}`
-        const vault = await peerB.vaultManager.createVault(vaultName)
+        const vault = await peerB.vaultManager.newVault(vaultName)
 
         const clonedVault = await peerC.vaultManager.cloneVault(vault.name, peerB.peerManager.peerInfo.publicKey)
         expect(vault.name).toEqual(clonedVault.name)
@@ -179,7 +179,7 @@ describe('PeerManager class', () => {
         })
 
         for (const vaultName of vaultNameList) {
-          await peerB.vaultManager.createVault(vaultName)
+          await peerB.vaultManager.newVault(vaultName)
         }
 
         // clone all vaults from B to C asynchronously
@@ -253,7 +253,7 @@ describe('PeerManager class', () => {
       test('can clone a vault through a hole punched connection', async done => {
         // ==== Pull Vault B to C ==== //
         const vaultName = `Vault-${randomString()}`
-        const vault = await peerB.vaultManager.createVault(vaultName)
+        const vault = await peerB.vaultManager.newVault(vaultName)
 
         const clonedVault = await peerC.vaultManager.cloneVault(vault.name, peerB.peerManager.peerInfo.publicKey)
         expect(vault.name).toEqual(clonedVault.name)
@@ -268,7 +268,7 @@ describe('PeerManager class', () => {
         })
 
         for (const vaultName of vaultNameList) {
-          const vault = await peerB.vaultManager.createVault(vaultName)
+          const vault = await peerB.vaultManager.newVault(vaultName)
         }
 
         // clone all vaults from B to C asynchronously
@@ -326,7 +326,7 @@ describe('PeerManager class', () => {
 
     test('find a user via a social discovery service', async () => {
       // TODO: try to find a way to test this, currently its untestable because keybase login integration hasn't been completed
-      const successful = await peerA.peerManager.findSocialUser('mock', 'mock', 8e3)
+      const successful = await peerA.peerManager.findSocialUser('mock', 'john-smith', 8e3)
       expect(successful).toEqual(true)
     }, 10000)
   })

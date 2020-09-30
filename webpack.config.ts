@@ -58,6 +58,8 @@ const libraryConfig = {
     { dgram: "commonjs dgram" },
     { process: "commonjs process" },
     { child_process: "commonjs child_process" },
+    { '../../../api/generated/api/swagger.json': "commonjs ../../api/generated/api/swagger.json" },
+    { '../../../api/generated/utils/writer': "commonjs ../../api/generated/utils/writer" },
     nodeExternals()
   ],
   plugins: [
@@ -67,56 +69,6 @@ const libraryConfig = {
     new DeclarationBundlePlugin({
       entry: './src/Polykey.ts',
       output: './dist/polykey.d.ts'
-    }),
-  ],
-  watchOptions: {
-    ignored: /node_modules/
-  },
-  optimization: {
-    minimize: false
-  }
-}
-
-const polykeyClientConfig = {
-  name: 'client',
-  entry: './src/agent/PolykeyClient.ts',
-  mode: 'production',
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'browser-client.js',
-    library: 'browser-client',
-    libraryTarget: 'umd',
-    globalObject: 'this'
-  },
-  devtool: "source-map",
-  resolve: {
-    extensions: ['.ts', '.js'],
-  },
-  target: 'web',
-  node: {
-    __dirname: false,
-    __filename: false
-  },
-  module: {
-    rules: [
-      {
-        test: /.tsx?$/,
-        loader: 'ts-loader'
-      }
-    ]
-  },
-  externals: [
-    { '../Polykey': "commonjs ./polykey.js" },
-    nodeExternals()
-  ],
-  plugins: [
-    new ThreadsPlugin({
-      globalObject: false
-    }),
-    new DeclarationBundlePlugin({
-      entry: './src/agent/PolykeyClient.ts',
-      output: './dist/browser-client.d.ts',
-      singleFile: true
     }),
   ],
   watchOptions: {
@@ -213,4 +165,4 @@ const agentDaemonScriptConfig = {
 }
 
 
-module.exports = [libraryConfig, polykeyClientConfig, binConfig, agentDaemonScriptConfig];
+module.exports = [libraryConfig, binConfig, agentDaemonScriptConfig];

@@ -2,202 +2,256 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { randomString } from '../../../src/utils';
-import Polykey, { PolykeyAgent, PolykeyClient, KeyManager } from '../../../src/Polykey';
-import { agentInterface } from '../../../proto/js/Agent'
+import { PolykeyAgent } from '../../../src/Polykey';
+import { promisifyGrpc } from '../../../src/bin/utils';
+import * as pb from '../../../proto/compiled/Agent_pb';
+import { AgentClient } from '../../../proto/compiled/Agent_grpc_pb';
 
-describe('Agent class', () => {
+describe('Agent and Client class', () => {
   let pkCliEnv: {}
-  let tempPkAgentDir: string
-
-  let agent: PolykeyAgent
-  let client: PolykeyClient
   let tempDir: string
 
+  let agentPid: number
+  let client: AgentClient
+
   beforeAll(async done => {
-    tempPkAgentDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
-    pkCliEnv = {
-      PK_LOG_PATH: path.join(tempPkAgentDir, 'log'),
-      PK_SOCKET_PATH: path.join(tempPkAgentDir, 'S.testing-socket')
-    }
-    process.env = { ...process.env, ...pkCliEnv }
-
-    // Start the agent running
-    agent = new PolykeyAgent()
-    await PolykeyAgent.startAgent()
-
-    // connect to agent
-    client = PolykeyAgent.connectToAgent()
     tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
-    done()
-  })
+    // Start the agent running
+    agentPid = <number>(await PolykeyAgent.startAgent(tempDir, undefined, false))
 
-  afterAll(() => {
-    agent.stop()
-    fs.rmdirSync(tempPkAgentDir, { recursive: true })
+    client = PolykeyAgent.connectToAgent(tempDir)
+
+    const request = new pb.NewNodeMessage
+    request.setUserid('john.smith@email.com')
+    request.setPassphrase('passphrase')
+    request.setNbits(1024)
+    const res = await promisifyGrpc(client.newNode.bind(client))(request) as pb.BooleanMessage
+    expect(res.getB()).toEqual(true)
+
+    done()
+  }, 10000)
+
+  afterAll(async () => {
+    await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage)
     fs.rmdirSync(tempDir, { recursive: true })
   })
 
   test('can get agent status', async () => {
-    expect(await client.getAgentStatus()).toEqual(agentInterface.AgentStatusType.ONLINE)
+    const res = await promisifyGrpc(client.getStatus.bind(client))(new pb.EmptyMessage) as pb.AgentStatusMessage
+    expect(res.getStatus()).toEqual(pb.AgentStatusType.ONLINE)
   })
 
-  describe('Node Specific Operations', () => {
-    let nodePath: string
+  describe('Crypto Specific Operations', () => {
+    let filePath: string
+    let fileContent: Buffer
+    beforeEach(async () => {
+      filePath = path.join(tempDir, `random-file-${randomString()}`)
+      fileContent = Buffer.from(`file content: ${randomString()}`)
+      fs.writeFileSync(filePath, fileContent)
+    })
 
-    beforeAll(async () => {
-      nodePath = path.join(tempDir, `PolykeyNode-${randomString()}`)
-      const successful = await client.newNode(nodePath, 'John Smith', 'very password', 1024)
+    test('can encrypt and decrypt file', async () => {
+      const encryptionRequest = new pb.EncryptFileMessage
+      encryptionRequest.setFilePath(filePath)
+      const encryptionResponse = await promisifyGrpc(client.encryptFile.bind(client))(encryptionRequest) as pb.StringMessage
+      const encryptedFilePath = encryptionResponse.getS()
+      const encryptedData = fs.readFileSync(encryptedFilePath)
+      expect(encryptedData).not.toEqual(undefined)
+
+      const decryptionRequest = new pb.DecryptFileMessage
+      decryptionRequest.setFilePath(filePath)
+      const decryptionResponse = await promisifyGrpc(client.decryptFile.bind(client))(decryptionRequest) as pb.StringMessage
+      const decryptedFilePath = decryptionResponse.getS()
+      const decryptedData = fs.readFileSync(decryptedFilePath)
+      expect(decryptedData).toEqual(fileContent)
+    })
+
+    test('can sign and verify file', async () => {
+      const signRequest = new pb.SignFileMessage
+      signRequest.setFilePath(filePath)
+      const signResponse = await promisifyGrpc(client.signFile.bind(client))(signRequest) as pb.StringMessage
+      const signedFilePath = signResponse.getS()
+      const signedData = fs.readFileSync(signedFilePath)
+      expect(signedData).not.toEqual(undefined)
+
+      const verifyRequest = new pb.VerifyFileMessage
+      verifyRequest.setFilePath(signedFilePath)
+      const verifyResponse = await promisifyGrpc(client.verifyFile.bind(client))(verifyRequest) as pb.BooleanMessage
+      const verified = verifyResponse.getB()
+      expect(verified).toEqual(true)
+    })
+  })
+
+  describe('Key Specific Operations', () => {
+    let keyName: string
+
+    beforeEach(async () => {
+      keyName = `random-key-${randomString()}`
+      const req = new pb.DeriveKeyMessage
+      req.setKeyName(keyName)
+      req.setPassphrase('passphrase')
+      const res = await promisifyGrpc(client.deriveKey.bind(client))(req) as pb.BooleanMessage
+      const successful = res.getB()
       expect(successful).toEqual(true)
     })
 
-    test('added nodes turn up in node list', async () => {
-      expect(await client.listNodes()).toContainEqual(nodePath)
+    test('can retreive keypair', async () => {
+      const req = new pb.BooleanMessage
+      req.setB(true)
+      const res = await promisifyGrpc(client.getPrimaryKeyPair.bind(client))(req) as pb.KeyPairMessage
+      expect(res.getPrivateKey()).not.toEqual(undefined)
+      expect(res.getPublicKey()).not.toEqual(undefined)
     })
 
-    test('can register node', async () => {
-      const nonAgentNodePath = path.join(tempDir, `SomePolykey-${randomString()}`)
-      const km = new KeyManager(nonAgentNodePath, fs)
-      await km.generateKeyPair('John Smith', 'very password', 1024, true)
-      const pk = new Polykey(nonAgentNodePath, fs, km)
-
-      expect(await client.registerNode(nonAgentNodePath, 'very password')).toEqual(true)
-      expect(await client.listNodes()).toContainEqual(nonAgentNodePath)
-
+    test('derived key shows up in key list', async () => {
+      const res = await promisifyGrpc(client.listKeys.bind(client))(new pb.EmptyMessage) as pb.StringListMessage
+      expect(res.getSList()).toContainEqual(keyName)
     })
 
-    describe('Crypto Specific Operations', () => {
-      let filePath: string
-      let fileContent: Buffer
+    test('can retreived derived key', async () => {
+      const req = new pb.StringMessage
+      req.setS(keyName)
+      const res = await promisifyGrpc(client.getKey.bind(client))(req) as pb.StringMessage
+      expect(res.getS()).not.toEqual(undefined)
+    })
+
+    test('can delete derived key', async () => {
+      const req1 = new pb.StringMessage
+      req1.setS(keyName)
+      const res1 = await promisifyGrpc(client.deleteKey.bind(client))(req1) as pb.BooleanMessage
+      const successful = res1.getB()
+      expect(successful).toEqual(true)
+
+      const res2 = await promisifyGrpc(client.listKeys.bind(client))(new pb.EmptyMessage) as pb.StringListMessage
+      const keyList = res2.getSList()
+      expect(keyList).not.toContainEqual(keyName)
+
+      const req3 = new pb.StringMessage
+      req3.setS(keyName)
+      expect(promisifyGrpc(client.getKey.bind(client))(req3)).rejects.toThrow()
+    })
+  })
+
+  describe('Vault Specific Operations', () => {
+    let vaultName: string
+    beforeEach(async () => {
+      vaultName = `Vault-${randomString()}`
+
+      const req = new pb.StringMessage
+      req.setS(vaultName)
+      const res1 = await promisifyGrpc(client.newVault.bind(client))(req) as pb.BooleanMessage
+      const successful = res1.getB()
+      expect(successful).toEqual(true)
+    })
+
+    test('created vault turns up in vault list', async () => {
+      const res = await promisifyGrpc(client.listVaults.bind(client))(new pb.EmptyMessage) as pb.StringListMessage
+      const vaultList = res.getSList()
+      expect(vaultList).toContainEqual(vaultName)
+    })
+
+    test('can delete vault', async () => {
+      const req = new pb.StringMessage
+      req.setS(vaultName)
+      const res1 = await promisifyGrpc(client.deleteVault.bind(client))(req) as pb.BooleanMessage
+      const successful = res1.getB()
+      expect(successful).toEqual(true)
+
+      const res2 = await promisifyGrpc(client.listVaults.bind(client))(new pb.EmptyMessage) as pb.StringListMessage
+      const vaultList = res2.getSList()
+      expect(vaultList).not.toContainEqual(vaultName)
+    })
+
+    describe('Secret Specific Operations', () => {
+      let secretName: string
+      let secretContent: Buffer
+
       beforeEach(async () => {
-        filePath = path.join(tempDir, `random-file-${randomString()}`)
-        fileContent = Buffer.from(`file content: ${randomString()}`)
-        fs.writeFileSync(filePath, fileContent)
-      })
+        secretName = `Secret-${randomString()}`
+        secretContent = Buffer.from(`some random secret: ${randomString()}`)
 
-      test('can encrypt and decrypt file', async () => {
-        const encryptedFilePath = await client.encryptFile(nodePath, filePath)
-        const encryptedData = fs.readFileSync(encryptedFilePath)
-        expect(encryptedData).not.toEqual(undefined)
-
-        const decryptedFilePath = await client.decryptFile(nodePath, encryptedFilePath)
-        const decryptedData = fs.readFileSync(decryptedFilePath)
-
-        expect(decryptedData).toEqual(fileContent)
-      })
-
-      test('can sign and verify file', async () => {
-        const signedFilePath = await client.signFile(nodePath, filePath)
-        const signedData = fs.readFileSync(signedFilePath)
-        expect(signedData).not.toEqual(undefined)
-
-        const verified = await client.verifyFile(nodePath, signedFilePath)
-        expect(verified).toEqual(true)
-      })
-    })
-
-    describe('Key Specific Operations', () => {
-      let keyName: string
-
-      beforeEach(async () => {
-        keyName = `random-key-${randomString()}`
-        const successful = await client.deriveKey(nodePath, keyName, 'passphrase')
+        const pathMessage = new pb.SecretPathMessage
+        pathMessage.setVaultName(vaultName)
+        pathMessage.setSecretName(secretName)
+        const req = new pb.SecretContentMessage
+        req.setSecretPath(pathMessage)
+        req.setSecretContent(secretContent.toString())
+        const res1 = await promisifyGrpc(client.newSecret.bind(client))(req) as pb.BooleanMessage
+        const successful = res1.getB()
         expect(successful).toEqual(true)
       })
 
-      test('can retreive keypair', async () => {
-        const keypair = await client.getPrimaryKeyPair(nodePath, true)
-        expect(keypair).not.toEqual(undefined)
+      test('can list secrets', async () => {
+        const req = new pb.StringMessage
+        req.setS(vaultName)
+        const res = await promisifyGrpc(client.listSecrets.bind(client))(req) as pb.StringListMessage
+        const secretList = res.getSList()
+        expect(secretList).toContainEqual(secretName)
       })
 
-      test('derived key shows up in key list', async () => {
-        const keyList = await client.listKeys(nodePath)
-        expect(keyList).toContainEqual(keyName)
+      test('can get secret', async () => {
+        const req = new pb.SecretPathMessage
+        req.setVaultName(vaultName)
+        req.setSecretName(secretName)
+        const res = await promisifyGrpc(client.getSecret.bind(client))(req) as pb.StringMessage
+        const retreivedSecretContent = Buffer.from(res.getS())
+        expect(retreivedSecretContent.toString()).toEqual(secretContent.toString())
       })
 
-      test('can retreived derived key', async () => {
-        const keyContent = await client.getKey(nodePath, keyName)
-        expect(keyContent).not.toEqual(undefined)
+      test('can remove secret', async () => {
+        const req = new pb.SecretPathMessage
+        req.setVaultName(vaultName)
+        req.setSecretName(secretName)
+        const res = await promisifyGrpc(client.deleteSecret.bind(client))(req) as pb.BooleanMessage
+        const successful = res.getB()
+        expect(successful).toEqual(true)
       })
 
-      test('can delete derived key', async () => {
-        const successful = await client.deleteKey(nodePath, keyName)
+      test('getting a removed secret throws an error', async () => {
+        const req1 = new pb.SecretPathMessage
+        req1.setVaultName(vaultName)
+        req1.setSecretName(secretName)
+        const res = await promisifyGrpc(client.deleteSecret.bind(client))(req1) as pb.BooleanMessage
+        const successful = res.getB()
         expect(successful).toEqual(true)
 
-        const keyList = await client.listKeys(nodePath)
-        expect(keyList).not.toContainEqual(keyName)
-
-        expect(client.getKey(nodePath, keyName)).rejects.toThrow()
-      })
-    })
-
-    describe('Vault Specific Operations', () => {
-      let vaultName: string
-      beforeEach(async () => {
-        vaultName = `Vault-${randomString()}`
-        await client.newVault(nodePath, vaultName)
+        const req2 = new pb.SecretPathMessage
+        req2.setVaultName(vaultName)
+        req2.setSecretName(secretName)
+        expect(promisifyGrpc(client.getSecret.bind(client))(req2)).rejects.toThrow()
       })
 
-      test('created vault turns up in vault list', async () => {
-        expect(await client.listVaults(nodePath)).toContainEqual(vaultName)
-      })
-
-      test('can destroy vault', async () => {
-        const successful = await client.destroyVault(nodePath, vaultName)
+      test('deleted secret is not listed in secret list', async () => {
+        const req1 = new pb.SecretPathMessage
+        req1.setVaultName(vaultName)
+        req1.setSecretName(secretName)
+        const res1 = await promisifyGrpc(client.deleteSecret.bind(client))(req1) as pb.BooleanMessage
+        const successful = res1.getB()
         expect(successful).toEqual(true)
-        expect(await client.listVaults(nodePath)).not.toContainEqual(vaultName)
+
+        const req2 = new pb.StringMessage
+        req2.setS(vaultName)
+        const res2 = await promisifyGrpc(client.listSecrets.bind(client))(req2) as pb.StringListMessage
+        const secretList = res2.getSList()
+        expect(secretList).not.toContainEqual(secretName)
       })
 
-      describe('Secret Specific Operations', () => {
-        let secretName: string
-        let secretContent: Buffer
+      test('can update secret content', async () => {
+        const newContent = `new secret content: ${randomString()}`
+        const pathMessage = new pb.SecretPathMessage
+        pathMessage.setVaultName(vaultName)
+        pathMessage.setSecretName(secretName)
+        const req1 = new pb.SecretContentMessage
+        req1.setSecretPath(pathMessage)
+        req1.setSecretContent(newContent)
+        const res1 = await promisifyGrpc(client.updateSecret.bind(client))(req1) as pb.BooleanMessage
+        const successful = res1.getB()
+        expect(successful).toEqual(true)
 
-        beforeEach(async () => {
-          secretName = `Secret-${randomString()}`
-          secretContent = Buffer.from(`some random secret: ${randomString()}`)
-          const successful = await client.createSecret(nodePath, vaultName, secretName, secretContent)
-          expect(successful).toEqual(true)
-        })
-
-        test('can list secrets', async () => {
-          const secretList = await client.listSecrets(nodePath, vaultName)
-          expect(secretList).toContainEqual(secretName)
-        })
-
-        test('can retreive secret', async () => {
-          const retreivedSecretContent = await client.getSecret(nodePath, vaultName, secretName)
-          expect(retreivedSecretContent).toEqual(secretContent)
-        })
-
-        test('can remove secret', async () => {
-          const successful = await client.destroySecret(nodePath, vaultName, secretName)
-          expect(successful).toEqual(true)
-        })
-
-        test('retreiving a removed secret throws an error', async () => {
-          const successful = await client.destroySecret(nodePath, vaultName, secretName)
-          expect(successful).toEqual(true)
-
-          const retreivedSecretContentPromise = client.getSecret(nodePath, vaultName, secretName)
-          expect(retreivedSecretContentPromise).rejects.toThrow()
-        })
-
-        test('removed secret is not listed in secret list', async () => {
-          const successful = await client.destroySecret(nodePath, vaultName, secretName)
-          expect(successful).toEqual(true)
-
-          const secretList = await client.listSecrets(nodePath, vaultName)
-          expect(secretList).not.toContainEqual(secretName)
-        })
-
-        test('can update secret content', async () => {
-          const newContent = Buffer.from(`new secret content: ${randomString()}`)
-          const successful = await client.updateSecret(nodePath, vaultName, secretName, newContent)
-          expect(successful).toEqual(true)
-
-          const updatedSecretContent = await client.getSecret(nodePath, vaultName, secretName)
-          expect(updatedSecretContent).toEqual(newContent)
-        })
+        const res2 = await promisifyGrpc(client.getSecret.bind(client))(pathMessage) as pb.StringMessage
+        const retreivedSecretContent = res2.getS()
+        expect(retreivedSecretContent).toEqual(newContent)
       })
     })
   })

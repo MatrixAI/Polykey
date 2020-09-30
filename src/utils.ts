@@ -1,3 +1,4 @@
+import net from 'net'
 import * as protobufjs from 'protobufjs';
 
 /**
@@ -51,4 +52,29 @@ async function sleep(ms: number) {
   });
 }
 
-export { randomString, promiseAny, protobufToString, stringToProtobuf, sleep };
+async function tryPort(port?: number, host?: string): Promise<number> {
+  return await new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', (error) => reject(error));
+    server.listen({port: port ?? 0, host: host ?? 'localhost'}, () => {
+      const { port } = <net.AddressInfo>server.address();
+      server.close(() => {
+        resolve(port);
+      });
+    });
+  })
+}
+
+async function getPort(defaultPort?: number, defaultHost?: string): Promise<number> {
+  // try provided default port and host
+  if (defaultPort) {
+    try {
+      return await tryPort(defaultPort, defaultHost)
+    } catch (error) {}
+  }
+  // get a random port if not
+  return await tryPort(0, defaultHost)
+}
+
+export { randomString, promiseAny, protobufToString, stringToProtobuf, sleep, getPort };

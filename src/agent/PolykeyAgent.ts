@@ -1,663 +1,865 @@
-import os from 'os';
 import fs from 'fs';
-import net from 'net';
 import path from 'path';
 import process from 'process';
-import Configstore from 'configstore';
-import PeerInfo from '../peers/PeerInfo';
-import { Duplex } from 'readable-stream';
-import PolykeyClient from './PolykeyClient';
-import Polykey, { KeyManager } from '../Polykey';
+import { promisify } from 'util';
+import { getPort } from '../utils';
+import ConfigStore from 'configstore';
+import * as grpc from '@grpc/grpc-js';
 import { spawn, SpawnOptions } from 'child_process';
-import { agentInterface } from '../../proto/js/Agent';
+import * as agent from '../../proto/compiled/Agent_pb';
+import Polykey, { PeerInfo, Address, KeyManager } from '../Polykey';
+import { AgentService, IAgentServer, AgentClient } from '../../proto/compiled/Agent_grpc_pb';
 
-class PolykeyAgent {
-  private socketPath: string;
-  private server: net.Server;
-  private persistentStore: Configstore;
+type CAStore = {
+  rootCert: string;
+  clientCert: string;
+  clientKeyPair: {
+    private: string;
+    public: string;
+  };
+};
 
-  // For storing the state of each polykey node
-  // Keys are the paths to the polykey node, e.g. '~/.polykey'
-  private polykeyMap: Map<string, Polykey> = new Map();
+class PolykeyAgent implements IAgentServer {
   private pid: number;
-  private setPolyKey(nodePath: string, pk: Polykey) {
-    this.polykeyMap.set(nodePath, pk);
-    const nodePathSet = new Set(this.persistentStore.get('nodePaths'));
-    nodePathSet.add(nodePath);
-    this.persistentStore.set('nodePaths', Array.from(nodePathSet.values()));
-  }
+  private pk: Polykey;
+  private configStore: ConfigStore;
 
-  private removeNodePath(nodePath: string) {
-    this.polykeyMap.delete(nodePath);
-    const nodePathSet = new Set(this.persistentStore.get('nodePaths'));
-    nodePathSet.delete(nodePath);
-    this.persistentStore.set('nodePaths', Array.from(nodePathSet.values()));
-  }
+  private server: grpc.Server;
 
-  private getPolyKey(nodePath: string, failOnLocked: boolean = true): Polykey {
-    const pk = this.polykeyMap.get(nodePath);
-    if (this.polykeyMap.has(nodePath) && pk) {
-      if (fs.existsSync(nodePath)) {
-        if (failOnLocked && !pk.keyManager.identityLoaded) {
-          throw Error(`node path exists in memory but is locked: ${nodePath}`);
-        } else {
-          return pk;
-        }
-      } else {
-        this.removeNodePath(nodePath);
-        throw Error(`node path exists in memory but does not exist on file system: ${nodePath}`);
-      }
-    } else {
-      this.removeNodePath(nodePath);
-      throw Error(`node path does not exist in memory: ${nodePath}`);
-    }
-  }
+  constructor(polykeyPath: string) {
+    /////////////
+    // Polykey //
+    /////////////
+    // construct polykey instance if already initialized
+    this.pk = new Polykey(polykeyPath, fs);
 
-  public get AllNodePaths(): string[] {
-    return Array.from(this.polykeyMap.keys()).filter((nodePath) => {
-      try {
-        this.getPolyKey(nodePath, false);
-        return true;
-      } catch {
-        return false;
-      }
-    });
-  }
+    //////////////////
+    // Config Store //
+    //////////////////
+    this.configStore = PolykeyAgent.ConfigStore(this.pk.polykeyPath);
 
-  public get UnlockedNodePaths(): string[] {
-    return this.AllNodePaths.filter((nodePath) => {
-      try {
-        return this.getPolyKey(nodePath, false).keyManager.identityLoaded;
-      } catch {
-        return false;
-      }
-    });
-  }
-
-  constructor() {
+    /////////////
+    // Process //
+    /////////////
+    process.title = 'polykey-agent';
+    // set pid for stopAgent command
     this.pid = process.pid;
-    this.socketPath = PolykeyAgent.SocketPath;
+    this.configStore.set('pid', this.pid);
 
-    this.persistentStore = new Configstore('polykey', undefined, {
-      configPath: path.join(path.dirname(this.socketPath), '.node_path_list.json'),
+    /////////////////
+    // GRPC Server //
+    /////////////////
+    this.server = new grpc.Server();
+    this.server.addService(AgentService, <grpc.UntypedServiceImplementation>(<any>this));
+  }
+
+  private failOnLocked() {
+    if (!this.pk.keyManager.identityLoaded) {
+      throw Error(`polykey is locked at ${this.pk.polykeyPath}`);
+    }
+  }
+
+  private static CAStore(polykeyPath: string): ConfigStore {
+    return new ConfigStore('ca', undefined, {
+      configPath: path.join(polykeyPath, '.agent', 'caStoreConfig.json'),
     });
+  }
 
-    // Make sure the socket file doesn't already exist (agent is already running)
-    if (fs.existsSync(this.socketPath)) {
-      fs.unlinkSync(this.socketPath);
+  private get ServerCredentials() {
+    const caStoreConfig = PolykeyAgent.CAStore(this.pk.polykeyPath);
+    // The agent stores its root certificate and the client cert and keypair
+    // in a user specific folder.
+    // check if credentials exist for current polykey path
+    let caStore: CAStore;
+    if (caStoreConfig.has(this.pk.polykeyPath)) {
+      caStore = caStoreConfig.get(this.pk.polykeyPath)!;
+    } else {
+      const clientCreds = this.pk.keyManager.pki.createAgentClientCredentials();
+      caStore = {
+        rootCert: this.pk.keyManager.pki.RootCert,
+        ...clientCreds,
+      };
+      caStoreConfig.set(this.pk.polykeyPath, caStore);
     }
 
-    // Make the socket path if it doesn't exist
-    if (!fs.existsSync(path.dirname(this.socketPath))) {
-      fs.promises.mkdir(path.dirname(this.socketPath));
+    ////////////////////////
+    // Server credentials //
+    ////////////////////////
+    const tlsCredentials = this.pk.keyManager.pki.createAgentServerCredentials();
+    if (tlsCredentials) {
+      return grpc.ServerCredentials.createSsl(
+        Buffer.from(this.pk.keyManager.pki.RootCert),
+        [
+          {
+            private_key: Buffer.from(tlsCredentials.serverKeyPair.private),
+            cert_chain: Buffer.from(tlsCredentials.serverCert),
+          },
+        ],
+        true,
+      );
+    } else {
+      return grpc.ServerCredentials.createInsecure();
     }
+  }
 
-    // Load polykeys
-    const nodePaths: string[] | undefined = this.persistentStore.get('nodePaths');
-    if (nodePaths?.values) {
-      for (const path of nodePaths) {
-        if (fs.existsSync(path)) {
-          this.setPolyKey(path, new Polykey(path, fs));
+  async startServer() {
+    // first try and stop server if its still running
+    // don't need to catch errors
+    try {
+      await promisify(this.server.tryShutdown)();
+    } catch (error) { }
+
+    // handle port
+    const portString = this.configStore.get('port');
+    const port = await getPort(parseInt(portString));
+
+    // bind server to port and start
+    const boundPort = await new Promise<number>((resolve, reject) => {
+      this.server.bindAsync(`localhost:${port}`, this.ServerCredentials, (error, boundPort) => {
+        if (error) {
+          reject(error);
         } else {
-          this.removeNodePath(path);
+          resolve(boundPort);
         }
-      }
-    } else {
-      this.persistentStore.set('nodePaths', []);
-    }
-
-    // Start the server
-    this.server = net.createServer().listen(this.socketPath);
-    this.server.on('connection', (socket) => {
-      this.handleClientCommunication(socket);
+      });
     });
+    this.server.start();
+    this.configStore.set('port', boundPort);
+    console.log(`Agent started on: 'localhost:${boundPort}'`);
   }
 
-  stop() {
-    this.server.close();
-    for (const nodePath of this.polykeyMap.keys()) {
-      const pk = this.getPolyKey(nodePath);
-      pk.peerManager.multicastBroadcaster.stopBroadcasting();
-    }
-    // finally kill the pid of the agent process
-    if (process.env.NODE_ENV !== 'test') {
-      process.kill(this.pid);
+  async addPeer(
+    call: grpc.ServerUnaryCall<agent.PeerInfoMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { publicKey, peerAddress, relayPublicKey, apiAddress } = call.request!.toObject();
+      this.pk.peerManager.addPeer(new PeerInfo(publicKey, peerAddress, relayPublicKey, apiAddress));
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
     }
   }
 
-  private handleClientCommunication(socket: net.Socket) {
-    socket.on('data', async (encodedMessage: Uint8Array) => {
-      try {
-        const { type, nodePath, subMessage } = agentInterface.AgentMessage.decodeDelimited(encodedMessage);
-        let response: Uint8Array | undefined = undefined;
-        switch (type) {
-          case agentInterface.AgentMessageType.STATUS:
-            response = agentInterface.AgentStatusResponseMessage.encodeDelimited({
-              status: agentInterface.AgentStatusType.ONLINE,
-            }).finish();
-            break;
-          case agentInterface.AgentMessageType.STOP_AGENT:
-            this.stop();
-            break;
-          case agentInterface.AgentMessageType.REGISTER_NODE:
-            response = await this.registerNode(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.NEW_NODE:
-            response = await this.newNode(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.LIST_NODES:
-            response = this.listNodes(subMessage);
-            break;
-          case agentInterface.AgentMessageType.DERIVE_KEY:
-            response = await this.deriveKey(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.LIST_KEYS:
-            response = await this.listKeys(nodePath);
-            break;
-          case agentInterface.AgentMessageType.GET_KEY:
-            response = await this.getKey(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.GET_PRIMARY_KEYPAIR:
-            response = await this.getPrimaryKeyPair(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.DELETE_KEY:
-            response = await this.deleteKey(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.SIGN_FILE:
-            response = await this.signFile(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.VERIFY_FILE:
-            response = await this.verifyFile(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.ENCRYPT_FILE:
-            response = await this.encryptFile(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.DECRYPT_FILE:
-            response = await this.decryptFile(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.LIST_VAULTS:
-            response = await this.listVaults(nodePath);
-            break;
-          case agentInterface.AgentMessageType.SCAN_VAULT_NAMES:
-            response = await this.scanVaultNames(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.NEW_VAULT:
-            response = await this.newVault(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.PULL_VAULT:
-            response = await this.pullVault(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.DESTROY_VAULT:
-            response = await this.destroyVault(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.LIST_SECRETS:
-            response = await this.listSecrets(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.CREATE_SECRET:
-            response = await this.createSecret(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.DESTROY_SECRET:
-            response = await this.destroySecret(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.GET_SECRET:
-            response = await this.getSecret(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.UPDATE_SECRET:
-            response = await this.updateSecret(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.ADD_PEER:
-            response = await this.addPeer(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.GET_PEER_INFO:
-            response = await this.getPeerInfo(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.PING_PEER:
-            response = await this.pingPeer(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.FIND_PEER:
-            response = await this.findPeer(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.FIND_SOCIAL_PEER:
-            response = await this.findSocialPeer(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.LIST_PEERS:
-            response = await this.listPeers(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.TOGGLE_STEALTH:
-            response = await this.toggleStealth(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.UPDATE_PEER_INFO:
-            response = await this.updatePeerInfo(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.REQUEST_RELAY:
-            response = await this.requestRelay(nodePath, subMessage);
-            break;
-          case agentInterface.AgentMessageType.REQUEST_PUNCH:
-            response = await this.requestPunch(nodePath, subMessage);
-            break;
-          default:
-            throw Error(`message type not supported: ${agentInterface.AgentMessageType[type]}`);
-        }
+  async decryptFile(
+    call: grpc.ServerUnaryCall<agent.DecryptFileMessage, agent.StringMessage>,
+    callback: grpc.sendUnaryData<agent.StringMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { filePath, privateKeyPath, passphrase } = call.request!.toObject();
+      const decryptedPath = await this.pk.keyManager.decryptFile(filePath, privateKeyPath, passphrase);
+      const response = new agent.StringMessage();
+      response.setS(decryptedPath);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
 
-        if (response) {
-          const encodedResponse = agentInterface.AgentMessage.encodeDelimited({
-            type: type,
-            isResponse: true,
-            nodePath: nodePath,
-            subMessage: response,
-          }).finish();
-          socket.write(encodedResponse);
-        } else {
-          throw Error('something went wrong');
-        }
-      } catch (err) {
-        const errorResponse = agentInterface.AgentMessage.encodeDelimited({
-          type: agentInterface.AgentMessageType.ERROR,
-          isResponse: true,
-          nodePath: undefined,
-          subMessage: agentInterface.ErrorMessage.encodeDelimited({ error: (<Error>err).message ?? err }).finish(),
-        }).finish();
-        socket.write(errorResponse);
+  async deleteKey(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      const successful = await this.pk.keyManager.deleteKey(s);
+      const response = new agent.BooleanMessage();
+      response.setB(successful);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async deleteSecret(
+    call: grpc.ServerUnaryCall<agent.SecretPathMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { vaultName, secretName } = call.request!.toObject();
+      const vault = this.pk.vaultManager.getVault(vaultName);
+      await vault.removeSecret(secretName);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async deleteVault(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      await this.pk.vaultManager.deleteVault(s);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async deriveKey(
+    call: grpc.ServerUnaryCall<agent.DeriveKeyMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { keyName, passphrase } = call.request!.toObject();
+      await this.pk.keyManager.generateKey(keyName, passphrase);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async encryptFile(
+    call: grpc.ServerUnaryCall<agent.EncryptFileMessage, agent.StringMessage>,
+    callback: grpc.sendUnaryData<agent.StringMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { filePath, publicKeyPath } = call.request!.toObject();
+      const encryptedPath = await this.pk.keyManager.encryptFile(filePath, publicKeyPath);
+      const response = new agent.StringMessage();
+      response.setS(encryptedPath);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async findPeer(
+    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { publicKeyOrHandle, timeout } = call.request!.toObject();
+      const successful = await this.pk.peerManager.findPublicKey(publicKeyOrHandle, timeout);
+      const response = new agent.BooleanMessage();
+      response.setB(successful);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async findSocialPeer(
+    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { publicKeyOrHandle, timeout } = call.request!.toObject();
+      // eslint-disable-next-line
+      const usernameRegex = /^\@([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/;
+      const matches = publicKeyOrHandle.match(usernameRegex)!;
+      const service = matches[1]!;
+      const handle = matches[2]!;
+      const successful = await this.pk.peerManager.findSocialUser(handle, service, timeout);
+      const response = new agent.BooleanMessage();
+      response.setB(successful);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async getKey(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.StringMessage>,
+    callback: grpc.sendUnaryData<agent.StringMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      const keyContent = this.pk.keyManager.getKey(s).toString();
+      const response = new agent.StringMessage();
+      response.setS(keyContent);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async getLocalPeerInfo(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.PeerInfoMessage>,
+    callback: grpc.sendUnaryData<agent.PeerInfoMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      const peerInfo = this.pk.peerManager.peerInfo;
+      const response = new agent.PeerInfoMessage();
+      response.setPublicKey(peerInfo.publicKey);
+      if (peerInfo.relayPublicKey) {
+        response.setRelayPublicKey(peerInfo.relayPublicKey);
       }
-
-      // Close connection
-      socket.end();
-    });
-  }
-
-  // Register an existing polykey agent
-  private async registerNode(nodePath: string, request: Uint8Array) {
-    const { passphrase } = agentInterface.RegisterNodeRequestMessage.decodeDelimited(request);
-
-    let pk: Polykey;
-    if (this.polykeyMap.has(nodePath)) {
-      pk = this.getPolyKey(nodePath, false);
-      if (pk.keyManager.identityLoaded) {
-        throw Error(`node path is already loaded and unlocked: '${nodePath}'`);
+      if (peerInfo.peerAddress) {
+        response.setPeerAddress(peerInfo.peerAddress?.toString());
       }
-      await pk.keyManager.unlockIdentity(passphrase);
-    } else {
-      const km = new KeyManager(nodePath, fs);
-      await km.unlockIdentity(passphrase);
-      // Create polykey class
-      pk = new Polykey(nodePath, fs, km);
-    }
-    // Load all metadata
-    await pk.keyManager.loadMetadata();
-    await pk.vaultManager.loadMetadata();
-
-    // Set polykey class
-    this.setPolyKey(nodePath, pk);
-
-    // Encode and send response
-    const response = agentInterface.NewNodeResponseMessage.encodeDelimited({
-      successful: pk.keyManager.identityLoaded && this.polykeyMap.has(nodePath),
-    }).finish();
-
-    return response;
-  }
-
-  // Create a new polykey agent
-  private async newNode(nodePath: string, request: Uint8Array) {
-    // Throw if path already exists
-    if (this.polykeyMap.has(nodePath) && fs.existsSync(nodePath)) {
-      throw Error(`node path '${nodePath}' is already loaded`);
-    } else if (fs.existsSync(nodePath)) {
-      throw Error(`node path already exists: '${nodePath}'`);
-    }
-
-    const { userId, passphrase, nbits } = agentInterface.NewNodeRequestMessage.decodeDelimited(request);
-
-    const km = new KeyManager(nodePath, fs);
-
-    await km.generateKeyPair(userId, passphrase, nbits == 0 ? undefined : nbits, true, (info) => {
-      // socket.write(JSON.stringify(info))
-    });
-
-    // Create and set polykey class
-    const pk = new Polykey(nodePath, fs, km);
-    this.setPolyKey(nodePath, pk);
-
-    // Encode and send response
-    const response = agentInterface.NewNodeResponseMessage.encodeDelimited({
-      successful: km.identityLoaded && this.polykeyMap.has(nodePath),
-    }).finish();
-    return response;
-  }
-
-  // Create a new polykey agent
-  private listNodes(request: Uint8Array) {
-    const { unlockedOnly } = agentInterface.ListNodesRequestMessage.decodeDelimited(request);
-    if (unlockedOnly) {
-      return agentInterface.ListNodesResponseMessage.encodeDelimited({ nodes: this.UnlockedNodePaths }).finish();
-    } else {
-      return agentInterface.ListNodesResponseMessage.encodeDelimited({ nodes: this.AllNodePaths }).finish();
+      if (peerInfo.apiAddress) {
+        response.setApiAddress(peerInfo.apiAddress?.toString());
+      }
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
     }
   }
 
-  /////////////////////////
-  // KeyManager commands //
-  /////////////////////////
-  private async deriveKey(nodePath: string, request: Uint8Array) {
-    const { keyName, passphrase } = agentInterface.DeriveKeyRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    await pk.keyManager.generateKey(keyName, passphrase);
-    return agentInterface.DeriveKeyResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  private async listKeys(nodePath: string) {
-    const pk = this.getPolyKey(nodePath);
-    const keyNames = pk.keyManager.listKeys();
-    return agentInterface.ListKeysResponseMessage.encodeDelimited({ keyNames }).finish();
-  }
-
-  private async getKey(nodePath: string, request: Uint8Array) {
-    const { keyName } = agentInterface.GetKeyRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const keyContent = pk.keyManager.getKey(keyName).toString();
-    return agentInterface.GetKeyResponseMessage.encodeDelimited({ keyContent }).finish();
-  }
-
-  private async getPrimaryKeyPair(nodePath: string, request: Uint8Array) {
-    const { includePrivateKey } = agentInterface.GetPrimaryKeyPairRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const keypair = pk.keyManager.getKeyPair();
-    return agentInterface.GetPrimaryKeyPairResponseMessage.encodeDelimited({
-      publicKey: keypair.public,
-      privateKey: includePrivateKey ? keypair.private : undefined,
-    }).finish();
-  }
-
-  private async deleteKey(nodePath: string, request: Uint8Array) {
-    const { keyName } = agentInterface.DeleteKeyRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const successful = await pk.keyManager.deleteKey(keyName);
-    return agentInterface.DeleteKeyResponseMessage.encodeDelimited({ successful }).finish();
-  }
-
-  /////////////////////
-  // Crypto commands //
-  /////////////////////
-  private async signFile(nodePath: string, request: Uint8Array) {
-    const { filePath, privateKeyPath, passphrase } = agentInterface.SignFileRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const signaturePath = await pk.keyManager.signFile(filePath, privateKeyPath, passphrase);
-    return agentInterface.SignFileResponseMessage.encodeDelimited({ signaturePath }).finish();
-  }
-
-  private async verifyFile(nodePath: string, request: Uint8Array) {
-    const { filePath, publicKeyPath } = agentInterface.VerifyFileRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const verified = await pk.keyManager.verifyFile(filePath, publicKeyPath);
-    return agentInterface.VerifyFileResponseMessage.encodeDelimited({ verified }).finish();
-  }
-
-  private async encryptFile(nodePath: string, request: Uint8Array) {
-    const { filePath, publicKeyPath } = agentInterface.EncryptFileRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const encryptedPath = await pk.keyManager.encryptFile(filePath, publicKeyPath);
-    return agentInterface.EncryptFileResponseMessage.encodeDelimited({ encryptedPath }).finish();
-  }
-
-  private async decryptFile(nodePath: string, request: Uint8Array) {
-    const { filePath, privateKeyPath, passphrase } = agentInterface.DecryptFileRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const decryptedPath = await pk.keyManager.decryptFile(filePath, privateKeyPath, passphrase);
-    return agentInterface.DecryptFileResponseMessage.encodeDelimited({ decryptedPath }).finish();
-  }
-
-  //////////////////////
-  // Vault Operations //
-  //////////////////////
-  private async listVaults(nodePath: string) {
-    const pk = this.getPolyKey(nodePath);
-    const vaultNames = pk.vaultManager.listVaults();
-    return agentInterface.ListVaultsResponseMessage.encodeDelimited({ vaultNames }).finish();
-  }
-
-  private async scanVaultNames(nodePath: string, request: Uint8Array) {
-    const { publicKey } = agentInterface.ScanVaultNamesRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const vaultNames = await pk.vaultManager.scanVaultNames(publicKey);
-    return agentInterface.ScanVaultNamesResponseMessage.encodeDelimited({ vaultNames }).finish();
-  }
-
-  private async newVault(nodePath: string, request: Uint8Array) {
-    const { vaultName } = agentInterface.NewVaultRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    await pk.vaultManager.createVault(vaultName);
-    return agentInterface.NewVaultResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  private async pullVault(nodePath: string, request: Uint8Array) {
-    const { vaultName, publicKey } = agentInterface.PullVaultRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    // pull if vault exists locally, otherwise clone
-    if (pk.vaultManager.vaultExists(vaultName)) {
-      const vault = pk.vaultManager.getVault(vaultName);
-      vault.pullVault(publicKey);
-    } else {
-      pk.vaultManager.cloneVault(vaultName, publicKey);
-    }
-    return agentInterface.PullVaultResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  private async destroyVault(nodePath: string, request: Uint8Array) {
-    const { vaultName } = agentInterface.DestroyVaultRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    pk.vaultManager.destroyVault(vaultName);
-    return agentInterface.DestroyVaultResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  ///////////////////////
-  // Secret Operations //
-  ///////////////////////
-  private async listSecrets(nodePath: string, request: Uint8Array) {
-    const { vaultName } = agentInterface.ListSecretsRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const vault = pk.vaultManager.getVault(vaultName);
-    const secretNames = vault.listSecrets();
-    return agentInterface.ListSecretsResponseMessage.encodeDelimited({ secretNames }).finish();
-  }
-
-  private async createSecret(nodePath: string, request: Uint8Array) {
-    const {
-      vaultName,
-      secretName,
-      secretPath,
-      secretContent,
-    } = agentInterface.CreateSecretRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const vault = pk.vaultManager.getVault(vaultName);
-    let secretBuffer: Buffer;
-    if (secretPath) {
-      secretBuffer = await fs.promises.readFile(secretPath);
-    } else {
-      secretBuffer = Buffer.from(secretContent);
-    }
-    await vault.addSecret(secretName, secretBuffer);
-    return agentInterface.CreateSecretResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  private async destroySecret(nodePath: string, request: Uint8Array) {
-    const { vaultName, secretName } = agentInterface.DestroySecretRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const vault = pk.vaultManager.getVault(vaultName);
-    await vault.removeSecret(secretName);
-    return agentInterface.DestroySecretResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  private async getSecret(nodePath: string, request: Uint8Array) {
-    const { vaultName, secretName } = agentInterface.GetSecretRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const vault = pk.vaultManager.getVault(vaultName);
-    const secret = Buffer.from(vault.getSecret(secretName));
-    return agentInterface.GetSecretResponseMessage.encodeDelimited({ secret: secret }).finish();
-  }
-
-  private async updateSecret(nodePath: string, request: Uint8Array) {
-    const {
-      vaultName,
-      secretName,
-      secretPath,
-      secretContent,
-    } = agentInterface.UpdateSecretRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const vault = pk.vaultManager.getVault(vaultName);
-    let secretBuffer: Buffer;
-    if (secretPath) {
-      secretBuffer = await fs.promises.readFile(secretPath);
-    } else {
-      secretBuffer = Buffer.from(secretContent);
-    }
-    await vault.updateSecret(secretName, secretBuffer);
-    return agentInterface.UpdateSecretResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  /////////////////////
-  // Peer Operations //
-  /////////////////////
-  private async addPeer(nodePath: string, request: Uint8Array) {
-    const { publicKey, peerAddress, relayPublicKey } = agentInterface.AddPeerRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    pk.peerManager.addPeer(new PeerInfo(publicKey, peerAddress, relayPublicKey));
-    return agentInterface.AddPeerResponseMessage.encodeDelimited({ successful: true }).finish();
-  }
-
-  private async getPeerInfo(nodePath: string, request: Uint8Array) {
-    const { current, publicKey } = agentInterface.PeerInfoRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    let peerInfo: PeerInfo;
-    if (current) {
-      peerInfo = pk.peerManager.peerInfo;
-    } else {
-      if (!pk.peerManager.hasPeer(publicKey)) {
+  async getPeerInfo(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.PeerInfoMessage>,
+    callback: grpc.sendUnaryData<agent.PeerInfoMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      if (!this.pk.peerManager.hasPeer(s)) {
         throw Error('public key does not exist in peer store');
       }
-      peerInfo = pk.peerManager.getPeer(publicKey)!;
+      const peerInfo = this.pk.peerManager.getPeer(s)!;
+      const response = new agent.PeerInfoMessage();
+      response.setPublicKey(peerInfo.publicKey);
+      if (peerInfo.relayPublicKey) {
+        response.setRelayPublicKey(peerInfo.relayPublicKey);
+      }
+      if (peerInfo.peerAddress) {
+        response.setPeerAddress(peerInfo.peerAddress?.toString());
+      }
+      if (peerInfo.apiAddress) {
+        response.setApiAddress(peerInfo.apiAddress?.toString());
+      }
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
     }
-    return agentInterface.PeerInfoResponseMessage.encodeDelimited({
-      publicKey: peerInfo.publicKey,
-      peerAddress: peerInfo.peerAddress?.toString(),
-      relayPublicKey: peerInfo.relayPublicKey,
-    }).finish();
   }
 
-  private async pingPeer(nodePath: string, request: Uint8Array) {
-    const { publicKey, timeout } = agentInterface.PingPeerRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const successful = await pk.peerManager.pingPeer(publicKey, timeout);
-    return agentInterface.PingPeerResponseMessage.encodeDelimited({ successful }).finish();
+  async getPrimaryKeyPair(
+    call: grpc.ServerUnaryCall<agent.BooleanMessage, agent.KeyPairMessage>,
+    callback: grpc.sendUnaryData<agent.KeyPairMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { b } = call.request!.toObject();
+      const keypair = this.pk.keyManager.getKeyPair();
+      const response = new agent.KeyPairMessage();
+      response.setPublicKey(keypair.public!);
+      if (b) {
+        response.setPrivateKey(keypair.private!);
+      }
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
   }
 
-  private async findPeer(nodePath: string, request: Uint8Array) {
-    const { publicKey, timeout } = agentInterface.FindPeerRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const successful = await pk.peerManager.findPublicKey(publicKey, timeout);
-    return agentInterface.FindPeerResponseMessage.encodeDelimited({ successful }).finish();
+  async getRootCertificate(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringMessage>,
+    callback: grpc.sendUnaryData<agent.StringMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const rootCert = this.pk.keyManager.pki.RootCert;
+      const response = new agent.StringMessage();
+      response.setS(rootCert);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
   }
 
-  private async findSocialPeer(nodePath: string, request: Uint8Array) {
-    const { handle, service, timeout } = agentInterface.FindSocialPeerRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const successful = await pk.peerManager.findSocialUser(handle, service, timeout);
-    return agentInterface.FindSocialPeerResponseMessage.encodeDelimited({ successful }).finish();
+  async getSecret(
+    call: grpc.ServerUnaryCall<agent.SecretPathMessage, agent.StringMessage>,
+    callback: grpc.sendUnaryData<agent.StringMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { vaultName, secretName } = call.request!.toObject();
+      const vault = this.pk.vaultManager.getVault(vaultName);
+      const secret = vault.getSecret(secretName).toString();
+      const response = new agent.StringMessage();
+      response.setS(secret);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
   }
 
-  private async listPeers(nodePath: string, request: Uint8Array) {
-    const pk = this.getPolyKey(nodePath);
-    const publicKeys = pk.peerManager.listPeers();
-    return agentInterface.ListPeersResponseMessage.encodeDelimited({ publicKeys }).finish();
+  async getStatus(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.AgentStatusMessage>,
+    callback: grpc.sendUnaryData<agent.AgentStatusMessage>,
+  ) {
+    try {
+      const response = new agent.AgentStatusMessage();
+      response.setStatus(agent.AgentStatusType.ONLINE);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
   }
 
-  private async toggleStealth(nodePath: string, request: Uint8Array) {
-    const { active } = agentInterface.ToggleStealthRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    pk.peerManager.toggleStealthMode(active);
-    return agentInterface.ToggleStealthResponseMessage.encodeDelimited({ successful: true }).finish();
+  async listKeys(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
+    callback: grpc.sendUnaryData<agent.StringListMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const keyNames = this.pk.keyManager.listKeys();
+      const response = new agent.StringListMessage();
+      response.setSList(keyNames);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
   }
 
-  private async updatePeerInfo(nodePath: string, request: Uint8Array) {
-    const {
-      publicKey,
-      currentNode,
-      peerHost,
-      peerPort,
-      relayPublicKey,
-    } = agentInterface.UpdatePeerInfoRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
+  listNodes(
+    call: grpc.ServerUnaryCall<agent.BooleanMessage, agent.StringListMessage>,
+    callback: grpc.sendUnaryData<agent.StringListMessage>,
+  ) {
+    try {
+      const { b } = call.request!.toObject();
+      const response = new agent.StringListMessage();
+      response.setSList([this.pk.polykeyPath]);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
 
-    let currentPeerInfo: PeerInfo;
-    if (currentNode) {
-      currentPeerInfo = pk.peerManager.peerInfo;
-    } else {
-      if (!pk.peerManager.hasPeer(publicKey)) {
+  async listPeers(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
+    callback: grpc.sendUnaryData<agent.StringListMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const publicKeys = this.pk.peerManager.listPeers();
+      const response = new agent.StringListMessage();
+      response.setSList(publicKeys);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async listSecrets(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.StringListMessage>,
+    callback: grpc.sendUnaryData<agent.StringListMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      const vault = this.pk.vaultManager.getVault(s);
+      const secretNames = vault.listSecrets();
+      const response = new agent.StringListMessage();
+      response.setSList(secretNames);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async listVaults(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
+    callback: grpc.sendUnaryData<agent.StringListMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const vaultNames = this.pk.vaultManager.getVaultNames();
+      const response = new agent.StringListMessage();
+      response.setSList(vaultNames);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async newClientCertificate(
+    call: grpc.ServerUnaryCall<agent.NewClientCertificateMessage, agent.NewClientCertificateMessage>,
+    callback: grpc.sendUnaryData<agent.NewClientCertificateMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { domain, certFile, keyFile } = call.request!.toObject();
+      const pki = this.pk.keyManager.pki
+      const keypair = pki.createKeypair()
+      const csr = pki.createCSR(domain, '', keypair);
+      const cert = pki.handleCSR(csr)
+      fs.mkdirSync(path.dirname(certFile), {recursive:true})
+      fs.mkdirSync(path.dirname(keyFile), {recursive:true})
+      fs.writeFileSync(certFile, cert)
+      fs.writeFileSync(keyFile, keypair.privateKey)
+      const response = new agent.NewClientCertificateMessage();
+      response.setCertFile(cert);
+      response.setKeyFile(pki.privateKeyToPem(keypair.privateKey));
+      callback(null, response);
+    } catch (error) {
+      console.log(error);
+
+      callback(error, null);
+    }
+  }
+
+  async newNode(
+    call: grpc.ServerUnaryCall<agent.NewNodeMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      const { userid, passphrase, nbits } = call.request!.toObject();
+
+      // check node is already initialized
+      if (this.pk.keyManager.hasPrivateKey()) {
+        throw Error(`polykey keypair already exists at node path: '${this.pk.polykeyPath}'`);
+      }
+
+      const km = new KeyManager(this.pk.polykeyPath, fs);
+
+      const resolvedNBits = nbits && nbits != 0 ? nbits : undefined;
+
+      await km.generateKeyPair(userid, passphrase, resolvedNBits, true);
+
+      this.pk = new Polykey(this.pk.polykeyPath, fs, km);
+
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async newSecret(
+    call: grpc.ServerUnaryCall<agent.SecretContentMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { secretPath, secretFilePath, secretContent } = call.request!.toObject();
+      const vault = this.pk.vaultManager.getVault(secretPath?.vaultName!);
+      let secretBuffer: Buffer;
+      if (secretFilePath) {
+        secretBuffer = await fs.promises.readFile(secretFilePath);
+      } else {
+        secretBuffer = Buffer.from(secretContent);
+      }
+      await vault.addSecret(secretPath?.secretName!, secretBuffer);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async newVault(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      await this.pk.vaultManager.newVault(s);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async pingPeer(
+    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { publicKeyOrHandle, timeout } = call.request!.toObject();
+      const successful = await this.pk.peerManager.pingPeer(publicKeyOrHandle, timeout);
+      const response = new agent.BooleanMessage();
+      response.setB(successful);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async pullVault(
+    call: grpc.ServerUnaryCall<agent.VaultPathMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { vaultName, publicKey } = call.request!.toObject();
+      // pull if vault exists locally, otherwise clone
+      if (this.pk.vaultManager.vaultExists(vaultName)) {
+        const vault = this.pk.vaultManager.getVault(vaultName);
+        await vault.pullVault(publicKey);
+      } else {
+        await this.pk.vaultManager.cloneVault(vaultName, publicKey);
+      }
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async registerNode(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      if (this.pk.keyManager.identityLoaded) {
+        throw Error('node is already unlocked');
+      }
+      const { s } = call.request!.toObject();
+      await this.pk.keyManager.unlockIdentity(s);
+
+      // re-load all meta data
+      await this.pk.keyManager.loadEncryptedMetadata();
+      this.pk.peerManager.loadMetadata();
+      await this.pk.vaultManager.loadEncryptedMetadata();
+      await this.pk.httpApi.start();
+      // send response
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async requestHolePunch(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      const address = await this.pk.peerManager.turnClient.requestLocalHolePunchAddress(s);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async requestRelay(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      await this.pk.peerManager.turnClient.requestRelayConnection(s);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async scanVaultNames(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.StringListMessage>,
+    callback: grpc.sendUnaryData<agent.StringListMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      const vaultNames = await this.pk.vaultManager.scanVaultNames(s);
+      const response = new agent.StringListMessage();
+      response.setSList(vaultNames);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async signFile(
+    call: grpc.ServerUnaryCall<agent.SignFileMessage, agent.StringMessage>,
+    callback: grpc.sendUnaryData<agent.StringMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { filePath, privateKeyPath, passphrase } = call.request!.toObject();
+      const signaturePath = await this.pk.keyManager.signFile(filePath, privateKeyPath, passphrase);
+      const response = new agent.StringMessage();
+      response.setS(signaturePath);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async stopAgent(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.pk.peerManager.multicastBroadcaster.stopBroadcasting();
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      this.configStore.clear();
+      callback(null, response);
+      await promisify(this.server.tryShutdown)();
+      // finally kill the pid of the agent process
+      if (process.env.NODE_ENV !== 'test') {
+        process.kill(this.pid);
+      }
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async toggleStealthMode(
+    call: grpc.ServerUnaryCall<agent.BooleanMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { b } = call.request!.toObject();
+      this.pk.peerManager.toggleStealthMode(b);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async updateLocalPeerInfo(
+    call: grpc.ServerUnaryCall<agent.PeerInfoMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { publicKey, relayPublicKey, peerAddress, apiAddress } = call.request!.toObject();
+      this.pk.peerManager.peerInfo.relayPublicKey = relayPublicKey;
+      this.pk.peerManager.peerInfo.peerAddress = Address.parse(peerAddress);
+      this.pk.peerManager.peerInfo.apiAddress = Address.parse(apiAddress);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async updatePeerInfo(
+    call: grpc.ServerUnaryCall<agent.PeerInfoMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { publicKey, relayPublicKey, peerAddress, apiAddress } = call.request!.toObject();
+      if (!this.pk.peerManager.hasPeer(publicKey)) {
         throw Error('peer does not exist in store');
       }
-      currentPeerInfo = pk.peerManager.getPeer(publicKey)!;
+      const peerInfo = this.pk.peerManager.getPeer(publicKey)!;
+      peerInfo.relayPublicKey = relayPublicKey;
+      peerInfo.peerAddress = Address.parse(peerAddress);
+      peerInfo.apiAddress = Address.parse(apiAddress);
+      this.pk.peerManager.updatePeer(peerInfo);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
     }
-    currentPeerInfo.peerAddress?.updateHost(peerHost);
-    currentPeerInfo.peerAddress?.updatePort(peerPort);
-    currentPeerInfo.relayPublicKey = relayPublicKey;
-
-    if (!currentNode) {
-      pk.peerManager.updatePeer(currentPeerInfo);
-    }
-
-    return agentInterface.UpdatePeerInfoResponseMessage.encodeDelimited({ successful: true }).finish();
   }
 
-  private async requestRelay(nodePath: string, request: Uint8Array) {
-    const { publicKey } = agentInterface.RequestRelayRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    await pk.peerManager.turnClient.requestRelayConnection(publicKey);
-    return agentInterface.RequestRelayResponseMessage.encodeDelimited({ successful: true }).finish();
+  async updateSecret(
+    call: grpc.ServerUnaryCall<agent.SecretContentMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { secretPath, secretFilePath, secretContent } = call.request!.toObject();
+      const vault = this.pk.vaultManager.getVault(secretPath?.vaultName!);
+      let secretBuffer: Buffer;
+      if (secretFilePath) {
+        secretBuffer = await fs.promises.readFile(secretFilePath);
+      } else {
+        secretBuffer = Buffer.from(secretContent);
+      }
+      await vault.updateSecret(secretPath?.secretName!, secretBuffer);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
   }
 
-  private async requestPunch(nodePath: string, request: Uint8Array) {
-    const { publicKey } = agentInterface.RequestPunchRequestMessage.decodeDelimited(request);
-    const pk = this.getPolyKey(nodePath);
-    const address = await pk.peerManager.turnClient.requestLocalHolePunchAddress(publicKey);
-    return agentInterface.RequestPunchResponseMessage.encodeDelimited({ address: address.toString() }).finish();
+  async verifyFile(
+    call: grpc.ServerUnaryCall<agent.VerifyFileMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      const { publicKeyPath, filePath } = call.request!.toObject();
+      const verified = await this.pk.keyManager.verifyFile(filePath, publicKeyPath);
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
   }
 
   ///////////////////////
   // Client Connection //
   ///////////////////////
-  static connectToAgent(getStream?: () => Duplex): PolykeyClient {
-    const defaultStream = () => {
-      const socket = net.createConnection(PolykeyAgent.SocketPath);
-      return <Duplex>(<any>socket);
-    };
+  static connectToAgent(polykeyPath: string): AgentClient {
+    const configStore = PolykeyAgent.ConfigStore(polykeyPath);
 
-    const client = new PolykeyClient(getStream ?? defaultStream);
+    const port = parseInt(configStore.get('port'));
 
-    return client;
-  }
-
-  // ===== Helper methods===== //
-  static get SocketPath(): string {
-    const platform = os.platform();
-    const userInfo = os.userInfo();
-    if (process.env.PK_SOCKET_PATH) {
-      return process.env.PK_SOCKET_PATH;
-    } else if (platform == 'win32') {
-      return path.join('\\\\?\\pipe', process.cwd(), 'polykey-agent');
+    if (!port) {
+      throw Error(`polykey agent is not started at polykey path: '${polykeyPath}'`);
     } else {
-      return `/run/user/${userInfo.uid}/polykey/S.polykey-agent`;
+      // get credentials
+      const caStoreConfig = PolykeyAgent.CAStore(polykeyPath);
+
+      // check if credentials exist for current polykey path
+      let credentials: grpc.ChannelCredentials;
+      if (caStoreConfig.has(polykeyPath)) {
+        const caStore: CAStore = caStoreConfig.get(polykeyPath)!;
+        credentials = grpc.ChannelCredentials.createSsl(
+          Buffer.from(caStore.rootCert),
+          Buffer.from(caStore.clientKeyPair.private),
+          Buffer.from(caStore.clientCert),
+        );
+      } else {
+        credentials = grpc.credentials.createInsecure();
+      }
+
+      const client = new AgentClient(`localhost:${port}`, credentials);
+      return client;
     }
   }
 
-  public static get LogPath(): string {
-    const platform = os.platform();
-    const userInfo = os.userInfo();
-    if (process.env.PK_LOG_PATH) {
-      return process.env.PK_LOG_PATH;
-    } else if (platform == 'win32') {
-      return path.join(os.tmpdir(), 'polykey', 'log');
-    } else {
-      return `/run/user/${userInfo.uid}/polykey/log`;
-    }
+  static ConfigStore(polykeyPath: string): ConfigStore {
+    const configStore = new ConfigStore('polykey', undefined, {
+      configPath: path.join(polykeyPath, '.agent', '.config.json'),
+    });
+    return configStore;
   }
 
   //////////////////////
@@ -667,36 +869,81 @@ class PolykeyAgent {
   private static DAEMON_SCRIPT_PATH_SUFFIX = fs.existsSync(PolykeyAgent.DAEMON_SCRIPT_PATH_PREFIX + 'js') ? 'js' : 'ts';
   static DAEMON_SCRIPT_PATH = PolykeyAgent.DAEMON_SCRIPT_PATH_PREFIX + PolykeyAgent.DAEMON_SCRIPT_PATH_SUFFIX;
 
-  public static async startAgent(daemon: boolean = false) {
-    return new Promise<number>((resolve, reject) => {
+  private static AgentIsRunning(polykeyPath: string): boolean {
+    const existingPid = PolykeyAgent.AgentPid(polykeyPath);
+    if (existingPid) {
       try {
-        if (fs.existsSync(PolykeyAgent.LogPath)) {
-          fs.rmdirSync(PolykeyAgent.LogPath, { recursive: true });
+        process.kill(existingPid, 0);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  private static AgentPid(polykeyPath: string): number {
+    const configStore = PolykeyAgent.ConfigStore(polykeyPath);
+    return parseInt(configStore.get('pid'));
+  }
+
+  public static async startAgent(polykeyPath: string, daemon: boolean = false, failOnNotInitialized: boolean = true) {
+    // either resolves a newly started process ID or true if the process is running already
+    return new Promise<number | true>((resolve, reject) => {
+      try {
+        if (failOnNotInitialized && !fs.existsSync(path.join(polykeyPath, '.keys', 'private_key'))) {
+          throw Error(`polykey node has not been initialized, initialize with 'pk agent init'`);
         }
-        fs.mkdirSync(PolykeyAgent.LogPath, { recursive: true });
 
-        let options: SpawnOptions = {
-          uid: process.getuid(),
-          detached: daemon,
-          stdio: [
-            'ipc',
-            fs.openSync(path.join(PolykeyAgent.LogPath, 'output.log'), 'a'),
-            fs.openSync(path.join(PolykeyAgent.LogPath, 'error.log'), 'a'),
-          ],
-        };
+        // check if agent is already running
+        if (PolykeyAgent.AgentIsRunning(polykeyPath)) {
+          resolve(true);
+        } else {
+          const logPath = path.join(polykeyPath, '.agent', 'log');
 
-        const agentProcess = spawn(
-          PolykeyAgent.DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node',
-          [PolykeyAgent.DAEMON_SCRIPT_PATH],
-          options,
-        );
+          if (fs.existsSync(logPath)) {
+            fs.rmdirSync(logPath, { recursive: true });
+          }
+          fs.mkdirSync(logPath, { recursive: true });
 
-        const pid = agentProcess.pid;
-        agentProcess.unref();
-        agentProcess.disconnect();
-        resolve(pid);
-      } catch (err) {
-        reject(err);
+          let options: SpawnOptions = {
+            uid: process.getuid(),
+            detached: daemon,
+            stdio: [
+              'ignore',
+              fs.openSync(path.join(logPath, 'output.log'), 'a'),
+              fs.openSync(path.join(logPath, 'error.log'), 'a'),
+              'ipc',
+            ],
+          };
+
+          const agentProcess = spawn(
+            PolykeyAgent.DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node',
+            [PolykeyAgent.DAEMON_SCRIPT_PATH],
+            options,
+          );
+
+          agentProcess.send(polykeyPath, (err: Error) => {
+            if (err) {
+              agentProcess.kill('SIGTERM');
+              reject(err);
+            } else {
+              const pid = agentProcess.pid;
+              agentProcess.on('message', (msg) => {
+                agentProcess.unref();
+                agentProcess.disconnect();
+                if (msg === 'started') {
+                  resolve(pid);
+                } else {
+                  reject('something went wrong, child process did not start polykey agent');
+                }
+              });
+            }
+          });
+        }
+      } catch (error) {
+        reject(error);
       }
     });
   }

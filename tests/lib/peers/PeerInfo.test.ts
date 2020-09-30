@@ -35,8 +35,9 @@ describe('PeerInfo class', () => {
     const mockPublicKey2 = await generatePublicKey()
     peerInfoA = new PeerInfo(
       mockPublicKey1,
+      mockPublicKey2,
       '0.0.0.0:3298',
-      mockPublicKey2
+      '0.0.0.0:2356',
     )
   })
 

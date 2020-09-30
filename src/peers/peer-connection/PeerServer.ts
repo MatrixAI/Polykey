@@ -4,10 +4,10 @@ import PeerManager from '../PeerManager';
 import TurnServer from '../turn/TurnServer';
 import KeyManager from '../../keys/KeyManager';
 import { stringToProtobuf, protobufToString } from '../../utils';
-import { PeerService } from '../../../proto/compiled/Peer_grpc_pb';
+import { PeerService, IPeerServer } from '../../../proto/compiled/Peer_grpc_pb';
 import { PeerMessage, SubServiceType } from '../../../proto/compiled/Peer_pb';
 
-class PeerServer {
+class PeerServer implements IPeerServer {
   private peerManager: PeerManager;
   private keyManager: KeyManager;
 
@@ -27,20 +27,17 @@ class PeerServer {
     // GRPC Server //
     /////////////////
     this.server = new grpc.Server();
-    this.server.addService(PeerService, {
-      messagePeer: this.messagePeer.bind(this),
-    });
+    this.server.addService(PeerService, <grpc.UntypedServiceImplementation>(<any>this));
 
     // Create the server credentials. SSL only if ca cert exists
-    const pkiInfo = this.keyManager.PKIInfo;
-
-    if (pkiInfo.caCert && pkiInfo.cert && pkiInfo.key) {
+    const credentials = this.keyManager.pki?.TLSServerCredentials;
+    if (credentials) {
       this.credentials = grpc.ServerCredentials.createSsl(
-        pkiInfo.caCert,
+        Buffer.from(credentials.rootCertificate),
         [
           {
-            private_key: pkiInfo.key,
-            cert_chain: pkiInfo.cert,
+            private_key: Buffer.from(credentials.privateKey),
+            cert_chain: Buffer.from(credentials.certificate),
           },
         ],
         true,
@@ -49,14 +46,17 @@ class PeerServer {
       this.credentials = grpc.ServerCredentials.createInsecure();
     }
 
-    const port = process.env.PK_PORT ?? this.peerManager.peerInfo.peerAddress?.port ?? 0;
-    this.server.bindAsync(`0.0.0.0:${port}`, this.credentials, async (err, boundPort) => {
+    const port = process.env.PK_PORT ?? this.peerManager.peerInfo?.peerAddress?.port ?? 0;
+    const host = process.env.PK_HOST ?? this.peerManager.peerInfo?.peerAddress?.host ?? 'localhost';
+    this.server.bindAsync(`${host}:${port}`, this.credentials, async (err, boundPort) => {
       if (err) {
         throw err;
       } else {
-        const address = new Address('0.0.0.0', boundPort);
+        const address = new Address(host, boundPort);
         this.server.start();
-        this.peerManager.peerInfo.peerAddress = address;
+        if (this.peerManager.peerInfo) {
+          this.peerManager.peerInfo.peerAddress = address;
+        }
         console.log(`Peer Server running on: ${address}`);
         this.started = true;
         this.turnServer = new TurnServer(this.peerManager);
@@ -64,18 +64,18 @@ class PeerServer {
     });
   }
 
-  private async messagePeer(call, callback) {
-    const peerRequest: PeerMessage = call.request;
+  async messagePeer(call: grpc.ServerUnaryCall<PeerMessage, PeerMessage>, callback: grpc.sendUnaryData<PeerMessage>) {
+    const peerRequest: PeerMessage = call.request!;
 
-    const { publickey: publickey, type, submessage } = peerRequest.toObject();
+    const { publicKey, type, subMessage: requestMessage } = peerRequest.toObject();
 
     // if we don't know publicKey, end connection
-    if (!this.peerManager.hasPeer(publickey)) {
+    if (!this.peerManager.hasPeer(publicKey)) {
       throw Error('unknown public key');
     }
 
     // verify and decrypt request
-    const verifiedMessage = await this.keyManager.verifyData(Buffer.from(submessage), Buffer.from(publickey));
+    const verifiedMessage = await this.keyManager.verifyData(Buffer.from(requestMessage), Buffer.from(publicKey));
     const decryptedMessage = await this.keyManager.decryptData(verifiedMessage);
     const request = stringToProtobuf(decryptedMessage.toString());
 
@@ -85,10 +85,13 @@ class PeerServer {
         response = await this.handlePing(request);
         break;
       case SubServiceType.GIT:
-        response = await this.handleGitRequest(request, publickey);
+        response = await this.handleGitRequest(request, publicKey);
         break;
       case SubServiceType.NAT_TRAVERSAL:
         response = await this.handleNatRequest(request);
+        break;
+      case SubServiceType.CERTIFICATE_AUTHORITY:
+        response = await this.keyManager.pki.handleGRPCRequest(request)
         break;
       default:
         throw Error('peer message type not identified');
@@ -97,16 +100,16 @@ class PeerServer {
     // encrypt and sign response
     const encryptedResponse = await this.keyManager.encryptData(
       Buffer.from(protobufToString(response)),
-      Buffer.from(publickey),
+      Buffer.from(publicKey),
     );
     const signedResponse = await this.keyManager.signData(encryptedResponse);
     const subMessage = signedResponse.toString();
 
     // composes peer message
     const peerResponse = new PeerMessage();
-    peerResponse.setPublickey(this.peerManager.peerInfo.publicKey);
+    peerResponse.setPublicKey(this.peerManager.peerInfo.publicKey);
     peerResponse.setType(type);
-    peerResponse.setSubmessage(subMessage);
+    peerResponse.setSubMessage(subMessage);
 
     // return peer response
     callback(null, peerResponse);

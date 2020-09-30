@@ -196,10 +196,10 @@ class PeerManager {
 
   /**
    * Finds an existing peer given a social service and handle
-   * @param handle Username or handle of the user (e.g. @john-smith)
-   * @param service Service on which to search for the user (e.g. github)
+   * @param username Username (e.g. @github/john-smith)
    */
   async findSocialUser(handle: string, service: string, timeout?: number): Promise<boolean> {
+    // parse with regex
     const tasks = this.socialDiscoveryServices.map((s) => s.findUser(handle, service));
 
     const pubKeyOrFail = await Promise.race(tasks);
@@ -271,8 +271,10 @@ class PeerManager {
     // load peer info if path exists
     if (this.fileSystem.existsSync(this.peerInfoMetadataPath)) {
       const metadata = <Uint8Array>this.fileSystem.readFileSync(this.peerInfoMetadataPath);
-      const { publicKey, peerAddress, relayPublicKey } = peerInterface.PeerInfoMessage.decodeDelimited(metadata);
-      this.peerInfo = new PeerInfo(publicKey, peerAddress, relayPublicKey);
+      const { publicKey, relayPublicKey, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
+        metadata,
+      );
+      this.peerInfo = new PeerInfo(publicKey, relayPublicKey, peerAddress, apiAddress);
     }
     // load peer store if path exists
     if (this.fileSystem.existsSync(this.peerStoreMetadataPath)) {
@@ -281,8 +283,9 @@ class PeerManager {
       for (const peerInfoMessage of peerInfoList) {
         const peerInfo = new PeerInfo(
           peerInfoMessage.publicKey!,
-          peerInfoMessage.peerAddress ?? undefined,
           peerInfoMessage.relayPublicKey ?? undefined,
+          peerInfoMessage.peerAddress ?? undefined,
+          peerInfoMessage.apiAddress ?? undefined,
         );
         this.peerStore.set(peerInfo.publicKey, peerInfo);
       }

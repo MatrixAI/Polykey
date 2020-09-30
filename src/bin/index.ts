@@ -1,5 +1,6 @@
 import { program } from 'commander';
 import makeAgentCommand from './agent';
+import makeCACommand from './ca';
 import makePeersCommand from './peers';
 import makeCryptoCommand from './crypto';
 import makeVaultsCommand from './vaults';
@@ -15,7 +16,8 @@ polykey
   .addCommand(makeVaultsCommand())
   .addCommand(makePeersCommand())
   .addCommand(makeCryptoCommand())
-  .addCommand(makeAgentCommand());
+  .addCommand(makeAgentCommand())
+  .addCommand(makeCACommand());
 
 module.exports = function (argv: any[]) {
   polykey.parse(argv);

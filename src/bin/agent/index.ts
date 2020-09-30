@@ -1,23 +1,40 @@
-import fs from 'fs';
 import commander from 'commander';
 import { PolykeyAgent } from '../../Polykey';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath } from '../utils';
-import { agentInterface } from '../../../proto/js/Agent';
+import * as pb from '../../../proto/compiled/Agent_pb';
+import { actionRunner, pkLogger, PKMessageType, determineNodePath, promisifyGrpc, getAgentClient } from '../utils';
+import { AgentClient } from '../../../proto/compiled/Agent_grpc_pb';
 
 function makeStartAgentCommand() {
   return new commander.Command('start')
     .description('start the agent')
+    .option('--node-path <nodePath>', 'node path')
     .option('-d, --daemon', 'start the agent as a daemon process')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        // Tell agent to stop
-        const status = await client.getAgentStatus();
-        if (status == agentInterface.AgentStatusType.ONLINE) {
-          pkLogger('agent is already running', PKMessageType.INFO);
-        } else {
-          const pid = await PolykeyAgent.startAgent(options.daemon);
-          pkLogger(`agent has started with pid of ${pid}`, PKMessageType.SUCCESS);
+        const nodePath = determineNodePath(options.nodePath);
+
+        try {
+          const client = PolykeyAgent.connectToAgent(nodePath);
+          const res = (await promisifyGrpc(client.getStatus.bind(client))(
+            new pb.EmptyMessage(),
+          )) as pb.AgentStatusMessage;
+          if (res.getStatus() == pb.AgentStatusType.ONLINE) {
+            pkLogger(`agent is already running`, PKMessageType.INFO);
+          } else {
+            throw Error(`agent is not running`);
+          }
+        } catch (error) {
+          const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
+
+          const client = PolykeyAgent.connectToAgent(nodePath);
+          const res = (await promisifyGrpc(client.getStatus.bind(client))(
+            new pb.EmptyMessage(),
+          )) as pb.AgentStatusMessage;
+          if (res.getStatus() == pb.AgentStatusType.ONLINE) {
+            pkLogger(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
+          } else {
+            pkLogger(`agent could not be started`, PKMessageType.ERROR);
+          }
         }
       }),
     );
@@ -26,78 +43,75 @@ function makeStartAgentCommand() {
 function makeRestartAgentCommand() {
   return new commander.Command('restart')
     .description('restart the agent')
+    .option('--node-path <nodePath>', 'node path')
     .option('-d, --daemon', 'start the agent as a daemon process')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
+        const nodePath = determineNodePath(options.nodePath);
+        const client = await getAgentClient(nodePath, options.daemon, false, false);
         // Tell agent to stop
-        client.stopAgent();
-        const pid = await PolykeyAgent.startAgent(options.daemon);
+        const res = (await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage())) as pb.BooleanMessage;
+        const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
         pkLogger(`agent has restarted with pid of ${pid}`, PKMessageType.SUCCESS);
       }),
     );
 }
 
 function makeAgentStatusCommand() {
-  return new commander.Command('status').description('retrieve the status of the agent').action(
-    actionRunner(async (options) => {
-      const client = PolykeyAgent.connectToAgent();
-      const status = await client.getAgentStatus();
-      pkLogger(`agent status is: '${agentInterface.AgentStatusType[status].toLowerCase()}'`, PKMessageType.INFO);
-    }),
-  );
+  return new commander.Command('status')
+    .description('retrieve the status of the agent')
+    .option('--node-path <nodePath>', 'node path')
+    .action(
+      actionRunner(async (options) => {
+        const nodePath = determineNodePath(options.nodePath);
+        try {
+          const client = await getAgentClient(nodePath, undefined, false);
+          const res = (await promisifyGrpc(client.getStatus.bind(client))(
+            new pb.EmptyMessage(),
+          )) as pb.AgentStatusMessage;
+
+          const status = res.getStatus();
+          const statusString = Object.keys(pb.AgentStatusType).find((k) => pb.AgentStatusType[k] === status);
+          pkLogger(`agent status is: '${statusString?.toLowerCase()}'`, PKMessageType.INFO);
+        } catch (error) {
+          pkLogger(`agent status is: 'offline'`, PKMessageType.INFO);
+        }
+      }),
+    );
 }
 
 function makeStopAgentCommand() {
   return new commander.Command('stop')
     .description('stop the agent')
+    .option('--node-path <nodePath>', 'node path')
     .option('-f, --force', 'forcibly stop the agent')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const status = await client.getAgentStatus();
-        if (status == agentInterface.AgentStatusType.OFFLINE) {
-          pkLogger('agent is already stopped', PKMessageType.INFO);
-        } else {
-          // Tell agent to stop
-          await client.stopAgent();
-          if (options.force ? true : false) {
-            fs.unlinkSync(PolykeyAgent.SocketPath);
-          }
-          const status = await client.getAgentStatus();
-          if (status != agentInterface.AgentStatusType.ONLINE) {
+        const nodePath = determineNodePath(options.nodePath);
+        try {
+          const client = await getAgentClient(nodePath, undefined, false);
+
+          // see if agent returns with online status
+          const res = (await promisifyGrpc(client.getStatus.bind(client))(
+            new pb.EmptyMessage(),
+          )) as pb.AgentStatusMessage;
+          if (res.getStatus() == pb.AgentStatusType.ONLINE) {
+            // Tell agent to stop
+            await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage());
             pkLogger('agent has successfully stopped', PKMessageType.SUCCESS);
           } else {
             throw Error('agent failed to stop');
           }
+        } catch (error) {
+          pkLogger('agent is already stopped', PKMessageType.INFO);
         }
       }),
     );
 }
 
-function makeListNodesCommand() {
-  return new commander.Command('list')
-    .alias('ls')
-    .description('list all the nodes controlled by the node')
-    .option('-u, --unlocked-only, only list the nodes that are unlocked')
-    .action(
-      actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
-        const nodes = await client.listNodes(options.unlockedOnly ? true : false);
-        if (nodes.length == 0) {
-          pkLogger('no nodes were listed', PKMessageType.INFO);
-        } else {
-          for (const node of nodes) {
-            pkLogger(node, PKMessageType.INFO);
-          }
-        }
-      }),
-    );
-}
-
-function makeNewNodeCommand() {
-  return new commander.Command('create')
-    .description('create a new polykey node')
+function makeInitNodeCommand() {
+  return new commander.Command('init')
+    .description('initialize a new polykey node')
     .option('-k, --node-path <nodePath>', 'provide the polykey path. defaults to ~/.polykey')
     .requiredOption('-ui, --user-id <userId>', 'provide an identifier for the keypair to be generated')
     .requiredOption('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
@@ -105,36 +119,37 @@ function makeNewNodeCommand() {
     .option('-v, --verbose', 'increase verbosity by one level')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
-        const successful = await client.newNode(
-          determineNodePath(options.nodePath),
-          options.userId,
-          options.privatePassphrase,
-          parseInt(options.numberOfBits),
-        );
 
-        if (successful) {
-          pkLogger(`node was successfully generated at: '${nodePath}'`, PKMessageType.SUCCESS);
-        } else {
-          throw Error('something went wrong with node creation');
+        const client = await getAgentClient(nodePath, undefined, true, false);
+
+        const request = new pb.NewNodeMessage();
+        request.setUserid(options.userId);
+        request.setPassphrase(options.privatePassphrase);
+        if (options.numberOfBits) {
+          request.setNbits(options.numberOfBits);
         }
+        const res = (await promisifyGrpc(client.newNode.bind(client))(request)) as pb.BooleanMessage;
+
+        pkLogger(`node was successfully initialized at: '${nodePath}'`, PKMessageType.SUCCESS);
       }),
     );
 }
 
-function makeLoadNodeCommand() {
-  return new commander.Command('load')
-    .description('load an existing polykey node')
+function makeUnlockNodeCommand() {
+  return new commander.Command('unlock')
+    .description('unlock polykey')
     .option('-k, --node-path <nodePath>', 'provide the polykey path. defaults to ~/.polykey')
     .requiredOption('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
     .action(
       actionRunner(async (options) => {
-        const client = PolykeyAgent.connectToAgent();
         const nodePath = determineNodePath(options.nodePath);
-        const successful = await client.registerNode(nodePath, options.privatePassphrase);
+        const client = await getAgentClient(nodePath);
+        const request = new pb.StringMessage();
+        request.setS(options.privatePassphrase!);
+        const res = (await promisifyGrpc(client.registerNode.bind(client))(request)) as pb.BooleanMessage;
 
-        if (successful) {
+        if (res.getB()) {
           pkLogger(`node was successfully loaded at: '${nodePath}'`, PKMessageType.SUCCESS);
         } else {
           throw Error('something went wrong when loading node');
@@ -150,9 +165,8 @@ function makeAgentCommand() {
     .addCommand(makeRestartAgentCommand())
     .addCommand(makeAgentStatusCommand())
     .addCommand(makeStopAgentCommand())
-    .addCommand(makeListNodesCommand())
-    .addCommand(makeNewNodeCommand())
-    .addCommand(makeLoadNodeCommand());
+    .addCommand(makeInitNodeCommand())
+    .addCommand(makeUnlockNodeCommand());
 }
 
 export default makeAgentCommand;
