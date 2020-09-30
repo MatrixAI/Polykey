@@ -40,7 +40,7 @@ class Polykey {
       ((apiAddress: Address) => {
         this.peerManager.peerInfo.apiAddress = apiAddress;
       }).bind(this),
-      this.keyManager.pki.handleCSR.bind(this),
+      ((csr: string) => this.keyManager.pki.handleCSR(csr)).bind(this),
       (() => this.keyManager.pki.RootCert).bind(this),
       (() => this.keyManager.pki.CertChain).bind(this),
     );

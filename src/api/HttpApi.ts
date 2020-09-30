@@ -80,14 +80,8 @@ class HttpApi {
     });
   }
 
-  private async handleCertificateSigningRequest(body) {
-    const publicKey = body.publicKey;
-    const csr = body.csr;
-
-    return {
-      publicKey: this.getLocalPeerInfo().publicKey,
-      csr: this.handleCSR(csr),
-    };
+  private async handleCertificateSigningRequest(csr: string) {
+    return this.handleCSR(csr)
   }
 
   private async handleRootCertificateRequest() {

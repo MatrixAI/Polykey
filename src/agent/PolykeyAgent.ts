@@ -501,7 +501,7 @@ class PolykeyAgent implements IAgentServer {
       fs.mkdirSync(path.dirname(certFile), {recursive:true})
       fs.mkdirSync(path.dirname(keyFile), {recursive:true})
       fs.writeFileSync(certFile, cert)
-      fs.writeFileSync(keyFile, keypair.privateKey)
+      fs.writeFileSync(keyFile, pki.privateKeyToPem(keypair.privateKey))
       const response = new agent.NewClientCertificateMessage();
       response.setCertFile(cert);
       response.setKeyFile(pki.privateKeyToPem(keypair.privateKey));
