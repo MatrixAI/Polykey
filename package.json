@@ -26,10 +26,11 @@
   "types": "./dist/lib/polykey.d.ts",
   "module": "./dist/lib/polykey.js",
   "files": [
-    "proto",
+    "bin",
     "dist",
-    "docs",
-    "nix"
+    "nix",
+    "proto",
+    "openapi.yaml"
   ],
   "scripts": {
     "build:proto": "./scripts/compile_proto.sh",
