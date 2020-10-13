@@ -270,9 +270,6 @@ class VaultManager {
       }
       // Initialize vaults in memory
       for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
-        console.log(vaultName);
-        console.log(vaultKey);
-
         const vaultPath = path.join(this.polykeyPath, vaultName);
 
         if (this.fileSystem.existsSync(vaultPath)) {

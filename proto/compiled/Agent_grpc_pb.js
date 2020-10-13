@@ -114,6 +114,28 @@ function deserialize_agentInterface_NewNodeMessage(buffer_arg) {
   return Agent_pb.NewNodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_NewOAuthTokenMessage(arg) {
+  if (!(arg instanceof Agent_pb.NewOAuthTokenMessage)) {
+    throw new Error('Expected argument of type agentInterface.NewOAuthTokenMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NewOAuthTokenMessage(buffer_arg) {
+  return Agent_pb.NewOAuthTokenMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_OAuthClientMessage(arg) {
+  if (!(arg instanceof Agent_pb.OAuthClientMessage)) {
+    throw new Error('Expected argument of type agentInterface.OAuthClientMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_OAuthClientMessage(buffer_arg) {
+  return Agent_pb.OAuthClientMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_PeerInfoMessage(arg) {
   if (!(arg instanceof Agent_pb.PeerInfoMessage)) {
     throw new Error('Expected argument of type agentInterface.PeerInfoMessage');
@@ -306,6 +328,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_BooleanMessage,
     responseDeserialize: deserialize_agentInterface_BooleanMessage,
   },
+  getOAuthClient: {
+    path: '/agentInterface.Agent/GetOAuthClient',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.OAuthClientMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_OAuthClientMessage,
+    responseDeserialize: deserialize_agentInterface_OAuthClientMessage,
+  },
   getKey: {
     path: '/agentInterface.Agent/GetKey',
     requestStream: false,
@@ -382,6 +415,17 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_EmptyMessage,
     responseSerialize: serialize_agentInterface_AgentStatusMessage,
     responseDeserialize: deserialize_agentInterface_AgentStatusMessage,
+  },
+  listOAuthTokens: {
+    path: '/agentInterface.Agent/ListOAuthTokens',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.StringListMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_StringListMessage,
+    responseDeserialize: deserialize_agentInterface_StringListMessage,
   },
   listKeys: {
     path: '/agentInterface.Agent/ListKeys',
@@ -471,6 +515,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_BooleanMessage,
     responseDeserialize: deserialize_agentInterface_BooleanMessage,
   },
+  newOAuthToken: {
+    path: '/agentInterface.Agent/NewOAuthToken',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.NewOAuthTokenMessage,
+    responseType: Agent_pb.StringMessage,
+    requestSerialize: serialize_agentInterface_NewOAuthTokenMessage,
+    requestDeserialize: deserialize_agentInterface_NewOAuthTokenMessage,
+    responseSerialize: serialize_agentInterface_StringMessage,
+    responseDeserialize: deserialize_agentInterface_StringMessage,
+  },
   newVault: {
     path: '/agentInterface.Agent/NewVault',
     requestStream: false,
@@ -506,6 +561,17 @@ var AgentService = exports.AgentService = {
   },
   registerNode: {
     path: '/agentInterface.Agent/RegisterNode',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.StringMessage,
+    responseType: Agent_pb.BooleanMessage,
+    requestSerialize: serialize_agentInterface_StringMessage,
+    requestDeserialize: deserialize_agentInterface_StringMessage,
+    responseSerialize: serialize_agentInterface_BooleanMessage,
+    responseDeserialize: deserialize_agentInterface_BooleanMessage,
+  },
+  revokeOAuthToken: {
+    path: '/agentInterface.Agent/RevokeOAuthToken',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.StringMessage,

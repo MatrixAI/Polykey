@@ -5,7 +5,7 @@ import * as pb from '../../../proto/compiled/Agent_pb';
 function makeSignCommand() {
   return new commander.Command('sign')
     .description('signing operations [files]')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-k, --signing-key <signingKey>', 'path to private key that will be used to sign files')
     .option('-p, --key-passphrase <keyPassphrase>', 'passphrase to unlock the provided signing key')
     .arguments('file(s) to be signed')
@@ -21,8 +21,6 @@ function makeSignCommand() {
         }
 
         const filePathList = options.args.values();
-        console.log('filePathList');
-        console.log(filePathList);
 
         if (filePathList.length == 0) {
           throw Error('no files provided');
@@ -47,12 +45,12 @@ function makeSignCommand() {
 function makeVerifyCommand() {
   return new commander.Command('verify')
     .description('verification operations')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option(
       '-k, --public-key <publicKey>',
       'path to public key that will be used to verify files, defaults to primary key',
     )
-    .requiredOption('-f, --signed-file <signedFile>', 'file to be verified')
+    .requiredOption('-f, --signed-file <signedFile>', '(required) file to be verified')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -76,12 +74,12 @@ function makeVerifyCommand() {
 function makeEncryptCommand() {
   return new commander.Command('encrypt')
     .description('encryption operations')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option(
       '-k, --public-key <publicKey>',
       'path to public key that will be used to encrypt files, defaults to primary key',
     )
-    .requiredOption('-f, --file-path <filePath>', 'file to be encrypted')
+    .requiredOption('-f, --file-path <filePath>', '(required) file to be encrypted')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -105,13 +103,13 @@ function makeEncryptCommand() {
 function makeDecryptCommand() {
   return new commander.Command('decrypt')
     .description('decryption operations')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option(
       '-k, --private-key <privateKey>',
       'path to private key that will be used to decrypt files, defaults to primary key',
     )
     .option('-p, --key-passphrase <keyPassphrase>', 'passphrase to unlock the provided private key')
-    .requiredOption('-f, --file-path <filePath>', 'file to be decrypted')
+    .requiredOption('-f, --file-path <filePath>', '(required) file to be decrypted')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);

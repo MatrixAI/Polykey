@@ -12,7 +12,7 @@ function makeAddPeerCommand() {
     .option('-rk, --relay-key <relayKey>', 'path to the file which contains the public key of the relay peer')
     .option('-pa, --peer-address <peerAddress>', 'address on which the node can be contacted')
     .option('-aa, --api-address <apiAddress>', 'address on which the HTTP API is served')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -60,9 +60,9 @@ function makeAddPeerCommand() {
 function makeFindPeerCommand() {
   return new commander.Command('find')
     .description('find a peer based on a public key')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-pk, --public-key <publicKey>', 'path to the file which contains the public key')
-    .requiredOption('-t, --timeout <timeout>', 'timeout of the request in milliseconds')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-pk, --public-key <publicKey>', '(required) path to the file which contains the public key')
+    .requiredOption('-t, --timeout <timeout>', '(required) timeout of the request in milliseconds')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -89,7 +89,7 @@ function makeFindPeerCommand() {
 function makeGetPeerInfoCommand() {
   return new commander.Command('get')
     .description('get the peer info for a particular public key')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-b64, --base64', 'output peer info as a base64 string')
     .option('-cn, --current-node', 'only list the peer information for the current node, useful for sharing')
     .option('-pk, --public-key <publicKey>', 'path to the file which contains the public key')
@@ -146,7 +146,7 @@ function makeListPeersCommand() {
   return new commander.Command('list')
     .description('list all connected peers')
     .alias('ls')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -170,8 +170,8 @@ function makeListPeersCommand() {
 function makePingPeerCommand() {
   return new commander.Command('ping')
     .description('ping a connected peer')
-    .option('--node-path <nodePath>', 'node path')
-    .requiredOption('-pk, --public-key <publicKey>', 'path to the file which contains the public key')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .requiredOption('-pk, --public-key <publicKey>', '(required) path to the file which contains the public key')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -198,7 +198,7 @@ function makeStealthCommand() {
   // create active command
   const activeStealthCommand = new commander.Command('active')
     .command('active')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -215,7 +215,7 @@ function makeStealthCommand() {
 
   // add inactive command
   const inactiveStealthCommand = new commander.Command('inactive')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-v, --verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
@@ -241,7 +241,7 @@ function makeStealthCommand() {
 function makeUpdatePeerInfoCommand() {
   return new commander.Command('update')
     .description('update the peer info for a particular public key')
-    .option('--node-path <nodePath>', 'node path')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-cn, --current-node', 'only list the peer information for the current node, useful for sharing')
     .option('-b64, --base64 <base64>', 'decode the peer info from a base64 string')
     .option('-pk, --public-key <publicKey>', 'path to the file which contains the public key')

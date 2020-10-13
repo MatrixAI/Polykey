@@ -83,7 +83,7 @@ describe('PKI testing', () => {
       // set up the mock server
       const randomSecureMessage = `random-secure-message: ${randomString()}\n`
       const server = http.createServer({
-        key: tlsServerCredentials!.privateKey,
+        key: tlsServerCredentials!.keypair.private,
         cert: tlsServerCredentials!.certificate,
         ca: [tlsServerCredentials!.rootCertificate],
         // requestCert: true
@@ -99,7 +99,7 @@ describe('PKI testing', () => {
           port: serverAddress.port,
           path: '/',
           method: 'GET',
-          key: tlsClientCredentials!.privateKey,
+          key: tlsClientCredentials!.keypair.private,
           cert: tlsClientCredentials!.certificate,
           ca: [tlsClientCredentials!.rootCertificate]
         }, (res) => {
@@ -152,7 +152,7 @@ describe('PKI testing', () => {
         Buffer.from(tlsServerCredentials.rootCertificate),
         [
           {
-            private_key: Buffer.from(tlsServerCredentials.privateKey),
+            private_key: Buffer.from(tlsServerCredentials.keypair.private),
             cert_chain: Buffer.from(tlsServerCredentials.certificate),
           },
         ],
@@ -160,7 +160,7 @@ describe('PKI testing', () => {
       );
       const clientCredentials = grpc.ChannelCredentials.createSsl(
         Buffer.from(tlsClientCredentials.rootCertificate),
-        Buffer.from(tlsClientCredentials.privateKey),
+        Buffer.from(tlsClientCredentials.keypair.private),
         Buffer.from(tlsClientCredentials.certificate)
       );
 
@@ -243,7 +243,7 @@ describe('PKI testing', () => {
           return tlsClientCredentials.certificate;
         },
         getPrivateKey: function (c, cert) {
-          return tlsClientCredentials.privateKey;
+          return tlsClientCredentials.keypair.private;
         },
         tlsDataReady: function (c) {
           // send TLS data to server
@@ -294,7 +294,7 @@ describe('PKI testing', () => {
           return tlsServerCredentials.certificate;
         },
         getPrivateKey: function (c, cert) {
-          return tlsServerCredentials.privateKey;
+          return tlsServerCredentials.keypair.private;
         },
         tlsDataReady: function (c) {
           // send TLS data to client

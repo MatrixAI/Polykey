@@ -1,64 +1,275 @@
-swagger: '2.0'
+openapi: 3.0.2
 info:
   title: Polykey API
-  description: >-
-    Peer to peer distributed secret sharing. HTTP API.
+  description: Peer to peer distributed secret sharing. HTTP API.
   version: 0.1.9
-schemes:
-  - http
-  - https
+tags:
+  - name: "ca"
+    description: "Certificate authority operations"
+  - name: "vaults"
+    description: "Vault operations"
+  - name: "secrets"
+    description: "Secret Operations"
 paths:
   /ca/root_certificate:
     get:
+      tags:
+        - "ca"
       summary: Returns the root certificate
       description: Returns the root certificate for the polykey node
       operationId: rootCertificate
+      security:
+        - bearerAuth: []
+        - OAuth2-Client: []
       responses:
-        '200':
+        "200":
           description: Root certificate
-          schema:
-            $ref: '#/definitions/RootCert'
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Not authenticated
+        "500":
+          description: Internal server error
   /ca/certificate_chain:
     get:
+      tags:
+        - "ca"
       summary: Returns the certificate chain for verifying the root certificate
       description: Returns the certificate chain for the polykey node
       operationId: certificateChain
+      security:
+        - bearerAuth: []
+        - OAuth2-Client: []
       responses:
-        '200':
+        "200":
           description: Certificate Chain
-          schema:
-            $ref: '#/definitions/CertChain'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          description: Not authenticated
+        "500":
+          description: Internal server error
   /ca/certificate_signing_request:
     post:
+      tags:
+        - "ca"
+      summary: Request a signed certificate
       description: Request a certificate from the polykey node CA
       operationId: certificateSigningRequest
-      consumes:
-        - text/plain
-      produces:
-        - text/plain
-      parameters:
-        - in: body
-          name: body
-          description: Sign a certificate from a client
-          required: true
-          schema:
-            type: string
+      security:
+        - bearerAuth: [admin, request_certificate]
+        - OAuth2-Client: [admin, request_certificate]
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
       responses:
-        '200':
+        "200":
           description: Signed certificate
-          schema:
-            type: string
-definitions:
-  RootCert:
-    description: A JSON object containing the root certificate
-    required:
-      - rootCert
-    type: object
-    properties:
-      rootCert:
-        type: string
-  CertChain:
-    description: A JSON object containing the certificates used to create the root cert
-    type: array
-    items:
-      type: string
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+  /vaults:
+    get:
+      tags:
+        - "vaults"
+      summary: List all vaults
+      description: Returns a list of all vaults in the node
+      operationId: vaultsList
+      security:
+        - bearerAuth: [admin, write_vaults, read_vaults]
+        - OAuth2-Client: [admin, write_vaults, read_vaults]
+      responses:
+        "200":
+          description: Vault List
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+  "/vaults/{vaultName}":
+    parameters:
+      - name: vaultName
+        description: Name of vault
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - "secrets"
+      summary: List secrets
+      description: List all secrets in the vault named `vaultName`
+      operationId: secretsList
+      security:
+        - bearerAuth: [admin, write_secrets, read_secrets]
+        - OAuth2-Client: [admin, write_secrets, read_secrets]
+      responses:
+        "200":
+          description: Secret List
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+    post:
+      tags:
+        - "vaults"
+      summary: Create a new vault
+      description: Create a new vault named `vaultName`
+      operationId: vaultsNew
+      security:
+        - bearerAuth: [admin, write_vaults]
+        - OAuth2-Client: [admin, write_vaults]
+      responses:
+        "200":
+          description: Vault was created successfully
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+    delete:
+      tags:
+        - "vaults"
+      summary: Delete an existing vault
+      description: Delete an existing vault called `vaultName`
+      operationId: vaultsDelete
+      security:
+        - bearerAuth: [admin, write_vaults]
+        - OAuth2-Client: [admin, write_vaults]
+      responses:
+        "200":
+          description: Vault was deleted successfully
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+  "/secrets/{vaultName}/{secretName}":
+    parameters:
+      - name: vaultName
+        description: Name of vault that contains the secret to be retrieved
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: secretName
+        description: Name of secret to be retrieved
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - "secrets"
+      summary: Retrieve a secret
+      description: Returns the secret `secretName` located in vault `vaultName`
+      operationId: secretsGet
+      security:
+        - bearerAuth: [admin, write_secrets, read_secrets]
+        - OAuth2-Client: [admin, write_secrets, read_secrets]
+      responses:
+        "200":
+          description: Secret Content
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+    post:
+      tags:
+        - "secrets"
+      summary: Create a new secret
+      description: Create a new secret within a specific vault
+      operationId: secretsNew
+      security:
+        - bearerAuth: [admin, write_secrets]
+        - OAuth2-Client: [admin, write_secrets]
+      requestBody:
+        description: Object describing the secret
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: Secret was created successfully
+          content: {}
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+    delete:
+      tags:
+        - "secrets"
+      summary: Delete an existing secret
+      description: Delete a new secret within a specific vault
+      operationId: secretsDelete
+      security:
+        - bearerAuth: [admin, write_secrets]
+        - OAuth2-Client: [admin, write_secrets]
+      responses:
+        "200":
+          description: Secret was deleted successfully
+        "401":
+          description: Not authenticated
+        "403":
+          description: Access token does not have the required scope
+        "500":
+          description: Internal server error
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    OAuth2-Client:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /oauth/token
+          refreshUrl: /oauth/refresh
+          scopes:
+            admin: Grants read and write access to both vaults and secrets
+            request_certificate: Grants access to request a CA certificate
+            write_vaults: "Grants delete, create and read access to vaults"
+            read_vaults: Grants read access to vaults
+            write_secrets: "Grants delete, create and read access to secrets"
+            read_secrets: Grants read access to secrets

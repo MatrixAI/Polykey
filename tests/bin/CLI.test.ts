@@ -99,7 +99,7 @@ describe('Polykey CLI', () => {
       beforeEach(async () => {
         vaultName = `Vault-${randomString()}`
         // create a new vault
-        await validateCli({ args: ['vaults', 'new', vaultName], expectedOutput: ["vault created at"] })
+        await validateCli({ args: ['vaults', 'new', '-vn', vaultName], expectedOutput: ["vault created at"] })
       })
 
       test('existing vault shows up in vault list', async () => {
@@ -199,7 +199,7 @@ describe('Polykey CLI', () => {
         await validateCli({ args: ['keys', 'delete', '-n', keyName], expectedOutput: [`key '${keyName}' was successfully deleted`] })
       })
 
-      test('can retreive primary keypair', async () => {
+      test('can retrieve primary keypair', async () => {
         await validateCli({
           args: ['keys', 'primary', '-pk', '-oj'],
           expectedOutput: [

@@ -8,7 +8,6 @@ import * as pb from '../../../proto/compiled/Agent_pb';
 import { AgentClient } from '../../../proto/compiled/Agent_grpc_pb';
 
 describe('Agent and Client class', () => {
-  let pkCliEnv: {}
   let tempDir: string
 
   let agentPid: number
@@ -35,6 +34,7 @@ describe('Agent and Client class', () => {
   afterAll(async () => {
     await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage)
     fs.rmdirSync(tempDir, { recursive: true })
+    process.kill(agentPid)
   })
 
   test('can get agent status', async () => {
@@ -96,7 +96,7 @@ describe('Agent and Client class', () => {
       expect(successful).toEqual(true)
     })
 
-    test('can retreive keypair', async () => {
+    test('can retrieve keypair', async () => {
       const req = new pb.BooleanMessage
       req.setB(true)
       const res = await promisifyGrpc(client.getPrimaryKeyPair.bind(client))(req) as pb.KeyPairMessage
@@ -109,7 +109,7 @@ describe('Agent and Client class', () => {
       expect(res.getSList()).toContainEqual(keyName)
     })
 
-    test('can retreived derived key', async () => {
+    test('can retrieved derived key', async () => {
       const req = new pb.StringMessage
       req.setS(keyName)
       const res = await promisifyGrpc(client.getKey.bind(client))(req) as pb.StringMessage
@@ -195,8 +195,8 @@ describe('Agent and Client class', () => {
         req.setVaultName(vaultName)
         req.setSecretName(secretName)
         const res = await promisifyGrpc(client.getSecret.bind(client))(req) as pb.StringMessage
-        const retreivedSecretContent = Buffer.from(res.getS())
-        expect(retreivedSecretContent.toString()).toEqual(secretContent.toString())
+        const retrievedSecretContent = Buffer.from(res.getS())
+        expect(retrievedSecretContent.toString()).toEqual(secretContent.toString())
       })
 
       test('can remove secret', async () => {
@@ -250,8 +250,8 @@ describe('Agent and Client class', () => {
         expect(successful).toEqual(true)
 
         const res2 = await promisifyGrpc(client.getSecret.bind(client))(pathMessage) as pb.StringMessage
-        const retreivedSecretContent = res2.getS()
-        expect(retreivedSecretContent).toEqual(newContent)
+        const retrievedSecretContent = res2.getS()
+        expect(retrievedSecretContent).toEqual(newContent)
       })
     })
   })

@@ -11,6 +11,27 @@ function randomString(): string {
     .substr(0, 5);
 }
 
+type SecretPathComponents = {
+  vaultName: string,
+  secretName: string,
+  variableName?: string,
+}
+
+function parseSecretPath(secretPath: string): SecretPathComponents {
+  const pathRegex = /^([a-zA-Z0-9_ -]+)(?::)([a-zA-Z0-9_ -]+)(?:=)?([a-zA-Z_][a-zA-Z0-9_]+)?$/;
+  if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
+    throw Error("secret path is of the wrong format");
+  }
+
+  const [_, vaultName, secretName, variableName] = secretPath.match(pathRegex)!;
+
+  return {
+    vaultName,
+    secretName,
+    variableName
+  }
+}
+
 /**
  * Gets the first promise fulfiled
  * @param promiseList List of promises

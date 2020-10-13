@@ -1,9 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-import { pki } from 'node-forge';
+import { pki, md } from 'node-forge';
 import { peerInterface } from '../../../proto/js/Peer';
 
-type TLSCredentials = { privateKey: string; certificate: string; rootCertificate: string };
+type TLSCredentials = {
+  rootCertificate: string,
+  certificate: string,
+  keypair: {
+    private: string,
+    public: string
+  },
+};
 /**
  * This class manages X.509 certificates for secure and authenticated communication between peers.
  */
@@ -27,9 +34,12 @@ class PublicKeyInfrastructure {
   public get TLSClientCredentials(): TLSCredentials | undefined {
     if (this.certificate) {
       return {
-        privateKey: pki.privateKeyToPem(this.keypair.privateKey),
-        certificate: pki.certificateToPem(this.certificate),
         rootCertificate: this.CACertificates,
+        certificate: pki.certificateToPem(this.certificate),
+        keypair: {
+          public: pki.publicKeyToPem(this.keypair.publicKey),
+          private: pki.privateKeyToPem(this.keypair.privateKey),
+        }
       };
     } else {
       return undefined;
@@ -39,9 +49,12 @@ class PublicKeyInfrastructure {
   public get TLSServerCredentials(): TLSCredentials | undefined {
     if (this.certificate) {
       return {
-        privateKey: pki.privateKeyToPem(this.keypair.privateKey),
-        certificate: pki.certificateToPem(this.certificate),
         rootCertificate: this.CACertificates,
+        certificate: pki.certificateToPem(this.certificate),
+        keypair: {
+          public: pki.publicKeyToPem(this.keypair.publicKey),
+          private: pki.privateKeyToPem(this.keypair.privateKey),
+        }
       };
     } else {
       return undefined;
@@ -62,7 +75,7 @@ class PublicKeyInfrastructure {
   }
 
   constructor(polykeyPath: string, fileSystem: typeof fs) {
-    this.commonName = process.env.PK_HOST ?? 'localhost';
+    this.commonName = process.env.PK_PEER_HOST ?? 'localhost';
     this.pkiPath = path.join(polykeyPath, '.pki');
 
     this.CAStore = pki.createCaStore()
@@ -148,13 +161,10 @@ class PublicKeyInfrastructure {
       },
     ]);
 
-    certificate.sign(this.rootKeypair.privateKey);
+
+    certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
 
     return certificate;
-  }
-
-  createKeypair() {
-    return pki.rsa.generateKeyPair()
   }
 
   privateKeyToPem(privateKey: pki.rsa.PrivateKey): string {
@@ -165,6 +175,10 @@ class PublicKeyInfrastructure {
     return pki.publicKeyToPem(publicKey)
   }
 
+  createKeypair() {
+    return pki.rsa.generateKeyPair()
+  }
+
   createCSR(commonName: string, challengePassword: string, keypair?: pki.rsa.KeyPair) {
     // create a certification request (CSR)
     const csr = pki.createCertificationRequest();
@@ -172,10 +186,11 @@ class PublicKeyInfrastructure {
     csr.serialNumber = '01';
 
     if (keypair) {
-      csr.publicKey = keypair.publicKey;
+      csr.publicKey = keypair.publicKey
     } else {
-    csr.publicKey = this.keypair.publicKey;
+      csr.publicKey = this.keypair.publicKey;
     }
+
     csr.setSubject([
       {
         name: 'commonName',
@@ -190,81 +205,138 @@ class PublicKeyInfrastructure {
       },
     ]);
 
+
     if (keypair) {
-      csr.sign(keypair.privateKey);
+      csr.sign(keypair.privateKey, md.sha512.create());
     } else {
-      csr.sign(this.keypair.privateKey);
+      csr.sign(this.keypair.privateKey, md.sha512.create());
     }
 
     return pki.certificationRequestToPem(csr);
   }
 
-  createAgentServerCredentials() {
+  createServerCredentials() {
     const keypair = pki.rsa.generateKeyPair();
     // create a certification request (CSR)
-    const csr = pki.createCertificationRequest();
+    const certificate = pki.createCertificate();
+    certificate.serialNumber = '01';
+    certificate.validity.notBefore = new Date();
+    certificate.validity.notAfter = new Date();
+    certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
 
-    csr.serialNumber = '01';
-
-    csr.publicKey = keypair.publicKey;
-    csr.setSubject([
+    certificate.setSubject([
       {
         name: 'commonName',
         value: 'localhost',
-      },
+      }
     ]);
-    // set (optional) attributes
-    (<any>csr).setAttributes([
+    certificate.setIssuer(this.rootCertificate.issuer.attributes);
+    certificate.publicKey = keypair.publicKey;
+
+    certificate.setExtensions([
       {
-        name: 'challengePassword',
-        value: 'password',
+        name: 'basicConstraints',
+        cA: true,
+      },
+      {
+        name: 'keyUsage',
+        keyCertSign: true,
+        digitalSignature: true,
+        nonRepudiation: true,
+        keyEncipherment: true,
+        dataEncipherment: true,
+      },
+      {
+        name: 'extKeyUsage',
+        serverAuth: true,
+        clientAuth: false,
+        codeSigning: true,
+        emailProtection: true,
+        timeStamping: true,
+      },
+      {
+        name: 'nsCertType',
+        client: false,
+        server: true,
+        email: false,
+        objsign: false,
+        sslCA: false,
+        emailCA: false,
+        objCA: false,
       },
     ]);
 
-    csr.sign(keypair.privateKey);
-
-    const csrPem = pki.certificationRequestToPem(csr);
-    const cert = this.handleCSR(csrPem);
+    // sign certificate
+    certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
 
     return {
-      serverCert: cert,
-      serverKeyPair: {
+      rootCertificate: this.RootCert,
+      certificate: pki.certificateToPem(certificate),
+      keypair: {
         private: pki.privateKeyToPem(keypair.privateKey),
         public: pki.publicKeyToPem(keypair.publicKey),
       },
     };
   }
 
-  createAgentClientCredentials() {
+  createClientCredentials() {
     const keypair = pki.rsa.generateKeyPair();
     // create a certification request (CSR)
-    const csr = pki.createCertificationRequest();
+    const certificate = pki.createCertificate();
+    certificate.serialNumber = '01';
+    certificate.validity.notBefore = new Date();
+    certificate.validity.notAfter = new Date();
+    certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
 
-    csr.serialNumber = '01';
-
-    csr.publicKey = keypair.publicKey;
-    csr.setSubject([
+    certificate.setSubject([
       {
         name: 'commonName',
         value: 'localhost',
       }
     ]);
-    // set (optional) attributes
-    (<any>csr).setAttributes([
+    certificate.setIssuer(this.rootCertificate.issuer.attributes);
+    certificate.publicKey = keypair.publicKey;
+
+    certificate.setExtensions([
       {
-        name: 'challengePassword',
-        value: 'password',
+        name: 'basicConstraints',
+        cA: true,
+      },
+      {
+        name: 'keyUsage',
+        keyCertSign: true,
+        digitalSignature: true,
+        nonRepudiation: true,
+        keyEncipherment: true,
+        dataEncipherment: true,
+      },
+      {
+        name: 'extKeyUsage',
+        serverAuth: false,
+        clientAuth: true,
+        codeSigning: true,
+        emailProtection: true,
+        timeStamping: true,
+      },
+      {
+        name: 'nsCertType',
+        client: true,
+        server: false,
+        email: false,
+        objsign: false,
+        sslCA: false,
+        emailCA: false,
+        objCA: false,
       },
     ]);
 
-    csr.sign(keypair.privateKey);
-
-    const csrPem = pki.certificationRequestToPem(csr);
-    const cert = this.handleCSR(csrPem);
+    // sign certificate
+    certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
 
     return {
-      clientCert: cert,
-      clientKeyPair: {
+      rootCertificate: this.RootCert,
+      certificate: pki.certificateToPem(certificate),
+      keypair: {
         private: pki.privateKeyToPem(keypair.privateKey),
         public: pki.publicKeyToPem(keypair.publicKey),
       },
@@ -305,7 +377,6 @@ class PublicKeyInfrastructure {
     certificate.publicKey = csr.publicKey;
 
     certificate.setExtensions([
-      ...(csr.extensions ?? []),
       {
         name: 'basicConstraints',
         cA: true,
@@ -336,13 +407,17 @@ class PublicKeyInfrastructure {
         emailCA: true,
         objCA: true,
       },
+    ]);
+    // set (optional) attributes
+    (<any>csr).setAttributes([
       {
-        name: 'subjectKeyIdentifier',
+        name: 'challengePassword',
+        value: 'password',
       },
     ]);
 
     // sign certificate
-    certificate.sign(this.rootKeypair.privateKey);
+    certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
 
     // return certificate in pem form
     return pki.certificateToPem(certificate);
@@ -441,7 +516,7 @@ class PublicKeyInfrastructure {
     }
   }
 
-  // === Helper Methods === //
+  // ===== Helper methods ===== //
   private keyPairToJSON(keypair: pki.rsa.KeyPair): string {
     const obj = {
       privateKey: pki.privateKeyToPem(keypair.privateKey),
@@ -449,7 +524,6 @@ class PublicKeyInfrastructure {
     };
     return JSON.stringify(obj);
   }
-
   private jsonToKeyPair(json: string): pki.rsa.KeyPair {
     const obj = JSON.parse(json);
     return {

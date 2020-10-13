@@ -21,6 +21,7 @@ test-npm:
   stage: check
   script:
     - npm install
+    - npm run build:all
     - npm run test
 
 nix-dry:

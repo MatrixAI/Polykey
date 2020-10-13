@@ -36,7 +36,7 @@ class PeerServer implements IPeerServer {
         Buffer.from(credentials.rootCertificate),
         [
           {
-            private_key: Buffer.from(credentials.privateKey),
+            private_key: Buffer.from(credentials.keypair.private),
             cert_chain: Buffer.from(credentials.certificate),
           },
         ],
@@ -46,8 +46,8 @@ class PeerServer implements IPeerServer {
       this.credentials = grpc.ServerCredentials.createInsecure();
     }
 
-    const port = process.env.PK_PORT ?? this.peerManager.peerInfo?.peerAddress?.port ?? 0;
-    const host = process.env.PK_HOST ?? this.peerManager.peerInfo?.peerAddress?.host ?? 'localhost';
+    const port = process.env.PK_PEER_PORT ?? this.peerManager.peerInfo?.peerAddress?.port ?? 0;
+    const host = process.env.PK_PEER_HOST ?? this.peerManager.peerInfo?.peerAddress?.host ?? 'localhost';
     this.server.bindAsync(`${host}:${port}`, this.credentials, async (err, boundPort) => {
       if (err) {
         throw err;

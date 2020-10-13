@@ -231,7 +231,7 @@ pk secrets list NewVault AnotherVault
 # delete secrets
 pk secrets delete NewVault:NewSecret AnotherVault:AnotherSecret
 
-# retreive a secret
+# retrieve a secret
 pk secrets get NewVault:NewSecret
 # &lt;NewSecretContent>
 

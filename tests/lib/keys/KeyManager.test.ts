@@ -29,9 +29,9 @@ describe('KeyManager class', () => {
   test('can create symmetric keys', async () => {
     const generatedKey = await km.generateKey('new-key', 'passphrase', true)
 
-    const retreivedKey = km.getKey('new-key')
+    const retrievedKey = km.getKey('new-key')
 
-    expect(retreivedKey).toEqual(generatedKey)
+    expect(retrievedKey).toEqual(generatedKey)
   })
 
   test('can load an identity from a public key', async () => {
