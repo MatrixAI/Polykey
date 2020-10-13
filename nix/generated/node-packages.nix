@@ -13337,7 +13337,7 @@ let
   args = {
     name = "_at_matrixai_slash_polykey";
     packageName = "@matrixai/polykey";
-    version = "0.0.17";
+    version = "0.0.18";
     src = ../..;
     dependencies = [
       sources."@apidevtools/json-schema-ref-parser-9.0.6"
