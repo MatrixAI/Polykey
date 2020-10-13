@@ -19,7 +19,7 @@ import packObjects from './pack-objects/packObjects';
 class GitBackend {
   private repoDirectoryPath: string;
   private getFileSystem: (repoName: string) => EncryptedFS;
-  private getVaultNames: (publicKey: string) => string[];
+  private getVaultNames: (peerId: string) => string[];
 
   constructor(
     repoDirectoryPath: string,
@@ -136,8 +136,8 @@ class GitBackend {
     });
   }
 
-  async handleVaultNamesRequest(publicKey: string): Promise<string[]> {
-    return this.getVaultNames(publicKey);
+  async handleVaultNamesRequest(peerId: string): Promise<string[]> {
+    return this.getVaultNames(peerId);
   }
 
   // ============ Helper functions ============ //

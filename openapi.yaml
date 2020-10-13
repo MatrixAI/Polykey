@@ -46,7 +46,7 @@ paths:
         "200":
           description: Certificate Chain
           content:
-            application/json:
+            text/plain:
               schema:
                 type: array
                 items:
@@ -97,7 +97,7 @@ paths:
         "200":
           description: Vault List
           content:
-            application/json:
+            text/plain:
               schema:
                 type: array
                 items:
@@ -129,7 +129,7 @@ paths:
         "200":
           description: Secret List
           content:
-            application/json:
+            text/plain:
               schema:
                 type: array
                 items:
@@ -206,6 +206,10 @@ paths:
             text/plain:
               schema:
                 type: string
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
         "401":
           description: Not authenticated
         "403":
@@ -222,11 +226,15 @@ paths:
         - bearerAuth: [admin, write_secrets]
         - OAuth2-Client: [admin, write_secrets]
       requestBody:
-        description: Object describing the secret
+        description: Secret content
         content:
           text/plain:
             schema:
               type: string
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
         "200":
           description: Secret was created successfully

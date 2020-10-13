@@ -71,8 +71,8 @@ export class PeerInfoMessage extends jspb.Message {
     getPublicKey(): string;
     setPublicKey(value: string): PeerInfoMessage;
 
-    getRelayPublicKey(): string;
-    setRelayPublicKey(value: string): PeerInfoMessage;
+    getRootCertificate(): string;
+    setRootCertificate(value: string): PeerInfoMessage;
 
     getPeerAddress(): string;
     setPeerAddress(value: string): PeerInfoMessage;
@@ -94,7 +94,7 @@ export class PeerInfoMessage extends jspb.Message {
 export namespace PeerInfoMessage {
     export type AsObject = {
         publicKey: string,
-        relayPublicKey: string,
+        rootCertificate: string,
         peerAddress: string,
         apiAddress: string,
     }
@@ -148,9 +148,6 @@ export class NatMessage extends jspb.Message {
     getType(): NatMessageType;
     setType(value: NatMessageType): NatMessage;
 
-    getIsResponse(): boolean;
-    setIsResponse(value: boolean): NatMessage;
-
     getSubMessage(): Uint8Array | string;
     getSubMessage_asU8(): Uint8Array;
     getSubMessage_asB64(): string;
@@ -170,8 +167,32 @@ export class NatMessage extends jspb.Message {
 export namespace NatMessage {
     export type AsObject = {
         type: NatMessageType,
-        isResponse: boolean,
         subMessage: Uint8Array | string,
+    }
+}
+
+export class UDPAddressMessage extends jspb.Message { 
+    getAddress(): string;
+    setAddress(value: string): UDPAddressMessage;
+
+    getToken(): string;
+    setToken(value: string): UDPAddressMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): UDPAddressMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: UDPAddressMessage): UDPAddressMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: UDPAddressMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): UDPAddressMessage;
+    static deserializeBinaryFromReader(message: UDPAddressMessage, reader: jspb.BinaryReader): UDPAddressMessage;
+}
+
+export namespace UDPAddressMessage {
+    export type AsObject = {
+        address: string,
+        token: string,
     }
 }
 
@@ -256,27 +277,6 @@ export class PeerConnectionResponse extends jspb.Message {
 export namespace PeerConnectionResponse {
     export type AsObject = {
         peerAddress: string,
-    }
-}
-
-export class UDPAddressResponse extends jspb.Message { 
-    getAddress(): string;
-    setAddress(value: string): UDPAddressResponse;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): UDPAddressResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: UDPAddressResponse): UDPAddressResponse.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: UDPAddressResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): UDPAddressResponse;
-    static deserializeBinaryFromReader(message: UDPAddressResponse, reader: jspb.BinaryReader): UDPAddressResponse;
-}
-
-export namespace UDPAddressResponse {
-    export type AsObject = {
-        address: string,
     }
 }
 
@@ -395,22 +395,110 @@ export namespace CAMessage {
     }
 }
 
+export class PeerDHTMessage extends jspb.Message { 
+    getType(): PeerDHTMessageType;
+    setType(value: PeerDHTMessageType): PeerDHTMessage;
+
+    getIsResponse(): boolean;
+    setIsResponse(value: boolean): PeerDHTMessage;
+
+    getSubMessage(): Uint8Array | string;
+    getSubMessage_asU8(): Uint8Array;
+    getSubMessage_asB64(): string;
+    setSubMessage(value: Uint8Array | string): PeerDHTMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PeerDHTMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PeerDHTMessage): PeerDHTMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PeerDHTMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PeerDHTMessage;
+    static deserializeBinaryFromReader(message: PeerDHTMessage, reader: jspb.BinaryReader): PeerDHTMessage;
+}
+
+export namespace PeerDHTMessage {
+    export type AsObject = {
+        type: PeerDHTMessageType,
+        isResponse: boolean,
+        subMessage: Uint8Array | string,
+    }
+}
+
+export class PeerDHTPingNodeMessage extends jspb.Message { 
+    getPublicKey(): string;
+    setPublicKey(value: string): PeerDHTPingNodeMessage;
+
+    getRandomChallenge(): string;
+    setRandomChallenge(value: string): PeerDHTPingNodeMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PeerDHTPingNodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PeerDHTPingNodeMessage): PeerDHTPingNodeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PeerDHTPingNodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PeerDHTPingNodeMessage;
+    static deserializeBinaryFromReader(message: PeerDHTPingNodeMessage, reader: jspb.BinaryReader): PeerDHTPingNodeMessage;
+}
+
+export namespace PeerDHTPingNodeMessage {
+    export type AsObject = {
+        publicKey: string,
+        randomChallenge: string,
+    }
+}
+
+export class PeerDHTFindNodeMessage extends jspb.Message { 
+    getPublicKey(): string;
+    setPublicKey(value: string): PeerDHTFindNodeMessage;
+
+    clearClosestPeersList(): void;
+    getClosestPeersList(): Array<PeerInfoMessage>;
+    setClosestPeersList(value: Array<PeerInfoMessage>): PeerDHTFindNodeMessage;
+    addClosestPeers(value?: PeerInfoMessage, index?: number): PeerInfoMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PeerDHTFindNodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PeerDHTFindNodeMessage): PeerDHTFindNodeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PeerDHTFindNodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PeerDHTFindNodeMessage;
+    static deserializeBinaryFromReader(message: PeerDHTFindNodeMessage, reader: jspb.BinaryReader): PeerDHTFindNodeMessage;
+}
+
+export namespace PeerDHTFindNodeMessage {
+    export type AsObject = {
+        publicKey: string,
+        closestPeersList: Array<PeerInfoMessage.AsObject>,
+    }
+}
+
 export enum SubServiceType {
     PING_PEER = 0,
     GIT = 1,
     NAT_TRAVERSAL = 2,
     CERTIFICATE_AUTHORITY = 3,
+    PEER_DHT = 4,
 }
 
 export enum NatMessageType {
-    ERROR = 0,
+    UDP_ADDRESS = 0,
     RELAY_CONNECTION = 1,
     PEER_CONNECTION = 2,
-    UDP_ADDRESS = 3,
-    PEER_UDP_ADDRESS = 4,
+    PEER_UDP_ADDRESS = 3,
 }
 
 export enum CAMessageType {
     ROOT_CERT = 0,
     REQUEST_CERT = 1,
+}
+
+export enum PeerDHTMessageType {
+    PING = 0,
+    FIND_NODE = 1,
 }

@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { AddressInfo } from 'net';
 import { peerInterface } from '../../proto/js/Peer';
 import { protobufToString, stringToProtobuf } from '../utils';
@@ -71,19 +72,19 @@ class Address {
 }
 
 class PeerInfo {
-  publicKey: string;
-  // Public key that the peer connection is relayed over
-  relayPublicKey?: string;
+  id: string
+  private readonlyPublicKey: string;
+  // peer root certificate for trusted connections
+  rootCertificate: string;
   // Address where all peer operations occur over (might be obscured by NAT)
   peerAddress?: Address;
   // Address over which the polykey HTTP API is server
   apiAddress?: Address;
 
-  constructor(publicKey: string, relayPublicKey?: string, peerAddress?: string, apiAddress?: string) {
-    this.publicKey = PeerInfo.formatPublicKey(publicKey);
-    if (relayPublicKey) {
-      this.relayPublicKey = PeerInfo.formatPublicKey(relayPublicKey);
-    }
+  constructor(publicKey: string, rootCertificate: string, peerAddress?: string, apiAddress?: string) {
+    this.readonlyPublicKey = PeerInfo.formatPublicKey(publicKey);
+    this.id = PeerInfo.publicKeyToId(this.readonlyPublicKey)
+    this.rootCertificate = PeerInfo.formatCertificate(rootCertificate)
     if (peerAddress) {
       const addr = Address.parse(peerAddress);
       this.peerAddress = addr;
@@ -94,20 +95,39 @@ class PeerInfo {
     }
   }
 
+  public get publicKey() : string {
+    return this.readonlyPublicKey
+  }
+
+  public set publicKey(publicKey: string) {
+    throw Error('cannot change public key once set')
+  }
+
+  static publicKeyToId(publicKey: string) {
+    const formatedPublicKey = PeerInfo.formatPublicKey(publicKey)
+    return crypto.createHash('sha256').update(formatedPublicKey).digest('base64')
+  }
+
   static formatPublicKey(str: string): string {
     const startString = '-----BEGIN PGP PUBLIC KEY BLOCK-----';
     const endString = '-----END PGP PUBLIC KEY BLOCK-----';
     return str.slice(str.indexOf(startString), str.indexOf(endString) + endString.length);
   }
 
+  static formatCertificate(str: string): string {
+    const startString = '-----BEGIN CERTIFICATE-----';
+    const endString = '-----END CERTIFICATE-----';
+    return str.slice(str.indexOf(startString), str.indexOf(endString) + endString.length);
+  }
+
   deepCopy(): PeerInfo {
-    return new PeerInfo(this.publicKey, this.relayPublicKey, this.peerAddress?.toString(), this.apiAddress?.toString());
+    return new PeerInfo(this.publicKey, this.rootCertificate, this.peerAddress?.toString(), this.apiAddress?.toString());
   }
 
   toStringB64(): string {
     const message = peerInterface.PeerInfoMessage.encodeDelimited({
       publicKey: this.publicKey,
-      relayPublicKey: this.relayPublicKey,
+      rootCertificate: this.rootCertificate,
       peerAddress: this.peerAddress?.toString(),
       apiAddress: this.apiAddress?.toString(),
     }).finish();
@@ -119,7 +139,7 @@ class PeerInfo {
 
     const decoded = peerInterface.PeerInfoMessage.decodeDelimited(message);
 
-    return new PeerInfo(decoded.publicKey, decoded.relayPublicKey, decoded.peerAddress, decoded.apiAddress);
+    return new PeerInfo(decoded.publicKey, decoded.rootCertificate, decoded.peerAddress, decoded.apiAddress);
   }
 }
 

@@ -1,5 +1,4 @@
 import commander from 'commander';
-import { makePunchCommand, makeRelayCommand } from './natCommands';
 import {
   makeAddPeerCommand,
   makeFindPeerCommand,
@@ -21,9 +20,7 @@ function makePeersCommand() {
     .addCommand(makePingPeerCommand())
     .addCommand(makeFindPeerCommand())
     .addCommand(makeFindSocialPeerCommand())
-    .addCommand(makeStealthCommand())
-    .addCommand(makeRelayCommand())
-    .addCommand(makePunchCommand());
+    .addCommand(makeStealthCommand());
 }
 
 export default makePeersCommand;

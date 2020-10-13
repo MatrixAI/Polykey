@@ -46,7 +46,7 @@ class PolykeyAgent implements IAgentServer {
   }
 
   private failOnLocked() {
-    if (!this.pk.keyManager.identityLoaded) {
+    if (!this.pk.keyManager.KeypairUnlocked) {
       throw Error(`polykey is locked at ${this.pk.polykeyPath}`);
     }
   }
@@ -86,15 +86,12 @@ class PolykeyAgent implements IAgentServer {
     // don't need to catch errors
     try {
       await promisify(this.server.tryShutdown.bind(this))();
-    } catch (error) { }
+    } catch (error) {}
 
     // handle port
     const portString = this.configStore.get('port') ?? process.env.PK_AGENT_PORT ?? 0;
     const hostString = process.env.PK_AGENT_HOST ?? 'localhost';
-    const port = await getPort(
-      parseInt(portString),
-      hostString
-    );
+    const port = await getPort(parseInt(portString), hostString);
 
     // bind server to port and start
     const boundPort = await new Promise<number>((resolve, reject) => {
@@ -111,15 +108,15 @@ class PolykeyAgent implements IAgentServer {
     // agent is only discoverable if the pid in the pk state matches
     // the pid of the current running pid. this also prevents memory leaks
     this.pidCheckInterval = setInterval(() => {
-      let shutdown: boolean = false
+      let shutdown: boolean = false;
       try {
-        const pid = this.configStore.get('pid')
+        const pid = this.configStore.get('pid');
         if (pid !== this.pid) {
-          shutdown = true
+          shutdown = true;
           console.log('agent process pid does not match pk state pid, shutting down');
         }
       } catch (error) {
-        shutdown = true
+        shutdown = true;
         console.log('pid is not set in pk state, shutting down');
       } finally {
         if (shutdown) {
@@ -127,25 +124,32 @@ class PolykeyAgent implements IAgentServer {
             if (err) {
               console.log(`ran into errors when shutting down grpc server: ${err}`);
             }
-            process.kill(this.pid)
-          })
+            process.kill(this.pid);
+          });
         }
       }
-    }, 10000)
+    }, 10000);
 
     this.server.start();
     this.configStore.set('port', boundPort);
     console.log(`Agent started on: 'localhost:${boundPort}'`);
   }
 
+  private noThrowRefreshTimeout() {
+    try {
+      this.pk.keyManager.refreshTimeout();
+    } catch (error) {}
+  }
+
   async addPeer(
     call: grpc.ServerUnaryCall<agent.PeerInfoMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
-      const { publicKey, peerAddress, relayPublicKey, apiAddress } = call.request!.toObject();
-      this.pk.peerManager.addPeer(new PeerInfo(publicKey, peerAddress, relayPublicKey, apiAddress));
+      const { publicKey, rootCertificate, peerAddress, apiAddress } = call.request!.toObject();
+      this.pk.peerManager.addPeer(new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress));
       const response = new agent.BooleanMessage();
       response.setB(true);
       callback(null, response);
@@ -158,17 +162,18 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.DecryptFileMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { filePath, privateKeyPath, passphrase } = call.request!.toObject();
       const response = new agent.StringMessage();
       if (privateKeyPath && passphrase) {
-        const privateKey = fs.readFileSync(privateKeyPath)
+        const privateKey = fs.readFileSync(privateKeyPath);
         const decryptedPath = await this.pk.keyManager.decryptFile(filePath, privateKey, passphrase);
-        response.setS(decryptedPath)
+        response.setS(decryptedPath);
       } else {
         const decryptedPath = await this.pk.keyManager.decryptFile(filePath);
-        response.setS(decryptedPath)
+        response.setS(decryptedPath);
       }
       callback(null, response);
     } catch (error) {
@@ -180,6 +185,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
@@ -196,6 +202,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
@@ -212,6 +219,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.SecretPathMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { vaultName, secretName } = call.request!.toObject();
@@ -219,9 +227,9 @@ class PolykeyAgent implements IAgentServer {
       await vault.removeSecret(secretName);
       const response = new agent.BooleanMessage();
       response.setB(true);
-      callback(null, response)
+      callback(null, response);
     } catch (error) {
-      callback(error, null)
+      callback(error, null);
     }
   }
 
@@ -229,6 +237,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.DeriveKeyMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { keyName, passphrase } = call.request!.toObject();
@@ -245,6 +254,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EncryptFileMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { filePath, publicKeyPath } = call.request!.toObject();
@@ -261,6 +271,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { publicKeyOrHandle, timeout } = call.request!.toObject();
@@ -277,6 +288,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { publicKeyOrHandle, timeout } = call.request!.toObject();
@@ -298,6 +310,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.OAuthClientMessage>,
     callback: grpc.sendUnaryData<agent.OAuthClientMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const client = this.pk.httpApi.getOAuthClient();
@@ -314,6 +327,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
@@ -330,15 +344,14 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.PeerInfoMessage>,
     callback: grpc.sendUnaryData<agent.PeerInfoMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
       const peerInfo = this.pk.peerManager.peerInfo;
       const response = new agent.PeerInfoMessage();
       response.setPublicKey(peerInfo.publicKey);
-      if (peerInfo.relayPublicKey) {
-        response.setRelayPublicKey(peerInfo.relayPublicKey);
-      }
+      response.setRootCertificate(peerInfo.rootCertificate);
       if (peerInfo.peerAddress) {
         response.setPeerAddress(peerInfo.peerAddress?.toString());
       }
@@ -355,6 +368,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.PeerInfoMessage>,
     callback: grpc.sendUnaryData<agent.PeerInfoMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
@@ -364,9 +378,7 @@ class PolykeyAgent implements IAgentServer {
       const peerInfo = this.pk.peerManager.getPeer(s)!;
       const response = new agent.PeerInfoMessage();
       response.setPublicKey(peerInfo.publicKey);
-      if (peerInfo.relayPublicKey) {
-        response.setRelayPublicKey(peerInfo.relayPublicKey);
-      }
+      response.setRootCertificate(peerInfo.rootCertificate);
       if (peerInfo.peerAddress) {
         response.setPeerAddress(peerInfo.peerAddress?.toString());
       }
@@ -383,6 +395,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.BooleanMessage, agent.KeyPairMessage>,
     callback: grpc.sendUnaryData<agent.KeyPairMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { b } = call.request!.toObject();
@@ -402,6 +415,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.SecretPathMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { vaultName, secretName } = call.request!.toObject();
@@ -419,6 +433,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.AgentStatusMessage>,
     callback: grpc.sendUnaryData<agent.AgentStatusMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       const response = new agent.AgentStatusMessage();
       response.setStatus(agent.AgentStatusType.ONLINE);
@@ -432,6 +447,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const tokens = this.pk.httpApi.listOAuthTokens();
@@ -447,6 +463,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const keyNames = this.pk.keyManager.listKeys();
@@ -462,6 +479,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.BooleanMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       const { b } = call.request!.toObject();
       const response = new agent.StringListMessage();
@@ -476,6 +494,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const rootCert = this.pk.keyManager.pki.RootCert;
@@ -491,11 +510,13 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const publicKeys = this.pk.peerManager.listPeers();
       const response = new agent.StringListMessage();
       response.setSList(publicKeys);
+      callback(null, response);
     } catch (error) {
       callback(error, null);
     }
@@ -505,6 +526,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       const { s } = call.request!.toObject();
       const vault = this.pk.vaultManager.getVault(s);
@@ -521,6 +543,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const vaultNames = this.pk.vaultManager.getVaultNames();
@@ -532,14 +555,28 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async lockNode(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    try {
+      this.failOnLocked();
+      this.pk.keyManager.lockIdentity();
+      callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
   async newOAuthToken(
     call: grpc.ServerUnaryCall<agent.NewOAuthTokenMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { scopesList, expiry } = call.request!.toObject();
-      const token = this.pk.httpApi.newOAuthToken(scopesList, expiry)
+      const token = this.pk.httpApi.newOAuthToken(scopesList, expiry);
       const response = new agent.StringMessage();
       response.setS(token);
       callback(null, response);
@@ -551,17 +588,18 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.NewClientCertificateMessage, agent.NewClientCertificateMessage>,
     callback: grpc.sendUnaryData<agent.NewClientCertificateMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { domain, certFile, keyFile } = call.request!.toObject();
-      const pki = this.pk.keyManager.pki
-      const keypair = pki.createKeypair()
+      const pki = this.pk.keyManager.pki;
+      const keypair = pki.createKeypair();
       const csr = pki.createCSR(domain, '', keypair);
-      const cert = pki.handleCSR(csr)
-      fs.mkdirSync(path.dirname(certFile), { recursive: true })
-      fs.mkdirSync(path.dirname(keyFile), { recursive: true })
-      fs.writeFileSync(certFile, cert)
-      fs.writeFileSync(keyFile, pki.privateKeyToPem(keypair.privateKey))
+      const cert = pki.handleCSR(csr);
+      fs.mkdirSync(path.dirname(certFile), { recursive: true });
+      fs.mkdirSync(path.dirname(keyFile), { recursive: true });
+      fs.writeFileSync(certFile, cert);
+      fs.writeFileSync(keyFile, pki.privateKeyToPem(keypair.privateKey));
       const response = new agent.NewClientCertificateMessage();
       response.setCertFile(cert);
       response.setKeyFile(pki.privateKeyToPem(keypair.privateKey));
@@ -576,7 +614,7 @@ class PolykeyAgent implements IAgentServer {
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
     try {
-      const { userid, passphrase, nbits } = call.request!.toObject();
+      const { userid, passphrase } = call.request!.toObject();
 
       // check node is already initialized
       if (this.pk.keyManager.hasPrivateKey()) {
@@ -585,9 +623,7 @@ class PolykeyAgent implements IAgentServer {
 
       const km = new KeyManager(this.pk.polykeyPath, fs);
 
-      const resolvedNBits = nbits && nbits != 0 ? nbits : undefined;
-
-      await km.generateKeyPair(userid, passphrase, resolvedNBits, true);
+      await km.generateKeyPair(userid, passphrase, true);
 
       this.pk = new Polykey(this.pk.polykeyPath, fs, km);
 
@@ -609,6 +645,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.SecretContentMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { secretPath, secretFilePath, secretContent } = call.request!.toObject();
@@ -632,6 +669,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
@@ -648,6 +686,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { publicKeyOrHandle, timeout } = call.request!.toObject();
@@ -664,6 +703,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.VaultPathMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { vaultName, publicKey } = call.request!.toObject();
@@ -682,68 +722,11 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async registerNode(
-    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
-    callback: grpc.sendUnaryData<agent.BooleanMessage>,
-  ) {
-    try {
-      if (this.pk.keyManager.identityLoaded) {
-        throw Error('node is already unlocked');
-      }
-      const { s } = call.request!.toObject();
-      await this.pk.keyManager.unlockIdentity(s);
-
-      // re-load all meta data
-      await this.pk.keyManager.loadEncryptedMetadata();
-      this.pk.peerManager.loadMetadata();
-      await this.pk.vaultManager.loadEncryptedMetadata();
-      await this.pk.httpApi.start();
-
-      // send response
-      const response = new agent.BooleanMessage();
-      response.setB(true);
-      callback(null, response);
-    } catch (error) {
-      callback(error, null);
-    }
-  }
-
-  async requestHolePunch(
-    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
-    callback: grpc.sendUnaryData<agent.BooleanMessage>,
-  ) {
-    try {
-      this.failOnLocked();
-      const { s } = call.request!.toObject();
-      const address = await this.pk.peerManager.turnClient.requestLocalHolePunchAddress(s);
-      const response = new agent.BooleanMessage();
-      response.setB(true);
-      callback(null, response);
-    } catch (error) {
-      callback(error, null);
-    }
-  }
-
-  async requestRelay(
-    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
-    callback: grpc.sendUnaryData<agent.BooleanMessage>,
-  ) {
-    try {
-      this.failOnLocked();
-      const { s } = call.request!.toObject();
-      await this.pk.peerManager.turnClient.requestRelayConnection(s);
-      const response = new agent.BooleanMessage();
-      response.setB(true);
-      callback(null, response);
-    } catch (error) {
-      callback(error, null);
-    }
-  }
-
   async revokeOAuthToken(
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
@@ -760,6 +743,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
@@ -776,6 +760,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.SignFileMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { filePath, privateKeyPath, passphrase } = call.request!.toObject();
@@ -793,7 +778,7 @@ class PolykeyAgent implements IAgentServer {
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
     try {
-      clearInterval(this.pidCheckInterval)
+      clearInterval(this.pidCheckInterval);
       this.pk.peerManager.multicastBroadcaster.stopBroadcasting();
       const response = new agent.BooleanMessage();
       response.setB(true);
@@ -814,6 +799,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.BooleanMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { b } = call.request!.toObject();
@@ -826,16 +812,53 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async unlockNode(
+    call: grpc.ServerUnaryCall<agent.UnlockNodeMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+  ) {
+    try {
+      const { passphrase, timeout } = call.request!.toObject();
+      if (this.pk.keyManager.KeypairUnlocked) {
+        this.pk.keyManager.refreshTimeout(timeout);
+      } else {
+        await this.pk.keyManager.unlockIdentity(passphrase, timeout);
+      }
+
+      // re-load all meta data
+      await this.pk.keyManager.loadEncryptedMetadata();
+      this.pk.peerManager.loadMetadata();
+      await this.pk.vaultManager.loadEncryptedMetadata();
+      await this.pk.httpApi.start();
+
+      // send response
+      const response = new agent.BooleanMessage();
+      response.setB(true);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
   async updateLocalPeerInfo(
     call: grpc.ServerUnaryCall<agent.PeerInfoMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
-      const { publicKey, relayPublicKey, peerAddress, apiAddress } = call.request!.toObject();
-      this.pk.peerManager.peerInfo.relayPublicKey = relayPublicKey;
-      this.pk.peerManager.peerInfo.peerAddress = Address.parse(peerAddress);
-      this.pk.peerManager.peerInfo.apiAddress = Address.parse(apiAddress);
+      const { publicKey, rootCertificate, peerAddress, apiAddress } = call.request!.toObject();
+      if (this.pk.peerManager.peerInfo.publicKey != publicKey) {
+        throw Error("public keys don't match");
+      }
+      if (rootCertificate && rootCertificate != '') {
+        this.pk.peerManager.peerInfo.rootCertificate = rootCertificate;
+      }
+      if (peerAddress && peerAddress != '') {
+        this.pk.peerManager.peerInfo.peerAddress = Address.parse(peerAddress);
+      }
+      if (apiAddress && apiAddress != '') {
+        this.pk.peerManager.peerInfo.apiAddress = Address.parse(apiAddress);
+      }
       const response = new agent.BooleanMessage();
       response.setB(true);
       callback(null, response);
@@ -848,16 +871,23 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.PeerInfoMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
-      const { publicKey, relayPublicKey, peerAddress, apiAddress } = call.request!.toObject();
-      if (!this.pk.peerManager.hasPeer(publicKey)) {
+      const { publicKey: peerId, rootCertificate, peerAddress, apiAddress } = call.request!.toObject();
+      if (!this.pk.peerManager.hasPeer(peerId)) {
         throw Error('peer does not exist in store');
       }
-      const peerInfo = this.pk.peerManager.getPeer(publicKey)!;
-      peerInfo.relayPublicKey = relayPublicKey;
-      peerInfo.peerAddress = Address.parse(peerAddress);
-      peerInfo.apiAddress = Address.parse(apiAddress);
+      const peerInfo = this.pk.peerManager.getPeer(peerId)!;
+      if (rootCertificate && rootCertificate != '') {
+        peerInfo.rootCertificate = rootCertificate;
+      }
+      if (peerAddress && peerAddress != '') {
+        peerInfo.peerAddress = Address.parse(peerAddress);
+      }
+      if (apiAddress && apiAddress != '') {
+        peerInfo.apiAddress = Address.parse(apiAddress);
+      }
       this.pk.peerManager.updatePeer(peerInfo);
       const response = new agent.BooleanMessage();
       response.setB(true);
@@ -871,6 +901,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.SecretContentMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { secretPath, secretFilePath, secretContent } = call.request!.toObject();
@@ -894,6 +925,7 @@ class PolykeyAgent implements IAgentServer {
     call: grpc.ServerUnaryCall<agent.VerifyFileMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
+    this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { publicKeyPath, filePath } = call.request!.toObject();
@@ -947,9 +979,11 @@ class PolykeyAgent implements IAgentServer {
   //////////////////////
   // Agent Operations //
   //////////////////////
-  private static DAEMON_SCRIPT_PATH_PREFIX = path.resolve(__dirname, 'internal', 'daemon-script.');
-  private static DAEMON_SCRIPT_PATH_SUFFIX = fs.existsSync(PolykeyAgent.DAEMON_SCRIPT_PATH_PREFIX + 'js') ? 'js' : 'ts';
-  static DAEMON_SCRIPT_PATH = PolykeyAgent.DAEMON_SCRIPT_PATH_PREFIX + PolykeyAgent.DAEMON_SCRIPT_PATH_SUFFIX;
+  static get DAEMON_SCRIPT_PATH(): string {
+    const prefix = path.resolve(__dirname, 'internal', 'daemon-script.');
+    const suffix = fs.existsSync(prefix + 'js') ? 'js' : 'ts';
+    return prefix + suffix;
+  }
 
   private static AgentIsRunning(polykeyPath: string): boolean {
     const existingPid = PolykeyAgent.AgentPid(polykeyPath);

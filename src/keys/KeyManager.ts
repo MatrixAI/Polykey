@@ -22,6 +22,7 @@ type KeyPair = {
 class KeyManager {
   private primaryKeyPair: KeyPair = { private: null, public: null };
   private primaryIdentity?: Object;
+  private primaryIdentityTimeout?: NodeJS.Timeout
   private derivedKeys: Map<string, Buffer>;
   private derivedKeysPath: string;
   private useWebWorkers: boolean;
@@ -74,7 +75,18 @@ class KeyManager {
     this.pki = new PublicKeyInfrastructure(this.polykeyPath, this.fileSystem);
   }
 
-  public get identityLoaded(): boolean {
+  public get Status() {
+    return {
+      keypairUnlocked: this.KeypairUnlocked,
+      keypairLoaded: this.KeypairLoaded,
+    };
+  }
+
+  public get KeypairLoaded(): boolean {
+    return this.primaryKeyPair.private != null && this.primaryKeyPair.public != null;
+  }
+
+  public get KeypairUnlocked(): boolean {
     return this.primaryIdentity ? true : false;
   }
 
@@ -90,29 +102,17 @@ class KeyManager {
   async generateKeyPair(
     userId: string,
     passphrase: string,
-    nbits: number = 4096,
     replacePrimary: boolean = false,
     progressCallback?: (info) => void,
   ): Promise<KeyPair> {
-    // kbpgp doesn't seem to work for small nbits so set a minimum of 1024
-    if (nbits < 1024) {
-      throw Error('nbits must be greater than 1024 for keypair generation');
-    }
     // Define options
-    const flags = kbpgp['const'].openpgp;
     const params = {
       asp: progressCallback ? new kbpgp.ASP({ progress_hook: progressCallback }) : undefined,
       userid: userId,
-      primary: {
-        nbits: nbits,
-        flags: flags.certify_keys | flags.sign_data | flags.auth | flags.encrypt_comm | flags.encrypt_storage,
-        expire_in: 0, // never expire
-      },
-      subkeys: [],
     };
 
-    const identity = await promisify(kbpgp.KeyManager.generate)(params);
-
+    // generateecc key pair with sensible defaults
+    const identity = await promisify(kbpgp.KeyManager.generate_ecc)(params);
     await promisify(identity.sign.bind(identity))({});
 
     // Export pub key first
@@ -228,20 +228,57 @@ class KeyManager {
   /**
    * Loads the primary identity into the key manager from the existing keypair
    * @param passphrase Passphrase to unlock the private key
+   * @param timeout Minutes of inactivity after which identity is locked again
    */
-  async unlockIdentity(passphrase: string): Promise<void> {
-    const publicKey: string = this.getPublicKey();
-    const privateKey: string = this.getPrivateKey();
+  async unlockIdentity(passphrase: string, timeout: number = 15): Promise<void> {
+    // check if already unlocked
+    if (this.primaryIdentityTimeout && this.primaryIdentity) {
+      clearTimeout(this.primaryIdentityTimeout)
+    } else {
+      const publicKey: string = this.getPublicKey();
+      const privateKey: string = this.getPrivateKey();
 
-    const identity = await promisify(kbpgp.KeyManager.import_from_armored_pgp)({ armored: publicKey });
+      const identity = await promisify(kbpgp.KeyManager.import_from_armored_pgp)({ armored: publicKey });
 
-    await promisify(identity.merge_pgp_private.bind(identity))({ armored: privateKey });
+      await promisify(identity.merge_pgp_private.bind(identity))({ armored: privateKey });
 
-    if (identity.is_pgp_locked.bind(identity)()) {
-      await promisify(identity.unlock_pgp.bind(identity))({ passphrase: passphrase });
+      if (identity.is_pgp_locked.bind(identity)()) {
+        await promisify(identity.unlock_pgp.bind(identity))({ passphrase: passphrase });
+      }
+
+      this.primaryIdentity = identity;
     }
+    if (timeout !== 0) {
+      // set new timeout
+      this.primaryIdentityTimeout = setTimeout(() => {
+        this.lockIdentity()
+      }, timeout * 60 * 1000)
+    }
+  }
 
-    this.primaryIdentity = identity;
+  refreshTimeout(timeout: number = 15) {
+    if (!this.primaryIdentityTimeout) {
+      if (!this.primaryIdentity) {
+        throw Error('node is locked')
+      }
+    } else {
+      clearTimeout(this.primaryIdentityTimeout)
+    }
+    if (this.primaryIdentityTimeout) {
+      this.primaryIdentityTimeout = this.primaryIdentityTimeout.refresh()
+    } else {
+      // set new timeout
+      this.primaryIdentityTimeout = setTimeout(() => {
+        this.lockIdentity()
+      }, timeout * 60 * 1000)
+    }
+  }
+
+  /**
+   * Locks the primary identity
+   */
+  lockIdentity(): void {
+    this.primaryIdentity = undefined;
   }
 
   /**
@@ -683,7 +720,7 @@ class KeyManager {
 
   private async writeEncryptedMetadata(): Promise<void> {
     // Store the keys if identity is loaded
-    if (this.identityLoaded) {
+    if (this.KeypairUnlocked) {
       const derivedKeys = JSON.stringify(this.derivedKeys);
       const encryptedMetadata = await this.encryptData(Buffer.from(derivedKeys));
       await this.fileSystem.promises.writeFile(this.derivedKeysPath, encryptedMetadata);
@@ -700,7 +737,7 @@ class KeyManager {
   }
 
   async loadEncryptedMetadata(): Promise<void> {
-    if (this.identityLoaded && this.fileSystem.existsSync(this.derivedKeysPath)) {
+    if (this.KeypairUnlocked && this.fileSystem.existsSync(this.derivedKeysPath)) {
       const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath);
       const metadata = (await this.decryptData(encryptedMetadata)).toString();
       const derivedKeys = JSON.parse(metadata);

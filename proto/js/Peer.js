@@ -244,6 +244,7 @@ $root.peerInterface = (function() {
      * @property {number} GIT=1 GIT value
      * @property {number} NAT_TRAVERSAL=2 NAT_TRAVERSAL value
      * @property {number} CERTIFICATE_AUTHORITY=3 CERTIFICATE_AUTHORITY value
+     * @property {number} PEER_DHT=4 PEER_DHT value
      */
     peerInterface.SubServiceType = (function() {
         var valuesById = {}, values = Object.create(valuesById);
@@ -251,6 +252,7 @@ $root.peerInterface = (function() {
         values[valuesById[1] = "GIT"] = 1;
         values[valuesById[2] = "NAT_TRAVERSAL"] = 2;
         values[valuesById[3] = "CERTIFICATE_AUTHORITY"] = 3;
+        values[valuesById[4] = "PEER_DHT"] = 4;
         return values;
     })();
 
@@ -411,7 +413,7 @@ $root.peerInterface = (function() {
          * @memberof peerInterface
          * @interface IPeerInfoMessage
          * @property {string|null} [publicKey] PeerInfoMessage publicKey
-         * @property {string|null} [relayPublicKey] PeerInfoMessage relayPublicKey
+         * @property {string|null} [rootCertificate] PeerInfoMessage rootCertificate
          * @property {string|null} [peerAddress] PeerInfoMessage peerAddress
          * @property {string|null} [apiAddress] PeerInfoMessage apiAddress
          */
@@ -440,12 +442,12 @@ $root.peerInterface = (function() {
         PeerInfoMessage.prototype.publicKey = "";
 
         /**
-         * PeerInfoMessage relayPublicKey.
-         * @member {string} relayPublicKey
+         * PeerInfoMessage rootCertificate.
+         * @member {string} rootCertificate
          * @memberof peerInterface.PeerInfoMessage
          * @instance
          */
-        PeerInfoMessage.prototype.relayPublicKey = "";
+        PeerInfoMessage.prototype.rootCertificate = "";
 
         /**
          * PeerInfoMessage peerAddress.
@@ -489,8 +491,8 @@ $root.peerInterface = (function() {
                 w = $Writer.create();
             if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
                 w.uint32(10).string(m.publicKey);
-            if (m.relayPublicKey != null && Object.hasOwnProperty.call(m, "relayPublicKey"))
-                w.uint32(18).string(m.relayPublicKey);
+            if (m.rootCertificate != null && Object.hasOwnProperty.call(m, "rootCertificate"))
+                w.uint32(18).string(m.rootCertificate);
             if (m.peerAddress != null && Object.hasOwnProperty.call(m, "peerAddress"))
                 w.uint32(26).string(m.peerAddress);
             if (m.apiAddress != null && Object.hasOwnProperty.call(m, "apiAddress"))
@@ -533,7 +535,7 @@ $root.peerInterface = (function() {
                     m.publicKey = r.string();
                     break;
                 case 2:
-                    m.relayPublicKey = r.string();
+                    m.rootCertificate = r.string();
                     break;
                 case 3:
                     m.peerAddress = r.string();
@@ -821,19 +823,17 @@ $root.peerInterface = (function() {
      * NatMessageType enum.
      * @name peerInterface.NatMessageType
      * @enum {number}
-     * @property {number} ERROR=0 ERROR value
-     * @property {number} RELAY_CONNECTION=1 RELAY_CONNECTION value
-     * @property {number} PEER_CONNECTION=2 PEER_CONNECTION value
-     * @property {number} UDP_ADDRESS=3 UDP_ADDRESS value
-     * @property {number} PEER_UDP_ADDRESS=4 PEER_UDP_ADDRESS value
+     * @property {number} UDP_ADDRESS=0 UDP_ADDRESS value
+     * @property {number} DIRECT_CONNECTION=1 DIRECT_CONNECTION value
+     * @property {number} HOLE_PUNCH_CONNECTION=2 HOLE_PUNCH_CONNECTION value
+     * @property {number} RELAY_CONNECTION=3 RELAY_CONNECTION value
      */
     peerInterface.NatMessageType = (function() {
         var valuesById = {}, values = Object.create(valuesById);
-        values[valuesById[0] = "ERROR"] = 0;
-        values[valuesById[1] = "RELAY_CONNECTION"] = 1;
-        values[valuesById[2] = "PEER_CONNECTION"] = 2;
-        values[valuesById[3] = "UDP_ADDRESS"] = 3;
-        values[valuesById[4] = "PEER_UDP_ADDRESS"] = 4;
+        values[valuesById[0] = "UDP_ADDRESS"] = 0;
+        values[valuesById[1] = "DIRECT_CONNECTION"] = 1;
+        values[valuesById[2] = "HOLE_PUNCH_CONNECTION"] = 2;
+        values[valuesById[3] = "RELAY_CONNECTION"] = 3;
         return values;
     })();
 
@@ -987,24 +987,25 @@ $root.peerInterface = (function() {
         return NatMessage;
     })();
 
-    peerInterface.RelayConnectionRequest = (function() {
+    peerInterface.UDPAddressMessage = (function() {
 
         /**
-         * Properties of a RelayConnectionRequest.
+         * Properties of a UDPAddressMessage.
          * @memberof peerInterface
-         * @interface IRelayConnectionRequest
-         * @property {string|null} [publicKey] RelayConnectionRequest publicKey
+         * @interface IUDPAddressMessage
+         * @property {string|null} [address] UDPAddressMessage address
+         * @property {string|null} [token] UDPAddressMessage token
          */
 
         /**
-         * Constructs a new RelayConnectionRequest.
+         * Constructs a new UDPAddressMessage.
          * @memberof peerInterface
-         * @classdesc Represents a RelayConnectionRequest.
-         * @implements IRelayConnectionRequest
+         * @classdesc Represents a UDPAddressMessage.
+         * @implements IUDPAddressMessage
          * @constructor
-         * @param {peerInterface.IRelayConnectionRequest=} [p] Properties to set
+         * @param {peerInterface.IUDPAddressMessage=} [p] Properties to set
          */
-        function RelayConnectionRequest(p) {
+        function UDPAddressMessage(p) {
             if (p)
                 for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
                     if (p[ks[i]] != null)
@@ -1012,564 +1013,89 @@ $root.peerInterface = (function() {
         }
 
         /**
-         * RelayConnectionRequest publicKey.
-         * @member {string} publicKey
-         * @memberof peerInterface.RelayConnectionRequest
-         * @instance
-         */
-        RelayConnectionRequest.prototype.publicKey = "";
-
-        /**
-         * Creates a new RelayConnectionRequest instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.RelayConnectionRequest
-         * @static
-         * @param {peerInterface.IRelayConnectionRequest=} [properties] Properties to set
-         * @returns {peerInterface.RelayConnectionRequest} RelayConnectionRequest instance
-         */
-        RelayConnectionRequest.create = function create(properties) {
-            return new RelayConnectionRequest(properties);
-        };
-
-        /**
-         * Encodes the specified RelayConnectionRequest message. Does not implicitly {@link peerInterface.RelayConnectionRequest.verify|verify} messages.
-         * @function encode
-         * @memberof peerInterface.RelayConnectionRequest
-         * @static
-         * @param {peerInterface.IRelayConnectionRequest} m RelayConnectionRequest message or plain object to encode
-         * @param {$protobuf.Writer} [w] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        RelayConnectionRequest.encode = function encode(m, w) {
-            if (!w)
-                w = $Writer.create();
-            if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
-                w.uint32(10).string(m.publicKey);
-            return w;
-        };
-
-        /**
-         * Encodes the specified RelayConnectionRequest message, length delimited. Does not implicitly {@link peerInterface.RelayConnectionRequest.verify|verify} messages.
-         * @function encodeDelimited
-         * @memberof peerInterface.RelayConnectionRequest
-         * @static
-         * @param {peerInterface.IRelayConnectionRequest} message RelayConnectionRequest message or plain object to encode
-         * @param {$protobuf.Writer} [writer] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        RelayConnectionRequest.encodeDelimited = function encodeDelimited(message, writer) {
-            return this.encode(message, writer).ldelim();
-        };
-
-        /**
-         * Decodes a RelayConnectionRequest message from the specified reader or buffer.
-         * @function decode
-         * @memberof peerInterface.RelayConnectionRequest
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
-         * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.RelayConnectionRequest} RelayConnectionRequest
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        RelayConnectionRequest.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.RelayConnectionRequest();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                case 1:
-                    m.publicKey = r.string();
-                    break;
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        /**
-         * Decodes a RelayConnectionRequest message from the specified reader or buffer, length delimited.
-         * @function decodeDelimited
-         * @memberof peerInterface.RelayConnectionRequest
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.RelayConnectionRequest} RelayConnectionRequest
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        RelayConnectionRequest.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        return RelayConnectionRequest;
-    })();
-
-    peerInterface.RelayConnectionResponse = (function() {
-
-        /**
-         * Properties of a RelayConnectionResponse.
-         * @memberof peerInterface
-         * @interface IRelayConnectionResponse
-         * @property {string|null} [serverAddress] RelayConnectionResponse serverAddress
-         */
-
-        /**
-         * Constructs a new RelayConnectionResponse.
-         * @memberof peerInterface
-         * @classdesc Represents a RelayConnectionResponse.
-         * @implements IRelayConnectionResponse
-         * @constructor
-         * @param {peerInterface.IRelayConnectionResponse=} [p] Properties to set
-         */
-        function RelayConnectionResponse(p) {
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
-
-        /**
-         * RelayConnectionResponse serverAddress.
-         * @member {string} serverAddress
-         * @memberof peerInterface.RelayConnectionResponse
-         * @instance
-         */
-        RelayConnectionResponse.prototype.serverAddress = "";
-
-        /**
-         * Creates a new RelayConnectionResponse instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.RelayConnectionResponse
-         * @static
-         * @param {peerInterface.IRelayConnectionResponse=} [properties] Properties to set
-         * @returns {peerInterface.RelayConnectionResponse} RelayConnectionResponse instance
-         */
-        RelayConnectionResponse.create = function create(properties) {
-            return new RelayConnectionResponse(properties);
-        };
-
-        /**
-         * Encodes the specified RelayConnectionResponse message. Does not implicitly {@link peerInterface.RelayConnectionResponse.verify|verify} messages.
-         * @function encode
-         * @memberof peerInterface.RelayConnectionResponse
-         * @static
-         * @param {peerInterface.IRelayConnectionResponse} m RelayConnectionResponse message or plain object to encode
-         * @param {$protobuf.Writer} [w] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        RelayConnectionResponse.encode = function encode(m, w) {
-            if (!w)
-                w = $Writer.create();
-            if (m.serverAddress != null && Object.hasOwnProperty.call(m, "serverAddress"))
-                w.uint32(10).string(m.serverAddress);
-            return w;
-        };
-
-        /**
-         * Encodes the specified RelayConnectionResponse message, length delimited. Does not implicitly {@link peerInterface.RelayConnectionResponse.verify|verify} messages.
-         * @function encodeDelimited
-         * @memberof peerInterface.RelayConnectionResponse
-         * @static
-         * @param {peerInterface.IRelayConnectionResponse} message RelayConnectionResponse message or plain object to encode
-         * @param {$protobuf.Writer} [writer] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        RelayConnectionResponse.encodeDelimited = function encodeDelimited(message, writer) {
-            return this.encode(message, writer).ldelim();
-        };
-
-        /**
-         * Decodes a RelayConnectionResponse message from the specified reader or buffer.
-         * @function decode
-         * @memberof peerInterface.RelayConnectionResponse
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
-         * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.RelayConnectionResponse} RelayConnectionResponse
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        RelayConnectionResponse.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.RelayConnectionResponse();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                case 1:
-                    m.serverAddress = r.string();
-                    break;
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        /**
-         * Decodes a RelayConnectionResponse message from the specified reader or buffer, length delimited.
-         * @function decodeDelimited
-         * @memberof peerInterface.RelayConnectionResponse
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.RelayConnectionResponse} RelayConnectionResponse
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        RelayConnectionResponse.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        return RelayConnectionResponse;
-    })();
-
-    peerInterface.PeerConnectionRequest = (function() {
-
-        /**
-         * Properties of a PeerConnectionRequest.
-         * @memberof peerInterface
-         * @interface IPeerConnectionRequest
-         * @property {string|null} [publicKey] PeerConnectionRequest publicKey
-         */
-
-        /**
-         * Constructs a new PeerConnectionRequest.
-         * @memberof peerInterface
-         * @classdesc Represents a PeerConnectionRequest.
-         * @implements IPeerConnectionRequest
-         * @constructor
-         * @param {peerInterface.IPeerConnectionRequest=} [p] Properties to set
-         */
-        function PeerConnectionRequest(p) {
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
-
-        /**
-         * PeerConnectionRequest publicKey.
-         * @member {string} publicKey
-         * @memberof peerInterface.PeerConnectionRequest
-         * @instance
-         */
-        PeerConnectionRequest.prototype.publicKey = "";
-
-        /**
-         * Creates a new PeerConnectionRequest instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.PeerConnectionRequest
-         * @static
-         * @param {peerInterface.IPeerConnectionRequest=} [properties] Properties to set
-         * @returns {peerInterface.PeerConnectionRequest} PeerConnectionRequest instance
-         */
-        PeerConnectionRequest.create = function create(properties) {
-            return new PeerConnectionRequest(properties);
-        };
-
-        /**
-         * Encodes the specified PeerConnectionRequest message. Does not implicitly {@link peerInterface.PeerConnectionRequest.verify|verify} messages.
-         * @function encode
-         * @memberof peerInterface.PeerConnectionRequest
-         * @static
-         * @param {peerInterface.IPeerConnectionRequest} m PeerConnectionRequest message or plain object to encode
-         * @param {$protobuf.Writer} [w] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        PeerConnectionRequest.encode = function encode(m, w) {
-            if (!w)
-                w = $Writer.create();
-            if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
-                w.uint32(10).string(m.publicKey);
-            return w;
-        };
-
-        /**
-         * Encodes the specified PeerConnectionRequest message, length delimited. Does not implicitly {@link peerInterface.PeerConnectionRequest.verify|verify} messages.
-         * @function encodeDelimited
-         * @memberof peerInterface.PeerConnectionRequest
-         * @static
-         * @param {peerInterface.IPeerConnectionRequest} message PeerConnectionRequest message or plain object to encode
-         * @param {$protobuf.Writer} [writer] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        PeerConnectionRequest.encodeDelimited = function encodeDelimited(message, writer) {
-            return this.encode(message, writer).ldelim();
-        };
-
-        /**
-         * Decodes a PeerConnectionRequest message from the specified reader or buffer.
-         * @function decode
-         * @memberof peerInterface.PeerConnectionRequest
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
-         * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.PeerConnectionRequest} PeerConnectionRequest
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        PeerConnectionRequest.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.PeerConnectionRequest();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                case 1:
-                    m.publicKey = r.string();
-                    break;
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        /**
-         * Decodes a PeerConnectionRequest message from the specified reader or buffer, length delimited.
-         * @function decodeDelimited
-         * @memberof peerInterface.PeerConnectionRequest
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.PeerConnectionRequest} PeerConnectionRequest
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        PeerConnectionRequest.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        return PeerConnectionRequest;
-    })();
-
-    peerInterface.PeerConnectionResponse = (function() {
-
-        /**
-         * Properties of a PeerConnectionResponse.
-         * @memberof peerInterface
-         * @interface IPeerConnectionResponse
-         * @property {string|null} [peerAddress] PeerConnectionResponse peerAddress
-         */
-
-        /**
-         * Constructs a new PeerConnectionResponse.
-         * @memberof peerInterface
-         * @classdesc Represents a PeerConnectionResponse.
-         * @implements IPeerConnectionResponse
-         * @constructor
-         * @param {peerInterface.IPeerConnectionResponse=} [p] Properties to set
-         */
-        function PeerConnectionResponse(p) {
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
-
-        /**
-         * PeerConnectionResponse peerAddress.
-         * @member {string} peerAddress
-         * @memberof peerInterface.PeerConnectionResponse
-         * @instance
-         */
-        PeerConnectionResponse.prototype.peerAddress = "";
-
-        /**
-         * Creates a new PeerConnectionResponse instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.PeerConnectionResponse
-         * @static
-         * @param {peerInterface.IPeerConnectionResponse=} [properties] Properties to set
-         * @returns {peerInterface.PeerConnectionResponse} PeerConnectionResponse instance
-         */
-        PeerConnectionResponse.create = function create(properties) {
-            return new PeerConnectionResponse(properties);
-        };
-
-        /**
-         * Encodes the specified PeerConnectionResponse message. Does not implicitly {@link peerInterface.PeerConnectionResponse.verify|verify} messages.
-         * @function encode
-         * @memberof peerInterface.PeerConnectionResponse
-         * @static
-         * @param {peerInterface.IPeerConnectionResponse} m PeerConnectionResponse message or plain object to encode
-         * @param {$protobuf.Writer} [w] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        PeerConnectionResponse.encode = function encode(m, w) {
-            if (!w)
-                w = $Writer.create();
-            if (m.peerAddress != null && Object.hasOwnProperty.call(m, "peerAddress"))
-                w.uint32(10).string(m.peerAddress);
-            return w;
-        };
-
-        /**
-         * Encodes the specified PeerConnectionResponse message, length delimited. Does not implicitly {@link peerInterface.PeerConnectionResponse.verify|verify} messages.
-         * @function encodeDelimited
-         * @memberof peerInterface.PeerConnectionResponse
-         * @static
-         * @param {peerInterface.IPeerConnectionResponse} message PeerConnectionResponse message or plain object to encode
-         * @param {$protobuf.Writer} [writer] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        PeerConnectionResponse.encodeDelimited = function encodeDelimited(message, writer) {
-            return this.encode(message, writer).ldelim();
-        };
-
-        /**
-         * Decodes a PeerConnectionResponse message from the specified reader or buffer.
-         * @function decode
-         * @memberof peerInterface.PeerConnectionResponse
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
-         * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.PeerConnectionResponse} PeerConnectionResponse
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        PeerConnectionResponse.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.PeerConnectionResponse();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                case 1:
-                    m.peerAddress = r.string();
-                    break;
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        /**
-         * Decodes a PeerConnectionResponse message from the specified reader or buffer, length delimited.
-         * @function decodeDelimited
-         * @memberof peerInterface.PeerConnectionResponse
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.PeerConnectionResponse} PeerConnectionResponse
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        PeerConnectionResponse.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        return PeerConnectionResponse;
-    })();
-
-    peerInterface.UDPAddressResponse = (function() {
-
-        /**
-         * Properties of a UDPAddressResponse.
-         * @memberof peerInterface
-         * @interface IUDPAddressResponse
-         * @property {string|null} [address] UDPAddressResponse address
-         */
-
-        /**
-         * Constructs a new UDPAddressResponse.
-         * @memberof peerInterface
-         * @classdesc Represents a UDPAddressResponse.
-         * @implements IUDPAddressResponse
-         * @constructor
-         * @param {peerInterface.IUDPAddressResponse=} [p] Properties to set
-         */
-        function UDPAddressResponse(p) {
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
-
-        /**
-         * UDPAddressResponse address.
+         * UDPAddressMessage address.
          * @member {string} address
-         * @memberof peerInterface.UDPAddressResponse
+         * @memberof peerInterface.UDPAddressMessage
          * @instance
          */
-        UDPAddressResponse.prototype.address = "";
+        UDPAddressMessage.prototype.address = "";
 
         /**
-         * Creates a new UDPAddressResponse instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.UDPAddressResponse
-         * @static
-         * @param {peerInterface.IUDPAddressResponse=} [properties] Properties to set
-         * @returns {peerInterface.UDPAddressResponse} UDPAddressResponse instance
+         * UDPAddressMessage token.
+         * @member {string} token
+         * @memberof peerInterface.UDPAddressMessage
+         * @instance
          */
-        UDPAddressResponse.create = function create(properties) {
-            return new UDPAddressResponse(properties);
+        UDPAddressMessage.prototype.token = "";
+
+        /**
+         * Creates a new UDPAddressMessage instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.UDPAddressMessage
+         * @static
+         * @param {peerInterface.IUDPAddressMessage=} [properties] Properties to set
+         * @returns {peerInterface.UDPAddressMessage} UDPAddressMessage instance
+         */
+        UDPAddressMessage.create = function create(properties) {
+            return new UDPAddressMessage(properties);
         };
 
         /**
-         * Encodes the specified UDPAddressResponse message. Does not implicitly {@link peerInterface.UDPAddressResponse.verify|verify} messages.
+         * Encodes the specified UDPAddressMessage message. Does not implicitly {@link peerInterface.UDPAddressMessage.verify|verify} messages.
          * @function encode
-         * @memberof peerInterface.UDPAddressResponse
+         * @memberof peerInterface.UDPAddressMessage
          * @static
-         * @param {peerInterface.IUDPAddressResponse} m UDPAddressResponse message or plain object to encode
+         * @param {peerInterface.IUDPAddressMessage} m UDPAddressMessage message or plain object to encode
          * @param {$protobuf.Writer} [w] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        UDPAddressResponse.encode = function encode(m, w) {
+        UDPAddressMessage.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
             if (m.address != null && Object.hasOwnProperty.call(m, "address"))
                 w.uint32(10).string(m.address);
+            if (m.token != null && Object.hasOwnProperty.call(m, "token"))
+                w.uint32(18).string(m.token);
             return w;
         };
 
         /**
-         * Encodes the specified UDPAddressResponse message, length delimited. Does not implicitly {@link peerInterface.UDPAddressResponse.verify|verify} messages.
+         * Encodes the specified UDPAddressMessage message, length delimited. Does not implicitly {@link peerInterface.UDPAddressMessage.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof peerInterface.UDPAddressResponse
+         * @memberof peerInterface.UDPAddressMessage
          * @static
-         * @param {peerInterface.IUDPAddressResponse} message UDPAddressResponse message or plain object to encode
+         * @param {peerInterface.IUDPAddressMessage} message UDPAddressMessage message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        UDPAddressResponse.encodeDelimited = function encodeDelimited(message, writer) {
+        UDPAddressMessage.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
         /**
-         * Decodes a UDPAddressResponse message from the specified reader or buffer.
+         * Decodes a UDPAddressMessage message from the specified reader or buffer.
          * @function decode
-         * @memberof peerInterface.UDPAddressResponse
+         * @memberof peerInterface.UDPAddressMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
          * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.UDPAddressResponse} UDPAddressResponse
+         * @returns {peerInterface.UDPAddressMessage} UDPAddressMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        UDPAddressResponse.decode = function decode(r, l) {
+        UDPAddressMessage.decode = function decode(r, l) {
             if (!(r instanceof $Reader))
                 r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.UDPAddressResponse();
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.UDPAddressMessage();
             while (r.pos < c) {
                 var t = r.uint32();
                 switch (t >>> 3) {
                 case 1:
                     m.address = r.string();
                     break;
+                case 2:
+                    m.token = r.string();
+                    break;
                 default:
                     r.skipType(t & 7);
                     break;
@@ -1579,42 +1105,42 @@ $root.peerInterface = (function() {
         };
 
         /**
-         * Decodes a UDPAddressResponse message from the specified reader or buffer, length delimited.
+         * Decodes a UDPAddressMessage message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof peerInterface.UDPAddressResponse
+         * @memberof peerInterface.UDPAddressMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.UDPAddressResponse} UDPAddressResponse
+         * @returns {peerInterface.UDPAddressMessage} UDPAddressMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        UDPAddressResponse.decodeDelimited = function decodeDelimited(reader) {
+        UDPAddressMessage.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
-        return UDPAddressResponse;
+        return UDPAddressMessage;
     })();
 
-    peerInterface.HolePunchRegisterRequest = (function() {
+    peerInterface.DirectConnectionMessage = (function() {
 
         /**
-         * Properties of a HolePunchRegisterRequest.
+         * Properties of a DirectConnectionMessage.
          * @memberof peerInterface
-         * @interface IHolePunchRegisterRequest
-         * @property {string|null} [publicKey] HolePunchRegisterRequest publicKey
+         * @interface IDirectConnectionMessage
+         * @property {string|null} [peerId] DirectConnectionMessage peerId
          */
 
         /**
-         * Constructs a new HolePunchRegisterRequest.
+         * Constructs a new DirectConnectionMessage.
          * @memberof peerInterface
-         * @classdesc Represents a HolePunchRegisterRequest.
-         * @implements IHolePunchRegisterRequest
+         * @classdesc Represents a DirectConnectionMessage.
+         * @implements IDirectConnectionMessage
          * @constructor
-         * @param {peerInterface.IHolePunchRegisterRequest=} [p] Properties to set
+         * @param {peerInterface.IDirectConnectionMessage=} [p] Properties to set
          */
-        function HolePunchRegisterRequest(p) {
+        function DirectConnectionMessage(p) {
             if (p)
                 for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
                     if (p[ks[i]] != null)
@@ -1622,75 +1148,75 @@ $root.peerInterface = (function() {
         }
 
         /**
-         * HolePunchRegisterRequest publicKey.
-         * @member {string} publicKey
-         * @memberof peerInterface.HolePunchRegisterRequest
+         * DirectConnectionMessage peerId.
+         * @member {string} peerId
+         * @memberof peerInterface.DirectConnectionMessage
          * @instance
          */
-        HolePunchRegisterRequest.prototype.publicKey = "";
+        DirectConnectionMessage.prototype.peerId = "";
 
         /**
-         * Creates a new HolePunchRegisterRequest instance using the specified properties.
+         * Creates a new DirectConnectionMessage instance using the specified properties.
          * @function create
-         * @memberof peerInterface.HolePunchRegisterRequest
+         * @memberof peerInterface.DirectConnectionMessage
          * @static
-         * @param {peerInterface.IHolePunchRegisterRequest=} [properties] Properties to set
-         * @returns {peerInterface.HolePunchRegisterRequest} HolePunchRegisterRequest instance
+         * @param {peerInterface.IDirectConnectionMessage=} [properties] Properties to set
+         * @returns {peerInterface.DirectConnectionMessage} DirectConnectionMessage instance
          */
-        HolePunchRegisterRequest.create = function create(properties) {
-            return new HolePunchRegisterRequest(properties);
+        DirectConnectionMessage.create = function create(properties) {
+            return new DirectConnectionMessage(properties);
         };
 
         /**
-         * Encodes the specified HolePunchRegisterRequest message. Does not implicitly {@link peerInterface.HolePunchRegisterRequest.verify|verify} messages.
+         * Encodes the specified DirectConnectionMessage message. Does not implicitly {@link peerInterface.DirectConnectionMessage.verify|verify} messages.
          * @function encode
-         * @memberof peerInterface.HolePunchRegisterRequest
+         * @memberof peerInterface.DirectConnectionMessage
          * @static
-         * @param {peerInterface.IHolePunchRegisterRequest} m HolePunchRegisterRequest message or plain object to encode
+         * @param {peerInterface.IDirectConnectionMessage} m DirectConnectionMessage message or plain object to encode
          * @param {$protobuf.Writer} [w] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        HolePunchRegisterRequest.encode = function encode(m, w) {
+        DirectConnectionMessage.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
-            if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
-                w.uint32(10).string(m.publicKey);
+            if (m.peerId != null && Object.hasOwnProperty.call(m, "peerId"))
+                w.uint32(10).string(m.peerId);
             return w;
         };
 
         /**
-         * Encodes the specified HolePunchRegisterRequest message, length delimited. Does not implicitly {@link peerInterface.HolePunchRegisterRequest.verify|verify} messages.
+         * Encodes the specified DirectConnectionMessage message, length delimited. Does not implicitly {@link peerInterface.DirectConnectionMessage.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof peerInterface.HolePunchRegisterRequest
+         * @memberof peerInterface.DirectConnectionMessage
          * @static
-         * @param {peerInterface.IHolePunchRegisterRequest} message HolePunchRegisterRequest message or plain object to encode
+         * @param {peerInterface.IDirectConnectionMessage} message DirectConnectionMessage message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        HolePunchRegisterRequest.encodeDelimited = function encodeDelimited(message, writer) {
+        DirectConnectionMessage.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
         /**
-         * Decodes a HolePunchRegisterRequest message from the specified reader or buffer.
+         * Decodes a DirectConnectionMessage message from the specified reader or buffer.
          * @function decode
-         * @memberof peerInterface.HolePunchRegisterRequest
+         * @memberof peerInterface.DirectConnectionMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
          * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.HolePunchRegisterRequest} HolePunchRegisterRequest
+         * @returns {peerInterface.DirectConnectionMessage} DirectConnectionMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        HolePunchRegisterRequest.decode = function decode(r, l) {
+        DirectConnectionMessage.decode = function decode(r, l) {
             if (!(r instanceof $Reader))
                 r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.HolePunchRegisterRequest();
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.DirectConnectionMessage();
             while (r.pos < c) {
                 var t = r.uint32();
                 switch (t >>> 3) {
                 case 1:
-                    m.publicKey = r.string();
+                    m.peerId = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1701,42 +1227,44 @@ $root.peerInterface = (function() {
         };
 
         /**
-         * Decodes a HolePunchRegisterRequest message from the specified reader or buffer, length delimited.
+         * Decodes a DirectConnectionMessage message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof peerInterface.HolePunchRegisterRequest
+         * @memberof peerInterface.DirectConnectionMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.HolePunchRegisterRequest} HolePunchRegisterRequest
+         * @returns {peerInterface.DirectConnectionMessage} DirectConnectionMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        HolePunchRegisterRequest.decodeDelimited = function decodeDelimited(reader) {
+        DirectConnectionMessage.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
-        return HolePunchRegisterRequest;
+        return DirectConnectionMessage;
     })();
 
-    peerInterface.HolePunchRegisterResponse = (function() {
+    peerInterface.HolePunchConnectionMessage = (function() {
 
         /**
-         * Properties of a HolePunchRegisterResponse.
+         * Properties of a HolePunchConnectionMessage.
          * @memberof peerInterface
-         * @interface IHolePunchRegisterResponse
-         * @property {string|null} [connectedAddress] HolePunchRegisterResponse connectedAddress
+         * @interface IHolePunchConnectionMessage
+         * @property {string|null} [targetPeerId] HolePunchConnectionMessage targetPeerId
+         * @property {string|null} [originPeerId] HolePunchConnectionMessage originPeerId
+         * @property {string|null} [udpAddress] HolePunchConnectionMessage udpAddress
          */
 
         /**
-         * Constructs a new HolePunchRegisterResponse.
+         * Constructs a new HolePunchConnectionMessage.
          * @memberof peerInterface
-         * @classdesc Represents a HolePunchRegisterResponse.
-         * @implements IHolePunchRegisterResponse
+         * @classdesc Represents a HolePunchConnectionMessage.
+         * @implements IHolePunchConnectionMessage
          * @constructor
-         * @param {peerInterface.IHolePunchRegisterResponse=} [p] Properties to set
+         * @param {peerInterface.IHolePunchConnectionMessage=} [p] Properties to set
          */
-        function HolePunchRegisterResponse(p) {
+        function HolePunchConnectionMessage(p) {
             if (p)
                 for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
                     if (p[ks[i]] != null)
@@ -1744,75 +1272,101 @@ $root.peerInterface = (function() {
         }
 
         /**
-         * HolePunchRegisterResponse connectedAddress.
-         * @member {string} connectedAddress
-         * @memberof peerInterface.HolePunchRegisterResponse
+         * HolePunchConnectionMessage targetPeerId.
+         * @member {string} targetPeerId
+         * @memberof peerInterface.HolePunchConnectionMessage
          * @instance
          */
-        HolePunchRegisterResponse.prototype.connectedAddress = "";
+        HolePunchConnectionMessage.prototype.targetPeerId = "";
 
         /**
-         * Creates a new HolePunchRegisterResponse instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.HolePunchRegisterResponse
-         * @static
-         * @param {peerInterface.IHolePunchRegisterResponse=} [properties] Properties to set
-         * @returns {peerInterface.HolePunchRegisterResponse} HolePunchRegisterResponse instance
+         * HolePunchConnectionMessage originPeerId.
+         * @member {string} originPeerId
+         * @memberof peerInterface.HolePunchConnectionMessage
+         * @instance
          */
-        HolePunchRegisterResponse.create = function create(properties) {
-            return new HolePunchRegisterResponse(properties);
+        HolePunchConnectionMessage.prototype.originPeerId = "";
+
+        /**
+         * HolePunchConnectionMessage udpAddress.
+         * @member {string} udpAddress
+         * @memberof peerInterface.HolePunchConnectionMessage
+         * @instance
+         */
+        HolePunchConnectionMessage.prototype.udpAddress = "";
+
+        /**
+         * Creates a new HolePunchConnectionMessage instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.HolePunchConnectionMessage
+         * @static
+         * @param {peerInterface.IHolePunchConnectionMessage=} [properties] Properties to set
+         * @returns {peerInterface.HolePunchConnectionMessage} HolePunchConnectionMessage instance
+         */
+        HolePunchConnectionMessage.create = function create(properties) {
+            return new HolePunchConnectionMessage(properties);
         };
 
         /**
-         * Encodes the specified HolePunchRegisterResponse message. Does not implicitly {@link peerInterface.HolePunchRegisterResponse.verify|verify} messages.
+         * Encodes the specified HolePunchConnectionMessage message. Does not implicitly {@link peerInterface.HolePunchConnectionMessage.verify|verify} messages.
          * @function encode
-         * @memberof peerInterface.HolePunchRegisterResponse
+         * @memberof peerInterface.HolePunchConnectionMessage
          * @static
-         * @param {peerInterface.IHolePunchRegisterResponse} m HolePunchRegisterResponse message or plain object to encode
+         * @param {peerInterface.IHolePunchConnectionMessage} m HolePunchConnectionMessage message or plain object to encode
          * @param {$protobuf.Writer} [w] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        HolePunchRegisterResponse.encode = function encode(m, w) {
+        HolePunchConnectionMessage.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
-            if (m.connectedAddress != null && Object.hasOwnProperty.call(m, "connectedAddress"))
-                w.uint32(10).string(m.connectedAddress);
+            if (m.targetPeerId != null && Object.hasOwnProperty.call(m, "targetPeerId"))
+                w.uint32(10).string(m.targetPeerId);
+            if (m.originPeerId != null && Object.hasOwnProperty.call(m, "originPeerId"))
+                w.uint32(18).string(m.originPeerId);
+            if (m.udpAddress != null && Object.hasOwnProperty.call(m, "udpAddress"))
+                w.uint32(26).string(m.udpAddress);
             return w;
         };
 
         /**
-         * Encodes the specified HolePunchRegisterResponse message, length delimited. Does not implicitly {@link peerInterface.HolePunchRegisterResponse.verify|verify} messages.
+         * Encodes the specified HolePunchConnectionMessage message, length delimited. Does not implicitly {@link peerInterface.HolePunchConnectionMessage.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof peerInterface.HolePunchRegisterResponse
+         * @memberof peerInterface.HolePunchConnectionMessage
          * @static
-         * @param {peerInterface.IHolePunchRegisterResponse} message HolePunchRegisterResponse message or plain object to encode
+         * @param {peerInterface.IHolePunchConnectionMessage} message HolePunchConnectionMessage message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        HolePunchRegisterResponse.encodeDelimited = function encodeDelimited(message, writer) {
+        HolePunchConnectionMessage.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
         /**
-         * Decodes a HolePunchRegisterResponse message from the specified reader or buffer.
+         * Decodes a HolePunchConnectionMessage message from the specified reader or buffer.
          * @function decode
-         * @memberof peerInterface.HolePunchRegisterResponse
+         * @memberof peerInterface.HolePunchConnectionMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
          * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.HolePunchRegisterResponse} HolePunchRegisterResponse
+         * @returns {peerInterface.HolePunchConnectionMessage} HolePunchConnectionMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        HolePunchRegisterResponse.decode = function decode(r, l) {
+        HolePunchConnectionMessage.decode = function decode(r, l) {
             if (!(r instanceof $Reader))
                 r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.HolePunchRegisterResponse();
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.HolePunchConnectionMessage();
             while (r.pos < c) {
                 var t = r.uint32();
                 switch (t >>> 3) {
                 case 1:
-                    m.connectedAddress = r.string();
+                    m.targetPeerId = r.string();
+                    break;
+                case 2:
+                    m.originPeerId = r.string();
+                    break;
+                case 3:
+                    m.udpAddress = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1823,42 +1377,44 @@ $root.peerInterface = (function() {
         };
 
         /**
-         * Decodes a HolePunchRegisterResponse message from the specified reader or buffer, length delimited.
+         * Decodes a HolePunchConnectionMessage message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof peerInterface.HolePunchRegisterResponse
+         * @memberof peerInterface.HolePunchConnectionMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.HolePunchRegisterResponse} HolePunchRegisterResponse
+         * @returns {peerInterface.HolePunchConnectionMessage} HolePunchConnectionMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        HolePunchRegisterResponse.decodeDelimited = function decodeDelimited(reader) {
+        HolePunchConnectionMessage.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
-        return HolePunchRegisterResponse;
+        return HolePunchConnectionMessage;
     })();
 
-    peerInterface.PeerUdpAddressRequest = (function() {
+    peerInterface.RelayConnectionMessage = (function() {
 
         /**
-         * Properties of a PeerUdpAddressRequest.
+         * Properties of a RelayConnectionMessage.
          * @memberof peerInterface
-         * @interface IPeerUdpAddressRequest
-         * @property {string|null} [publicKey] PeerUdpAddressRequest publicKey
+         * @interface IRelayConnectionMessage
+         * @property {string|null} [targetPeerId] RelayConnectionMessage targetPeerId
+         * @property {string|null} [originPeerId] RelayConnectionMessage originPeerId
+         * @property {string|null} [relayAddress] RelayConnectionMessage relayAddress
          */
 
         /**
-         * Constructs a new PeerUdpAddressRequest.
+         * Constructs a new RelayConnectionMessage.
          * @memberof peerInterface
-         * @classdesc Represents a PeerUdpAddressRequest.
-         * @implements IPeerUdpAddressRequest
+         * @classdesc Represents a RelayConnectionMessage.
+         * @implements IRelayConnectionMessage
          * @constructor
-         * @param {peerInterface.IPeerUdpAddressRequest=} [p] Properties to set
+         * @param {peerInterface.IRelayConnectionMessage=} [p] Properties to set
          */
-        function PeerUdpAddressRequest(p) {
+        function RelayConnectionMessage(p) {
             if (p)
                 for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
                     if (p[ks[i]] != null)
@@ -1866,75 +1422,101 @@ $root.peerInterface = (function() {
         }
 
         /**
-         * PeerUdpAddressRequest publicKey.
-         * @member {string} publicKey
-         * @memberof peerInterface.PeerUdpAddressRequest
+         * RelayConnectionMessage targetPeerId.
+         * @member {string} targetPeerId
+         * @memberof peerInterface.RelayConnectionMessage
          * @instance
          */
-        PeerUdpAddressRequest.prototype.publicKey = "";
+        RelayConnectionMessage.prototype.targetPeerId = "";
 
         /**
-         * Creates a new PeerUdpAddressRequest instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.PeerUdpAddressRequest
-         * @static
-         * @param {peerInterface.IPeerUdpAddressRequest=} [properties] Properties to set
-         * @returns {peerInterface.PeerUdpAddressRequest} PeerUdpAddressRequest instance
+         * RelayConnectionMessage originPeerId.
+         * @member {string} originPeerId
+         * @memberof peerInterface.RelayConnectionMessage
+         * @instance
          */
-        PeerUdpAddressRequest.create = function create(properties) {
-            return new PeerUdpAddressRequest(properties);
+        RelayConnectionMessage.prototype.originPeerId = "";
+
+        /**
+         * RelayConnectionMessage relayAddress.
+         * @member {string} relayAddress
+         * @memberof peerInterface.RelayConnectionMessage
+         * @instance
+         */
+        RelayConnectionMessage.prototype.relayAddress = "";
+
+        /**
+         * Creates a new RelayConnectionMessage instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.RelayConnectionMessage
+         * @static
+         * @param {peerInterface.IRelayConnectionMessage=} [properties] Properties to set
+         * @returns {peerInterface.RelayConnectionMessage} RelayConnectionMessage instance
+         */
+        RelayConnectionMessage.create = function create(properties) {
+            return new RelayConnectionMessage(properties);
         };
 
         /**
-         * Encodes the specified PeerUdpAddressRequest message. Does not implicitly {@link peerInterface.PeerUdpAddressRequest.verify|verify} messages.
+         * Encodes the specified RelayConnectionMessage message. Does not implicitly {@link peerInterface.RelayConnectionMessage.verify|verify} messages.
          * @function encode
-         * @memberof peerInterface.PeerUdpAddressRequest
+         * @memberof peerInterface.RelayConnectionMessage
          * @static
-         * @param {peerInterface.IPeerUdpAddressRequest} m PeerUdpAddressRequest message or plain object to encode
+         * @param {peerInterface.IRelayConnectionMessage} m RelayConnectionMessage message or plain object to encode
          * @param {$protobuf.Writer} [w] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        PeerUdpAddressRequest.encode = function encode(m, w) {
+        RelayConnectionMessage.encode = function encode(m, w) {
             if (!w)
                 w = $Writer.create();
-            if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
-                w.uint32(10).string(m.publicKey);
+            if (m.targetPeerId != null && Object.hasOwnProperty.call(m, "targetPeerId"))
+                w.uint32(10).string(m.targetPeerId);
+            if (m.originPeerId != null && Object.hasOwnProperty.call(m, "originPeerId"))
+                w.uint32(18).string(m.originPeerId);
+            if (m.relayAddress != null && Object.hasOwnProperty.call(m, "relayAddress"))
+                w.uint32(26).string(m.relayAddress);
             return w;
         };
 
         /**
-         * Encodes the specified PeerUdpAddressRequest message, length delimited. Does not implicitly {@link peerInterface.PeerUdpAddressRequest.verify|verify} messages.
+         * Encodes the specified RelayConnectionMessage message, length delimited. Does not implicitly {@link peerInterface.RelayConnectionMessage.verify|verify} messages.
          * @function encodeDelimited
-         * @memberof peerInterface.PeerUdpAddressRequest
+         * @memberof peerInterface.RelayConnectionMessage
          * @static
-         * @param {peerInterface.IPeerUdpAddressRequest} message PeerUdpAddressRequest message or plain object to encode
+         * @param {peerInterface.IRelayConnectionMessage} message RelayConnectionMessage message or plain object to encode
          * @param {$protobuf.Writer} [writer] Writer to encode to
          * @returns {$protobuf.Writer} Writer
          */
-        PeerUdpAddressRequest.encodeDelimited = function encodeDelimited(message, writer) {
+        RelayConnectionMessage.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
 
         /**
-         * Decodes a PeerUdpAddressRequest message from the specified reader or buffer.
+         * Decodes a RelayConnectionMessage message from the specified reader or buffer.
          * @function decode
-         * @memberof peerInterface.PeerUdpAddressRequest
+         * @memberof peerInterface.RelayConnectionMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
          * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.PeerUdpAddressRequest} PeerUdpAddressRequest
+         * @returns {peerInterface.RelayConnectionMessage} RelayConnectionMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        PeerUdpAddressRequest.decode = function decode(r, l) {
+        RelayConnectionMessage.decode = function decode(r, l) {
             if (!(r instanceof $Reader))
                 r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.PeerUdpAddressRequest();
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.RelayConnectionMessage();
             while (r.pos < c) {
                 var t = r.uint32();
                 switch (t >>> 3) {
                 case 1:
-                    m.publicKey = r.string();
+                    m.targetPeerId = r.string();
+                    break;
+                case 2:
+                    m.originPeerId = r.string();
+                    break;
+                case 3:
+                    m.relayAddress = r.string();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -1945,159 +1527,35 @@ $root.peerInterface = (function() {
         };
 
         /**
-         * Decodes a PeerUdpAddressRequest message from the specified reader or buffer, length delimited.
+         * Decodes a RelayConnectionMessage message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
-         * @memberof peerInterface.PeerUdpAddressRequest
+         * @memberof peerInterface.RelayConnectionMessage
          * @static
          * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.PeerUdpAddressRequest} PeerUdpAddressRequest
+         * @returns {peerInterface.RelayConnectionMessage} RelayConnectionMessage
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        PeerUdpAddressRequest.decodeDelimited = function decodeDelimited(reader) {
+        RelayConnectionMessage.decodeDelimited = function decodeDelimited(reader) {
             if (!(reader instanceof $Reader))
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
 
-        return PeerUdpAddressRequest;
-    })();
-
-    peerInterface.PeerUdpAddressResponse = (function() {
-
-        /**
-         * Properties of a PeerUdpAddressResponse.
-         * @memberof peerInterface
-         * @interface IPeerUdpAddressResponse
-         * @property {string|null} [address] PeerUdpAddressResponse address
-         */
-
-        /**
-         * Constructs a new PeerUdpAddressResponse.
-         * @memberof peerInterface
-         * @classdesc Represents a PeerUdpAddressResponse.
-         * @implements IPeerUdpAddressResponse
-         * @constructor
-         * @param {peerInterface.IPeerUdpAddressResponse=} [p] Properties to set
-         */
-        function PeerUdpAddressResponse(p) {
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
-
-        /**
-         * PeerUdpAddressResponse address.
-         * @member {string} address
-         * @memberof peerInterface.PeerUdpAddressResponse
-         * @instance
-         */
-        PeerUdpAddressResponse.prototype.address = "";
-
-        /**
-         * Creates a new PeerUdpAddressResponse instance using the specified properties.
-         * @function create
-         * @memberof peerInterface.PeerUdpAddressResponse
-         * @static
-         * @param {peerInterface.IPeerUdpAddressResponse=} [properties] Properties to set
-         * @returns {peerInterface.PeerUdpAddressResponse} PeerUdpAddressResponse instance
-         */
-        PeerUdpAddressResponse.create = function create(properties) {
-            return new PeerUdpAddressResponse(properties);
-        };
-
-        /**
-         * Encodes the specified PeerUdpAddressResponse message. Does not implicitly {@link peerInterface.PeerUdpAddressResponse.verify|verify} messages.
-         * @function encode
-         * @memberof peerInterface.PeerUdpAddressResponse
-         * @static
-         * @param {peerInterface.IPeerUdpAddressResponse} m PeerUdpAddressResponse message or plain object to encode
-         * @param {$protobuf.Writer} [w] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        PeerUdpAddressResponse.encode = function encode(m, w) {
-            if (!w)
-                w = $Writer.create();
-            if (m.address != null && Object.hasOwnProperty.call(m, "address"))
-                w.uint32(10).string(m.address);
-            return w;
-        };
-
-        /**
-         * Encodes the specified PeerUdpAddressResponse message, length delimited. Does not implicitly {@link peerInterface.PeerUdpAddressResponse.verify|verify} messages.
-         * @function encodeDelimited
-         * @memberof peerInterface.PeerUdpAddressResponse
-         * @static
-         * @param {peerInterface.IPeerUdpAddressResponse} message PeerUdpAddressResponse message or plain object to encode
-         * @param {$protobuf.Writer} [writer] Writer to encode to
-         * @returns {$protobuf.Writer} Writer
-         */
-        PeerUdpAddressResponse.encodeDelimited = function encodeDelimited(message, writer) {
-            return this.encode(message, writer).ldelim();
-        };
-
-        /**
-         * Decodes a PeerUdpAddressResponse message from the specified reader or buffer.
-         * @function decode
-         * @memberof peerInterface.PeerUdpAddressResponse
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
-         * @param {number} [l] Message length if known beforehand
-         * @returns {peerInterface.PeerUdpAddressResponse} PeerUdpAddressResponse
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        PeerUdpAddressResponse.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.PeerUdpAddressResponse();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                case 1:
-                    m.address = r.string();
-                    break;
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        /**
-         * Decodes a PeerUdpAddressResponse message from the specified reader or buffer, length delimited.
-         * @function decodeDelimited
-         * @memberof peerInterface.PeerUdpAddressResponse
-         * @static
-         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-         * @returns {peerInterface.PeerUdpAddressResponse} PeerUdpAddressResponse
-         * @throws {Error} If the payload is not a reader or valid buffer
-         * @throws {$protobuf.util.ProtocolError} If required fields are missing
-         */
-        PeerUdpAddressResponse.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        return PeerUdpAddressResponse;
+        return RelayConnectionMessage;
     })();
 
     /**
      * CAMessageType enum.
      * @name peerInterface.CAMessageType
      * @enum {number}
-     * @property {number} ERROR=0 ERROR value
-     * @property {number} ROOT_CERT=1 ROOT_CERT value
-     * @property {number} REQUEST_CERT=2 REQUEST_CERT value
+     * @property {number} ROOT_CERT=0 ROOT_CERT value
+     * @property {number} REQUEST_CERT=1 REQUEST_CERT value
      */
     peerInterface.CAMessageType = (function() {
         var valuesById = {}, values = Object.create(valuesById);
-        values[valuesById[0] = "ERROR"] = 0;
-        values[valuesById[1] = "ROOT_CERT"] = 1;
-        values[valuesById[2] = "REQUEST_CERT"] = 2;
+        values[valuesById[0] = "ROOT_CERT"] = 0;
+        values[valuesById[1] = "REQUEST_CERT"] = 1;
         return values;
     })();
 
@@ -2249,6 +1707,695 @@ $root.peerInterface = (function() {
         };
 
         return CAMessage;
+    })();
+
+    /**
+     * PeerDHTMessageType enum.
+     * @name peerInterface.PeerDHTMessageType
+     * @enum {number}
+     * @property {number} PING=0 PING value
+     * @property {number} FIND_NODE=1 FIND_NODE value
+     */
+    peerInterface.PeerDHTMessageType = (function() {
+        var valuesById = {}, values = Object.create(valuesById);
+        values[valuesById[0] = "PING"] = 0;
+        values[valuesById[1] = "FIND_NODE"] = 1;
+        return values;
+    })();
+
+    peerInterface.PeerDHTMessage = (function() {
+
+        /**
+         * Properties of a PeerDHTMessage.
+         * @memberof peerInterface
+         * @interface IPeerDHTMessage
+         * @property {peerInterface.PeerDHTMessageType|null} [type] PeerDHTMessage type
+         * @property {boolean|null} [isResponse] PeerDHTMessage isResponse
+         * @property {Uint8Array|null} [subMessage] PeerDHTMessage subMessage
+         */
+
+        /**
+         * Constructs a new PeerDHTMessage.
+         * @memberof peerInterface
+         * @classdesc Represents a PeerDHTMessage.
+         * @implements IPeerDHTMessage
+         * @constructor
+         * @param {peerInterface.IPeerDHTMessage=} [p] Properties to set
+         */
+        function PeerDHTMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * PeerDHTMessage type.
+         * @member {peerInterface.PeerDHTMessageType} type
+         * @memberof peerInterface.PeerDHTMessage
+         * @instance
+         */
+        PeerDHTMessage.prototype.type = 0;
+
+        /**
+         * PeerDHTMessage isResponse.
+         * @member {boolean} isResponse
+         * @memberof peerInterface.PeerDHTMessage
+         * @instance
+         */
+        PeerDHTMessage.prototype.isResponse = false;
+
+        /**
+         * PeerDHTMessage subMessage.
+         * @member {Uint8Array} subMessage
+         * @memberof peerInterface.PeerDHTMessage
+         * @instance
+         */
+        PeerDHTMessage.prototype.subMessage = $util.newBuffer([]);
+
+        /**
+         * Creates a new PeerDHTMessage instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.PeerDHTMessage
+         * @static
+         * @param {peerInterface.IPeerDHTMessage=} [properties] Properties to set
+         * @returns {peerInterface.PeerDHTMessage} PeerDHTMessage instance
+         */
+        PeerDHTMessage.create = function create(properties) {
+            return new PeerDHTMessage(properties);
+        };
+
+        /**
+         * Encodes the specified PeerDHTMessage message. Does not implicitly {@link peerInterface.PeerDHTMessage.verify|verify} messages.
+         * @function encode
+         * @memberof peerInterface.PeerDHTMessage
+         * @static
+         * @param {peerInterface.IPeerDHTMessage} m PeerDHTMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        PeerDHTMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.type != null && Object.hasOwnProperty.call(m, "type"))
+                w.uint32(8).int32(m.type);
+            if (m.isResponse != null && Object.hasOwnProperty.call(m, "isResponse"))
+                w.uint32(16).bool(m.isResponse);
+            if (m.subMessage != null && Object.hasOwnProperty.call(m, "subMessage"))
+                w.uint32(26).bytes(m.subMessage);
+            return w;
+        };
+
+        /**
+         * Encodes the specified PeerDHTMessage message, length delimited. Does not implicitly {@link peerInterface.PeerDHTMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof peerInterface.PeerDHTMessage
+         * @static
+         * @param {peerInterface.IPeerDHTMessage} message PeerDHTMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        PeerDHTMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a PeerDHTMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof peerInterface.PeerDHTMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {peerInterface.PeerDHTMessage} PeerDHTMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        PeerDHTMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.PeerDHTMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.type = r.int32();
+                    break;
+                case 2:
+                    m.isResponse = r.bool();
+                    break;
+                case 3:
+                    m.subMessage = r.bytes();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a PeerDHTMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof peerInterface.PeerDHTMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {peerInterface.PeerDHTMessage} PeerDHTMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        PeerDHTMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return PeerDHTMessage;
+    })();
+
+    peerInterface.PeerDHTPingNodeMessage = (function() {
+
+        /**
+         * Properties of a PeerDHTPingNodeMessage.
+         * @memberof peerInterface
+         * @interface IPeerDHTPingNodeMessage
+         * @property {string|null} [peerId] PeerDHTPingNodeMessage peerId
+         * @property {string|null} [randomChallenge] PeerDHTPingNodeMessage randomChallenge
+         */
+
+        /**
+         * Constructs a new PeerDHTPingNodeMessage.
+         * @memberof peerInterface
+         * @classdesc Represents a PeerDHTPingNodeMessage.
+         * @implements IPeerDHTPingNodeMessage
+         * @constructor
+         * @param {peerInterface.IPeerDHTPingNodeMessage=} [p] Properties to set
+         */
+        function PeerDHTPingNodeMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * PeerDHTPingNodeMessage peerId.
+         * @member {string} peerId
+         * @memberof peerInterface.PeerDHTPingNodeMessage
+         * @instance
+         */
+        PeerDHTPingNodeMessage.prototype.peerId = "";
+
+        /**
+         * PeerDHTPingNodeMessage randomChallenge.
+         * @member {string} randomChallenge
+         * @memberof peerInterface.PeerDHTPingNodeMessage
+         * @instance
+         */
+        PeerDHTPingNodeMessage.prototype.randomChallenge = "";
+
+        /**
+         * Creates a new PeerDHTPingNodeMessage instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.PeerDHTPingNodeMessage
+         * @static
+         * @param {peerInterface.IPeerDHTPingNodeMessage=} [properties] Properties to set
+         * @returns {peerInterface.PeerDHTPingNodeMessage} PeerDHTPingNodeMessage instance
+         */
+        PeerDHTPingNodeMessage.create = function create(properties) {
+            return new PeerDHTPingNodeMessage(properties);
+        };
+
+        /**
+         * Encodes the specified PeerDHTPingNodeMessage message. Does not implicitly {@link peerInterface.PeerDHTPingNodeMessage.verify|verify} messages.
+         * @function encode
+         * @memberof peerInterface.PeerDHTPingNodeMessage
+         * @static
+         * @param {peerInterface.IPeerDHTPingNodeMessage} m PeerDHTPingNodeMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        PeerDHTPingNodeMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.peerId != null && Object.hasOwnProperty.call(m, "peerId"))
+                w.uint32(10).string(m.peerId);
+            if (m.randomChallenge != null && Object.hasOwnProperty.call(m, "randomChallenge"))
+                w.uint32(18).string(m.randomChallenge);
+            return w;
+        };
+
+        /**
+         * Encodes the specified PeerDHTPingNodeMessage message, length delimited. Does not implicitly {@link peerInterface.PeerDHTPingNodeMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof peerInterface.PeerDHTPingNodeMessage
+         * @static
+         * @param {peerInterface.IPeerDHTPingNodeMessage} message PeerDHTPingNodeMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        PeerDHTPingNodeMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a PeerDHTPingNodeMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof peerInterface.PeerDHTPingNodeMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {peerInterface.PeerDHTPingNodeMessage} PeerDHTPingNodeMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        PeerDHTPingNodeMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.PeerDHTPingNodeMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.peerId = r.string();
+                    break;
+                case 2:
+                    m.randomChallenge = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a PeerDHTPingNodeMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof peerInterface.PeerDHTPingNodeMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {peerInterface.PeerDHTPingNodeMessage} PeerDHTPingNodeMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        PeerDHTPingNodeMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return PeerDHTPingNodeMessage;
+    })();
+
+    peerInterface.PeerDHTFindNodeMessage = (function() {
+
+        /**
+         * Properties of a PeerDHTFindNodeMessage.
+         * @memberof peerInterface
+         * @interface IPeerDHTFindNodeMessage
+         * @property {string|null} [peerId] PeerDHTFindNodeMessage peerId
+         * @property {Array.<peerInterface.IPeerInfoMessage>|null} [closestPeers] PeerDHTFindNodeMessage closestPeers
+         */
+
+        /**
+         * Constructs a new PeerDHTFindNodeMessage.
+         * @memberof peerInterface
+         * @classdesc Represents a PeerDHTFindNodeMessage.
+         * @implements IPeerDHTFindNodeMessage
+         * @constructor
+         * @param {peerInterface.IPeerDHTFindNodeMessage=} [p] Properties to set
+         */
+        function PeerDHTFindNodeMessage(p) {
+            this.closestPeers = [];
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * PeerDHTFindNodeMessage peerId.
+         * @member {string} peerId
+         * @memberof peerInterface.PeerDHTFindNodeMessage
+         * @instance
+         */
+        PeerDHTFindNodeMessage.prototype.peerId = "";
+
+        /**
+         * PeerDHTFindNodeMessage closestPeers.
+         * @member {Array.<peerInterface.IPeerInfoMessage>} closestPeers
+         * @memberof peerInterface.PeerDHTFindNodeMessage
+         * @instance
+         */
+        PeerDHTFindNodeMessage.prototype.closestPeers = $util.emptyArray;
+
+        /**
+         * Creates a new PeerDHTFindNodeMessage instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.PeerDHTFindNodeMessage
+         * @static
+         * @param {peerInterface.IPeerDHTFindNodeMessage=} [properties] Properties to set
+         * @returns {peerInterface.PeerDHTFindNodeMessage} PeerDHTFindNodeMessage instance
+         */
+        PeerDHTFindNodeMessage.create = function create(properties) {
+            return new PeerDHTFindNodeMessage(properties);
+        };
+
+        /**
+         * Encodes the specified PeerDHTFindNodeMessage message. Does not implicitly {@link peerInterface.PeerDHTFindNodeMessage.verify|verify} messages.
+         * @function encode
+         * @memberof peerInterface.PeerDHTFindNodeMessage
+         * @static
+         * @param {peerInterface.IPeerDHTFindNodeMessage} m PeerDHTFindNodeMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        PeerDHTFindNodeMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.peerId != null && Object.hasOwnProperty.call(m, "peerId"))
+                w.uint32(10).string(m.peerId);
+            if (m.closestPeers != null && m.closestPeers.length) {
+                for (var i = 0; i < m.closestPeers.length; ++i)
+                    $root.peerInterface.PeerInfoMessage.encode(m.closestPeers[i], w.uint32(18).fork()).ldelim();
+            }
+            return w;
+        };
+
+        /**
+         * Encodes the specified PeerDHTFindNodeMessage message, length delimited. Does not implicitly {@link peerInterface.PeerDHTFindNodeMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof peerInterface.PeerDHTFindNodeMessage
+         * @static
+         * @param {peerInterface.IPeerDHTFindNodeMessage} message PeerDHTFindNodeMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        PeerDHTFindNodeMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a PeerDHTFindNodeMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof peerInterface.PeerDHTFindNodeMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {peerInterface.PeerDHTFindNodeMessage} PeerDHTFindNodeMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        PeerDHTFindNodeMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.PeerDHTFindNodeMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.peerId = r.string();
+                    break;
+                case 2:
+                    if (!(m.closestPeers && m.closestPeers.length))
+                        m.closestPeers = [];
+                    m.closestPeers.push($root.peerInterface.PeerInfoMessage.decode(r, r.uint32()));
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a PeerDHTFindNodeMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof peerInterface.PeerDHTFindNodeMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {peerInterface.PeerDHTFindNodeMessage} PeerDHTFindNodeMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        PeerDHTFindNodeMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return PeerDHTFindNodeMessage;
+    })();
+
+    peerInterface.MTPPacket = (function() {
+
+        /**
+         * Properties of a MTPPacket.
+         * @memberof peerInterface
+         * @interface IMTPPacket
+         * @property {number|null} [id] MTPPacket id
+         * @property {string|null} [peerId] MTPPacket peerId
+         * @property {number|null} [connection] MTPPacket connection
+         * @property {number|null} [timestamp] MTPPacket timestamp
+         * @property {number|null} [timediff] MTPPacket timediff
+         * @property {number|null} [window] MTPPacket window
+         * @property {number|null} [seq] MTPPacket seq
+         * @property {number|null} [ack] MTPPacket ack
+         * @property {Uint8Array|null} [data] MTPPacket data
+         * @property {number|null} [sent] MTPPacket sent
+         */
+
+        /**
+         * Constructs a new MTPPacket.
+         * @memberof peerInterface
+         * @classdesc Represents a MTPPacket.
+         * @implements IMTPPacket
+         * @constructor
+         * @param {peerInterface.IMTPPacket=} [p] Properties to set
+         */
+        function MTPPacket(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * MTPPacket id.
+         * @member {number} id
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.id = 0;
+
+        /**
+         * MTPPacket peerId.
+         * @member {string} peerId
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.peerId = "";
+
+        /**
+         * MTPPacket connection.
+         * @member {number} connection
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.connection = 0;
+
+        /**
+         * MTPPacket timestamp.
+         * @member {number} timestamp
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.timestamp = 0;
+
+        /**
+         * MTPPacket timediff.
+         * @member {number} timediff
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.timediff = 0;
+
+        /**
+         * MTPPacket window.
+         * @member {number} window
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.window = 0;
+
+        /**
+         * MTPPacket seq.
+         * @member {number} seq
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.seq = 0;
+
+        /**
+         * MTPPacket ack.
+         * @member {number} ack
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.ack = 0;
+
+        /**
+         * MTPPacket data.
+         * @member {Uint8Array} data
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.data = $util.newBuffer([]);
+
+        /**
+         * MTPPacket sent.
+         * @member {number} sent
+         * @memberof peerInterface.MTPPacket
+         * @instance
+         */
+        MTPPacket.prototype.sent = 0;
+
+        /**
+         * Creates a new MTPPacket instance using the specified properties.
+         * @function create
+         * @memberof peerInterface.MTPPacket
+         * @static
+         * @param {peerInterface.IMTPPacket=} [properties] Properties to set
+         * @returns {peerInterface.MTPPacket} MTPPacket instance
+         */
+        MTPPacket.create = function create(properties) {
+            return new MTPPacket(properties);
+        };
+
+        /**
+         * Encodes the specified MTPPacket message. Does not implicitly {@link peerInterface.MTPPacket.verify|verify} messages.
+         * @function encode
+         * @memberof peerInterface.MTPPacket
+         * @static
+         * @param {peerInterface.IMTPPacket} m MTPPacket message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        MTPPacket.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.id != null && Object.hasOwnProperty.call(m, "id"))
+                w.uint32(8).int32(m.id);
+            if (m.peerId != null && Object.hasOwnProperty.call(m, "peerId"))
+                w.uint32(18).string(m.peerId);
+            if (m.connection != null && Object.hasOwnProperty.call(m, "connection"))
+                w.uint32(24).int32(m.connection);
+            if (m.timestamp != null && Object.hasOwnProperty.call(m, "timestamp"))
+                w.uint32(32).int32(m.timestamp);
+            if (m.timediff != null && Object.hasOwnProperty.call(m, "timediff"))
+                w.uint32(40).int32(m.timediff);
+            if (m.window != null && Object.hasOwnProperty.call(m, "window"))
+                w.uint32(48).int32(m.window);
+            if (m.seq != null && Object.hasOwnProperty.call(m, "seq"))
+                w.uint32(56).int32(m.seq);
+            if (m.ack != null && Object.hasOwnProperty.call(m, "ack"))
+                w.uint32(64).int32(m.ack);
+            if (m.data != null && Object.hasOwnProperty.call(m, "data"))
+                w.uint32(74).bytes(m.data);
+            if (m.sent != null && Object.hasOwnProperty.call(m, "sent"))
+                w.uint32(80).int32(m.sent);
+            return w;
+        };
+
+        /**
+         * Encodes the specified MTPPacket message, length delimited. Does not implicitly {@link peerInterface.MTPPacket.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof peerInterface.MTPPacket
+         * @static
+         * @param {peerInterface.IMTPPacket} message MTPPacket message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        MTPPacket.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a MTPPacket message from the specified reader or buffer.
+         * @function decode
+         * @memberof peerInterface.MTPPacket
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {peerInterface.MTPPacket} MTPPacket
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        MTPPacket.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.peerInterface.MTPPacket();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.id = r.int32();
+                    break;
+                case 2:
+                    m.peerId = r.string();
+                    break;
+                case 3:
+                    m.connection = r.int32();
+                    break;
+                case 4:
+                    m.timestamp = r.int32();
+                    break;
+                case 5:
+                    m.timediff = r.int32();
+                    break;
+                case 6:
+                    m.window = r.int32();
+                    break;
+                case 7:
+                    m.seq = r.int32();
+                    break;
+                case 8:
+                    m.ack = r.int32();
+                    break;
+                case 9:
+                    m.data = r.bytes();
+                    break;
+                case 10:
+                    m.sent = r.int32();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a MTPPacket message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof peerInterface.MTPPacket
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {peerInterface.MTPPacket} MTPPacket
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        MTPPacket.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return MTPPacket;
     })();
 
     return peerInterface;

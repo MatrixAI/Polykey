@@ -22,7 +22,7 @@ describe('VaultManager class', () => {
 
     // Create CA keyManager
     caKm = new KeyManager(caTempDir, fs)
-    await caKm.generateKeyPair('John Smith', 'passphrase', 1024, true)
+    await caKm.generateKeyPair('John Smith', 'passphrase', true)
 
     // Define temp directory
     tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
@@ -31,7 +31,7 @@ describe('VaultManager class', () => {
     const km = new KeyManager(tempDir, fs)
 
     // Generate keypair
-    await km.generateKeyPair('John Smith', 'passphrase', 1024, true)
+    await km.generateKeyPair('John Smith', 'passphrase', true)
 
     // request certificate from CA
     km.pki.addCA(caKm.pki.RootCert)
@@ -119,7 +119,7 @@ describe('VaultManager class', () => {
       const km2 = new KeyManager(tempDir2, fs)
 
       // Generate keypair
-      await km2.generateKeyPair('Jane Doe', 'passphrase', 1024, true)
+      await km2.generateKeyPair('Jane Doe', 'passphrase', true)
 
       // request certificate from CA
       km2.pki.addCA(caKm.pki.RootCert)

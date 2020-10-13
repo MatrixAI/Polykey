@@ -131,7 +131,8 @@ declare namespace Peer {
             PING_PEER = 0,
             GIT = 1,
             NAT_TRAVERSAL = 2,
-            CERTIFICATE_AUTHORITY = 3
+            CERTIFICATE_AUTHORITY = 3,
+            PEER_DHT = 4
         }
 
         /** Properties of a PingPeerMessage. */
@@ -214,8 +215,8 @@ declare namespace Peer {
             /** PeerInfoMessage publicKey */
             publicKey?: (string|null);
 
-            /** PeerInfoMessage relayPublicKey */
-            relayPublicKey?: (string|null);
+            /** PeerInfoMessage rootCertificate */
+            rootCertificate?: (string|null);
 
             /** PeerInfoMessage peerAddress */
             peerAddress?: (string|null);
@@ -236,8 +237,8 @@ declare namespace Peer {
             /** PeerInfoMessage publicKey. */
             public publicKey: string;
 
-            /** PeerInfoMessage relayPublicKey. */
-            public relayPublicKey: string;
+            /** PeerInfoMessage rootCertificate. */
+            public rootCertificate: string;
 
             /** PeerInfoMessage peerAddress. */
             public peerAddress: string;
@@ -414,11 +415,10 @@ declare namespace Peer {
 
         /** NatMessageType enum. */
         enum NatMessageType {
-            ERROR = 0,
-            RELAY_CONNECTION = 1,
-            PEER_CONNECTION = 2,
-            UDP_ADDRESS = 3,
-            PEER_UDP_ADDRESS = 4
+            UDP_ADDRESS = 0,
+            DIRECT_CONNECTION = 1,
+            HOLE_PUNCH_CONNECTION = 2,
+            RELAY_CONNECTION = 3
         }
 
         /** Properties of a NatMessage. */
@@ -495,569 +495,288 @@ declare namespace Peer {
             public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.NatMessage;
         }
 
-        /** Properties of a RelayConnectionRequest. */
-        interface IRelayConnectionRequest {
+        /** Properties of a UDPAddressMessage. */
+        interface IUDPAddressMessage {
 
-            /** RelayConnectionRequest publicKey */
-            publicKey?: (string|null);
-        }
-
-        /** Represents a RelayConnectionRequest. */
-        class RelayConnectionRequest implements IRelayConnectionRequest {
-
-            /**
-             * Constructs a new RelayConnectionRequest.
-             * @param [p] Properties to set
-             */
-            constructor(p?: peerInterface.IRelayConnectionRequest);
-
-            /** RelayConnectionRequest publicKey. */
-            public publicKey: string;
-
-            /**
-             * Creates a new RelayConnectionRequest instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns RelayConnectionRequest instance
-             */
-            public static create(properties?: peerInterface.IRelayConnectionRequest): peerInterface.RelayConnectionRequest;
-
-            /**
-             * Encodes the specified RelayConnectionRequest message. Does not implicitly {@link peerInterface.RelayConnectionRequest.verify|verify} messages.
-             * @param m RelayConnectionRequest message or plain object to encode
-             * @param [w] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(m: peerInterface.IRelayConnectionRequest, w?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified RelayConnectionRequest message, length delimited. Does not implicitly {@link peerInterface.RelayConnectionRequest.verify|verify} messages.
-             * @param message RelayConnectionRequest message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: peerInterface.IRelayConnectionRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes a RelayConnectionRequest message from the specified reader or buffer.
-             * @param r Reader or buffer to decode from
-             * @param [l] Message length if known beforehand
-             * @returns RelayConnectionRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.RelayConnectionRequest;
-
-            /**
-             * Decodes a RelayConnectionRequest message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns RelayConnectionRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.RelayConnectionRequest;
-        }
-
-        /** Properties of a RelayConnectionResponse. */
-        interface IRelayConnectionResponse {
-
-            /** RelayConnectionResponse serverAddress */
-            serverAddress?: (string|null);
-        }
-
-        /** Represents a RelayConnectionResponse. */
-        class RelayConnectionResponse implements IRelayConnectionResponse {
-
-            /**
-             * Constructs a new RelayConnectionResponse.
-             * @param [p] Properties to set
-             */
-            constructor(p?: peerInterface.IRelayConnectionResponse);
-
-            /** RelayConnectionResponse serverAddress. */
-            public serverAddress: string;
-
-            /**
-             * Creates a new RelayConnectionResponse instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns RelayConnectionResponse instance
-             */
-            public static create(properties?: peerInterface.IRelayConnectionResponse): peerInterface.RelayConnectionResponse;
-
-            /**
-             * Encodes the specified RelayConnectionResponse message. Does not implicitly {@link peerInterface.RelayConnectionResponse.verify|verify} messages.
-             * @param m RelayConnectionResponse message or plain object to encode
-             * @param [w] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(m: peerInterface.IRelayConnectionResponse, w?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified RelayConnectionResponse message, length delimited. Does not implicitly {@link peerInterface.RelayConnectionResponse.verify|verify} messages.
-             * @param message RelayConnectionResponse message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: peerInterface.IRelayConnectionResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes a RelayConnectionResponse message from the specified reader or buffer.
-             * @param r Reader or buffer to decode from
-             * @param [l] Message length if known beforehand
-             * @returns RelayConnectionResponse
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.RelayConnectionResponse;
-
-            /**
-             * Decodes a RelayConnectionResponse message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns RelayConnectionResponse
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.RelayConnectionResponse;
-        }
-
-        /** Properties of a PeerConnectionRequest. */
-        interface IPeerConnectionRequest {
-
-            /** PeerConnectionRequest publicKey */
-            publicKey?: (string|null);
-        }
-
-        /** Represents a PeerConnectionRequest. */
-        class PeerConnectionRequest implements IPeerConnectionRequest {
-
-            /**
-             * Constructs a new PeerConnectionRequest.
-             * @param [p] Properties to set
-             */
-            constructor(p?: peerInterface.IPeerConnectionRequest);
-
-            /** PeerConnectionRequest publicKey. */
-            public publicKey: string;
-
-            /**
-             * Creates a new PeerConnectionRequest instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns PeerConnectionRequest instance
-             */
-            public static create(properties?: peerInterface.IPeerConnectionRequest): peerInterface.PeerConnectionRequest;
-
-            /**
-             * Encodes the specified PeerConnectionRequest message. Does not implicitly {@link peerInterface.PeerConnectionRequest.verify|verify} messages.
-             * @param m PeerConnectionRequest message or plain object to encode
-             * @param [w] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(m: peerInterface.IPeerConnectionRequest, w?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified PeerConnectionRequest message, length delimited. Does not implicitly {@link peerInterface.PeerConnectionRequest.verify|verify} messages.
-             * @param message PeerConnectionRequest message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: peerInterface.IPeerConnectionRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes a PeerConnectionRequest message from the specified reader or buffer.
-             * @param r Reader or buffer to decode from
-             * @param [l] Message length if known beforehand
-             * @returns PeerConnectionRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.PeerConnectionRequest;
-
-            /**
-             * Decodes a PeerConnectionRequest message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns PeerConnectionRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerConnectionRequest;
-        }
-
-        /** Properties of a PeerConnectionResponse. */
-        interface IPeerConnectionResponse {
-
-            /** PeerConnectionResponse peerAddress */
-            peerAddress?: (string|null);
-        }
-
-        /** Represents a PeerConnectionResponse. */
-        class PeerConnectionResponse implements IPeerConnectionResponse {
-
-            /**
-             * Constructs a new PeerConnectionResponse.
-             * @param [p] Properties to set
-             */
-            constructor(p?: peerInterface.IPeerConnectionResponse);
-
-            /** PeerConnectionResponse peerAddress. */
-            public peerAddress: string;
-
-            /**
-             * Creates a new PeerConnectionResponse instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns PeerConnectionResponse instance
-             */
-            public static create(properties?: peerInterface.IPeerConnectionResponse): peerInterface.PeerConnectionResponse;
-
-            /**
-             * Encodes the specified PeerConnectionResponse message. Does not implicitly {@link peerInterface.PeerConnectionResponse.verify|verify} messages.
-             * @param m PeerConnectionResponse message or plain object to encode
-             * @param [w] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(m: peerInterface.IPeerConnectionResponse, w?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified PeerConnectionResponse message, length delimited. Does not implicitly {@link peerInterface.PeerConnectionResponse.verify|verify} messages.
-             * @param message PeerConnectionResponse message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: peerInterface.IPeerConnectionResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes a PeerConnectionResponse message from the specified reader or buffer.
-             * @param r Reader or buffer to decode from
-             * @param [l] Message length if known beforehand
-             * @returns PeerConnectionResponse
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.PeerConnectionResponse;
-
-            /**
-             * Decodes a PeerConnectionResponse message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns PeerConnectionResponse
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerConnectionResponse;
-        }
-
-        /** Properties of a UDPAddressResponse. */
-        interface IUDPAddressResponse {
-
-            /** UDPAddressResponse address */
+            /** UDPAddressMessage address */
             address?: (string|null);
+
+            /** UDPAddressMessage token */
+            token?: (string|null);
         }
 
-        /** Represents a UDPAddressResponse. */
-        class UDPAddressResponse implements IUDPAddressResponse {
+        /** Represents a UDPAddressMessage. */
+        class UDPAddressMessage implements IUDPAddressMessage {
 
             /**
-             * Constructs a new UDPAddressResponse.
+             * Constructs a new UDPAddressMessage.
              * @param [p] Properties to set
              */
-            constructor(p?: peerInterface.IUDPAddressResponse);
+            constructor(p?: peerInterface.IUDPAddressMessage);
 
-            /** UDPAddressResponse address. */
+            /** UDPAddressMessage address. */
             public address: string;
 
-            /**
-             * Creates a new UDPAddressResponse instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns UDPAddressResponse instance
-             */
-            public static create(properties?: peerInterface.IUDPAddressResponse): peerInterface.UDPAddressResponse;
+            /** UDPAddressMessage token. */
+            public token: string;
 
             /**
-             * Encodes the specified UDPAddressResponse message. Does not implicitly {@link peerInterface.UDPAddressResponse.verify|verify} messages.
-             * @param m UDPAddressResponse message or plain object to encode
+             * Creates a new UDPAddressMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns UDPAddressMessage instance
+             */
+            public static create(properties?: peerInterface.IUDPAddressMessage): peerInterface.UDPAddressMessage;
+
+            /**
+             * Encodes the specified UDPAddressMessage message. Does not implicitly {@link peerInterface.UDPAddressMessage.verify|verify} messages.
+             * @param m UDPAddressMessage message or plain object to encode
              * @param [w] Writer to encode to
              * @returns Writer
              */
-            public static encode(m: peerInterface.IUDPAddressResponse, w?: $protobuf.Writer): $protobuf.Writer;
+            public static encode(m: peerInterface.IUDPAddressMessage, w?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Encodes the specified UDPAddressResponse message, length delimited. Does not implicitly {@link peerInterface.UDPAddressResponse.verify|verify} messages.
-             * @param message UDPAddressResponse message or plain object to encode
+             * Encodes the specified UDPAddressMessage message, length delimited. Does not implicitly {@link peerInterface.UDPAddressMessage.verify|verify} messages.
+             * @param message UDPAddressMessage message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encodeDelimited(message: peerInterface.IUDPAddressResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encodeDelimited(message: peerInterface.IUDPAddressMessage, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Decodes a UDPAddressResponse message from the specified reader or buffer.
+             * Decodes a UDPAddressMessage message from the specified reader or buffer.
              * @param r Reader or buffer to decode from
              * @param [l] Message length if known beforehand
-             * @returns UDPAddressResponse
+             * @returns UDPAddressMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.UDPAddressResponse;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.UDPAddressMessage;
 
             /**
-             * Decodes a UDPAddressResponse message from the specified reader or buffer, length delimited.
+             * Decodes a UDPAddressMessage message from the specified reader or buffer, length delimited.
              * @param reader Reader or buffer to decode from
-             * @returns UDPAddressResponse
+             * @returns UDPAddressMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.UDPAddressResponse;
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.UDPAddressMessage;
         }
 
-        /** Properties of a HolePunchRegisterRequest. */
-        interface IHolePunchRegisterRequest {
+        /** Properties of a DirectConnectionMessage. */
+        interface IDirectConnectionMessage {
 
-            /** HolePunchRegisterRequest publicKey */
-            publicKey?: (string|null);
+            /** DirectConnectionMessage peerId */
+            peerId?: (string|null);
         }
 
-        /** Represents a HolePunchRegisterRequest. */
-        class HolePunchRegisterRequest implements IHolePunchRegisterRequest {
+        /** Represents a DirectConnectionMessage. */
+        class DirectConnectionMessage implements IDirectConnectionMessage {
 
             /**
-             * Constructs a new HolePunchRegisterRequest.
+             * Constructs a new DirectConnectionMessage.
              * @param [p] Properties to set
              */
-            constructor(p?: peerInterface.IHolePunchRegisterRequest);
+            constructor(p?: peerInterface.IDirectConnectionMessage);
 
-            /** HolePunchRegisterRequest publicKey. */
-            public publicKey: string;
+            /** DirectConnectionMessage peerId. */
+            public peerId: string;
 
             /**
-             * Creates a new HolePunchRegisterRequest instance using the specified properties.
+             * Creates a new DirectConnectionMessage instance using the specified properties.
              * @param [properties] Properties to set
-             * @returns HolePunchRegisterRequest instance
+             * @returns DirectConnectionMessage instance
              */
-            public static create(properties?: peerInterface.IHolePunchRegisterRequest): peerInterface.HolePunchRegisterRequest;
+            public static create(properties?: peerInterface.IDirectConnectionMessage): peerInterface.DirectConnectionMessage;
 
             /**
-             * Encodes the specified HolePunchRegisterRequest message. Does not implicitly {@link peerInterface.HolePunchRegisterRequest.verify|verify} messages.
-             * @param m HolePunchRegisterRequest message or plain object to encode
+             * Encodes the specified DirectConnectionMessage message. Does not implicitly {@link peerInterface.DirectConnectionMessage.verify|verify} messages.
+             * @param m DirectConnectionMessage message or plain object to encode
              * @param [w] Writer to encode to
              * @returns Writer
              */
-            public static encode(m: peerInterface.IHolePunchRegisterRequest, w?: $protobuf.Writer): $protobuf.Writer;
+            public static encode(m: peerInterface.IDirectConnectionMessage, w?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Encodes the specified HolePunchRegisterRequest message, length delimited. Does not implicitly {@link peerInterface.HolePunchRegisterRequest.verify|verify} messages.
-             * @param message HolePunchRegisterRequest message or plain object to encode
+             * Encodes the specified DirectConnectionMessage message, length delimited. Does not implicitly {@link peerInterface.DirectConnectionMessage.verify|verify} messages.
+             * @param message DirectConnectionMessage message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encodeDelimited(message: peerInterface.IHolePunchRegisterRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encodeDelimited(message: peerInterface.IDirectConnectionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Decodes a HolePunchRegisterRequest message from the specified reader or buffer.
+             * Decodes a DirectConnectionMessage message from the specified reader or buffer.
              * @param r Reader or buffer to decode from
              * @param [l] Message length if known beforehand
-             * @returns HolePunchRegisterRequest
+             * @returns DirectConnectionMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.HolePunchRegisterRequest;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.DirectConnectionMessage;
 
             /**
-             * Decodes a HolePunchRegisterRequest message from the specified reader or buffer, length delimited.
+             * Decodes a DirectConnectionMessage message from the specified reader or buffer, length delimited.
              * @param reader Reader or buffer to decode from
-             * @returns HolePunchRegisterRequest
+             * @returns DirectConnectionMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.HolePunchRegisterRequest;
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.DirectConnectionMessage;
         }
 
-        /** Properties of a HolePunchRegisterResponse. */
-        interface IHolePunchRegisterResponse {
+        /** Properties of a HolePunchConnectionMessage. */
+        interface IHolePunchConnectionMessage {
 
-            /** HolePunchRegisterResponse connectedAddress */
-            connectedAddress?: (string|null);
+            /** HolePunchConnectionMessage targetPeerId */
+            targetPeerId?: (string|null);
+
+            /** HolePunchConnectionMessage originPeerId */
+            originPeerId?: (string|null);
+
+            /** HolePunchConnectionMessage udpAddress */
+            udpAddress?: (string|null);
         }
 
-        /** Represents a HolePunchRegisterResponse. */
-        class HolePunchRegisterResponse implements IHolePunchRegisterResponse {
+        /** Represents a HolePunchConnectionMessage. */
+        class HolePunchConnectionMessage implements IHolePunchConnectionMessage {
 
             /**
-             * Constructs a new HolePunchRegisterResponse.
+             * Constructs a new HolePunchConnectionMessage.
              * @param [p] Properties to set
              */
-            constructor(p?: peerInterface.IHolePunchRegisterResponse);
+            constructor(p?: peerInterface.IHolePunchConnectionMessage);
 
-            /** HolePunchRegisterResponse connectedAddress. */
-            public connectedAddress: string;
+            /** HolePunchConnectionMessage targetPeerId. */
+            public targetPeerId: string;
+
+            /** HolePunchConnectionMessage originPeerId. */
+            public originPeerId: string;
+
+            /** HolePunchConnectionMessage udpAddress. */
+            public udpAddress: string;
 
             /**
-             * Creates a new HolePunchRegisterResponse instance using the specified properties.
+             * Creates a new HolePunchConnectionMessage instance using the specified properties.
              * @param [properties] Properties to set
-             * @returns HolePunchRegisterResponse instance
+             * @returns HolePunchConnectionMessage instance
              */
-            public static create(properties?: peerInterface.IHolePunchRegisterResponse): peerInterface.HolePunchRegisterResponse;
+            public static create(properties?: peerInterface.IHolePunchConnectionMessage): peerInterface.HolePunchConnectionMessage;
 
             /**
-             * Encodes the specified HolePunchRegisterResponse message. Does not implicitly {@link peerInterface.HolePunchRegisterResponse.verify|verify} messages.
-             * @param m HolePunchRegisterResponse message or plain object to encode
+             * Encodes the specified HolePunchConnectionMessage message. Does not implicitly {@link peerInterface.HolePunchConnectionMessage.verify|verify} messages.
+             * @param m HolePunchConnectionMessage message or plain object to encode
              * @param [w] Writer to encode to
              * @returns Writer
              */
-            public static encode(m: peerInterface.IHolePunchRegisterResponse, w?: $protobuf.Writer): $protobuf.Writer;
+            public static encode(m: peerInterface.IHolePunchConnectionMessage, w?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Encodes the specified HolePunchRegisterResponse message, length delimited. Does not implicitly {@link peerInterface.HolePunchRegisterResponse.verify|verify} messages.
-             * @param message HolePunchRegisterResponse message or plain object to encode
+             * Encodes the specified HolePunchConnectionMessage message, length delimited. Does not implicitly {@link peerInterface.HolePunchConnectionMessage.verify|verify} messages.
+             * @param message HolePunchConnectionMessage message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encodeDelimited(message: peerInterface.IHolePunchRegisterResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encodeDelimited(message: peerInterface.IHolePunchConnectionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Decodes a HolePunchRegisterResponse message from the specified reader or buffer.
+             * Decodes a HolePunchConnectionMessage message from the specified reader or buffer.
              * @param r Reader or buffer to decode from
              * @param [l] Message length if known beforehand
-             * @returns HolePunchRegisterResponse
+             * @returns HolePunchConnectionMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.HolePunchRegisterResponse;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.HolePunchConnectionMessage;
 
             /**
-             * Decodes a HolePunchRegisterResponse message from the specified reader or buffer, length delimited.
+             * Decodes a HolePunchConnectionMessage message from the specified reader or buffer, length delimited.
              * @param reader Reader or buffer to decode from
-             * @returns HolePunchRegisterResponse
+             * @returns HolePunchConnectionMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.HolePunchRegisterResponse;
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.HolePunchConnectionMessage;
         }
 
-        /** Properties of a PeerUdpAddressRequest. */
-        interface IPeerUdpAddressRequest {
+        /** Properties of a RelayConnectionMessage. */
+        interface IRelayConnectionMessage {
 
-            /** PeerUdpAddressRequest publicKey */
-            publicKey?: (string|null);
+            /** RelayConnectionMessage targetPeerId */
+            targetPeerId?: (string|null);
+
+            /** RelayConnectionMessage originPeerId */
+            originPeerId?: (string|null);
+
+            /** RelayConnectionMessage relayAddress */
+            relayAddress?: (string|null);
         }
 
-        /** Represents a PeerUdpAddressRequest. */
-        class PeerUdpAddressRequest implements IPeerUdpAddressRequest {
+        /** Represents a RelayConnectionMessage. */
+        class RelayConnectionMessage implements IRelayConnectionMessage {
 
             /**
-             * Constructs a new PeerUdpAddressRequest.
+             * Constructs a new RelayConnectionMessage.
              * @param [p] Properties to set
              */
-            constructor(p?: peerInterface.IPeerUdpAddressRequest);
+            constructor(p?: peerInterface.IRelayConnectionMessage);
 
-            /** PeerUdpAddressRequest publicKey. */
-            public publicKey: string;
+            /** RelayConnectionMessage targetPeerId. */
+            public targetPeerId: string;
+
+            /** RelayConnectionMessage originPeerId. */
+            public originPeerId: string;
+
+            /** RelayConnectionMessage relayAddress. */
+            public relayAddress: string;
 
             /**
-             * Creates a new PeerUdpAddressRequest instance using the specified properties.
+             * Creates a new RelayConnectionMessage instance using the specified properties.
              * @param [properties] Properties to set
-             * @returns PeerUdpAddressRequest instance
+             * @returns RelayConnectionMessage instance
              */
-            public static create(properties?: peerInterface.IPeerUdpAddressRequest): peerInterface.PeerUdpAddressRequest;
+            public static create(properties?: peerInterface.IRelayConnectionMessage): peerInterface.RelayConnectionMessage;
 
             /**
-             * Encodes the specified PeerUdpAddressRequest message. Does not implicitly {@link peerInterface.PeerUdpAddressRequest.verify|verify} messages.
-             * @param m PeerUdpAddressRequest message or plain object to encode
+             * Encodes the specified RelayConnectionMessage message. Does not implicitly {@link peerInterface.RelayConnectionMessage.verify|verify} messages.
+             * @param m RelayConnectionMessage message or plain object to encode
              * @param [w] Writer to encode to
              * @returns Writer
              */
-            public static encode(m: peerInterface.IPeerUdpAddressRequest, w?: $protobuf.Writer): $protobuf.Writer;
+            public static encode(m: peerInterface.IRelayConnectionMessage, w?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Encodes the specified PeerUdpAddressRequest message, length delimited. Does not implicitly {@link peerInterface.PeerUdpAddressRequest.verify|verify} messages.
-             * @param message PeerUdpAddressRequest message or plain object to encode
+             * Encodes the specified RelayConnectionMessage message, length delimited. Does not implicitly {@link peerInterface.RelayConnectionMessage.verify|verify} messages.
+             * @param message RelayConnectionMessage message or plain object to encode
              * @param [writer] Writer to encode to
              * @returns Writer
              */
-            public static encodeDelimited(message: peerInterface.IPeerUdpAddressRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+            public static encodeDelimited(message: peerInterface.IRelayConnectionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
 
             /**
-             * Decodes a PeerUdpAddressRequest message from the specified reader or buffer.
+             * Decodes a RelayConnectionMessage message from the specified reader or buffer.
              * @param r Reader or buffer to decode from
              * @param [l] Message length if known beforehand
-             * @returns PeerUdpAddressRequest
+             * @returns RelayConnectionMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.PeerUdpAddressRequest;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.RelayConnectionMessage;
 
             /**
-             * Decodes a PeerUdpAddressRequest message from the specified reader or buffer, length delimited.
+             * Decodes a RelayConnectionMessage message from the specified reader or buffer, length delimited.
              * @param reader Reader or buffer to decode from
-             * @returns PeerUdpAddressRequest
+             * @returns RelayConnectionMessage
              * @throws {Error} If the payload is not a reader or valid buffer
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerUdpAddressRequest;
-        }
-
-        /** Properties of a PeerUdpAddressResponse. */
-        interface IPeerUdpAddressResponse {
-
-            /** PeerUdpAddressResponse address */
-            address?: (string|null);
-        }
-
-        /** Represents a PeerUdpAddressResponse. */
-        class PeerUdpAddressResponse implements IPeerUdpAddressResponse {
-
-            /**
-             * Constructs a new PeerUdpAddressResponse.
-             * @param [p] Properties to set
-             */
-            constructor(p?: peerInterface.IPeerUdpAddressResponse);
-
-            /** PeerUdpAddressResponse address. */
-            public address: string;
-
-            /**
-             * Creates a new PeerUdpAddressResponse instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns PeerUdpAddressResponse instance
-             */
-            public static create(properties?: peerInterface.IPeerUdpAddressResponse): peerInterface.PeerUdpAddressResponse;
-
-            /**
-             * Encodes the specified PeerUdpAddressResponse message. Does not implicitly {@link peerInterface.PeerUdpAddressResponse.verify|verify} messages.
-             * @param m PeerUdpAddressResponse message or plain object to encode
-             * @param [w] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(m: peerInterface.IPeerUdpAddressResponse, w?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified PeerUdpAddressResponse message, length delimited. Does not implicitly {@link peerInterface.PeerUdpAddressResponse.verify|verify} messages.
-             * @param message PeerUdpAddressResponse message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: peerInterface.IPeerUdpAddressResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes a PeerUdpAddressResponse message from the specified reader or buffer.
-             * @param r Reader or buffer to decode from
-             * @param [l] Message length if known beforehand
-             * @returns PeerUdpAddressResponse
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.PeerUdpAddressResponse;
-
-            /**
-             * Decodes a PeerUdpAddressResponse message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns PeerUdpAddressResponse
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerUdpAddressResponse;
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.RelayConnectionMessage;
         }
 
         /** CAMessageType enum. */
         enum CAMessageType {
-            ERROR = 0,
-            ROOT_CERT = 1,
-            REQUEST_CERT = 2
+            ROOT_CERT = 0,
+            REQUEST_CERT = 1
         }
 
         /** Properties of a CAMessage. */
@@ -1132,6 +851,338 @@ declare namespace Peer {
              * @throws {$protobuf.util.ProtocolError} If required fields are missing
              */
             public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.CAMessage;
+        }
+
+        /** PeerDHTMessageType enum. */
+        enum PeerDHTMessageType {
+            PING = 0,
+            FIND_NODE = 1
+        }
+
+        /** Properties of a PeerDHTMessage. */
+        interface IPeerDHTMessage {
+
+            /** PeerDHTMessage type */
+            type?: (peerInterface.PeerDHTMessageType|null);
+
+            /** PeerDHTMessage isResponse */
+            isResponse?: (boolean|null);
+
+            /** PeerDHTMessage subMessage */
+            subMessage?: (Uint8Array|null);
+        }
+
+        /** Represents a PeerDHTMessage. */
+        class PeerDHTMessage implements IPeerDHTMessage {
+
+            /**
+             * Constructs a new PeerDHTMessage.
+             * @param [p] Properties to set
+             */
+            constructor(p?: peerInterface.IPeerDHTMessage);
+
+            /** PeerDHTMessage type. */
+            public type: peerInterface.PeerDHTMessageType;
+
+            /** PeerDHTMessage isResponse. */
+            public isResponse: boolean;
+
+            /** PeerDHTMessage subMessage. */
+            public subMessage: Uint8Array;
+
+            /**
+             * Creates a new PeerDHTMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns PeerDHTMessage instance
+             */
+            public static create(properties?: peerInterface.IPeerDHTMessage): peerInterface.PeerDHTMessage;
+
+            /**
+             * Encodes the specified PeerDHTMessage message. Does not implicitly {@link peerInterface.PeerDHTMessage.verify|verify} messages.
+             * @param m PeerDHTMessage message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: peerInterface.IPeerDHTMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified PeerDHTMessage message, length delimited. Does not implicitly {@link peerInterface.PeerDHTMessage.verify|verify} messages.
+             * @param message PeerDHTMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: peerInterface.IPeerDHTMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a PeerDHTMessage message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns PeerDHTMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.PeerDHTMessage;
+
+            /**
+             * Decodes a PeerDHTMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns PeerDHTMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerDHTMessage;
+        }
+
+        /** Properties of a PeerDHTPingNodeMessage. */
+        interface IPeerDHTPingNodeMessage {
+
+            /** PeerDHTPingNodeMessage peerId */
+            peerId?: (string|null);
+
+            /** PeerDHTPingNodeMessage randomChallenge */
+            randomChallenge?: (string|null);
+        }
+
+        /** Represents a PeerDHTPingNodeMessage. */
+        class PeerDHTPingNodeMessage implements IPeerDHTPingNodeMessage {
+
+            /**
+             * Constructs a new PeerDHTPingNodeMessage.
+             * @param [p] Properties to set
+             */
+            constructor(p?: peerInterface.IPeerDHTPingNodeMessage);
+
+            /** PeerDHTPingNodeMessage peerId. */
+            public peerId: string;
+
+            /** PeerDHTPingNodeMessage randomChallenge. */
+            public randomChallenge: string;
+
+            /**
+             * Creates a new PeerDHTPingNodeMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns PeerDHTPingNodeMessage instance
+             */
+            public static create(properties?: peerInterface.IPeerDHTPingNodeMessage): peerInterface.PeerDHTPingNodeMessage;
+
+            /**
+             * Encodes the specified PeerDHTPingNodeMessage message. Does not implicitly {@link peerInterface.PeerDHTPingNodeMessage.verify|verify} messages.
+             * @param m PeerDHTPingNodeMessage message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: peerInterface.IPeerDHTPingNodeMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified PeerDHTPingNodeMessage message, length delimited. Does not implicitly {@link peerInterface.PeerDHTPingNodeMessage.verify|verify} messages.
+             * @param message PeerDHTPingNodeMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: peerInterface.IPeerDHTPingNodeMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a PeerDHTPingNodeMessage message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns PeerDHTPingNodeMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.PeerDHTPingNodeMessage;
+
+            /**
+             * Decodes a PeerDHTPingNodeMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns PeerDHTPingNodeMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerDHTPingNodeMessage;
+        }
+
+        /** Properties of a PeerDHTFindNodeMessage. */
+        interface IPeerDHTFindNodeMessage {
+
+            /** PeerDHTFindNodeMessage peerId */
+            peerId?: (string|null);
+
+            /** PeerDHTFindNodeMessage closestPeers */
+            closestPeers?: (peerInterface.IPeerInfoMessage[]|null);
+        }
+
+        /** Represents a PeerDHTFindNodeMessage. */
+        class PeerDHTFindNodeMessage implements IPeerDHTFindNodeMessage {
+
+            /**
+             * Constructs a new PeerDHTFindNodeMessage.
+             * @param [p] Properties to set
+             */
+            constructor(p?: peerInterface.IPeerDHTFindNodeMessage);
+
+            /** PeerDHTFindNodeMessage peerId. */
+            public peerId: string;
+
+            /** PeerDHTFindNodeMessage closestPeers. */
+            public closestPeers: peerInterface.IPeerInfoMessage[];
+
+            /**
+             * Creates a new PeerDHTFindNodeMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns PeerDHTFindNodeMessage instance
+             */
+            public static create(properties?: peerInterface.IPeerDHTFindNodeMessage): peerInterface.PeerDHTFindNodeMessage;
+
+            /**
+             * Encodes the specified PeerDHTFindNodeMessage message. Does not implicitly {@link peerInterface.PeerDHTFindNodeMessage.verify|verify} messages.
+             * @param m PeerDHTFindNodeMessage message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: peerInterface.IPeerDHTFindNodeMessage, w?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified PeerDHTFindNodeMessage message, length delimited. Does not implicitly {@link peerInterface.PeerDHTFindNodeMessage.verify|verify} messages.
+             * @param message PeerDHTFindNodeMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: peerInterface.IPeerDHTFindNodeMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a PeerDHTFindNodeMessage message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns PeerDHTFindNodeMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.PeerDHTFindNodeMessage;
+
+            /**
+             * Decodes a PeerDHTFindNodeMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns PeerDHTFindNodeMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.PeerDHTFindNodeMessage;
+        }
+
+        /** Properties of a MTPPacket. */
+        interface IMTPPacket {
+
+            /** MTPPacket id */
+            id?: (number|null);
+
+            /** MTPPacket peerId */
+            peerId?: (string|null);
+
+            /** MTPPacket connection */
+            connection?: (number|null);
+
+            /** MTPPacket timestamp */
+            timestamp?: (number|null);
+
+            /** MTPPacket timediff */
+            timediff?: (number|null);
+
+            /** MTPPacket window */
+            window?: (number|null);
+
+            /** MTPPacket seq */
+            seq?: (number|null);
+
+            /** MTPPacket ack */
+            ack?: (number|null);
+
+            /** MTPPacket data */
+            data?: (Uint8Array|null);
+
+            /** MTPPacket sent */
+            sent?: (number|null);
+        }
+
+        /** Represents a MTPPacket. */
+        class MTPPacket implements IMTPPacket {
+
+            /**
+             * Constructs a new MTPPacket.
+             * @param [p] Properties to set
+             */
+            constructor(p?: peerInterface.IMTPPacket);
+
+            /** MTPPacket id. */
+            public id: number;
+
+            /** MTPPacket peerId. */
+            public peerId: string;
+
+            /** MTPPacket connection. */
+            public connection: number;
+
+            /** MTPPacket timestamp. */
+            public timestamp: number;
+
+            /** MTPPacket timediff. */
+            public timediff: number;
+
+            /** MTPPacket window. */
+            public window: number;
+
+            /** MTPPacket seq. */
+            public seq: number;
+
+            /** MTPPacket ack. */
+            public ack: number;
+
+            /** MTPPacket data. */
+            public data: Uint8Array;
+
+            /** MTPPacket sent. */
+            public sent: number;
+
+            /**
+             * Creates a new MTPPacket instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns MTPPacket instance
+             */
+            public static create(properties?: peerInterface.IMTPPacket): peerInterface.MTPPacket;
+
+            /**
+             * Encodes the specified MTPPacket message. Does not implicitly {@link peerInterface.MTPPacket.verify|verify} messages.
+             * @param m MTPPacket message or plain object to encode
+             * @param [w] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(m: peerInterface.IMTPPacket, w?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified MTPPacket message, length delimited. Does not implicitly {@link peerInterface.MTPPacket.verify|verify} messages.
+             * @param message MTPPacket message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: peerInterface.IMTPPacket, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a MTPPacket message from the specified reader or buffer.
+             * @param r Reader or buffer to decode from
+             * @param [l] Message length if known beforehand
+             * @returns MTPPacket
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): peerInterface.MTPPacket;
+
+            /**
+             * Decodes a MTPPacket message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns MTPPacket
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): peerInterface.MTPPacket;
         }
     }
 }

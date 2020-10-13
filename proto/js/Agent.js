@@ -348,6 +348,39 @@ $root.agentInterface = (function() {
          */
 
         /**
+         * Callback as used by {@link agentInterface.Agent#getOAuthClient}.
+         * @memberof agentInterface.Agent
+         * @typedef GetOAuthClientCallback
+         * @type {function}
+         * @param {Error|null} error Error, if any
+         * @param {agentInterface.OAuthClientMessage} [response] OAuthClientMessage
+         */
+
+        /**
+         * Calls GetOAuthClient.
+         * @function getOAuthClient
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @param {agentInterface.Agent.GetOAuthClientCallback} callback Node-style callback called with the error, if any, and OAuthClientMessage
+         * @returns {undefined}
+         * @variation 1
+         */
+        Object.defineProperty(Agent.prototype.getOAuthClient = function getOAuthClient(request, callback) {
+            return this.rpcCall(getOAuthClient, $root.agentInterface.EmptyMessage, $root.agentInterface.OAuthClientMessage, request, callback);
+        }, "name", { value: "GetOAuthClient" });
+
+        /**
+         * Calls GetOAuthClient.
+         * @function getOAuthClient
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @returns {Promise<agentInterface.OAuthClientMessage>} Promise
+         * @variation 2
+         */
+
+        /**
          * Callback as used by {@link agentInterface.Agent#getKey}.
          * @memberof agentInterface.Agent
          * @typedef GetKeyCallback
@@ -480,6 +513,39 @@ $root.agentInterface = (function() {
          */
 
         /**
+         * Callback as used by {@link agentInterface.Agent#getRootCertificate}.
+         * @memberof agentInterface.Agent
+         * @typedef GetRootCertificateCallback
+         * @type {function}
+         * @param {Error|null} error Error, if any
+         * @param {agentInterface.StringMessage} [response] StringMessage
+         */
+
+        /**
+         * Calls GetRootCertificate.
+         * @function getRootCertificate
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @param {agentInterface.Agent.GetRootCertificateCallback} callback Node-style callback called with the error, if any, and StringMessage
+         * @returns {undefined}
+         * @variation 1
+         */
+        Object.defineProperty(Agent.prototype.getRootCertificate = function getRootCertificate(request, callback) {
+            return this.rpcCall(getRootCertificate, $root.agentInterface.EmptyMessage, $root.agentInterface.StringMessage, request, callback);
+        }, "name", { value: "GetRootCertificate" });
+
+        /**
+         * Calls GetRootCertificate.
+         * @function getRootCertificate
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @returns {Promise<agentInterface.StringMessage>} Promise
+         * @variation 2
+         */
+
+        /**
          * Callback as used by {@link agentInterface.Agent#getSecret}.
          * @memberof agentInterface.Agent
          * @typedef GetSecretCallback
@@ -542,6 +608,39 @@ $root.agentInterface = (function() {
          * @instance
          * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
          * @returns {Promise<agentInterface.AgentStatusMessage>} Promise
+         * @variation 2
+         */
+
+        /**
+         * Callback as used by {@link agentInterface.Agent#listOAuthTokens}.
+         * @memberof agentInterface.Agent
+         * @typedef ListOAuthTokensCallback
+         * @type {function}
+         * @param {Error|null} error Error, if any
+         * @param {agentInterface.StringListMessage} [response] StringListMessage
+         */
+
+        /**
+         * Calls ListOAuthTokens.
+         * @function listOAuthTokens
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @param {agentInterface.Agent.ListOAuthTokensCallback} callback Node-style callback called with the error, if any, and StringListMessage
+         * @returns {undefined}
+         * @variation 1
+         */
+        Object.defineProperty(Agent.prototype.listOAuthTokens = function listOAuthTokens(request, callback) {
+            return this.rpcCall(listOAuthTokens, $root.agentInterface.EmptyMessage, $root.agentInterface.StringListMessage, request, callback);
+        }, "name", { value: "ListOAuthTokens" });
+
+        /**
+         * Calls ListOAuthTokens.
+         * @function listOAuthTokens
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @returns {Promise<agentInterface.StringListMessage>} Promise
          * @variation 2
          */
 
@@ -711,6 +810,72 @@ $root.agentInterface = (function() {
          */
 
         /**
+         * Callback as used by {@link agentInterface.Agent#lockNode}.
+         * @memberof agentInterface.Agent
+         * @typedef LockNodeCallback
+         * @type {function}
+         * @param {Error|null} error Error, if any
+         * @param {agentInterface.EmptyMessage} [response] EmptyMessage
+         */
+
+        /**
+         * Calls LockNode.
+         * @function lockNode
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @param {agentInterface.Agent.LockNodeCallback} callback Node-style callback called with the error, if any, and EmptyMessage
+         * @returns {undefined}
+         * @variation 1
+         */
+        Object.defineProperty(Agent.prototype.lockNode = function lockNode(request, callback) {
+            return this.rpcCall(lockNode, $root.agentInterface.EmptyMessage, $root.agentInterface.EmptyMessage, request, callback);
+        }, "name", { value: "LockNode" });
+
+        /**
+         * Calls LockNode.
+         * @function lockNode
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IEmptyMessage} request EmptyMessage message or plain object
+         * @returns {Promise<agentInterface.EmptyMessage>} Promise
+         * @variation 2
+         */
+
+        /**
+         * Callback as used by {@link agentInterface.Agent#newClientCertificate}.
+         * @memberof agentInterface.Agent
+         * @typedef NewClientCertificateCallback
+         * @type {function}
+         * @param {Error|null} error Error, if any
+         * @param {agentInterface.NewClientCertificateMessage} [response] NewClientCertificateMessage
+         */
+
+        /**
+         * Calls NewClientCertificate.
+         * @function newClientCertificate
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.INewClientCertificateMessage} request NewClientCertificateMessage message or plain object
+         * @param {agentInterface.Agent.NewClientCertificateCallback} callback Node-style callback called with the error, if any, and NewClientCertificateMessage
+         * @returns {undefined}
+         * @variation 1
+         */
+        Object.defineProperty(Agent.prototype.newClientCertificate = function newClientCertificate(request, callback) {
+            return this.rpcCall(newClientCertificate, $root.agentInterface.NewClientCertificateMessage, $root.agentInterface.NewClientCertificateMessage, request, callback);
+        }, "name", { value: "NewClientCertificate" });
+
+        /**
+         * Calls NewClientCertificate.
+         * @function newClientCertificate
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.INewClientCertificateMessage} request NewClientCertificateMessage message or plain object
+         * @returns {Promise<agentInterface.NewClientCertificateMessage>} Promise
+         * @variation 2
+         */
+
+        /**
          * Callback as used by {@link agentInterface.Agent#newNode}.
          * @memberof agentInterface.Agent
          * @typedef NewNodeCallback
@@ -773,6 +938,39 @@ $root.agentInterface = (function() {
          * @instance
          * @param {agentInterface.ISecretContentMessage} request SecretContentMessage message or plain object
          * @returns {Promise<agentInterface.BooleanMessage>} Promise
+         * @variation 2
+         */
+
+        /**
+         * Callback as used by {@link agentInterface.Agent#newOAuthToken}.
+         * @memberof agentInterface.Agent
+         * @typedef NewOAuthTokenCallback
+         * @type {function}
+         * @param {Error|null} error Error, if any
+         * @param {agentInterface.StringMessage} [response] StringMessage
+         */
+
+        /**
+         * Calls NewOAuthToken.
+         * @function newOAuthToken
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.INewOAuthTokenMessage} request NewOAuthTokenMessage message or plain object
+         * @param {agentInterface.Agent.NewOAuthTokenCallback} callback Node-style callback called with the error, if any, and StringMessage
+         * @returns {undefined}
+         * @variation 1
+         */
+        Object.defineProperty(Agent.prototype.newOAuthToken = function newOAuthToken(request, callback) {
+            return this.rpcCall(newOAuthToken, $root.agentInterface.NewOAuthTokenMessage, $root.agentInterface.StringMessage, request, callback);
+        }, "name", { value: "NewOAuthToken" });
+
+        /**
+         * Calls NewOAuthToken.
+         * @function newOAuthToken
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.INewOAuthTokenMessage} request NewOAuthTokenMessage message or plain object
+         * @returns {Promise<agentInterface.StringMessage>} Promise
          * @variation 2
          */
 
@@ -876,97 +1074,31 @@ $root.agentInterface = (function() {
          */
 
         /**
-         * Callback as used by {@link agentInterface.Agent#registerNode}.
+         * Callback as used by {@link agentInterface.Agent#revokeOAuthToken}.
          * @memberof agentInterface.Agent
-         * @typedef RegisterNodeCallback
+         * @typedef RevokeOAuthTokenCallback
          * @type {function}
          * @param {Error|null} error Error, if any
          * @param {agentInterface.BooleanMessage} [response] BooleanMessage
          */
 
         /**
-         * Calls RegisterNode.
-         * @function registerNode
+         * Calls RevokeOAuthToken.
+         * @function revokeOAuthToken
          * @memberof agentInterface.Agent
          * @instance
          * @param {agentInterface.IStringMessage} request StringMessage message or plain object
-         * @param {agentInterface.Agent.RegisterNodeCallback} callback Node-style callback called with the error, if any, and BooleanMessage
+         * @param {agentInterface.Agent.RevokeOAuthTokenCallback} callback Node-style callback called with the error, if any, and BooleanMessage
          * @returns {undefined}
          * @variation 1
          */
-        Object.defineProperty(Agent.prototype.registerNode = function registerNode(request, callback) {
-            return this.rpcCall(registerNode, $root.agentInterface.StringMessage, $root.agentInterface.BooleanMessage, request, callback);
-        }, "name", { value: "RegisterNode" });
+        Object.defineProperty(Agent.prototype.revokeOAuthToken = function revokeOAuthToken(request, callback) {
+            return this.rpcCall(revokeOAuthToken, $root.agentInterface.StringMessage, $root.agentInterface.BooleanMessage, request, callback);
+        }, "name", { value: "RevokeOAuthToken" });
 
         /**
-         * Calls RegisterNode.
-         * @function registerNode
-         * @memberof agentInterface.Agent
-         * @instance
-         * @param {agentInterface.IStringMessage} request StringMessage message or plain object
-         * @returns {Promise<agentInterface.BooleanMessage>} Promise
-         * @variation 2
-         */
-
-        /**
-         * Callback as used by {@link agentInterface.Agent#requestHolePunch}.
-         * @memberof agentInterface.Agent
-         * @typedef RequestHolePunchCallback
-         * @type {function}
-         * @param {Error|null} error Error, if any
-         * @param {agentInterface.BooleanMessage} [response] BooleanMessage
-         */
-
-        /**
-         * Calls RequestHolePunch.
-         * @function requestHolePunch
-         * @memberof agentInterface.Agent
-         * @instance
-         * @param {agentInterface.IStringMessage} request StringMessage message or plain object
-         * @param {agentInterface.Agent.RequestHolePunchCallback} callback Node-style callback called with the error, if any, and BooleanMessage
-         * @returns {undefined}
-         * @variation 1
-         */
-        Object.defineProperty(Agent.prototype.requestHolePunch = function requestHolePunch(request, callback) {
-            return this.rpcCall(requestHolePunch, $root.agentInterface.StringMessage, $root.agentInterface.BooleanMessage, request, callback);
-        }, "name", { value: "RequestHolePunch" });
-
-        /**
-         * Calls RequestHolePunch.
-         * @function requestHolePunch
-         * @memberof agentInterface.Agent
-         * @instance
-         * @param {agentInterface.IStringMessage} request StringMessage message or plain object
-         * @returns {Promise<agentInterface.BooleanMessage>} Promise
-         * @variation 2
-         */
-
-        /**
-         * Callback as used by {@link agentInterface.Agent#requestRelay}.
-         * @memberof agentInterface.Agent
-         * @typedef RequestRelayCallback
-         * @type {function}
-         * @param {Error|null} error Error, if any
-         * @param {agentInterface.BooleanMessage} [response] BooleanMessage
-         */
-
-        /**
-         * Calls RequestRelay.
-         * @function requestRelay
-         * @memberof agentInterface.Agent
-         * @instance
-         * @param {agentInterface.IStringMessage} request StringMessage message or plain object
-         * @param {agentInterface.Agent.RequestRelayCallback} callback Node-style callback called with the error, if any, and BooleanMessage
-         * @returns {undefined}
-         * @variation 1
-         */
-        Object.defineProperty(Agent.prototype.requestRelay = function requestRelay(request, callback) {
-            return this.rpcCall(requestRelay, $root.agentInterface.StringMessage, $root.agentInterface.BooleanMessage, request, callback);
-        }, "name", { value: "RequestRelay" });
-
-        /**
-         * Calls RequestRelay.
-         * @function requestRelay
+         * Calls RevokeOAuthToken.
+         * @function revokeOAuthToken
          * @memberof agentInterface.Agent
          * @instance
          * @param {agentInterface.IStringMessage} request StringMessage message or plain object
@@ -1102,6 +1234,39 @@ $root.agentInterface = (function() {
          * @memberof agentInterface.Agent
          * @instance
          * @param {agentInterface.IBooleanMessage} request BooleanMessage message or plain object
+         * @returns {Promise<agentInterface.BooleanMessage>} Promise
+         * @variation 2
+         */
+
+        /**
+         * Callback as used by {@link agentInterface.Agent#unlockNode}.
+         * @memberof agentInterface.Agent
+         * @typedef UnlockNodeCallback
+         * @type {function}
+         * @param {Error|null} error Error, if any
+         * @param {agentInterface.BooleanMessage} [response] BooleanMessage
+         */
+
+        /**
+         * Calls UnlockNode.
+         * @function unlockNode
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IUnlockNodeMessage} request UnlockNodeMessage message or plain object
+         * @param {agentInterface.Agent.UnlockNodeCallback} callback Node-style callback called with the error, if any, and BooleanMessage
+         * @returns {undefined}
+         * @variation 1
+         */
+        Object.defineProperty(Agent.prototype.unlockNode = function unlockNode(request, callback) {
+            return this.rpcCall(unlockNode, $root.agentInterface.UnlockNodeMessage, $root.agentInterface.BooleanMessage, request, callback);
+        }, "name", { value: "UnlockNode" });
+
+        /**
+         * Calls UnlockNode.
+         * @function unlockNode
+         * @memberof agentInterface.Agent
+         * @instance
+         * @param {agentInterface.IUnlockNodeMessage} request UnlockNodeMessage message or plain object
          * @returns {Promise<agentInterface.BooleanMessage>} Promise
          * @variation 2
          */
@@ -1727,7 +1892,7 @@ $root.agentInterface = (function() {
          * @memberof agentInterface
          * @interface IPeerInfoMessage
          * @property {string|null} [publicKey] PeerInfoMessage publicKey
-         * @property {string|null} [relayPublicKey] PeerInfoMessage relayPublicKey
+         * @property {string|null} [rootCertificate] PeerInfoMessage rootCertificate
          * @property {string|null} [peerAddress] PeerInfoMessage peerAddress
          * @property {string|null} [apiAddress] PeerInfoMessage apiAddress
          */
@@ -1756,12 +1921,12 @@ $root.agentInterface = (function() {
         PeerInfoMessage.prototype.publicKey = "";
 
         /**
-         * PeerInfoMessage relayPublicKey.
-         * @member {string} relayPublicKey
+         * PeerInfoMessage rootCertificate.
+         * @member {string} rootCertificate
          * @memberof agentInterface.PeerInfoMessage
          * @instance
          */
-        PeerInfoMessage.prototype.relayPublicKey = "";
+        PeerInfoMessage.prototype.rootCertificate = "";
 
         /**
          * PeerInfoMessage peerAddress.
@@ -1805,8 +1970,8 @@ $root.agentInterface = (function() {
                 w = $Writer.create();
             if (m.publicKey != null && Object.hasOwnProperty.call(m, "publicKey"))
                 w.uint32(10).string(m.publicKey);
-            if (m.relayPublicKey != null && Object.hasOwnProperty.call(m, "relayPublicKey"))
-                w.uint32(18).string(m.relayPublicKey);
+            if (m.rootCertificate != null && Object.hasOwnProperty.call(m, "rootCertificate"))
+                w.uint32(18).string(m.rootCertificate);
             if (m.peerAddress != null && Object.hasOwnProperty.call(m, "peerAddress"))
                 w.uint32(26).string(m.peerAddress);
             if (m.apiAddress != null && Object.hasOwnProperty.call(m, "apiAddress"))
@@ -1849,7 +2014,7 @@ $root.agentInterface = (function() {
                     m.publicKey = r.string();
                     break;
                 case 2:
-                    m.relayPublicKey = r.string();
+                    m.rootCertificate = r.string();
                     break;
                 case 3:
                     m.peerAddress = r.string();
@@ -2030,7 +2195,6 @@ $root.agentInterface = (function() {
          * @interface INewNodeMessage
          * @property {string|null} [userId] NewNodeMessage userId
          * @property {string|null} [passphrase] NewNodeMessage passphrase
-         * @property {number|null} [nbits] NewNodeMessage nbits
          */
 
         /**
@@ -2065,14 +2229,6 @@ $root.agentInterface = (function() {
         NewNodeMessage.prototype.passphrase = "";
 
         /**
-         * NewNodeMessage nbits.
-         * @member {number} nbits
-         * @memberof agentInterface.NewNodeMessage
-         * @instance
-         */
-        NewNodeMessage.prototype.nbits = 0;
-
-        /**
          * Creates a new NewNodeMessage instance using the specified properties.
          * @function create
          * @memberof agentInterface.NewNodeMessage
@@ -2100,8 +2256,6 @@ $root.agentInterface = (function() {
                 w.uint32(10).string(m.userId);
             if (m.passphrase != null && Object.hasOwnProperty.call(m, "passphrase"))
                 w.uint32(18).string(m.passphrase);
-            if (m.nbits != null && Object.hasOwnProperty.call(m, "nbits"))
-                w.uint32(24).int32(m.nbits);
             return w;
         };
 
@@ -2141,9 +2295,6 @@ $root.agentInterface = (function() {
                     break;
                 case 2:
                     m.passphrase = r.string();
-                    break;
-                case 3:
-                    m.nbits = r.int32();
                     break;
                 default:
                     r.skipType(t & 7);
@@ -3586,6 +3737,569 @@ $root.agentInterface = (function() {
         };
 
         return ContactPeerMessage;
+    })();
+
+    agentInterface.UnlockNodeMessage = (function() {
+
+        /**
+         * Properties of an UnlockNodeMessage.
+         * @memberof agentInterface
+         * @interface IUnlockNodeMessage
+         * @property {string|null} [passphrase] UnlockNodeMessage passphrase
+         * @property {number|null} [timeout] UnlockNodeMessage timeout
+         */
+
+        /**
+         * Constructs a new UnlockNodeMessage.
+         * @memberof agentInterface
+         * @classdesc Represents an UnlockNodeMessage.
+         * @implements IUnlockNodeMessage
+         * @constructor
+         * @param {agentInterface.IUnlockNodeMessage=} [p] Properties to set
+         */
+        function UnlockNodeMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * UnlockNodeMessage passphrase.
+         * @member {string} passphrase
+         * @memberof agentInterface.UnlockNodeMessage
+         * @instance
+         */
+        UnlockNodeMessage.prototype.passphrase = "";
+
+        /**
+         * UnlockNodeMessage timeout.
+         * @member {number} timeout
+         * @memberof agentInterface.UnlockNodeMessage
+         * @instance
+         */
+        UnlockNodeMessage.prototype.timeout = 0;
+
+        /**
+         * Creates a new UnlockNodeMessage instance using the specified properties.
+         * @function create
+         * @memberof agentInterface.UnlockNodeMessage
+         * @static
+         * @param {agentInterface.IUnlockNodeMessage=} [properties] Properties to set
+         * @returns {agentInterface.UnlockNodeMessage} UnlockNodeMessage instance
+         */
+        UnlockNodeMessage.create = function create(properties) {
+            return new UnlockNodeMessage(properties);
+        };
+
+        /**
+         * Encodes the specified UnlockNodeMessage message. Does not implicitly {@link agentInterface.UnlockNodeMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agentInterface.UnlockNodeMessage
+         * @static
+         * @param {agentInterface.IUnlockNodeMessage} m UnlockNodeMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        UnlockNodeMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.passphrase != null && Object.hasOwnProperty.call(m, "passphrase"))
+                w.uint32(10).string(m.passphrase);
+            if (m.timeout != null && Object.hasOwnProperty.call(m, "timeout"))
+                w.uint32(16).int32(m.timeout);
+            return w;
+        };
+
+        /**
+         * Encodes the specified UnlockNodeMessage message, length delimited. Does not implicitly {@link agentInterface.UnlockNodeMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof agentInterface.UnlockNodeMessage
+         * @static
+         * @param {agentInterface.IUnlockNodeMessage} message UnlockNodeMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        UnlockNodeMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes an UnlockNodeMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agentInterface.UnlockNodeMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agentInterface.UnlockNodeMessage} UnlockNodeMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        UnlockNodeMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agentInterface.UnlockNodeMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.passphrase = r.string();
+                    break;
+                case 2:
+                    m.timeout = r.int32();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes an UnlockNodeMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof agentInterface.UnlockNodeMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {agentInterface.UnlockNodeMessage} UnlockNodeMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        UnlockNodeMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return UnlockNodeMessage;
+    })();
+
+    agentInterface.NewClientCertificateMessage = (function() {
+
+        /**
+         * Properties of a NewClientCertificateMessage.
+         * @memberof agentInterface
+         * @interface INewClientCertificateMessage
+         * @property {string|null} [domain] NewClientCertificateMessage domain
+         * @property {string|null} [certFile] NewClientCertificateMessage certFile
+         * @property {string|null} [keyFile] NewClientCertificateMessage keyFile
+         */
+
+        /**
+         * Constructs a new NewClientCertificateMessage.
+         * @memberof agentInterface
+         * @classdesc Represents a NewClientCertificateMessage.
+         * @implements INewClientCertificateMessage
+         * @constructor
+         * @param {agentInterface.INewClientCertificateMessage=} [p] Properties to set
+         */
+        function NewClientCertificateMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * NewClientCertificateMessage domain.
+         * @member {string} domain
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @instance
+         */
+        NewClientCertificateMessage.prototype.domain = "";
+
+        /**
+         * NewClientCertificateMessage certFile.
+         * @member {string} certFile
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @instance
+         */
+        NewClientCertificateMessage.prototype.certFile = "";
+
+        /**
+         * NewClientCertificateMessage keyFile.
+         * @member {string} keyFile
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @instance
+         */
+        NewClientCertificateMessage.prototype.keyFile = "";
+
+        /**
+         * Creates a new NewClientCertificateMessage instance using the specified properties.
+         * @function create
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @static
+         * @param {agentInterface.INewClientCertificateMessage=} [properties] Properties to set
+         * @returns {agentInterface.NewClientCertificateMessage} NewClientCertificateMessage instance
+         */
+        NewClientCertificateMessage.create = function create(properties) {
+            return new NewClientCertificateMessage(properties);
+        };
+
+        /**
+         * Encodes the specified NewClientCertificateMessage message. Does not implicitly {@link agentInterface.NewClientCertificateMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @static
+         * @param {agentInterface.INewClientCertificateMessage} m NewClientCertificateMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NewClientCertificateMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.domain != null && Object.hasOwnProperty.call(m, "domain"))
+                w.uint32(10).string(m.domain);
+            if (m.certFile != null && Object.hasOwnProperty.call(m, "certFile"))
+                w.uint32(18).string(m.certFile);
+            if (m.keyFile != null && Object.hasOwnProperty.call(m, "keyFile"))
+                w.uint32(26).string(m.keyFile);
+            return w;
+        };
+
+        /**
+         * Encodes the specified NewClientCertificateMessage message, length delimited. Does not implicitly {@link agentInterface.NewClientCertificateMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @static
+         * @param {agentInterface.INewClientCertificateMessage} message NewClientCertificateMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NewClientCertificateMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a NewClientCertificateMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agentInterface.NewClientCertificateMessage} NewClientCertificateMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NewClientCertificateMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agentInterface.NewClientCertificateMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.domain = r.string();
+                    break;
+                case 2:
+                    m.certFile = r.string();
+                    break;
+                case 3:
+                    m.keyFile = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a NewClientCertificateMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof agentInterface.NewClientCertificateMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {agentInterface.NewClientCertificateMessage} NewClientCertificateMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NewClientCertificateMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return NewClientCertificateMessage;
+    })();
+
+    agentInterface.NewOAuthTokenMessage = (function() {
+
+        /**
+         * Properties of a NewOAuthTokenMessage.
+         * @memberof agentInterface
+         * @interface INewOAuthTokenMessage
+         * @property {Array.<string>|null} [scopes] NewOAuthTokenMessage scopes
+         * @property {number|null} [expiry] NewOAuthTokenMessage expiry
+         */
+
+        /**
+         * Constructs a new NewOAuthTokenMessage.
+         * @memberof agentInterface
+         * @classdesc Represents a NewOAuthTokenMessage.
+         * @implements INewOAuthTokenMessage
+         * @constructor
+         * @param {agentInterface.INewOAuthTokenMessage=} [p] Properties to set
+         */
+        function NewOAuthTokenMessage(p) {
+            this.scopes = [];
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * NewOAuthTokenMessage scopes.
+         * @member {Array.<string>} scopes
+         * @memberof agentInterface.NewOAuthTokenMessage
+         * @instance
+         */
+        NewOAuthTokenMessage.prototype.scopes = $util.emptyArray;
+
+        /**
+         * NewOAuthTokenMessage expiry.
+         * @member {number} expiry
+         * @memberof agentInterface.NewOAuthTokenMessage
+         * @instance
+         */
+        NewOAuthTokenMessage.prototype.expiry = 0;
+
+        /**
+         * Creates a new NewOAuthTokenMessage instance using the specified properties.
+         * @function create
+         * @memberof agentInterface.NewOAuthTokenMessage
+         * @static
+         * @param {agentInterface.INewOAuthTokenMessage=} [properties] Properties to set
+         * @returns {agentInterface.NewOAuthTokenMessage} NewOAuthTokenMessage instance
+         */
+        NewOAuthTokenMessage.create = function create(properties) {
+            return new NewOAuthTokenMessage(properties);
+        };
+
+        /**
+         * Encodes the specified NewOAuthTokenMessage message. Does not implicitly {@link agentInterface.NewOAuthTokenMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agentInterface.NewOAuthTokenMessage
+         * @static
+         * @param {agentInterface.INewOAuthTokenMessage} m NewOAuthTokenMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NewOAuthTokenMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.scopes != null && m.scopes.length) {
+                for (var i = 0; i < m.scopes.length; ++i)
+                    w.uint32(10).string(m.scopes[i]);
+            }
+            if (m.expiry != null && Object.hasOwnProperty.call(m, "expiry"))
+                w.uint32(16).int32(m.expiry);
+            return w;
+        };
+
+        /**
+         * Encodes the specified NewOAuthTokenMessage message, length delimited. Does not implicitly {@link agentInterface.NewOAuthTokenMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof agentInterface.NewOAuthTokenMessage
+         * @static
+         * @param {agentInterface.INewOAuthTokenMessage} message NewOAuthTokenMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NewOAuthTokenMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a NewOAuthTokenMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agentInterface.NewOAuthTokenMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agentInterface.NewOAuthTokenMessage} NewOAuthTokenMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NewOAuthTokenMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agentInterface.NewOAuthTokenMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    if (!(m.scopes && m.scopes.length))
+                        m.scopes = [];
+                    m.scopes.push(r.string());
+                    break;
+                case 2:
+                    m.expiry = r.int32();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a NewOAuthTokenMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof agentInterface.NewOAuthTokenMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {agentInterface.NewOAuthTokenMessage} NewOAuthTokenMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NewOAuthTokenMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return NewOAuthTokenMessage;
+    })();
+
+    agentInterface.OAuthClientMessage = (function() {
+
+        /**
+         * Properties of a OAuthClientMessage.
+         * @memberof agentInterface
+         * @interface IOAuthClientMessage
+         * @property {string|null} [id] OAuthClientMessage id
+         * @property {string|null} [secret] OAuthClientMessage secret
+         */
+
+        /**
+         * Constructs a new OAuthClientMessage.
+         * @memberof agentInterface
+         * @classdesc Represents a OAuthClientMessage.
+         * @implements IOAuthClientMessage
+         * @constructor
+         * @param {agentInterface.IOAuthClientMessage=} [p] Properties to set
+         */
+        function OAuthClientMessage(p) {
+            if (p)
+                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
+                    if (p[ks[i]] != null)
+                        this[ks[i]] = p[ks[i]];
+        }
+
+        /**
+         * OAuthClientMessage id.
+         * @member {string} id
+         * @memberof agentInterface.OAuthClientMessage
+         * @instance
+         */
+        OAuthClientMessage.prototype.id = "";
+
+        /**
+         * OAuthClientMessage secret.
+         * @member {string} secret
+         * @memberof agentInterface.OAuthClientMessage
+         * @instance
+         */
+        OAuthClientMessage.prototype.secret = "";
+
+        /**
+         * Creates a new OAuthClientMessage instance using the specified properties.
+         * @function create
+         * @memberof agentInterface.OAuthClientMessage
+         * @static
+         * @param {agentInterface.IOAuthClientMessage=} [properties] Properties to set
+         * @returns {agentInterface.OAuthClientMessage} OAuthClientMessage instance
+         */
+        OAuthClientMessage.create = function create(properties) {
+            return new OAuthClientMessage(properties);
+        };
+
+        /**
+         * Encodes the specified OAuthClientMessage message. Does not implicitly {@link agentInterface.OAuthClientMessage.verify|verify} messages.
+         * @function encode
+         * @memberof agentInterface.OAuthClientMessage
+         * @static
+         * @param {agentInterface.IOAuthClientMessage} m OAuthClientMessage message or plain object to encode
+         * @param {$protobuf.Writer} [w] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        OAuthClientMessage.encode = function encode(m, w) {
+            if (!w)
+                w = $Writer.create();
+            if (m.id != null && Object.hasOwnProperty.call(m, "id"))
+                w.uint32(10).string(m.id);
+            if (m.secret != null && Object.hasOwnProperty.call(m, "secret"))
+                w.uint32(18).string(m.secret);
+            return w;
+        };
+
+        /**
+         * Encodes the specified OAuthClientMessage message, length delimited. Does not implicitly {@link agentInterface.OAuthClientMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof agentInterface.OAuthClientMessage
+         * @static
+         * @param {agentInterface.IOAuthClientMessage} message OAuthClientMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        OAuthClientMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a OAuthClientMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof agentInterface.OAuthClientMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} r Reader or buffer to decode from
+         * @param {number} [l] Message length if known beforehand
+         * @returns {agentInterface.OAuthClientMessage} OAuthClientMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        OAuthClientMessage.decode = function decode(r, l) {
+            if (!(r instanceof $Reader))
+                r = $Reader.create(r);
+            var c = l === undefined ? r.len : r.pos + l, m = new $root.agentInterface.OAuthClientMessage();
+            while (r.pos < c) {
+                var t = r.uint32();
+                switch (t >>> 3) {
+                case 1:
+                    m.id = r.string();
+                    break;
+                case 2:
+                    m.secret = r.string();
+                    break;
+                default:
+                    r.skipType(t & 7);
+                    break;
+                }
+            }
+            return m;
+        };
+
+        /**
+         * Decodes a OAuthClientMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof agentInterface.OAuthClientMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {agentInterface.OAuthClientMessage} OAuthClientMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        OAuthClientMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        return OAuthClientMessage;
     })();
 
     return agentInterface;

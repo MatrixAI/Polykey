@@ -1,3 +1,4 @@
+import path from 'path'
 import os from 'os';
 import chalk from 'chalk';
 import * as grpc from '@grpc/grpc-js';
@@ -10,7 +11,7 @@ function actionRunner(fn: (...args: any) => Promise<void>) {
   return (...args: any) =>
     fn(...args)
       .catch((error: Error) => {
-        pkLogger(error.message, PKMessageType.ERROR);
+        console.error(chalk.redBright(error.message));
       })
       .finally(() => {
         if (process.env.NODE_ENV !== 'test') {
@@ -32,32 +33,48 @@ enum PKMessageType {
   SUCCESS,
   INFO,
   WARNING,
-  ERROR,
   none,
 }
 
-function pkLogger(message: string, type?: PKMessageType) {
-  switch (type) {
-    case PKMessageType.SUCCESS:
-      console.log(chalk.greenBright(message));
-      break;
-    case PKMessageType.INFO:
-      console.info(chalk.blueBright(message));
-      break;
-    case PKMessageType.WARNING:
-      console.warn(chalk.yellowBright(message));
-      break;
-    case PKMessageType.ERROR:
-      console.error(chalk.redBright(message));
-      break;
-    default:
-      console.debug(message);
-      break;
+type PKLogger = {
+  logV0: (message: string, type?: PKMessageType) => void
+  logV1: (message: string, type?: PKMessageType) => void
+  logV2: (message: string, type?: PKMessageType) => void
+}
+
+function getPKLogger(verbosityLevel: number = 0): PKLogger {
+  const log = (message: string, type?: PKMessageType) => {
+    switch (type) {
+      case PKMessageType.SUCCESS:
+        console.log(chalk.greenBright(message));
+        break;
+      case PKMessageType.INFO:
+        console.info(chalk.blueBright(message));
+        break;
+      case PKMessageType.WARNING:
+        console.warn(chalk.yellowBright(message));
+        break;
+      default:
+        console.debug(message);
+        break;
+    }
+  }
+  return {
+    logV0: (message: string, type?: PKMessageType) => log(message, type),
+    logV1: (message: string, type?: PKMessageType) => (verbosityLevel <= 1) ? log(message, type) : undefined,
+    logV2: (message: string, type?: PKMessageType) => (verbosityLevel <= 2) ? log(message, type) : undefined,
   }
 }
 
 function determineNodePath(nodePath?: string) {
-  const resolvedNodePath = nodePath ?? process.env.PK_PATH;
+  let defaultPath: string = '/'
+  if (os.platform() === 'win32') {
+    defaultPath = process.env.APPDATA ?? os.homedir()
+  } else if (os.homedir()) {
+    defaultPath = os.homedir()
+  }
+
+  const resolvedNodePath = nodePath ?? process.env.PK_PATH ?? path.join(defaultPath, '.polykey');
   if (!resolvedNodePath) {
     throw Error('no keynode path, set as an environment variable "export PK_PATH=\'<path>\'", or as a argument "--node-path \'<path>\'"');
   }
@@ -86,12 +103,13 @@ async function getAgentClient(
   daemon: boolean = false,
   restartOnStopped: boolean = true,
   failOnNotInitialized: boolean = true,
+  pkLogger: PKLogger
 ) {
   if (restartOnStopped) {
     // make sure agent is running
     const pid = await PolykeyAgent.startAgent(polykeyPath, daemon, failOnNotInitialized);
     if (typeof pid == 'number') {
-      pkLogger(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
+      pkLogger.logV1(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
     }
   }
 
@@ -104,4 +122,4 @@ async function getAgentClient(
   }
 }
 
-export { pkLogger, actionRunner, PKMessageType, determineNodePath, resolveTilde, promisifyGrpc, getAgentClient };
+export { getPKLogger, actionRunner, PKMessageType, determineNodePath, resolveTilde, promisifyGrpc, getAgentClient };

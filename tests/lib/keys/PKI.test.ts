@@ -28,7 +28,7 @@ describe('PKI testing', () => {
 
     // Create pki
     kmCA = new KeyManager(tempDirPeerCA, fs)
-    await kmCA.generateKeyPair('kmCA', 'passphrase', 1024)
+    await kmCA.generateKeyPair('kmCA', 'passphrase')
 
     // ======== PEER A ======== //
     // Define temp directory
@@ -36,7 +36,7 @@ describe('PKI testing', () => {
 
     // Create pki
     kmA = new KeyManager(tempDirPeerA, fs)
-    await kmA.generateKeyPair('kmA', 'passphrase', 1024)
+    await kmA.generateKeyPair('kmA', 'passphrase')
     kmA.pki.addCA(kmCA.pki.RootCert)
 
     // ======== PEER B ======== //
@@ -45,7 +45,7 @@ describe('PKI testing', () => {
 
     // Create pki
     kmB = new KeyManager(tempDirPeerB, fs)
-    await kmB.generateKeyPair('kmB', 'passphrase', 1024)
+    await kmB.generateKeyPair('kmB', 'passphrase')
     kmB.pki.addCA(kmCA.pki.RootCert)
   })
 
@@ -110,8 +110,6 @@ describe('PKI testing', () => {
         })
 
         req.on('error', (e) => {
-          console.log(e);
-
           expect(e).toBeUndefined()
           done()
         });

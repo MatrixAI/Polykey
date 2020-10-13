@@ -57,6 +57,37 @@ async function promiseAny<T>(promiseList: Promise<T>[]): Promise<T> {
   });
 }
 
+/**
+ * Waits until all promises are fulfiled
+ * @param promiseList List of promises
+ */
+async function promiseAll<T>(promiseList: Promise<T>[]): Promise<T[]> {
+  return await new Promise((resolve, reject) => {
+    const outputList: T[] = [];
+    const errorList: Error[] = [];
+    let count = 0
+    for (const promise of promiseList) {
+      promise
+        .then((p) => {
+          outputList.push(p)
+        })
+        .catch((error) => {
+          errorList.push(error)
+        }).finally(() => {
+          count += 1
+          if (count >= promiseList.length) {
+            // check if all have failed
+            if (errorList.length == promiseList.length) {
+              reject(errorList.reduceRight((p, c) => Error(`${p.message}||${c.message}`)));
+            } else {
+              resolve(outputList)
+            }
+          }
+        })
+    }
+  });
+}
+
 function protobufToString(message: Uint8Array): string {
   return protobufjs.util.base64.encode(message, 0, message.length);
 }
@@ -98,4 +129,56 @@ async function getPort(defaultPort?: number, defaultHost?: string): Promise<numb
   return await tryPort(0, defaultHost)
 }
 
-export { randomString, promiseAny, protobufToString, stringToProtobuf, sleep, getPort };
+function JSONMapReplacer(key: any, value: any) {
+  const originalObject = this[key];
+  if(originalObject instanceof Map) {
+    return {
+      dataType: 'Map',
+      value: Array.from(originalObject.entries())
+    };
+  } else {
+    return value;
+  }
+}
+
+function JSONMapReviver(key: any, value: any) {
+  if(typeof value === 'object' && value !== null) {
+    if (value.dataType === 'Map') {
+      return new Map(value.value);
+    }
+  }
+  return value;
+}
+
+/**
+ * @param  {Uint8Array} Uint8Array1
+ * @param  {Uint8Array} Uint8Array2
+ * @return {Boolean}
+ */
+function arrayEquals(array1: Uint8Array, array2: Uint8Array): boolean {
+  if (array1 === array2) {
+    return true
+  }
+  if (array1.length !== array2.length) {
+    return false
+  }
+  for (let i = 0, length = array1.length; i < length; ++i) {
+    if (array1[i] !== array2[i]) {
+      return false
+    }
+  }
+  return true
+}
+
+export {
+  randomString,
+  promiseAny,
+  promiseAll,
+  protobufToString,
+  stringToProtobuf,
+  sleep,
+  getPort,
+  JSONMapReplacer,
+  JSONMapReviver,
+  arrayEquals,
+};

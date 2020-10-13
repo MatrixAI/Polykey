@@ -202,6 +202,17 @@ function deserialize_agentInterface_StringMessage(buffer_arg) {
   return Agent_pb.StringMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_UnlockNodeMessage(arg) {
+  if (!(arg instanceof Agent_pb.UnlockNodeMessage)) {
+    throw new Error('Expected argument of type agentInterface.UnlockNodeMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_UnlockNodeMessage(buffer_arg) {
+  return Agent_pb.UnlockNodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_VaultPathMessage(arg) {
   if (!(arg instanceof Agent_pb.VaultPathMessage)) {
     throw new Error('Expected argument of type agentInterface.VaultPathMessage');
@@ -482,6 +493,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_StringListMessage,
     responseDeserialize: deserialize_agentInterface_StringListMessage,
   },
+  lockNode: {
+    path: '/agentInterface.Agent/LockNode',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
   newClientCertificate: {
     path: '/agentInterface.Agent/NewClientCertificate',
     requestStream: false,
@@ -559,41 +581,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_BooleanMessage,
     responseDeserialize: deserialize_agentInterface_BooleanMessage,
   },
-  registerNode: {
-    path: '/agentInterface.Agent/RegisterNode',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.StringMessage,
-    responseType: Agent_pb.BooleanMessage,
-    requestSerialize: serialize_agentInterface_StringMessage,
-    requestDeserialize: deserialize_agentInterface_StringMessage,
-    responseSerialize: serialize_agentInterface_BooleanMessage,
-    responseDeserialize: deserialize_agentInterface_BooleanMessage,
-  },
   revokeOAuthToken: {
     path: '/agentInterface.Agent/RevokeOAuthToken',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.StringMessage,
-    responseType: Agent_pb.BooleanMessage,
-    requestSerialize: serialize_agentInterface_StringMessage,
-    requestDeserialize: deserialize_agentInterface_StringMessage,
-    responseSerialize: serialize_agentInterface_BooleanMessage,
-    responseDeserialize: deserialize_agentInterface_BooleanMessage,
-  },
-  requestHolePunch: {
-    path: '/agentInterface.Agent/RequestHolePunch',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.StringMessage,
-    responseType: Agent_pb.BooleanMessage,
-    requestSerialize: serialize_agentInterface_StringMessage,
-    requestDeserialize: deserialize_agentInterface_StringMessage,
-    responseSerialize: serialize_agentInterface_BooleanMessage,
-    responseDeserialize: deserialize_agentInterface_BooleanMessage,
-  },
-  requestRelay: {
-    path: '/agentInterface.Agent/RequestRelay',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.StringMessage,
@@ -644,6 +633,17 @@ var AgentService = exports.AgentService = {
     responseType: Agent_pb.BooleanMessage,
     requestSerialize: serialize_agentInterface_BooleanMessage,
     requestDeserialize: deserialize_agentInterface_BooleanMessage,
+    responseSerialize: serialize_agentInterface_BooleanMessage,
+    responseDeserialize: deserialize_agentInterface_BooleanMessage,
+  },
+  unlockNode: {
+    path: '/agentInterface.Agent/UnlockNode',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.UnlockNodeMessage,
+    responseType: Agent_pb.BooleanMessage,
+    requestSerialize: serialize_agentInterface_UnlockNodeMessage,
+    requestDeserialize: deserialize_agentInterface_UnlockNodeMessage,
     responseSerialize: serialize_agentInterface_BooleanMessage,
     responseDeserialize: deserialize_agentInterface_BooleanMessage,
   },

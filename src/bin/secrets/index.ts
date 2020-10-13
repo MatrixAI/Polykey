@@ -2,7 +2,7 @@ import process from 'process';
 import commander from 'commander';
 import { spawn } from 'child_process';
 import * as pb from '../../../proto/compiled/Agent_pb';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
+import { actionRunner, getPKLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
 
 const pathRegex = /^([a-zA-Z0-9_ -]+)(?::)([a-zA-Z0-9_ -]+)(?:=)?([a-zA-Z_][a-zA-Z0-9_]+)?$/;
 
@@ -11,14 +11,15 @@ function makeListSecretsCommand() {
     .description('list all available secrets for a given vault')
     .alias('ls')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('--verbose', 'increase verbosity level by one')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .arguments('vault name(s) to list')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
-        const isVerbose: boolean = options.verbose ?? false;
+
         const vaultNames: string[] = Array.from(options.args.values());
 
         if (!vaultNames.length) {
@@ -33,15 +34,11 @@ function makeListSecretsCommand() {
           const secretNames = res.getSList();
 
           // List secrets
-          if (secretNames.length == 0 && isVerbose) {
-            pkLogger(`no secrets found for vault '${vaultName}'`, PKMessageType.INFO);
+          if (secretNames.length == 0) {
+            pkLogger.logV1(`no secrets found for vault '${vaultName}'`, PKMessageType.INFO);
           } else {
-            if (isVerbose) {
-              pkLogger(`secrets contained within the ${vaultName} vault:`, PKMessageType.INFO);
-            }
-            secretNames.forEach((secretName) => {
-              pkLogger(`${vaultName}:${secretName}`, PKMessageType.INFO);
-            });
+            pkLogger.logV1(`secrets contained within the ${vaultName} vault:`, PKMessageType.INFO);
+            secretNames.forEach((secretName) => pkLogger.logV0(`${vaultName}:${secretName}`, PKMessageType.SUCCESS));
           }
         }
       }),
@@ -52,15 +49,15 @@ function makeNewSecretCommand() {
   return new commander.Command('new')
     .description("create a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .arguments("secret path of the format '<vaultName>:<secretName>'")
     .requiredOption('-f, --file-path <filePath>', '(required) path to the secret to be added')
-    .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
-        const isVerbose: boolean = options.verbose ?? false;
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
           throw Error("please specify a new secret name using the format: '<existingVaultName>:<secretName>'");
@@ -79,8 +76,8 @@ function makeNewSecretCommand() {
           request.setSecretFilePath(options.filePath);
           const res = (await promisifyGrpc(client.newSecret.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger(
-            `secret '${secretName}' was ${res.getB() ? '' : 'un-'}successfully added to vault '${vaultName}'`,
+          pkLogger.logV1(
+            `secret '${secretName}' was successfully added to vault '${vaultName}'`,
             PKMessageType.SUCCESS,
           );
         } catch (err) {
@@ -94,15 +91,16 @@ function makeUpdateSecretCommand() {
   return new commander.Command('update')
     .description("update a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .arguments("secret path of the format '<vaultName>:<secretName>'")
     .requiredOption('-f, --file-path <filePath>', '(required) path to the new secret')
-    .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
-        const isVerbose: boolean = options.verbose ?? false;
+
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
           throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
@@ -121,8 +119,8 @@ function makeUpdateSecretCommand() {
           request.setSecretFilePath(options.filePath);
           const res = (await promisifyGrpc(client.updateSecret.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger(
-            `secret '${secretName}' was ${res.getB() ? '' : 'un-'}successfully updated in vault '${vaultName}'`,
+          pkLogger.logV1(
+            `secret '${secretName}' was successfully updated in vault '${vaultName}'`,
             res.getB() ? PKMessageType.SUCCESS : PKMessageType.WARNING,
           );
         } catch (err) {
@@ -137,14 +135,15 @@ function makeDeleteSecretCommand() {
     .alias('del')
     .description("delete a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .arguments("secret path of the format '<vaultName>:<secretName>'")
-    .option('--verbose', 'increase verbosity level by one')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
-        const isVerbose: boolean = options.verbose ?? false;
+
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
           throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
@@ -160,8 +159,8 @@ function makeDeleteSecretCommand() {
           request.setSecretName(secretName);
           const res = (await promisifyGrpc(client.deleteSecret.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger(
-            `secret '${secretName}' was ${res.getB() ? '' : 'un-'}successfully removed from vault '${vaultName}'`,
+          pkLogger.logV1(
+            `secret '${secretName}' was successfully removed from vault '${vaultName}'`,
             PKMessageType.SUCCESS,
           );
         } catch (err) {
@@ -175,15 +174,17 @@ function makeGetSecretCommand() {
   return new commander.Command('get')
     .description("retrieve a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .arguments("secret path of the format '<vaultName>:<secretName>'")
     .option('-e, --env', 'wrap the secret in an environment variable declaration')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
         const isEnv: boolean = options.env ?? false;
-        const isVerbose: boolean = options.verbose ?? false;
+
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
           throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
@@ -201,9 +202,9 @@ function makeGetSecretCommand() {
           const secret = res.getS();
 
           if (isEnv) {
-            pkLogger(`export ${secretName.toUpperCase().replace('-', '_')}='${secret}'`, PKMessageType.none);
+            pkLogger.logV0(`export ${secretName.toUpperCase().replace('-', '_')}='${secret}'`, PKMessageType.none);
           } else {
-            pkLogger(secret.toString(), PKMessageType.none);
+            pkLogger.logV0(secret.toString(), PKMessageType.none);
           }
         } catch (err) {
           throw Error(`Error when retrieving secret: ${err.message}`);
@@ -235,9 +236,9 @@ function makeSecretEnvCommand() {
         const options = cmd.opts();
 
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
-        const isVerbose: boolean = options.verbose ?? false;
         const command: string | undefined = options.command;
         const run: string | undefined = options.run;
 
@@ -296,7 +297,7 @@ function makeSecretEnvCommand() {
           });
           shell.on('close', (code) => {
             if (code != 0) {
-              pkLogger(`polykey: environment terminated with code: ${code}`, PKMessageType.WARNING);
+              pkLogger.logV1(`polykey: environment terminated with code: ${code}`, PKMessageType.WARNING);
             }
           });
         } catch (err) {

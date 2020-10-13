@@ -1,7 +1,6 @@
 import dgram from 'dgram';
 import PeerInfo from './PeerInfo';
 import { EventEmitter } from 'events';
-import PeerManager from './PeerManager';
 import { peerInterface } from '../../proto/js/Peer';
 import KeyManager from '../keys/KeyManager';
 import { protobufToString, stringToProtobuf } from '../utils';
@@ -22,17 +21,26 @@ const UDP_MULTICAST_PORT = parseInt(process.env.UDP_MULTICAST_PORT ?? '5353');
 const UDP_MULTICAST_ADDR = process.env.UDP_MULTICAST_ADDR ?? '224.0.0.251';
 
 class MulticastBroadcaster extends EventEmitter {
-  private peerManager: PeerManager;
+  getPeerInfo: () => PeerInfo;
+  hasPeer: (id: string) => boolean;
+  updatePeer: (peerInfo: PeerInfo) => void;
   private keyManager: KeyManager;
 
   private socket: dgram.Socket;
 
   private interval: number = 1e3;
   private broadcastInterval: NodeJS.Timeout | null = null;
-  constructor(peerManager: PeerManager, keyManager: KeyManager) {
+  constructor(
+    getPeerInfo: () => PeerInfo,
+    hasPeer: (id: string) => boolean,
+    updatePeer: (peerInfo: PeerInfo) => void,
+    keyManager: KeyManager,
+  ) {
     super();
 
-    this.peerManager = peerManager;
+    this.getPeerInfo = getPeerInfo;
+    this.hasPeer = hasPeer;
+    this.updatePeer = updatePeer;
     this.keyManager = keyManager;
 
     // Create socket
@@ -67,20 +75,20 @@ class MulticastBroadcaster extends EventEmitter {
 
   startBroadcasting() {
     const broadcast = async () => {
-      if (!this.keyManager.identityLoaded) {
+      if (!this.keyManager.KeypairUnlocked) {
         return;
       }
-      const peerInfo = this.peerManager.peerInfo;
+      const peerInfo = this.getPeerInfo();
       const encodedPeerInfo = peerInterface.PeerInfoMessage.encodeDelimited({
         publicKey: peerInfo.publicKey,
         peerAddress: peerInfo.peerAddress?.toString(),
-        relayPublicKey: peerInfo.relayPublicKey,
+        apiAddress: peerInfo.apiAddress?.toString(),
       }).finish();
       // sign it for authenticity
       const signedPeerInfo = await this.keyManager.signData(Buffer.from(protobufToString(encodedPeerInfo)));
       const encodedPeerMessage = peerInterface.PeerMessage.encodeDelimited({
         type: peerInterface.SubServiceType.PING_PEER,
-        publicKey: this.peerManager.peerInfo.publicKey,
+        publicKey: this.getPeerInfo().publicKey,
         subMessage: signedPeerInfo.toString(),
       }).finish();
       this.socket.send(encodedPeerMessage, 0, encodedPeerMessage.length, UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
@@ -96,9 +104,9 @@ class MulticastBroadcaster extends EventEmitter {
       const { publicKey: signingKey, type, subMessage } = peerInterface.PeerMessage.decodeDelimited(request);
 
       // only relevant if peer public key exists in store and type is of PING
-      if (!this.peerManager.hasPeer(signingKey)) {
+      if (!this.hasPeer(signingKey)) {
         throw Error('peer does not exist in store');
-      } else if (this.peerManager.peerInfo.publicKey == signingKey) {
+      } else if (this.getPeerInfo().publicKey == signingKey) {
         throw Error('peer message is from self');
       } else if (!(type == peerInterface.SubServiceType.PING_PEER)) {
         throw Error(`peer message is not of type PING, type is: ${peerInterface.SubServiceType[type]}`);
@@ -108,14 +116,14 @@ class MulticastBroadcaster extends EventEmitter {
       const verifiedMessage = await this.keyManager.verifyData(subMessage, Buffer.from(signingKey));
       const encodedMessage = stringToProtobuf(verifiedMessage.toString());
 
-      const { publicKey, relayPublicKey, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
+      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
         encodedMessage,
       );
 
       // construct a peer info object
-      const peerInfo = new PeerInfo(publicKey, relayPublicKey, peerAddress, apiAddress);
+      const peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress);
       // update the peer store
-      this.peerManager.updatePeer(peerInfo);
+      this.updatePeer(peerInfo);
 
       this.emit('found', publicKey);
     } catch (err) {

@@ -17,7 +17,7 @@ describe('PeerManager class', () => {
 
     // Create keyManager
     const keyManagerA = new KeyManager(tempDirPeerA, fs)
-    await keyManagerA.generateKeyPair('John Smith', 'some passphrase', 1024, true)
+    await keyManagerA.generateKeyPair('John Smith', 'some passphrase', true)
 
     // Initialize polykey
     const peerA = new Polykey(
@@ -37,7 +37,7 @@ describe('PeerManager class', () => {
 
     // Create keyManager
     const keyManagerB = new KeyManager(tempDirPeerB, fs)
-    await keyManagerB.generateKeyPair('Jane Doe', 'some different passphrase', 1024, true)
+    await keyManagerB.generateKeyPair('Jane Doe', 'some different passphrase', true)
 
     // Initialize polykey
     const peerB = new Polykey(
@@ -127,7 +127,6 @@ describe('PeerManager class', () => {
       tempDirPeerB = nodes.nodeB.tempDir
 
       // open relay connection from peerB to peerA
-      await peerB.peerManager.turnClient.requestRelayConnection(peerA.peerManager.peerInfo.publicKey)
       peerA.peerManager.updatePeer(peerB.peerManager.peerInfo)
       peerB.peerManager.updatePeer(peerA.peerManager.peerInfo)
       // ======== PEER C ======== //
@@ -136,7 +135,7 @@ describe('PeerManager class', () => {
 
       // Create keyManager
       const keyManagerC = new KeyManager(tempDirPeerC, fs)
-      await keyManagerC.generateKeyPair('John Smith', 'some passphrase', 1024, true)
+      await keyManagerC.generateKeyPair('John Smith', 'some passphrase', true)
 
       // Initialize polykey
       peerC = new Polykey(
@@ -214,8 +213,6 @@ describe('PeerManager class', () => {
       peerB = nodes.nodeB.pk
       tempDirPeerB = nodes.nodeB.tempDir
 
-      // open relay connection from peerB to peerA
-      await peerB.peerManager.turnClient.requestLocalHolePunchAddress(peerA.peerManager.peerInfo.publicKey)
 
       peerA.peerManager.updatePeer(peerB.peerManager.peerInfo)
       peerB.peerManager.updatePeer(peerA.peerManager.peerInfo)
@@ -225,7 +222,7 @@ describe('PeerManager class', () => {
 
       // Create keyManager
       const keyManagerC = new KeyManager(tempDirPeerC, fs)
-      await keyManagerC.generateKeyPair('John Smith', 'some passphrase', 1024, true)
+      await keyManagerC.generateKeyPair('John Smith', 'some passphrase', true)
 
       // Initialize polykey
       peerC = new Polykey(

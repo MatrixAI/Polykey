@@ -11,8 +11,9 @@ describe('PeerInfo class', () => {
     const flags = kbpgp['const'].openpgp;
     const params = {
       userid: `John Smith <john.smith@email.com>`,
+      ecc: true,
       primary: {
-        nbits: 1024,
+        nbits: 384,
         flags: flags.certify_keys | flags.sign_data | flags.auth | flags.encrypt_comm | flags.encrypt_storage,
         expire_in: 0, // never expire
       },
@@ -32,11 +33,10 @@ describe('PeerInfo class', () => {
   beforeAll(async () => {
     // generate a kbpgp keypair
 
-    const mockPublicKey1 = await generatePublicKey()
-    const mockPublicKey2 = await generatePublicKey()
+    const mockPublicKey = await generatePublicKey()
     peerInfoA = new PeerInfo(
-      mockPublicKey1,
-      mockPublicKey2,
+      mockPublicKey,
+      'rootCertificate',
       '0.0.0.0:3298',
       '0.0.0.0:2356',
     )
