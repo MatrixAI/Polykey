@@ -9,17 +9,20 @@ class DeclarationBundlePlugin {
   entryFilePath: string;
   outputFilePath: string;
   singleFile: boolean;
+  moduleName: string;
 
   constructor(options: {
     ignoreDeclarations?: boolean,
     entry?: string,
     output?: string,
-    singleFile?: boolean
+    singleFile?: boolean,
+    moduleName?: string
   }) {
     this.ignoreDeclarations = options.ignoreDeclarations ?? false
     this.entryFilePath = options.entry ?? ''
     this.outputFilePath = options.output ?? ''
     this.singleFile = options.singleFile ?? false
+    this.moduleName = options.moduleName ?? ''
   }
 
   log(message: string) {
@@ -69,12 +72,12 @@ class DeclarationBundlePlugin {
         return requireRegex.test(line)
       })
       if (matches.length != 0) {
-        const lineToReplace = matches[0]
-        const moduleName = Array.from(/'(.+?)\//.exec(lineToReplace) ?? [''])[1]
-
-        const split = this.entryFilePath.split('/')
-        const entryFileName = (split[split.length - 1]).split('.')[0]
-        const newContents = Buffer.from(contents.replace(requireRegex, `require('${moduleName}/${entryFileName}')`))
+        const moduleImportName = path.join(this.moduleName, this.entryFilePath.slice(0, this.entryFilePath.length - 3))
+        const newContents = Buffer.from(
+          contents
+            .replace(/\/index\'/g, "'")
+            .replace(requireRegex, `require('${moduleImportName}')`)
+        )
 
         fs.writeFileSync(this.outputFilePath, newContents)
       }

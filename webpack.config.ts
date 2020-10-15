@@ -68,7 +68,8 @@ const libraryConfig = {
     }),
     new DeclarationBundlePlugin({
       entry: './src/Polykey.ts',
-      output: './dist/polykey.d.ts'
+      output: './dist/polykey.d.ts',
+      moduleName: '@matrixai/polykey'
     }),
   ],
   watchOptions: {
