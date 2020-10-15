@@ -37,6 +37,7 @@ class DeclarationBundlePlugin {
     // Create temporary working directory
     const tempDir = fs.mkdtempSync(`${os.tmpdir()}/typescript-temp`)
 
+    // write all .d.ts files to tempDir
     for (const name in compilation.assets) {
       if (name.indexOf('.d.ts') != -1) {
         const filename = name
@@ -56,7 +57,8 @@ class DeclarationBundlePlugin {
         return
       }
 
-      const generator = new dts.Generator({ entry: path.join(tempDir, `${this.entryFilePath.split('.')[0]}.d.ts`), output: this.outputFilePath }, true, true)
+      const entry = path.join(tempDir, `${this.entryFilePath.slice(0, this.entryFilePath.length - 3)}.d.ts`)
+      const generator = new dts.Generator({ entry, output: this.outputFilePath }, true, true)
       await generator.generate()
 
       // Fix the require at the end of the file to poifnt to the module name

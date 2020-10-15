@@ -1,6 +1,6 @@
 import fs from 'fs'
 import os from 'os'
-import Polykey from "../../../src/Polykey"
+import {Polykey} from "../../../src/Polykey"
 import { randomString } from '../../../src/utils'
 import KeyManager from '../../../src/keys/KeyManager'
 

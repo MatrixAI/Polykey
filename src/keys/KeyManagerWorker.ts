@@ -1,6 +1,7 @@
-import kbpgp from 'kbpgp';
 import { promisify } from 'util';
 import { expose } from 'threads/worker';
+
+const kbpgp = require('kbpgp')
 
 const keyManagerWorker = {
   /**

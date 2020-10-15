@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import crypto from 'crypto';
-import Polykey from "../../../src/Polykey";
+import {Polykey} from "../../../src/Polykey";
 import { randomString } from '../../../src/utils';
 import KeyManager from '../../../src/keys/KeyManager';
 import VaultManager from '../../../src/vaults/VaultManager';

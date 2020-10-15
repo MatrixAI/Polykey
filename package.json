@@ -22,9 +22,9 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
-  "main": "./dist/lib/polykey.js",
-  "types": "./dist/lib/polykey.d.ts",
-  "module": "./dist/lib/polykey.js",
+  "main": "./dist/polykey.js",
+  "types": "./dist/polykey.d.ts",
+  "module": "./dist/polykey.js",
   "files": [
     "bin",
     "dist",

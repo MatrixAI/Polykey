@@ -1,13 +1,14 @@
 import os from 'os';
 import fs from 'fs';
 import http from 'https';
-import kbpgp from 'kbpgp'
 import { promisify } from 'util';
 import { pki, md, tls } from 'node-forge';
 import HttpApi from '../../../src/api/HttpApi';
 import { randomString } from '../../../src/utils';
 import { PeerInfo, Address } from '../../../src/Polykey';
 import { TLSCredentials } from '../../../src/keys/pki/PublicKeyInfrastructure';
+
+const kbpgp = require('kbpgp')
 
 // this requires a client for convenience
 // generate client with 'openapi-generator-cli generate -i ./openapi.yaml -g typescript-node -o ./tests/lib/api/client'

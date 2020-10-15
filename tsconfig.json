@@ -9,14 +9,12 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2018",
     "module": "CommonJS",
-    "baseUrl": "./src/lib",
     "types": [
       "node",
       "jest"
-    ],
+    ]
   },
   "include": [
-    "./src/lib/**/*",
-    "./proto/js/**/*"
-  ],
+    "./src"
+  ]
 }

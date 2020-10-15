@@ -76,5 +76,12 @@ class Polykey {
   }
 }
 
-export default Polykey;
-export { KeyManager, VaultManager, PeerManager, PolykeyAgent, PeerInfo, Address };
+export {
+  Polykey,
+  KeyManager,
+  VaultManager,
+  PeerManager,
+  PolykeyAgent,
+  PeerInfo,
+  Address
+};

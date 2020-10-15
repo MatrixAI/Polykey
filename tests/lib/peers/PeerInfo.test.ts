@@ -1,6 +1,7 @@
-import kbpgp from 'kbpgp'
 import { promisify } from 'util'
 import PeerInfo from '../../../src/peers/PeerInfo'
+
+const kbpgp = require('kbpgp')
 
 describe('PeerInfo class', () => {
   let peerInfoA: PeerInfo

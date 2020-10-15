@@ -1,12 +1,13 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import kbpgp from 'kbpgp';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import { Pool, ModuleThread } from 'threads';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
 import PublicKeyInfrastructure from './pki/PublicKeyInfrastructure';
+
+const kbpgp = require('kbpgp')
 
 type KeyManagerMetadata = {
   privateKeyPath: string | null;

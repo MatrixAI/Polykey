@@ -114,6 +114,7 @@ const binConfig = {
   ],
   plugins: [
     new DeclarationBundlePlugin({
+      // this is important so that no .d.ts files are generated
       ignoreDeclarations: true
     }),
   ],
@@ -152,6 +153,7 @@ const agentDaemonScriptConfig = {
   },
   plugins: [
     new DeclarationBundlePlugin({
+      // this is important so that no .d.ts files are generated
       ignoreDeclarations: true
     }),
   ],
