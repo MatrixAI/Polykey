@@ -1,14 +1,14 @@
 { pkgs ? import <nixpkgs> { inherit system; }
 , system ? builtins.currentSystem
 , polykey-src ? ../.
+, nodejs ? pkgs.nodejs-12_x
 }:
 
 with pkgs;
 
 let
   nodePackages = import ./generated/node-composition.nix {
-    inherit system;
-    nodejs = nodejs-12_x;
+    inherit system nodejs;
     pkgs = {
       inherit fetchurl fetchgit;
       inherit stdenv python2 utillinux runCommand writeTextFile;
@@ -23,7 +23,7 @@ let
 
 
   # As we're only interested by the dependencies (at the point)
-  # we keep only the package and packaeg lock files. This
+  # we keep only the package and package lock files. This
   # will allow us to edit the sources without our dev environment
   # being rebuilt each time.
   srcFilter = inSrc: lib.sources.sourceByRegex inSrc [
@@ -44,7 +44,7 @@ nodePackages // {
   package = nodePackages.package.override {
     src = filteredSrc;
     inherit buildInputs;
-    # dontNpmInstall = true;
+    dontNpmInstall = true;
   };
 
   shell = nodePackages.shell.override {
