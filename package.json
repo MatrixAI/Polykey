@@ -69,7 +69,7 @@
     "k-bucket": "^5.0.0",
     "kbpgp": "^2.0.82",
     "multihashing": "^0.3.3",
-    "node-forge": "^0.9.1",
+    "node-forge": "^0.10.0",
     "oauth2orize": "^1.11.0",
     "pako": "^1.0.11",
     "passport": "^0.4.1",
