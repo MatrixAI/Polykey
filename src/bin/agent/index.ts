@@ -9,11 +9,12 @@ function makeStartAgentCommand() {
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .option('-d, --daemon', 'start the agent as a daemon process')
+    .option('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
+    .option('-t, --timeout <timeout>', 'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout', '15')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
         const pkLogger = getPKLogger(options.verbosity)
-
         try {
           const client = PolykeyAgent.connectToAgent(nodePath);
 
@@ -21,7 +22,7 @@ function makeStartAgentCommand() {
             new pb.EmptyMessage(),
           )) as pb.AgentStatusMessage;
           if (res.getStatus() == pb.AgentStatusType.ONLINE) {
-            pkLogger.logV1(`agent is already running`, PKMessageType.INFO);
+            pkLogger.logV2(`agent is already running`, PKMessageType.INFO);
           } else {
             throw Error(`agent is not running`);
           }
@@ -32,9 +33,25 @@ function makeStartAgentCommand() {
             new pb.EmptyMessage(),
           )) as pb.AgentStatusMessage;
           if (res.getStatus() == pb.AgentStatusType.ONLINE) {
-            pkLogger.logV1(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
+            pkLogger.logV2(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
           } else {
             throw Error('agent could not be started')
+          }
+          // unlock if passphrase was provided
+          if (options.privatePassphrase) {
+            const request = new pb.UnlockNodeMessage();
+            request.setPassphrase(options.privatePassphrase!);
+            request.setTimeout(options.timeout!);
+            const res = (await promisifyGrpc(client.unlockNode.bind(client))(request)) as pb.BooleanMessage;
+            if (res.getB()) {
+              if (options.timeout == 0) {
+                pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
+              } else {
+                pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
+              }
+            } else {
+              throw Error('something went wrong when loading node');
+            }
           }
         }
       }),
@@ -47,15 +64,34 @@ function makeRestartAgentCommand() {
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .option('-d, --daemon', 'start the agent as a daemon process')
+    .option('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
+    .option('-t, --timeout <timeout>', 'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout', '15')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
         const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, options.daemon, false, false, pkLogger);
+        let client = await getAgentClient(nodePath, options.daemon, false, false, pkLogger);
         // Tell agent to stop
         await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage());
         const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
-        pkLogger.logV1(`agent has restarted with pid of ${pid}`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`agent has restarted with pid of ${pid}`, PKMessageType.SUCCESS);
+        // unlock if passphrase was provided
+        if (options.privatePassphrase) {
+          client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+          const request = new pb.UnlockNodeMessage();
+          request.setPassphrase(options.privatePassphrase!);
+          request.setTimeout(options.timeout!);
+          const res = (await promisifyGrpc(client.unlockNode.bind(client))(request)) as pb.BooleanMessage;
+          if (res.getB()) {
+            if (options.timeout == 0) {
+              pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
+            } else {
+              pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
+            }
+          } else {
+            throw Error('something went wrong when loading node');
+          }
+        }
       }),
     );
 }
@@ -77,9 +113,9 @@ function makeAgentStatusCommand() {
 
           const status = res.getStatus();
           const statusString = Object.keys(pb.AgentStatusType).find((k) => pb.AgentStatusType[k] === status);
-          pkLogger.logV0(`agent status is: '${statusString?.toLowerCase()}'`, PKMessageType.INFO);
+          pkLogger.logV1(`agent status is: '${statusString?.toLowerCase()}'`, PKMessageType.INFO);
         } catch (error) {
-          pkLogger.logV0(`agent status is: 'offline'`, PKMessageType.INFO);
+          pkLogger.logV1(`agent status is: 'offline'`, PKMessageType.INFO);
         }
       }),
     );
@@ -105,12 +141,12 @@ function makeStopAgentCommand() {
           if (res.getStatus() == pb.AgentStatusType.ONLINE) {
             // Tell agent to stop
             await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage());
-            pkLogger.logV1('agent has successfully stopped', PKMessageType.SUCCESS);
+            pkLogger.logV2('agent has successfully stopped', PKMessageType.SUCCESS);
           } else {
             throw Error('agent failed to stop');
           }
         } catch (error) {
-          pkLogger.logV1('agent is already stopped', PKMessageType.INFO);
+          pkLogger.logV2('agent is already stopped', PKMessageType.INFO);
         }
       }),
     );
@@ -134,7 +170,7 @@ function makeInitNodeCommand() {
         request.setPassphrase(options.privatePassphrase);
         const res = (await promisifyGrpc(client.newNode.bind(client))(request)) as pb.BooleanMessage;
 
-        pkLogger.logV1(`node was successfully initialized at: '${nodePath}'`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`node was successfully initialized at: '${nodePath}'`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -157,9 +193,9 @@ function makeUnlockNodeCommand() {
         const res = (await promisifyGrpc(client.unlockNode.bind(client))(request)) as pb.BooleanMessage;
         if (res.getB()) {
           if (options.timeout == 0) {
-            pkLogger.logV1(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
+            pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
           } else {
-            pkLogger.logV1(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
+            pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
           }
         } else {
           throw Error('something went wrong when loading node');
@@ -177,9 +213,9 @@ function makeLockNodeCommand() {
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
         const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath,undefined,undefined,undefined,pkLogger);
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
         const res = (await promisifyGrpc(client.lockNode.bind(client))(new pb.EmptyMessage)) as pb.EmptyMessage;
-        pkLogger.logV1(`polykey is now locked at: '${nodePath}'`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`polykey is now locked at: '${nodePath}'`, PKMessageType.SUCCESS);
       }),
     );
 }

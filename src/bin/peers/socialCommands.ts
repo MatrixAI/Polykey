@@ -20,7 +20,7 @@ function makeFindSocialPeerCommand() {
         const res = (await promisifyGrpc(client.findSocialPeer.bind(client))(request)) as pb.BooleanMessage;
 
         if (res.getB()) {
-          pkLogger.logV0('peer successfully pinged', PKMessageType.SUCCESS);
+          pkLogger.logV1('peer successfully pinged', PKMessageType.SUCCESS);
         } else {
           throw Error('ping timed out');
         }

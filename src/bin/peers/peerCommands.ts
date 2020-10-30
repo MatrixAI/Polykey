@@ -48,7 +48,7 @@ function makeAddPeerCommand() {
         const res = (await promisifyGrpc(client.addPeer.bind(client))(request)) as pb.BooleanMessage;
 
         if (res.getB()) {
-          pkLogger.logV1('peer successfully added to peer store', PKMessageType.SUCCESS);
+          pkLogger.logV2('peer successfully added to peer store', PKMessageType.SUCCESS);
         } else {
           throw Error('something went wrong, peer was not added to peer store');
         }
@@ -78,7 +78,7 @@ function makeFindPeerCommand() {
         const res = (await promisifyGrpc(client.findPeer.bind(client))(request)) as pb.BooleanMessage;
 
         if (res.getB()) {
-          pkLogger.logV1('peer successfully pinged', PKMessageType.SUCCESS);
+          pkLogger.logV2('peer successfully pinged', PKMessageType.SUCCESS);
         } else {
           throw Error('ping timed out');
         }
@@ -118,22 +118,22 @@ function makeGetPeerInfoCommand() {
         );
 
         if (<boolean>options.base64) {
-          pkLogger.logV0(peerInfo.toStringB64(), PKMessageType.SUCCESS);
+          pkLogger.logV1(peerInfo.toStringB64(), PKMessageType.SUCCESS);
         } else {
-          pkLogger.logV0('Peer Id:', PKMessageType.INFO);
-          pkLogger.logV0(peerInfo.id, PKMessageType.SUCCESS);
+          pkLogger.logV1('Peer Id:', PKMessageType.INFO);
+          pkLogger.logV1(peerInfo.id, PKMessageType.SUCCESS);
 
-          pkLogger.logV0('Peer Public Key:', PKMessageType.INFO);
-          pkLogger.logV0(peerInfo.publicKey, PKMessageType.SUCCESS);
+          pkLogger.logV1('Peer Public Key:', PKMessageType.INFO);
+          pkLogger.logV1(peerInfo.publicKey, PKMessageType.SUCCESS);
 
-          pkLogger.logV0('Peer Root Certificate:', PKMessageType.INFO);
-          pkLogger.logV0(peerInfo.rootCertificate, PKMessageType.SUCCESS);
+          pkLogger.logV1('Peer Root Certificate:', PKMessageType.INFO);
+          pkLogger.logV1(peerInfo.rootCertificate, PKMessageType.SUCCESS);
 
-          pkLogger.logV0('Peer Address:', PKMessageType.INFO);
-          pkLogger.logV0(peerInfo.peerAddress?.toString() ?? '', PKMessageType.SUCCESS);
+          pkLogger.logV1('Peer Address:', PKMessageType.INFO);
+          pkLogger.logV1(peerInfo.peerAddress?.toString() ?? '', PKMessageType.SUCCESS);
 
-          pkLogger.logV0('API Address:', PKMessageType.INFO);
-          pkLogger.logV0(peerInfo.apiAddress?.toString() ?? '', PKMessageType.SUCCESS);
+          pkLogger.logV1('API Address:', PKMessageType.INFO);
+          pkLogger.logV1(peerInfo.apiAddress?.toString() ?? '', PKMessageType.SUCCESS);
         }
       }),
     );
@@ -155,10 +155,10 @@ function makeListPeersCommand() {
         const publicKeys = res.getSList();
 
         if (publicKeys === undefined || publicKeys.length == 0) {
-          pkLogger.logV1('no peers exist', PKMessageType.INFO);
+          pkLogger.logV2('no peers exist', PKMessageType.INFO);
         } else {
           publicKeys.forEach((publicKey: string, index: number) => {
-            pkLogger.logV0(`${index + 1}: ${publicKey}`, PKMessageType.SUCCESS);
+            pkLogger.logV1(`${index + 1}: ${publicKey}`, PKMessageType.SUCCESS);
           });
         }
       }),
@@ -185,7 +185,7 @@ function makePingPeerCommand() {
         const res = (await promisifyGrpc(client.pingPeer.bind(client))(request)) as pb.BooleanMessage;
 
         if (res.getB()) {
-          pkLogger.logV1('peer successfully pinged', PKMessageType.SUCCESS);
+          pkLogger.logV2('peer successfully pinged', PKMessageType.SUCCESS);
         } else {
           throw Error('ping timed out');
         }
@@ -209,7 +209,7 @@ function makeStealthCommand() {
         request.setB(true);
         const res = (await promisifyGrpc(client.toggleStealthMode.bind(client))(request)) as pb.BooleanMessage;
 
-        pkLogger.logV1(`stealth mode toggled to 'active'`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`stealth mode toggled to 'active'`, PKMessageType.SUCCESS);
       }),
     );
 
@@ -227,7 +227,7 @@ function makeStealthCommand() {
         request.setB(false);
         const res = (await promisifyGrpc(client.toggleStealthMode.bind(client))(request)) as pb.BooleanMessage;
 
-        pkLogger.logV1(`stealth mode toggled to 'inactive'`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`stealth mode toggled to 'inactive'`, PKMessageType.SUCCESS);
       }),
     );
 
@@ -301,7 +301,7 @@ function makeUpdatePeerInfoCommand() {
         }
 
         if (successful) {
-          pkLogger.logV1('peer info was successfully updated', PKMessageType.SUCCESS);
+          pkLogger.logV2('peer info was successfully updated', PKMessageType.SUCCESS);
         } else {
           throw Error('something went wrong, peer info could not be updated');
         }

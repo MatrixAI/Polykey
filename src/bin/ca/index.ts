@@ -18,8 +18,8 @@ function makeGetRootCertificateCommand() {
         const res = (await promisifyGrpc(client.getRootCertificate.bind(client))(
           new pb.EmptyMessage(),
         )) as pb.StringMessage;
-        pkLogger.logV1('Current Node Root Certificate:', PKMessageType.INFO);
-        pkLogger.logV0(res.getS(), PKMessageType.SUCCESS);
+        pkLogger.logV2('Current Node Root Certificate:', PKMessageType.INFO);
+        pkLogger.logV1(res.getS(), PKMessageType.SUCCESS);
       }),
     );
 }
@@ -48,10 +48,10 @@ function makeNewCertCommand() {
         const res = (await promisifyGrpc(client.newClientCertificate.bind(client))(
           request,
         )) as pb.NewClientCertificateMessage;
-        pkLogger.logV1('Certificate:', PKMessageType.INFO);
-        pkLogger.logV0(res.getCertFile(), PKMessageType.SUCCESS);
-        pkLogger.logV1('Private Key:', PKMessageType.INFO);
-        pkLogger.logV0(res.getKeyFile(), PKMessageType.SUCCESS);
+        pkLogger.logV2('Certificate:', PKMessageType.INFO);
+        pkLogger.logV1(res.getCertFile(), PKMessageType.SUCCESS);
+        pkLogger.logV2('Private Key:', PKMessageType.INFO);
+        pkLogger.logV1(res.getKeyFile(), PKMessageType.SUCCESS);
       }),
     );
 }

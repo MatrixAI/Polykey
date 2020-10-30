@@ -21,9 +21,9 @@ function makeListVaultsCommand() {
         const vaultNames = res.getSList();
 
         if (vaultNames === undefined || vaultNames.length == 0) {
-          pkLogger.logV1('no vaults found', PKMessageType.INFO);
+          pkLogger.logV2('no vaults found', PKMessageType.INFO);
         } else {
-          vaultNames.forEach((vaultName: string, index: number) => pkLogger.logV0(`${index + 1}: ${vaultName}`, PKMessageType.SUCCESS));
+          vaultNames.forEach((vaultName: string, index: number) => pkLogger.logV1(`${index + 1}: ${vaultName}`, PKMessageType.SUCCESS));
         }
       }),
     );
@@ -53,7 +53,7 @@ function makeScanVaultsCommand() {
         }
 
         for (const vaultName of vaultNames) {
-          pkLogger.logV0(vaultName, PKMessageType.SUCCESS);
+          pkLogger.logV1(vaultName, PKMessageType.SUCCESS);
         }
       }),
     );
@@ -73,7 +73,7 @@ function makeNewVaultCommand() {
         const request = new pb.StringMessage();
         request.setS(options.vaultName);
         const res = (await promisifyGrpc(client.newVault.bind(client))(request)) as pb.BooleanMessage;
-        pkLogger.logV1(`vault created at '${nodePath}/${options.vaultName}'`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`vault created at '${nodePath}/${options.vaultName}'`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -97,7 +97,7 @@ function makePullVaultCommand() {
         request.setVaultName(vaultName);
         const res = (await promisifyGrpc(client.pullVault.bind(client))(request)) as pb.BooleanMessage;
 
-        pkLogger.logV1(`vault '${vaultName}' pulled ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`vault '${vaultName}' pulled ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -125,7 +125,7 @@ function makeDeleteVaultCommand() {
           request.setS(vaultName);
           const res = (await promisifyGrpc(client.deleteVault.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger.logV1(`vault '${vaultName}' deleted ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
+          pkLogger.logV2(`vault '${vaultName}' deleted ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
         }
       }),
     );

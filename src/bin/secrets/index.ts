@@ -35,10 +35,10 @@ function makeListSecretsCommand() {
 
           // List secrets
           if (secretNames.length == 0) {
-            pkLogger.logV1(`no secrets found for vault '${vaultName}'`, PKMessageType.INFO);
+            pkLogger.logV2(`no secrets found for vault '${vaultName}'`, PKMessageType.INFO);
           } else {
-            pkLogger.logV1(`secrets contained within the ${vaultName} vault:`, PKMessageType.INFO);
-            secretNames.forEach((secretName) => pkLogger.logV0(`${vaultName}:${secretName}`, PKMessageType.SUCCESS));
+            pkLogger.logV2(`secrets contained within the ${vaultName} vault:`, PKMessageType.INFO);
+            secretNames.forEach((secretName) => pkLogger.logV1(`${vaultName}:${secretName}`, PKMessageType.SUCCESS));
           }
         }
       }),
@@ -76,7 +76,7 @@ function makeNewSecretCommand() {
           request.setSecretFilePath(options.filePath);
           const res = (await promisifyGrpc(client.newSecret.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger.logV1(
+          pkLogger.logV2(
             `secret '${secretName}' was successfully added to vault '${vaultName}'`,
             PKMessageType.SUCCESS,
           );
@@ -119,7 +119,7 @@ function makeUpdateSecretCommand() {
           request.setSecretFilePath(options.filePath);
           const res = (await promisifyGrpc(client.updateSecret.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger.logV1(
+          pkLogger.logV2(
             `secret '${secretName}' was successfully updated in vault '${vaultName}'`,
             res.getB() ? PKMessageType.SUCCESS : PKMessageType.WARNING,
           );
@@ -159,7 +159,7 @@ function makeDeleteSecretCommand() {
           request.setSecretName(secretName);
           const res = (await promisifyGrpc(client.deleteSecret.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger.logV1(
+          pkLogger.logV2(
             `secret '${secretName}' was successfully removed from vault '${vaultName}'`,
             PKMessageType.SUCCESS,
           );
@@ -202,9 +202,9 @@ function makeGetSecretCommand() {
           const secret = res.getS();
 
           if (isEnv) {
-            pkLogger.logV0(`export ${secretName.toUpperCase().replace('-', '_')}='${secret}'`, PKMessageType.none);
+            pkLogger.logV1(`export ${secretName.toUpperCase().replace('-', '_')}='${secret}'`, PKMessageType.none);
           } else {
-            pkLogger.logV0(secret.toString(), PKMessageType.none);
+            pkLogger.logV1(secret.toString(), PKMessageType.none);
           }
         } catch (err) {
           throw Error(`Error when retrieving secret: ${err.message}`);
@@ -297,7 +297,7 @@ function makeSecretEnvCommand() {
           });
           shell.on('close', (code) => {
             if (code != 0) {
-              pkLogger.logV1(`polykey: environment terminated with code: ${code}`, PKMessageType.WARNING);
+              pkLogger.logV2(`polykey: environment terminated with code: ${code}`, PKMessageType.WARNING);
             }
           });
         } catch (err) {

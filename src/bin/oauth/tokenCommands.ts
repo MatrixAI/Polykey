@@ -22,7 +22,7 @@ function makeNewTokenCommand() {
         const res = (await promisifyGrpc(client.newOAuthToken.bind(client))(
           req,
         )) as pb.StringMessage;
-        pkLogger.logV0(res.getS(), PKMessageType.SUCCESS);
+        pkLogger.logV1(res.getS(), PKMessageType.SUCCESS);
       }),
     );
 }
@@ -45,7 +45,7 @@ function makeRevokeTokenCommand() {
           req,
         )) as pb.BooleanMessage;
         if (res.getB()) {
-          pkLogger.logV1(`token was successfully revoked`, PKMessageType.SUCCESS);
+          pkLogger.logV2(`token was successfully revoked`, PKMessageType.SUCCESS);
         } else {
           throw Error('something went wrong and token was not revoked')
         }
@@ -69,7 +69,7 @@ function makeListTokensCommand() {
           new pb.EmptyMessage(),
         )) as pb.StringListMessage;
         for (const s of res.getSList()) {
-          pkLogger.logV0(s, PKMessageType.SUCCESS);
+          pkLogger.logV1(s, PKMessageType.SUCCESS);
         }
       }),
     );

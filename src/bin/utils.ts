@@ -37,12 +37,12 @@ enum PKMessageType {
 }
 
 type PKLogger = {
-  logV0: (message: string, type?: PKMessageType) => void
   logV1: (message: string, type?: PKMessageType) => void
   logV2: (message: string, type?: PKMessageType) => void
+  logV3: (message: string, type?: PKMessageType) => void
 }
 
-function getPKLogger(verbosityLevel: number = 0): PKLogger {
+function getPKLogger(verbosityLevel: number = 1): PKLogger {
   const log = (message: string, type?: PKMessageType) => {
     switch (type) {
       case PKMessageType.SUCCESS:
@@ -60,9 +60,9 @@ function getPKLogger(verbosityLevel: number = 0): PKLogger {
     }
   }
   return {
-    logV0: (message: string, type?: PKMessageType) => log(message, type),
-    logV1: (message: string, type?: PKMessageType) => (verbosityLevel <= 1) ? log(message, type) : undefined,
-    logV2: (message: string, type?: PKMessageType) => (verbosityLevel <= 2) ? log(message, type) : undefined,
+    logV1: (message: string, type?: PKMessageType) => log(message, type),
+    logV2: (message: string, type?: PKMessageType) => (verbosityLevel >= 2) ? log(message, type) : undefined,
+    logV3: (message: string, type?: PKMessageType) => (verbosityLevel >= 3) ? log(message, type) : undefined,
   }
 }
 
@@ -109,7 +109,7 @@ async function getAgentClient(
     // make sure agent is running
     const pid = await PolykeyAgent.startAgent(polykeyPath, daemon, failOnNotInitialized);
     if (typeof pid == 'number') {
-      pkLogger.logV1(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
+      pkLogger.logV2(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
     }
   }
 

@@ -19,11 +19,11 @@ function makeClientCommand() {
           new pb.EmptyMessage,
         )) as pb.OAuthClientMessage;
 
-        pkLogger.logV1('client id:', PKMessageType.INFO);
-        pkLogger.logV0(res.getId(), PKMessageType.SUCCESS);
+        pkLogger.logV2('client id:', PKMessageType.INFO);
+        pkLogger.logV1(res.getId(), PKMessageType.SUCCESS);
 
-        pkLogger.logV1('client secret:', PKMessageType.INFO);
-        pkLogger.logV0(res.getSecret(), PKMessageType.SUCCESS);
+        pkLogger.logV2('client secret:', PKMessageType.INFO);
+        pkLogger.logV1(res.getSecret(), PKMessageType.SUCCESS);
       }),
     );
 }

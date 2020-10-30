@@ -21,7 +21,7 @@ function makeNewKeyCommand() {
         request.setKeyName(keyName);
         request.setPassphrase(options.keyPassphrase);
         const res = (await promisifyGrpc(client.deriveKey.bind(client))(request)) as pb.BooleanMessage;
-        pkLogger.logV1(`'${keyName}' was added to the Key Manager`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`'${keyName}' was added to the Key Manager`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -43,7 +43,7 @@ function makeDeleteKeyCommand() {
         const request = new pb.StringMessage();
         request.setS(keyName);
         const res = (await promisifyGrpc(client.deleteKey.bind(client))(request)) as pb.BooleanMessage;
-        pkLogger.logV1(
+        pkLogger.logV2(
           `key '${keyName}' was successfully deleted`,
           res.getB() ? PKMessageType.SUCCESS : PKMessageType.INFO,
         );
@@ -67,10 +67,10 @@ function makeListKeysCommand() {
         const keyNames = res.getSList();
 
         if (keyNames === undefined || keyNames.length == 0) {
-          pkLogger.logV0('no keys exist', PKMessageType.INFO);
+          pkLogger.logV1('no keys exist', PKMessageType.INFO);
         } else {
           keyNames.forEach((keyName: string, index: number) => {
-            pkLogger.logV0(`${index + 1}: ${keyName}`, PKMessageType.SUCCESS);
+            pkLogger.logV1(`${index + 1}: ${keyName}`, PKMessageType.SUCCESS);
           });
         }
       }),
@@ -92,7 +92,7 @@ function makeGetKeyCommand() {
         const request = new pb.StringMessage();
         request.setS(options.keyName);
         const res = (await promisifyGrpc(client.getKey.bind(client))(request)) as pb.StringMessage;
-        pkLogger.logV0(res.getS(), PKMessageType.SUCCESS);
+        pkLogger.logV1(res.getS(), PKMessageType.SUCCESS);
       }),
     );
 }
@@ -117,13 +117,13 @@ function makeListPrimaryKeyPairCommand() {
         const res = (await promisifyGrpc(client.getPrimaryKeyPair.bind(client))(request)) as pb.KeyPairMessage;
         const keypair = { publicKey: res.getPublicKey(), privateKey: res.getPrivateKey() };
         if (<boolean>options.outputJson) {
-          pkLogger.logV0(JSON.stringify(keypair), PKMessageType.INFO);
+          pkLogger.logV1(JSON.stringify(keypair), PKMessageType.INFO);
         } else {
-          pkLogger.logV1('Public Key:', PKMessageType.SUCCESS);
-          pkLogger.logV0(keypair.publicKey, PKMessageType.INFO);
+          pkLogger.logV2('Public Key:', PKMessageType.SUCCESS);
+          pkLogger.logV1(keypair.publicKey, PKMessageType.INFO);
           if (privateKey) {
-            pkLogger.logV1('Private Key:', PKMessageType.SUCCESS);
-            pkLogger.logV0(keypair.privateKey, PKMessageType.INFO);
+            pkLogger.logV2('Private Key:', PKMessageType.SUCCESS);
+            pkLogger.logV1(keypair.privateKey, PKMessageType.INFO);
           }
         }
       }),

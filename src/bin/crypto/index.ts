@@ -35,7 +35,7 @@ function makeSignCommand() {
             request.setPrivateKeyPath(signingKeyPath);
             request.setPassphrase(keyPassphrase);
             const res = (await promisifyGrpc(client.signFile.bind(client))(request)) as pb.StringMessage;
-            pkLogger.logV1(`file '${filePath}' successfully signed at '${res.getS()}'`, PKMessageType.SUCCESS);
+            pkLogger.logV2(`file '${filePath}' successfully signed at '${res.getS()}'`, PKMessageType.SUCCESS);
           } catch (err) {
             throw Error(`failed to sign '${filePath}': ${err}`);
           }
@@ -66,7 +66,7 @@ function makeVerifyCommand() {
         request.setPublicKeyPath(options.publicKey);
         const res = (await promisifyGrpc(client.verifyFile.bind(client))(request)) as pb.BooleanMessage;
         if (res.getB()) {
-          pkLogger.logV1(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
+          pkLogger.logV2(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
         } else {
           throw Error(`file '${filePath}' was not verified`)
         }
@@ -96,7 +96,7 @@ function makeEncryptCommand() {
           request.setFilePath(filePath);
           request.setPublicKeyPath(options.publicKey);
           const res = (await promisifyGrpc(client.encryptFile.bind(client))(request)) as pb.StringMessage;
-          pkLogger.logV1(`file successfully encrypted: '${res.getS()}'`, PKMessageType.SUCCESS);
+          pkLogger.logV2(`file successfully encrypted: '${res.getS()}'`, PKMessageType.SUCCESS);
         } catch (err) {
           throw Error(`failed to encrypt '${filePath}': ${err}`);
         }
@@ -128,7 +128,7 @@ function makeDecryptCommand() {
           request.setPrivateKeyPath(options.privateKey);
           request.setPassphrase(options.keyPassphrase);
           const res = (await promisifyGrpc(client.decryptFile.bind(client))(request)) as pb.StringMessage;
-          pkLogger.logV1(`file successfully decrypted: '${res.getS()}'`, PKMessageType.SUCCESS);
+          pkLogger.logV2(`file successfully decrypted: '${res.getS()}'`, PKMessageType.SUCCESS);
         } catch (err) {
           throw Error(`failed to decrypt '${filePath}': ${err}`);
         }
