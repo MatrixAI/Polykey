@@ -92,8 +92,8 @@ export class PeerInfoMessage extends jspb.Message {
     getPublicKey(): string;
     setPublicKey(value: string): PeerInfoMessage;
 
-    getRelayPublicKey(): string;
-    setRelayPublicKey(value: string): PeerInfoMessage;
+    getRootCertificate(): string;
+    setRootCertificate(value: string): PeerInfoMessage;
 
     getPeerAddress(): string;
     setPeerAddress(value: string): PeerInfoMessage;
@@ -115,7 +115,7 @@ export class PeerInfoMessage extends jspb.Message {
 export namespace PeerInfoMessage {
     export type AsObject = {
         publicKey: string,
-        relayPublicKey: string,
+        rootCertificate: string,
         peerAddress: string,
         apiAddress: string,
     }
@@ -149,9 +149,6 @@ export class NewNodeMessage extends jspb.Message {
     getPassphrase(): string;
     setPassphrase(value: string): NewNodeMessage;
 
-    getNbits(): number;
-    setNbits(value: number): NewNodeMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NewNodeMessage.AsObject;
@@ -167,7 +164,6 @@ export namespace NewNodeMessage {
     export type AsObject = {
         userid: string,
         passphrase: string,
-        nbits: number,
     }
 }
 
@@ -436,6 +432,31 @@ export class ContactPeerMessage extends jspb.Message {
 export namespace ContactPeerMessage {
     export type AsObject = {
         publicKeyOrHandle: string,
+        timeout: number,
+    }
+}
+
+export class UnlockNodeMessage extends jspb.Message { 
+    getPassphrase(): string;
+    setPassphrase(value: string): UnlockNodeMessage;
+
+    getTimeout(): number;
+    setTimeout(value: number): UnlockNodeMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): UnlockNodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: UnlockNodeMessage): UnlockNodeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: UnlockNodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): UnlockNodeMessage;
+    static deserializeBinaryFromReader(message: UnlockNodeMessage, reader: jspb.BinaryReader): UnlockNodeMessage;
+}
+
+export namespace UnlockNodeMessage {
+    export type AsObject = {
+        passphrase: string,
         timeout: number,
     }
 }

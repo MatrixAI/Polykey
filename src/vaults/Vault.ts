@@ -249,9 +249,9 @@ class Vault {
 
   /**
    * Determines if a particular public key can access the vault
-   * @param publicKey Public key to check
+   * @param peerId Public key to check
    */
-  peerCanAccess(publicKey: string): boolean {
+  peerCanAccess(peerId: string): boolean {
     // return this.sharedPubKeys.has(publicKey)
     return true;
   }

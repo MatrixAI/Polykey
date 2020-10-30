@@ -1,18 +1,19 @@
 import fs from 'fs';
 import commander from 'commander';
 import * as pb from '../../../proto/compiled/Agent_pb';
-import { actionRunner, pkLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
+import { actionRunner, getPKLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
 
 function makeListVaultsCommand() {
   return new commander.Command('list')
     .description('list all available vaults')
     .alias('ls')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbose', 'increase verbosity level by one')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
         const res = (await promisifyGrpc(client.listVaults.bind(client))(
           new pb.EmptyMessage(),
@@ -20,11 +21,9 @@ function makeListVaultsCommand() {
         const vaultNames = res.getSList();
 
         if (vaultNames === undefined || vaultNames.length == 0) {
-          pkLogger('no vaults found', PKMessageType.INFO);
+          pkLogger.logV1('no vaults found', PKMessageType.INFO);
         } else {
-          vaultNames.forEach((vaultName: string, index: number) => {
-            pkLogger(`${index + 1}: ${vaultName}`, PKMessageType.INFO);
-          });
+          vaultNames.forEach((vaultName: string, index: number) => pkLogger.logV0(`${index + 1}: ${vaultName}`, PKMessageType.SUCCESS));
         }
       }),
     );
@@ -39,9 +38,8 @@ function makeScanVaultsCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
-
-        const verbose: boolean = options.verbose ?? false;
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
         const publicKey = fs.readFileSync(options.publicKey).toString();
 
@@ -51,11 +49,11 @@ function makeScanVaultsCommand() {
         const vaultNames = res.getSList();
 
         if (!vaultNames || vaultNames.length == 0) {
-          pkLogger(`no vault names were provided`, PKMessageType.INFO);
+          throw Error(`no vault names were provided`)
         }
 
         for (const vaultName of vaultNames) {
-          pkLogger(vaultName, PKMessageType.SUCCESS);
+          pkLogger.logV0(vaultName, PKMessageType.SUCCESS);
         }
       }),
     );
@@ -69,12 +67,13 @@ function makeNewVaultCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
         const request = new pb.StringMessage();
         request.setS(options.vaultName);
         const res = (await promisifyGrpc(client.newVault.bind(client))(request)) as pb.BooleanMessage;
-        pkLogger(`vault created at '${nodePath}/${options.vaultName}'`, PKMessageType.SUCCESS);
+        pkLogger.logV1(`vault created at '${nodePath}/${options.vaultName}'`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -83,24 +82,22 @@ function makePullVaultCommand() {
   return new commander.Command('pull')
     .description('pull a vault from a peer')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .requiredOption('-pk, --public-key <publicKey>', '(required) public key file path of the peer who has the vault')
+    .requiredOption('-pi, --peer-id <peerId>', '(required) id string of the peer who has the vault')
     .requiredOption('-vn, --vault-name <vaultName>', '(required) name of the vault to be cloned')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
         const vaultName = options.vaultName;
 
-        // read in public key
-        const publicKey = fs.readFileSync(options.publicKey).toString();
-
         const request = new pb.VaultPathMessage();
-        request.setPublicKey(publicKey.toString());
+        request.setPublicKey(options.peerId);
         request.setVaultName(vaultName);
         const res = (await promisifyGrpc(client.pullVault.bind(client))(request)) as pb.BooleanMessage;
 
-        pkLogger(`vault '${vaultName}' pulled ${res.getB() ? 'un-' : ''}successfully`, PKMessageType.SUCCESS);
+        pkLogger.logV1(`vault '${vaultName}' pulled ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -109,15 +106,14 @@ function makeDeleteVaultCommand() {
   return new commander.Command('delete')
     .alias('del')
     .description('delete an existing vault')
-    .option('-n, --vault-name <vaultName>', 'name of vault')
+    .requiredOption('-vn, --vault-name <vaultName>', 'name of vault')
     .option('-v, --verbose', 'increase verbosity by one level')
     .arguments('name of vault to remove')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const client = await getAgentClient(nodePath);
-
-        const verbose: boolean = options.verbose ?? false;
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
         const vaultNames = options.args.values();
         if (!vaultNames) {
@@ -129,7 +125,7 @@ function makeDeleteVaultCommand() {
           request.setS(vaultName);
           const res = (await promisifyGrpc(client.deleteVault.bind(client))(request)) as pb.BooleanMessage;
 
-          pkLogger(`vault '${vaultName}' deleted ${res.getB() ? 'un-' : ''}successfully`, PKMessageType.SUCCESS);
+          pkLogger.logV1(`vault '${vaultName}' deleted ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
         }
       }),
     );

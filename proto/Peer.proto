@@ -18,6 +18,7 @@ enum SubServiceType {
   GIT = 1;
   NAT_TRAVERSAL = 2;
   CERTIFICATE_AUTHORITY = 3;
+  PEER_DHT = 4;
 }
 
 ///////////////
@@ -30,7 +31,7 @@ message PingPeerMessage {
 }
 message PeerInfoMessage {
   string public_key = 1;
-  string relay_public_key = 2;
+  string root_certificate = 2;
   string peer_address = 3;
   string api_address = 4;
 }
@@ -49,11 +50,10 @@ message ErrorMessage {
 // NAT Traversal //
 ///////////////////
 enum NatMessageType {
-  ERROR = 0;
-  RELAY_CONNECTION = 1;
-  PEER_CONNECTION = 2;
-  UDP_ADDRESS = 3;
-  PEER_UDP_ADDRESS = 4;
+  UDP_ADDRESS = 0;
+  DIRECT_CONNECTION = 1;
+  HOLE_PUNCH_CONNECTION = 2;
+  RELAY_CONNECTION = 3;
 }
 message NatMessage {
   NatMessageType type = 1;
@@ -61,51 +61,37 @@ message NatMessage {
   bytes sub_message = 3;
 }
 
-//////////////////////
-// Relay Connection //
-//////////////////////
-message RelayConnectionRequest {
-  string public_key = 1;
-}
-message RelayConnectionResponse {
-  string server_address = 1;
-}
-
-/////////////////////
-// Peer Connection //
-/////////////////////
-message PeerConnectionRequest {
-  string public_key = 1;
-}
-message PeerConnectionResponse {
-  string peer_address = 1;
-}
-
 /////////////////
 // UDP Address //
 /////////////////
-message UDPAddressResponse {
+message UDPAddressMessage {
   string address = 1;
+  string token = 2;
 }
 
-/////////////////////////
-// Hole Punch Register //
-/////////////////////////
-message HolePunchRegisterRequest {
-  string public_key = 1;
+///////////////////////
+// Direct Connection //
+///////////////////////
+message DirectConnectionMessage {
+  string peer_id = 1;
 }
-message HolePunchRegisterResponse {
-  string connected_address = 1;
+
+///////////////////////////
+// Hole Punch Connection //
+///////////////////////////
+message HolePunchConnectionMessage {
+  string target_peer_id = 1;
+  string origin_peer_id = 2;
+  string udp_address = 3;
 }
 
 //////////////////////
-// Peer UDP Address //
+// Relay Connection //
 //////////////////////
-message PeerUdpAddressRequest {
-  string public_key = 1;
-}
-message PeerUdpAddressResponse {
-  string address = 1;
+message RelayConnectionMessage {
+  string target_peer_id = 1;
+  string origin_peer_id = 2;
+  string relay_address = 3;
 }
 
 //////////////////////
@@ -120,3 +106,41 @@ message CAMessage {
   bool is_response = 2;
   bytes sub_message = 3;
 }
+
+///////////////////////
+// DHT Functionality //
+///////////////////////
+enum PeerDHTMessageType {
+  PING = 0;
+  FIND_NODE = 1;
+}
+message PeerDHTMessage {
+  PeerDHTMessageType type = 1;
+  bool is_response = 2;
+  bytes sub_message = 3;
+}
+message PeerDHTPingNodeMessage {
+  string peer_id = 1;
+  string random_challenge = 2;
+}
+message PeerDHTFindNodeMessage {
+  string peer_id = 1;
+  repeated PeerInfoMessage closest_peers = 2;
+}
+
+//////////////////////////////
+// Micro Transport Protocol //
+//////////////////////////////
+message MTPPacket {
+  int32 id = 1;
+  string peerId = 2;
+  int32 connection = 3;
+  int32 timestamp = 4;
+  int32 timediff = 5;
+  int32 window = 6;
+  int32 seq = 7;
+  int32 ack = 8;
+  bytes data = 9;
+  int32 sent = 10;
+}
+

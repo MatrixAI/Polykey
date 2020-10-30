@@ -1,7 +1,6 @@
-import { Address } from '../PeerInfo';
+import PeerInfo, { Address } from '../PeerInfo';
 import * as grpc from '@grpc/grpc-js';
 import PeerManager from '../PeerManager';
-import TurnServer from '../turn/TurnServer';
 import KeyManager from '../../keys/KeyManager';
 import { stringToProtobuf, protobufToString } from '../../utils';
 import { PeerService, IPeerServer } from '../../../proto/compiled/Peer_grpc_pb';
@@ -13,7 +12,6 @@ class PeerServer implements IPeerServer {
 
   private server: grpc.Server;
   private credentials: grpc.ServerCredentials;
-  private turnServer: TurnServer;
   started: boolean = false;
 
   handleGitRequest: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>;
@@ -30,21 +28,18 @@ class PeerServer implements IPeerServer {
     this.server.addService(PeerService, <grpc.UntypedServiceImplementation>(<any>this));
 
     // Create the server credentials. SSL only if ca cert exists
-    const credentials = this.keyManager.pki?.TLSServerCredentials;
-    if (credentials) {
-      this.credentials = grpc.ServerCredentials.createSsl(
-        Buffer.from(credentials.rootCertificate),
-        [
-          {
-            private_key: Buffer.from(credentials.keypair.private),
-            cert_chain: Buffer.from(credentials.certificate),
-          },
-        ],
-        true,
-      );
-    } else {
-      this.credentials = grpc.ServerCredentials.createInsecure();
-    }
+    const credentials = this.keyManager.pki.TLSServerCredentials;
+    this.credentials = grpc.ServerCredentials.createInsecure()
+    // this.credentials = grpc.ServerCredentials.createSsl(
+    //   Buffer.from(credentials.rootCertificate),
+    //   [
+    //     {
+    //       private_key: Buffer.from(credentials.keypair.private),
+    //       cert_chain: Buffer.from(credentials.certificate),
+    //     },
+    //   ],
+    //   false,
+    // );
 
     const port = process.env.PK_PEER_PORT ?? this.peerManager.peerInfo?.peerAddress?.port ?? 0;
     const host = process.env.PK_PEER_HOST ?? this.peerManager.peerInfo?.peerAddress?.host ?? 'localhost';
@@ -56,10 +51,10 @@ class PeerServer implements IPeerServer {
         this.server.start();
         if (this.peerManager.peerInfo) {
           this.peerManager.peerInfo.peerAddress = address;
+          this.peerManager.writeMetadata()
         }
         console.log(`Peer Server running on: ${address}`);
         this.started = true;
-        this.turnServer = new TurnServer(this.peerManager);
       }
     });
   }
@@ -70,7 +65,8 @@ class PeerServer implements IPeerServer {
     const { publicKey, type, subMessage: requestMessage } = peerRequest.toObject();
 
     // if we don't know publicKey, end connection
-    if (!this.peerManager.hasPeer(publicKey)) {
+    const peerId = PeerInfo.publicKeyToId(publicKey)
+    if (!this.peerManager.hasPeer(peerId)) {
       throw Error('unknown public key');
     }
 
@@ -92,6 +88,9 @@ class PeerServer implements IPeerServer {
         break;
       case SubServiceType.CERTIFICATE_AUTHORITY:
         response = await this.keyManager.pki.handleGRPCRequest(request)
+        break;
+      case SubServiceType.PEER_DHT:
+        response = await this.peerManager.peerDHT.handleGRPCRequest(request)
         break;
       default:
         throw Error('peer message type not identified');

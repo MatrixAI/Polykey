@@ -20,19 +20,20 @@ describe('HTTP API', () => {
   let accessToken: string
 
   let vaultSet: Set<string>
-  let secretMap: Map<string, string>
+  let secretMap: Map<string, Buffer>
 
   beforeEach(async () => {
     tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
     tlsCredentials = createTLSCredentials()
     peerInfo = new PeerInfo(
-      await generatePublicKey()
+      await generatePublicKey(),
+      'rootCertificate'
     )
 
     // initialize data sets
     vaultSet = new Set()
     secretMap = new Map()
-    secretMap.set('secret1', 'secret 1 content')
+    secretMap.set('secret1', Buffer.from('secret 1 content'))
 
     api = new HttpApi(
       (apiAddress: Address) => { peerInfo.apiAddress = apiAddress; },
@@ -45,8 +46,8 @@ describe('HTTP API', () => {
       async (vaultName: string) => { vaultSet.delete(vaultName); },
       (vaultName: string) => Array.from(secretMap.entries()).map((e) => e[0]),
       (vaultName: string, secretName: string) => secretMap.get(secretName)!,
-      async (vaultName: string, secretName: string, secretContent: string) => { secretMap.set(secretName, secretContent); return true },
-      async (vaultName: string, secretName: string) => { return secretMap.delete(secretName) }
+      async (vaultName: string, secretName: string, secretContent: Buffer) => { secretMap.set(secretName, secretContent) },
+      async (vaultName: string, secretName: string) => { secretMap.delete(secretName) }
     )
     await api.start()
     accessToken = api.newOAuthToken(['admin'])
@@ -102,7 +103,7 @@ describe('HTTP API', () => {
   test('can get secret content', async () => {
     const response = await makeRequest('GET', '/secrets/vault1/secret1')
     const expectedSecretContent = secretMap.get('secret1')
-    expect(response).toEqual(expectedSecretContent)
+    expect(response).toEqual(expectedSecretContent?.toString())
   })
 
   test('can add new secret', async () => {
@@ -130,8 +131,9 @@ describe('HTTP API', () => {
     const flags = kbpgp['const'].openpgp;
     const params = {
       userid: `John Smith <john.smith@email.com>`,
+      ecc: true,
       primary: {
-        nbits: 1024,
+        nbits: 384,
         flags: flags.certify_keys | flags.sign_data | flags.auth | flags.encrypt_comm | flags.encrypt_storage,
         expire_in: 0, // never expire
       },
@@ -148,12 +150,12 @@ describe('HTTP API', () => {
     return <string>publicKey
   }
 
-  const makeRequest = async (method: string, path: string, body?: Object | string): Promise<any> => {
+  const makeRequest = async (method: string, path: string, body?: string): Promise<any> => {
     return await new Promise((resolve, reject) => {
       const headers = {}
       headers['Authorization'] = `Bearer ${accessToken}`
       if (body) {
-        headers['Content-Type'] = (typeof body === 'string') ? 'text/plain' : 'application/json'
+        headers['Content-Type'] = 'text/plain'
       }
       const options: http.RequestOptions = {
         hostname: peerInfo?.apiAddress?.host,
@@ -161,7 +163,7 @@ describe('HTTP API', () => {
         path,
         method,
         ca: [tlsCredentials.rootCertificate],
-        headers
+        headers,
       }
 
       const req = http.request(options, (res) => {
@@ -169,9 +171,8 @@ describe('HTTP API', () => {
         res.on('data', (data) => {
           try {
             resolve(JSON.parse(data))
-          } catch (error) {
-            reject(data)
-          }
+          } catch (error) {}
+          resolve(data)
         });
         res.on('error', (err) => {
           reject(err)

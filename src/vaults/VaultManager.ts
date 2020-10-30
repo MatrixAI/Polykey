@@ -7,13 +7,14 @@ import { EncryptedFS } from 'encryptedfs';
 import GitBackend from '../git/GitBackend';
 import KeyManager from '../keys/KeyManager';
 import GitFrontend from '../git/GitFrontend';
-import PeerManager from '../peers/PeerManager';
+import PeerConnection from '../peers/peer-connection/PeerConnection';
 
 class VaultManager {
   polykeyPath: string;
   private fileSystem: typeof fs;
   private keyManager: KeyManager;
-  private peerManager: PeerManager;
+  private connectToPeer: (peerId: string) => PeerConnection;
+  private setGitHandler: (handler: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>) => void;
 
   private metadataPath: string;
   private vaults: Map<string, Vault>;
@@ -22,16 +23,24 @@ class VaultManager {
   private gitBackend: GitBackend;
   private gitFrontend: GitFrontend;
 
+  // status
+  private creatingVault: boolean = false;
+  private cloningVault: boolean = false;
+  private pullingVault: boolean = false;
+  private deletingVault: boolean = false;
+
   constructor(
     polykeyPath: string = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager: KeyManager,
-    peerManager: PeerManager,
+    connectToPeer: (peerId: string) => PeerConnection,
+    setGitHandler: (handler: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>) => void,
   ) {
     this.polykeyPath = polykeyPath;
     this.fileSystem = fileSystem;
     this.keyManager = keyManager;
-    this.peerManager = peerManager;
+    this.connectToPeer = connectToPeer;
+    this.setGitHandler = setGitHandler;
     this.metadataPath = path.join(polykeyPath, '.vaultKeys');
 
     // Make polykeyPath if it doesn't exist
@@ -46,23 +55,32 @@ class VaultManager {
       ((repoName: string) => this.getVault(repoName).EncryptedFS).bind(this),
       this.getVaultNames.bind(this),
     );
-    this.gitFrontend = new GitFrontend(peerManager);
+    this.gitFrontend = new GitFrontend(this.connectToPeer.bind(this));
 
-    this.peerManager.setGitHandler(this.gitBackend.handleGitMessage.bind(this.gitBackend));
+    this.setGitHandler(this.gitBackend.handleGitMessage.bind(this.gitBackend));
 
     // Read in vault keys
     this.loadEncryptedMetadata();
   }
 
+  public get Status() {
+    return {
+      creatingVault: this.creatingVault,
+      cloningVault: this.cloningVault,
+      pullingVault: this.pullingVault,
+      deletingVault: this.deletingVault,
+    };
+  }
+
   /**
    * Get the names of all vaults in memory
    */
-  getVaultNames(publicKey?: string): string[] {
+  getVaultNames(peerId?: string): string[] {
     const vaultNames = Array.from(this.vaults.keys());
-    if (publicKey) {
+    if (peerId) {
       const allowedVaultNames: string[] = [];
       for (const vaultName of vaultNames) {
-        if (this.getVault(vaultName).peerCanAccess(publicKey)) {
+        if (this.getVault(vaultName).peerCanAccess(peerId)) {
           allowedVaultNames.push(vaultName);
         }
       }
@@ -100,7 +118,9 @@ class VaultManager {
    * @param key Optional key to use for the vault encryption, otherwise it is generated
    */
   async newVault(vaultName: string, key?: Buffer): Promise<Vault> {
+    this.creatingVault = true;
     if (this.vaultExists(vaultName)) {
+      this.creatingVault = false;
       throw Error('Vault already exists!');
     }
 
@@ -126,10 +146,13 @@ class VaultManager {
 
       // Set vault
       this.vaults.set(vaultName, vault);
-      return this.getVault(vaultName);
+      const retrievedVault = this.getVault(vaultName);
+      this.creatingVault = false;
+      return retrievedVault;
     } catch (err) {
       // Delete vault dir and garbage collect
       await this.deleteVault(vaultName);
+      this.creatingVault = false;
       throw err;
     }
   }
@@ -141,8 +164,10 @@ class VaultManager {
    * @param getSocket Function to get an active connection to provided address
    */
   async cloneVault(vaultName: string, publicKey: string): Promise<Vault> {
+    this.cloningVault = true;
     // Confirm it doesn't exist locally already
     if (this.vaultExists(vaultName)) {
+      this.cloningVault = false;
       throw Error('Vault name already exists locally, try pulling instead');
     }
 
@@ -156,6 +181,7 @@ class VaultManager {
     });
 
     if (!info.refs) {
+      this.cloningVault = false;
       throw Error(`Peer does not have vault: '${vaultName}'`);
     }
 
@@ -181,6 +207,9 @@ class VaultManager {
     // Finally return the vault
     const vault = new Vault(vaultName, vaultKey, this.polykeyPath, this.gitFrontend);
     this.vaults.set(vaultName, vault);
+    this.vaultKeys.set(vaultName, vaultKey);
+    await this.writeEncryptedMetadata();
+    this.cloningVault = false;
     return vault;
   }
 
@@ -196,8 +225,10 @@ class VaultManager {
    * @param publicKey Public key of polykey node that owns vault to be pulled
    */
   async pullVault(vaultName: string, publicKey: string) {
+    this.pullingVault = true;
     const vault = this.getVault(vaultName);
     await vault.pullVault(publicKey);
+    this.pullingVault = false;
   }
 
   /**
@@ -216,6 +247,7 @@ class VaultManager {
    * @param vaultName Name of vault to be destroyed
    */
   async deleteVault(vaultName: string) {
+    this.deletingVault = true;
     // this is convenience function for removing all tags
     // and triggering garbage collection
     // destruction is a better word as we should ensure all traces are removed
@@ -234,6 +266,7 @@ class VaultManager {
     await this.writeEncryptedMetadata();
 
     const vaultPathExists = this.fileSystem.existsSync(vaultPath);
+    this.deletingVault = false;
     if (vaultPathExists) {
       throw Error('Vault folder could not be deleted!');
     }
@@ -261,7 +294,7 @@ class VaultManager {
 
   async loadEncryptedMetadata(): Promise<void> {
     // Check if file exists
-    if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.identityLoaded) {
+    if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.KeypairUnlocked) {
       const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
       const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString();
 

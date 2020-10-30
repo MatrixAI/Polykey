@@ -24,7 +24,6 @@ describe('Agent and Client class', () => {
     const request = new pb.NewNodeMessage
     request.setUserid('john.smith@email.com')
     request.setPassphrase('passphrase')
-    request.setNbits(1024)
     const res = await promisifyGrpc(client.newNode.bind(client))(request) as pb.BooleanMessage
     expect(res.getB()).toEqual(true)
 

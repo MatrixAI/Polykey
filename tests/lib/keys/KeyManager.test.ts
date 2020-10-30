@@ -14,7 +14,7 @@ describe('KeyManager class', () => {
 
     // Create keyManager
     km = new KeyManager(tempDir, fs)
-    await km.generateKeyPair('John Smith', 'passphrase', 1024, true)
+    await km.generateKeyPair('John Smith', 'passphrase', true)
   })
 
   afterAll(() => {
@@ -23,7 +23,7 @@ describe('KeyManager class', () => {
 
   test('can create keypairs', async () => {
     // Create private keys (async)
-    expect(km.generateKeyPair('John Smith', 'passphrase', 1024)).resolves.not.toThrow()
+    expect(km.generateKeyPair('John Smith', 'passphrase')).resolves.not.toThrow()
   })
 
   test('can create symmetric keys', async () => {
@@ -36,7 +36,7 @@ describe('KeyManager class', () => {
 
   test('can load an identity from a public key', async () => {
 
-    const keypair = await km.generateKeyPair('John Smith', 'passphrase', 1024)
+    const keypair = await km.generateKeyPair('John Smith', 'passphrase')
 
     const identity = await km.getIdentityFromPublicKey(Buffer.from(keypair.public!))
 
@@ -45,7 +45,7 @@ describe('KeyManager class', () => {
 
   test('can load an identity from a private key', async () => {
 
-    const keypair = await km.generateKeyPair('John Smith', 'passphrase', 1024)
+    const keypair = await km.generateKeyPair('John Smith', 'passphrase')
 
     const identity = await km.getIdentityFromPrivateKey(Buffer.from(keypair.private!), 'passphrase')
 

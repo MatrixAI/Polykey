@@ -1,6 +1,5 @@
 import GitRequest from './GitRequest';
 import { gitInterface } from '../../proto/js/Git';
-import PeerManager from '../peers/PeerManager';
 import PeerConnection from '../peers/peer-connection/PeerConnection';
 import { SubServiceType } from '../../proto/compiled/Peer_pb';
 
@@ -8,10 +7,10 @@ import { SubServiceType } from '../../proto/compiled/Peer_pb';
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
  */
 class GitFrontend {
-  private peerManager: PeerManager;
+  private connectToPeer: (peerId: string) => PeerConnection;
 
-  constructor(peerManager: PeerManager) {
-    this.peerManager = peerManager;
+  constructor(connectToPeer: (peerId: string) => PeerConnection) {
+    this.connectToPeer = connectToPeer;
   }
 
   /**
@@ -72,8 +71,8 @@ class GitFrontend {
     return vaultNameList;
   }
 
-  connectToPeerGit(publicKey: string): GitRequest {
-    const peerConnection = this.peerManager.connectToPeer(publicKey);
+  connectToPeerGit(peerId: string): GitRequest {
+    const peerConnection = this.connectToPeer(peerId);
     const gitRequest = new GitRequest(
       ((vaultName: string) => this.requestInfo(vaultName, peerConnection)).bind(this),
       ((vaultName: string, body: Buffer) => this.requestPack(vaultName, body, peerConnection)).bind(this),

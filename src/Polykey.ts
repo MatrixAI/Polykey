@@ -32,7 +32,14 @@ class Polykey {
 
     // Set or Initialize vaultManager
     this.vaultManager =
-      vaultManager ?? new VaultManager(this.polykeyPath, fileSystem, this.keyManager, this.peerManager);
+      vaultManager ??
+      new VaultManager(
+        this.polykeyPath,
+        fileSystem,
+        this.keyManager,
+        this.peerManager.connectToPeer.bind(this.peerManager),
+        this.peerManager.setGitHandler.bind(this.peerManager),
+      );
 
     // start the api
     this.httpApi = new HttpApi(
@@ -47,41 +54,23 @@ class Polykey {
       ((vaultName: string) => this.vaultManager.newVault(vaultName)).bind(this),
       ((vaultName: string) => this.vaultManager.deleteVault(vaultName)).bind(this),
       ((vaultName: string) => {
-        const vault = this.vaultManager.getVault(vaultName)
-        return vault.listSecrets()
+        const vault = this.vaultManager.getVault(vaultName);
+        return vault.listSecrets();
       }).bind(this),
       ((vaultName: string, secretName: string) => {
-        const vault = this.vaultManager.getVault(vaultName)
-        return vault.getSecret(secretName).toString()
+        const vault = this.vaultManager.getVault(vaultName);
+        return vault.getSecret.bind(vault)(secretName);
       }).bind(this),
-      (async (vaultName: string, secretName: string, secretContent: string) => {
-        try {
-          const vault = this.vaultManager.getVault(vaultName)
-          await vault.addSecret(secretName, Buffer.from(secretContent))
-          return true
-        } catch (error) {
-          return false
-        }
+      (async (vaultName: string, secretName: string, secretContent: Buffer) => {
+        const vault = this.vaultManager.getVault(vaultName);
+        await vault.addSecret(secretName, secretContent);
       }).bind(this),
       (async (vaultName: string, secretName: string) => {
-        try {
-          const vault = this.vaultManager.getVault(vaultName)
-          await vault.removeSecret(secretName)
-          return true
-        } catch (error) {
-          return false
-        }
+        const vault = this.vaultManager.getVault(vaultName);
+        await vault.removeSecret(secretName);
       }).bind(this),
     );
   }
 }
 
-export {
-  Polykey,
-  KeyManager,
-  VaultManager,
-  PeerManager,
-  PolykeyAgent,
-  PeerInfo,
-  Address
-};
+export { Polykey, KeyManager, VaultManager, PeerManager, PolykeyAgent, PeerInfo, Address };

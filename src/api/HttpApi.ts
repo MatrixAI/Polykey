@@ -4,7 +4,7 @@ import path from 'path';
 import http from 'http';
 import https from 'https';
 import jsyaml from 'js-yaml';
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import passport from 'passport'
 import { getPort } from '../utils';
 import session from 'express-session'
@@ -19,6 +19,7 @@ import { User, Client } from './AuthorizationServer/OAuth2Store';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
 import { TLSCredentials } from '../keys/pki/PublicKeyInfrastructure';
 import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
+import { DEFAULT_ENCODING } from 'crypto';
 
 class HttpApi {
   private openApiPath: string
@@ -31,9 +32,9 @@ class HttpApi {
   private newVault: (vaultName: string) => Promise<void>;
   private deleteVault: (vaultName: string) => Promise<void>;
   private listSecrets: (vaultName: string) => string[];
-  private getSecret: (vaultName: string, secretName: string) => string;
-  private newSecret: (vaultName: string, secretName: string, secretContent: string) => Promise<boolean>;
-  private deleteSecret: (vaultName: string, secretName: string) => Promise<boolean>;
+  private getSecret: (vaultName: string, secretName: string) => Buffer;
+  private newSecret: (vaultName: string, secretName: string, secretContent: Buffer) => Promise<void>;
+  private deleteSecret: (vaultName: string, secretName: string) => Promise<void>;
 
   private tlsCredentials: TLSCredentials
   private oauth: OAuth2
@@ -50,9 +51,9 @@ class HttpApi {
     newVault: (vaultName: string) => Promise<void>,
     deleteVault: (vaultName: string) => Promise<void>,
     listSecrets: (vaultName: string) => string[],
-    getSecret: (vaultName: string, secretName: string) => string,
-    newSecret: (vaultName: string, secretName: string, secretContent: string) => Promise<boolean>,
-    deleteSecret: (vaultName: string, secretName: string) => Promise<boolean>,
+    getSecret: (vaultName: string, secretName: string) => Buffer,
+    newSecret: (vaultName: string, secretName: string, secretContent: string | Buffer) => Promise<void>,
+    deleteSecret: (vaultName: string, secretName: string) => Promise<void>,
   ) {
     // this code is needed as we can't require yaml files
     const fromSrcFolderPath = path.join(__dirname, '../../openapi.yaml')
@@ -109,7 +110,7 @@ class HttpApi {
       this.expressServer.use(passport.session());
 
       // redirect from base url to docs
-      this.expressServer.get('/',(req, res, next) => {
+      this.expressServer.get('/', (req, res, next) => {
         res.redirect('/docs')
       })
 
@@ -261,120 +262,158 @@ class HttpApi {
   }
 
   // === openapi endpoints === //
-  private handleCertificateSigningRequest = async (req, res, next) => {
+  private handleRootCertificateRequest: RequestHandler = async (req, res, next) => {
+    try {
+      const response = this.getRootCertificate();
+      this.writeString(res, response);
+    } catch (error) {
+      this.writeError(res, error);
+    }
+  };
+
+  private handleCertificateChainRequest: RequestHandler = async (req, res, next) => {
+    try {
+      const response = this.getCertificateChain();
+      this.writeStringList(res, response);
+    } catch (error) {
+      this.writeError(res, error);
+    }
+  };
+
+  private handleCertificateSigningRequest: RequestHandler = async (req, res, next) => {
     try {
       const body = req.body;
       const response = this.handleCSR(body);
-      this.writeJson(res, response);
+      this.writeString(res, response);
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
-  private handleRootCertificateRequest = async (req, res, next) => {
-    try {
-      const response = this.getRootCertificate();
-      this.writeJson(res, response);
-    } catch (error) {
-      this.writeJson(res, error);
-    }
-  };
-
-  private handleCertificateChainRequest = async (req, res, next) => {
-    try {
-      const response = this.getCertificateChain();
-      this.writeJson(res, response);
-    } catch (error) {
-      this.writeJson(res, error);
-    }
-  };
-
-  private handleVaultsListRequest = async (req, res, next) => {
+  private handleVaultsListRequest: RequestHandler = async (req, res, next) => {
     try {
       const response = this.getVaultNames()
-      this.writeJson(res, response);
+      this.writeStringList(res, response);
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
-  private handleNewVaultRequest = async (req, res, next) => {
+  private handleNewVaultRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = req.openapi.pathParams.vaultName;
+      const vaultName = (<any>req).openapi.pathParams.vaultName;
       await this.newVault(vaultName)
-      this.writeJson(res);
+      this.writeSuccess(res);
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
-  private handleDeleteVaultRequest = async (req, res, next) => {
+  private handleDeleteVaultRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = req.openapi.pathParams.vaultName;
+      const vaultName = (<any>req).openapi.pathParams.vaultName;
       await this.deleteVault(vaultName)
-      this.writeJson(res);
+      this.writeSuccess(res);
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
-  private handleSecretsListRequest = async (req, res, next) => {
+  private handleSecretsListRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = req.openapi.pathParams.vaultName;
+      const vaultName = (<any>req).openapi.pathParams.vaultName;
       const response = this.listSecrets(vaultName);
-      this.writeJson(res, response);
+      this.writeStringList(res, response);
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
-  private handleGetSecretRequest = async (req, res, next) => {
+  private handleGetSecretRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = req.openapi.pathParams.vaultName;
-      const secretName = req.openapi.pathParams.secretName;
+
+      const vaultName = (<any>req).openapi.pathParams.vaultName;
+      const secretName = (<any>req).openapi.pathParams.secretName;
       const response = this.getSecret(vaultName, secretName)
-      this.writeJson(res, response);
+
+      const accepts = req.accepts()[0]
+        if (!accepts || accepts == 'text/plain' || accepts == '*/*') {
+        this.writeString(res, response.toString())
+      } else if (accepts == 'application/octet-stream') {
+        this.writeBinary(res, secretName, response);
+      } else {
+        throw Error(`MIME type not supported: ${accepts}`)
+      }
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
-  private handleNewSecretRequest = async (req, res, next) => {
+  private handleNewSecretRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = req.openapi.pathParams.vaultName;
-      const secretName = req.openapi.pathParams.secretName;
-      const secretContent = req.body
+      const vaultName = (<any>req).openapi.pathParams.vaultName;
+      const secretName = (<any>req).openapi.pathParams.secretName;
+
+      let secretContent: Buffer
+      const contentType = req.headers['content-type']
+      if (contentType == 'text/plain') {
+        secretContent = Buffer.from(req.body)
+      } else if (contentType == 'application/octet-stream') {
+        secretContent = await new Promise<Buffer>((resolve, reject) => {
+          const bufferList: Buffer[] = []
+          req.on('data', (data) => bufferList.push(data))
+          req.on('error', (err) => reject(err))
+          req.on('end', () => resolve(Buffer.concat(bufferList)))
+        })
+      } else {
+        throw Error(`MIME type not supported: ${contentType}`)
+      }
+
       await this.newSecret(vaultName, secretName, secretContent);
-      this.writeJson(res);
+      this.writeSuccess(res);
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
-  private handleDeleteSecretRequest = async (req, res, next) => {
+  private handleDeleteSecretRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = req.openapi.pathParams.vaultName;
-      const secretName = req.openapi.pathParams.secretName;
+      const vaultName = (<any>req).openapi.pathParams.vaultName;
+      const secretName = (<any>req).openapi.pathParams.secretName;
       await this.deleteSecret(vaultName, secretName);
-      this.writeJson(res);
+      this.writeSuccess(res);
     } catch (error) {
-      this.writeJson(res, error);
+      this.writeError(res, error);
     }
   };
 
   // === Helper methods === //
-  private writeJson(response: http.ServerResponse, payload?: string | Object | Error | Array<any>, code: number = 200) {
-    let responseString: string | undefined
-    if (!payload) {
-      responseString = undefined
-    } else if (payload instanceof Error) {
-      code = 500
-      responseString = JSON.stringify({ error: payload.message }, null, 2);
-    } else {
-      responseString = JSON.stringify(payload, null, 2);
-    }
-    response.writeHead(code, { 'Content-Type': 'application/json' });
-    response.end(responseString);
+  private writeSuccess(res: http.ServerResponse) {
+    res.writeHead(200);
+    res.end();
+  }
+  private writeError(res: http.ServerResponse, error: Error) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: error.message }, null, 2));
+  }
+  private writeString(res: http.ServerResponse, text: string) {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end(text);
+  }
+  private writeStringList(res: http.ServerResponse, list: string[]) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(list, null, 2));
+  }
+  private writeJson(res: http.ServerResponse, payload: Object) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload, null, 2));
+  }
+  private writeBinary(res: http.ServerResponse, filename: string, payload: Buffer) {
+    res.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `file; filename="${filename}"`
+    });
+    res.end(payload, 'binary');
   }
 
   private checkScope(scope: string[]) {

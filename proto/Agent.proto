@@ -29,6 +29,7 @@ service Agent {
   rpc ListPeers (EmptyMessage) returns (StringListMessage) {};
   rpc ListSecrets (StringMessage) returns (StringListMessage) {};
   rpc ListVaults (EmptyMessage) returns (StringListMessage) {};
+  rpc LockNode (EmptyMessage) returns (EmptyMessage) {};
   rpc NewClientCertificate (NewClientCertificateMessage) returns (NewClientCertificateMessage) {};
   rpc NewNode (NewNodeMessage) returns (BooleanMessage) {};
   rpc NewSecret (SecretContentMessage) returns (BooleanMessage) {};
@@ -36,14 +37,12 @@ service Agent {
   rpc NewVault (StringMessage) returns (BooleanMessage) {};
   rpc PingPeer (ContactPeerMessage) returns (BooleanMessage) {};
   rpc PullVault (VaultPathMessage) returns (BooleanMessage) {};
-  rpc RegisterNode (StringMessage) returns (BooleanMessage) {};
   rpc RevokeOAuthToken (StringMessage) returns (BooleanMessage) {};
-  rpc RequestHolePunch (StringMessage) returns (BooleanMessage) {};
-  rpc RequestRelay (StringMessage) returns (BooleanMessage) {};
   rpc ScanVaultNames (StringMessage) returns (StringListMessage) {};
   rpc SignFile (SignFileMessage) returns (StringMessage) {};
   rpc StopAgent (EmptyMessage) returns (BooleanMessage) {};
   rpc ToggleStealthMode (BooleanMessage) returns (BooleanMessage) {};
+  rpc UnlockNode (UnlockNodeMessage) returns (BooleanMessage) {};
   rpc UpdateLocalPeerInfo (PeerInfoMessage) returns (BooleanMessage) {};
   rpc UpdatePeerInfo (PeerInfoMessage) returns (BooleanMessage) {};
   rpc UpdateSecret (SecretContentMessage) returns (BooleanMessage) {};
@@ -63,7 +62,7 @@ message StringListMessage {
 // === PeerInfo === //
 message PeerInfoMessage {
   string public_key = 1;
-  string relay_public_key = 2;
+  string root_certificate = 2;
   string peer_address = 3;
   string api_address = 4;
 }
@@ -82,14 +81,12 @@ message AgentStatusMessage {
 message NewNodeMessage {
   string userId = 1;
   string passphrase = 2;
-  int32 nbits = 3;
 }
 
 // ==== DeriveKey ==== //
 message DeriveKeyMessage {
-  string vault_name = 1;
-  string key_name = 2;
-  string passphrase = 3;
+  string key_name = 1;
+  string passphrase = 2;
 }
 
 // ==== SignFile ==== //
@@ -146,6 +143,12 @@ message VaultPathMessage {
 // === ContactPeer === //
 message ContactPeerMessage {
   string public_key_or_handle = 1;
+  int32 timeout = 2;
+}
+
+// === UnlockNode === //
+message UnlockNodeMessage {
+  string passphrase = 1;
   int32 timeout = 2;
 }
 

@@ -47,9 +47,6 @@ class OAuth2 {
 
   tokenInfo(req, res) {
     try {
-      console.log(req);
-      console.log(req.query);
-
       const accessToken = this.validation.tokenForHttp(req.query.access_token)
       this.validation.tokenExistsForHttp(accessToken)
       const client = this.store.getClient(accessToken.clientId!)
