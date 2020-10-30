@@ -8869,15 +8869,6 @@ let
         sha512 = "PPmu8eEeG9saEUvI97fm4OYxXVB6bFvyNTyiUOBichBpFG8A1Ljw3bY62+5oOjDEMHRnd0Y7HQ+x7uzxOzC6JA==";
       };
     };
-    "node-forge-0.9.2" = {
-      name = "node-forge";
-      packageName = "node-forge";
-      version = "0.9.2";
-      src = fetchurl {
-        url = "https://registry.npmjs.org/node-forge/-/node-forge-0.9.2.tgz";
-        sha512 = "naKSScof4Wn+aoHU6HBsifh92Zeicm1GDQKd1vp3Y/kOi8ub0DozCa9KpvYNCXslFHYRmLNiqRopGdTGwNLpNw==";
-      };
-    };
     "node-int64-0.4.0" = {
       name = "node-int64";
       packageName = "node-int64";
@@ -13535,7 +13526,7 @@ let
   args = {
     name = "_at_matrixai_slash_polykey";
     packageName = "@matrixai/polykey";
-    version = "0.0.20";
+    version = "0.0.21";
     src = ../..;
     dependencies = [
       sources."@apidevtools/json-schema-ref-parser-9.0.6"
@@ -15667,7 +15658,7 @@ let
       sources."neo-async-2.6.1"
       sources."nice-try-1.0.5"
       sources."node-fetch-2.6.1"
-      sources."node-forge-0.9.2"
+      sources."node-forge-0.10.0"
       sources."node-int64-0.4.0"
       (sources."node-libs-browser-2.2.1" // {
         dependencies = [
