@@ -72,10 +72,12 @@ class DeclarationBundlePlugin {
         return requireRegex.test(line)
       })
       if (matches.length != 0) {
-        const moduleImportName = path.join(this.moduleName, this.entryFilePath.slice(0, this.entryFilePath.length - 3))
+        const moduleImportName = path.join(this.moduleName, this.entryFilePath.slice(0, this.entryFilePath.length - 3).replace('src', ''))
         const newContents = Buffer.from(
           contents
             .replace(/\/index\'/g, "'")
+            .replace(/\/index\"/g, "\"")
+            .replace(/matrixai\/proto/g, "matrixai/polykey/proto")
             .replace(requireRegex, `require('${moduleImportName}')`)
         )
 
