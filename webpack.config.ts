@@ -128,12 +128,12 @@ const binConfig = {
 }
 
 const agentDaemonScriptConfig = {
-  name: 'daemon-script',
-  entry: './src/agent/internal/daemon-script.ts',
+  name: 'polykey-daemon',
+  entry: './src/agent/internal/polykey-daemon.ts',
   mode: 'production',
   output: {
     path: path.resolve(__dirname, 'dist', 'internal'),
-    filename: 'daemon-script.js',
+    filename: 'polykey-daemon.js',
     globalObject: 'this'
   },
   resolve: {

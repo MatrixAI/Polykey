@@ -980,7 +980,7 @@ class PolykeyAgent implements IAgentServer {
   // Agent Operations //
   //////////////////////
   static get DAEMON_SCRIPT_PATH(): string {
-    const prefix = path.resolve(__dirname, 'internal', 'daemon-script.');
+    const prefix = path.resolve(__dirname, 'internal', 'polykey-daemon.');
     const suffix = fs.existsSync(prefix + 'js') ? 'js' : 'ts';
     return prefix + suffix;
   }
