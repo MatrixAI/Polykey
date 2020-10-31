@@ -33,25 +33,24 @@ function makeScanVaultsCommand() {
   return new commander.Command('scan')
     .description('scan a known peer for accessible vaults')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .requiredOption('-p, --public-key <publicKey>', '(required) name of vault')
     .option('-v, --verbose', 'increase verbosity by one level')
+    .requiredOption('-pi, --peer-id <peerId>', '(required) id string of the peer to be scanned')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
         const pkLogger = getPKLogger(options.verbosity)
         const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
 
-        const publicKey = fs.readFileSync(options.publicKey).toString();
-
         const request = new pb.StringMessage();
-        request.setS(publicKey);
+        request.setS(options.peerId);
         const res = (await promisifyGrpc(client.scanVaultNames.bind(client))(request)) as pb.StringListMessage;
         const vaultNames = res.getSList();
 
         if (!vaultNames || vaultNames.length == 0) {
-          throw Error(`no vault names were provided`)
+          pkLogger.logV1("no vault names were found", PKMessageType.INFO);
         }
 
+        pkLogger.logV2(`Vault names from peer - ${options.peerId}`, PKMessageType.INFO);
         for (const vaultName of vaultNames) {
           pkLogger.logV1(vaultName, PKMessageType.SUCCESS);
         }
