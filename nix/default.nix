@@ -2,55 +2,47 @@
 { pkgs ? import ../pkgs.nix {} }:
 
 with pkgs;
-let
-
-in
-
 stdenv.mkDerivation rec {
   pname = "polykey-cli";
-  version = "0.0.17";
+  version = "0.0.20";
   name = "${pname}-${version}";
 
   nativeBuildInputs = [
     makeWrapper
-    nodejs
     nodejs-12_x
-    nodePackages.node2nix
   ];
 
-  buildInputs = [
-    nodejs
-    nodejs-12_x
-    nodePackages.node2nix
-  ];
-
-  src = ../.;
+  src = nix-gitignore.gitignoreSource [] ../.;
 
   nodeDependencies = (import ./node-dependencies.nix {
-    inherit system;
-    inherit pkgs;
-    # pkgs = args // {  };
+    inherit system pkgs;
+    nodejs = nodejs-12_x;
     polykey-src = src;
   }).package;
 
   buildPhase = ''
-    ln -s ${nodeDependencies}/lib/node_modules ./node_modules
-    export PATH="${nodeDependencies}/bin:$PATH"
-    export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
+    dev_node_modules="${nodeDependencies}/lib/node_modules/@matrixai/polykey/node_modules";
+    ln -s -T "$dev_node_modules" "./node_modules"
 
-    cd ${src}
-    ls
     npm run build:webpack
-    npm run build:all
-    cp -r dist $out/
   '';
 
   installPhase = ''
-    # Linux only.
-    mkdir -p "$out/bin"
-    # For exposing the polykey cli
-    declare target="$(readlink -f "$out/lib/node_modules")"
-    ln -s -T "${nodeDependencies}/bin/polykey" "$out/bin/pk"
-    ln -s -T "${nodeDependencies}/bin/polykey" "$out/bin/polykey-cli"
+    mkdir $out
+    cp -r bin $out
+    cp -r dist $out
+    cp -r proto $out
+    cp package.json $out
+    cp openapi.yaml $out
+
+    wrapProgram "$out/bin/polykey" \
+      --set PATH ${lib.makeBinPath [
+        nodejs-12_x
+      ]}
+
+    ln -s -T "$dev_node_modules" "$out/node_modules"
+
+    ln -s -T "$out/bin/polykey" "$out/bin/pk"
+    ln -s -T "$out/bin/polykey" "$out/bin/polykey-cli"
   '';
 }
