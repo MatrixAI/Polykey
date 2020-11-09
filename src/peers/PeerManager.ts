@@ -282,7 +282,8 @@ class PeerManager {
       (() => this.peerInfo).bind(this),
       this.getPeer.bind(this),
       this.peerDHT.findPeer.bind(this.peerDHT),
-      this.natTraversal.requestUDPHolePunch.bind(this),
+      this.natTraversal.requestUDPHolePunchDirectly.bind(this),
+      this.natTraversal.requestUDPHolePunchViaPeer.bind(this),
     );
 
     this.peerConnections.set(peerId, peerConnection);

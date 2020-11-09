@@ -113,7 +113,40 @@ class NatTraversal extends EventEmitter {
   }
 
   // This request will timeout after 'timeout' milliseconds (defaults to 10 seconds)
-  async requestUDPHolePunch(targetPeerId: string, adjacentPeerId: string, timeout: number = 10000): Promise<Address> {
+  async requestUDPHolePunchDirectly(targetPeerId: string, timeout: number = 10000): Promise<Address> {
+    return new Promise(async (resolve, reject) => {
+      setTimeout(() => reject(Error('hole punch connection request timed out')), timeout)
+      try {
+        if (!this.hasPeer(targetPeerId)) {
+          throw Error(`target peer id does not exist in store: ${targetPeerId}`)
+        } else if (this.outgoingTCPHolePunchedRelayServers.has(targetPeerId)) {
+          // the outgoing tcp server might already be set up for this peer
+          const addressInfo = <net.AddressInfo>this.outgoingTCPHolePunchedRelayServers.get(targetPeerId)!.address()
+          return Address.fromAddressInfo(addressInfo)
+        } else if (!this.holePunchedConnections.has(targetPeerId)) {
+          throw Error(`target peer id does not exist in hole punched connections: ${targetPeerId}`)
+        }
+
+        const conn = this.holePunchedConnections.get(targetPeerId)!
+        // need to set up a local relay server between the new connection and the gRPC server!
+        // this will include 2 socket pipes:
+        // 1. one from the grpc connection to the local relay server (tcp packets)
+        // 2. another one from the local relay server to the hole punched server address (udp/mtp packets)
+        const newServer = net.createServer((tcpConn) => {
+          tcpConn.on('data', (data) => conn.write(data))
+          conn.on('data', (data) => tcpConn.write(data))
+        }).listen(0, '127.0.01', () => {
+          this.outgoingTCPHolePunchedRelayServers.set(targetPeerId, newServer)
+          resolve(Address.fromAddressInfo(<net.AddressInfo>newServer.address()))
+        })
+      } catch (error) {
+        reject(error)
+      }
+    })
+  }
+
+  // This request will timeout after 'timeout' milliseconds (defaults to 10 seconds)
+  async requestUDPHolePunchViaPeer(targetPeerId: string, adjacentPeerId: string, timeout: number = 10000): Promise<Address> {
     return new Promise(async (resolve, reject) => {
       setTimeout(() => reject(Error('hole punch connection request timed out')), timeout)
       try {
@@ -333,6 +366,8 @@ class NatTraversal extends EventEmitter {
       this.holePunchedConnections.set(peerInfo.id, conn)
     } else {
       // is response
+      console.log('is response');
+
     }
   }
 
