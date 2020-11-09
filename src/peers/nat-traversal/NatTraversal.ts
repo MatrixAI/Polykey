@@ -1,11 +1,11 @@
 import net from 'net'
 import dgram from 'dgram'
-import PeerInfo, { Address } from "../PeerInfo";
 import { EventEmitter } from 'events';
 import { promiseAll } from "../../utils";
+import PeerInfo, { Address } from "../PeerInfo";
 import { peerInterface } from "../../../proto/js/Peer";
-import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer'
 import PeerConnection from '../peer-connection/PeerConnection';
+import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer'
 
 class NatTraversal extends EventEmitter {
   private listPeers: () => string[];
@@ -17,16 +17,37 @@ class NatTraversal extends EventEmitter {
 
   server: MTPServer
 
-  // peerId -> connection
-  private holePunchedConnections: Map<string, MTPConnection> = new Map
+  // this is a list of all sockets that are waiting to be turned into holePunchedConnections
+  // so this node (if private) requests adjacent, connected nodes to create a hole punched
+  // connection to this node for all other udp hole punch coordination requests. e.g. if
+  // another node wants to connect to this one via a intermediary public node, then the
+  // coordination (i.e. creating rules in the routing table by sending packets to the other
+  // private node's public ip address)
   // peerId -> dgram.Socket
   private pendingHolePunchedSockets: Map<string, dgram.Socket> = new Map
+
+  // these connections are from adjacent public nodes back to this (private) node
+  // to facilitate udp hole punching
+  // peerId -> connection
+  private holePunchedConnections: Map<string, MTPConnection> = new Map
+
+  // these servers are localhost relays only and are intended to allow our gRPC
+  // peer server able to serve over a udp hole punched connection
   // peerId -> tcp relay server
   private outgoingTCPHolePunchedRelayServers: Map<string, net.Server> = new Map
+
+  // these servers are relays for other private nodes who cannot use udp hole
+  // punching to connect to other peers.
+  // these will only be useful in the case of the current node being public and
+  // also able to relay a private node's gRPC connection
   // peerId -> peer relay servers
   private peerTCPHolePunchedRelayServers: Map<string, net.Server> = new Map
+
   // interval with which the server requests new direct hole punched connections
   // from adjacent peers that are in the store but have not yet been requested yet
+  // without this purposeful seeking of connections from private nodes to public nodes
+  // the private node could not receive hole punch coordination requests from the public nodes
+  // in the case of another private node trying to connect to it.
   private intermittentConnectionInterval: NodeJS.Timeout
 
   constructor(
@@ -161,7 +182,7 @@ class NatTraversal extends EventEmitter {
   // these messages are the first step in nat traversal
   // the handlers at the bottom of this file are the last step
   // this method is for creating a direct hole punch from an
-  // adjacent peers back to this one in case of a restrictive NAT layer
+  // adjacent peer back to this one in case of a restrictive NAT layer
   // the resulting connection will be used in coordinating NAT traversal
   // requests from other peers via the peer adjacent to this one
   async sendDirectHolePunchConnectionRequest(udpAddress: Address) {
@@ -206,7 +227,7 @@ class NatTraversal extends EventEmitter {
     })
   }
 
-  // this is just a convenience function to wrap a message in a NATMessage
+  // this is just a convenience function to wrap a message in a NATMessage to then send via the MTP server socket
   private sendNATMessage(udpAddress: Address, type: peerInterface.NatMessageType, message: Uint8Array, socket?: dgram.Socket) {
     const request = peerInterface.NatMessage.encodeDelimited({
       type,
@@ -310,6 +331,8 @@ class NatTraversal extends EventEmitter {
       }).finish()
       conn.write(response)
       this.holePunchedConnections.set(peerInfo.id, conn)
+    } else {
+      // is response
     }
   }
 
