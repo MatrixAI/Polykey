@@ -1,6 +1,5 @@
 import net from 'net'
 import * as protobufjs from 'protobufjs';
-
 /**
  * Returns a 5 character long random string of lower case letters
  */

@@ -2,6 +2,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import git from 'isomorphic-git';
+import * as opentelemetry from '@opentelemetry/api'
+import { getTracer } from '../tracing/Tracer';
 import Vault from '../vaults/Vault';
 import { EncryptedFS } from 'encryptedfs';
 import GitBackend from '../git/GitBackend';
@@ -36,6 +38,9 @@ class VaultManager {
     connectToPeer: (peerId: string) => PeerConnection,
     setGitHandler: (handler: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>) => void,
   ) {
+    const span = getTracer('vault_manager').startSpan('vault_manager_construction')
+
+    // class variables
     this.polykeyPath = polykeyPath;
     this.fileSystem = fileSystem;
     this.keyManager = keyManager;
@@ -45,6 +50,7 @@ class VaultManager {
 
     // Make polykeyPath if it doesn't exist
     this.fileSystem.mkdirSync(this.polykeyPath, { recursive: true });
+    span.setAttribute('polykey path created', this.polykeyPath)
 
     // Initialize stateful variables
     this.vaults = new Map();
@@ -55,12 +61,16 @@ class VaultManager {
       ((repoName: string) => this.getVault(repoName).EncryptedFS).bind(this),
       this.getVaultNames.bind(this),
     );
+    span.setAttribute('git backend initialized')
     this.gitFrontend = new GitFrontend(this.connectToPeer.bind(this));
+    span.setAttribute('git frontend initialized')
 
     this.setGitHandler(this.gitBackend.handleGitMessage.bind(this.gitBackend));
+    span.setAttribute('git handler set')
 
     // Read in vault keys
-    this.loadEncryptedMetadata();
+    this.loadEncryptedMetadata(span);
+    span.end()
   }
 
   public get Status() {
@@ -95,20 +105,38 @@ class VaultManager {
    * @param vaultName Name of desired vault
    */
   getVault(vaultName: string): Vault {
-    if (this.vaults.has(vaultName)) {
-      const vault = this.vaults.get(vaultName);
-      return vault!;
-    } else if (this.vaultKeys.has(vaultName)) {
-      // vault not in map, create new instance
-      this.validateVault(vaultName);
+    const span = getTracer('vault_manager').startSpan('get_vault')
+    span.setAttribute('retrieving vault name', vaultName)
+    try {
+      if (this.vaults.has(vaultName)) {
+        span.setAttribute('vault exists')
+        const vault = this.vaults.get(vaultName);
+        span.setAttribute('returning existing vault from memory')
+        return vault!;
+      } else if (this.vaultKeys.has(vaultName)) {
+        span.setAttribute('vault key exists')
+        // vault not in map, create new instance
+        this.validateVault(vaultName);
+        span.setAttribute('vault validated')
 
-      const vaultKey = this.vaultKeys.get(vaultName);
+        const vaultKey = this.vaultKeys.get(vaultName);
+        span.setAttribute('retrieved vault key')
 
-      const vault = new Vault(vaultName, vaultKey!, this.polykeyPath, this.gitFrontend);
-      this.vaults.set(vaultName, vault);
-      return vault;
-    } else {
-      throw Error(`vault does not exist in memory: '${vaultName}'`);
+        const vault = new Vault(vaultName, vaultKey!, this.polykeyPath, this.gitFrontend);
+        span.setAttribute('vault instance created')
+        this.vaults.set(vaultName, vault);
+        span.setAttribute('returning existing vault from key')
+        return vault;
+      } else {
+        const error = Error(`vault does not exist in memory: '${vaultName}'`)
+        span.setAttribute('error', error.toString())
+        throw error;
+      }
+    } catch (error) {
+      span.setAttribute('error', error.toString())
+      throw error
+    } finally {
+      span.end()
     }
   }
 
@@ -118,8 +146,13 @@ class VaultManager {
    * @param key Optional key to use for the vault encryption, otherwise it is generated
    */
   async newVault(vaultName: string, key?: Buffer): Promise<Vault> {
+    const span = getTracer('vault_manager').startSpan('new_vault')
+    span.setAttribute('creating new vault', vaultName)
+    span.setAttribute('key was provided', key != undefined)
     this.creatingVault = true;
     if (this.vaultExists(vaultName)) {
+      span.setAttribute('vault exists')
+      span.end()
       this.creatingVault = false;
       throw Error('Vault already exists!');
     }
@@ -128,32 +161,42 @@ class VaultManager {
       const vaultPath = path.join(this.polykeyPath, vaultName);
       // Directory not present, create one
       this.fileSystem.mkdirSync(vaultPath, { recursive: true });
+      span.setAttribute('vault path was created')
       // Create key if not provided
       let vaultKey: Buffer;
       if (!key) {
         // Generate new key
         vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey(), false);
+        span.setAttribute('vault key was created')
       } else {
         // Assign key if it is provided
         vaultKey = key;
+        span.setAttribute('vault key was assigned')
       }
       this.vaultKeys.set(vaultName, vaultKey);
-      await this.writeEncryptedMetadata();
+      await this.writeEncryptedMetadata(span);
+      span.setAttribute('encrypted metadata was written')
 
       // Create vault
       const vault = new Vault(vaultName, vaultKey, this.polykeyPath, this.gitFrontend);
       await vault.initializeVault();
+      span.setAttribute('vault instance was initialized')
 
       // Set vault
       this.vaults.set(vaultName, vault);
       const retrievedVault = this.getVault(vaultName);
       this.creatingVault = false;
+      span.setAttribute('returning new vault instance')
       return retrievedVault;
     } catch (err) {
+      span.setAttribute('error', err.toString())
       // Delete vault dir and garbage collect
       await this.deleteVault(vaultName);
+      span.setAttribute('vault deleted')
       this.creatingVault = false;
       throw err;
+    } finally {
+      span.end()
     }
   }
 
@@ -286,30 +329,51 @@ class VaultManager {
     }
   }
 
-  private async writeEncryptedMetadata(): Promise<void> {
-    const metadata = JSON.stringify([...this.vaultKeys]);
-    const encryptedMetadata = await this.keyManager.encryptData(Buffer.from(metadata));
-    await this.fileSystem.promises.writeFile(this.metadataPath, encryptedMetadata);
+  private async writeEncryptedMetadata(span?: opentelemetry.Span): Promise<void> {
+    const childSpan = getTracer('vault_manager').startSpan('write_encrypted_metadata', { parent: span })
+    try {
+      const metadata = JSON.stringify([...this.vaultKeys]);
+      const encryptedMetadata = await this.keyManager.encryptData(Buffer.from(metadata));
+      await this.fileSystem.promises.writeFile(this.metadataPath, encryptedMetadata);
+      childSpan.setAttribute('metadata written', undefined)
+    } catch (error) {
+      childSpan.setAttribute('error', error)
+    } finally {
+      childSpan.end()
+    }
   }
 
-  async loadEncryptedMetadata(): Promise<void> {
-    // Check if file exists
-    if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.KeypairUnlocked) {
-      const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
-      const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString();
+  async loadEncryptedMetadata(span?: opentelemetry.Span): Promise<void> {
+    const childSpan = getTracer('vault_manager').startSpan('load_encrypted_metadata', { parent: span })
+    try {
+      // Check if file exists
+      if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.KeypairUnlocked) {
+        const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
+        const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString();
 
-      for (const [key, value] of new Map<string, any>(JSON.parse(metadata))) {
-        this.vaultKeys.set(key, Buffer.from(value));
-      }
-      // Initialize vaults in memory
-      for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
-        const vaultPath = path.join(this.polykeyPath, vaultName);
-
-        if (this.fileSystem.existsSync(vaultPath)) {
-          const vault = new Vault(vaultName, vaultKey, this.polykeyPath, this.gitFrontend);
-          this.vaults.set(vaultName, vault);
+        for (const [key, value] of new Map<string, any>(JSON.parse(metadata))) {
+          this.vaultKeys.set(key, Buffer.from(value));
         }
+        // Initialize vaults in memory
+        for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
+          const vaultPath = path.join(this.polykeyPath, vaultName);
+
+          if (this.fileSystem.existsSync(vaultPath)) {
+            const vault = new Vault(vaultName, vaultKey, this.polykeyPath, this.gitFrontend);
+            this.vaults.set(vaultName, vault);
+          }
+        }
+      } else {
+        childSpan.setAttributes({
+          'metadata not loaded': undefined,
+          'metapath exists boolean': this.fileSystem.existsSync(this.metadataPath),
+          'keypair unlocked boolean': this.keyManager.KeypairUnlocked,
+        })
       }
+    } catch (error) {
+      childSpan.setAttribute('error', error)
+    } finally {
+      childSpan.end()
     }
   }
 }

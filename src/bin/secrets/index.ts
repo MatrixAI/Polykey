@@ -74,12 +74,9 @@ function makeNewSecretCommand() {
           secretPath.setSecretName(secretName);
           request.setSecretPath(secretPath);
           request.setSecretFilePath(options.filePath);
-          const res = (await promisifyGrpc(client.newSecret.bind(client))(request)) as pb.BooleanMessage;
+          await promisifyGrpc(client.newSecret.bind(client))(request)
 
-          pkLogger.logV2(
-            `secret '${secretName}' was successfully added to vault '${vaultName}'`,
-            PKMessageType.SUCCESS,
-          );
+          pkLogger.logV2(`secret '${secretName}' was successfully added to vault '${vaultName}'`, PKMessageType.SUCCESS);
         } catch (err) {
           throw Error(`Error when adding secret: ${err.message}`);
         }
@@ -117,12 +114,9 @@ function makeUpdateSecretCommand() {
           secretPath.setSecretName(secretName);
           request.setSecretPath(secretPath);
           request.setSecretFilePath(options.filePath);
-          const res = (await promisifyGrpc(client.updateSecret.bind(client))(request)) as pb.BooleanMessage;
+          await promisifyGrpc(client.updateSecret.bind(client))(request)
 
-          pkLogger.logV2(
-            `secret '${secretName}' was successfully updated in vault '${vaultName}'`,
-            res.getB() ? PKMessageType.SUCCESS : PKMessageType.WARNING,
-          );
+          pkLogger.logV2(`secret '${secretName}' was successfully updated in vault '${vaultName}'`, PKMessageType.SUCCESS);
         } catch (err) {
           throw Error(`Error when updating secret: ${err.message}`);
         }
@@ -157,12 +151,9 @@ function makeDeleteSecretCommand() {
           const request = new pb.SecretPathMessage();
           request.setVaultName(vaultName);
           request.setSecretName(secretName);
-          const res = (await promisifyGrpc(client.deleteSecret.bind(client))(request)) as pb.BooleanMessage;
+          await promisifyGrpc(client.deleteSecret.bind(client))(request)
 
-          pkLogger.logV2(
-            `secret '${secretName}' was successfully removed from vault '${vaultName}'`,
-            PKMessageType.SUCCESS,
-          );
+          pkLogger.logV2(`secret '${secretName}' was successfully removed from vault '${vaultName}'`, PKMessageType.SUCCESS);
         } catch (err) {
           throw Error(`Error when removing secret: ${err.message}`);
         }
@@ -297,13 +288,13 @@ function makeSecretEnvCommand() {
           });
           shell.on('close', (code) => {
             if (code != 0) {
-              pkLogger.logV2(`polykey: environment terminated with code: ${code}`, PKMessageType.WARNING);
+              pkLogger.logV1(`polykey: environment terminated with code: ${code}`, PKMessageType.WARNING);
             }
           });
         } catch (err) {
           throw Error(`Error when running environment: ${err.message}`);
         }
-      }),
+      }, false),
     );
 }
 

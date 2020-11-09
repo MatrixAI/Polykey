@@ -41,14 +41,8 @@ function makeRevokeTokenCommand() {
 
         const req = new pb.StringMessage
         req.setS(options.token)
-        const res = (await promisifyGrpc(client.revokeOAuthToken.bind(client))(
-          req,
-        )) as pb.BooleanMessage;
-        if (res.getB()) {
-          pkLogger.logV2(`token was successfully revoked`, PKMessageType.SUCCESS);
-        } else {
-          throw Error('something went wrong and token was not revoked')
-        }
+        await promisifyGrpc(client.revokeOAuthToken.bind(client))(req)
+        pkLogger.logV2(`token was successfully revoked`, PKMessageType.SUCCESS);
       }),
     );
 }

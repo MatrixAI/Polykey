@@ -7,14 +7,14 @@ import * as pb from '../../proto/compiled/Agent_pb';
 import { AgentClient } from '../../proto/compiled/Agent_grpc_pb';
 
 /*******************************************/
-function actionRunner(fn: (...args: any) => Promise<void>) {
+function actionRunner(fn: (...args: any) => Promise<void>, processExit: boolean = true) {
   return (...args: any) =>
     fn(...args)
       .catch((error: Error) => {
         console.error(chalk.redBright(error.message));
       })
       .finally(() => {
-        if (process.env.NODE_ENV !== 'test') {
+        if (process.env.NODE_ENV !== 'test' && processExit) {
           process.exit(0);
         }
       });

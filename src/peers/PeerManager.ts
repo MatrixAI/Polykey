@@ -9,6 +9,8 @@ import PeerServer from './peer-connection/PeerServer';
 import NatTraversal from './nat-traversal/NatTraversal';
 import PeerConnection from './peer-connection/PeerConnection';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
+import { JSONMapReplacer, JSONMapReviver } from '../utils';
+import fetch from 'isomorphic-fetch';
 
 interface SocialDiscovery {
   // Must return a public pgp key
@@ -19,13 +21,20 @@ interface SocialDiscovery {
 const keybaseDiscovery: SocialDiscovery = {
   name: 'Keybase',
   findUser: async (handle: string, service: string): Promise<string> => {
-    const url = `https://keybase.io/_/api/1.0/user/lookup.json?${service}=${handle}`;
+    const lookupUrl = `https://keybase.io/_/api/1.0/user/lookup.json?${service}=${handle}`;
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(lookupUrl);
       const data = await response.json();
 
+      const keybaseUsername = data.them[0].basics.username
+      const polykeyProofUrl = `https://${keybaseUsername}.keybase.pub/polykey.proof`
+      // get the polykey.proof from public folder
+      console.log(await (await fetch(polykeyProofUrl)).text());
+
       const pubKey = data.them[0].public_keys.primary.bundle;
+      console.log(keybaseUsername);
+
       return pubKey;
     } catch (err) {
       throw Error(`User was not found: ${err.message}`);
@@ -38,10 +47,14 @@ class PeerManager {
 
   private peerInfoMetadataPath: string;
   private peerStoreMetadataPath: string;
+  private peerAliasMetadataPath: string;
 
   peerInfo: PeerInfo;
   // peerId -> PeerInfo
   private peerStore: Map<string, PeerInfo>;
+  // peerId -> peerAlias
+  private peerAlias: Map<string, string>
+
   private keyManager: KeyManager;
   multicastBroadcaster: MulticastBroadcaster;
   socialDiscoveryServices: SocialDiscovery[];
@@ -63,11 +76,13 @@ class PeerManager {
   ) {
     this.fileSystem = fileSystem;
 
-    this.peerStore = new Map();
+    this.peerStore = new Map;
+    this.peerAlias = new Map;
 
     this.fileSystem.mkdirSync(polykeyPath, { recursive: true });
-    this.peerInfoMetadataPath = path.join(polykeyPath, '.peers', '.peerInfo');
-    this.peerStoreMetadataPath = path.join(polykeyPath, '.peers', '.peerStore');
+    this.peerInfoMetadataPath = path.join(polykeyPath, '.peers', 'PeerInfo');
+    this.peerStoreMetadataPath = path.join(polykeyPath, '.peers', 'PeerStore');
+    this.peerAliasMetadataPath = path.join(polykeyPath, '.peers', 'PeerAlias');
 
     // Set given variables
     this.keyManager = keyManager;
@@ -81,7 +96,13 @@ class PeerManager {
       this.peerInfo = peerInfo;
       this.writeMetadata();
     } else if (this.keyManager.hasPublicKey() && !this.peerInfo) {
-      this.peerInfo = new PeerInfo(this.keyManager.getPublicKey(), this.keyManager.pki.RootCert);
+      this.peerInfo = new PeerInfo(
+        this.keyManager.getPublicKey(),
+        this.keyManager.pki.RootCert,
+        // undefined,
+        // undefined,
+        // this.keyManager.pki.createNewPeerInfoCertificate.bind(this.keyManager.pki)
+      );
     }
 
     this.socialDiscoveryServices = [];
@@ -159,7 +180,7 @@ class PeerManager {
    * Add a peer's info to the peerStore
    * @param peerInfo Info of the peer to be added
    */
-  addPeer(peerInfo: PeerInfo): void {
+  addPeer(peerInfo: PeerInfo): string {
     const peerId = peerInfo.id;
     if (this.hasPeer(peerId)) {
       throw Error('peer already exists in peer store');
@@ -170,6 +191,40 @@ class PeerManager {
     this.peerStore.set(peerInfo.id, peerInfo.deepCopy());
     this.peerDHT.addPeer(peerInfo.id);
     this.writeMetadata();
+    return peerInfo.id
+  }
+
+  /**
+   * Add an alias for a particular peer
+   * @param peerId Peer ID of an existing peer
+   * @param alias Alias of peer
+   */
+  setPeerAlias(peerId: string, alias: string): void {
+    if (!this.hasPeer(peerId)) {
+      throw Error('peer does not exist in peer store')
+    }
+    this.peerAlias.set(peerId, alias)
+    this.writeMetadata()
+  }
+
+  /**
+   * Add a peer's info to the peerStore
+   * @param peerId Peer ID of an existing peer
+   */
+  unsetPeerAlias(peerId: string): void {
+    if (!this.peerAlias.has(peerId)) {
+      throw Error(`no alias set for peerId: '${peerId}'`)
+    }
+    this.peerAlias.delete(peerId)
+    this.writeMetadata()
+  }
+
+  /**
+   * Retrieve a peer's alias
+   * @param peerId Peer ID of an existing peer
+   */
+  getPeerAlias(peerId: string): string | undefined {
+    return this.peerAlias.get(peerId) ?? undefined
   }
 
   /**
@@ -262,7 +317,7 @@ class PeerManager {
   ///////////////////////
   /**
    * Get a secure connection to the peer
-   * @param publicKey Public key of an existing peer or address of new peer
+   * @param peerId Peer ID of an existing peer
    */
   connectToPeer(peerId: string): PeerConnection {
     // Throw error if trying to connect to self
@@ -282,8 +337,8 @@ class PeerManager {
       (() => this.peerInfo).bind(this),
       this.getPeer.bind(this),
       this.peerDHT.findPeer.bind(this.peerDHT),
-      this.natTraversal.requestUDPHolePunchDirectly.bind(this),
-      this.natTraversal.requestUDPHolePunchViaPeer.bind(this),
+      this.natTraversal.requestUDPHolePunchDirectly.bind(this.natTraversal),
+      this.natTraversal.requestUDPHolePunchViaPeer.bind(this.natTraversal),
     );
 
     this.peerConnections.set(peerId, peerConnection);
@@ -322,6 +377,7 @@ class PeerManager {
     }
     const peerStoreMetadata = peerInterface.PeerInfoListMessage.encodeDelimited({ peerInfoList }).finish();
     this.fileSystem.writeFileSync(this.peerStoreMetadataPath, peerStoreMetadata);
+    this.fileSystem.writeFileSync(this.peerAliasMetadataPath, JSON.stringify(this.peerAlias, JSONMapReplacer));
   }
 
   loadMetadata(): void {
@@ -346,6 +402,9 @@ class PeerManager {
         );
         this.peerStore.set(peerInfo.id, peerInfo);
       }
+    }
+    if (this.fileSystem.existsSync(this.peerAliasMetadataPath)) {
+      this.peerAlias = JSON.parse(this.fileSystem.readFileSync(this.peerAliasMetadataPath).toString(), JSONMapReviver)
     }
   }
 }

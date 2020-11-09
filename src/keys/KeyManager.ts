@@ -2,12 +2,12 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import * as kbpgp from 'kbpgp';
+import * as bip39 from 'bip39';
 import { promisify } from 'util';
 import { Pool, ModuleThread } from 'threads';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
 import PublicKeyInfrastructure from './pki/PublicKeyInfrastructure';
-
-const kbpgp = require('kbpgp')
 
 type KeyManagerMetadata = {
   privateKeyPath: string | null;
@@ -49,6 +49,8 @@ class KeyManager {
     useWebWorkers: boolean = false,
     workerPool?: Pool<ModuleThread<KeyManagerWorker>>,
   ) {
+    bip39.setDefaultWordlist('english')
+
     this.useWebWorkers = useWebWorkers;
     this.workerPool = workerPool;
     this.derivedKeys = new Map();

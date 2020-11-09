@@ -1,5 +1,5 @@
 import fs from 'fs';
-import commander from 'commander';
+import commander, { action } from 'commander';
 import { PeerInfo } from '../../Polykey';
 import * as pb from '../../../proto/compiled/Agent_pb';
 import { actionRunner, getPKLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
@@ -45,12 +45,42 @@ function makeAddPeerCommand() {
           request.setApiAddress(options.apiAddress);
         }
 
-        const res = (await promisifyGrpc(client.addPeer.bind(client))(request)) as pb.BooleanMessage;
+        const res = (await promisifyGrpc(client.addPeer.bind(client))(request)) as pb.StringMessage;
 
-        if (res.getB()) {
-          pkLogger.logV2('peer successfully added to peer store', PKMessageType.SUCCESS);
+        pkLogger.logV2(`peer id of '${res.getS()}' successfully added to peer store`, PKMessageType.SUCCESS);
+      }),
+    );
+}
+
+function makeAddAliasCommand() {
+  return new commander.Command('alias')
+    .description('set/unset an alias for an existing peer')
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .requiredOption('-pi, --peer-id <peerId>', '(required) id of the peer for which an alias is to be set')
+    .option('-a, --alias <alias>', 'new alias for the target peer')
+    .option('-u, --unset', 'new alias for the target peer')
+    .action(
+      actionRunner(async (options) => {
+        const nodePath = determineNodePath(options.nodePath);
+        const pkLogger = getPKLogger(options.verbosity)
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+
+        if (options.unset) {
+          const request = new pb.StringMessage();
+          request.setS(options.peerId!)
+
+          await promisifyGrpc(client.unsetAlias.bind(client))(request)
+
+          pkLogger.logV2(`peer alias has successfully been unset`, PKMessageType.SUCCESS);
         } else {
-          throw Error('something went wrong, peer was not added to peer store');
+          const request = new pb.PeerAliasMessage();
+          request.setPeerId(options.peerId!)
+          request.setAlias(options.alias!)
+
+          await promisifyGrpc(client.setAlias.bind(client))(request)
+
+          pkLogger.logV2(`peer alias has successfully been set`, PKMessageType.SUCCESS);
         }
       }),
     );
@@ -74,13 +104,9 @@ function makeFindPeerCommand() {
         if (options.timeout) {
           request.setTimeout(options.timeout);
         }
-        const res = (await promisifyGrpc(client.findPeer.bind(client))(request)) as pb.BooleanMessage;
+        await promisifyGrpc(client.findPeer.bind(client))(request)
 
-        if (res.getB()) {
-          pkLogger.logV1('peer successfully found', PKMessageType.SUCCESS);
-        } else {
-          throw Error('request timed out');
-        }
+        pkLogger.logV1('peer successfully found', PKMessageType.SUCCESS);
       }),
     );
 }
@@ -93,6 +119,7 @@ function makeGetPeerInfoCommand() {
     .option('-b64, --base64', 'output peer info as a base64 string')
     .option('-cn, --current-node', 'only list the peer information for the current node, useful for sharing')
     .option('-pi, --peer-id <peerId>', 'unique hash of public key that identifies the peer')
+    .option('-a, --alias <alias>', 'alias of target peer')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -104,9 +131,11 @@ function makeGetPeerInfoCommand() {
           res = (await promisifyGrpc(client.getLocalPeerInfo.bind(client))(
             new pb.EmptyMessage(),
           )) as pb.PeerInfoMessage;
+        } else if (options.alias) {
+          // TODO: add in alias
         } else {
           const request = new pb.StringMessage();
-          request.setS(options.peerId!);
+          request.setS(options.peerId ?? options.alias);
           res = (await promisifyGrpc(client.getPeerInfo.bind(client))(request)) as pb.PeerInfoMessage;
         }
         const peerInfo = new PeerInfo(
@@ -182,13 +211,8 @@ function makePingPeerCommand() {
         if (options.timeout) {
           request.setTimeout(options.timeout)
         }
-        const res = (await promisifyGrpc(client.pingPeer.bind(client))(request)) as pb.BooleanMessage;
-
-        if (res.getB()) {
-          pkLogger.logV1('peer successfully pinged', PKMessageType.SUCCESS);
-        } else {
-          throw Error('ping timed out');
-        }
+        await promisifyGrpc(client.pingPeer.bind(client))(request)
+        pkLogger.logV1('peer successfully pinged', PKMessageType.SUCCESS);
       }),
     );
 }
@@ -207,7 +231,7 @@ function makeStealthCommand() {
 
         const request = new pb.BooleanMessage();
         request.setB(true);
-        const res = (await promisifyGrpc(client.toggleStealthMode.bind(client))(request)) as pb.BooleanMessage;
+        await promisifyGrpc(client.toggleStealthMode.bind(client))(request)
 
         pkLogger.logV2(`stealth mode toggled to 'active'`, PKMessageType.SUCCESS);
       }),
@@ -215,8 +239,8 @@ function makeStealthCommand() {
 
   // add inactive command
   const inactiveStealthCommand = new commander.Command('inactive')
-  .option('-k, --node-path <nodePath>', 'provide the polykey path')
-  .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
@@ -225,7 +249,7 @@ function makeStealthCommand() {
 
         const request = new pb.BooleanMessage();
         request.setB(false);
-        const res = (await promisifyGrpc(client.toggleStealthMode.bind(client))(request)) as pb.BooleanMessage;
+        await promisifyGrpc(client.toggleStealthMode.bind(client))(request)
 
         pkLogger.logV2(`stealth mode toggled to 'inactive'`, PKMessageType.SUCCESS);
       }),
@@ -284,26 +308,20 @@ function makeUpdatePeerInfoCommand() {
           }
         }
 
-        let successful: boolean;
         if (options.currentNode) {
-          const res = (await promisifyGrpc(client.updateLocalPeerInfo.bind(client))(request)) as pb.BooleanMessage;
-          successful = res.getB();
+          await promisifyGrpc(client.updateLocalPeerInfo.bind(client))(request)
         } else {
-          const res = (await promisifyGrpc(client.updatePeerInfo.bind(client))(request)) as pb.BooleanMessage;
-          successful = res.getB();
+          await promisifyGrpc(client.updatePeerInfo.bind(client))(request)
         }
 
-        if (successful) {
-          pkLogger.logV2('peer info was successfully updated', PKMessageType.SUCCESS);
-        } else {
-          throw Error('something went wrong, peer info could not be updated');
-        }
+        pkLogger.logV2('peer info was successfully updated', PKMessageType.SUCCESS);
       }),
     );
 }
 
 export {
   makeAddPeerCommand,
+  makeAddAliasCommand,
   makeFindPeerCommand,
   makeGetPeerInfoCommand,
   makeListPeersCommand,

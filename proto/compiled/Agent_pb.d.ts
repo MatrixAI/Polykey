@@ -142,25 +142,25 @@ export namespace AgentStatusMessage {
     }
 }
 
-export class NewNodeMessage extends jspb.Message { 
+export class NewKeyPairMessage extends jspb.Message { 
     getUserid(): string;
-    setUserid(value: string): NewNodeMessage;
+    setUserid(value: string): NewKeyPairMessage;
 
     getPassphrase(): string;
-    setPassphrase(value: string): NewNodeMessage;
+    setPassphrase(value: string): NewKeyPairMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NewNodeMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NewNodeMessage): NewNodeMessage.AsObject;
+    toObject(includeInstance?: boolean): NewKeyPairMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NewKeyPairMessage): NewKeyPairMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NewNodeMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NewNodeMessage;
-    static deserializeBinaryFromReader(message: NewNodeMessage, reader: jspb.BinaryReader): NewNodeMessage;
+    static serializeBinaryToWriter(message: NewKeyPairMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NewKeyPairMessage;
+    static deserializeBinaryFromReader(message: NewKeyPairMessage, reader: jspb.BinaryReader): NewKeyPairMessage;
 }
 
-export namespace NewNodeMessage {
+export namespace NewKeyPairMessage {
     export type AsObject = {
         userid: string,
         passphrase: string,
@@ -168,9 +168,6 @@ export namespace NewNodeMessage {
 }
 
 export class DeriveKeyMessage extends jspb.Message { 
-    getVaultName(): string;
-    setVaultName(value: string): DeriveKeyMessage;
-
     getKeyName(): string;
     setKeyName(value: string): DeriveKeyMessage;
 
@@ -190,9 +187,40 @@ export class DeriveKeyMessage extends jspb.Message {
 
 export namespace DeriveKeyMessage {
     export type AsObject = {
-        vaultName: string,
         keyName: string,
         passphrase: string,
+    }
+}
+
+export class DeriveKeyPairMessage extends jspb.Message { 
+
+    hasKeypairDetails(): boolean;
+    clearKeypairDetails(): void;
+    getKeypairDetails(): NewKeyPairMessage | undefined;
+    setKeypairDetails(value?: NewKeyPairMessage): DeriveKeyPairMessage;
+
+    getPublicKeyPath(): string;
+    setPublicKeyPath(value: string): DeriveKeyPairMessage;
+
+    getPrivateKeyPath(): string;
+    setPrivateKeyPath(value: string): DeriveKeyPairMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): DeriveKeyPairMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: DeriveKeyPairMessage): DeriveKeyPairMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: DeriveKeyPairMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): DeriveKeyPairMessage;
+    static deserializeBinaryFromReader(message: DeriveKeyPairMessage, reader: jspb.BinaryReader): DeriveKeyPairMessage;
+}
+
+export namespace DeriveKeyPairMessage {
+    export type AsObject = {
+        keypairDetails?: NewKeyPairMessage.AsObject,
+        publicKeyPath: string,
+        privateKeyPath: string,
     }
 }
 
@@ -539,6 +567,31 @@ export namespace OAuthClientMessage {
     export type AsObject = {
         id: string,
         secret: string,
+    }
+}
+
+export class PeerAliasMessage extends jspb.Message { 
+    getPeerId(): string;
+    setPeerId(value: string): PeerAliasMessage;
+
+    getAlias(): string;
+    setAlias(value: string): PeerAliasMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PeerAliasMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PeerAliasMessage): PeerAliasMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PeerAliasMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PeerAliasMessage;
+    static deserializeBinaryFromReader(message: PeerAliasMessage, reader: jspb.BinaryReader): PeerAliasMessage;
+}
+
+export namespace PeerAliasMessage {
+    export type AsObject = {
+        peerId: string,
+        alias: string,
     }
 }
 
