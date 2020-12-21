@@ -124,7 +124,7 @@
     "webpack": "^4.42.1",
     "webpack-cli": "^3.3.11",
     "webpack-node-externals": "^1.7.2",
-    "xstate": "^4.13.0"
+    "xstate": "^4.15.1"
   },
   "bugs": {
     "url": "https://github.com/MatrixAI/js-polykey/issues"
