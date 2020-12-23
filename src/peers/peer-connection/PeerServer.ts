@@ -47,14 +47,18 @@ class PeerServer implements IPeerServer {
       if (err) {
         throw err;
       } else {
-        const address = new Address(host, boundPort);
-        this.server.start();
-        if (this.peerManager.peerInfo) {
-          this.peerManager.peerInfo.peerAddress = address;
-          this.peerManager.writeMetadata()
+        try {
+          const address = new Address(host, boundPort);
+          if (this.peerManager.peerInfo) {
+            this.peerManager.peerInfo.peerAddress = address;
+            this.peerManager.writeMetadata()
+          }
+          this.server.start();
+          console.log(`Peer Server running on: ${address}`);
+          this.started = true;
+        } catch (error) {
+          console.log(error)
         }
-        console.log(`Peer Server running on: ${address}`);
-        this.started = true;
       }
     });
   }

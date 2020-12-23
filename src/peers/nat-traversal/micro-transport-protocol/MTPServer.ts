@@ -109,6 +109,7 @@ class MTPServer extends EventEmitter {
     if (message.length < MIN_PACKET_SIZE) {
       return;
     }
+
     const packet = bufferToPacket(message);
 
     // // not sure if this id is required but it has now been replaced with peerId pending further testing:
@@ -131,6 +132,5 @@ class MTPServer extends EventEmitter {
     this.emit('connection', newConnection);
   }
 }
-
 
 export { MTPConnection, MTPServer };

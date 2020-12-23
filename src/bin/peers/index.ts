@@ -1,5 +1,6 @@
 import commander from 'commander';
 import {
+  makeAddAliasCommand,
   makeAddPeerCommand,
   makeFindPeerCommand,
   makeGetPeerInfoCommand,
@@ -8,18 +9,19 @@ import {
   makeStealthCommand,
   makeUpdatePeerInfoCommand,
 } from './peerCommands';
-import { makeFindSocialPeerCommand } from './socialCommands';
+import { makeSocialCommand } from './socialCommands';
 
 function makePeersCommand() {
   return new commander.Command('peers')
     .description('peer operations')
     .addCommand(makeAddPeerCommand())
+    .addCommand(makeAddAliasCommand())
     .addCommand(makeUpdatePeerInfoCommand())
     .addCommand(makeGetPeerInfoCommand())
     .addCommand(makeListPeersCommand())
     .addCommand(makePingPeerCommand())
     .addCommand(makeFindPeerCommand())
-    .addCommand(makeFindSocialPeerCommand())
+    .addCommand(makeSocialCommand())
     .addCommand(makeStealthCommand());
 }
 

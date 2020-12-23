@@ -16,8 +16,8 @@ describe('Polykey CLI', () => {
       PK_PATH: nodePath,
     }
     // init node
-    await validateCli({ args: ['agent', 'stop'], ignoreOutput: true })
-    await validateCli({ args: ['agent', 'start'], ignoreOutput: true })
+    await validateCli({ args: ['agent', 'stop', '-v', '2'], ignoreOutput: true })
+    await validateCli({ args: ['agent', 'start', '-v', '2'], ignoreOutput: true })
     await validateCli({
       args: [
         'agent',
@@ -26,8 +26,8 @@ describe('Polykey CLI', () => {
         'John Smith',
         '-pp',
         'passphrase',
-        '-nb',
-        '1024',
+        '-v',
+        '2'
       ],
       ignoreOutput: true
     })
@@ -40,58 +40,58 @@ describe('Polykey CLI', () => {
   describe('With Agent Stopped', () => {
     beforeEach(async () => {
       // stop agent
-      await validateCli({ args: ['agent', 'stop'], ignoreOutput: true })
+      await validateCli({ args: ['agent', 'stop', '-v', '2'], ignoreOutput: true })
     })
 
     test('agent status returns correctly if agent is stopped', async () => {
-      await validateCli({ args: ['agent', 'status'], expectedOutput: ["agent status is: 'offline'"] })
+      await validateCli({ args: ['agent', 'status', '-v', '2'], expectedOutput: ["agent status is: 'offline'"] })
     })
 
     test('can start agent', async () => {
-      await validateCli({ args: ['agent', 'start'], expectedOutput: ["agent has started"] })
+      await validateCli({ args: ['agent', 'start', '-v', '2'], expectedOutput: ["agent has started"] })
     })
 
     test('can start agent as a daemon', async () => {
-      await validateCli({ args: ['agent', 'start', '-d'], expectedOutput: ["agent has started"] })
+      await validateCli({ args: ['agent', 'start', '-d', '-v', '2'], expectedOutput: ["agent has started"] })
     })
   })
 
   describe('With Agent Started', () => {
     beforeEach(async () => {
-      await validateCli({ args: ['agent', 'stop'], ignoreOutput: true })
-      await validateCli({ args: ['agent', 'start'], ignoreOutput: true })
+      await validateCli({ args: ['agent', 'stop', '-v', '2'], ignoreOutput: true })
+      await validateCli({ args: ['agent', 'start', '-v', '2'], ignoreOutput: true })
     })
 
     test('agent status returns correctly if agent is started', async () => {
-      await validateCli({ args: ['agent', 'status'], expectedOutput: ["agent status is: 'online'"] })
+      await validateCli({ args: ['agent', 'status', '-v', '2'], expectedOutput: ["agent status is: 'online'"] })
     })
 
     test('can forcibly stop the agent without errors', async () => {
-      await validateCli({ args: ['agent', 'stop', '-f'], ignoreOutput: true })
+      await validateCli({ args: ['agent', 'stop', '-f', '-v', '2'], ignoreOutput: true })
     })
 
     test('can restart agent without errors', async () => {
-      await validateCli({ args: ['agent', 'restart'], expectedOutput: ["agent has restarted"] })
+      await validateCli({ args: ['agent', 'restart', '-v', '2'], expectedOutput: ["agent has restarted"] })
     })
 
     test('can restart agent as daemon without errors', async () => {
-      await validateCli({ args: ['agent', 'restart', '-d'], expectedOutput: ["agent has restarted"] })
+      await validateCli({ args: ['agent', 'restart', '-d', '-v', '2'], expectedOutput: ["agent has restarted"] })
     })
   })
 
   describe('Node Specific Operations', () => {
     beforeEach(async () => {
-      await validateCli({ args: ['agent', 'unlock', '-pp', 'passphrase'], ignoreOutput: true })
+      await validateCli({ args: ['agent', 'unlock', '-pp', 'passphrase', '-v', '2'], ignoreOutput: true })
     })
 
     test('cannot operate on a locked node', async () => {
-      await validateCli({ args: ['agent', 'restart'], expectedOutput: ["agent has restarted"] })
-      await validateCli({ args: ['vaults', 'list'], expectedOutput: ['polykey is locked'] })
+      await validateCli({ args: ['agent', 'restart', '-v', '2'], expectedOutput: ["agent has restarted"] })
+      await validateCli({ args: ['vaults', 'list', '-v', '2'], expectedOutput: ['polykey is locked'] })
     })
 
     test('can load exisitng node after agent restart', async () => {
-      await validateCli({ args: ['agent', 'restart'], expectedOutput: ["agent has restarted"] })
-      await validateCli({ args: ['agent', 'unlock', '-pp', 'passphrase'], expectedOutput: [nodePath] })
+      await validateCli({ args: ['agent', 'restart', '-v', '2'], expectedOutput: ["agent has restarted"] })
+      await validateCli({ args: ['agent', 'unlock', '-pp', 'passphrase', '-v', '2'], expectedOutput: [nodePath] })
     })
 
     describe('Vault Operations', () => {
@@ -99,15 +99,15 @@ describe('Polykey CLI', () => {
       beforeEach(async () => {
         vaultName = `Vault-${randomString()}`
         // create a new vault
-        await validateCli({ args: ['vaults', 'new', '-vn', vaultName], expectedOutput: ["vault created at"] })
+        await validateCli({ args: ['vaults', 'new', '-vn', vaultName, '-v', '2'], expectedOutput: ["vault created at"] })
       })
 
       test('existing vault shows up in vault list', async () => {
-        await validateCli({ args: ['vaults', 'list'], expectedOutput: [vaultName] })
+        await validateCli({ args: ['vaults', 'list', '-v', '2'], expectedOutput: [vaultName] })
       })
 
       test('can delete vault', async () => {
-        await validateCli({ args: ['vaults', 'list'], expectedOutput: [vaultName] })
+        await validateCli({ args: ['vaults', 'list', '-v', '2'], expectedOutput: [vaultName] })
       })
 
       describe('Secret Operations', () => {
@@ -121,7 +121,7 @@ describe('Polykey CLI', () => {
           fs.writeFileSync(secretPath, Buffer.from(secretContent))
           // create a new secret
           await validateCli({
-            args: ['secrets', 'new', `${vaultName}:${secretName}`, '-f', secretPath],
+            args: ['secrets', 'new', `${vaultName}:${secretName}`, '-f', secretPath, '-v', '2'],
             expectedOutput: [`secret '${secretName}' was successfully added to vault '${vaultName}'`]
           })
           // delete temporary file
@@ -129,19 +129,19 @@ describe('Polykey CLI', () => {
         })
 
         test('existing secret shows up in secret list', async () => {
-          await validateCli({ args: ['secrets', 'list', vaultName], expectedOutput: [secretName] })
+          await validateCli({ args: ['secrets', 'list', vaultName, '-v', '2'], expectedOutput: [secretName] })
         })
 
         test('deleted secret does not show up in secret list', async () => {
           await validateCli({
-            args: ['secrets', 'delete', `${vaultName}:${secretName}`],
+            args: ['secrets', 'delete', `${vaultName}:${secretName}`, '-v', '2'],
             expectedOutput: [`secret '${secretName}' was successfully removed from vault '${vaultName}'`]
           })
-          await validateCli({ args: ['secrets', 'list', vaultName], expectedOutput: [] })
+          await validateCli({ args: ['secrets', 'list', vaultName, '-v', '2'], expectedOutput: [] })
         })
 
         test('can get secret from vault', async () => {
-          await validateCli({ args: ['secrets', 'get', `${vaultName}:${secretName}`], expectedOutput: [secretContent] })
+          await validateCli({ args: ['secrets', 'get', `${vaultName}:${secretName}`, '-v', '2'], expectedOutput: [secretContent] })
         })
 
         test('can update secret content', async () => {
@@ -150,20 +150,20 @@ describe('Polykey CLI', () => {
           const secretPath = path.join(os.tmpdir(), secretName)
           fs.writeFileSync(secretPath, Buffer.from(newSecretContent))
           await validateCli({
-            args: ['secrets', 'update', `${vaultName}:${secretName}`, '-f', secretPath],
+            args: ['secrets', 'update', `${vaultName}:${secretName}`, '-f', secretPath, '-v', '2'],
             expectedOutput: [`secret '${secretName}' was successfully updated in vault '${vaultName}'`]
           })
           // delete temporary file
           fs.unlinkSync(secretPath)
 
           // make sure get secret returns correct new content
-          await validateCli({ args: ['secrets', 'get', `${vaultName}:${secretName}`], expectedOutput: [newSecretContent] })
+          await validateCli({ args: ['secrets', 'get', `${vaultName}:${secretName}`, '-v', '2'], expectedOutput: [newSecretContent] })
         })
 
         test('can enter env with secret from vault', async () => {
           const envVarName = secretName.toUpperCase().replace('-', '_')
           await validateCli({
-            args: ['secrets', 'env', `${vaultName}:${secretName}=${envVarName}`, '--command', `echo 'this is the secret: $${envVarName}'`],
+            args: ['secrets', 'env', `${vaultName}:${secretName}=${envVarName}`, '--command', `echo 'this is the secret: $${envVarName}'`, '-v', '2'],
             expectedOutput: [`this is the secret: ${secretContent}`]
           })
         })
@@ -180,7 +180,7 @@ describe('Polykey CLI', () => {
         keyName = `Key-${randomString()}`
         keyPassphrase = `passphrase-${randomString()}`
         // create a new key
-        await validateCli({ args: ['keys', 'new', '-n', keyName, '-p', keyPassphrase], expectedOutput: [`'${keyName}' was added to the Key Manager`] })
+        await validateCli({ args: ['keys', 'new', '-n', keyName, '-p', keyPassphrase, '-v', '2'], expectedOutput: [`'${keyName}' was added to the Key Manager`] })
 
         // read in public and private keys
         primaryPublicKey = fs.readFileSync(path.join(nodePath, '.keys', 'public_key')).toString()
@@ -188,20 +188,20 @@ describe('Polykey CLI', () => {
       })
 
       test('existing key shows up in key list', async () => {
-        await validateCli({ args: ['keys', 'list'], expectedOutput: [keyName] })
+        await validateCli({ args: ['keys', 'list', '-v', '2'], expectedOutput: [keyName] })
       })
 
       test('can get existing key', async () => {
-        await validateCli({ args: ['keys', 'get', '-kn', keyName], ignoreOutput: true })
+        await validateCli({ args: ['keys', 'get', '-kn', keyName, '-v', '2'], ignoreOutput: true })
       })
 
       test('can delete existing key', async () => {
-        await validateCli({ args: ['keys', 'delete', '-n', keyName], expectedOutput: [`key '${keyName}' was successfully deleted`] })
+        await validateCli({ args: ['keys', 'delete', '-n', keyName, '-v', '2'], expectedOutput: [`key '${keyName}' was successfully deleted`] })
       })
 
       test('can retrieve primary keypair', async () => {
         await validateCli({
-          args: ['keys', 'primary', '-pk', '-oj'],
+          args: ['keys', 'primary', '-pk', '-oj', '-v', '2'],
           expectedOutput: [
             JSON.stringify({ publicKey: primaryPublicKey, privateKey: primaryPrivateKey })
           ]
@@ -223,22 +223,22 @@ describe('Polykey CLI', () => {
       })
 
       test('can encrypt and decrypt file', async () => {
-        await validateCli({ args: ['crypto', 'encrypt', '-f', filePath], expectedOutput: [`file successfully encrypted: '${filePath}'`] })
+        await validateCli({ args: ['crypto', 'encrypt', '-f', filePath, '-v', '2'], expectedOutput: [`file successfully encrypted: '${filePath}'`] })
         const encryptedData = fs.readFileSync(filePath)
         expect(encryptedData).not.toEqual(undefined)
 
-        await validateCli({ args: ['crypto', 'decrypt', '-f', filePath], expectedOutput: [`file successfully decrypted: '${filePath}'`] })
+        await validateCli({ args: ['crypto', 'decrypt', '-f', filePath, '-v', '2'], expectedOutput: [`file successfully decrypted: '${filePath}'`] })
         const decryptedData = fs.readFileSync(filePath)
         expect(decryptedData).toEqual(fileContent)
       })
 
       test('can sign and verify file', async () => {
         const signedPath = `${filePath}.sig`
-        await validateCli({ args: ['crypto', 'sign', filePath], expectedOutput: [`file '${filePath}' successfully signed at '${signedPath}'`] })
+        await validateCli({ args: ['crypto', 'sign', filePath, '-v', '2'], expectedOutput: [`file '${filePath}' successfully signed at '${signedPath}'`] })
         const signedData = fs.readFileSync(signedPath)
         expect(signedData).not.toEqual(undefined)
 
-        await validateCli({ args: ['crypto', 'verify', '-f', signedPath], expectedOutput: [`file '${signedPath}' was successfully verified`] })
+        await validateCli({ args: ['crypto', 'verify', '-f', signedPath, '-v', '2'], expectedOutput: [`file '${signedPath}' was successfully verified`] })
         const verifiedData = fs.readFileSync(filePath)
         expect(verifiedData).toEqual(fileContent)
       })

@@ -71,7 +71,7 @@ function makeNewVaultCommand() {
 
         const request = new pb.StringMessage();
         request.setS(options.vaultName);
-        const res = (await promisifyGrpc(client.newVault.bind(client))(request)) as pb.BooleanMessage;
+        await promisifyGrpc(client.newVault.bind(client))(request)
         pkLogger.logV2(`vault created at '${nodePath}/${options.vaultName}'`, PKMessageType.SUCCESS);
       }),
     );
@@ -94,9 +94,9 @@ function makePullVaultCommand() {
         const request = new pb.VaultPathMessage();
         request.setPublicKey(options.peerId);
         request.setVaultName(vaultName);
-        const res = (await promisifyGrpc(client.pullVault.bind(client))(request)) as pb.BooleanMessage;
+        await promisifyGrpc(client.pullVault.bind(client))(request)
 
-        pkLogger.logV2(`vault '${vaultName}' pulled ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
+        pkLogger.logV2(`vault '${vaultName}' pulled successfully`, PKMessageType.SUCCESS);
       }),
     );
 }
@@ -122,9 +122,9 @@ function makeDeleteVaultCommand() {
         for (const vaultName of vaultNames) {
           const request = new pb.StringMessage();
           request.setS(vaultName);
-          const res = (await promisifyGrpc(client.deleteVault.bind(client))(request)) as pb.BooleanMessage;
+          await promisifyGrpc(client.deleteVault.bind(client))(request)
 
-          pkLogger.logV2(`vault '${vaultName}' deleted ${res.getB() ? '' : 'un-'}successfully`, PKMessageType.SUCCESS);
+          pkLogger.logV2(`vault '${vaultName}' deleted successfully`, PKMessageType.SUCCESS);
         }
       }),
     );

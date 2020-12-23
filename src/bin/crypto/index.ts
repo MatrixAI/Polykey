@@ -64,12 +64,8 @@ function makeVerifyCommand() {
         const request = new pb.VerifyFileMessage();
         request.setFilePath(filePath);
         request.setPublicKeyPath(options.publicKey);
-        const res = (await promisifyGrpc(client.verifyFile.bind(client))(request)) as pb.BooleanMessage;
-        if (res.getB()) {
-          pkLogger.logV2(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
-        } else {
-          throw Error(`file '${filePath}' was not verified`)
-        }
+        await promisifyGrpc(client.verifyFile.bind(client))(request)
+        pkLogger.logV2(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
       }),
     );
 }

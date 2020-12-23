@@ -14,6 +14,7 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     deleteSecret: IAgentService_IDeleteSecret;
     deleteVault: IAgentService_IDeleteVault;
     deriveKey: IAgentService_IDeriveKey;
+    deriveKeyPair: IAgentService_IDeriveKeyPair;
     encryptFile: IAgentService_IEncryptFile;
     findPeer: IAgentService_IFindPeer;
     findSocialPeer: IAgentService_IFindSocialPeer;
@@ -27,13 +28,12 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     getStatus: IAgentService_IGetStatus;
     listOAuthTokens: IAgentService_IListOAuthTokens;
     listKeys: IAgentService_IListKeys;
-    listNodes: IAgentService_IListNodes;
     listPeers: IAgentService_IListPeers;
     listSecrets: IAgentService_IListSecrets;
     listVaults: IAgentService_IListVaults;
     lockNode: IAgentService_ILockNode;
     newClientCertificate: IAgentService_INewClientCertificate;
-    newNode: IAgentService_INewNode;
+    initializeNode: IAgentService_IInitializeNode;
     newSecret: IAgentService_INewSecret;
     newOAuthToken: IAgentService_INewOAuthToken;
     newVault: IAgentService_INewVault;
@@ -41,24 +41,26 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     pullVault: IAgentService_IPullVault;
     revokeOAuthToken: IAgentService_IRevokeOAuthToken;
     scanVaultNames: IAgentService_IScanVaultNames;
+    setAlias: IAgentService_ISetAlias;
     signFile: IAgentService_ISignFile;
     stopAgent: IAgentService_IStopAgent;
     toggleStealthMode: IAgentService_IToggleStealthMode;
     unlockNode: IAgentService_IUnlockNode;
+    unsetAlias: IAgentService_IUnsetAlias;
     updateLocalPeerInfo: IAgentService_IUpdateLocalPeerInfo;
     updatePeerInfo: IAgentService_IUpdatePeerInfo;
     updateSecret: IAgentService_IUpdateSecret;
     verifyFile: IAgentService_IVerifyFile;
 }
 
-interface IAgentService_IAddPeer extends grpc.MethodDefinition<Agent_pb.PeerInfoMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IAddPeer extends grpc.MethodDefinition<Agent_pb.PeerInfoMessage, Agent_pb.StringMessage> {
     path: string; // "/agentInterface.Agent/AddPeer"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.PeerInfoMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.PeerInfoMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.StringMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface IAgentService_IDecryptFile extends grpc.MethodDefinition<Agent_pb.DecryptFileMessage, Agent_pb.StringMessage> {
     path: string; // "/agentInterface.Agent/DecryptFile"
@@ -69,41 +71,50 @@ interface IAgentService_IDecryptFile extends grpc.MethodDefinition<Agent_pb.Decr
     responseSerialize: grpc.serialize<Agent_pb.StringMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
-interface IAgentService_IDeleteKey extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IDeleteKey extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/DeleteKey"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.StringMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IDeleteSecret extends grpc.MethodDefinition<Agent_pb.SecretPathMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IDeleteSecret extends grpc.MethodDefinition<Agent_pb.SecretPathMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/DeleteSecret"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.SecretPathMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.SecretPathMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IDeleteVault extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IDeleteVault extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/DeleteVault"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.StringMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IDeriveKey extends grpc.MethodDefinition<Agent_pb.DeriveKeyMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IDeriveKey extends grpc.MethodDefinition<Agent_pb.DeriveKeyMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/DeriveKey"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.DeriveKeyMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.DeriveKeyMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+}
+interface IAgentService_IDeriveKeyPair extends grpc.MethodDefinition<Agent_pb.DeriveKeyPairMessage, Agent_pb.EmptyMessage> {
+    path: string; // "/agentInterface.Agent/DeriveKeyPair"
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.DeriveKeyPairMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.DeriveKeyPairMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
 interface IAgentService_IEncryptFile extends grpc.MethodDefinition<Agent_pb.EncryptFileMessage, Agent_pb.StringMessage> {
     path: string; // "/agentInterface.Agent/EncryptFile"
@@ -114,23 +125,23 @@ interface IAgentService_IEncryptFile extends grpc.MethodDefinition<Agent_pb.Encr
     responseSerialize: grpc.serialize<Agent_pb.StringMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
-interface IAgentService_IFindPeer extends grpc.MethodDefinition<Agent_pb.ContactPeerMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IFindPeer extends grpc.MethodDefinition<Agent_pb.ContactPeerMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/FindPeer"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.ContactPeerMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.ContactPeerMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IFindSocialPeer extends grpc.MethodDefinition<Agent_pb.ContactPeerMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IFindSocialPeer extends grpc.MethodDefinition<Agent_pb.ContactPeerMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/FindSocialPeer"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.ContactPeerMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.ContactPeerMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
 interface IAgentService_IGetOAuthClient extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.OAuthClientMessage> {
     path: string; // "/agentInterface.Agent/GetOAuthClient"
@@ -222,15 +233,6 @@ interface IAgentService_IListKeys extends grpc.MethodDefinition<Agent_pb.EmptyMe
     responseSerialize: grpc.serialize<Agent_pb.StringListMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringListMessage>;
 }
-interface IAgentService_IListNodes extends grpc.MethodDefinition<Agent_pb.BooleanMessage, Agent_pb.StringListMessage> {
-    path: string; // "/agentInterface.Agent/ListNodes"
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    requestDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.StringListMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.StringListMessage>;
-}
 interface IAgentService_IListPeers extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringListMessage> {
     path: string; // "/agentInterface.Agent/ListPeers"
     requestStream: false;
@@ -276,23 +278,23 @@ interface IAgentService_INewClientCertificate extends grpc.MethodDefinition<Agen
     responseSerialize: grpc.serialize<Agent_pb.NewClientCertificateMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.NewClientCertificateMessage>;
 }
-interface IAgentService_INewNode extends grpc.MethodDefinition<Agent_pb.NewNodeMessage, Agent_pb.BooleanMessage> {
-    path: string; // "/agentInterface.Agent/NewNode"
+interface IAgentService_IInitializeNode extends grpc.MethodDefinition<Agent_pb.NewKeyPairMessage, Agent_pb.EmptyMessage> {
+    path: string; // "/agentInterface.Agent/InitializeNode"
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<Agent_pb.NewNodeMessage>;
-    requestDeserialize: grpc.deserialize<Agent_pb.NewNodeMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    requestSerialize: grpc.serialize<Agent_pb.NewKeyPairMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.NewKeyPairMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_INewSecret extends grpc.MethodDefinition<Agent_pb.SecretContentMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_INewSecret extends grpc.MethodDefinition<Agent_pb.SecretContentMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/NewSecret"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.SecretContentMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.SecretContentMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
 interface IAgentService_INewOAuthToken extends grpc.MethodDefinition<Agent_pb.NewOAuthTokenMessage, Agent_pb.StringMessage> {
     path: string; // "/agentInterface.Agent/NewOAuthToken"
@@ -303,41 +305,41 @@ interface IAgentService_INewOAuthToken extends grpc.MethodDefinition<Agent_pb.Ne
     responseSerialize: grpc.serialize<Agent_pb.StringMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
-interface IAgentService_INewVault extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_INewVault extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/NewVault"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.StringMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IPingPeer extends grpc.MethodDefinition<Agent_pb.ContactPeerMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IPingPeer extends grpc.MethodDefinition<Agent_pb.ContactPeerMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/PingPeer"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.ContactPeerMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.ContactPeerMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IPullVault extends grpc.MethodDefinition<Agent_pb.VaultPathMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IPullVault extends grpc.MethodDefinition<Agent_pb.VaultPathMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/PullVault"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.VaultPathMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.VaultPathMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IRevokeOAuthToken extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IRevokeOAuthToken extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/RevokeOAuthToken"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.StringMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
 interface IAgentService_IScanVaultNames extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.StringListMessage> {
     path: string; // "/agentInterface.Agent/ScanVaultNames"
@@ -348,6 +350,15 @@ interface IAgentService_IScanVaultNames extends grpc.MethodDefinition<Agent_pb.S
     responseSerialize: grpc.serialize<Agent_pb.StringListMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringListMessage>;
 }
+interface IAgentService_ISetAlias extends grpc.MethodDefinition<Agent_pb.PeerAliasMessage, Agent_pb.EmptyMessage> {
+    path: string; // "/agentInterface.Agent/SetAlias"
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.PeerAliasMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.PeerAliasMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+}
 interface IAgentService_ISignFile extends grpc.MethodDefinition<Agent_pb.SignFileMessage, Agent_pb.StringMessage> {
     path: string; // "/agentInterface.Agent/SignFile"
     requestStream: false;
@@ -357,82 +368,92 @@ interface IAgentService_ISignFile extends grpc.MethodDefinition<Agent_pb.SignFil
     responseSerialize: grpc.serialize<Agent_pb.StringMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
-interface IAgentService_IStopAgent extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IStopAgent extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/StopAgent"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IToggleStealthMode extends grpc.MethodDefinition<Agent_pb.BooleanMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IToggleStealthMode extends grpc.MethodDefinition<Agent_pb.BooleanMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/ToggleStealthMode"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IUnlockNode extends grpc.MethodDefinition<Agent_pb.UnlockNodeMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IUnlockNode extends grpc.MethodDefinition<Agent_pb.UnlockNodeMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/UnlockNode"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.UnlockNodeMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.UnlockNodeMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IUpdateLocalPeerInfo extends grpc.MethodDefinition<Agent_pb.PeerInfoMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IUnsetAlias extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.EmptyMessage> {
+    path: string; // "/agentInterface.Agent/UnsetAlias"
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.StringMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+}
+interface IAgentService_IUpdateLocalPeerInfo extends grpc.MethodDefinition<Agent_pb.PeerInfoMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/UpdateLocalPeerInfo"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.PeerInfoMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.PeerInfoMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IUpdatePeerInfo extends grpc.MethodDefinition<Agent_pb.PeerInfoMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IUpdatePeerInfo extends grpc.MethodDefinition<Agent_pb.PeerInfoMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/UpdatePeerInfo"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.PeerInfoMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.PeerInfoMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IUpdateSecret extends grpc.MethodDefinition<Agent_pb.SecretContentMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IUpdateSecret extends grpc.MethodDefinition<Agent_pb.SecretContentMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/UpdateSecret"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.SecretContentMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.SecretContentMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
-interface IAgentService_IVerifyFile extends grpc.MethodDefinition<Agent_pb.VerifyFileMessage, Agent_pb.BooleanMessage> {
+interface IAgentService_IVerifyFile extends grpc.MethodDefinition<Agent_pb.VerifyFileMessage, Agent_pb.EmptyMessage> {
     path: string; // "/agentInterface.Agent/VerifyFile"
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.VerifyFileMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.VerifyFileMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.BooleanMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.BooleanMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
 
 export const AgentService: IAgentService;
 
 export interface IAgentServer {
-    addPeer: grpc.handleUnaryCall<Agent_pb.PeerInfoMessage, Agent_pb.BooleanMessage>;
+    addPeer: grpc.handleUnaryCall<Agent_pb.PeerInfoMessage, Agent_pb.StringMessage>;
     decryptFile: grpc.handleUnaryCall<Agent_pb.DecryptFileMessage, Agent_pb.StringMessage>;
-    deleteKey: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.BooleanMessage>;
-    deleteSecret: grpc.handleUnaryCall<Agent_pb.SecretPathMessage, Agent_pb.BooleanMessage>;
-    deleteVault: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.BooleanMessage>;
-    deriveKey: grpc.handleUnaryCall<Agent_pb.DeriveKeyMessage, Agent_pb.BooleanMessage>;
+    deleteKey: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.EmptyMessage>;
+    deleteSecret: grpc.handleUnaryCall<Agent_pb.SecretPathMessage, Agent_pb.EmptyMessage>;
+    deleteVault: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.EmptyMessage>;
+    deriveKey: grpc.handleUnaryCall<Agent_pb.DeriveKeyMessage, Agent_pb.EmptyMessage>;
+    deriveKeyPair: grpc.handleUnaryCall<Agent_pb.DeriveKeyPairMessage, Agent_pb.EmptyMessage>;
     encryptFile: grpc.handleUnaryCall<Agent_pb.EncryptFileMessage, Agent_pb.StringMessage>;
-    findPeer: grpc.handleUnaryCall<Agent_pb.ContactPeerMessage, Agent_pb.BooleanMessage>;
-    findSocialPeer: grpc.handleUnaryCall<Agent_pb.ContactPeerMessage, Agent_pb.BooleanMessage>;
+    findPeer: grpc.handleUnaryCall<Agent_pb.ContactPeerMessage, Agent_pb.EmptyMessage>;
+    findSocialPeer: grpc.handleUnaryCall<Agent_pb.ContactPeerMessage, Agent_pb.EmptyMessage>;
     getOAuthClient: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.OAuthClientMessage>;
     getKey: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.StringMessage>;
     getLocalPeerInfo: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.PeerInfoMessage>;
@@ -443,58 +464,62 @@ export interface IAgentServer {
     getStatus: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.AgentStatusMessage>;
     listOAuthTokens: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
     listKeys: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
-    listNodes: grpc.handleUnaryCall<Agent_pb.BooleanMessage, Agent_pb.StringListMessage>;
     listPeers: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
     listSecrets: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.StringListMessage>;
     listVaults: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
     lockNode: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.EmptyMessage>;
     newClientCertificate: grpc.handleUnaryCall<Agent_pb.NewClientCertificateMessage, Agent_pb.NewClientCertificateMessage>;
-    newNode: grpc.handleUnaryCall<Agent_pb.NewNodeMessage, Agent_pb.BooleanMessage>;
-    newSecret: grpc.handleUnaryCall<Agent_pb.SecretContentMessage, Agent_pb.BooleanMessage>;
+    initializeNode: grpc.handleUnaryCall<Agent_pb.NewKeyPairMessage, Agent_pb.EmptyMessage>;
+    newSecret: grpc.handleUnaryCall<Agent_pb.SecretContentMessage, Agent_pb.EmptyMessage>;
     newOAuthToken: grpc.handleUnaryCall<Agent_pb.NewOAuthTokenMessage, Agent_pb.StringMessage>;
-    newVault: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.BooleanMessage>;
-    pingPeer: grpc.handleUnaryCall<Agent_pb.ContactPeerMessage, Agent_pb.BooleanMessage>;
-    pullVault: grpc.handleUnaryCall<Agent_pb.VaultPathMessage, Agent_pb.BooleanMessage>;
-    revokeOAuthToken: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.BooleanMessage>;
+    newVault: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.EmptyMessage>;
+    pingPeer: grpc.handleUnaryCall<Agent_pb.ContactPeerMessage, Agent_pb.EmptyMessage>;
+    pullVault: grpc.handleUnaryCall<Agent_pb.VaultPathMessage, Agent_pb.EmptyMessage>;
+    revokeOAuthToken: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.EmptyMessage>;
     scanVaultNames: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.StringListMessage>;
+    setAlias: grpc.handleUnaryCall<Agent_pb.PeerAliasMessage, Agent_pb.EmptyMessage>;
     signFile: grpc.handleUnaryCall<Agent_pb.SignFileMessage, Agent_pb.StringMessage>;
-    stopAgent: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.BooleanMessage>;
-    toggleStealthMode: grpc.handleUnaryCall<Agent_pb.BooleanMessage, Agent_pb.BooleanMessage>;
-    unlockNode: grpc.handleUnaryCall<Agent_pb.UnlockNodeMessage, Agent_pb.BooleanMessage>;
-    updateLocalPeerInfo: grpc.handleUnaryCall<Agent_pb.PeerInfoMessage, Agent_pb.BooleanMessage>;
-    updatePeerInfo: grpc.handleUnaryCall<Agent_pb.PeerInfoMessage, Agent_pb.BooleanMessage>;
-    updateSecret: grpc.handleUnaryCall<Agent_pb.SecretContentMessage, Agent_pb.BooleanMessage>;
-    verifyFile: grpc.handleUnaryCall<Agent_pb.VerifyFileMessage, Agent_pb.BooleanMessage>;
+    stopAgent: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.EmptyMessage>;
+    toggleStealthMode: grpc.handleUnaryCall<Agent_pb.BooleanMessage, Agent_pb.EmptyMessage>;
+    unlockNode: grpc.handleUnaryCall<Agent_pb.UnlockNodeMessage, Agent_pb.EmptyMessage>;
+    unsetAlias: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.EmptyMessage>;
+    updateLocalPeerInfo: grpc.handleUnaryCall<Agent_pb.PeerInfoMessage, Agent_pb.EmptyMessage>;
+    updatePeerInfo: grpc.handleUnaryCall<Agent_pb.PeerInfoMessage, Agent_pb.EmptyMessage>;
+    updateSecret: grpc.handleUnaryCall<Agent_pb.SecretContentMessage, Agent_pb.EmptyMessage>;
+    verifyFile: grpc.handleUnaryCall<Agent_pb.VerifyFileMessage, Agent_pb.EmptyMessage>;
 }
 
 export interface IAgentClient {
-    addPeer(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    addPeer(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     decryptFile(request: Agent_pb.DecryptFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     decryptFile(request: Agent_pb.DecryptFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     decryptFile(request: Agent_pb.DecryptFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    deleteKey(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteSecret(request: Agent_pb.SecretPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deriveKey(request: Agent_pb.DeriveKeyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    deleteKey(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteSecret(request: Agent_pb.SecretPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deriveKey(request: Agent_pb.DeriveKeyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deriveKeyPair(request: Agent_pb.DeriveKeyPairMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deriveKeyPair(request: Agent_pb.DeriveKeyPairMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    deriveKeyPair(request: Agent_pb.DeriveKeyPairMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     encryptFile(request: Agent_pb.EncryptFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     encryptFile(request: Agent_pb.EncryptFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     encryptFile(request: Agent_pb.EncryptFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    findPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    findSocialPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    findPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    findSocialPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     getOAuthClient(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.OAuthClientMessage) => void): grpc.ClientUnaryCall;
     getOAuthClient(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.OAuthClientMessage) => void): grpc.ClientUnaryCall;
     getOAuthClient(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.OAuthClientMessage) => void): grpc.ClientUnaryCall;
@@ -525,9 +550,6 @@ export interface IAgentClient {
     listKeys(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    listNodes(request: Agent_pb.BooleanMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    listNodes(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    listNodes(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listPeers(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listPeers(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listPeers(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
@@ -543,85 +565,94 @@ export interface IAgentClient {
     newClientCertificate(request: Agent_pb.NewClientCertificateMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NewClientCertificateMessage) => void): grpc.ClientUnaryCall;
     newClientCertificate(request: Agent_pb.NewClientCertificateMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NewClientCertificateMessage) => void): grpc.ClientUnaryCall;
     newClientCertificate(request: Agent_pb.NewClientCertificateMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NewClientCertificateMessage) => void): grpc.ClientUnaryCall;
-    newNode(request: Agent_pb.NewNodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    newNode(request: Agent_pb.NewNodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    newNode(request: Agent_pb.NewNodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    newSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    initializeNode(request: Agent_pb.NewKeyPairMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    initializeNode(request: Agent_pb.NewKeyPairMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    initializeNode(request: Agent_pb.NewKeyPairMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    newSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     newOAuthToken(request: Agent_pb.NewOAuthTokenMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     newOAuthToken(request: Agent_pb.NewOAuthTokenMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     newOAuthToken(request: Agent_pb.NewOAuthTokenMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    newVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    pingPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    pullVault(request: Agent_pb.VaultPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    revokeOAuthToken(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    newVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    pingPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    pullVault(request: Agent_pb.VaultPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    revokeOAuthToken(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     scanVaultNames(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    setAlias(request: Agent_pb.PeerAliasMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    setAlias(request: Agent_pb.PeerAliasMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    setAlias(request: Agent_pb.PeerAliasMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     signFile(request: Agent_pb.SignFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     signFile(request: Agent_pb.SignFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     signFile(request: Agent_pb.SignFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    stopAgent(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    toggleStealthMode(request: Agent_pb.BooleanMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    unlockNode(request: Agent_pb.UnlockNodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updatePeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updateSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    verifyFile(request: Agent_pb.VerifyFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    stopAgent(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    toggleStealthMode(request: Agent_pb.BooleanMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    unlockNode(request: Agent_pb.UnlockNodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    unsetAlias(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    unsetAlias(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    unsetAlias(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updatePeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updateSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    verifyFile(request: Agent_pb.VerifyFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }
 
 export class AgentClient extends grpc.Client implements IAgentClient {
     constructor(address: string, credentials: grpc.ChannelCredentials, options?: object);
-    public addPeer(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    public addPeer(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    public addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    public addPeer(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public decryptFile(request: Agent_pb.DecryptFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public decryptFile(request: Agent_pb.DecryptFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public decryptFile(request: Agent_pb.DecryptFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    public deleteKey(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteSecret(request: Agent_pb.SecretPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deriveKey(request: Agent_pb.DeriveKeyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    public deleteKey(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteKey(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteSecret(request: Agent_pb.SecretPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteSecret(request: Agent_pb.SecretPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deleteVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deriveKey(request: Agent_pb.DeriveKeyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deriveKey(request: Agent_pb.DeriveKeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deriveKeyPair(request: Agent_pb.DeriveKeyPairMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deriveKeyPair(request: Agent_pb.DeriveKeyPairMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public deriveKeyPair(request: Agent_pb.DeriveKeyPairMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public encryptFile(request: Agent_pb.EncryptFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public encryptFile(request: Agent_pb.EncryptFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public encryptFile(request: Agent_pb.EncryptFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    public findPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public findSocialPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    public findPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public findPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public findSocialPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public findSocialPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public getOAuthClient(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.OAuthClientMessage) => void): grpc.ClientUnaryCall;
     public getOAuthClient(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.OAuthClientMessage) => void): grpc.ClientUnaryCall;
     public getOAuthClient(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.OAuthClientMessage) => void): grpc.ClientUnaryCall;
@@ -652,9 +683,6 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public listKeys(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    public listNodes(request: Agent_pb.BooleanMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    public listNodes(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    public listNodes(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listPeers(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listPeers(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listPeers(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
@@ -670,52 +698,58 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public newClientCertificate(request: Agent_pb.NewClientCertificateMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NewClientCertificateMessage) => void): grpc.ClientUnaryCall;
     public newClientCertificate(request: Agent_pb.NewClientCertificateMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NewClientCertificateMessage) => void): grpc.ClientUnaryCall;
     public newClientCertificate(request: Agent_pb.NewClientCertificateMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NewClientCertificateMessage) => void): grpc.ClientUnaryCall;
-    public newNode(request: Agent_pb.NewNodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public newNode(request: Agent_pb.NewNodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public newNode(request: Agent_pb.NewNodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public newSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    public initializeNode(request: Agent_pb.NewKeyPairMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public initializeNode(request: Agent_pb.NewKeyPairMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public initializeNode(request: Agent_pb.NewKeyPairMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public newSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public newSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public newOAuthToken(request: Agent_pb.NewOAuthTokenMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public newOAuthToken(request: Agent_pb.NewOAuthTokenMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public newOAuthToken(request: Agent_pb.NewOAuthTokenMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    public newVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public pingPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public pullVault(request: Agent_pb.VaultPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public revokeOAuthToken(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    public newVault(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public newVault(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public pingPeer(request: Agent_pb.ContactPeerMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public pingPeer(request: Agent_pb.ContactPeerMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public pullVault(request: Agent_pb.VaultPathMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public pullVault(request: Agent_pb.VaultPathMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public revokeOAuthToken(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public revokeOAuthToken(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public scanVaultNames(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    public setAlias(request: Agent_pb.PeerAliasMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public setAlias(request: Agent_pb.PeerAliasMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public setAlias(request: Agent_pb.PeerAliasMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public signFile(request: Agent_pb.SignFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public signFile(request: Agent_pb.SignFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public signFile(request: Agent_pb.SignFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    public stopAgent(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public toggleStealthMode(request: Agent_pb.BooleanMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public unlockNode(request: Agent_pb.UnlockNodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updatePeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updateSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public verifyFile(request: Agent_pb.VerifyFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
-    public verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.BooleanMessage) => void): grpc.ClientUnaryCall;
+    public stopAgent(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public stopAgent(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public toggleStealthMode(request: Agent_pb.BooleanMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public toggleStealthMode(request: Agent_pb.BooleanMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public unlockNode(request: Agent_pb.UnlockNodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public unlockNode(request: Agent_pb.UnlockNodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public unsetAlias(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public unsetAlias(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public unsetAlias(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updateLocalPeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updatePeerInfo(request: Agent_pb.PeerInfoMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updatePeerInfo(request: Agent_pb.PeerInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updateSecret(request: Agent_pb.SecretContentMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public updateSecret(request: Agent_pb.SecretContentMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public verifyFile(request: Agent_pb.VerifyFileMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public verifyFile(request: Agent_pb.VerifyFileMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }

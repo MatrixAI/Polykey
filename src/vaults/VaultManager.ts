@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import git from 'isomorphic-git';
+import * as opentelemetry from '@opentelemetry/api'
 import Vault from '../vaults/Vault';
 import { EncryptedFS } from 'encryptedfs';
 import GitBackend from '../git/GitBackend';
@@ -36,6 +37,7 @@ class VaultManager {
     connectToPeer: (peerId: string) => PeerConnection,
     setGitHandler: (handler: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>) => void,
   ) {
+    // class variables
     this.polykeyPath = polykeyPath;
     this.fileSystem = fileSystem;
     this.keyManager = keyManager;
@@ -108,7 +110,8 @@ class VaultManager {
       this.vaults.set(vaultName, vault);
       return vault;
     } else {
-      throw Error(`vault does not exist in memory: '${vaultName}'`);
+      const error = Error(`vault does not exist in memory: '${vaultName}'`)
+      throw error;
     }
   }
 
@@ -310,6 +313,7 @@ class VaultManager {
           this.vaults.set(vaultName, vault);
         }
       }
+    } else {
     }
   }
 }
