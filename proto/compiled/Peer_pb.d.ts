@@ -148,6 +148,9 @@ export class NatMessage extends jspb.Message {
     getType(): NatMessageType;
     setType(value: NatMessageType): NatMessage;
 
+    getIsResponse(): boolean;
+    setIsResponse(value: boolean): NatMessage;
+
     getSubMessage(): Uint8Array | string;
     getSubMessage_asU8(): Uint8Array;
     getSubMessage_asB64(): string;
@@ -167,6 +170,7 @@ export class NatMessage extends jspb.Message {
 export namespace NatMessage {
     export type AsObject = {
         type: NatMessageType,
+        isResponse: boolean,
         subMessage: Uint8Array | string,
     }
 }
@@ -196,171 +200,82 @@ export namespace UDPAddressMessage {
     }
 }
 
-export class RelayConnectionRequest extends jspb.Message { 
-    getPublicKey(): string;
-    setPublicKey(value: string): RelayConnectionRequest;
+export class DirectConnectionMessage extends jspb.Message { 
+    getPeerId(): string;
+    setPeerId(value: string): DirectConnectionMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RelayConnectionRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: RelayConnectionRequest): RelayConnectionRequest.AsObject;
+    toObject(includeInstance?: boolean): DirectConnectionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: DirectConnectionMessage): DirectConnectionMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RelayConnectionRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RelayConnectionRequest;
-    static deserializeBinaryFromReader(message: RelayConnectionRequest, reader: jspb.BinaryReader): RelayConnectionRequest;
+    static serializeBinaryToWriter(message: DirectConnectionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): DirectConnectionMessage;
+    static deserializeBinaryFromReader(message: DirectConnectionMessage, reader: jspb.BinaryReader): DirectConnectionMessage;
 }
 
-export namespace RelayConnectionRequest {
+export namespace DirectConnectionMessage {
     export type AsObject = {
-        publicKey: string,
+        peerId: string,
     }
 }
 
-export class RelayConnectionResponse extends jspb.Message { 
-    getServerAddress(): string;
-    setServerAddress(value: string): RelayConnectionResponse;
+export class HolePunchConnectionMessage extends jspb.Message { 
+    getTargetPeerId(): string;
+    setTargetPeerId(value: string): HolePunchConnectionMessage;
+
+    getOriginPeerId(): string;
+    setOriginPeerId(value: string): HolePunchConnectionMessage;
+
+    getUdpAddress(): string;
+    setUdpAddress(value: string): HolePunchConnectionMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RelayConnectionResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: RelayConnectionResponse): RelayConnectionResponse.AsObject;
+    toObject(includeInstance?: boolean): HolePunchConnectionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: HolePunchConnectionMessage): HolePunchConnectionMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RelayConnectionResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RelayConnectionResponse;
-    static deserializeBinaryFromReader(message: RelayConnectionResponse, reader: jspb.BinaryReader): RelayConnectionResponse;
+    static serializeBinaryToWriter(message: HolePunchConnectionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): HolePunchConnectionMessage;
+    static deserializeBinaryFromReader(message: HolePunchConnectionMessage, reader: jspb.BinaryReader): HolePunchConnectionMessage;
 }
 
-export namespace RelayConnectionResponse {
+export namespace HolePunchConnectionMessage {
     export type AsObject = {
-        serverAddress: string,
+        targetPeerId: string,
+        originPeerId: string,
+        udpAddress: string,
     }
 }
 
-export class PeerConnectionRequest extends jspb.Message { 
-    getPublicKey(): string;
-    setPublicKey(value: string): PeerConnectionRequest;
+export class RelayConnectionMessage extends jspb.Message { 
+    getTargetPeerId(): string;
+    setTargetPeerId(value: string): RelayConnectionMessage;
+
+    getOriginPeerId(): string;
+    setOriginPeerId(value: string): RelayConnectionMessage;
+
+    getRelayAddress(): string;
+    setRelayAddress(value: string): RelayConnectionMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PeerConnectionRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: PeerConnectionRequest): PeerConnectionRequest.AsObject;
+    toObject(includeInstance?: boolean): RelayConnectionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: RelayConnectionMessage): RelayConnectionMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PeerConnectionRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PeerConnectionRequest;
-    static deserializeBinaryFromReader(message: PeerConnectionRequest, reader: jspb.BinaryReader): PeerConnectionRequest;
+    static serializeBinaryToWriter(message: RelayConnectionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RelayConnectionMessage;
+    static deserializeBinaryFromReader(message: RelayConnectionMessage, reader: jspb.BinaryReader): RelayConnectionMessage;
 }
 
-export namespace PeerConnectionRequest {
+export namespace RelayConnectionMessage {
     export type AsObject = {
-        publicKey: string,
-    }
-}
-
-export class PeerConnectionResponse extends jspb.Message { 
-    getPeerAddress(): string;
-    setPeerAddress(value: string): PeerConnectionResponse;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PeerConnectionResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: PeerConnectionResponse): PeerConnectionResponse.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PeerConnectionResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PeerConnectionResponse;
-    static deserializeBinaryFromReader(message: PeerConnectionResponse, reader: jspb.BinaryReader): PeerConnectionResponse;
-}
-
-export namespace PeerConnectionResponse {
-    export type AsObject = {
-        peerAddress: string,
-    }
-}
-
-export class HolePunchRegisterRequest extends jspb.Message { 
-    getPublicKey(): string;
-    setPublicKey(value: string): HolePunchRegisterRequest;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): HolePunchRegisterRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: HolePunchRegisterRequest): HolePunchRegisterRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: HolePunchRegisterRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): HolePunchRegisterRequest;
-    static deserializeBinaryFromReader(message: HolePunchRegisterRequest, reader: jspb.BinaryReader): HolePunchRegisterRequest;
-}
-
-export namespace HolePunchRegisterRequest {
-    export type AsObject = {
-        publicKey: string,
-    }
-}
-
-export class HolePunchRegisterResponse extends jspb.Message { 
-    getConnectedAddress(): string;
-    setConnectedAddress(value: string): HolePunchRegisterResponse;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): HolePunchRegisterResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: HolePunchRegisterResponse): HolePunchRegisterResponse.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: HolePunchRegisterResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): HolePunchRegisterResponse;
-    static deserializeBinaryFromReader(message: HolePunchRegisterResponse, reader: jspb.BinaryReader): HolePunchRegisterResponse;
-}
-
-export namespace HolePunchRegisterResponse {
-    export type AsObject = {
-        connectedAddress: string,
-    }
-}
-
-export class PeerUdpAddressRequest extends jspb.Message { 
-    getPublicKey(): string;
-    setPublicKey(value: string): PeerUdpAddressRequest;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PeerUdpAddressRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: PeerUdpAddressRequest): PeerUdpAddressRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PeerUdpAddressRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PeerUdpAddressRequest;
-    static deserializeBinaryFromReader(message: PeerUdpAddressRequest, reader: jspb.BinaryReader): PeerUdpAddressRequest;
-}
-
-export namespace PeerUdpAddressRequest {
-    export type AsObject = {
-        publicKey: string,
-    }
-}
-
-export class PeerUdpAddressResponse extends jspb.Message { 
-    getAddress(): string;
-    setAddress(value: string): PeerUdpAddressResponse;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PeerUdpAddressResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: PeerUdpAddressResponse): PeerUdpAddressResponse.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PeerUdpAddressResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PeerUdpAddressResponse;
-    static deserializeBinaryFromReader(message: PeerUdpAddressResponse, reader: jspb.BinaryReader): PeerUdpAddressResponse;
-}
-
-export namespace PeerUdpAddressResponse {
-    export type AsObject = {
-        address: string,
+        targetPeerId: string,
+        originPeerId: string,
+        relayAddress: string,
     }
 }
 
@@ -427,8 +342,8 @@ export namespace PeerDHTMessage {
 }
 
 export class PeerDHTPingNodeMessage extends jspb.Message { 
-    getPublicKey(): string;
-    setPublicKey(value: string): PeerDHTPingNodeMessage;
+    getPeerId(): string;
+    setPeerId(value: string): PeerDHTPingNodeMessage;
 
     getRandomChallenge(): string;
     setRandomChallenge(value: string): PeerDHTPingNodeMessage;
@@ -446,14 +361,14 @@ export class PeerDHTPingNodeMessage extends jspb.Message {
 
 export namespace PeerDHTPingNodeMessage {
     export type AsObject = {
-        publicKey: string,
+        peerId: string,
         randomChallenge: string,
     }
 }
 
 export class PeerDHTFindNodeMessage extends jspb.Message { 
-    getPublicKey(): string;
-    setPublicKey(value: string): PeerDHTFindNodeMessage;
+    getPeerId(): string;
+    setPeerId(value: string): PeerDHTFindNodeMessage;
 
     clearClosestPeersList(): void;
     getClosestPeersList(): Array<PeerInfoMessage>;
@@ -473,8 +388,67 @@ export class PeerDHTFindNodeMessage extends jspb.Message {
 
 export namespace PeerDHTFindNodeMessage {
     export type AsObject = {
-        publicKey: string,
+        peerId: string,
         closestPeersList: Array<PeerInfoMessage.AsObject>,
+    }
+}
+
+export class MTPPacket extends jspb.Message { 
+    getId(): number;
+    setId(value: number): MTPPacket;
+
+    getPeerid(): string;
+    setPeerid(value: string): MTPPacket;
+
+    getConnection(): number;
+    setConnection(value: number): MTPPacket;
+
+    getTimestamp(): number;
+    setTimestamp(value: number): MTPPacket;
+
+    getTimediff(): number;
+    setTimediff(value: number): MTPPacket;
+
+    getWindow(): number;
+    setWindow(value: number): MTPPacket;
+
+    getSeq(): number;
+    setSeq(value: number): MTPPacket;
+
+    getAck(): number;
+    setAck(value: number): MTPPacket;
+
+    getData(): Uint8Array | string;
+    getData_asU8(): Uint8Array;
+    getData_asB64(): string;
+    setData(value: Uint8Array | string): MTPPacket;
+
+    getSent(): number;
+    setSent(value: number): MTPPacket;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): MTPPacket.AsObject;
+    static toObject(includeInstance: boolean, msg: MTPPacket): MTPPacket.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: MTPPacket, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): MTPPacket;
+    static deserializeBinaryFromReader(message: MTPPacket, reader: jspb.BinaryReader): MTPPacket;
+}
+
+export namespace MTPPacket {
+    export type AsObject = {
+        id: number,
+        peerid: string,
+        connection: number,
+        timestamp: number,
+        timediff: number,
+        window: number,
+        seq: number,
+        ack: number,
+        data: Uint8Array | string,
+        sent: number,
     }
 }
 
@@ -488,9 +462,9 @@ export enum SubServiceType {
 
 export enum NatMessageType {
     UDP_ADDRESS = 0,
-    RELAY_CONNECTION = 1,
-    PEER_CONNECTION = 2,
-    PEER_UDP_ADDRESS = 3,
+    DIRECT_CONNECTION = 1,
+    HOLE_PUNCH_CONNECTION = 2,
+    RELAY_CONNECTION = 3,
 }
 
 export enum CAMessageType {

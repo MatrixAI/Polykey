@@ -28,7 +28,7 @@ class MulticastBroadcaster extends EventEmitter {
 
   private socket: dgram.Socket;
 
-  private interval: number = 1e3;
+  private interval: number = 1e5;
   private broadcastInterval: NodeJS.Timeout | null = null;
   constructor(
     getPeerInfo: () => PeerInfo,

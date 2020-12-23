@@ -6,15 +6,16 @@ package agentInterface;
 // Agent Service //
 ///////////////////
 service Agent {
-  rpc AddPeer (PeerInfoMessage) returns (BooleanMessage) {};
+  rpc AddPeer (PeerInfoMessage) returns (StringMessage) {};
   rpc DecryptFile (DecryptFileMessage) returns (StringMessage) {};
-  rpc DeleteKey (StringMessage) returns (BooleanMessage) {};
-  rpc DeleteSecret (SecretPathMessage) returns (BooleanMessage) {};
-  rpc DeleteVault (StringMessage) returns (BooleanMessage) {};
-  rpc DeriveKey (DeriveKeyMessage) returns (BooleanMessage) {};
+  rpc DeleteKey (StringMessage) returns (EmptyMessage) {};
+  rpc DeleteSecret (SecretPathMessage) returns (EmptyMessage) {};
+  rpc DeleteVault (StringMessage) returns (EmptyMessage) {};
+  rpc DeriveKey (DeriveKeyMessage) returns (EmptyMessage) {};
+  rpc DeriveKeyPair (DeriveKeyPairMessage) returns (EmptyMessage) {};
   rpc EncryptFile (EncryptFileMessage) returns (StringMessage) {};
-  rpc FindPeer (ContactPeerMessage) returns (BooleanMessage) {};
-  rpc FindSocialPeer (ContactPeerMessage) returns (BooleanMessage) {};
+  rpc FindPeer (ContactPeerMessage) returns (EmptyMessage) {};
+  rpc FindSocialPeer (ContactPeerMessage) returns (EmptyMessage) {};
   rpc GetOAuthClient (EmptyMessage) returns (OAuthClientMessage) {};
   rpc GetKey (StringMessage) returns (StringMessage) {};
   rpc GetLocalPeerInfo (EmptyMessage) returns (PeerInfoMessage) {};
@@ -23,30 +24,32 @@ service Agent {
   rpc GetRootCertificate (EmptyMessage) returns (StringMessage) {};
   rpc GetSecret (SecretPathMessage) returns (StringMessage) {};
   rpc GetStatus (EmptyMessage) returns (AgentStatusMessage) {};
+  rpc InitializeNode (NewKeyPairMessage) returns (EmptyMessage) {};
   rpc ListOAuthTokens (EmptyMessage) returns (StringListMessage) {};
   rpc ListKeys (EmptyMessage) returns (StringListMessage) {};
-  rpc ListNodes (BooleanMessage) returns (StringListMessage) {};
   rpc ListPeers (EmptyMessage) returns (StringListMessage) {};
   rpc ListSecrets (StringMessage) returns (StringListMessage) {};
   rpc ListVaults (EmptyMessage) returns (StringListMessage) {};
   rpc LockNode (EmptyMessage) returns (EmptyMessage) {};
   rpc NewClientCertificate (NewClientCertificateMessage) returns (NewClientCertificateMessage) {};
-  rpc NewNode (NewNodeMessage) returns (BooleanMessage) {};
-  rpc NewSecret (SecretContentMessage) returns (BooleanMessage) {};
+  rpc NewSecret (SecretContentMessage) returns (EmptyMessage) {};
   rpc NewOAuthToken (NewOAuthTokenMessage) returns (StringMessage) {};
-  rpc NewVault (StringMessage) returns (BooleanMessage) {};
-  rpc PingPeer (ContactPeerMessage) returns (BooleanMessage) {};
-  rpc PullVault (VaultPathMessage) returns (BooleanMessage) {};
-  rpc RevokeOAuthToken (StringMessage) returns (BooleanMessage) {};
+  rpc NewVault (StringMessage) returns (EmptyMessage) {};
+  rpc PingPeer (ContactPeerMessage) returns (EmptyMessage) {};
+  rpc PullVault (VaultPathMessage) returns (EmptyMessage) {};
+  rpc RevokeOAuthToken (StringMessage) returns (EmptyMessage) {};
   rpc ScanVaultNames (StringMessage) returns (StringListMessage) {};
+  rpc SetAlias (PeerAliasMessage) returns (EmptyMessage) {};
   rpc SignFile (SignFileMessage) returns (StringMessage) {};
-  rpc StopAgent (EmptyMessage) returns (BooleanMessage) {};
-  rpc ToggleStealthMode (BooleanMessage) returns (BooleanMessage) {};
-  rpc UnlockNode (UnlockNodeMessage) returns (BooleanMessage) {};
-  rpc UpdateLocalPeerInfo (PeerInfoMessage) returns (BooleanMessage) {};
-  rpc UpdatePeerInfo (PeerInfoMessage) returns (BooleanMessage) {};
-  rpc UpdateSecret (SecretContentMessage) returns (BooleanMessage) {};
-  rpc VerifyFile (VerifyFileMessage) returns (BooleanMessage) {};
+  rpc SocialProof (EmptyMessage) returns (PeerInfoMessage) {};
+  rpc StopAgent (EmptyMessage) returns (EmptyMessage) {};
+  rpc ToggleStealthMode (BooleanMessage) returns (EmptyMessage) {};
+  rpc UnlockNode (UnlockNodeMessage) returns (EmptyMessage) {};
+  rpc UnsetAlias (StringMessage) returns (EmptyMessage) {};
+  rpc UpdateLocalPeerInfo (PeerInfoMessage) returns (EmptyMessage) {};
+  rpc UpdatePeerInfo (PeerInfoMessage) returns (EmptyMessage) {};
+  rpc UpdateSecret (SecretContentMessage) returns (EmptyMessage) {};
+  rpc VerifyFile (VerifyFileMessage) returns (EmptyMessage) {};
 }
 message EmptyMessage {}
 message StringMessage {
@@ -61,10 +64,16 @@ message StringListMessage {
 
 // === PeerInfo === //
 message PeerInfoMessage {
-  string public_key = 1;
-  string root_certificate = 2;
-  string peer_address = 3;
-  string api_address = 4;
+  // // this certificate is supposed to be the link between x.509
+  // // and kbpgp, we cannot just break peer info up into its atomic parts
+  // // and discard this certificate because it is signed by the private
+  // // x.509 key of the specific peer and cannot be re-signed without it
+  // // (unless we are allowed to sign it again with this key?)
+  // string certificate = 1;
+  string public_key = 2;
+  string root_certificate = 3;
+  string peer_address = 4;
+  string api_address = 5;
 }
 
 // ==== AgentStatus ==== //
@@ -78,7 +87,7 @@ message AgentStatusMessage {
 }
 
 // ==== NewNode ==== //
-message NewNodeMessage {
+message NewKeyPairMessage {
   string userId = 1;
   string passphrase = 2;
 }
@@ -87,6 +96,13 @@ message NewNodeMessage {
 message DeriveKeyMessage {
   string key_name = 1;
   string passphrase = 2;
+}
+
+// ==== DeriveKeyPair ==== //
+message DeriveKeyPairMessage {
+  NewKeyPairMessage keypair_details = 1;
+  string public_key_path = 2;
+  string private_key_path = 3;
 }
 
 // ==== SignFile ==== //
@@ -169,5 +185,11 @@ message NewOAuthTokenMessage {
 message OAuthClientMessage {
   string id = 1;
   string secret = 2;
+}
+
+// === PeerAlias === //
+message PeerAliasMessage {
+  string peer_id = 1;
+  string alias = 2;
 }
 

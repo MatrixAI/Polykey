@@ -21,10 +21,10 @@ describe('Agent and Client class', () => {
 
     client = PolykeyAgent.connectToAgent(tempDir)
 
-    const request = new pb.NewNodeMessage
+    const request = new pb.NewKeyPairMessage
     request.setUserid('john.smith@email.com')
     request.setPassphrase('passphrase')
-    const res = await promisifyGrpc(client.newNode.bind(client))(request) as pb.BooleanMessage
+    const res = await promisifyGrpc(client.initializeNode.bind(client))(request) as pb.BooleanMessage
     expect(res.getB()).toEqual(true)
 
     done()

@@ -15,8 +15,6 @@ import {
   MTU,
   uint32,
   PACKET_RESET,
-  VERSION,
-  EXTENSION,
   DEFAULT_WINDOW_SIZE,
   MIN_PACKET_SIZE,
   bufferToPacket,
@@ -47,9 +45,7 @@ class MTPConnection extends Duplex {
   private ack: number;
   private synack?: peerInterface.MTPPacket;
 
-
-
-  constructor(peerId: string, port: number, host: string, socket: dgram.Socket, syn?: peerInterface.MTPPacket) {
+  constructor(peerId: string, port: number, host: string, socket: dgram.Socket, syn?: peerInterface.MTPPacket, socketIsBound: boolean = false) {
     super();
 
     this.peerId = peerId
@@ -89,15 +85,15 @@ class MTPConnection extends Duplex {
 
       this.transmit(this.synack);
     } else {
-      this.connecting = true;
-      this.recvId = 0; // tmp value for v8 opt
-      this.sendId = 0; // tmp value for v8 opt
-      this.seq = (Math.random() * UINT16) | 0;
-      this.ack = 0;
-      this.synack = undefined;
+      if (socketIsBound) {
+        this.connecting = true;
+        this.recvId = 0; // tmp value for v8 opt
+        this.sendId = 0; // tmp value for v8 opt
+        this.seq = (Math.random() * UINT16) | 0;
+        this.ack = 0;
+        this.synack = undefined;
 
-      socket.on('listening', () => {
-        this.recvId = socket.address().port; // using the port gives us system wide clash protection
+        this.recvId = Math.floor(Math.random()*900000) + 100000;
         this.sendId = uint16(this.recvId + 1);
 
         const initialPacket = MTPConnection.createPacket(
@@ -111,13 +107,41 @@ class MTPConnection extends Duplex {
         );
 
         this.sendOutgoing(initialPacket);
-      })
 
-      socket.on('error', (err) => {
-        this.emit('error', err);
-      });
+        socket.on('error', (err) => {
+          this.emit('error', err);
+        });
+      } else {
+        this.connecting = true;
+        this.recvId = 0; // tmp value for v8 opt
+        this.sendId = 0; // tmp value for v8 opt
+        this.seq = (Math.random() * UINT16) | 0;
+        this.ack = 0;
+        this.synack = undefined;
 
-      socket.bind();
+        socket.on('listening', () => {
+          this.recvId = Math.floor(Math.random()*89999) + 10000;
+          this.sendId = uint16(this.recvId + 1);
+
+          const initialPacket = MTPConnection.createPacket(
+            this.peerId,
+            this.recvId,
+            this.sendId,
+            this.seq,
+            this.ack,
+            PACKET_SYN,
+            null
+          );
+
+          this.sendOutgoing(initialPacket);
+        })
+
+        socket.on('error', (err) => {
+          this.emit('error', err);
+        });
+
+        socket.bind();
+      }
     }
 
     const resend = setInterval(this.resend.bind(this), 500);
@@ -392,11 +416,11 @@ class MTPConnection extends Duplex {
     }
   })()
 
-  public static connect(localPeerId: string, port: number, host?: string, socket: dgram.Socket = dgram.createSocket('udp4')) {
-    const connection = new MTPConnection(localPeerId, port, host || '127.0.0.1', socket);
+  public static connect(localPeerId: string, port: number, host?: string, socket?: dgram.Socket) {
+    const internalSocket = socket ?? dgram.createSocket('udp4')
+    const connection = new MTPConnection(localPeerId, port, host || '127.0.0.1', internalSocket, undefined, (socket ? true : false));
 
-    socket.on('message', (message) => {
-
+    internalSocket.on('message', (message) => {
       if (message.length < MIN_PACKET_SIZE) {
         return;
       }

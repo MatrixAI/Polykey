@@ -30,10 +30,16 @@ message PingPeerMessage {
   PeerInfoMessage peerInfo = 3;
 }
 message PeerInfoMessage {
-  string public_key = 1;
-  string root_certificate = 2;
-  string peer_address = 3;
-  string api_address = 4;
+  // // this certificate is supposed to be the link between x.509
+  // // and kbpgp, we cannot just break peer info up into its atomic parts
+  // // and discard this certificate because it is signed by the private
+  // // x.509 key of the specific peer and cannot be re-signed without it
+  // // (unless we are allowed to sign it again with this key?)
+  // string certificate = 1;
+  string public_key = 2;
+  string root_certificate = 3;
+  string peer_address = 4;
+  string api_address = 5;
 }
 message PeerInfoListMessage {
   repeated PeerInfoMessage peer_info_list = 1;

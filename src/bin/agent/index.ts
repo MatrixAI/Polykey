@@ -42,15 +42,11 @@ function makeStartAgentCommand() {
             const request = new pb.UnlockNodeMessage();
             request.setPassphrase(options.privatePassphrase!);
             request.setTimeout(options.timeout!);
-            const res = (await promisifyGrpc(client.unlockNode.bind(client))(request)) as pb.BooleanMessage;
-            if (res.getB()) {
-              if (options.timeout == 0) {
-                pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
-              } else {
-                pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
-              }
+            await promisifyGrpc(client.unlockNode.bind(client))(request)
+            if (options.timeout == 0) {
+              pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
             } else {
-              throw Error('something went wrong when loading node');
+              pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
             }
           }
         }
@@ -81,15 +77,11 @@ function makeRestartAgentCommand() {
           const request = new pb.UnlockNodeMessage();
           request.setPassphrase(options.privatePassphrase!);
           request.setTimeout(options.timeout!);
-          const res = (await promisifyGrpc(client.unlockNode.bind(client))(request)) as pb.BooleanMessage;
-          if (res.getB()) {
-            if (options.timeout == 0) {
-              pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
-            } else {
-              pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
-            }
+          await promisifyGrpc(client.unlockNode.bind(client))(request)
+          if (options.timeout == 0) {
+            pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
           } else {
-            throw Error('something went wrong when loading node');
+            pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
           }
         }
       }),
@@ -165,10 +157,10 @@ function makeInitNodeCommand() {
         const pkLogger = getPKLogger(options.verbosity)
         const client = await getAgentClient(nodePath, undefined, true, false, pkLogger);
 
-        const request = new pb.NewNodeMessage();
+        const request = new pb.NewKeyPairMessage();
         request.setUserid(options.userId);
         request.setPassphrase(options.privatePassphrase);
-        const res = (await promisifyGrpc(client.newNode.bind(client))(request)) as pb.BooleanMessage;
+        await promisifyGrpc(client.initializeNode.bind(client))(request)
 
         pkLogger.logV2(`node was successfully initialized at: '${nodePath}'`, PKMessageType.SUCCESS);
       }),
@@ -190,15 +182,11 @@ function makeUnlockNodeCommand() {
         const request = new pb.UnlockNodeMessage();
         request.setPassphrase(options.privatePassphrase!);
         request.setTimeout(options.timeout!);
-        const res = (await promisifyGrpc(client.unlockNode.bind(client))(request)) as pb.BooleanMessage;
-        if (res.getB()) {
-          if (options.timeout == 0) {
-            pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
-          } else {
-            pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
-          }
+        await promisifyGrpc(client.unlockNode.bind(client))(request)
+        if (options.timeout == 0) {
+          pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
         } else {
-          throw Error('something went wrong when loading node');
+          pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
         }
       }),
     );
@@ -214,7 +202,7 @@ function makeLockNodeCommand() {
         const nodePath = determineNodePath(options.nodePath);
         const pkLogger = getPKLogger(options.verbosity)
         const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
-        const res = (await promisifyGrpc(client.lockNode.bind(client))(new pb.EmptyMessage)) as pb.EmptyMessage;
+        await promisifyGrpc(client.lockNode.bind(client))(new pb.EmptyMessage)
         pkLogger.logV2(`polykey is now locked at: '${nodePath}'`, PKMessageType.SUCCESS);
       }),
     );

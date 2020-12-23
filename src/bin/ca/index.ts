@@ -14,7 +14,7 @@ function makeGetRootCertificateCommand() {
         const nodePath = determineNodePath(options.nodePath);
         const pkLogger = getPKLogger(options.verbosity)
 
-        const client = await getAgentClient(nodePath,undefined,undefined,undefined,pkLogger);
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
         const res = (await promisifyGrpc(client.getRootCertificate.bind(client))(
           new pb.EmptyMessage(),
         )) as pb.StringMessage;
@@ -37,7 +37,7 @@ function makeNewCertCommand() {
         const nodePath = determineNodePath(options.nodePath);
         const pkLogger = getPKLogger(options.verbosity)
 
-        const client = await getAgentClient(nodePath,undefined,undefined,undefined,pkLogger);
+        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
         const request = new pb.NewClientCertificateMessage()
         request.setDomain(options.clientHost)
 
