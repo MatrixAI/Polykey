@@ -8,13 +8,18 @@ function makeGetRootCertificateCommand() {
   return new commander.Command('root')
     .description('retrieve the root certificate')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
+        const pkLogger = getPKLogger(options.verbosity);
 
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const client = await getAgentClient(nodePath, pkLogger);
         const res = (await promisifyGrpc(client.getRootCertificate.bind(client))(
           new pb.EmptyMessage(),
         )) as pb.StringMessage;
@@ -28,23 +33,28 @@ function makeNewCertCommand() {
   return new commander.Command('cert')
     .description('create a new certificate signed by the polykey ca')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-ch, --client-host <clientHost>', '(required) host of the client')
     .requiredOption('-cp, --cert-path <certPath>', '(required) where to write the cert file')
     .requiredOption('-kp, --key-path <keyPath>', '(required) where to write the private key file')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
+        const pkLogger = getPKLogger(options.verbosity);
 
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
-        const request = new pb.NewClientCertificateMessage()
-        request.setDomain(options.clientHost)
+        const client = await getAgentClient(nodePath, pkLogger);
+        const request = new pb.NewClientCertificateMessage();
+        request.setDomain(options.clientHost);
 
-        const certPath = path.resolve(options.certPath)
-        const keyPath = path.resolve(options.keyPath)
-        request.setCertFile(certPath)
-        request.setKeyFile(keyPath)
+        const certPath = path.resolve(options.certPath);
+        const keyPath = path.resolve(options.keyPath);
+        request.setCertFile(certPath);
+        request.setKeyFile(keyPath);
         const res = (await promisifyGrpc(client.newClientCertificate.bind(client))(
           request,
         )) as pb.NewClientCertificateMessage;

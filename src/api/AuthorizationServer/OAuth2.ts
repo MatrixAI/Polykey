@@ -6,74 +6,72 @@ import Validation from './Validation';
 import OAuth2Store from './OAuth2Store';
 
 class OAuth2 {
-  store: OAuth2Store
-  private server: oauth2orize.OAuth2Server
-  private validation: Validation
+  store: OAuth2Store;
+  private server: oauth2orize.OAuth2Server;
+  private validation: Validation;
   private expiresIn = { expires_in: config.token.expiresIn };
   constructor(publicKey: string, privateKey: string) {
-    this.store = new OAuth2Store(publicKey, privateKey)
+    this.store = new OAuth2Store(publicKey, privateKey);
     this.server = oauth2orize.createServer();
-    this.validation = new Validation(this.store)
+    this.validation = new Validation(this.store);
 
     /**
      * Exchange client credentials for access tokens.
      */
-    this.server.exchange(oauth2orize.exchange.clientCredentials(async (client, scope, done) => {
-      try {
-        const token = utils.createToken(this.store.privateKey, config.token.expiresIn, client.id);
-        const expiration = config.token.calculateExpirationDate();
-        // Pass in a null for user id since there is no user when using this grant type
-        const user = this.store.findUserByUsername(client.id)
-        const accessToken = this.store.saveAccessToken(token, expiration, user.id, client.id, scope)
-        done(null, accessToken.token, undefined, this.expiresIn)
-      } catch (error) {
-        done(error, false)
-      }
-    }));
+    this.server.exchange(
+      oauth2orize.exchange.clientCredentials(async (client, scope, done) => {
+        try {
+          const token = utils.createToken(this.store.privateKey, config.token.expiresIn, client.id);
+          const expiration = config.token.calculateExpirationDate();
+          // Pass in a null for user id since there is no user when using this grant type
+          const user = this.store.findUserByUsername(client.id);
+          const accessToken = this.store.saveAccessToken(token, expiration, user.id, client.id, scope);
+          done(null, accessToken.token, undefined, this.expiresIn);
+        } catch (error) {
+          done(error, false);
+        }
+      }),
+    );
 
     this.server.serializeClient((client, done) => {
-      done(null, client.id)
+      done(null, client.id);
     });
 
     this.server.deserializeClient((id, done) => {
       try {
-        const client = this.store.getClient(id)
-        done(null, client)
+        const client = this.store.getClient(id);
+        done(null, client);
       } catch (error) {
-        done(error, null)
+        done(error, null);
       }
     });
   }
 
   tokenInfo(req, res) {
     try {
-      const accessToken = this.validation.tokenForHttp(req.query.access_token)
-      this.validation.tokenExistsForHttp(accessToken)
-      const client = this.store.getClient(accessToken.clientId!)
-      this.validation.clientExistsForHttp(client)
+      const accessToken = this.validation.tokenForHttp(req.query.access_token);
+      this.validation.tokenExistsForHttp(accessToken);
+      const client = this.store.getClient(accessToken.clientId!);
+      this.validation.clientExistsForHttp(client);
       const expirationLeft = Math.floor((accessToken.expiration.getTime() - Date.now()) / 1000);
-      res.status(200)
-      res.json({ audience: client.id, expires_in: expirationLeft });
+      res.status(200).json({ audience: client.id, expires_in: expirationLeft });
     } catch (error) {
       console.log(error);
-      res.status(500);
-      res.json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
   revokeToken(req, res) {
     try {
-      let accessToken = this.validation.tokenForHttp(req.query.token)
-      accessToken = this.store.deleteAccessToken(accessToken.token)
+      let accessToken = this.validation.tokenForHttp(req.query.token);
+      accessToken = this.store.deleteAccessToken(accessToken.token);
       if (!accessToken) {
         accessToken = this.store.deleteRefreshToken(req.query.token);
       }
-      this.validation.tokenExistsForHttp(accessToken)
-      res.status(200)
-      res.json({})
+      this.validation.tokenExistsForHttp(accessToken);
+      res.status(200).json({});
     } catch (error) {
-      res.status(500);
-      res.json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
@@ -86,5 +84,4 @@ class OAuth2 {
   }
 }
 
-export default OAuth2
-
+export default OAuth2;

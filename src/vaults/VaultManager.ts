@@ -2,8 +2,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import git from 'isomorphic-git';
-import * as opentelemetry from '@opentelemetry/api'
 import Vault from '../vaults/Vault';
+import { Mutex } from 'async-mutex';
 import { EncryptedFS } from 'encryptedfs';
 import GitBackend from '../git/GitBackend';
 import KeyManager from '../keys/KeyManager';
@@ -15,7 +15,7 @@ class VaultManager {
   private fileSystem: typeof fs;
   private keyManager: KeyManager;
   private connectToPeer: (peerId: string) => PeerConnection;
-  private setGitHandler: (handler: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>) => void;
+  private setGitHandler: (handler: (request: Uint8Array, peerId: string) => Promise<Uint8Array>) => void;
 
   private metadataPath: string;
   private vaults: Map<string, Vault>;
@@ -25,17 +25,20 @@ class VaultManager {
   private gitFrontend: GitFrontend;
 
   // status
-  private creatingVault: boolean = false;
-  private cloningVault: boolean = false;
-  private pullingVault: boolean = false;
-  private deletingVault: boolean = false;
+  private creatingVault = false;
+  private cloningVault = false;
+  private pullingVault = false;
+  private deletingVault = false;
+
+  // concurrency
+  private metadataMutex: Mutex = new Mutex();
 
   constructor(
-    polykeyPath: string = `${os.homedir()}/.polykey`,
+    polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager: KeyManager,
     connectToPeer: (peerId: string) => PeerConnection,
-    setGitHandler: (handler: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>) => void,
+    setGitHandler: (handler: (request: Uint8Array, peerId: string) => Promise<Uint8Array>) => void,
   ) {
     // class variables
     this.polykeyPath = polykeyPath;
@@ -63,6 +66,8 @@ class VaultManager {
 
     // Read in vault keys
     this.loadEncryptedMetadata();
+
+    this.keyManager.addReencryptHandler(this.reencryptMetadata.bind(this));
   }
 
   public get Status() {
@@ -82,7 +87,7 @@ class VaultManager {
     if (peerId) {
       const allowedVaultNames: string[] = [];
       for (const vaultName of vaultNames) {
-        if (this.getVault(vaultName).peerCanAccess(peerId)) {
+        if (this.getVault(vaultName).peerCanPull(peerId)) {
           allowedVaultNames.push(vaultName);
         }
       }
@@ -110,7 +115,7 @@ class VaultManager {
       this.vaults.set(vaultName, vault);
       return vault;
     } else {
-      const error = Error(`vault does not exist in memory: '${vaultName}'`)
+      const error = Error(`vault does not exist in memory: '${vaultName}'`);
       throw error;
     }
   }
@@ -161,12 +166,44 @@ class VaultManager {
   }
 
   /**
+   * Get the stats for a particular vault
+   * @param vaultName Name of vault to be renamed
+   */
+  async vaultStats(vaultName: string): Promise<fs.Stats> {
+    if (!this.vaultExists(vaultName)) {
+      throw Error('vault does not exist');
+    }
+
+    const vault = this.vaults.get(vaultName)!;
+    return await vault.stats();
+  }
+
+  /**
+   * Rename an existing new vault
+   * @param vaultName Name of vault to be renamed
+   * @param newName New name of vault
+   */
+  async renameVault(vaultName: string, newName: string): Promise<void> {
+    if (!this.vaultExists(vaultName)) {
+      throw Error('vault does not exist');
+    } else if (this.vaultExists(newName)) {
+      throw Error('new vault name already exists');
+    }
+
+    const vault = this.vaults.get(vaultName)!;
+    await vault.rename(newName);
+    this.vaults.set(newName, vault);
+    this.vaults.delete(vaultName);
+
+    await this.writeEncryptedMetadata();
+  }
+
+  /**
    * Clone a vault from a peer
    * @param vaultName Name of vault to be cloned
-   * @param address Address of polykey node that owns vault to be cloned
-   * @param getSocket Function to get an active connection to provided address
+   * @param peerId PeerId of peer that has the vault to be cloned
    */
-  async cloneVault(vaultName: string, publicKey: string): Promise<Vault> {
+  async cloneVault(vaultName: string, peerId: string): Promise<Vault> {
     this.cloningVault = true;
     // Confirm it doesn't exist locally already
     if (this.vaultExists(vaultName)) {
@@ -177,7 +214,7 @@ class VaultManager {
     const vaultUrl = `http://0.0.0.0/${vaultName}`;
 
     // First check if it exists on remote
-    const gitRequest = this.gitFrontend.connectToPeerGit(publicKey);
+    const gitRequest = this.gitFrontend.connectToPeerGit(peerId);
     const info = await git.getRemoteInfo({
       http: gitRequest,
       url: vaultUrl,
@@ -216,8 +253,13 @@ class VaultManager {
     return vault;
   }
 
-  async scanVaultNames(publicKey: string): Promise<string[]> {
-    const gitRequest = this.gitFrontend.connectToPeerGit(publicKey);
+  /**
+   * Scan vaults of a particulr peer
+   * @param vaultName Name of vault to be cloned
+   * @param peerId PeerId of peer that has the vault to be cloned
+   */
+  async scanVaultNames(peerId: string): Promise<string[]> {
+    const gitRequest = this.gitFrontend.connectToPeerGit(peerId);
     const vaultNameList = await gitRequest.scanVaults();
     return vaultNameList;
   }
@@ -225,12 +267,12 @@ class VaultManager {
   /**
    * Pull a vault from a specific peer
    * @param vaultName Name of vault to be pulled
-   * @param publicKey Public key of polykey node that owns vault to be pulled
+   * @param peerId PeerId of polykey node that owns vault to be pulled
    */
-  async pullVault(vaultName: string, publicKey: string) {
+  async pullVault(vaultName: string, peerId: string) {
     this.pullingVault = true;
     const vault = this.getVault(vaultName);
-    await vault.pullVault(publicKey);
+    await vault.pullVault(peerId);
     this.pullingVault = false;
   }
 
@@ -250,6 +292,10 @@ class VaultManager {
    * @param vaultName Name of vault to be destroyed
    */
   async deleteVault(vaultName: string) {
+    if (!this.vaults.has(vaultName) || !this.vaultKeys.has(vaultName)) {
+      throw Error(`vault name does not exist: '${vaultName}'`);
+    }
+
     this.deletingVault = true;
     // this is convenience function for removing all tags
     // and triggering garbage collection
@@ -290,12 +336,15 @@ class VaultManager {
   }
 
   private async writeEncryptedMetadata(): Promise<void> {
+    const release = await this.metadataMutex.acquire();
     const metadata = JSON.stringify([...this.vaultKeys]);
     const encryptedMetadata = await this.keyManager.encryptData(Buffer.from(metadata));
     await this.fileSystem.promises.writeFile(this.metadataPath, encryptedMetadata);
+    release();
   }
 
   async loadEncryptedMetadata(): Promise<void> {
+    const release = await this.metadataMutex.acquire();
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.KeypairUnlocked) {
       const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
@@ -313,7 +362,29 @@ class VaultManager {
           this.vaults.set(vaultName, vault);
         }
       }
-    } else {
+    }
+
+    release();
+  }
+
+  async reencryptMetadata(
+    decryptOld: (data: Buffer) => Promise<Buffer>,
+    encryptNew: (data: Buffer) => Promise<Buffer>,
+  ) {
+    // can only re-encrypt if metadata file exists
+    if (this.fileSystem.existsSync(this.metadataPath)) {
+      const release = await this.metadataMutex.acquire();
+      // first decrypt with old keypair
+      const decryptedData = await decryptOld(this.fileSystem.readFileSync(this.metadataPath));
+
+      // encrypt loaded data with new keypair
+      const reencryptedData = await encryptNew(decryptedData);
+
+      // write reencrypted data back to file
+      fs.writeFileSync(this.metadataPath, reencryptedData);
+      release();
+      // reload new metadata
+      await this.loadEncryptedMetadata();
     }
   }
 }

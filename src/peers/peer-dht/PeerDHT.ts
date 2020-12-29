@@ -13,11 +13,11 @@ class PeerDHT {
   private updatePeerStore: (peerInfo: PeerInfo) => void;
 
   // state
-  private findingLocalPeer: boolean = false;
-  private findingPeer: boolean = false;
-  private addingPeers: boolean = false;
-  private addingPeer: boolean = false;
-  private deletingPeer: boolean = false;
+  private findingLocalPeer = false;
+  private findingPeer = false;
+  private addingPeers = false;
+  private addingPeer = false;
+  private deletingPeer = false;
 
   // Concurrency
   private mutex: Mutex = new Mutex();
@@ -48,7 +48,6 @@ class PeerDHT {
 
     this.kBucket = new KBucket(this.getPeerId, this.pingNodeUpdate.bind(this));
   }
-
 
   public get Status() {
     return {
@@ -292,7 +291,6 @@ class PeerDHT {
     switch (type) {
       case peerInterface.PeerDHTMessageType.PING:
         throw Error('dht ping is not implemented, use peer ping channel as a proxy for a peer aliveness');
-        break;
       case peerInterface.PeerDHTMessageType.FIND_NODE:
         response = await this.handleFindNodeMessage(subMessage);
         break;

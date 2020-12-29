@@ -27,8 +27,8 @@ const keybaseDiscovery: SocialDiscovery = {
       const response = await fetch(lookupUrl);
       const data = await response.json();
 
-      const keybaseUsername = data.them[0].basics.username
-      const polykeyProofUrl = `https://${keybaseUsername}.keybase.pub/polykey.proof`
+      const keybaseUsername = data.them[0].basics.username;
+      const polykeyProofUrl = `https://${keybaseUsername}.keybase.pub/polykey.proof`;
       // get the polykey.proof from public folder
 
       const pubKey = data.them[0].public_keys.primary.bundle;
@@ -51,7 +51,7 @@ class PeerManager {
   // peerId -> PeerInfo
   private peerStore: Map<string, PeerInfo>;
   // peerId -> peerAlias
-  private peerAlias: Map<string, string>
+  private peerAlias: Map<string, string>;
 
   private keyManager: KeyManager;
   multicastBroadcaster: MulticastBroadcaster;
@@ -66,7 +66,7 @@ class PeerManager {
   private stealthMode: boolean;
 
   constructor(
-    polykeyPath: string = `${os.homedir()}/.polykey`,
+    polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager: KeyManager,
     peerInfo?: PeerInfo,
@@ -74,8 +74,8 @@ class PeerManager {
   ) {
     this.fileSystem = fileSystem;
 
-    this.peerStore = new Map;
-    this.peerAlias = new Map;
+    this.peerStore = new Map();
+    this.peerAlias = new Map();
 
     this.fileSystem.mkdirSync(polykeyPath, { recursive: true });
     this.peerInfoMetadataPath = path.join(polykeyPath, '.peers', 'PeerInfo');
@@ -94,10 +94,7 @@ class PeerManager {
       this.peerInfo = peerInfo;
       this.writeMetadata();
     } else if (this.keyManager.hasPublicKey() && !this.peerInfo) {
-      this.peerInfo = new PeerInfo(
-        this.keyManager.getPublicKey(),
-        this.keyManager.pki.RootCert,
-      );
+      this.peerInfo = new PeerInfo(this.keyManager.getPublicKey(), this.keyManager.pki.RootCert);
     }
 
     this.socialDiscoveryServices = [];
@@ -186,7 +183,7 @@ class PeerManager {
     this.peerStore.set(peerInfo.id, peerInfo.deepCopy());
     this.peerDHT.addPeer(peerInfo.id);
     this.writeMetadata();
-    return peerInfo.id
+    return peerInfo.id;
   }
 
   /**
@@ -196,10 +193,10 @@ class PeerManager {
    */
   setPeerAlias(peerId: string, alias: string): void {
     if (!this.hasPeer(peerId)) {
-      throw Error('peer does not exist in peer store')
+      throw Error('peer does not exist in peer store');
     }
-    this.peerAlias.set(peerId, alias)
-    this.writeMetadata()
+    this.peerAlias.set(peerId, alias);
+    this.writeMetadata();
   }
 
   /**
@@ -208,10 +205,10 @@ class PeerManager {
    */
   unsetPeerAlias(peerId: string): void {
     if (!this.peerAlias.has(peerId)) {
-      throw Error(`no alias set for peerId: '${peerId}'`)
+      throw Error(`no alias set for peerId: '${peerId}'`);
     }
-    this.peerAlias.delete(peerId)
-    this.writeMetadata()
+    this.peerAlias.delete(peerId);
+    this.writeMetadata();
   }
 
   /**
@@ -219,7 +216,7 @@ class PeerManager {
    * @param peerId Peer ID of an existing peer
    */
   getPeerAlias(peerId: string): string | undefined {
-    return this.peerAlias.get(peerId) ?? undefined
+    return this.peerAlias.get(peerId) ?? undefined;
   }
 
   /**
@@ -243,7 +240,7 @@ class PeerManager {
       throw Error('peer does not exist in peer store');
     }
     this.peerStore.delete(id);
-    this.peerDHT.deletePeer(id)
+    this.peerDHT.deletePeer(id);
     this.writeMetadata();
   }
 
@@ -378,7 +375,7 @@ class PeerManager {
   loadMetadata(): void {
     // load peer info if path exists
     if (this.fileSystem.existsSync(this.peerInfoMetadataPath)) {
-      const metadata = <Uint8Array>this.fileSystem.readFileSync(this.peerInfoMetadataPath);
+      const metadata = this.fileSystem.readFileSync(this.peerInfoMetadataPath) as Uint8Array;
       const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
         metadata,
       );
@@ -386,7 +383,7 @@ class PeerManager {
     }
     // load peer store if path exists
     if (this.fileSystem.existsSync(this.peerStoreMetadataPath)) {
-      const metadata = <Uint8Array>this.fileSystem.readFileSync(this.peerStoreMetadataPath);
+      const metadata = this.fileSystem.readFileSync(this.peerStoreMetadataPath) as Uint8Array;
       const { peerInfoList } = peerInterface.PeerInfoListMessage.decodeDelimited(metadata);
       for (const peerInfoMessage of peerInfoList) {
         const peerInfo = new PeerInfo(
@@ -399,7 +396,7 @@ class PeerManager {
       }
     }
     if (this.fileSystem.existsSync(this.peerAliasMetadataPath)) {
-      this.peerAlias = JSON.parse(this.fileSystem.readFileSync(this.peerAliasMetadataPath).toString(), JSONMapReviver)
+      this.peerAlias = JSON.parse(this.fileSystem.readFileSync(this.peerAliasMetadataPath).toString(), JSONMapReviver);
     }
   }
 }

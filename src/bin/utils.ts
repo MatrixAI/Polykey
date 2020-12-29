@@ -1,4 +1,4 @@
-import path from 'path'
+import path from 'path';
 import os from 'os';
 import chalk from 'chalk';
 import * as grpc from '@grpc/grpc-js';
@@ -7,7 +7,7 @@ import * as pb from '../../proto/compiled/Agent_pb';
 import { AgentClient } from '../../proto/compiled/Agent_grpc_pb';
 
 /*******************************************/
-function actionRunner(fn: (...args: any) => Promise<void>, processExit: boolean = true) {
+function actionRunner(fn: (...args: any) => Promise<void>, processExit = true) {
   return (...args: any) =>
     fn(...args)
       .catch((error: Error) => {
@@ -37,12 +37,12 @@ enum PKMessageType {
 }
 
 type PKLogger = {
-  logV1: (message: string, type?: PKMessageType) => void
-  logV2: (message: string, type?: PKMessageType) => void
-  logV3: (message: string, type?: PKMessageType) => void
-}
+  logV1: (message: string, type?: PKMessageType) => void;
+  logV2: (message: string, type?: PKMessageType) => void;
+  logV3: (message: string, type?: PKMessageType) => void;
+};
 
-function getPKLogger(verbosityLevel: number = 1): PKLogger {
+function getPKLogger(verbosityLevel = 1): PKLogger {
   const log = (message: string, type?: PKMessageType) => {
     switch (type) {
       case PKMessageType.SUCCESS:
@@ -58,25 +58,27 @@ function getPKLogger(verbosityLevel: number = 1): PKLogger {
         console.debug(message);
         break;
     }
-  }
+  };
   return {
     logV1: (message: string, type?: PKMessageType) => log(message, type),
-    logV2: (message: string, type?: PKMessageType) => (verbosityLevel >= 2) ? log(message, type) : undefined,
-    logV3: (message: string, type?: PKMessageType) => (verbosityLevel >= 3) ? log(message, type) : undefined,
-  }
+    logV2: (message: string, type?: PKMessageType) => (verbosityLevel >= 2 ? log(message, type) : undefined),
+    logV3: (message: string, type?: PKMessageType) => (verbosityLevel >= 3 ? log(message, type) : undefined),
+  };
 }
 
 function determineNodePath(nodePath?: string) {
-  let defaultPath: string = '/'
+  let defaultPath = '/';
   if (os.platform() === 'win32') {
-    defaultPath = process.env.APPDATA ?? os.homedir()
+    defaultPath = process.env.APPDATA ?? os.homedir();
   } else if (os.homedir()) {
-    defaultPath = os.homedir()
+    defaultPath = os.homedir();
   }
 
   const resolvedNodePath = nodePath ?? process.env.PK_PATH ?? path.join(defaultPath, '.polykey');
   if (!resolvedNodePath) {
-    throw Error('no keynode path, set as an environment variable "export PK_PATH=\'<path>\'", or as a argument "--node-path \'<path>\'"');
+    throw Error(
+      'no keynode path, set as an environment variable "export PK_PATH=\'<path>\'", or as a argument "--node-path \'<path>\'"',
+    );
   }
   return resolveTilde(resolvedNodePath);
 }
@@ -100,10 +102,10 @@ function promisifyGrpc<t1, t2>(
 
 async function getAgentClient(
   polykeyPath: string,
-  daemon: boolean = false,
-  restartOnStopped: boolean = true,
-  failOnNotInitialized: boolean = true,
-  pkLogger: PKLogger
+  pkLogger: PKLogger,
+  daemon = false,
+  restartOnStopped = true,
+  failOnNotInitialized = true,
 ) {
   if (restartOnStopped) {
     // make sure agent is running

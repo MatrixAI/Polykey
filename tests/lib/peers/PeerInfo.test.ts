@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { promisify } from 'util'
 import PeerInfo from '../../../src/peers/PeerInfo'
 

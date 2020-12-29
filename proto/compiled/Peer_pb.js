@@ -781,10 +781,10 @@ proto.peerInterface.PeerInfoMessage.prototype.toObject = function(opt_includeIns
  */
 proto.peerInterface.PeerInfoMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    publicKey: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    rootCertificate: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    peerAddress: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    apiAddress: jspb.Message.getFieldWithDefault(msg, 4, "")
+    publicKey: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    rootCertificate: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    peerAddress: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    apiAddress: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -821,19 +821,19 @@ proto.peerInterface.PeerInfoMessage.deserializeBinaryFromReader = function(msg, 
     }
     var field = reader.getFieldNumber();
     switch (field) {
-    case 1:
+    case 2:
       var value = /** @type {string} */ (reader.readString());
       msg.setPublicKey(value);
       break;
-    case 2:
+    case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setRootCertificate(value);
       break;
-    case 3:
+    case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setPeerAddress(value);
       break;
-    case 4:
+    case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setApiAddress(value);
       break;
@@ -869,28 +869,28 @@ proto.peerInterface.PeerInfoMessage.serializeBinaryToWriter = function(message, 
   f = message.getPublicKey();
   if (f.length > 0) {
     writer.writeString(
-      1,
+      2,
       f
     );
   }
   f = message.getRootCertificate();
   if (f.length > 0) {
     writer.writeString(
-      2,
+      3,
       f
     );
   }
   f = message.getPeerAddress();
   if (f.length > 0) {
     writer.writeString(
-      3,
+      4,
       f
     );
   }
   f = message.getApiAddress();
   if (f.length > 0) {
     writer.writeString(
-      4,
+      5,
       f
     );
   }
@@ -898,28 +898,10 @@ proto.peerInterface.PeerInfoMessage.serializeBinaryToWriter = function(message, 
 
 
 /**
- * optional string public_key = 1;
+ * optional string public_key = 2;
  * @return {string}
  */
 proto.peerInterface.PeerInfoMessage.prototype.getPublicKey = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.peerInterface.PeerInfoMessage} returns this
- */
-proto.peerInterface.PeerInfoMessage.prototype.setPublicKey = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string root_certificate = 2;
- * @return {string}
- */
-proto.peerInterface.PeerInfoMessage.prototype.getRootCertificate = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -928,16 +910,16 @@ proto.peerInterface.PeerInfoMessage.prototype.getRootCertificate = function() {
  * @param {string} value
  * @return {!proto.peerInterface.PeerInfoMessage} returns this
  */
-proto.peerInterface.PeerInfoMessage.prototype.setRootCertificate = function(value) {
+proto.peerInterface.PeerInfoMessage.prototype.setPublicKey = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional string peer_address = 3;
+ * optional string root_certificate = 3;
  * @return {string}
  */
-proto.peerInterface.PeerInfoMessage.prototype.getPeerAddress = function() {
+proto.peerInterface.PeerInfoMessage.prototype.getRootCertificate = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
@@ -946,16 +928,16 @@ proto.peerInterface.PeerInfoMessage.prototype.getPeerAddress = function() {
  * @param {string} value
  * @return {!proto.peerInterface.PeerInfoMessage} returns this
  */
-proto.peerInterface.PeerInfoMessage.prototype.setPeerAddress = function(value) {
+proto.peerInterface.PeerInfoMessage.prototype.setRootCertificate = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
- * optional string api_address = 4;
+ * optional string peer_address = 4;
  * @return {string}
  */
-proto.peerInterface.PeerInfoMessage.prototype.getApiAddress = function() {
+proto.peerInterface.PeerInfoMessage.prototype.getPeerAddress = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
@@ -964,8 +946,26 @@ proto.peerInterface.PeerInfoMessage.prototype.getApiAddress = function() {
  * @param {string} value
  * @return {!proto.peerInterface.PeerInfoMessage} returns this
  */
-proto.peerInterface.PeerInfoMessage.prototype.setApiAddress = function(value) {
+proto.peerInterface.PeerInfoMessage.prototype.setPeerAddress = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional string api_address = 5;
+ * @return {string}
+ */
+proto.peerInterface.PeerInfoMessage.prototype.getApiAddress = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.peerInterface.PeerInfoMessage} returns this
+ */
+proto.peerInterface.PeerInfoMessage.prototype.setApiAddress = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 

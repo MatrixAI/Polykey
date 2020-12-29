@@ -7,14 +7,23 @@ function makeStartAgentCommand() {
   return new commander.Command('start')
     .description('start the agent')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-d, --daemon', 'start the agent as a daemon process')
     .option('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
-    .option('-t, --timeout <timeout>', 'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout', '15')
+    .option(
+      '-t, --timeout <timeout>',
+      'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout',
+      '15',
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
+        const pkLogger = getPKLogger(options.verbosity);
         try {
           const client = PolykeyAgent.connectToAgent(nodePath);
 
@@ -35,18 +44,21 @@ function makeStartAgentCommand() {
           if (res.getStatus() == pb.AgentStatusType.ONLINE) {
             pkLogger.logV2(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
           } else {
-            throw Error('agent could not be started')
+            throw Error('agent could not be started');
           }
           // unlock if passphrase was provided
           if (options.privatePassphrase) {
             const request = new pb.UnlockNodeMessage();
             request.setPassphrase(options.privatePassphrase!);
             request.setTimeout(options.timeout!);
-            await promisifyGrpc(client.unlockNode.bind(client))(request)
+            await promisifyGrpc(client.unlockNode.bind(client))(request);
             if (options.timeout == 0) {
               pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
             } else {
-              pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
+              pkLogger.logV2(
+                `polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`,
+                PKMessageType.SUCCESS,
+              );
             }
           }
         }
@@ -58,30 +70,42 @@ function makeRestartAgentCommand() {
   return new commander.Command('restart')
     .description('restart the agent')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-d, --daemon', 'start the agent as a daemon process')
     .option('-pp, --private-passphrase <privatePassphrase>', 'provide the passphrase to the private key')
-    .option('-t, --timeout <timeout>', 'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout', '15')
+    .option(
+      '-t, --timeout <timeout>',
+      'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout',
+      '15',
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        let client = await getAgentClient(nodePath, options.daemon, false, false, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        let client = await getAgentClient(nodePath, pkLogger, options.daemon, false, false);
         // Tell agent to stop
         await promisifyGrpc(client.stopAgent.bind(client))(new pb.EmptyMessage());
         const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
         pkLogger.logV2(`agent has restarted with pid of ${pid}`, PKMessageType.SUCCESS);
         // unlock if passphrase was provided
         if (options.privatePassphrase) {
-          client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+          client = await getAgentClient(nodePath, pkLogger);
           const request = new pb.UnlockNodeMessage();
           request.setPassphrase(options.privatePassphrase!);
           request.setTimeout(options.timeout!);
-          await promisifyGrpc(client.unlockNode.bind(client))(request)
+          await promisifyGrpc(client.unlockNode.bind(client))(request);
           if (options.timeout == 0) {
             pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
           } else {
-            pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
+            pkLogger.logV2(
+              `polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`,
+              PKMessageType.SUCCESS,
+            );
           }
         }
       }),
@@ -92,13 +116,18 @@ function makeAgentStatusCommand() {
   return new commander.Command('status')
     .description('retrieve the status of the agent')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
+        const pkLogger = getPKLogger(options.verbosity);
         try {
-          const client = await getAgentClient(nodePath, undefined, false, undefined, pkLogger);
+          const client = await getAgentClient(nodePath, pkLogger, undefined, false);
           const res = (await promisifyGrpc(client.getStatus.bind(client))(
             new pb.EmptyMessage(),
           )) as pb.AgentStatusMessage;
@@ -117,14 +146,19 @@ function makeStopAgentCommand() {
   return new commander.Command('stop')
     .description('stop the agent')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-f, --force', 'forcibly stop the agent')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
+        const pkLogger = getPKLogger(options.verbosity);
         try {
-          const client = await getAgentClient(nodePath, undefined, false, undefined, pkLogger);
+          const client = await getAgentClient(nodePath, pkLogger, undefined, false);
 
           // see if agent returns with online status
           const res = (await promisifyGrpc(client.getStatus.bind(client))(
@@ -148,19 +182,27 @@ function makeInitNodeCommand() {
   return new commander.Command('init')
     .description('initialize a new polykey node')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-ui, --user-id <userId>', '(required) provide an identifier for the keypair to be generated')
-    .requiredOption('-pp, --private-passphrase <privatePassphrase>', '(required) provide the passphrase to the private key')
+    .requiredOption(
+      '-pp, --private-passphrase <privatePassphrase>',
+      '(required) provide the passphrase to the private key',
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, true, false, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger, undefined, true, false);
 
         const request = new pb.NewKeyPairMessage();
         request.setUserid(options.userId);
         request.setPassphrase(options.privatePassphrase);
-        await promisifyGrpc(client.initializeNode.bind(client))(request)
+        await promisifyGrpc(client.initializeNode.bind(client))(request);
 
         pkLogger.logV2(`node was successfully initialized at: '${nodePath}'`, PKMessageType.SUCCESS);
       }),
@@ -171,22 +213,37 @@ function makeUnlockNodeCommand() {
   return new commander.Command('unlock')
     .description('unlock polykey')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
-    .requiredOption('-pp, --private-passphrase <privatePassphrase>', '(required) provide the passphrase to the private key')
-    .option('-t, --timeout <timeout>', 'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout', '15')
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
+    .requiredOption(
+      '-pp, --private-passphrase <privatePassphrase>',
+      '(required) provide the passphrase to the private key',
+    )
+    .option(
+      '-t, --timeout <timeout>',
+      'minutes of inactivity after which keynode is locked again, defaults to 15 minutes. setting to 0 will set no timeout',
+      '15',
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
         const request = new pb.UnlockNodeMessage();
         request.setPassphrase(options.privatePassphrase!);
         request.setTimeout(options.timeout!);
-        await promisifyGrpc(client.unlockNode.bind(client))(request)
+        await promisifyGrpc(client.unlockNode.bind(client))(request);
         if (options.timeout == 0) {
           pkLogger.logV2(`polykey is unlocked indefinitely at: '${nodePath}'`, PKMessageType.SUCCESS);
         } else {
-          pkLogger.logV2(`polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`, PKMessageType.SUCCESS);
+          pkLogger.logV2(
+            `polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'`,
+            PKMessageType.SUCCESS,
+          );
         }
       }),
     );
@@ -196,13 +253,18 @@ function makeLockNodeCommand() {
   return new commander.Command('lock')
     .description('lock polykey')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
-        await promisifyGrpc(client.lockNode.bind(client))(new pb.EmptyMessage)
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
+        await promisifyGrpc(client.lockNode.bind(client))(new pb.EmptyMessage());
         pkLogger.logV2(`polykey is now locked at: '${nodePath}'`, PKMessageType.SUCCESS);
       }),
     );

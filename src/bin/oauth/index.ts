@@ -1,6 +1,6 @@
 import commander from 'commander';
-import makeClientCommand from './clientCommands'
-import makeTokenCommand from './tokenCommands'
+import makeClientCommand from './clientCommands';
+import makeTokenCommand from './tokenCommands';
 
 function makeOAuthCommand() {
   return new commander.Command('oauth')

@@ -34,7 +34,7 @@ async function recursiveDirectoryWalk(dir: string, fileSystem: EncryptedFS): Pro
     fileSystem.promises
       .readdir(dir)
       .then(async (list) => {
-        var pending = list.length;
+        let pending = list.length;
         if (!pending) return resolve(results);
         list.forEach(async function (file) {
           file = path.resolve(dir, file);

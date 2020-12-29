@@ -27,7 +27,7 @@ async function uploadPack(
   fileSystem: EncryptedFS,
   dir: string,
   gitdir: string = path.join(dir, '.git'),
-  advertiseRefs: boolean = false,
+  advertiseRefs = false,
 ) {
   try {
     if (advertiseRefs) {

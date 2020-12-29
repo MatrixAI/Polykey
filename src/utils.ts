@@ -1,4 +1,6 @@
-import net from 'net'
+import fs from 'fs';
+import path from 'path';
+import net from 'net';
 import * as protobufjs from 'protobufjs';
 /**
  * Returns a 5 character long random string of lower case letters
@@ -11,15 +13,15 @@ function randomString(): string {
 }
 
 type SecretPathComponents = {
-  vaultName: string,
-  secretName: string,
-  variableName?: string,
-}
+  vaultName: string;
+  secretName: string;
+  variableName?: string;
+};
 
 function parseSecretPath(secretPath: string): SecretPathComponents {
   const pathRegex = /^([a-zA-Z0-9_ -]+)(?::)([a-zA-Z0-9_ -]+)(?:=)?([a-zA-Z_][a-zA-Z0-9_]+)?$/;
   if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
-    throw Error("secret path is of the wrong format");
+    throw Error('secret path is of the wrong format');
   }
 
   const [_, vaultName, secretName, variableName] = secretPath.match(pathRegex)!;
@@ -27,8 +29,8 @@ function parseSecretPath(secretPath: string): SecretPathComponents {
   return {
     vaultName,
     secretName,
-    variableName
-  }
+    variableName,
+  };
 }
 
 /**
@@ -64,25 +66,26 @@ async function promiseAll<T>(promiseList: Promise<T>[]): Promise<T[]> {
   return await new Promise((resolve, reject) => {
     const outputList: T[] = [];
     const errorList: Error[] = [];
-    let count = 0
+    let count = 0;
     for (const promise of promiseList) {
       promise
         .then((p) => {
-          outputList.push(p)
+          outputList.push(p);
         })
         .catch((error) => {
-          errorList.push(error)
-        }).finally(() => {
-          count += 1
+          errorList.push(error);
+        })
+        .finally(() => {
+          count += 1;
           if (count >= promiseList.length) {
             // check if all have failed
             if (errorList.length == promiseList.length) {
               reject(errorList.reduceRight((p, c) => Error(`${p.message}||${c.message}`)));
             } else {
-              resolve(outputList)
+              resolve(outputList);
             }
           }
-        })
+        });
     }
   });
 }
@@ -108,32 +111,32 @@ async function tryPort(port?: number, host?: string): Promise<number> {
     const server = net.createServer();
     server.unref();
     server.on('error', (error) => reject(error));
-    server.listen({port: port ?? 0, host: host ?? 'localhost'}, () => {
-      const { port } = <net.AddressInfo>server.address();
+    server.listen({ port: port ?? 0, host: host ?? 'localhost' }, () => {
+      const { port } = server.address() as net.AddressInfo;
       server.close(() => {
         resolve(port);
       });
     });
-  })
+  });
 }
 
 async function getPort(defaultPort?: number, defaultHost?: string): Promise<number> {
   // try provided default port and host
   if (defaultPort) {
     try {
-      return await tryPort(defaultPort, defaultHost)
+      return await tryPort(defaultPort, defaultHost);
     } catch (error) {}
   }
   // get a random port if not
-  return await tryPort(0, defaultHost)
+  return await tryPort(0, defaultHost);
 }
 
 function JSONMapReplacer(key: any, value: any) {
   const originalObject = this[key];
-  if(originalObject instanceof Map) {
+  if (originalObject instanceof Map) {
     return {
       dataType: 'Map',
-      value: Array.from(originalObject.entries())
+      value: Array.from(originalObject.entries()),
     };
   } else {
     return value;
@@ -141,7 +144,7 @@ function JSONMapReplacer(key: any, value: any) {
 }
 
 function JSONMapReviver(key: any, value: any) {
-  if(typeof value === 'object' && value !== null) {
+  if (typeof value === 'object' && value !== null) {
     if (value.dataType === 'Map') {
       return new Map(value.value);
     }
@@ -156,21 +159,38 @@ function JSONMapReviver(key: any, value: any) {
  */
 function arrayEquals(array1: Uint8Array, array2: Uint8Array): boolean {
   if (array1 === array2) {
-    return true
+    return true;
   }
   if (array1.length !== array2.length) {
-    return false
+    return false;
   }
   for (let i = 0, length = array1.length; i < length; ++i) {
     if (array1[i] !== array2[i]) {
-      return false
+      return false;
     }
   }
-  return true
+  return true;
+}
+
+function isUnixHiddenPath(path: string): boolean {
+  return /\.|\/\.[^\/]+/g.test(path);
+}
+
+async function* readdirRecursively(dir: string) {
+  const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
+  for (const dirent of dirents) {
+    const res = path.resolve(dir, dirent.name);
+    if (dirent.isDirectory() && !isUnixHiddenPath(dirent.name)) {
+      yield* readdirRecursively(res);
+    } else if (dirent.isFile()) {
+      yield res;
+    }
+  }
 }
 
 export {
   randomString,
+  parseSecretPath,
   promiseAny,
   promiseAll,
   protobufToString,
@@ -180,4 +200,6 @@ export {
   JSONMapReplacer,
   JSONMapReviver,
   arrayEquals,
+  isUnixHiddenPath,
+  readdirRecursively,
 };

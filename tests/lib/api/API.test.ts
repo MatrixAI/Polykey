@@ -1,3 +1,4 @@
+/* eslint-disable */
 import os from 'os';
 import fs from 'fs';
 import http from 'https';

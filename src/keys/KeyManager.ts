@@ -18,10 +18,15 @@ type KeyPair = {
   public: string | null;
 };
 
+type ReencryptHandler = (
+  decryptOld: (data: Buffer) => Promise<void>,
+  encryptNew: (data: Buffer) => Promise<void>,
+) => Promise<void>;
+
 class KeyManager {
   private primaryKeyPair: KeyPair = { private: null, public: null };
-  private primaryIdentity?: Object;
-  private primaryIdentityTimeout?: NodeJS.Timeout
+  private primaryIdentity?: Record<string, any>;
+  private primaryIdentityTimeout?: NodeJS.Timeout;
   private derivedKeys: Map<string, Buffer>;
   private derivedKeysPath: string;
   private useWebWorkers: boolean;
@@ -37,15 +42,20 @@ class KeyManager {
     publicKeyPath: null,
   };
 
+  private reencryptHandlers: ReencryptHandler[] = [];
+  addReencryptHandler(handler: ReencryptHandler) {
+    this.reencryptHandlers.push(handler);
+  }
+
   /////////
   // PKI //
   /////////
   pki: PublicKeyInfrastructure;
 
   constructor(
-    polykeyPath: string = `${os.homedir()}/.polykey`,
+    polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
-    useWebWorkers: boolean = false,
+    useWebWorkers = false,
     workerPool?: Pool<ModuleThread<KeyManagerWorker>>,
   ) {
     this.useWebWorkers = useWebWorkers;
@@ -101,7 +111,7 @@ class KeyManager {
   async generateKeyPair(
     userId: string,
     passphrase: string,
-    replacePrimary: boolean = false,
+    replacePrimary = false,
     progressCallback?: (info) => void,
   ): Promise<KeyPair> {
     // Define options
@@ -123,6 +133,12 @@ class KeyManager {
     // Resolve to parent promise
     const keypair = { private: privateKey, public: publicKey };
     if (replacePrimary) {
+      // reencrypt data
+      for (const handler of this.reencryptHandlers) {
+        await handler(this.decryptData.bind(this), async (data: Buffer) => {
+          await this.encryptData(data, Buffer.from(keypair.public));
+        });
+      }
       // Set the new keypair
       this.primaryKeyPair = keypair;
       // Set the new identity
@@ -137,7 +153,6 @@ class KeyManager {
       this.metadata.publicKeyPath = publicKeyPath;
       this.writeMetadata();
     }
-
     return keypair;
   }
 
@@ -229,10 +244,10 @@ class KeyManager {
    * @param passphrase Passphrase to unlock the private key
    * @param timeout Minutes of inactivity after which identity is locked again
    */
-  async unlockIdentity(passphrase: string, timeout: number = 15): Promise<void> {
+  async unlockIdentity(passphrase: string, timeout = 15): Promise<void> {
     // check if already unlocked
     if (this.primaryIdentityTimeout && this.primaryIdentity) {
-      clearTimeout(this.primaryIdentityTimeout)
+      clearTimeout(this.primaryIdentityTimeout);
     } else {
       const publicKey: string = this.getPublicKey();
       const privateKey: string = this.getPrivateKey();
@@ -250,26 +265,26 @@ class KeyManager {
     if (timeout !== 0) {
       // set new timeout
       this.primaryIdentityTimeout = setTimeout(() => {
-        this.lockIdentity()
-      }, timeout * 60 * 1000)
+        this.lockIdentity();
+      }, timeout * 60 * 1000);
     }
   }
 
-  refreshTimeout(timeout: number = 15) {
+  refreshTimeout(timeout = 15) {
     if (!this.primaryIdentityTimeout) {
       if (!this.primaryIdentity) {
-        throw Error('node is locked')
+        throw Error('node is locked');
       }
     } else {
-      clearTimeout(this.primaryIdentityTimeout)
+      clearTimeout(this.primaryIdentityTimeout);
     }
     if (this.primaryIdentityTimeout) {
-      this.primaryIdentityTimeout = this.primaryIdentityTimeout.refresh()
+      this.primaryIdentityTimeout = this.primaryIdentityTimeout.refresh();
     } else {
       // set new timeout
       this.primaryIdentityTimeout = setTimeout(() => {
-        this.lockIdentity()
-      }, timeout * 60 * 1000)
+        this.lockIdentity();
+      }, timeout * 60 * 1000);
     }
   }
 
@@ -306,7 +321,7 @@ class KeyManager {
    * @param passphrase Passphrase to derive the key from
    * @param storeKey Whether to store the key in the key manager
    */
-  async generateKey(name: string, passphrase: string, storeKey: boolean = true): Promise<Buffer> {
+  async generateKey(name: string, passphrase: string, storeKey = true): Promise<Buffer> {
     const salt = crypto.randomBytes(32);
     const key = await promisify(crypto.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
     if (storeKey) {
@@ -322,7 +337,7 @@ class KeyManager {
    * @param passphrase Passphrase to derive the key from
    * @param storeKey Whether to store the key in the key manager
    */
-  generateKeySync(name: string, passphrase: string, storeKey: boolean = true): Buffer {
+  generateKeySync(name: string, passphrase: string, storeKey = true): Buffer {
     const salt = crypto.randomBytes(32);
     const key = crypto.pbkdf2Sync(passphrase, salt, 10000, 256 / 8, 'sha256');
     if (storeKey) {
@@ -411,7 +426,7 @@ class KeyManager {
    * Loads an identity from the given public key
    * @param publicKey Buffer containing the public key
    */
-  async getIdentityFromPublicKey(publicKey: Buffer): Promise<Object> {
+  async getIdentityFromPublicKey(publicKey: Buffer): Promise<Record<string, any>> {
     const identity = await promisify(kbpgp.KeyManager.import_from_armored_pgp)({ armored: publicKey });
     return identity;
   }
@@ -420,7 +435,7 @@ class KeyManager {
    * Loads an identity from the given private key
    * @param publicKey Buffer containing the public key
    */
-  async getIdentityFromPrivateKey(privateKey: Buffer, passphrase: string): Promise<Object> {
+  async getIdentityFromPrivateKey(privateKey: Buffer, passphrase: string): Promise<Record<string, any>> {
     const identity = await promisify(kbpgp.KeyManager.import_from_armored_pgp)({ armored: privateKey });
     if (identity.is_pgp_locked()) {
       await promisify(identity.unlock_pgp.bind(identity))({ passphrase });
@@ -435,7 +450,7 @@ class KeyManager {
    * @param keyPassphrase Required if privateKey is provided.
    */
   async signData(data: Buffer | string, privateKey?: Buffer, keyPassphrase?: string): Promise<Buffer> {
-    let resolvedIdentity: Object;
+    let resolvedIdentity: Record<string, any>;
     if (privateKey) {
       if (!keyPassphrase) {
         throw Error('passphrase for private key was not provided');
@@ -523,7 +538,7 @@ class KeyManager {
       // get the verified message
       const verifiedMessage = Buffer.from(literals[0].toString());
       // Get the identity that signed the data if any
-      let dataSigner = literals[0].get_data_signer();
+      const dataSigner = literals[0].get_data_signer();
       // Retrieve the key manager associated with that data signer
       let verifiedKM: any;
       if (dataSigner) {
@@ -576,7 +591,7 @@ class KeyManager {
    * @param publicKey The key to encrypt for
    */
   async encryptData(data: Buffer, publicKey?: Buffer): Promise<Buffer> {
-    let resolvedIdentity: Object;
+    let resolvedIdentity: Record<string, any>;
     if (publicKey) {
       resolvedIdentity = await this.getIdentityFromPublicKey(publicKey);
     } else if (this.primaryIdentity) {
@@ -633,8 +648,8 @@ class KeyManager {
    * @param keyPassphrase Required if privateKey is provided.
    */
   async decryptData(data: Buffer, privateKey?: Buffer, keyPassphrase?: string): Promise<Buffer> {
-    var ring = new kbpgp.keyring.KeyRing();
-    let resolvedIdentity: Object;
+    const ring = new kbpgp.keyring.KeyRing();
+    let resolvedIdentity: Record<string, any>;
     if (privateKey) {
       if (keyPassphrase) {
         resolvedIdentity = await this.getIdentityFromPrivateKey(privateKey, keyPassphrase);

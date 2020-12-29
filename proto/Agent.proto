@@ -24,6 +24,7 @@ service Agent {
   rpc GetRootCertificate (EmptyMessage) returns (StringMessage) {};
   rpc GetSecret (SecretPathMessage) returns (StringMessage) {};
   rpc GetStatus (EmptyMessage) returns (AgentStatusMessage) {};
+  rpc GetVaultStats (StringMessage) returns (VaultStatsMessage) {};
   rpc InitializeNode (NewKeyPairMessage) returns (EmptyMessage) {};
   rpc ListOAuthTokens (EmptyMessage) returns (StringListMessage) {};
   rpc ListKeys (EmptyMessage) returns (StringListMessage) {};
@@ -37,15 +38,18 @@ service Agent {
   rpc NewVault (StringMessage) returns (EmptyMessage) {};
   rpc PingPeer (ContactPeerMessage) returns (EmptyMessage) {};
   rpc PullVault (VaultPathMessage) returns (EmptyMessage) {};
+  rpc RenameVault (RenameVaultMessage) returns (EmptyMessage) {};
   rpc RevokeOAuthToken (StringMessage) returns (EmptyMessage) {};
   rpc ScanVaultNames (StringMessage) returns (StringListMessage) {};
   rpc SetAlias (PeerAliasMessage) returns (EmptyMessage) {};
+  rpc ShareVault (ShareVaultMessage) returns (EmptyMessage) {};
   rpc SignFile (SignFileMessage) returns (StringMessage) {};
   rpc SocialProof (EmptyMessage) returns (PeerInfoMessage) {};
   rpc StopAgent (EmptyMessage) returns (EmptyMessage) {};
   rpc ToggleStealthMode (BooleanMessage) returns (EmptyMessage) {};
   rpc UnlockNode (UnlockNodeMessage) returns (EmptyMessage) {};
   rpc UnsetAlias (StringMessage) returns (EmptyMessage) {};
+  rpc UnshareVault (VaultPathMessage) returns (EmptyMessage) {};
   rpc UpdateLocalPeerInfo (PeerInfoMessage) returns (EmptyMessage) {};
   rpc UpdatePeerInfo (PeerInfoMessage) returns (EmptyMessage) {};
   rpc UpdateSecret (SecretContentMessage) returns (EmptyMessage) {};
@@ -193,3 +197,20 @@ message PeerAliasMessage {
   string alias = 2;
 }
 
+// === RenameVault === //
+message RenameVaultMessage {
+  string vault_name = 1;
+  string new_name = 2;
+}
+
+// === VaultStats === //
+message VaultStatsMessage {
+  int32 created_at = 1;
+}
+
+// ==== ShareVault ==== //
+message ShareVaultMessage {
+  string peer_id = 1;
+  string vault_name = 2;
+  bool can_edit = 3;
+}
