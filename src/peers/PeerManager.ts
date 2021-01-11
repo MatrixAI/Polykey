@@ -1,44 +1,18 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
+import fetch from 'isomorphic-fetch';
 import PeerDHT from './peer-dht/PeerDHT';
 import PeerInfo from '../peers/PeerInfo';
 import KeyManager from '../keys/KeyManager';
 import { peerInterface } from '../../proto/js/Peer';
 import PeerServer from './peer-connection/PeerServer';
 import NatTraversal from './nat-traversal/NatTraversal';
+import { JSONMapReplacer, JSONMapReviver } from '../utils';
 import PeerConnection from './peer-connection/PeerConnection';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
-import { JSONMapReplacer, JSONMapReviver } from '../utils';
-import fetch from 'isomorphic-fetch';
-
-interface SocialDiscovery {
-  // Must return a public pgp key
-  name: string;
-  findUser(handle: string, service: string): Promise<string>;
-}
-
-const keybaseDiscovery: SocialDiscovery = {
-  name: 'Keybase',
-  findUser: async (handle: string, service: string): Promise<string> => {
-    const lookupUrl = `https://keybase.io/_/api/1.0/user/lookup.json?${service}=${handle}`;
-
-    try {
-      const response = await fetch(lookupUrl);
-      const data = await response.json();
-
-      const keybaseUsername = data.them[0].basics.username;
-      const polykeyProofUrl = `https://${keybaseUsername}.keybase.pub/polykey.proof`;
-      // get the polykey.proof from public folder
-
-      const pubKey = data.them[0].public_keys.primary.bundle;
-
-      return pubKey;
-    } catch (err) {
-      throw Error(`User was not found: ${err.message}`);
-    }
-  },
-};
+import { KeybaseIdentityProvider } from './identity-provider/default';
+import IdentityProviderPlugin, { PolykeyProof } from './identity-provider/IdentityProvider';
 
 class PeerManager {
   private fileSystem: typeof fs;
@@ -55,7 +29,7 @@ class PeerManager {
 
   private keyManager: KeyManager;
   multicastBroadcaster: MulticastBroadcaster;
-  socialDiscoveryServices: SocialDiscovery[];
+  identityProviderPlugins: Map<string, IdentityProviderPlugin> = new Map;
 
   // Peer connections
   peerServer: PeerServer;
@@ -70,7 +44,7 @@ class PeerManager {
     fileSystem: typeof fs,
     keyManager: KeyManager,
     peerInfo?: PeerInfo,
-    socialDiscoveryServices: SocialDiscovery[] = [],
+    identityProviderPlugins: IdentityProviderPlugin[] = [],
   ) {
     this.fileSystem = fileSystem;
 
@@ -84,7 +58,6 @@ class PeerManager {
 
     // Set given variables
     this.keyManager = keyManager;
-    this.socialDiscoveryServices = socialDiscoveryServices;
 
     // Load metadata with peer info
     this.loadMetadata();
@@ -97,11 +70,10 @@ class PeerManager {
       this.peerInfo = new PeerInfo(this.keyManager.getPublicKey(), this.keyManager.pki.RootCert);
     }
 
-    this.socialDiscoveryServices = [];
-    this.socialDiscoveryServices.push(keybaseDiscovery);
-    for (const service of socialDiscoveryServices) {
-      this.socialDiscoveryServices.push(service);
-    }
+    // add default identity provider plugins
+    this.identityProviderPlugins.set(KeybaseIdentityProvider.name, KeybaseIdentityProvider);
+    // add given identity provider plugins
+    identityProviderPlugins.forEach(idP => this.identityProviderPlugins.set(idP.name.toLowerCase(), idP))
 
     this.multicastBroadcaster = new MulticastBroadcaster(
       (() => this.peerInfo).bind(this),
@@ -171,8 +143,9 @@ class PeerManager {
   /**
    * Add a peer's info to the peerStore
    * @param peerInfo Info of the peer to be added
+   * @param alias Optional alias for the new peer
    */
-  addPeer(peerInfo: PeerInfo): string {
+  addPeer(peerInfo: PeerInfo, alias?: string): string {
     const peerId = peerInfo.id;
     if (this.hasPeer(peerId)) {
       throw Error('peer already exists in peer store');
@@ -181,6 +154,12 @@ class PeerManager {
       throw Error('cannot add self to store');
     }
     this.peerStore.set(peerInfo.id, peerInfo.deepCopy());
+    if (alias) {
+      try {
+        this.peerAlias.set(alias, peerInfo.id)
+      } catch (error) {
+      }
+    }
     this.peerDHT.addPeer(peerInfo.id);
     this.writeMetadata();
     return peerInfo.id;
@@ -288,20 +267,44 @@ class PeerManager {
   }
 
   /**
-   * Finds an existing peer given a social service and handle
-   * @param username Username (e.g. @github/john-smith)
+   * Prove this keynode on an identity provider
+   * @param identityPluginName The name of the identity plugin to be used (e.g. keybase or signal)
+   * @param identifier Any unique identifying string (e.g. @github/john-smith or a phone number)
    */
-  async findSocialUser(handle: string, service: string, timeout?: number): Promise<boolean> {
+  async proveKeynode(identityPluginName: string, identifier: string): Promise<PolykeyProof> {
     // parse with regex
-    const tasks = this.socialDiscoveryServices.map((s) => s.findUser(handle, service));
-
-    const pubKeyOrFail = await Promise.race(tasks);
-
-    if (!pubKeyOrFail) {
-      throw Error('Could not find public key from services');
+    const plugin = this.identityProviderPlugins.get(identityPluginName.toLowerCase())
+    if (!plugin) {
+      throw Error(`no plugin found of the name '${identityPluginName}'`)
     }
 
-    return await this.findPublicKey(pubKeyOrFail, timeout);
+    return await plugin.proveKeynode(identifier, this.peerInfo)
+  }
+
+  /**
+   * Finds all keynodes advertised by a given gestalt given that gestalt's unique identifying string
+   * @param identifier Any unique identifying string (e.g. @github/john-smith or a phone number)
+   * @param timeout The timeout after which the trying is stopped
+   */
+  async findGestaltKeynodes(identifier: string, timeout?: number): Promise<string[]> {
+    // parse with regex
+    const tasks: Promise<PeerInfo[]>[] = []
+
+    for (const idP of this.identityProviderPlugins.values()) {
+      tasks.push(idP.determineKeynodes(identifier))
+    }
+
+    const peerInfoList = await Promise.race(tasks);
+
+    if (!peerInfoList) {
+      throw Error('could not find any keynodes advertised by identifier');
+    }
+
+    // add all found peers to the peer store if they are not in there already
+    peerInfoList.forEach(p => { try { this.addPeer(p, `${identifier}-${p.id}`) } catch { } })
+
+    // return a list of peer id's found
+    return peerInfoList.map(p => p.id)
   }
 
   ///////////////////////
@@ -402,4 +405,3 @@ class PeerManager {
 }
 
 export default PeerManager;
-export { SocialDiscovery };

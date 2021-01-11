@@ -670,8 +670,67 @@ export namespace ShareVaultMessage {
     }
 }
 
+export class PolykeyProofMessage extends jspb.Message { 
+    getType(): PolykeyProofType;
+    setType(value: PolykeyProofType): PolykeyProofMessage;
+
+    getInstructions(): string;
+    setInstructions(value: string): PolykeyProofMessage;
+
+    getProof(): string;
+    setProof(value: string): PolykeyProofMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PolykeyProofMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PolykeyProofMessage): PolykeyProofMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PolykeyProofMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PolykeyProofMessage;
+    static deserializeBinaryFromReader(message: PolykeyProofMessage, reader: jspb.BinaryReader): PolykeyProofMessage;
+}
+
+export namespace PolykeyProofMessage {
+    export type AsObject = {
+        type: PolykeyProofType,
+        instructions: string,
+        proof: string,
+    }
+}
+
+export class GestaltIdentityMessage extends jspb.Message { 
+    getIdentityProviderName(): string;
+    setIdentityProviderName(value: string): GestaltIdentityMessage;
+
+    getIdentifier(): string;
+    setIdentifier(value: string): GestaltIdentityMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GestaltIdentityMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GestaltIdentityMessage): GestaltIdentityMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GestaltIdentityMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GestaltIdentityMessage;
+    static deserializeBinaryFromReader(message: GestaltIdentityMessage, reader: jspb.BinaryReader): GestaltIdentityMessage;
+}
+
+export namespace GestaltIdentityMessage {
+    export type AsObject = {
+        identityProviderName: string,
+        identifier: string,
+    }
+}
+
 export enum AgentStatusType {
     ONLINE = 0,
     OFFLINE = 1,
     ERRORED = 2,
+}
+
+export enum PolykeyProofType {
+    AUTOMATIC = 0,
+    MANUAL = 1,
 }
