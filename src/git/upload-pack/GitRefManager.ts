@@ -1,4 +1,5 @@
 // This is a convenience wrapper for reading and writing files in the 'refs' directory.
+import fs from 'fs';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 import GitPackedRefs from './GitPackedRefs';
@@ -26,7 +27,6 @@ function compareRefNames(a, b) {
 
 // @see https://git-scm.com/docs/gitrepository-layout
 const GIT_FILES = ['config', 'description', 'index', 'shallow', 'commondir'];
-
 // This function is used to get all the files in the refs folder for listRefs function
 async function recursiveDirectoryWalk(dir: string, fileSystem: EncryptedFS): Promise<string[]> {
   return new Promise((resolve, reject) => {
@@ -68,8 +68,7 @@ class GitRefManager {
     const packedMap = GitRefManager.packedRefs(fileSystem, gitdir);
     let files: string[] = [];
     try {
-      files = await recursiveDirectoryWalk(`${gitdir}/${filepath}`, fileSystem);
-
+      files = await recursiveDirectoryWalk(`${gitdir}/${filepath}`, fs as any);
       files = files.map((x) => x.replace(`${gitdir}/${filepath}/`, ''));
     } catch (err) {
       files = [];

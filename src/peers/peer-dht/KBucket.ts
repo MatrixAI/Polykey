@@ -149,7 +149,7 @@ class KBucket {
 
     let contacts: Uint8Array[] = [];
 
-    for (let nodes = [this.root], bitIndex = 0; nodes.length > 0 && contacts.length < num; ) {
+    for (let nodes = [this.root], bitIndex = 0; nodes.length > 0 && contacts.length < num;) {
       const node = nodes.pop();
 
       if (node) {
@@ -182,7 +182,7 @@ class KBucket {
    */
   count(): number {
     let count = 0;
-    for (const nodes = [this.root]; nodes.length > 0; ) {
+    for (const nodes = [this.root]; nodes.length > 0;) {
       const node = nodes.pop();
       if (node) {
         if (node.contacts === null) {
@@ -354,7 +354,7 @@ class KBucket {
    */
   toArray(): string[] {
     let result: string[] = [];
-    for (const nodes = [this.root]; nodes.length > 0; ) {
+    for (const nodes = [this.root]; nodes.length > 0;) {
       const node = nodes.pop();
       if (node) {
         if (node.contacts === null) {

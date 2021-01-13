@@ -1,80 +1,52 @@
-import * as kbpgp from 'kbpgp';
 import { promisify } from 'util';
+import { pki, md } from 'node-forge';
 import { expose } from 'threads/worker';
 
 const keyManagerWorker = {
   /**
    * Signs the given data with the provided identity
-   * @param data Buffer or file containing the data to be signed
-   * @param identity Identity with which to sign with.
+   * @param data the data to be signed
+   * @param decryptedPrivateKey the decrypted key with which to sign with.
    */
-  async signData(data: Buffer | string, identity: any): Promise<Buffer> {
-    const params = {
-      msg: data,
-      sign_with: identity,
-    };
-    const result_string = await promisify(kbpgp)(params);
-    return Buffer.from(result_string);
+  async signData(data: string, decryptedPrivateKey: string): Promise<string> {
+    const privateKey = pki.privateKeyFromPem(decryptedPrivateKey)
+    const digest = md.sha512.create();
+    digest.update(data.toString(), 'raw');
+    const signature = privateKey.sign(digest);
+    return signature;
   },
   /**
-   * Verifies the given data with the provided identity
-   * @param data Buffer or file containing the data to be verified
-   * @param identity Identity with which to verify with.
+   * Verifies the given data with the provided key or the primary key if none is specified
+   * @param data the data to be verified
+   * @param signature the signature
+   * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
    */
-  async verifyData(data: Buffer | string, identity: any): Promise<Buffer> {
-    const ring = new kbpgp.keyring.KeyRing();
-
-    ring.add_key_manager(identity);
-    const params = {
-      armored: data,
-      keyfetch: ring,
-    };
-    const literals = await promisify(kbpgp.unbox)(params);
-    // Get the identity that signed the data if any
-    const dataSigner = literals[0].get_data_signer();
-    // get the verified message
-    const verifiedMessage = Buffer.from(literals[0].toString());
-    // Retrieve the key manager associated with that data signer
-    let verifiedKM: any;
-    if (dataSigner) {
-      verifiedKM = dataSigner.get_key_manager();
-    }
-    // If we know the pgp finger print then we say the data is verified.
-    // Otherwise it is unverified.
-    if (verifiedKM && verifiedKM.get_pgp_fingerprint() == identity.get_pgp_fingerprint()) {
-      return verifiedMessage;
-    } else {
-      throw Error('data could not be verified');
-    }
+  async verifyData(data: string, signature: string, publicKey: string): Promise<boolean> {
+    const resolvedKey = pki.publicKeyFromPem(publicKey)
+    const digest = md.sha512.create();
+    digest.update(data.toString(), 'raw');
+    const verified = resolvedKey.verify(digest.digest().bytes(), signature);
+    return verified;
   },
   /**
-   * Encrypts the given data for the provided identity
+   * Encrypts the given data for a specific public key
    * @param data The data to be encrypted
-   * @param identity Identity to encrypt for
+   * @param publicKey The key to encrypt for (optional)
    */
-  async encryptData(data: Buffer, identity: any): Promise<Buffer> {
-    const params = {
-      msg: data,
-      encrypt_for: identity,
-    };
-    const result_string: string = await promisify(kbpgp.box)(params);
-    return Buffer.from(result_string);
+  async encryptData(data: string, publicKey: string): Promise<string> {
+    const resolvedKey = pki.publicKeyFromPem(publicKey);
+    const encryptedData = resolvedKey.encrypt(data);
+    return encryptedData;
   },
   /**
-   * Decrypts the given data with the provided identity
+   * Decrypts the given data with the provided key or the primary key if none is given
    * @param data The data to be decrypted
-   * @param identity Identity to decrypt with
+   * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
+   * @param passphrase Required if privateKey is provided.
    */
-  async decryptData(data: Buffer, identity: any): Promise<Buffer> {
-    const ring = new kbpgp.keyring.KeyRing();
-
-    ring.add_key_manager(identity);
-    const params = {
-      armored: data.toString(),
-      keyfetch: ring,
-    };
-    const literals = await promisify(kbpgp.unbox)(params);
-    const decryptedData = Buffer.from(literals[0].toString());
+  async decryptData(data: string, privateKey: string): Promise<string> {
+    const resolvedKey = pki.privateKeyFromPem(privateKey)
+    const decryptedData = resolvedKey.decrypt(data)
     return decryptedData;
   },
 };

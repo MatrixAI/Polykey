@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pki, md } from 'node-forge';
-import * as peerInterface from '../../../proto/js/Peer_pb';
+import { PeerInfo } from '../../peers/PeerInfo';
 
 type TLSCredentials = {
   rootCertificate: string;
@@ -22,6 +22,10 @@ class PublicKeyInfrastructure {
   private pkiPath: string;
   private pkiFs: typeof fs;
 
+  // peer info
+  private getLocalPeerInfo: () => PeerInfo
+  private getPrivateKey: () => pki.rsa.PrivateKey
+
   // certificate signed by another
   private keypair: pki.rsa.KeyPair;
   private certificate: pki.Certificate;
@@ -32,9 +36,17 @@ class PublicKeyInfrastructure {
       .join('\n');
   }
 
+  public get RootCertificatePem(): string {
+    return this.getLocalPeerInfo().toX509Pem(this.getPrivateKey())
+  }
+  public get RootCertificate(): pki.Certificate {
+    return pki.certificateFromPem(this.RootCertificatePem)
+  }
+
+
   public get TLSClientCredentials(): TLSCredentials {
     return {
-      rootCertificate: this.RootCert,
+      rootCertificate: this.RootCertificatePem,
       certificate: pki.certificateToPem(this.certificate),
       keypair: {
         public: pki.publicKeyToPem(this.keypair.publicKey),
@@ -45,7 +57,7 @@ class PublicKeyInfrastructure {
 
   public get TLSServerCredentials(): TLSCredentials {
     return {
-      rootCertificate: this.RootCert,
+      rootCertificate: this.RootCertificatePem,
       certificate: pki.certificateToPem(this.certificate),
       keypair: {
         public: pki.publicKeyToPem(this.keypair.publicKey),
@@ -58,48 +70,25 @@ class PublicKeyInfrastructure {
 
   // root CA
   private certificateChain: pki.Certificate[];
-  private rootCertificate: pki.Certificate;
-  private rootKeypair: pki.rsa.KeyPair;
-  public get RootCert(): string {
-    return pki.certificateToPem(this.rootCertificate);
-  }
-
   public get CertChain(): string[] {
     return this.certificateChain.map((c) => pki.certificateToPem(c));
   }
 
-  constructor(polykeyPath: string, fileSystem: typeof fs) {
+  constructor(
+    polykeyPath: string,
+    fileSystem: typeof fs,
+    getLocalPeerInfo: () => PeerInfo,
+    getPrivateKey: () => pki.rsa.PrivateKey,
+  ) {
     this.commonName = process.env.PK_PEER_HOST ?? 'localhost';
     this.pkiPath = path.join(polykeyPath, '.pki');
 
     this.CAStore = pki.createCaStore();
     this.pkiFs = fileSystem;
-    this.loadMetadata();
-  }
 
-  async handleGRPCRequest(request: Uint8Array): Promise<Uint8Array> {
-    const decodedRequest = peerInterface.CAMessage.deserializeBinary(request)
-    const type = decodedRequest.getType()
-    const subMessage = decodedRequest.getSubMessage_asU8()
-    let response: Uint8Array;
-    switch (type) {
-      case peerInterface.CAMessageType.ROOT_CERT:
-        response = Buffer.from(this.RootCert);
-        break;
-      case peerInterface.CAMessageType.REQUEST_CERT:
-        response = Buffer.from(this.handleCSR(subMessage.toString()));
-        break;
-      default:
-        throw Error(`type not supported: ${type}`);
-    }
-    const encodedResponse = new peerInterface.CAMessage
-    encodedResponse.setType(type)
-    encodedResponse.setIsResponse(true)
-    encodedResponse.setSubMessage(response)
-    return encodedResponse.serializeBinary();
+    this.getLocalPeerInfo = getLocalPeerInfo
+    this.getPrivateKey = getPrivateKey
   }
-
-  q;
 
   //////////////////////////////////
   // Certificate Signing Requests //
@@ -140,8 +129,9 @@ class PublicKeyInfrastructure {
   }
 
   handleCSR(csrPem: string) {
-    const csr = pki.certificationRequestFromPem(csrPem);
+    const rootCertificate = this.RootCertificate
 
+    const csr = pki.certificationRequestFromPem(csrPem);
     // verify certification request
     try {
       if (!csr.verify(csr)) {
@@ -159,9 +149,8 @@ class PublicKeyInfrastructure {
     certificate.validity.notBefore = new Date();
     certificate.validity.notAfter = new Date();
     certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
-
     certificate.setSubject(csr.subject.attributes);
-    certificate.setIssuer(this.rootCertificate.issuer.attributes);
+    certificate.setIssuer(rootCertificate.issuer.attributes);
     certificate.publicKey = csr.publicKey;
 
     certificate.setExtensions([
@@ -205,7 +194,7 @@ class PublicKeyInfrastructure {
     ]);
 
     // sign certificate
-    certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
+    certificate.sign(this.getPrivateKey(), md.sha512.create());
 
     // return certificate in pem form
     return pki.certificateToPem(certificate);
@@ -215,6 +204,7 @@ class PublicKeyInfrastructure {
   // Agent & Client Comms //
   //////////////////////////
   createServerCredentials(): TLSCredentials {
+    const rootCertificate = this.RootCertificate
     const keypair = this.createKeypair();
     // create a certification request (CSR)
     const certificate = pki.createCertificate();
@@ -229,7 +219,7 @@ class PublicKeyInfrastructure {
         value: 'localhost',
       },
     ]);
-    certificate.setIssuer(this.rootCertificate.issuer.attributes);
+    certificate.setIssuer(rootCertificate.issuer.attributes);
     certificate.publicKey = keypair.publicKey;
 
     certificate.setExtensions([
@@ -266,10 +256,10 @@ class PublicKeyInfrastructure {
     ]);
 
     // sign certificate
-    certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
+    certificate.sign(this.getPrivateKey(), md.sha512.create());
 
     return {
-      rootCertificate: this.RootCert,
+      rootCertificate: this.RootCertificatePem,
       certificate: pki.certificateToPem(certificate),
       keypair: {
         private: pki.privateKeyToPem(keypair.privateKey),
@@ -279,6 +269,7 @@ class PublicKeyInfrastructure {
   }
 
   createClientCredentials(): TLSCredentials {
+    const rootCertificate = this.RootCertificate
     const keypair = this.createKeypair();
     // create a certification request (CSR)
     const certificate = pki.createCertificate();
@@ -293,7 +284,7 @@ class PublicKeyInfrastructure {
         value: 'localhost',
       },
     ]);
-    certificate.setIssuer(this.rootCertificate.issuer.attributes);
+    certificate.setIssuer(rootCertificate.issuer.attributes);
     certificate.publicKey = keypair.publicKey;
 
     certificate.setExtensions([
@@ -330,10 +321,10 @@ class PublicKeyInfrastructure {
     ]);
 
     // sign certificate
-    certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
+    certificate.sign(this.getPrivateKey(), md.sha512.create());
 
     return {
-      rootCertificate: this.RootCert,
+      rootCertificate: this.RootCertificatePem,
       certificate: pki.certificateToPem(certificate),
       keypair: {
         private: pki.privateKeyToPem(keypair.privateKey),
@@ -354,7 +345,6 @@ class PublicKeyInfrastructure {
     certificate.validity.notAfter = new Date();
     certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
 
-    isCA = true;
     const attrs = [
       {
         name: 'commonName',
@@ -406,13 +396,13 @@ class PublicKeyInfrastructure {
     if (isCA) {
       certificate.sign(keypair.privateKey, md.sha512.create());
     } else {
-      certificate.sign(this.rootKeypair.privateKey, md.sha512.create());
+      certificate.sign(this.getPrivateKey(), md.sha512.create());
     }
 
     const certificatePem = pki.certificateToPem(certificate);
 
     return {
-      rootCertificate: isCA ? certificatePem : this.RootCert,
+      rootCertificate: isCA ? certificatePem : this.RootCertificatePem,
       certificate: certificatePem,
       keypair: {
         private: pki.privateKeyToPem(keypair.privateKey),
@@ -443,29 +433,13 @@ class PublicKeyInfrastructure {
 
   loadMetadata(): void {
     if (this.pkiFs) {
-      // make the pkiPath directory
+    // make the pkiPath directory
       this.pkiFs.mkdirSync(this.pkiPath, { recursive: true });
-
-      // load root keypair and certificate
-      const rootKeypairPath = path.join(this.pkiPath, 'root_keypair');
-      const rootCertificatePath = path.join(this.pkiPath, 'root_certificate');
-      if (this.pkiFs.existsSync(rootKeypairPath) && this.pkiFs.existsSync(rootCertificatePath)) {
-        this.rootKeypair = this.jsonToKeyPair(this.pkiFs.readFileSync(rootKeypairPath).toString());
-        this.rootCertificate = pki.certificateFromPem(this.pkiFs.readFileSync(rootCertificatePath).toString());
-      } else {
-        // create the keypair and cert if it doesn't exist
-        const tlsCredentials = this.createTLSCredentials(undefined, true);
-        this.rootKeypair = {
-          privateKey: pki.privateKeyFromPem(tlsCredentials.keypair.private),
-          publicKey: pki.publicKeyFromPem(tlsCredentials.keypair.public),
-        };
-        this.rootCertificate = pki.certificateFromPem(tlsCredentials.certificate);
-      }
 
       // load keypair and certificate
       const keypairPath = path.join(this.pkiPath, 'keypair');
       const certificatePath = path.join(this.pkiPath, 'certificate');
-      if (this.pkiFs.existsSync(keypairPath) && this.pkiFs.existsSync(certificatePath)) {
+    if (this.pkiFs.existsSync(keypairPath) && this.pkiFs.existsSync(certificatePath)) {
         this.keypair = this.jsonToKeyPair(this.pkiFs.readFileSync(keypairPath).toString());
         this.certificate = pki.certificateFromPem(this.pkiFs.readFileSync(certificatePath).toString());
       } else {
@@ -486,7 +460,11 @@ class PublicKeyInfrastructure {
         );
       } else {
         // create the certificate chain if it doesn't exist
-        this.certificateChain = [this.rootCertificate];
+        if (this.getLocalPeerInfo()) {
+          this.certificateChain = [this.RootCertificate];
+        } else {
+          this.certificateChain = []
+        }
       }
 
       // CA store
@@ -505,21 +483,15 @@ class PublicKeyInfrastructure {
 
   private writeMetadata(): void {
     if (this.pkiFs) {
-      // write keypairs
+      // write keypair and certificate
       this.pkiFs.writeFileSync(path.join(this.pkiPath, 'keypair'), Buffer.from(this.keyPairToJSON(this.keypair)));
-      this.pkiFs.writeFileSync(
-        path.join(this.pkiPath, 'root_keypair'),
-        Buffer.from(this.keyPairToJSON(this.rootKeypair)),
-      );
-
-      // write certificates
       if (this.certificate) {
         this.pkiFs.writeFileSync(
           path.join(this.pkiPath, 'certificate'),
           Buffer.from(pki.certificateToPem(this.certificate)),
         );
       }
-      this.pkiFs.writeFileSync(path.join(this.pkiPath, 'root_certificate'), Buffer.from(this.RootCert));
+      // write certificate chain
       this.pkiFs.writeFileSync(
         path.join(this.pkiPath, 'certificate_chain'),
         Buffer.from(JSON.stringify(this.CertChain)),

@@ -5,8 +5,8 @@ import KeyManager from './keys/KeyManager';
 import PeerManager from './peers/PeerManager';
 import VaultManager from './vaults/VaultManager';
 import PolykeyAgent from './agent/PolykeyAgent';
-import PeerInfo, { Address } from './peers/PeerInfo';
 import { promisifyGrpc } from './bin/utils';
+import { PeerInfo, PeerInfoReadOnly, Address } from './peers/PeerInfo';
 
 class Polykey {
   polykeyPath: string;
@@ -39,7 +39,7 @@ class Polykey {
         fileSystem,
         this.keyManager,
         this.peerManager.connectToPeer.bind(this.peerManager),
-        this.peerManager.setGitHandler.bind(this.peerManager),
+        this.peerManager.setGitHandlers.bind(this.peerManager),
       );
 
     // start the api
@@ -47,11 +47,11 @@ class Polykey {
       ((apiAddress: Address) => {
         this.peerManager.peerInfo.apiAddress = apiAddress;
       }).bind(this),
-      ((csr: string) => this.keyManager.pki.handleCSR(csr)).bind(this),
-      (() => this.keyManager.pki.RootCert).bind(this),
-      (() => this.keyManager.pki.CertChain).bind(this),
-      (() => this.keyManager.pki.createServerCredentials()).bind(this),
-      (() => this.vaultManager.getVaultNames()).bind(this),
+      this.peerManager.pki.handleCSR.bind(this.peerManager.pki),
+      (() => this.peerManager.pki.RootCertificatePem).bind(this),
+      (() => this.peerManager.pki.CertChain).bind(this),
+      this.peerManager.pki.createServerCredentials.bind(this.peerManager.pki),
+      this.vaultManager.getVaultNames.bind(this.vaultManager),
       ((vaultName: string) => this.vaultManager.newVault(vaultName)).bind(this),
       ((vaultName: string) => this.vaultManager.deleteVault(vaultName)).bind(this),
       ((vaultName: string) => {
@@ -84,4 +84,14 @@ class Polykey {
   }
 }
 
-export { Polykey, KeyManager, VaultManager, PeerManager, PolykeyAgent, PeerInfo, Address, promisifyGrpc };
+export default Polykey
+export {
+  KeyManager,
+  VaultManager,
+  PeerManager,
+  PeerInfo,
+  PeerInfoReadOnly,
+  PolykeyAgent,
+  Address,
+  promisifyGrpc
+};

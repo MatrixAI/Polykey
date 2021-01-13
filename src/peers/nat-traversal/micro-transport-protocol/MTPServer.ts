@@ -4,7 +4,7 @@ import dgram from 'dgram';
 import { EventEmitter } from 'events';
 import { Address } from '../../PeerInfo';
 import MTPConnection from './MTPConnection';
-import { PACKET_SYN, MIN_PACKET_SIZE, bufferToPacket } from './utils';
+import { PACKET_SYN, MIN_PACKET_SIZE, bufferToPacket, uint16 } from './utils';
 import { promisify } from 'util';
 
 class MTPServer extends EventEmitter {
@@ -12,7 +12,7 @@ class MTPServer extends EventEmitter {
   closed: boolean;
 
   // peerId -> connection
-  incomingConnections: Map<string, MTPConnection>;
+  private incomingConnections: Map<string, MTPConnection>;
   tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>;
 
   constructor(
@@ -25,6 +25,13 @@ class MTPServer extends EventEmitter {
     this.on('connection', handleIncomingConnection);
 
     this.incomingConnections = new Map();
+  }
+
+  // this is the udp address for the MTP server
+  remoteAddress() {
+    const address = this.address()
+    address.updateHost(process.env.PK_PEER_HOST ?? '0.0.0.0')
+    return address;
   }
 
   // this is the udp address for the MTP server
@@ -49,10 +56,12 @@ class MTPServer extends EventEmitter {
   }
 
   // or listen on a port
-  listenPort(port: number, onListening: (address: Address) => void) {
+  listenPort(port: number, host: string, onListening: (address: Address) => void) {
     const socket = dgram.createSocket('udp4');
     this.listenSocket(socket, onListening);
-    socket.bind(port);
+    console.log(port);
+
+    socket.bind(port, host);
   }
 
   close() {
@@ -115,24 +124,45 @@ class MTPServer extends EventEmitter {
 
     const packet = bufferToPacket(message);
 
-    // // not sure if this id is required but it has now been replaced with peerId pending further testing:
-    // const id = rinfo.address + ':' + (packet.id === PACKET_SYN ? uint16(packet.connection + 1) : packet.connection);
 
-    const peerId = packet.getPeerid();
-    if (this.incomingConnections.has(peerId) && this.incomingConnections.get(peerId)) {
-      return this.incomingConnections.get(peerId)!.recvIncoming(packet);
+
+
+    var id = rinfo.address + ':' + (packet.getId() === PACKET_SYN ? uint16(packet.getConnection() + 1) : packet.getConnection());
+    if (this.incomingConnections.has(id)) {
+      return this.incomingConnections.get(id)!.recvIncoming(packet);
     }
     if (packet.getId() !== PACKET_SYN || this.closed) {
       return;
     }
-
+    const peerId = packet.getPeerid();
     const newConnection = new MTPConnection(peerId, rinfo.port, rinfo.address, this.socket, packet);
-    this.incomingConnections.set(peerId, newConnection);
+    this.incomingConnections.set(id, newConnection);
     newConnection.on('close', () => {
-      this.incomingConnections.delete(peerId);
+      this.incomingConnections.delete(id);
     });
 
     this.emit('connection', newConnection);
+
+
+
+
+    // // // not sure if this id is required but it has now been replaced with peerId pending further testing:
+    // // const id = rinfo.address + ':' + (packet.id === PACKET_SYN ? uint16(packet.connection + 1) : packet.connection);
+    // const peerId = packet.getPeerid();
+    // if (this.incomingConnections.has(peerId) && this.incomingConnections.get(peerId)) {
+    //   // return this.incomingConnections.get(peerId)!.recvIncoming(packet);
+    // }
+    // if (packet.getId() !== PACKET_SYN || this.closed) {
+    //   return;
+    // }
+
+    // const newConnection = new MTPConnection(peerId, rinfo.port, rinfo.address, this.socket, packet);
+    // this.incomingConnections.set(peerId, newConnection);
+    // newConnection.on('close', () => {
+    //   this.incomingConnections.delete(peerId);
+    // });
+
+    // this.emit('connection', newConnection);
   }
 }
 

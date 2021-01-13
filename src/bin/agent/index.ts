@@ -175,7 +175,6 @@ commandAgentStatus.action(
       const res = (await promisifyGrpc(client.getStatus.bind(client))(
         new agentPB.EmptyMessage(),
       )) as agentPB.AgentStatusMessage;
-
       const status = res.getStatus();
       const statusString = Object.keys(agentPB.AgentStatusType).find(
         (k) => agentPB.AgentStatusType[k] === status,
@@ -243,12 +242,13 @@ commandInitNode.option(
 );
 commandInitNode.option('-b, --background', 'start the agent as a background process', false);
 commandInitNode.requiredOption(
-  '-ui, --user-id <userId>',
-  '(required) provide an identifier for the keypair to be generated',
-);
-commandInitNode.requiredOption(
   '-pp, --private-passphrase <privatePassphrase>',
   '(required) provide the passphrase to the private key',
+);
+commandInitNode.option(
+  '-nb, --nbits <nbits>',
+  '(optional) number of bits to go into the rsa keypair generation',
+  '4096'
 );
 commandInitNode.action(
   actionRunner(async (options) => {
@@ -263,8 +263,8 @@ commandInitNode.action(
     );
 
     const request = new agentPB.NewKeyPairMessage();
-    request.setUserid(options.userId);
     request.setPassphrase(options.privatePassphrase);
+    request.setNbits(options.nbits);
     await promisifyGrpc(client.initializeNode.bind(client))(request);
 
     pkLogger.logV2(

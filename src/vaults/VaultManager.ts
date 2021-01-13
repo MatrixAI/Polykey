@@ -15,9 +15,13 @@ class VaultManager {
   private fileSystem: typeof fs;
   private keyManager: KeyManager;
   private connectToPeer: (peerId: string) => PeerConnection;
-  private setGitHandler: (handler: (request: Uint8Array, peerId: string) => Promise<Uint8Array>) => void;
-
+  private setGitHandlers: (
+    handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>,
+    handleGitPackRequest: (vaultName: string, body: Buffer) => Promise<Uint8Array>,
+    handleGetVaultNames: () => Promise<string[]>,
+  ) => void
   private metadataPath: string;
+  private metadataBackupPath: string;
   private vaults: Map<string, Vault>;
   private vaultKeys: Map<string, Buffer>;
 
@@ -38,15 +42,20 @@ class VaultManager {
     fileSystem: typeof fs,
     keyManager: KeyManager,
     connectToPeer: (peerId: string) => PeerConnection,
-    setGitHandler: (handler: (request: Uint8Array, peerId: string) => Promise<Uint8Array>) => void,
+    setGitHandlers: (
+      handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>,
+      handleGitPackRequest: (vaultName: string, body: Buffer) => Promise<Uint8Array>,
+      handleGetVaultNames: () => Promise<string[]>,
+    ) => void,
   ) {
     // class variables
     this.polykeyPath = polykeyPath;
     this.fileSystem = fileSystem;
     this.keyManager = keyManager;
     this.connectToPeer = connectToPeer;
-    this.setGitHandler = setGitHandler;
+    this.setGitHandlers = setGitHandlers;
     this.metadataPath = path.join(polykeyPath, '.vaultKeys');
+    this.metadataBackupPath = path.join(polykeyPath, '.vaultKeysBackup');
 
     // Make polykeyPath if it doesn't exist
     this.fileSystem.mkdirSync(this.polykeyPath, { recursive: true });
@@ -62,7 +71,11 @@ class VaultManager {
     );
     this.gitFrontend = new GitFrontend(this.connectToPeer.bind(this));
 
-    this.setGitHandler(this.gitBackend.handleGitMessage.bind(this.gitBackend));
+    this.setGitHandlers(
+      this.gitBackend.handleInfoRequest.bind(this.gitBackend),
+      this.gitBackend.handlePackRequest.bind(this.gitBackend),
+      this.getVaultNames.bind(this),
+    );
 
     // Read in vault keys
     this.loadEncryptedMetadata();
@@ -115,8 +128,7 @@ class VaultManager {
       this.vaults.set(vaultName, vault);
       return vault;
     } else {
-      const error = Error(`vault does not exist in memory: '${vaultName}'`);
-      throw error;
+      throw Error(`vault does not exist in memory: '${vaultName}'`);
     }
   }
 
@@ -135,12 +147,13 @@ class VaultManager {
     try {
       const vaultPath = path.join(this.polykeyPath, vaultName);
       // Directory not present, create one
+      this.fileSystem.rmdirSync(vaultPath, { recursive: true });
       this.fileSystem.mkdirSync(vaultPath, { recursive: true });
       // Create key if not provided
       let vaultKey: Buffer;
       if (!key) {
         // Generate new key
-        vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey(), false);
+        vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKeyString(), false);
       } else {
         // Assign key if it is provided
         vaultKey = key;
@@ -211,6 +224,11 @@ class VaultManager {
       throw Error('Vault name already exists locally, try pulling instead');
     }
 
+    const vaultPath = path.join(this.polykeyPath, vaultName);
+    // Directory not present, create one
+    this.fileSystem.rmdirSync(vaultPath, { recursive: true });
+    this.fileSystem.mkdirSync(vaultPath, { recursive: true });
+
     const vaultUrl = `http://0.0.0.0/${vaultName}`;
 
     // First check if it exists on remote
@@ -227,7 +245,7 @@ class VaultManager {
 
     // Create new efs first
     // Generate new key
-    const vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKey());
+    const vaultKey = await this.keyManager.generateKey(`${vaultName}-Key`, this.keyManager.getPrivateKeyString());
 
     // Set filesystem
     const vfsInstance = new (require('virtualfs').VirtualFS)();
@@ -282,7 +300,7 @@ class VaultManager {
    */
   vaultExists(vaultName: string): boolean {
     const vaultPath = path.join(this.polykeyPath, vaultName);
-    const vaultExists = this.fileSystem.existsSync(vaultPath);
+    const vaultExists = this.fileSystem.existsSync(vaultPath) && this.vaultKeys.has(vaultName);
 
     return vaultExists;
   }
@@ -338,8 +356,10 @@ class VaultManager {
   private async writeEncryptedMetadata(): Promise<void> {
     const release = await this.metadataMutex.acquire();
     const metadata = JSON.stringify([...this.vaultKeys]);
-    const encryptedMetadata = await this.keyManager.encryptData(Buffer.from(metadata));
+    const encryptedMetadata = await this.keyManager.encryptData(metadata);
     await this.fileSystem.promises.writeFile(this.metadataPath, encryptedMetadata);
+    // write metadata using mnemonic provided by KeyManager
+    await this.keyManager.writeFileWithMnemonic(this.metadataBackupPath, Buffer.from(metadata))
     release();
   }
 
@@ -347,8 +367,8 @@ class VaultManager {
     const release = await this.metadataMutex.acquire();
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath) && this.keyManager.KeypairUnlocked) {
-      const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath);
-      const metadata = (await this.keyManager.decryptData(encryptedMetadata)).toString();
+      const encryptedMetadata = this.fileSystem.readFileSync(this.metadataPath).toString();
+      const metadata = await this.keyManager.decryptData(encryptedMetadata);
 
       for (const [key, value] of new Map<string, any>(JSON.parse(metadata))) {
         this.vaultKeys.set(key, Buffer.from(value));
@@ -357,7 +377,7 @@ class VaultManager {
       for (const [vaultName, vaultKey] of this.vaultKeys.entries()) {
         const vaultPath = path.join(this.polykeyPath, vaultName);
 
-        if (this.fileSystem.existsSync(vaultPath)) {
+        if (this.fileSystem.existsSync(vaultPath) && this.vaultKeys.has(vaultName)) {
           const vault = new Vault(vaultName, vaultKey, this.polykeyPath, this.gitFrontend);
           this.vaults.set(vaultName, vault);
         }

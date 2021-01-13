@@ -1,10 +1,10 @@
+import fs from 'fs';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 import { PassThrough } from 'readable-stream';
 import uploadPack from './upload-pack/uploadPack';
 import GitSideBand from './side-band/GitSideBand';
 import packObjects from './pack-objects/packObjects';
-import * as gitInterface from '../../proto/js/Git_pb';
 
 // Here is the protocol git outlines for sending pack files over http:
 // https://git-scm.com/docs/pack-protocol/2.17.0
@@ -29,52 +29,6 @@ class GitBackend {
     this.repoDirectoryPath = repoDirectoryPath;
     this.getFileSystem = getFileSystem;
     this.getVaultNames = getVaultNames;
-  }
-
-  async handleGitMessage(request: Uint8Array, peerId: string): Promise<Uint8Array> {
-    const decodedRequest = gitInterface.GitMessage.deserializeBinary(request);
-    const type = decodedRequest.getType()
-    const subMessage = decodedRequest.getSubmessage_asU8()
-    let response: Uint8Array;
-    switch (type) {
-      case gitInterface.GitMessageType.INFO:
-        {
-          const decodedSubMessage = gitInterface.InfoRequest.deserializeBinary(subMessage)
-          const vaultName = decodedSubMessage.getVaultname()
-          const encodedResponse = new gitInterface.InfoReply
-          encodedResponse.setVaultname(vaultName)
-          encodedResponse.setBody(await this.handleInfoRequest(vaultName))
-          response = encodedResponse.serializeBinary()
-        }
-        break;
-      case gitInterface.GitMessageType.PACK:
-        {
-          const decodedSubMessage = gitInterface.PackRequest.deserializeBinary(subMessage)
-          const vaultName = decodedSubMessage.getVaultname()
-          const body = decodedSubMessage.getBody_asU8()
-          const encodedResponse = new gitInterface.PackReply
-          encodedResponse.setVaultname(vaultName)
-          encodedResponse.setBody(await this.handlePackRequest(vaultName, Buffer.from(body)))
-          response = encodedResponse.serializeBinary()
-        }
-        break;
-      case gitInterface.GitMessageType.VAULT_NAMES:
-        {
-          const encodedResponse = new gitInterface.VaultNamesReply
-          encodedResponse.setVaultNameListList(await this.handleVaultNamesRequest(peerId))
-          response = encodedResponse.serializeBinary()
-        }
-        break;
-      default: {
-        throw Error('git message type not supported');
-      }
-    }
-    // encode a git response
-    const encodedResponse = new gitInterface.GitMessage
-    encodedResponse.setType(type)
-    encodedResponse.setSubmessage(response)
-    const gitResponse = encodedResponse.serializeBinary()
-    return gitResponse;
   }
 
   async handleInfoRequest(repoName: string): Promise<Buffer> {
@@ -102,44 +56,48 @@ class GitBackend {
   async handlePackRequest(repoName: string, body: Buffer): Promise<Buffer> {
     // eslint-disable-next-line
     return new Promise<Buffer>(async (resolve, reject) => {
-      const responseBuffers: Buffer[] = [];
+      try {
+        const responseBuffers: Buffer[] = [];
+        const fileSystem = this.getFileSystem(repoName);
+        // Check if repo exists
+        if (!fs.existsSync(path.join(this.repoDirectoryPath, repoName))) {
+          throw  Error(`repository does not exist: '${repoName}'`);
+        }
 
-      const fileSystem = this.getFileSystem(repoName);
+        if (body.toString().slice(4, 8) == 'want') {
+          const wantedObjectId = body.toString().slice(9, 49);
+          const packResult = await packObjects(
+            fileSystem,
+            path.join(this.repoDirectoryPath, repoName),
+            [wantedObjectId],
+            undefined,
+          );
 
-      // Check if repo exists
-      if (!fileSystem.existsSync(path.join(this.repoDirectoryPath, repoName))) {
-        throw Error(`repository does not exist: '${repoName}'`);
-      }
+          // This the 'wait for more data' line as I understand it
+          responseBuffers.push(Buffer.from('0008NAK\n'));
 
-      if (body.toString().slice(4, 8) == 'want') {
-        const wantedObjectId = body.toString().slice(9, 49);
-        const packResult = await packObjects(
-          fileSystem,
-          path.join(this.repoDirectoryPath, repoName),
-          [wantedObjectId],
-          undefined,
-        );
+          // This is to get the side band stuff working
+          const readable = new PassThrough();
+          const progressStream = new PassThrough();
+          const sideBand = GitSideBand.mux('side-band-64', readable, packResult.packstream, progressStream, []);
+          sideBand.on('data', (data: Buffer) => {
+            responseBuffers.push(data);
+          });
+          sideBand.on('end', () => {
+            resolve(Buffer.concat(responseBuffers));
+          });
+          sideBand.on('error', (err) => {
+            reject(err);
+          });
 
-        // This the 'wait for more data' line as I understand it
-        responseBuffers.push(Buffer.from('0008NAK\n'));
-
-        // This is to get the side band stuff working
-        const readable = new PassThrough();
-        const progressStream = new PassThrough();
-        const sideBand = GitSideBand.mux('side-band-64', readable, packResult.packstream, progressStream, []);
-        sideBand.on('data', (data: Buffer) => {
-          responseBuffers.push(data);
-        });
-        sideBand.on('end', () => {
-          resolve(Buffer.concat(responseBuffers));
-        });
-        sideBand.on('error', (err) => {
-          reject(err);
-        });
-
-        // Write progress to the client
-        progressStream.write(Buffer.from('0014progress is at 50%\n'));
-        progressStream.end();
+          // Write progress to the client
+          progressStream.write(Buffer.from('0014progress is at 50%\n'));
+          progressStream.end();
+        } else {
+          throw Error("git pack request body message is not prefixed by 'want'")
+        }
+      } catch (error) {
+        reject(error)
       }
     });
   }

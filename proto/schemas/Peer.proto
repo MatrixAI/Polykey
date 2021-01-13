@@ -2,77 +2,101 @@ syntax = "proto3";
 
 package peerInterface;
 
+// need to import the peerInfo classes from Agent.proto
+import "Agent.proto";
+
 //////////////////
 // Peer Service //
 //////////////////
 service Peer {
-  rpc MessagePeer (PeerMessage) returns (PeerMessage) {};
-}
-message PeerMessage {
-  string public_key = 1;
-  SubServiceType type = 2;
-  string sub_message = 3;
-}
-enum SubServiceType {
-  PING_PEER = 0;
-  GIT = 1;
-  NAT_TRAVERSAL = 2;
-  CERTIFICATE_AUTHORITY = 3;
-  PEER_DHT = 4;
+  // general p2p stuff
+  rpc PingPeer (PingPeerMessage) returns (PingPeerMessage) {};
+
+  // git
+  rpc GetGitInfo (InfoRequest) returns (InfoReply) {};
+  rpc GetGitPack (PackRequest) returns (PackReply) {};
+  rpc GetVaultNames (agentInterface.EmptyMessage) returns (VaultNamesReply) {};
+
+  // NAT traversal
+  // the only two NAT traversal methods that are exposed via gRPC are GetUDPAddress and
+  // RequestPublicRelay. The other two (RequestDirectHolePunch and RequestHolePunch)
+  // will only be available via the UDP channels
+  rpc GetUDPAddress (agentInterface.EmptyMessage) returns (agentInterface.StringMessage) {};
+  rpc RequestPublicRelay (PublicRelayRequest) returns (PublicRelayReply) {};
+
+  // CA functionality
+  rpc GetRootCertificate (agentInterface.EmptyMessage) returns (agentInterface.StringMessage) {};
+  rpc RequestCertificateSigning (agentInterface.StringMessage) returns (agentInterface.StringMessage) {};
+
+  // DHT Functionality
+  rpc PeerDHTFindNode (PeerDHTFindNodeRequest) returns (PeerDHTFindNodeReply) {};
+
+  // This method is for public relay nodes only and by default
+  // it rejects all calls to it in order to protect private nodes
+  // from adding random peers
+  rpc AddPeerInfo (agentInterface.PeerInfoReadOnlyMessage) returns (agentInterface.EmptyMessage) {};
 }
 
 ///////////////
 // Ping Peer //
 ///////////////
 message PingPeerMessage {
-  string public_key = 1;
-  string challenge = 2;
-  PeerInfoMessage peerInfo = 3;
-}
-message PeerInfoMessage {
-  // // this certificate is supposed to be the link between x.509
-  // // and kbpgp, we cannot just break peer info up into its atomic parts
-  // // and discard this certificate because it is signed by the private
-  // // x.509 key of the specific peer and cannot be re-signed without it
-  // // (unless we are allowed to sign it again with this key?)
-  // string certificate = 1;
-  string public_key = 2;
-  string root_certificate = 3;
-  string peer_address = 4;
-  string api_address = 5;
-}
-message PeerInfoListMessage {
-  repeated PeerInfoMessage peer_info_list = 1;
+  string challenge = 1;
 }
 
-///////////
-// Error //
-///////////
-message ErrorMessage {
-  string error = 1;
+/////////
+// Git //
+/////////
+// ==== Vault Info ==== //
+message InfoRequest {
+  string vault_name = 1;
+}
+message InfoReply {
+  string vault_name = 1;
+  bytes body = 2;
+}
+
+// ==== PackRequest ==== //
+message PackRequest {
+  string vault_name = 1;
+  bytes body = 2;
+}
+message PackReply {
+  string vault_name = 1;
+  bytes body = 2;
+}
+
+// ==== VaultNamesRequest ==== //
+message VaultNamesReply {
+  repeated string vault_name_list = 1;
 }
 
 ///////////////////
 // NAT Traversal //
 ///////////////////
-enum NatMessageType {
-  UDP_ADDRESS = 0;
-  DIRECT_CONNECTION = 1;
-  HOLE_PUNCH_CONNECTION = 2;
-  RELAY_CONNECTION = 3;
+// ==== UDPAddress ==== //
+message UDPAddressResponse {
+  string address = 1;
 }
-message NatMessage {
-  NatMessageType type = 1;
-  bool is_response = 2;
-  bytes sub_message = 3;
+// ==== PublicRelay ==== //
+message PublicRelayRequest {
+  string target_peer_id = 1;
+  string origin_peer_id = 2;
+}
+message PublicRelayReply {
+  string relay_address = 3;
 }
 
-/////////////////
-// UDP Address //
-/////////////////
-message UDPAddressMessage {
-  string address = 1;
-  string token = 2;
+// ==== UDP specific messages ==== //
+enum NatUdpMessageType {
+  DIRECT_CONNECTION = 0;
+  HOLE_PUNCH_CONNECTION = 1;
+  PUBLIC_RELAY_REQUEST = 2;
+}
+message NatUdpMessage {
+  NatUdpMessageType type = 1;
+  bool is_response = 2;
+  bytes sub_message = 3;
 }
 
 ///////////////////////
@@ -81,72 +105,40 @@ message UDPAddressMessage {
 message DirectConnectionMessage {
   string peer_id = 1;
 }
-
 ///////////////////////////
 // Hole Punch Connection //
 ///////////////////////////
 message HolePunchConnectionMessage {
   string target_peer_id = 1;
   string origin_peer_id = 2;
-  string udp_address = 3;
-}
-
-//////////////////////
-// Relay Connection //
-//////////////////////
-message RelayConnectionMessage {
-  string target_peer_id = 1;
-  string origin_peer_id = 2;
-  string relay_address = 3;
-}
-
-//////////////////////
-// CA Functionality //
-//////////////////////
-enum CAMessageType {
-  ROOT_CERT = 0;
-  REQUEST_CERT = 1;
-}
-message CAMessage {
-  CAMessageType type = 1;
-  bool is_response = 2;
-  bytes sub_message = 3;
+  bool is_response = 3;
+  string udp_address = 4;
 }
 
 ///////////////////////
 // DHT Functionality //
 ///////////////////////
-enum PeerDHTMessageType {
-  PING = 0;
-  FIND_NODE = 1;
+message PeerDHTFindNodeRequest {
+  string target_peer_id = 1;
 }
-message PeerDHTMessage {
-  PeerDHTMessageType type = 1;
-  bool is_response = 2;
-  bytes sub_message = 3;
-}
-message PeerDHTPingNodeMessage {
-  string peer_id = 1;
-  string random_challenge = 2;
-}
-message PeerDHTFindNodeMessage {
-  string peer_id = 1;
-  repeated PeerInfoMessage closest_peers = 2;
+message PeerDHTFindNodeReply {
+  repeated agentInterface.PeerInfoReadOnlyMessage closest_peers = 2;
 }
 
 //////////////////////////////
 // Micro Transport Protocol //
 //////////////////////////////
+// this is only used via UDP and does not have any corresponding rpc method
 message MTPPacket {
-  int32 id = 1;
+  int64 id = 1;
   string peerId = 2;
-  int32 connection = 3;
-  int32 timestamp = 4;
-  int32 timediff = 5;
-  int32 window = 6;
-  int32 seq = 7;
-  int32 ack = 8;
+  int64 connection = 3;
+  int64 timestamp = 4;
+  int64 timediff = 5;
+  int64 window = 6;
+  int64 seq = 7;
+  int64 ack = 8;
   bytes data = 9;
-  int32 sent = 10;
+  int64 sent = 10;
 }
 
