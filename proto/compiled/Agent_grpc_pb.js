@@ -92,6 +92,17 @@ function deserialize_agentInterface_EncryptFileMessage(buffer_arg) {
   return Agent_pb.EncryptFileMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_GestaltIdentityMessage(arg) {
+  if (!(arg instanceof Agent_pb.GestaltIdentityMessage)) {
+    throw new Error('Expected argument of type agentInterface.GestaltIdentityMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_GestaltIdentityMessage(buffer_arg) {
+  return Agent_pb.GestaltIdentityMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_KeyPairMessage(arg) {
   if (!(arg instanceof Agent_pb.KeyPairMessage)) {
     throw new Error('Expected argument of type agentInterface.KeyPairMessage');
@@ -167,6 +178,17 @@ function serialize_agentInterface_PeerInfoMessage(arg) {
 
 function deserialize_agentInterface_PeerInfoMessage(buffer_arg) {
   return Agent_pb.PeerInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_PolykeyProofMessage(arg) {
+  if (!(arg instanceof Agent_pb.PolykeyProofMessage)) {
+    throw new Error('Expected argument of type agentInterface.PolykeyProofMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_PolykeyProofMessage(buffer_arg) {
+  return Agent_pb.PolykeyProofMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_RenameVaultMessage(arg) {
@@ -399,11 +421,11 @@ var AgentService = exports.AgentService = {
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.ContactPeerMessage,
-    responseType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.StringListMessage,
     requestSerialize: serialize_agentInterface_ContactPeerMessage,
     requestDeserialize: deserialize_agentInterface_ContactPeerMessage,
-    responseSerialize: serialize_agentInterface_EmptyMessage,
-    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_StringListMessage,
+    responseDeserialize: deserialize_agentInterface_StringListMessage,
   },
   getOAuthClient: {
     path: '/agentInterface.Agent/GetOAuthClient',
@@ -636,6 +658,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
+  proveKeynode: {
+    path: '/agentInterface.Agent/ProveKeynode',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.GestaltIdentityMessage,
+    responseType: Agent_pb.PolykeyProofMessage,
+    requestSerialize: serialize_agentInterface_GestaltIdentityMessage,
+    requestDeserialize: deserialize_agentInterface_GestaltIdentityMessage,
+    responseSerialize: serialize_agentInterface_PolykeyProofMessage,
+    responseDeserialize: deserialize_agentInterface_PolykeyProofMessage,
+  },
   pullVault: {
     path: '/agentInterface.Agent/PullVault',
     requestStream: false,
@@ -712,17 +745,6 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_SignFileMessage,
     responseSerialize: serialize_agentInterface_StringMessage,
     responseDeserialize: deserialize_agentInterface_StringMessage,
-  },
-  socialProof: {
-    path: '/agentInterface.Agent/SocialProof',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.EmptyMessage,
-    responseType: Agent_pb.PeerInfoMessage,
-    requestSerialize: serialize_agentInterface_EmptyMessage,
-    requestDeserialize: deserialize_agentInterface_EmptyMessage,
-    responseSerialize: serialize_agentInterface_PeerInfoMessage,
-    responseDeserialize: deserialize_agentInterface_PeerInfoMessage,
   },
   stopAgent: {
     path: '/agentInterface.Agent/StopAgent',

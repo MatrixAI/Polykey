@@ -426,7 +426,7 @@ class KeyManager {
    * Loads an identity from the given public key
    * @param publicKey Buffer containing the public key
    */
-  async getIdentityFromPublicKey(publicKey: Buffer): Promise<Record<string, any>> {
+  static async getIdentityFromPublicKey(publicKey: Buffer): Promise<any> {
     const identity = await promisify(kbpgp.KeyManager.import_from_armored_pgp)({ armored: publicKey });
     return identity;
   }
@@ -435,7 +435,7 @@ class KeyManager {
    * Loads an identity from the given private key
    * @param publicKey Buffer containing the public key
    */
-  async getIdentityFromPrivateKey(privateKey: Buffer, passphrase: string): Promise<Record<string, any>> {
+  static async getIdentityFromPrivateKey(privateKey: Buffer, passphrase: string): Promise<any> {
     const identity = await promisify(kbpgp.KeyManager.import_from_armored_pgp)({ armored: privateKey });
     if (identity.is_pgp_locked()) {
       await promisify(identity.unlock_pgp.bind(identity))({ passphrase });
@@ -455,7 +455,7 @@ class KeyManager {
       if (!keyPassphrase) {
         throw Error('passphrase for private key was not provided');
       }
-      resolvedIdentity = await this.getIdentityFromPrivateKey(privateKey, keyPassphrase!);
+      resolvedIdentity = await KeyManager.getIdentityFromPrivateKey(privateKey, keyPassphrase!);
     } else if (this.primaryIdentity) {
       resolvedIdentity = this.primaryIdentity;
     } else {
@@ -516,7 +516,7 @@ class KeyManager {
     const ring = new kbpgp.keyring.KeyRing();
     let resolvedIdentity: any;
     if (publicKey) {
-      resolvedIdentity = await this.getIdentityFromPublicKey(publicKey);
+      resolvedIdentity = await KeyManager.getIdentityFromPublicKey(publicKey);
     } else if (this.primaryIdentity) {
       resolvedIdentity = this.primaryIdentity;
     } else {
@@ -593,7 +593,7 @@ class KeyManager {
   async encryptData(data: Buffer, publicKey?: Buffer): Promise<Buffer> {
     let resolvedIdentity: Record<string, any>;
     if (publicKey) {
-      resolvedIdentity = await this.getIdentityFromPublicKey(publicKey);
+      resolvedIdentity = await KeyManager.getIdentityFromPublicKey(publicKey);
     } else if (this.primaryIdentity) {
       resolvedIdentity = this.primaryIdentity;
     } else {
@@ -652,7 +652,7 @@ class KeyManager {
     let resolvedIdentity: Record<string, any>;
     if (privateKey) {
       if (keyPassphrase) {
-        resolvedIdentity = await this.getIdentityFromPrivateKey(privateKey, keyPassphrase);
+        resolvedIdentity = await KeyManager.getIdentityFromPrivateKey(privateKey, keyPassphrase);
       } else {
         throw Error('A key passphrase must be supplied if a privateKey is specified');
       }

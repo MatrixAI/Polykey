@@ -15,7 +15,7 @@ service Agent {
   rpc DeriveKeyPair (DeriveKeyPairMessage) returns (EmptyMessage) {};
   rpc EncryptFile (EncryptFileMessage) returns (StringMessage) {};
   rpc FindPeer (ContactPeerMessage) returns (EmptyMessage) {};
-  rpc FindSocialPeer (ContactPeerMessage) returns (EmptyMessage) {};
+  rpc FindSocialPeer (ContactPeerMessage) returns (StringListMessage) {};
   rpc GetOAuthClient (EmptyMessage) returns (OAuthClientMessage) {};
   rpc GetKey (StringMessage) returns (StringMessage) {};
   rpc GetLocalPeerInfo (EmptyMessage) returns (PeerInfoMessage) {};
@@ -37,6 +37,7 @@ service Agent {
   rpc NewOAuthToken (NewOAuthTokenMessage) returns (StringMessage) {};
   rpc NewVault (StringMessage) returns (EmptyMessage) {};
   rpc PingPeer (ContactPeerMessage) returns (EmptyMessage) {};
+  rpc ProveKeynode (GestaltIdentityMessage) returns (PolykeyProofMessage) {};
   rpc PullVault (VaultPathMessage) returns (EmptyMessage) {};
   rpc RenameVault (RenameVaultMessage) returns (EmptyMessage) {};
   rpc RevokeOAuthToken (StringMessage) returns (EmptyMessage) {};
@@ -44,7 +45,6 @@ service Agent {
   rpc SetAlias (PeerAliasMessage) returns (EmptyMessage) {};
   rpc ShareVault (ShareVaultMessage) returns (EmptyMessage) {};
   rpc SignFile (SignFileMessage) returns (StringMessage) {};
-  rpc SocialProof (EmptyMessage) returns (PeerInfoMessage) {};
   rpc StopAgent (EmptyMessage) returns (EmptyMessage) {};
   rpc ToggleStealthMode (BooleanMessage) returns (EmptyMessage) {};
   rpc UnlockNode (UnlockNodeMessage) returns (EmptyMessage) {};
@@ -214,3 +214,18 @@ message ShareVaultMessage {
   string vault_name = 2;
   bool can_edit = 3;
 }
+// === PolykeyProof === //
+enum PolykeyProofType {
+  AUTOMATIC = 0;
+  MANUAL = 1;
+}
+message PolykeyProofMessage {
+  PolykeyProofType type = 1;
+  string instructions = 2;
+  string proof = 3;
+}
+message GestaltIdentityMessage {
+  string identity_provider_name = 1;
+  string identifier = 2;
+}
+

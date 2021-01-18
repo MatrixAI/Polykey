@@ -315,23 +315,17 @@ class PolykeyAgent implements IAgentServer {
   }
 
   async findSocialPeer(
-    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.EmptyMessage>,
-    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.StringListMessage>,
+    callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
     this.noThrowRefreshTimeout();
     try {
       this.failOnLocked();
       const { publicKeyOrHandle, timeout } = call.request!.toObject();
-      // eslint-disable-next-line
-      const usernameRegex = /^\@([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/;
-      const matches = publicKeyOrHandle.match(usernameRegex)!;
-      const service = matches[1]!;
-      const handle = matches[2]!;
-      const successful = await this.pk.peerManager.findSocialUser(handle, service, timeout);
-      if (!successful) {
-        throw Error('peer did not respond to ping before timeout');
-      }
-      callback(null, new agent.EmptyMessage());
+      const peerIdList = await this.pk.peerManager.findGestaltKeynodes(publicKeyOrHandle, timeout);
+      const response = new agent.StringListMessage
+      response.setSList(peerIdList)
+      callback(null, response);
     } catch (error) {
       callback(error, null);
     }
@@ -751,6 +745,26 @@ class PolykeyAgent implements IAgentServer {
         throw Error('peer did not respond to ping before timeout');
       }
       callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async proveKeynode(
+    call: grpc.ServerUnaryCall<agent.GestaltIdentityMessage, agent.PolykeyProofMessage>,
+    callback: grpc.sendUnaryData<agent.PolykeyProofMessage>,
+  ) {
+    this.noThrowRefreshTimeout();
+    try {
+      this.failOnLocked();
+      const { identityProviderName, identifier } = call.request!.toObject();
+      const {type, instructions, proof} = await this.pk.peerManager.proveKeynode(identityProviderName, identifier)
+
+      const response = new agent.PolykeyProofMessage
+      response.setType(type)
+      response.setInstructions(instructions)
+      response.setProof(proof)
+      callback(null, response);
     } catch (error) {
       callback(error, null);
     }
