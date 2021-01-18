@@ -6,9 +6,9 @@ import OAuth2Store, { AccessToken, AuthorizationCode, Client } from './OAuth2Sto
 const suppressTrace = process.env.OAUTHRECIPES_SURPRESS_TRACE === 'true';
 
 class Validation {
-  store: OAuth2Store
+  store: OAuth2Store;
   constructor(store: OAuth2Store) {
-    this.store = store
+    this.store = store;
   }
 
   user(user, password) {
@@ -17,32 +17,32 @@ class Validation {
       throw Error('User password does not match');
     }
     return user;
-  };
+  }
 
   userExists(user) {
     if (user == null) {
       throw Error('User does not exist');
     }
     return user;
-  };
+  }
 
   clientExists(client) {
     if (client == null) {
       throw Error('Client does not exist');
     }
     return client;
-  };
+  }
 
   refreshToken(token, refreshToken, client) {
-    utils.verifyToken(refreshToken, this.store.publicKey)
+    utils.verifyToken(refreshToken, this.store.publicKey);
     if (client.id !== token.clientID) {
       throw Error('RefreshToken clientID does not match client id given');
     }
     return token;
-  };
+  }
 
   authCode(code: string, authCode: AuthorizationCode, client: Client, redirectURI: string) {
-    utils.verifyToken(code, this.store.publicKey)
+    utils.verifyToken(code, this.store.publicKey);
     if (client.id !== authCode.clientId) {
       throw Error('AuthCode clientID does not match client id given');
     }
@@ -50,7 +50,7 @@ class Validation {
       throw Error('AuthCode redirectURI does not match redirectURI given');
     }
     return authCode;
-  };
+  }
 
   isRefreshToken(authCode: AuthorizationCode) {
     return authCode != null && authCode.scope.indexOf('offline_access') === 0;
@@ -59,40 +59,38 @@ class Validation {
   generateRefreshToken(authCode: AuthorizationCode) {
     const refreshToken = utils.createToken(this.store.privateKey, config.refreshToken.expiresIn, authCode.userId);
     const expiration = config.token.calculateExpirationDate();
-    return this.store.saveRefreshToken(refreshToken, expiration, authCode.clientId, authCode.userId, authCode.scope).token
-  };
+    return this.store.saveRefreshToken(refreshToken, expiration, authCode.clientId, authCode.userId, authCode.scope)
+      .token;
+  }
 
   generateToken(authCode: AuthorizationCode) {
-    const token = utils.createToken(this.store.privateKey,config.token.expiresIn, authCode.userId);
+    const token = utils.createToken(this.store.privateKey, config.token.expiresIn, authCode.userId);
     const expiration = config.token.calculateExpirationDate();
-    return this.store.saveAccessToken(token, expiration, authCode.userId, authCode.clientId, authCode.scope).token
-  };
+    return this.store.saveAccessToken(token, expiration, authCode.userId, authCode.clientId, authCode.scope).token;
+  }
 
   generateTokens(authCode: AuthorizationCode) {
     if (this.isRefreshToken(authCode)) {
-      return Promise.all([
-        this.generateToken(authCode),
-        this.generateRefreshToken(authCode),
-      ]);
+      return Promise.all([this.generateToken(authCode), this.generateRefreshToken(authCode)]);
     }
     return Promise.all([this.generateToken(authCode)]);
-  };
+  }
 
   tokenForHttp(token: string) {
     try {
-      utils.verifyToken(token, this.store.publicKey)
+      utils.verifyToken(token, this.store.publicKey);
     } catch (error) {
-      throw Error('invalid_token')
+      throw Error('invalid_token');
     }
     try {
-      const accessToken = this.store.getAccessToken(token)
-      return accessToken
-    } catch (err) { }
+      const accessToken = this.store.getAccessToken(token);
+      return accessToken;
+    } catch (err) {}
     try {
-      const accessToken = this.store.getRefreshToken(token)
-      return accessToken
-    } catch (err) { }
-    throw Error('token not found')
+      const accessToken = this.store.getRefreshToken(token);
+      return accessToken;
+    } catch (err) {}
+    throw Error('token not found');
   }
 
   /**
@@ -107,8 +105,7 @@ class Validation {
       throw Error('invalid_token');
     }
     return token;
-  };
-
+  }
 
   /**
    * Given a client this will return the client if it is not null. Otherwise this will throw a
@@ -122,7 +119,7 @@ class Validation {
       throw Error('invalid_token');
     }
     return client;
-  };
+  }
 }
 
-export default Validation
+export default Validation;

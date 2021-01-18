@@ -6,6 +6,7 @@ import PeerManager from './peers/PeerManager';
 import VaultManager from './vaults/VaultManager';
 import PolykeyAgent from './agent/PolykeyAgent';
 import PeerInfo, { Address } from './peers/PeerInfo';
+import { promisifyGrpc } from './bin/utils';
 
 class Polykey {
   polykeyPath: string;
@@ -16,7 +17,7 @@ class Polykey {
   httpApi: HttpApi;
 
   constructor(
-    polykeyPath: string = `${os.homedir()}/.polykey`,
+    polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager?: KeyManager,
     peerManager?: PeerManager,
@@ -67,10 +68,10 @@ class Polykey {
       }).bind(this),
       (async (vaultName: string, secretName: string) => {
         const vault = this.vaultManager.getVault(vaultName);
-        await vault.removeSecret(secretName);
+        await vault.deleteSecret(secretName);
       }).bind(this),
     );
   }
 }
 
-export { Polykey, KeyManager, VaultManager, PeerManager, PolykeyAgent, PeerInfo, Address };
+export { Polykey, KeyManager, VaultManager, PeerManager, PolykeyAgent, PeerInfo, Address, promisifyGrpc };

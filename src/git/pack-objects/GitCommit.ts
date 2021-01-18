@@ -1,3 +1,4 @@
+/* eslint-disable */
 // The amount of work that went into crafting these cases to handle
 // -0 (just so we don't lose that information when parsing and reconstructing)
 // but can also default to +0 was extraordinary.
@@ -11,9 +12,9 @@ function negateExceptForZero(n) {
 }
 
 function formatTimezoneOffset(minutes) {
-  let sign = simpleSign(negateExceptForZero(minutes));
+  const sign = simpleSign(negateExceptForZero(minutes));
   minutes = Math.abs(minutes);
-  let hours = Math.floor(minutes / 60);
+  const hours = Math.floor(minutes / 60);
   minutes -= hours * 60;
   let strHours = String(hours);
   let strMinutes = String(minutes);
@@ -29,7 +30,7 @@ function parseTimezoneOffset(offset) {
 }
 
 function parseAuthor(author) {
-  let [, name, email, timestamp, offset] = author.match(/^(.*) <(.*)> (.*) (.*)$/);
+  const [, name, email, timestamp, offset] = author.match(/^(.*) <(.*)> (.*) (.*)$/);
   return {
     name: name,
     email: email,
@@ -82,9 +83,9 @@ class GitCommit {
   }
 
   static fromPayloadSignature({ payload, signature }) {
-    let headers = GitCommit.justHeaders(payload);
-    let message = GitCommit.justMessage(payload);
-    let commit = normalize(headers + '\ngpgsig' + indent(signature) + '\n' + message);
+    const headers = GitCommit.justHeaders(payload);
+    const message = GitCommit.justMessage(payload);
+    const commit = normalize(headers + '\ngpgsig' + indent(signature) + '\n' + message);
     return new GitCommit(commit);
   }
 
@@ -119,9 +120,9 @@ class GitCommit {
   }
 
   parseHeaders() {
-    let headers = GitCommit.justHeaders(this._commit).split('\n');
-    let hs: string[] = [];
-    for (let h of headers) {
+    const headers = GitCommit.justHeaders(this._commit).split('\n');
+    const hs: string[] = [];
+    for (const h of headers) {
       if (h[0] === ' ') {
         // combine with previous header (without space indent)
         hs[hs.length - 1] += '\n' + h.slice(1);
@@ -129,12 +130,12 @@ class GitCommit {
         hs.push(h);
       }
     }
-    let obj: any = {
+    const obj: any = {
       parent: [],
     };
-    for (let h of hs) {
-      let key = h.slice(0, h.indexOf(' '));
-      let value = h.slice(h.indexOf(' ') + 1);
+    for (const h of hs) {
+      const key = h.slice(0, h.indexOf(' '));
+      const value = h.slice(h.indexOf(' ') + 1);
       if (Array.isArray(obj[key])) {
         obj[key].push(value);
       } else {
@@ -161,15 +162,15 @@ class GitCommit {
       if (obj.parent.length === undefined) {
         throw new Error(`commit 'parent' property should be an array`);
       }
-      for (let p of obj.parent) {
+      for (const p of obj.parent) {
         headers += `parent ${p}\n`;
       }
     }
-    let author = obj.author;
+    const author = obj.author;
     headers += `author ${author.name} <${author.email}> ${author.timestamp} ${formatTimezoneOffset(
       author.timezoneOffset,
     )}\n`;
-    let committer = obj.committer || obj.author;
+    const committer = obj.committer || obj.author;
     headers += `committer ${committer.name} <${committer.email}> ${committer.timestamp} ${formatTimezoneOffset(
       committer.timezoneOffset,
     )}\n`;
@@ -188,17 +189,17 @@ class GitCommit {
   }
 
   withoutSignature() {
-    let commit = normalize(this._commit);
+    const commit = normalize(this._commit);
     if (commit.indexOf('\ngpgsig') === -1) return commit;
-    let headers = commit.slice(0, commit.indexOf('\ngpgsig'));
-    let message = commit.slice(
+    const headers = commit.slice(0, commit.indexOf('\ngpgsig'));
+    const message = commit.slice(
       commit.indexOf('-----END PGP SIGNATURE-----\n') + '-----END PGP SIGNATURE-----\n'.length,
     );
     return normalize(headers + '\n' + message);
   }
 
   isolateSignature() {
-    let signature = this._commit.slice(
+    const signature = this._commit.slice(
       this._commit.indexOf('-----BEGIN PGP SIGNATURE-----'),
       this._commit.indexOf('-----END PGP SIGNATURE-----') + '-----END PGP SIGNATURE-----'.length,
     );

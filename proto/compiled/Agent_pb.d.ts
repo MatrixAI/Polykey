@@ -595,6 +595,81 @@ export namespace PeerAliasMessage {
     }
 }
 
+export class RenameVaultMessage extends jspb.Message { 
+    getVaultName(): string;
+    setVaultName(value: string): RenameVaultMessage;
+
+    getNewName(): string;
+    setNewName(value: string): RenameVaultMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RenameVaultMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: RenameVaultMessage): RenameVaultMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RenameVaultMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RenameVaultMessage;
+    static deserializeBinaryFromReader(message: RenameVaultMessage, reader: jspb.BinaryReader): RenameVaultMessage;
+}
+
+export namespace RenameVaultMessage {
+    export type AsObject = {
+        vaultName: string,
+        newName: string,
+    }
+}
+
+export class VaultStatsMessage extends jspb.Message { 
+    getCreatedAt(): number;
+    setCreatedAt(value: number): VaultStatsMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultStatsMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultStatsMessage): VaultStatsMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultStatsMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultStatsMessage;
+    static deserializeBinaryFromReader(message: VaultStatsMessage, reader: jspb.BinaryReader): VaultStatsMessage;
+}
+
+export namespace VaultStatsMessage {
+    export type AsObject = {
+        createdAt: number,
+    }
+}
+
+export class ShareVaultMessage extends jspb.Message { 
+    getPeerId(): string;
+    setPeerId(value: string): ShareVaultMessage;
+
+    getVaultName(): string;
+    setVaultName(value: string): ShareVaultMessage;
+
+    getCanEdit(): boolean;
+    setCanEdit(value: boolean): ShareVaultMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ShareVaultMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ShareVaultMessage): ShareVaultMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ShareVaultMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ShareVaultMessage;
+    static deserializeBinaryFromReader(message: ShareVaultMessage, reader: jspb.BinaryReader): ShareVaultMessage;
+}
+
+export namespace ShareVaultMessage {
+    export type AsObject = {
+        peerId: string,
+        vaultName: string,
+        canEdit: boolean,
+    }
+}
+
 export enum AgentStatusType {
     ONLINE = 0,
     OFFLINE = 1,

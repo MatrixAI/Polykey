@@ -12,7 +12,7 @@ class PeerServer implements IPeerServer {
 
   private server: grpc.Server;
   private credentials: grpc.ServerCredentials;
-  started: boolean = false;
+  started = false;
 
   handleGitRequest: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>;
   handleNatRequest: (request: Uint8Array) => Promise<Uint8Array>;
@@ -25,11 +25,11 @@ class PeerServer implements IPeerServer {
     // GRPC Server //
     /////////////////
     this.server = new grpc.Server();
-    this.server.addService(PeerService, <grpc.UntypedServiceImplementation>(<any>this));
+    this.server.addService(PeerService, (this as any) as grpc.UntypedServiceImplementation);
 
     // Create the server credentials. SSL only if ca cert exists
     const credentials = this.keyManager.pki.TLSServerCredentials;
-    this.credentials = grpc.ServerCredentials.createInsecure()
+    this.credentials = grpc.ServerCredentials.createInsecure();
     // this.credentials = grpc.ServerCredentials.createSsl(
     //   Buffer.from(credentials.rootCertificate),
     //   [
@@ -51,13 +51,13 @@ class PeerServer implements IPeerServer {
           const address = new Address(host, boundPort);
           if (this.peerManager.peerInfo) {
             this.peerManager.peerInfo.peerAddress = address;
-            this.peerManager.writeMetadata()
+            this.peerManager.writeMetadata();
           }
           this.server.start();
           console.log(`Peer Server running on: ${address}`);
           this.started = true;
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
       }
     });
@@ -69,7 +69,7 @@ class PeerServer implements IPeerServer {
     const { publicKey, type, subMessage: requestMessage } = peerRequest.toObject();
 
     // if we don't know publicKey, end connection
-    const peerId = PeerInfo.publicKeyToId(publicKey)
+    const peerId = PeerInfo.publicKeyToId(publicKey);
     if (!this.peerManager.hasPeer(peerId)) {
       throw Error('unknown public key');
     }
@@ -91,10 +91,10 @@ class PeerServer implements IPeerServer {
         response = await this.handleNatRequest(request);
         break;
       case SubServiceType.CERTIFICATE_AUTHORITY:
-        response = await this.keyManager.pki.handleGRPCRequest(request)
+        response = await this.keyManager.pki.handleGRPCRequest(request);
         break;
       case SubServiceType.PEER_DHT:
-        response = await this.peerManager.peerDHT.handleGRPCRequest(request)
+        response = await this.peerManager.peerDHT.handleGRPCRequest(request);
         break;
       default:
         throw Error('peer message type not identified');

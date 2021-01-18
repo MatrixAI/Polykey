@@ -24,14 +24,14 @@ class GitBackend {
   constructor(
     repoDirectoryPath: string,
     getFileSystem: (repoName: string) => any,
-    getVaultNames: (publicKey: string) => string[],
+    getVaultNames: (peerId: string) => string[],
   ) {
     this.repoDirectoryPath = repoDirectoryPath;
     this.getFileSystem = getFileSystem;
     this.getVaultNames = getVaultNames;
   }
 
-  async handleGitMessage(request: Uint8Array, publicKey: string): Promise<Uint8Array> {
+  async handleGitMessage(request: Uint8Array, peerId: string): Promise<Uint8Array> {
     const { type, subMessage } = gitInterface.GitMessage.decodeDelimited(request);
     let response: Uint8Array;
     switch (type) {
@@ -56,7 +56,7 @@ class GitBackend {
       case gitInterface.GitMessageType.VAULT_NAMES:
         {
           response = gitInterface.VaultNamesReply.encodeDelimited({
-            vaultNameList: await this.handleVaultNamesRequest(publicKey),
+            vaultNameList: await this.handleVaultNamesRequest(peerId),
           }).finish();
         }
         break;

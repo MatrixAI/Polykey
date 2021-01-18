@@ -28,7 +28,7 @@ class MulticastBroadcaster extends EventEmitter {
 
   private socket: dgram.Socket;
 
-  private interval: number = 1e5;
+  private interval = 1e5;
   private broadcastInterval: NodeJS.Timeout | null = null;
   constructor(
     getPeerInfo: () => PeerInfo,
@@ -45,7 +45,7 @@ class MulticastBroadcaster extends EventEmitter {
 
     // Create socket
     this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-    this.socket.bind(<number>UDP_MULTICAST_PORT);
+    this.socket.bind(UDP_MULTICAST_PORT as number);
 
     // Set up listener
     this.socket.on(

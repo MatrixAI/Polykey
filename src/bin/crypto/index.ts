@@ -6,15 +6,20 @@ function makeSignCommand() {
   return new commander.Command('sign')
     .description('signing operations [files]')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-k, --signing-key <signingKey>', 'path to private key that will be used to sign files')
     .option('-p, --key-passphrase <keyPassphrase>', 'passphrase to unlock the provided signing key')
     .arguments('file(s) to be signed')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const signingKeyPath = options.signingKey;
         const keyPassphrase = options.keyPassphrase;
@@ -56,15 +61,15 @@ function makeVerifyCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const filePath = options.signedFile;
 
         const request = new pb.VerifyFileMessage();
         request.setFilePath(filePath);
         request.setPublicKeyPath(options.publicKey);
-        await promisifyGrpc(client.verifyFile.bind(client))(request)
+        await promisifyGrpc(client.verifyFile.bind(client))(request);
         pkLogger.logV2(`file '${filePath}' was successfully verified`, PKMessageType.SUCCESS);
       }),
     );
@@ -82,8 +87,8 @@ function makeEncryptCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const filePath = options.filePath;
 
@@ -113,8 +118,8 @@ function makeDecryptCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const filePath = options.filePath;
 

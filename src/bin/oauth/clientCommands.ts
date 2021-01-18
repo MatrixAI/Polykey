@@ -4,19 +4,26 @@ import { actionRunner, PKMessageType, determineNodePath, promisifyGrpc, getAgent
 
 function makeClientCommand() {
   return new commander.Command('client')
-    .description('get oauth client details for the http api (useful for client credentials authorization flow on swagger docs)')
+    .description(
+      'get oauth client details for the http api (useful for client credentials authorization flow on swagger docs)',
+    )
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
-        const req = new pb.StringMessage
-        req.setS(options.id)
+        const req = new pb.StringMessage();
+        req.setS(options.id);
         const res = (await promisifyGrpc(client.getOAuthClient.bind(client))(
-          new pb.EmptyMessage,
+          new pb.EmptyMessage(),
         )) as pb.OAuthClientMessage;
 
         pkLogger.logV2('client id:', PKMessageType.INFO);

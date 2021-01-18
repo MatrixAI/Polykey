@@ -58,9 +58,7 @@
     "@opentelemetry/node": "^0.12.0",
     "@opentelemetry/tracing": "^0.12.0",
     "async-mutex": "^0.2.4",
-    "bunyan": "^1.8.14",
     "chalk": "^4.0.0",
-    "cids": "^1.0.1",
     "commander": "^5.1.0",
     "configstore": "^5.0.1",
     "encryptedfs": "^1.0.2",
@@ -92,8 +90,6 @@
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
-    "0x": "^4.10.2",
-    "@types/cli-progress": "^3.7.0",
     "@types/commander": "^2.12.2",
     "@types/configstore": "^4.0.0",
     "@types/express-session": "^1.17.0",

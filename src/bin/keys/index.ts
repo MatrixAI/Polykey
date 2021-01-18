@@ -6,21 +6,26 @@ function makeNewKeyCommand() {
   return new commander.Command('new')
     .description('derive a new symmetric key')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-n, --key-name <keyName>', '(required) the name of the new key')
     .requiredOption('-p, --key-passphrase <keyPassphrase>', '(required) the passphrase for the new key')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const keyName = options.keyName;
 
         const request = new pb.DeriveKeyMessage();
         request.setKeyName(keyName);
         request.setPassphrase(options.keyPassphrase);
-        await promisifyGrpc(client.deriveKey.bind(client))(request)
+        await promisifyGrpc(client.deriveKey.bind(client))(request);
         pkLogger.logV2(`'${keyName}' was added to the Key Manager`, PKMessageType.SUCCESS);
       }),
     );
@@ -30,25 +35,33 @@ function makeNewKeyPairCommand() {
   return new commander.Command('keypair')
     .description('derive a new keypair for use in another keynode')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-ui, --user-id <userId>', '(required) provide an identifier for the keypair to be generated')
-    .requiredOption('-pp, --private-passphrase <privatePassphrase>', '(required) provide the passphrase to the private key')
+    .requiredOption(
+      '-pp, --private-passphrase <privatePassphrase>',
+      '(required) provide the passphrase to the private key',
+    )
     .requiredOption('-priv, --private-path <privatePath>', '(required) provide the path to store the private key')
     .requiredOption('-pub, --public-path <publicPath>', '(required) provide the path to store the public key')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
-        const subRequest = new pb.NewKeyPairMessage
-        subRequest.setUserid(options.userId!)
-        subRequest.setPassphrase(options.passphrase!)
+        const subRequest = new pb.NewKeyPairMessage();
+        subRequest.setUserid(options.userId!);
+        subRequest.setPassphrase(options.passphrase!);
         const request = new pb.DeriveKeyPairMessage();
         request.setKeypairDetails(subRequest);
         request.setPublicKeyPath(options.publicPath!);
         request.setPrivateKeyPath(options.privatePath!);
-        await promisifyGrpc(client.deriveKeyPair.bind(client))(request)
+        await promisifyGrpc(client.deriveKeyPair.bind(client))(request);
         pkLogger.logV2(`new keypair successfully generated`, PKMessageType.SUCCESS);
       }),
     );
@@ -58,19 +71,24 @@ function makeDeleteKeyCommand() {
   return new commander.Command('delete')
     .description('delete a symmetric key from the key manager')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-n, --key-name <keyName>', '(required) the name of the symmetric key to be deleted')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const keyName = options.keyName;
 
         const request = new pb.StringMessage();
         request.setS(keyName);
-        await promisifyGrpc(client.deleteKey.bind(client))(request)
+        await promisifyGrpc(client.deleteKey.bind(client))(request);
         pkLogger.logV2(`key '${keyName}' was successfully deleted`, PKMessageType.SUCCESS);
       }),
     );
@@ -81,12 +99,17 @@ function makeListKeysCommand() {
     .alias('ls')
     .description('list all symmetric keys in the keynode')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const res = (await promisifyGrpc(client.listKeys.bind(client))(new pb.EmptyMessage())) as pb.StringListMessage;
         const keyNames = res.getSList();
@@ -106,13 +129,18 @@ function makeGetKeyCommand() {
   return new commander.Command('get')
     .description('get the contents of a specific symmetric key')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-kn, --key-name <keyName>', '(required) the name of the new key')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const request = new pb.StringMessage();
         request.setS(options.keyName);
@@ -126,14 +154,19 @@ function makeListPrimaryKeyPairCommand() {
   return new commander.Command('primary')
     .description('get the contents of the primary keypair')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-pk, --private-key', 'include private key')
     .option('-oj, --output-json', 'output in JSON format')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const privateKey: boolean = options.privateKey;
 
@@ -141,7 +174,7 @@ function makeListPrimaryKeyPairCommand() {
         request.setB(privateKey);
         const res = (await promisifyGrpc(client.getPrimaryKeyPair.bind(client))(request)) as pb.KeyPairMessage;
         const keypair = { publicKey: res.getPublicKey(), privateKey: res.getPrivateKey() };
-        if (<boolean>options.outputJson) {
+        if (options.outputJson as boolean) {
           pkLogger.logV1(JSON.stringify(keypair), PKMessageType.INFO);
         } else {
           pkLogger.logV2('Public Key:', PKMessageType.SUCCESS);

@@ -169,6 +169,17 @@ function deserialize_agentInterface_PeerInfoMessage(buffer_arg) {
   return Agent_pb.PeerInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_RenameVaultMessage(arg) {
+  if (!(arg instanceof Agent_pb.RenameVaultMessage)) {
+    throw new Error('Expected argument of type agentInterface.RenameVaultMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_RenameVaultMessage(buffer_arg) {
+  return Agent_pb.RenameVaultMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_SecretContentMessage(arg) {
   if (!(arg instanceof Agent_pb.SecretContentMessage)) {
     throw new Error('Expected argument of type agentInterface.SecretContentMessage');
@@ -189,6 +200,17 @@ function serialize_agentInterface_SecretPathMessage(arg) {
 
 function deserialize_agentInterface_SecretPathMessage(buffer_arg) {
   return Agent_pb.SecretPathMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_ShareVaultMessage(arg) {
+  if (!(arg instanceof Agent_pb.ShareVaultMessage)) {
+    throw new Error('Expected argument of type agentInterface.ShareVaultMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_ShareVaultMessage(buffer_arg) {
+  return Agent_pb.ShareVaultMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_SignFileMessage(arg) {
@@ -244,6 +266,17 @@ function serialize_agentInterface_VaultPathMessage(arg) {
 
 function deserialize_agentInterface_VaultPathMessage(buffer_arg) {
   return Agent_pb.VaultPathMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_VaultStatsMessage(arg) {
+  if (!(arg instanceof Agent_pb.VaultStatsMessage)) {
+    throw new Error('Expected argument of type agentInterface.VaultStatsMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_VaultStatsMessage(buffer_arg) {
+  return Agent_pb.VaultStatsMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_VerifyFileMessage(arg) {
@@ -460,6 +493,28 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_AgentStatusMessage,
     responseDeserialize: deserialize_agentInterface_AgentStatusMessage,
   },
+  getVaultStats: {
+    path: '/agentInterface.Agent/GetVaultStats',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.StringMessage,
+    responseType: Agent_pb.VaultStatsMessage,
+    requestSerialize: serialize_agentInterface_StringMessage,
+    requestDeserialize: deserialize_agentInterface_StringMessage,
+    responseSerialize: serialize_agentInterface_VaultStatsMessage,
+    responseDeserialize: deserialize_agentInterface_VaultStatsMessage,
+  },
+  initializeNode: {
+    path: '/agentInterface.Agent/InitializeNode',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.NewKeyPairMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_NewKeyPairMessage,
+    requestDeserialize: deserialize_agentInterface_NewKeyPairMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
   listOAuthTokens: {
     path: '/agentInterface.Agent/ListOAuthTokens',
     requestStream: false,
@@ -537,17 +592,6 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_NewClientCertificateMessage,
     responseDeserialize: deserialize_agentInterface_NewClientCertificateMessage,
   },
-  initializeNode: {
-    path: '/agentInterface.Agent/InitializeNode',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.NewKeyPairMessage,
-    responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_NewKeyPairMessage,
-    requestDeserialize: deserialize_agentInterface_NewKeyPairMessage,
-    responseSerialize: serialize_agentInterface_EmptyMessage,
-    responseDeserialize: deserialize_agentInterface_EmptyMessage,
-  },
   newSecret: {
     path: '/agentInterface.Agent/NewSecret',
     requestStream: false,
@@ -603,6 +647,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
+  renameVault: {
+    path: '/agentInterface.Agent/RenameVault',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.RenameVaultMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_RenameVaultMessage,
+    requestDeserialize: deserialize_agentInterface_RenameVaultMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
   revokeOAuthToken: {
     path: '/agentInterface.Agent/RevokeOAuthToken',
     requestStream: false,
@@ -636,6 +691,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
+  shareVault: {
+    path: '/agentInterface.Agent/ShareVault',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.ShareVaultMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_ShareVaultMessage,
+    requestDeserialize: deserialize_agentInterface_ShareVaultMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
   signFile: {
     path: '/agentInterface.Agent/SignFile',
     requestStream: false,
@@ -646,6 +712,17 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_SignFileMessage,
     responseSerialize: serialize_agentInterface_StringMessage,
     responseDeserialize: deserialize_agentInterface_StringMessage,
+  },
+  socialProof: {
+    path: '/agentInterface.Agent/SocialProof',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.PeerInfoMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_PeerInfoMessage,
+    responseDeserialize: deserialize_agentInterface_PeerInfoMessage,
   },
   stopAgent: {
     path: '/agentInterface.Agent/StopAgent',
@@ -688,6 +765,17 @@ var AgentService = exports.AgentService = {
     responseType: Agent_pb.EmptyMessage,
     requestSerialize: serialize_agentInterface_StringMessage,
     requestDeserialize: deserialize_agentInterface_StringMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  unshareVault: {
+    path: '/agentInterface.Agent/UnshareVault',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.VaultPathMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_VaultPathMessage,
+    requestDeserialize: deserialize_agentInterface_VaultPathMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },

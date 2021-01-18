@@ -1,3 +1,4 @@
+/* eslint-disable */
 import fs from 'fs';
 import os from 'os';
 import net from 'net';
@@ -248,7 +249,7 @@ describe('PKI testing', () => {
           end.server.process(c.tlsData.getBytes());
         },
         dataReady: function (c) {
-          var response = c.data.getBytes();
+          const response = c.data.getBytes();
           console.log('Client received "' + response + '"');
           success = (response === 'Hello Client');
           expect(success).toEqual(true)

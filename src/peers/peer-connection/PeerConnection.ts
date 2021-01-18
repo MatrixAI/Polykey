@@ -14,15 +14,17 @@ class PeerConnection {
   private findPeerDHT: (
     peerId: string,
   ) => Promise<{ adjacentPeerInfo?: PeerInfo | undefined; targetPeerInfo?: PeerInfo | undefined }>;
+
   private requestUDPHolePunchViaPeer: (
     targetPeerId: string,
     adjacentPeerId: string,
     timeout?: number | undefined,
   ) => Promise<Address>;
-  private requestUDPHolePunchDirectly: (targetPeerId: string, timeout?: number | undefined) => Promise<Address>
+
+  private requestUDPHolePunchDirectly: (targetPeerId: string, timeout?: number | undefined) => Promise<Address>;
 
   private peerClient: PeerClient;
-  private connected: boolean = false;
+  private connected = false;
   private credentials: grpc.ChannelCredentials;
 
   constructor(
@@ -64,14 +66,14 @@ class PeerConnection {
       const address = peerAddress ?? this.getPeer(this.peerId)!.peerAddress;
       if (address) {
         const peerClient = new PeerClient(address.toString(), this.credentials);
-        await this.waitForReadyAsync(peerClient)
+        await this.waitForReadyAsync(peerClient);
         this.connected = true;
         return peerClient;
       } else {
         throw Error('peer does not have a connected address');
       }
     } catch (error) {
-      throw error
+      throw error;
     }
   }
 
@@ -83,14 +85,11 @@ class PeerConnection {
 
       const promiseList: Promise<PeerClient>[] = [
         this.connectDirectly(targetPeerInfo?.peerAddress),
-        this.connectHolePunchDirectly()
-      ]
+        this.connectHolePunchDirectly(),
+      ];
       if (adjacentPeerInfo?.peerAddress) {
         // case 2: target peer has an adjacent peer that can be contacted for nat traversal
-        promiseList.push(
-          this.connectHolePunchViaPeer(adjacentPeerInfo),
-          this.connectRelay(adjacentPeerInfo)
-        );
+        promiseList.push(this.connectHolePunchViaPeer(adjacentPeerInfo), this.connectRelay(adjacentPeerInfo));
       }
       const client = await promiseAny(promiseList);
       return client;
@@ -98,7 +97,6 @@ class PeerConnection {
       throw Error(`could not find peer via dht: ${error}`);
     }
   }
-
 
   // 3rd connection option: hole punch directly to the target peer
   // (will only work if a direct hole punch connection already exists)
@@ -110,14 +108,14 @@ class PeerConnection {
         // connect to relay and ask it to create a relay
         const connectedAddress = await this.requestUDPHolePunchDirectly(this.getPeer(this.peerId)!.id);
         const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
-        await this.waitForReadyAsync(peerClient)
+        await this.waitForReadyAsync(peerClient);
         this.connected = true;
         return peerClient;
       } else {
         throw Error('peer is already connected');
       }
     } catch (error) {
-      throw Error(`connecting hole punch directly failed: ${error}`)
+      throw Error(`connecting hole punch directly failed: ${error}`);
     }
   }
 
@@ -133,7 +131,7 @@ class PeerConnection {
         10000,
       );
       const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
-      await this.waitForReadyAsync(peerClient)
+      await this.waitForReadyAsync(peerClient);
       this.connected = true;
       return peerClient;
     } else {
@@ -153,7 +151,7 @@ class PeerConnection {
         10000,
       );
       const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
-      await this.waitForReadyAsync(peerClient)
+      await this.waitForReadyAsync(peerClient);
       this.connected = true;
       return peerClient;
     } else {
@@ -189,7 +187,7 @@ class PeerConnection {
     }
   }
 
-  private async sendPingRequest(timeout?: number, directConnectionOnly: boolean = false): Promise<boolean> {
+  private async sendPingRequest(timeout?: number, directConnectionOnly = false): Promise<boolean> {
     // eslint-disable-next-line
     return await new Promise<boolean>(async (resolve, _) => {
       try {
@@ -260,7 +258,7 @@ class PeerConnection {
   }
 
   // ======== Helper Methods ======== //
-  private async waitForReadyAsync(peerClient: PeerClient, timeout: number = 10000): Promise<void> {
+  private async waitForReadyAsync(peerClient: PeerClient, timeout = 10000): Promise<void> {
     // eslint-disable-next-line
     return await new Promise<void>(async (resolve, reject) => {
       try {
@@ -285,7 +283,7 @@ class PeerConnection {
             if (challenge == challengeResponse) {
               resolve();
             } else {
-              reject(Error('returned challenge was not the same as provided challenge!'))
+              reject(Error('returned challenge was not the same as provided challenge!'));
             }
           }
         });

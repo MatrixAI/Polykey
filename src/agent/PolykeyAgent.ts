@@ -42,7 +42,7 @@ class PolykeyAgent implements IAgentServer {
     // GRPC Server //
     /////////////////
     this.server = new grpc.Server();
-    this.server.addService(AgentService, <grpc.UntypedServiceImplementation>(<any>this));
+    this.server.addService(AgentService, (this as any) as grpc.UntypedServiceImplementation);
   }
 
   private failOnLocked() {
@@ -53,21 +53,21 @@ class PolykeyAgent implements IAgentServer {
 
   private get ServerCredentials() {
     // define certificate/key paths
-    const clientPKIPath = path.join(this.pk.polykeyPath, '.agent', 'PKI')
-    fs.mkdirSync(clientPKIPath, { recursive: true })
-    const rootCertPath = path.join(clientPKIPath, 'root.crt')
-    const clientCertPath = path.join(clientPKIPath, 'client.crt')
-    const clientPublicKeyPath = path.join(clientPKIPath, 'client-public.key')
-    const clientPrivateKeyPath = path.join(clientPKIPath, 'client-private.key')
+    const clientPKIPath = path.join(this.pk.polykeyPath, '.agent', 'PKI');
+    fs.mkdirSync(clientPKIPath, { recursive: true });
+    const rootCertPath = path.join(clientPKIPath, 'root.crt');
+    const clientCertPath = path.join(clientPKIPath, 'client.crt');
+    const clientPublicKeyPath = path.join(clientPKIPath, 'client-public.key');
+    const clientPrivateKeyPath = path.join(clientPKIPath, 'client-private.key');
 
     // retreive client credentials from keymanager
     const clientCreds = this.pk.keyManager.pki.createClientCredentials();
 
     // write to file
-    fs.writeFileSync(rootCertPath, this.pk.keyManager.pki.RootCert)
-    fs.writeFileSync(clientCertPath, clientCreds.certificate)
-    fs.writeFileSync(clientPublicKeyPath, clientCreds.keypair.public)
-    fs.writeFileSync(clientPrivateKeyPath, clientCreds.keypair.private)
+    fs.writeFileSync(rootCertPath, this.pk.keyManager.pki.RootCert);
+    fs.writeFileSync(clientCertPath, clientCreds.certificate);
+    fs.writeFileSync(clientPublicKeyPath, clientCreds.keypair.public);
+    fs.writeFileSync(clientPrivateKeyPath, clientCreds.keypair.private);
 
     ////////////////////////
     // Server credentials //
@@ -94,7 +94,7 @@ class PolykeyAgent implements IAgentServer {
     // don't need to catch errors
     try {
       await promisify(this.server.tryShutdown.bind(this))();
-    } catch (error) { }
+    } catch (error) {}
 
     // handle port
     const portString = this.configStore.get('port') ?? process.env.PK_AGENT_PORT ?? 0;
@@ -116,7 +116,7 @@ class PolykeyAgent implements IAgentServer {
     // agent is only discoverable if the pid in the pk state matches
     // the pid of the current running pid. this also prevents memory leaks
     this.pidCheckInterval = setInterval(() => {
-      let shutdown: boolean = false;
+      let shutdown = false;
       try {
         const pid = this.configStore.get('pid');
         if (pid !== this.pid) {
@@ -146,7 +146,7 @@ class PolykeyAgent implements IAgentServer {
   private noThrowRefreshTimeout() {
     try {
       this.pk.keyManager.refreshTimeout();
-    } catch (error) { }
+    } catch (error) {}
   }
 
   async addPeer(
@@ -162,7 +162,6 @@ class PolykeyAgent implements IAgentServer {
       response.setS(peerId);
       callback(null, response);
     } catch (error) {
-      console.log('got an error in the agent addPeer', error)
       callback(error, null);
     }
   }
@@ -216,7 +215,7 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { s } = call.request!.toObject();
       await this.pk.vaultManager.deleteVault(s);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -231,8 +230,8 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { vaultName, secretName } = call.request!.toObject();
       const vault = this.pk.vaultManager.getVault(vaultName);
-      await vault.removeSecret(secretName);
-      callback(null, new agent.EmptyMessage);
+      await vault.deleteSecret(secretName, true);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -247,7 +246,7 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { keyName, passphrase } = call.request!.toObject();
       await this.pk.keyManager.generateKey(keyName, passphrase);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -261,10 +260,21 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { keypairDetails: { userid, passphrase } = {}, publicKeyPath, privateKeyPath } = call.request!.toObject();
-      const { public: publicKey, private: privateKey } = await this.pk.keyManager.generateKeyPair(userid!, passphrase!, false);
-      fs.writeFileSync(publicKeyPath, publicKey!)
-      fs.writeFileSync(privateKeyPath, privateKey!)
-      callback(null, new agent.EmptyMessage);
+      const { public: publicKey, private: privateKey } = await this.pk.keyManager.generateKeyPair(
+        userid!,
+        passphrase!,
+        false,
+      );
+      // Make sure public and private key paths are able to be created and are not directories
+      if (fs.statSync(publicKeyPath).isDirectory() || !fs.statSync(path.dirname(publicKeyPath)).isDirectory()) {
+        throw Error('the public key path must be a valid file path and must not exist already');
+      }
+      if (fs.statSync(privateKeyPath).isDirectory() || !fs.statSync(path.dirname(privateKeyPath)).isDirectory()) {
+        throw Error('the private key path must be a valid file path and must not exist already');
+      }
+      fs.writeFileSync(publicKeyPath, publicKey!);
+      fs.writeFileSync(privateKeyPath, privateKey!);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -319,9 +329,9 @@ class PolykeyAgent implements IAgentServer {
       const handle = matches[2]!;
       const successful = await this.pk.peerManager.findSocialUser(handle, service, timeout);
       if (!successful) {
-        throw Error('peer did not respond to ping before timeout')
+        throw Error('peer did not respond to ping before timeout');
       }
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -464,6 +474,24 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async getVaultStats(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.VaultStatsMessage>,
+    callback: grpc.sendUnaryData<agent.VaultStatsMessage>,
+  ) {
+    this.noThrowRefreshTimeout();
+    try {
+      const { s } = call.request!.toObject();
+
+      const vault = this.pk.vaultManager.getVault(s);
+      const vaultStats = await vault.stats();
+      const response = new agent.VaultStatsMessage();
+      response.setCreatedAt(vaultStats.birthtime.getUTCMilliseconds());
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
   async listOAuthTokens(
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
@@ -535,13 +563,13 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const publicKeys = this.pk.peerManager.listPeers();
-      const peerList = publicKeys.map(peerId => {
-        const alias = this.pk.peerManager.getPeerAlias(peerId)
-        if(!alias) {
-          return peerId
-       }
-       return `${alias} (${peerId})`
-      })
+      const peerList = publicKeys.map((peerId) => {
+        const alias = this.pk.peerManager.getPeerAlias(peerId);
+        if (!alias) {
+          return peerId;
+        }
+        return `${alias} (${peerId})`;
+      });
       const response = new agent.StringListMessage();
       response.setSList(peerList);
       callback(null, response);
@@ -612,6 +640,7 @@ class PolykeyAgent implements IAgentServer {
       callback(error, null);
     }
   }
+
   async newClientCertificate(
     call: grpc.ServerUnaryCall<agent.NewClientCertificateMessage, agent.NewClientCertificateMessage>,
     callback: grpc.sendUnaryData<agent.NewClientCertificateMessage>,
@@ -661,7 +690,7 @@ class PolykeyAgent implements IAgentServer {
       await this.pk.vaultManager.loadEncryptedMetadata();
       await this.pk.httpApi.start();
 
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -676,14 +705,19 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { secretPath, secretFilePath, secretContent } = call.request!.toObject();
       const vault = this.pk.vaultManager.getVault(secretPath?.vaultName!);
-      let secretBuffer: Buffer;
-      if (secretFilePath) {
-        secretBuffer = await fs.promises.readFile(secretFilePath);
+      if (fs.statSync(secretFilePath).isDirectory()) {
+        await vault.addSecrets(secretFilePath);
+        callback(null, new agent.EmptyMessage());
       } else {
-        secretBuffer = Buffer.from(secretContent);
+        let secretBuffer: Buffer;
+        if (secretFilePath) {
+          secretBuffer = await fs.promises.readFile(secretFilePath);
+        } else {
+          secretBuffer = Buffer.from(secretContent);
+        }
+        await vault.addSecret(secretPath?.secretName!, secretBuffer);
+        callback(null, new agent.EmptyMessage());
       }
-      await vault.addSecret(secretPath?.secretName!, secretBuffer);
-      callback(null, new agent.EmptyMessage);
     } catch (error) {
       callback(error, null);
     }
@@ -698,7 +732,7 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { s } = call.request!.toObject();
       await this.pk.vaultManager.newVault(s);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -714,9 +748,9 @@ class PolykeyAgent implements IAgentServer {
       const { publicKeyOrHandle, timeout } = call.request!.toObject();
       const successful = await this.pk.peerManager.pingPeer(publicKeyOrHandle, timeout);
       if (!successful) {
-        throw Error('peer did not respond to ping before timeout')
+        throw Error('peer did not respond to ping before timeout');
       }
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -737,7 +771,24 @@ class PolykeyAgent implements IAgentServer {
       } else {
         await this.pk.vaultManager.cloneVault(vaultName, publicKey);
       }
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async renameVault(
+    call: grpc.ServerUnaryCall<agent.RenameVaultMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    this.noThrowRefreshTimeout();
+    try {
+      this.failOnLocked();
+      const { vaultName, newName } = call.request!.toObject();
+
+      this.pk.vaultManager.renameVault(vaultName, newName);
+
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -786,7 +837,23 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { peerId, alias } = call.request!.toObject();
       this.pk.peerManager.setPeerAlias(peerId, alias);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async shareVault(
+    call: grpc.ServerUnaryCall<agent.ShareVaultMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    this.noThrowRefreshTimeout();
+    try {
+      this.failOnLocked();
+      const { vaultName, peerId, canEdit } = call.request!.toObject();
+      const vault = this.pk.vaultManager.getVault(vaultName);
+      vault.shareVault(peerId, canEdit);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -809,6 +876,36 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async socialProof(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.PeerInfoMessage>,
+    callback: grpc.sendUnaryData<agent.PeerInfoMessage>,
+  ) {
+    try {
+      clearInterval(this.pidCheckInterval);
+      this.pk.peerManager.multicastBroadcaster.stopBroadcasting();
+      this.configStore.clear();
+      const response = new agent.PeerInfoMessage();
+      const peerInfo = this.pk.peerManager.peerInfo;
+      response.setPublicKey(peerInfo.publicKey);
+      response.setRootCertificate(peerInfo.rootCertificate);
+      if (peerInfo.peerAddress) {
+        response.setPeerAddress(peerInfo.peerAddress?.toString());
+      }
+      if (peerInfo.apiAddress) {
+        response.setApiAddress(peerInfo.apiAddress?.toString());
+      }
+      callback(null, response);
+      await promisify(this.server.tryShutdown.bind(this.server))();
+    } catch (error) {
+      callback(error, null);
+    } finally {
+      // finally kill the pid of the agent process
+      if (process.env.NODE_ENV !== 'test') {
+        process.kill(this.pid);
+      }
+    }
+  }
+
   async stopAgent(
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.EmptyMessage>,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
@@ -817,7 +914,7 @@ class PolykeyAgent implements IAgentServer {
       clearInterval(this.pidCheckInterval);
       this.pk.peerManager.multicastBroadcaster.stopBroadcasting();
       this.configStore.clear();
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
       await promisify(this.server.tryShutdown.bind(this.server))();
     } catch (error) {
       callback(error, null);
@@ -838,7 +935,7 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { b } = call.request!.toObject();
       this.pk.peerManager.toggleStealthMode(b);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -853,7 +950,7 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { s } = call.request!.toObject();
       this.pk.peerManager.unsetPeerAlias(s);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -878,7 +975,23 @@ class PolykeyAgent implements IAgentServer {
       await this.pk.httpApi.start();
 
       // send response
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async unshareVault(
+    call: grpc.ServerUnaryCall<agent.VaultPathMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    this.noThrowRefreshTimeout();
+    try {
+      this.failOnLocked();
+      const { vaultName, publicKey } = call.request!.toObject();
+      const vault = this.pk.vaultManager.getVault(vaultName);
+      vault.unshareVault(publicKey);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -898,14 +1011,14 @@ class PolykeyAgent implements IAgentServer {
       if (peerAddress) {
         this.pk.peerManager.peerInfo.peerAddress = Address.parse(peerAddress);
       } else if (peerAddress == '') {
-        this.pk.peerManager.peerInfo.peerAddress = undefined
+        this.pk.peerManager.peerInfo.peerAddress = undefined;
       }
       if (apiAddress) {
         this.pk.peerManager.peerInfo.apiAddress = Address.parse(apiAddress);
       } else if (apiAddress == '') {
-        this.pk.peerManager.peerInfo.apiAddress = undefined
+        this.pk.peerManager.peerInfo.apiAddress = undefined;
       }
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -929,15 +1042,15 @@ class PolykeyAgent implements IAgentServer {
       if (peerAddress) {
         this.pk.peerManager.peerInfo.peerAddress = Address.parse(peerAddress);
       } else if (peerAddress == '') {
-        this.pk.peerManager.peerInfo.peerAddress = undefined
+        this.pk.peerManager.peerInfo.peerAddress = undefined;
       }
       if (apiAddress) {
         this.pk.peerManager.peerInfo.apiAddress = Address.parse(apiAddress);
       } else if (apiAddress == '') {
-        this.pk.peerManager.peerInfo.apiAddress = undefined
+        this.pk.peerManager.peerInfo.apiAddress = undefined;
       }
       this.pk.peerManager.updatePeer(peerInfo);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -959,7 +1072,7 @@ class PolykeyAgent implements IAgentServer {
         secretBuffer = Buffer.from(secretContent);
       }
       await vault.updateSecret(secretPath?.secretName!, secretBuffer);
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -975,9 +1088,9 @@ class PolykeyAgent implements IAgentServer {
       const { publicKeyPath, filePath } = call.request!.toObject();
       const verified = await this.pk.keyManager.verifyFile(filePath, publicKeyPath);
       if (!verified) {
-        throw Error('file could not be verified')
+        throw Error('file could not be verified');
       }
-      callback(null, new agent.EmptyMessage);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }
@@ -995,10 +1108,10 @@ class PolykeyAgent implements IAgentServer {
       throw Error(`polykey agent is not started at polykey path: '${polykeyPath}'`);
     } else {
       // get credentials
-      const clientPKIPath = path.join(polykeyPath, '.agent', 'PKI')
-      const rootCertPath = path.join(clientPKIPath, 'root.crt')
-      const clientCertPath = path.join(clientPKIPath, 'client.crt')
-      const clientPrivateKeyPath = path.join(clientPKIPath, 'client-private.key')
+      const clientPKIPath = path.join(polykeyPath, '.agent', 'PKI');
+      const rootCertPath = path.join(clientPKIPath, 'root.crt');
+      const clientCertPath = path.join(clientPKIPath, 'client.crt');
+      const clientPrivateKeyPath = path.join(clientPKIPath, 'client-private.key');
       // check if credentials exist for current polykey path
       let credentials: grpc.ChannelCredentials;
       if (
@@ -1056,7 +1169,7 @@ class PolykeyAgent implements IAgentServer {
     return parseInt(configStore.get('pid'));
   }
 
-  public static async startAgent(polykeyPath: string, daemon: boolean = false, failOnNotInitialized: boolean = true) {
+  public static async startAgent(polykeyPath: string, daemon = false, failOnNotInitialized = true) {
     // either resolves a newly started process ID or true if the process is running already
     return new Promise<number | true>((resolve, reject) => {
       try {
@@ -1075,7 +1188,7 @@ class PolykeyAgent implements IAgentServer {
           }
           fs.mkdirSync(logPath, { recursive: true });
 
-          let options: SpawnOptions = {
+          const options: SpawnOptions = {
             uid: process.getuid(),
             detached: daemon,
             stdio: [

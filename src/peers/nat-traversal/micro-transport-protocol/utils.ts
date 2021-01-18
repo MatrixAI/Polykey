@@ -1,4 +1,4 @@
-import { peerInterface } from "../../../../proto/js/Peer";
+import { peerInterface } from '../../../../proto/js/Peer';
 
 const EXTENSION = 0;
 const VERSION = 1;
@@ -27,12 +27,12 @@ const uint16 = function (n) {
 };
 
 function bufferToPacket(buffer: Uint8Array): peerInterface.MTPPacket {
-  return peerInterface.MTPPacket.decodeDelimited(buffer)
-};
+  return peerInterface.MTPPacket.decodeDelimited(buffer);
+}
 
 function packetToBuffer(packet: peerInterface.MTPPacket): Uint8Array {
-  return peerInterface.MTPPacket.encodeDelimited(packet).finish()
-};
+  return peerInterface.MTPPacket.encodeDelimited(packet).finish();
+}
 
 export {
   EXTENSION,
@@ -52,5 +52,5 @@ export {
   uint32,
   uint16,
   bufferToPacket,
-  packetToBuffer
-}
+  packetToBuffer,
+};

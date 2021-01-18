@@ -4,11 +4,7 @@ import dgram from 'dgram';
 import { EventEmitter } from 'events';
 import { Address } from '../../PeerInfo';
 import MTPConnection from './MTPConnection';
-import {
-  PACKET_SYN,
-  MIN_PACKET_SIZE,
-  bufferToPacket,
-} from './utils'
+import { PACKET_SYN, MIN_PACKET_SIZE, bufferToPacket } from './utils';
 
 class MTPServer extends EventEmitter {
   socket: dgram.Socket;
@@ -16,24 +12,23 @@ class MTPServer extends EventEmitter {
 
   // peerId -> connection
   incomingConnections: Map<string, MTPConnection>;
-  tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>
+  tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>;
 
   constructor(
     handleIncomingConnection: (conn: MTPConnection) => void,
     tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>,
   ) {
     super();
-    this.tertiaryMessageHandler = tertiaryMessageHandler
+    this.tertiaryMessageHandler = tertiaryMessageHandler;
 
     this.on('connection', handleIncomingConnection);
 
-    this.incomingConnections = new Map;
+    this.incomingConnections = new Map();
   }
-
 
   // this is the udp address for the MTP server
   address() {
-    return Address.fromAddressInfo(<net.AddressInfo>this.socket.address());
+    return Address.fromAddressInfo(this.socket.address() as net.AddressInfo);
   }
 
   // this is the method where both listenConnection and listPort call
@@ -43,7 +38,7 @@ class MTPServer extends EventEmitter {
     socket.on('message', (message, rinfo) => this.handleMessage(message, rinfo));
 
     socket.once('listening', () => {
-      onListening(this.address())
+      onListening(this.address());
     });
   }
 
@@ -72,13 +67,13 @@ class MTPServer extends EventEmitter {
           cb();
         }
       }
-    }
+    };
 
     for (const id in this.incomingConnections.keys()) {
-      const connection = this.incomingConnections.get(id)
+      const connection = this.incomingConnections.get(id);
       if (!connection) {
-        this.incomingConnections.delete(id)
-        continue
+        this.incomingConnections.delete(id);
+        continue;
       }
       if (this.incomingConnections.get(id)?.closed) {
         continue;
@@ -96,8 +91,8 @@ class MTPServer extends EventEmitter {
     // ================================//
     if (this.tertiaryMessageHandler) {
       try {
-        const address = new Address(rinfo.address, rinfo.port)
-        return await this.tertiaryMessageHandler(message, address)
+        const address = new Address(rinfo.address, rinfo.port);
+        return await this.tertiaryMessageHandler(message, address);
       } catch (error) {
         // if anything went wrong, assume it is a direct connection request and move on
       }
@@ -115,7 +110,7 @@ class MTPServer extends EventEmitter {
     // // not sure if this id is required but it has now been replaced with peerId pending further testing:
     // const id = rinfo.address + ':' + (packet.id === PACKET_SYN ? uint16(packet.connection + 1) : packet.connection);
 
-    const peerId = packet.peerId
+    const peerId = packet.peerId;
     if (this.incomingConnections.has(peerId) && this.incomingConnections.get(peerId)) {
       return this.incomingConnections.get(peerId)!.recvIncoming(packet);
     }
@@ -123,8 +118,8 @@ class MTPServer extends EventEmitter {
       return;
     }
 
-    const newConnection = new MTPConnection(peerId, rinfo.port, rinfo.address, this.socket, packet)
-    this.incomingConnections.set(peerId, newConnection)
+    const newConnection = new MTPConnection(peerId, rinfo.port, rinfo.address, this.socket, packet);
+    this.incomingConnections.set(peerId, newConnection);
     newConnection.on('close', () => {
       this.incomingConnections.delete(peerId);
     });

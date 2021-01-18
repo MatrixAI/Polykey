@@ -1,24 +1,32 @@
+import os from 'os';
+import fs from 'fs';
+import path from 'path';
 import process from 'process';
 import commander from 'commander';
-import { spawn } from 'child_process';
+import { spawn, exec, execSync } from 'child_process';
 import * as pb from '../../../proto/compiled/Agent_pb';
 import { actionRunner, getPKLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
+import { randomString } from '../../utils';
 
-const pathRegex = /^([a-zA-Z0-9_ -]+)(?::)([a-zA-Z0-9_ -]+)(?:=)?([a-zA-Z_][a-zA-Z0-9_]+)?$/;
+const pathRegex = /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
 
 function makeListSecretsCommand() {
   return new commander.Command('list')
     .description('list all available secrets for a given vault')
     .alias('ls')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .arguments('vault name(s) to list')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
-
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const vaultNames: string[] = Array.from(options.args.values());
 
@@ -47,16 +55,22 @@ function makeListSecretsCommand() {
 
 function makeNewSecretCommand() {
   return new commander.Command('new')
-    .description("create a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
+    .description("create a secret within a given vault, specify a secret path with '<vaultName>:<secretPath>'")
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
-    .arguments("secret path of the format '<vaultName>:<secretName>'")
-    .requiredOption('-f, --file-path <filePath>', '(required) path to the secret to be added')
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
+    .option('-f, --file-path <filePath>', 'path to the secret to be added')
+    .option('-sp, --secret-path <secretPath>', "secret path of the format '<vaultName>:<secretPath>'")
+    .option('-d, --directory <directory>', 'path to the directory of secret(s) to be added')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
@@ -74,9 +88,12 @@ function makeNewSecretCommand() {
           secretPath.setSecretName(secretName);
           request.setSecretPath(secretPath);
           request.setSecretFilePath(options.filePath);
-          await promisifyGrpc(client.newSecret.bind(client))(request)
+          await promisifyGrpc(client.newSecret.bind(client))(request);
 
-          pkLogger.logV2(`secret '${secretName}' was successfully added to vault '${vaultName}'`, PKMessageType.SUCCESS);
+          pkLogger.logV2(
+            `secret '${secretName}' was successfully added to vault '${vaultName}'`,
+            PKMessageType.SUCCESS,
+          );
         } catch (err) {
           throw Error(`Error when adding secret: ${err.message}`);
         }
@@ -84,23 +101,67 @@ function makeNewSecretCommand() {
     );
 }
 
+function makeNewDirSecretCommand() {
+  return new commander.Command('dir')
+    .description("create a secret within a given vault, specify a secret path with '<vaultName>:<secretPath>'")
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
+    .requiredOption('-vn, --vault-name <vaultName>', 'name of the vault to which the secret(s) will be added')
+    .requiredOption('-d, --directory <directory>', 'path to the directory of secret(s) to be added')
+    .action(
+      actionRunner(async (options) => {
+        const nodePath = determineNodePath(options.nodePath);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
+
+        try {
+          // Add the secret
+          const vaultName = options.vaultName;
+          const dirPath = options.directory;
+          const request = new pb.SecretContentMessage();
+          const secretPath = new pb.SecretPathMessage();
+          secretPath.setVaultName(vaultName);
+          request.setSecretFilePath(dirPath);
+          request.setSecretPath(secretPath);
+          await promisifyGrpc(client.newSecret.bind(client))(request);
+
+          pkLogger.logV2(
+            `secret directory '${dirPath}' was recursively added to vault '${vaultName}'`,
+            PKMessageType.SUCCESS,
+          );
+        } catch (err) {
+          throw Error(`Error when adding secrets: ${err.message}`);
+        }
+      }),
+    );
+}
+
 function makeUpdateSecretCommand() {
   return new commander.Command('update')
-    .description("update a secret within a given vault, specify a secret path with '<vaultName>:<secretName>'")
+    .description("update a secret within a given vault, specify a secret path with '<vaultName>:<secretPath>'")
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
-    .arguments("secret path of the format '<vaultName>:<secretName>'")
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
+    .arguments("secret path of the format '<vaultName>:<secretPath>'")
     .requiredOption('-f, --file-path <filePath>', '(required) path to the new secret')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
-
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
-          throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
+          throw Error("please specify the secret using the format: '<vaultName>:<secretPath>'");
         } else if (secretPath.length > 1) {
           throw Error('you can only update one secret at a time');
         }
@@ -114,11 +175,83 @@ function makeUpdateSecretCommand() {
           secretPath.setSecretName(secretName);
           request.setSecretPath(secretPath);
           request.setSecretFilePath(options.filePath);
-          await promisifyGrpc(client.updateSecret.bind(client))(request)
+          await promisifyGrpc(client.updateSecret.bind(client))(request);
 
-          pkLogger.logV2(`secret '${secretName}' was successfully updated in vault '${vaultName}'`, PKMessageType.SUCCESS);
+          pkLogger.logV2(
+            `secret '${secretName}' was successfully updated in vault '${vaultName}'`,
+            PKMessageType.SUCCESS,
+          );
         } catch (err) {
           throw Error(`Error when updating secret: ${err.message}`);
+        }
+      }),
+    );
+}
+
+function makeEditSecretCommand() {
+  return new commander.Command('edit')
+    .alias('ed')
+    .description("edit a secret with the default system editor, specify a secret path with '<vaultName>:<secretPath>'")
+    .option('-k, --node-path <nodePath>', 'provide the polykey path')
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
+    .arguments("secret path of the format '<vaultName>:<secretPath>'")
+    .action(
+      actionRunner(async (options) => {
+        const nodePath = determineNodePath(options.nodePath);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
+
+        const secretPath: string[] = Array.from<string>(options.args.values());
+        if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
+          throw Error("please specify the secret using the format: '<vaultName>:<secretPath>'");
+        } else if (secretPath.length > 1) {
+          throw Error('you can only update one secret at a time');
+        }
+        const firstEntry = secretPath[0];
+        const [_, vaultName, secretName] = firstEntry.match(pathRegex)!;
+        try {
+          // Retrieve the secret
+          const request = new pb.SecretPathMessage();
+          request.setVaultName(vaultName);
+          request.setSecretName(secretName);
+          const res = (await promisifyGrpc(client.getSecret.bind(client))(request)) as pb.StringMessage;
+          const secret = res.getS();
+
+          // Linux
+          // make a temp file for editing
+          const tmpDir = fs.mkdtempSync(`${os.tmpdir}/pksecret${randomString()}${randomString()}`);
+          const tmpFile = path.join(tmpDir, `pksecret${randomString()}${randomString()}`);
+          // write secret to file
+          fs.writeFileSync(tmpFile, secret);
+          // open editor
+          execSync(`$EDITOR \"${tmpFile}\"`, { stdio: 'inherit' });
+          // read updated secret
+          const updatedSecret = fs.readFileSync(tmpFile);
+          // send updated secret to polykey
+          const updateRequest = new pb.SecretContentMessage();
+          const secretPath = new pb.SecretPathMessage();
+          secretPath.setVaultName(vaultName);
+          secretPath.setSecretName(secretName);
+          updateRequest.setSecretPath(secretPath);
+          updateRequest.setSecretFilePath(tmpFile);
+          await promisifyGrpc(client.updateSecret.bind(client))(updateRequest);
+          // remove temp directory
+          fs.rmdirSync(tmpDir, { recursive: true });
+
+          // Windows
+          // TODO: complete windows impl
+
+          pkLogger.logV2(
+            `secret '${secretName}' was successfully updated in vault '${vaultName}'`,
+            PKMessageType.SUCCESS,
+          );
+        } catch (err) {
+          throw Error(`error when editing secret: ${err.message}`);
         }
       }),
     );
@@ -127,20 +260,26 @@ function makeUpdateSecretCommand() {
 function makeDeleteSecretCommand() {
   return new commander.Command('delete')
     .alias('del')
-    .description("delete a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
+    .description(
+      "delete a secret or sub directory from a given vault, specify a secret path with '<vaultName>:<secretPath|subDirectoryPath>'",
+    )
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
-    .arguments("secret path of the format '<vaultName>:<secretName>'")
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
+    .arguments("secret path of the format '<vaultName>:<secretPath|subDirectoryPath>'")
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
-
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
-          throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
+          throw Error("please specify the secret using the format: '<vaultName>:<secretPath>'");
         } else if (secretPath.length > 1) {
           throw Error('you can only delete one secret at a time');
         }
@@ -151,9 +290,12 @@ function makeDeleteSecretCommand() {
           const request = new pb.SecretPathMessage();
           request.setVaultName(vaultName);
           request.setSecretName(secretName);
-          await promisifyGrpc(client.deleteSecret.bind(client))(request)
+          await promisifyGrpc(client.deleteSecret.bind(client))(request);
 
-          pkLogger.logV2(`secret '${secretName}' was successfully removed from vault '${vaultName}'`, PKMessageType.SUCCESS);
+          pkLogger.logV2(
+            `secret '${secretName}' was successfully removed from vault '${vaultName}'`,
+            PKMessageType.SUCCESS,
+          );
         } catch (err) {
           throw Error(`Error when removing secret: ${err.message}`);
         }
@@ -163,22 +305,27 @@ function makeDeleteSecretCommand() {
 
 function makeGetSecretCommand() {
   return new commander.Command('get')
-    .description("retrieve a secret from a given vault, specify a secret path with '<vaultName>:<secretName>'")
+    .description("retrieve a secret from a given vault, specify a secret path with '<vaultName>:<secretPath>'")
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
-    .arguments("secret path of the format '<vaultName>:<secretName>'")
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
+    .arguments("secret path of the format '<vaultName>:<secretPath>'")
     .option('-e, --env', 'wrap the secret in an environment variable declaration')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const isEnv: boolean = options.env ?? false;
 
         const secretPath: string[] = Array.from<string>(options.args.values());
         if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
-          throw Error("please specify the secret using the format: '<vaultName>:<secretName>'");
+          throw Error("please specify the secret using the format: '<vaultName>:<secretPath>'");
         } else if (secretPath.length > 1) {
           throw Error('you can only get one secret at a time');
         }
@@ -208,7 +355,7 @@ function makeSecretEnvCommand() {
   return new commander.Command('env')
     .storeOptionsAsProperties(false)
     .description(
-      "run a modified environment with injected secrets, specify a secret path with '<vaultName>:<secretName>'",
+      "run a modified environment with injected secrets, specify a secret path with '<vaultName>:<secretPath>[=<variableName>]'",
     )
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
     .option(
@@ -220,15 +367,15 @@ function makeSecretEnvCommand() {
       'Like --command, but executes the command in a non-interactive shell. This means (among other things) that if you hit Ctrl-C while the command is running, the shell exits.',
     )
     .arguments(
-      "secrets to inject into env, of the format '<vaultName>:<secretName>'. you can also control what the environment variable will be called using '<vaultName>:<secretName>=<variableName>', defaults to upper, snake case of the original secret name.",
+      "secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]'. you can also control what the environment variable will be called using '<vaultName>:<secretPath>[=<variableName>]', defaults to upper, snake case of the original secret name.",
     )
     .action(
       actionRunner(async (cmd) => {
         const options = cmd.opts();
 
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const command: string | undefined = options.command;
         const run: string | undefined = options.run;
@@ -243,7 +390,7 @@ function makeSecretEnvCommand() {
         const parsedPathList: { vaultName: string; secretName: string; variableName: string }[] = [];
         for (const path of secretPathList) {
           if (!pathRegex.test(path)) {
-            throw Error(`secret path was not of the format '<vaultName>:<secretName>[=<variableName>]': ${path}`);
+            throw Error(`secret path was not of the format '<vaultName>:<secretPath>[=<variableName>]': ${path}`);
           }
           const [_, vaultName, secretName, variableName] = path.match(pathRegex)!;
           parsedPathList.push({
@@ -303,7 +450,9 @@ function makeSecretsCommand() {
     .description('manipulate secrets for a given vault')
     .addCommand(makeListSecretsCommand())
     .addCommand(makeNewSecretCommand())
+    .addCommand(makeNewDirSecretCommand())
     .addCommand(makeUpdateSecretCommand())
+    .addCommand(makeEditSecretCommand())
     .addCommand(makeDeleteSecretCommand())
     .addCommand(makeGetSecretCommand())
     .addCommand(makeSecretEnvCommand());

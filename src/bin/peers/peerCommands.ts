@@ -1,5 +1,5 @@
 import fs from 'fs';
-import commander, { action } from 'commander';
+import commander from 'commander';
 import { PeerInfo } from '../../Polykey';
 import * as pb from '../../../proto/compiled/Agent_pb';
 import { actionRunner, getPKLogger, PKMessageType, determineNodePath, getAgentClient, promisifyGrpc } from '../utils';
@@ -8,7 +8,12 @@ function makeAddPeerCommand() {
   return new commander.Command('add')
     .description('add a new peer to the store')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-b64, --base64 <base64>', 'decode the peer info from a base64 string')
     .option('-pk, --public-key <publicKey>', 'path to the file which contains the public key')
     .option('-rc, --root-certificate <rootCertificate>', 'path to the file which contains the peer root certificate')
@@ -17,8 +22,8 @@ function makeAddPeerCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const base64String = options?.base64?.replace('\r', '')?.replace('\n', '');
 
@@ -56,29 +61,34 @@ function makeAddAliasCommand() {
   return new commander.Command('alias')
     .description('set/unset an alias for an existing peer')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-pi, --peer-id <peerId>', '(required) id of the peer for which an alias is to be set')
     .option('-a, --alias <alias>', 'new alias for the target peer')
     .option('-u, --unset', 'new alias for the target peer')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         if (options.unset) {
           const request = new pb.StringMessage();
-          request.setS(options.peerId!)
+          request.setS(options.peerId!);
 
-          await promisifyGrpc(client.unsetAlias.bind(client))(request)
+          await promisifyGrpc(client.unsetAlias.bind(client))(request);
 
           pkLogger.logV2(`peer alias has successfully been unset`, PKMessageType.SUCCESS);
         } else {
           const request = new pb.PeerAliasMessage();
-          request.setPeerId(options.peerId!)
-          request.setAlias(options.alias!)
+          request.setPeerId(options.peerId!);
+          request.setAlias(options.alias!);
 
-          await promisifyGrpc(client.setAlias.bind(client))(request)
+          await promisifyGrpc(client.setAlias.bind(client))(request);
 
           pkLogger.logV2(`peer alias has successfully been set`, PKMessageType.SUCCESS);
         }
@@ -90,21 +100,26 @@ function makeFindPeerCommand() {
   return new commander.Command('find')
     .description('find a peer')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-pi, --peer-id <peerId>', '(required) id string of the peer to be pinged')
     .option('-t, --timeout <timeout>', 'timeout of the request in milliseconds')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const request = new pb.ContactPeerMessage();
         request.setPublicKeyOrHandle(options.peerId);
         if (options.timeout) {
           request.setTimeout(options.timeout);
         }
-        await promisifyGrpc(client.findPeer.bind(client))(request)
+        await promisifyGrpc(client.findPeer.bind(client))(request);
 
         pkLogger.logV1('peer successfully found', PKMessageType.SUCCESS);
       }),
@@ -115,7 +130,12 @@ function makeGetPeerInfoCommand() {
   return new commander.Command('get')
     .description('get the peer info for a particular peer')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-b64, --base64', 'output peer info as a base64 string')
     .option('-cn, --current-node', 'only list the peer information for the current node, useful for sharing')
     .option('-pi, --peer-id <peerId>', 'unique hash of public key that identifies the peer')
@@ -123,8 +143,8 @@ function makeGetPeerInfoCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         let res: pb.PeerInfoMessage;
         if (options.currentNode) {
@@ -143,7 +163,7 @@ function makeGetPeerInfoCommand() {
           res.getApiAddress(),
         );
 
-        if (<boolean>options.base64) {
+        if (options.base64 as boolean) {
           pkLogger.logV1(peerInfo.toStringB64(), PKMessageType.SUCCESS);
         } else {
           pkLogger.logV1('Peer Id:', PKMessageType.INFO);
@@ -170,12 +190,17 @@ function makeListPeersCommand() {
     .description('list all connected peers')
     .alias('ls')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const res = (await promisifyGrpc(client.listPeers.bind(client))(new pb.EmptyMessage())) as pb.StringListMessage;
         const peerIds = res.getSList();
@@ -195,21 +220,26 @@ function makePingPeerCommand() {
   return new commander.Command('ping')
     .description('ping a connected peer')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .requiredOption('-pi, --peer-id <peerId>', '(required) id string of the peer to be pinged')
     .option('-t, --timeout <timeout>', 'timeout of the request in milliseconds')
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const request = new pb.ContactPeerMessage();
         request.setPublicKeyOrHandle(options.peerId);
         if (options.timeout) {
-          request.setTimeout(options.timeout)
+          request.setTimeout(options.timeout);
         }
-        await promisifyGrpc(client.pingPeer.bind(client))(request)
+        await promisifyGrpc(client.pingPeer.bind(client))(request);
         pkLogger.logV1('peer successfully pinged', PKMessageType.SUCCESS);
       }),
     );
@@ -220,16 +250,21 @@ function makeStealthCommand() {
   const activeStealthCommand = new commander.Command('active')
     .command('active')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const request = new pb.BooleanMessage();
         request.setB(true);
-        await promisifyGrpc(client.toggleStealthMode.bind(client))(request)
+        await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
 
         pkLogger.logV2(`stealth mode toggled to 'active'`, PKMessageType.SUCCESS);
       }),
@@ -238,16 +273,21 @@ function makeStealthCommand() {
   // add inactive command
   const inactiveStealthCommand = new commander.Command('inactive')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const request = new pb.BooleanMessage();
         request.setB(false);
-        await promisifyGrpc(client.toggleStealthMode.bind(client))(request)
+        await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
 
         pkLogger.logV2(`stealth mode toggled to 'inactive'`, PKMessageType.SUCCESS);
       }),
@@ -265,7 +305,12 @@ function makeUpdatePeerInfoCommand() {
   return new commander.Command('update')
     .description('update the peer info for a particular peer')
     .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option('-v, --verbosity, <verbosity>', 'set the verbosity level, can choose from levels 1, 2 or 3', str => parseInt(str), 1)
+    .option(
+      '-v, --verbosity, <verbosity>',
+      'set the verbosity level, can choose from levels 1, 2 or 3',
+      (str) => parseInt(str),
+      1,
+    )
     .option('-cn, --current-node', 'only list the peer information for the current node, useful for sharing')
     .option('-b64, --base64 <base64>', 'decode the peer info from a base64 string')
     .option('-pi, --peer-id <peerId>', 'the id of the peer to be updated')
@@ -275,8 +320,8 @@ function makeUpdatePeerInfoCommand() {
     .action(
       actionRunner(async (options) => {
         const nodePath = determineNodePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity)
-        const client = await getAgentClient(nodePath, undefined, undefined, undefined, pkLogger);
+        const pkLogger = getPKLogger(options.verbosity);
+        const client = await getAgentClient(nodePath, pkLogger);
 
         const request = new pb.PeerInfoMessage();
 
@@ -294,7 +339,7 @@ function makeUpdatePeerInfoCommand() {
           }
         } else {
           if (!options.currentNode && !options.peerId) {
-            throw Error('must specify peer id')
+            throw Error('must specify peer id');
           }
           if (!options.currentNode) {
             request.setPublicKey(options.peerId);
@@ -311,9 +356,9 @@ function makeUpdatePeerInfoCommand() {
         }
 
         if (options.currentNode) {
-          await promisifyGrpc(client.updateLocalPeerInfo.bind(client))(request)
+          await promisifyGrpc(client.updateLocalPeerInfo.bind(client))(request);
         } else {
-          await promisifyGrpc(client.updatePeerInfo.bind(client))(request)
+          await promisifyGrpc(client.updatePeerInfo.bind(client))(request);
         }
 
         pkLogger.logV2('peer info was successfully updated', PKMessageType.SUCCESS);

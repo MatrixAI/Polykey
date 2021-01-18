@@ -8,16 +8,16 @@ type TreeEntry = {
 */
 
 function parseBuffer(buffer) {
-  let _entries: any[] = [];
+  const _entries: any[] = [];
   let cursor = 0;
   while (cursor < buffer.length) {
-    let space = buffer.indexOf(32, cursor);
+    const space = buffer.indexOf(32, cursor);
     if (space === -1) {
       throw new Error(
         `GitTree: Error parsing buffer at byte location ${cursor}: Could not find the next space character.`,
       );
     }
-    let nullchar = buffer.indexOf(0, cursor);
+    const nullchar = buffer.indexOf(0, cursor);
     if (nullchar === -1) {
       throw new Error(
         `GitTree: Error parsing buffer at byte location ${cursor}: Could not find the next null character.`,
@@ -25,9 +25,9 @@ function parseBuffer(buffer) {
     }
     let mode = buffer.slice(cursor, space).toString('utf8');
     if (mode === '40000') mode = '040000'; // makes it line up neater in printed output
-    let type = mode === '040000' ? 'tree' : 'blob';
-    let path = buffer.slice(space + 1, nullchar).toString('utf8');
-    let oid = buffer.slice(nullchar + 1, nullchar + 21).toString('hex');
+    const type = mode === '040000' ? 'tree' : 'blob';
+    const path = buffer.slice(space + 1, nullchar).toString('utf8');
+    const oid = buffer.slice(nullchar + 1, nullchar + 21).toString('hex');
     cursor = nullchar + 21;
     _entries.push({ mode, path, oid, type });
   }
@@ -84,12 +84,12 @@ class GitTree {
   toObject() {
     return Buffer.concat(
       this._entries.map((entry) => {
-        let mode = Buffer.from(entry.mode.replace(/^0/, ''));
-        let space = Buffer.from(' ');
-        let path = Buffer.from(entry.path);
+        const mode = Buffer.from(entry.mode.replace(/^0/, ''));
+        const space = Buffer.from(' ');
+        const path = Buffer.from(entry.path);
         // let path = Buffer.from(entry.path, { encoding: 'utf8' })
-        let nullchar = Buffer.from([0]);
-        let oid = Buffer.from(entry.oid.match(/../g).map((n) => parseInt(n, 16)));
+        const nullchar = Buffer.from([0]);
+        const oid = Buffer.from(entry.oid.match(/../g).map((n) => parseInt(n, 16)));
         return Buffer.concat([mode, space, path, nullchar, oid]);
       }),
     );
@@ -100,7 +100,7 @@ class GitTree {
   }
 
   *[Symbol.iterator]() {
-    for (let entry of this._entries) {
+    for (const entry of this._entries) {
       yield entry;
     }
   }

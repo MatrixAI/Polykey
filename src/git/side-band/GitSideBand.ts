@@ -38,14 +38,14 @@ function splitBuffer(buffer: Buffer, maxBytes: number) {
 
 class GitSideBand {
   static demux(input) {
-    let read = GitPktLine.streamReader(input);
+    const read = GitPktLine.streamReader(input);
     // And now for the ridiculous side-band or side-band-64k protocol
-    let packetlines = new PassThrough();
-    let packfile = new PassThrough();
-    let progress = new PassThrough();
+    const packetlines = new PassThrough();
+    const packfile = new PassThrough();
+    const progress = new PassThrough();
     // TODO: Use a proper through stream?
     const nextBit = async function () {
-      let line = await read();
+      const line = await read();
       // Skip over flush packets
       if (line === null) return nextBit();
       // A made up convention to signal there's no more to read.
@@ -93,7 +93,7 @@ class GitSideBand {
     error,
   ) {
     const MAX_PACKET_LENGTH = protocol === 'side-band-64k' ? 999 : 65519;
-    let output = new PassThrough();
+    const output = new PassThrough();
     packetlines.on('data', (data) => {
       if (data === null) {
         output.write(GitPktLine.flush());
@@ -104,8 +104,8 @@ class GitSideBand {
     let packfileWasEmpty = true;
     let packfileEnded = false;
     let progressEnded = false;
-    let errorEnded = true;
-    let goodbye = Buffer.concat([GitPktLine.encode(Buffer.from('010A', 'hex')), GitPktLine.flush()]);
+    const errorEnded = true;
+    const goodbye = Buffer.concat([GitPktLine.encode(Buffer.from('010A', 'hex')), GitPktLine.flush()]);
     packfile
       .on('data', (data) => {
         packfileWasEmpty = false;

@@ -4,14 +4,14 @@ import path from 'path';
 import http from 'http';
 import https from 'https';
 import jsyaml from 'js-yaml';
-import express, { RequestHandler } from 'express';
-import passport from 'passport'
+import passport from 'passport';
 import { getPort } from '../utils';
-import session from 'express-session'
+import session from 'express-session';
 import swaggerUI from 'swagger-ui-express';
 import { Address } from '../peers/PeerInfo';
 import { BasicStrategy } from 'passport-http';
 import OAuth2 from './AuthorizationServer/OAuth2';
+import express, { RequestHandler } from 'express';
 import * as utils from './AuthorizationServer/utils';
 import * as config from './AuthorizationServer/Config';
 import * as OpenApiValidator from 'express-openapi-validator';
@@ -19,10 +19,9 @@ import { User, Client } from './AuthorizationServer/OAuth2Store';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
 import { TLSCredentials } from '../keys/pki/PublicKeyInfrastructure';
 import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
-import { DEFAULT_ENCODING } from 'crypto';
 
 class HttpApi {
-  private openApiPath: string
+  private openApiPath: string;
 
   private updateApiAddress: (apiAddress: Address) => void;
   private handleCSR: (csr: string) => string;
@@ -36,8 +35,8 @@ class HttpApi {
   private newSecret: (vaultName: string, secretName: string, secretContent: Buffer) => Promise<void>;
   private deleteSecret: (vaultName: string, secretName: string) => Promise<void>;
 
-  private tlsCredentials: TLSCredentials
-  private oauth: OAuth2
+  private tlsCredentials: TLSCredentials;
+  private oauth: OAuth2;
   private expressServer: express.Express;
   private httpServer: http.Server;
 
@@ -56,75 +55,75 @@ class HttpApi {
     deleteSecret: (vaultName: string, secretName: string) => Promise<void>,
   ) {
     // this code is needed as we can't require yaml files
-    const fromSrcFolderPath = path.join(__dirname, '../../openapi.yaml')
-    const fromDistFolderPath = path.join(__dirname, '../openapi.yaml')
+    const fromSrcFolderPath = path.join(__dirname, '../../openapi.yaml');
+    const fromDistFolderPath = path.join(__dirname, '../openapi.yaml');
     if (fs.existsSync(fromSrcFolderPath)) {
-      this.openApiPath = fromSrcFolderPath
+      this.openApiPath = fromSrcFolderPath;
     } else {
-      this.openApiPath = fromDistFolderPath
+      this.openApiPath = fromDistFolderPath;
     }
     this.updateApiAddress = updateApiAddress;
     this.handleCSR = handleCSR;
     this.getRootCertificate = getRootCertificate;
     this.getCertificateChain = getCertificateChain;
-    this.getVaultNames = getVaultNames
-    this.newVault = newVault
-    this.deleteVault = deleteVault
-    this.listSecrets = listSecrets
-    this.getSecret = getSecret
-    this.newSecret = newSecret
-    this.deleteSecret = deleteSecret
+    this.getVaultNames = getVaultNames;
+    this.newVault = newVault;
+    this.deleteVault = deleteVault;
+    this.listSecrets = listSecrets;
+    this.getSecret = getSecret;
+    this.newSecret = newSecret;
+    this.deleteSecret = deleteSecret;
 
-    this.tlsCredentials = getTlsCredentials()
-    this.oauth = new OAuth2(
-      this.tlsCredentials.keypair.public,
-      this.tlsCredentials.keypair.private
-    )
+    this.tlsCredentials = getTlsCredentials();
+    this.oauth = new OAuth2(this.tlsCredentials.keypair.public, this.tlsCredentials.keypair.private);
     this.expressServer = express();
   }
 
-  async start(port: number = 0) {
+  async start(port = 0) {
     return new Promise<number>(async (resolve, reject) => {
-      const port = await getPort(1314, process.env.PK_PEER_HOST ?? 'localhost')
+      const port = await getPort(1314, process.env.PK_PEER_HOST ?? 'localhost');
 
-      this.expressServer.set('view engine', 'ejs')
+      this.expressServer.set('view engine', 'ejs');
       // Session Configuration
-      const MemoryStore = session.MemoryStore
-      this.expressServer.use(session({
-        saveUninitialized: true,
-        resave: true,
-        secret: 'secret',
-        store: new MemoryStore(),
-        cookie: { maxAge: 3600000 * 24 * 7 * 52 },
-      }));
+      const MemoryStore = session.MemoryStore;
+      this.expressServer.use(
+        session({
+          saveUninitialized: true,
+          resave: true,
+          secret: 'secret',
+          store: new MemoryStore(),
+          cookie: { maxAge: 3600000 * 24 * 7 * 52 },
+        }),
+      );
 
       this.expressServer.use(express.json());
       this.expressServer.use(express.text());
       this.expressServer.use(express.urlencoded({ extended: false }));
 
       // create default client and user for the polykey node (highest priviledge)
-      this.oauth.store.saveClient('polykey', utils.createUuid(), ['admin'], true)
-      this.oauth.store.saveUser('polykey', 'polykey', utils.createUuid(), ['admin'], true)
+      this.oauth.store.saveClient('polykey', utils.createUuid(), ['admin'], true);
+      this.oauth.store.saveUser('polykey', 'polykey', utils.createUuid(), ['admin'], true);
 
       this.expressServer.use(passport.initialize());
       this.expressServer.use(passport.session());
 
       // redirect from base url to docs
       this.expressServer.get('/', (req, res, next) => {
-        res.redirect('/docs')
-      })
+        res.redirect('/docs');
+      });
 
-      passport.use("clientBasic", new BasicStrategy(
-        (clientId, clientSecret, done) => {
+      passport.use(
+        'clientBasic',
+        new BasicStrategy((clientId, clientSecret, done) => {
           try {
-            const client = this.oauth.store.getClient(clientId)
-            client.validate(clientSecret)
-            done(null, client)
+            const client = this.oauth.store.getClient(clientId);
+            client.validate(clientSecret);
+            done(null, client);
           } catch (error) {
-            done(null, false)
+            done(null, false);
           }
-        }
-      ));
+        }),
+      );
       /**
        * BearerStrategy
        *
@@ -136,15 +135,18 @@ class HttpApi {
        * To keep this example simple, restricted scopes are not implemented, and this is just for
        * illustrative purposes
        */
-      passport.use('accessToken', new BearerStrategy((token, done) => {
-        try {
-          const accessToken = this.oauth.store.getAccessToken(token)
-          const user = this.oauth.store.getUser(accessToken.userId!)
-          done(null, user, { scope: accessToken.scope ?? [] })
-        } catch (error) {
-          done(null, false)
-        }
-      }));
+      passport.use(
+        'accessToken',
+        new BearerStrategy((token, done) => {
+          try {
+            const accessToken = this.oauth.store.getAccessToken(token);
+            const user = this.oauth.store.getUser(accessToken.userId!);
+            done(null, user, { scope: accessToken.scope ?? [] });
+          } catch (error) {
+            done(null, false);
+          }
+        }),
+      );
 
       /**
        * Client Password strategy
@@ -153,15 +155,18 @@ class HttpApi {
        * using a client ID and client secret. The strategy requires a verify callback,
        * which accepts those credentials and calls done providing a client.
        */
-      passport.use('clientPassword', new ClientPasswordStrategy((clientId, clientSecret, done) => {
-        try {
-          const client = this.oauth.store.getClient(clientId)
-          client.validate(clientSecret)
-          done(null, client)
-        } catch (error) {
-          done(null, false)
-        }
-      }));
+      passport.use(
+        'clientPassword',
+        new ClientPasswordStrategy((clientId, clientSecret, done) => {
+          try {
+            const client = this.oauth.store.getClient(clientId);
+            client.validate(clientSecret);
+            done(null, client);
+          } catch (error) {
+            done(null, false);
+          }
+        }),
+      );
 
       // Register serialialization and deserialization functions.
       //
@@ -181,10 +186,10 @@ class HttpApi {
 
       passport.deserializeUser((id: string, done) => {
         try {
-          const user = this.oauth.store.getUser(id)
-          done(null, user)
+          const user = this.oauth.store.getUser(id);
+          done(null, user);
         } catch (error) {
-          done(error)
+          done(error);
         }
       });
 
@@ -193,72 +198,72 @@ class HttpApi {
       this.expressServer.post('/oauth/refresh', this.oauth.token);
       this.expressServer.get('/oauth/tokeninfo', [
         passport.authenticate(['accessToken'], { session: true }),
-        this.oauth.tokenInfo.bind(this.oauth)
+        this.oauth.tokenInfo.bind(this.oauth),
       ]);
       this.expressServer.get('/oauth/revoke', this.oauth.revokeToken.bind(this.oauth));
 
       // OpenAPI endpoints
-      const schema = jsyaml.load(fs.readFileSync(this.openApiPath).toString())
+      const schema = jsyaml.load(fs.readFileSync(this.openApiPath).toString());
       this.expressServer.get('/spec', (req, res) => {
-        res.type('json').send(JSON.stringify(schema, null, 2))
+        res.type('json').send(JSON.stringify(schema, null, 2));
       });
       this.expressServer.use(
         '/docs',
         swaggerUI.serve,
         swaggerUI.setup(schema, undefined, {
           oauth: {
-            clientId: 'polykey'
+            clientId: 'polykey',
           },
-        })
+        }),
       );
 
       this.expressServer.use(
         OpenApiValidator.middleware({
           apiSpec: schema,
-          validateResponses: true
-        })
-      )
-      this.setupOpenApiRouter()
+          validateResponses: true,
+        }),
+      );
+      this.setupOpenApiRouter();
 
       // Start the server
-      const pkHost = process.env.PK_PEER_HOST ?? 'localhost'
+      const pkHost = process.env.PK_PEER_HOST ?? 'localhost';
       const httpsOptions: https.ServerOptions = {
         cert: this.tlsCredentials.certificate,
         key: this.tlsCredentials.keypair.private,
-        ca: this.tlsCredentials.rootCertificate
-      }
+        ca: this.tlsCredentials.rootCertificate,
+      };
       this.httpServer = https.createServer(httpsOptions, this.expressServer).listen(port, () => {
-        const addressInfo = <net.AddressInfo>this.httpServer.address();
+        const addressInfo = this.httpServer.address() as net.AddressInfo;
         const address = Address.fromAddressInfo(addressInfo);
-        address.updateHost(pkHost)
-        this.updateApiAddress(address)
+        address.updateHost(pkHost);
+        this.updateApiAddress(address);
 
         console.log(`HTTP API endpoint: https://${address.toString()}`);
         console.log(`HTTP API docs: https://${address.toString()}/docs/`);
 
         resolve(port);
       });
-    })
+    });
   }
 
   getOAuthClient(): Client {
-    return this.oauth.store.getClient('polykey')
+    return this.oauth.store.getClient('polykey');
   }
 
   listOAuthTokens(): string[] {
-    return Array.from(this.oauth.store.accessTokenStore.keys())
+    return Array.from(this.oauth.store.accessTokenStore.keys());
   }
 
-  newOAuthToken(scopes: string[] = [], expiry: number = 3600): string {
-    const expiryDate = new Date(Date.now() + expiry * 1000)
-    const token = utils.createToken(this.oauth.store.privateKey, config.token.expiresIn, 'polykey')
-    this.oauth.store.saveAccessToken(token, expiryDate, 'polykey', 'polykey', scopes)
-    return token
+  newOAuthToken(scopes: string[] = [], expiry = 3600): string {
+    const expiryDate = new Date(Date.now() + expiry * 1000);
+    const token = utils.createToken(this.oauth.store.privateKey, config.token.expiresIn, 'polykey');
+    this.oauth.store.saveAccessToken(token, expiryDate, 'polykey', 'polykey', scopes);
+    return token;
   }
 
   revokeOAuthToken(token: string): boolean {
-    this.oauth.store.deleteAccessToken(token)
-    return !this.oauth.store.hasAccessToken(token)
+    this.oauth.store.deleteAccessToken(token);
+    return !this.oauth.store.hasAccessToken(token);
   }
 
   // === openapi endpoints === //
@@ -292,7 +297,7 @@ class HttpApi {
 
   private handleVaultsListRequest: RequestHandler = async (req, res, next) => {
     try {
-      const response = this.getVaultNames()
+      const response = this.getVaultNames();
       this.writeStringList(res, response);
     } catch (error) {
       this.writeError(res, error);
@@ -301,8 +306,8 @@ class HttpApi {
 
   private handleNewVaultRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = (<any>req).openapi.pathParams.vaultName;
-      await this.newVault(vaultName)
+      const vaultName = (req as any).openapi.pathParams.vaultName;
+      await this.newVault(vaultName);
       this.writeSuccess(res);
     } catch (error) {
       this.writeError(res, error);
@@ -311,8 +316,8 @@ class HttpApi {
 
   private handleDeleteVaultRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = (<any>req).openapi.pathParams.vaultName;
-      await this.deleteVault(vaultName)
+      const vaultName = (req as any).openapi.pathParams.vaultName;
+      await this.deleteVault(vaultName);
       this.writeSuccess(res);
     } catch (error) {
       this.writeError(res, error);
@@ -321,7 +326,7 @@ class HttpApi {
 
   private handleSecretsListRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = (<any>req).openapi.pathParams.vaultName;
+      const vaultName = (req as any).openapi.pathParams.vaultName;
       const response = this.listSecrets(vaultName);
       this.writeStringList(res, response);
     } catch (error) {
@@ -331,18 +336,17 @@ class HttpApi {
 
   private handleGetSecretRequest: RequestHandler = async (req, res, next) => {
     try {
+      const vaultName = (req as any).openapi.pathParams.vaultName;
+      const secretName = (req as any).openapi.pathParams.secretName;
+      const response = this.getSecret(vaultName, secretName);
 
-      const vaultName = (<any>req).openapi.pathParams.vaultName;
-      const secretName = (<any>req).openapi.pathParams.secretName;
-      const response = this.getSecret(vaultName, secretName)
-
-      const accepts = req.accepts()[0]
-        if (!accepts || accepts == 'text/plain' || accepts == '*/*') {
-        this.writeString(res, response.toString())
+      const accepts = req.accepts()[0];
+      if (!accepts || accepts == 'text/plain' || accepts == '*/*') {
+        this.writeString(res, response.toString());
       } else if (accepts == 'application/octet-stream') {
         this.writeBinary(res, secretName, response);
       } else {
-        throw Error(`MIME type not supported: ${accepts}`)
+        throw Error(`MIME type not supported: ${accepts}`);
       }
     } catch (error) {
       this.writeError(res, error);
@@ -351,22 +355,22 @@ class HttpApi {
 
   private handleNewSecretRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = (<any>req).openapi.pathParams.vaultName;
-      const secretName = (<any>req).openapi.pathParams.secretName;
+      const vaultName = (req as any).openapi.pathParams.vaultName;
+      const secretName = (req as any).openapi.pathParams.secretName;
 
-      let secretContent: Buffer
-      const contentType = req.headers['content-type']
+      let secretContent: Buffer;
+      const contentType = req.headers['content-type'];
       if (contentType == 'text/plain') {
-        secretContent = Buffer.from(req.body)
+        secretContent = Buffer.from(req.body);
       } else if (contentType == 'application/octet-stream') {
         secretContent = await new Promise<Buffer>((resolve, reject) => {
-          const bufferList: Buffer[] = []
-          req.on('data', (data) => bufferList.push(data))
-          req.on('error', (err) => reject(err))
-          req.on('end', () => resolve(Buffer.concat(bufferList)))
-        })
+          const bufferList: Buffer[] = [];
+          req.on('data', (data) => bufferList.push(data));
+          req.on('error', (err) => reject(err));
+          req.on('end', () => resolve(Buffer.concat(bufferList)));
+        });
       } else {
-        throw Error(`MIME type not supported: ${contentType}`)
+        throw Error(`MIME type not supported: ${contentType}`);
       }
 
       await this.newSecret(vaultName, secretName, secretContent);
@@ -378,8 +382,8 @@ class HttpApi {
 
   private handleDeleteSecretRequest: RequestHandler = async (req, res, next) => {
     try {
-      const vaultName = (<any>req).openapi.pathParams.vaultName;
-      const secretName = (<any>req).openapi.pathParams.secretName;
+      const vaultName = (req as any).openapi.pathParams.vaultName;
+      const secretName = (req as any).openapi.pathParams.secretName;
       await this.deleteSecret(vaultName, secretName);
       this.writeSuccess(res);
     } catch (error) {
@@ -392,26 +396,31 @@ class HttpApi {
     res.writeHead(200);
     res.end();
   }
+
   private writeError(res: http.ServerResponse, error: Error) {
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: error.message }, null, 2));
   }
+
   private writeString(res: http.ServerResponse, text: string) {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end(text);
   }
+
   private writeStringList(res: http.ServerResponse, list: string[]) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(list, null, 2));
   }
-  private writeJson(res: http.ServerResponse, payload: Object) {
+
+  private writeJson(res: http.ServerResponse, payload: Record<string, any>) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(payload, null, 2));
   }
+
   private writeBinary(res: http.ServerResponse, filename: string, payload: Buffer) {
     res.writeHead(200, {
       'Content-Type': 'application/octet-stream',
-      'Content-Disposition': `file; filename="${filename}"`
+      'Content-Disposition': `file; filename="${filename}"`,
     });
     res.end(payload, 'binary');
   }
@@ -419,12 +428,12 @@ class HttpApi {
   private checkScope(scope: string[]) {
     return (req, res, next) => {
       // access control middleware to check for required scope
-      if (!scope.some(r => req.authInfo.scope.includes(r))) {
+      if (!scope.some((r) => req.authInfo.scope.includes(r))) {
         res.statusCode = 403;
         return res.end('Forbidden');
       }
       return next();
-    }
+    };
   }
 
   /**
@@ -447,58 +456,58 @@ class HttpApi {
     ///////////////////////////
     this.expressServer.get('/ca/root_certificate', [
       passport.authenticate(['accessToken'], { session: true }),
-      this.handleRootCertificateRequest.bind(this)
-    ])
+      this.handleRootCertificateRequest.bind(this),
+    ]);
     this.expressServer.get('/ca/certificate_chain', [
       passport.authenticate(['accessToken'], { session: true }),
-      this.handleCertificateChainRequest.bind(this)
-    ])
+      this.handleCertificateChainRequest.bind(this),
+    ]);
     this.expressServer.post('/ca/certificate_signing_request', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'request_certificate']),
-      this.handleCertificateSigningRequest.bind(this)
-    ])
+      this.handleCertificateSigningRequest.bind(this),
+    ]);
     ////////////
     // Vaults //
     ////////////
     this.expressServer.get('/vaults', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'write_vaults', 'read_vaults']),
-      this.handleVaultsListRequest.bind(this)
-    ])
+      this.handleVaultsListRequest.bind(this),
+    ]);
     this.expressServer.post('/vaults/:vaultName', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'write_vaults']),
-      this.handleNewVaultRequest.bind(this)
-    ])
+      this.handleNewVaultRequest.bind(this),
+    ]);
     this.expressServer.delete('/vaults/:vaultName', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'write_vaults']),
-      this.handleDeleteVaultRequest.bind(this)
-    ])
+      this.handleDeleteVaultRequest.bind(this),
+    ]);
     /////////////
     // Secrets //
     /////////////
     this.expressServer.get('/vaults/:vaultName', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'write_secrets', 'read_secrets']),
-      this.handleSecretsListRequest.bind(this)
-    ])
+      this.handleSecretsListRequest.bind(this),
+    ]);
     this.expressServer.get('/secrets/:vaultName/:secretName', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'write_secrets', 'read_secrets']),
-      this.handleGetSecretRequest.bind(this)
-    ])
+      this.handleGetSecretRequest.bind(this),
+    ]);
     this.expressServer.post('/secrets/:vaultName/:secretName', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'write_secrets']),
-      this.handleNewSecretRequest.bind(this)
-    ])
+      this.handleNewSecretRequest.bind(this),
+    ]);
     this.expressServer.delete('/secrets/:vaultName/:secretName', [
       passport.authenticate(['accessToken'], { session: true }),
       this.checkScope(['admin', 'write_secrets']),
-      this.handleDeleteSecretRequest.bind(this)
-    ])
+      this.handleDeleteSecretRequest.bind(this),
+    ]);
   }
 }
 

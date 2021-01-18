@@ -1,7 +1,6 @@
+import * as kbpgp from 'kbpgp';
 import { promisify } from 'util';
 import { expose } from 'threads/worker';
-
-const kbpgp = require('kbpgp')
 
 const keyManagerWorker = {
   /**
@@ -67,7 +66,7 @@ const keyManagerWorker = {
    * @param identity Identity to decrypt with
    */
   async decryptData(data: Buffer, identity: any): Promise<Buffer> {
-    var ring = new kbpgp.keyring.KeyRing();
+    const ring = new kbpgp.keyring.KeyRing();
 
     ring.add_key_manager(identity);
     const params = {

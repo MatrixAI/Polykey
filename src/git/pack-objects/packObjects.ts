@@ -1,3 +1,4 @@
+/* eslint-disable */
 import pako from 'pako';
 import path from 'path';
 import log from './log';
@@ -27,10 +28,10 @@ type Ack = {
  */
 async function packObjects(fileSystem: EncryptedFS, dir: string, refs: string[], depth?: number, haves?: string[]) {
   const gitdir = path.join(dir, '.git');
-  let oids = new Set<string>();
-  let shallows = new Set<string>();
-  let unshallows = new Set();
-  let acks: Ack[] = [];
+  const oids = new Set<string>();
+  const shallows = new Set<string>();
+  const unshallows = new Set();
+  const acks: Ack[] = [];
 
   haves = haves ? haves : [];
 
@@ -38,12 +39,12 @@ async function packObjects(fileSystem: EncryptedFS, dir: string, refs: string[],
   const since = undefined;
   for (const ref of refs) {
     try {
-      let commits = await log(fileSystem, dir, gitdir, emitter, ref, depth, since);
+      const commits = await log(fileSystem, dir, gitdir, emitter, ref, depth, since);
 
-      let oldshallows: string[] = [];
+      const oldshallows: string[] = [];
 
       for (let i = 0; i < commits.length; i++) {
-        let commit = commits[i];
+        const commit = commits[i];
         if (haves.includes(commit.oid)) {
           acks.push({
             oid: ref,
@@ -66,9 +67,9 @@ async function packObjects(fileSystem: EncryptedFS, dir: string, refs: string[],
       // oh well.
     }
   }
-  let objects = await listObjects(fileSystem, dir, gitdir, Array.from(oids));
+  const objects = await listObjects(fileSystem, dir, gitdir, Array.from(oids));
 
-  let packstream = new PassThrough();
+  const packstream = new PassThrough();
   pack(fileSystem, dir, undefined, [...objects], packstream);
   return { packstream, shallows, unshallows, acks };
 }
@@ -79,25 +80,25 @@ async function listObjects(
   gitdir: string = path.join(dir, '.git'),
   oids: string[],
 ) {
-  let commits = new Set<string>();
-  let trees = new Set<string>();
-  let blobs = new Set<string>();
+  const commits = new Set<string>();
+  const trees = new Set<string>();
+  const blobs = new Set<string>();
 
   // We don't do the purest simplest recursion, because we can
   // avoid reading Blob objects entirely since the Tree objects
   // tell us which oids are Blobs and which are Trees. And we
   // do not need to recurse through commit parents.
   async function walk(oid) {
-    let { type, object } = await GitObjectManager.read(fileSystem, gitdir, oid);
+    const { type, object } = await GitObjectManager.read(fileSystem, gitdir, oid);
     if (type === 'commit') {
       commits.add(oid);
-      let commit = GitCommit.from(object);
-      let tree = commit.headers().tree;
+      const commit = GitCommit.from(object);
+      const tree = commit.headers().tree;
       await walk(tree);
     } else if (type === 'tree') {
       trees.add(oid);
-      let tree = GitTree.from(object);
-      for (let entry of tree) {
+      const tree = GitTree.from(object);
+      for (const entry of tree) {
         if (entry.type === 'blob') {
           blobs.add(entry.oid);
         }
@@ -110,7 +111,7 @@ async function listObjects(
   }
 
   // Let's go walking!
-  for (let oid of oids) {
+  for (const oid of oids) {
     await walk(oid);
   }
   return [...commits, ...trees, ...blobs];
@@ -123,7 +124,7 @@ async function pack(
   oids: string[],
   outputStream: PassThrough,
 ) {
-  let hash = createHash('sha1');
+  const hash = createHash('sha1');
   function write(chunk: any, enc: string | undefined = undefined) {
     if (enc) {
       outputStream.write(chunk, enc);
@@ -137,7 +138,7 @@ async function pack(
     let multibyte;
     let length;
     // Object type is encoded in bits 654
-    let type = types[stype];
+    const type = types[stype];
     if (type === undefined) throw Error('Unrecognized type: ' + stype);
     // The length encoding get complicated.
     length = object.length;
@@ -171,12 +172,12 @@ async function pack(
   const unpaddedChunk = oids.length.toString(16);
   const paddedChunk = '0'.repeat(8 - unpaddedChunk.length) + unpaddedChunk;
   write(paddedChunk, 'hex');
-  for (let oid of oids) {
-    let { type, object } = await GitObjectManager.read(fileSystem, gitdir, oid);
+  for (const oid of oids) {
+    const { type, object } = await GitObjectManager.read(fileSystem, gitdir, oid);
     writeObject(object, type);
   }
   // Write SHA1 checksum
-  let digest = hash.digest();
+  const digest = hash.digest();
   outputStream.end(digest);
   return outputStream;
 }

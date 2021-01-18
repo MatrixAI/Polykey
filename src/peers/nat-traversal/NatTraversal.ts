@@ -1,11 +1,11 @@
-import net from 'net'
-import dgram from 'dgram'
+import net from 'net';
+import dgram from 'dgram';
 import { EventEmitter } from 'events';
-import { promiseAll } from "../../utils";
-import PeerInfo, { Address } from "../PeerInfo";
-import { peerInterface } from "../../../proto/js/Peer";
+import { promiseAll } from '../../utils';
+import PeerInfo, { Address } from '../PeerInfo';
+import { peerInterface } from '../../../proto/js/Peer';
 import PeerConnection from '../peer-connection/PeerConnection';
-import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer'
+import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer';
 
 class NatTraversal extends EventEmitter {
   private listPeers: () => string[];
@@ -16,9 +16,9 @@ class NatTraversal extends EventEmitter {
   private updatePeer: (peerInfo: PeerInfo) => void;
 
   // This is storing the peer ids that don't respond to connection requests
-  private unresponsiveNodes: Map<string, number> = new Map
+  private unresponsiveNodes: Map<string, number> = new Map();
 
-  server: MTPServer
+  server: MTPServer;
 
   // this is a list of all sockets that are waiting to be turned into holePunchedConnections
   // so this node (if private) requests adjacent, connected nodes to create a hole punched
@@ -27,31 +27,31 @@ class NatTraversal extends EventEmitter {
   // coordination (i.e. creating rules in the routing table by sending packets to the other
   // private node's public ip address)
   // peerId -> dgram.Socket
-  private pendingHolePunchedSockets: Map<string, dgram.Socket> = new Map
+  private pendingHolePunchedSockets: Map<string, dgram.Socket> = new Map();
 
   // these connections are from adjacent public nodes back to this (private) node
   // to facilitate udp hole punching
   // peerId -> connection
-  private holePunchedConnections: Map<string, MTPConnection> = new Map
+  private holePunchedConnections: Map<string, MTPConnection> = new Map();
 
   // these servers are localhost relays only and are intended to allow our gRPC
   // peer server able to serve over a udp hole punched connection
   // peerId -> tcp relay server
-  private outgoingTCPHolePunchedRelayServers: Map<string, net.Server> = new Map
+  private outgoingTCPHolePunchedRelayServers: Map<string, net.Server> = new Map();
 
   // these servers are relays for other private nodes who cannot use udp hole
   // punching to connect to other peers.
   // these will only be useful in the case of the current node being public and
   // also able to relay a private node's gRPC connection
   // peerId -> peer relay servers
-  private peerTCPHolePunchedRelayServers: Map<string, net.Server> = new Map
+  private peerTCPHolePunchedRelayServers: Map<string, net.Server> = new Map();
 
   // interval with which the server requests new direct hole punched connections
   // from adjacent peers that are in the store but have not yet been requested yet
   // without this purposeful seeking of connections from private nodes to public nodes
   // the private node could not receive hole punch coordination requests from the public nodes
   // in the case of another private node trying to connect to it.
-  private intermittentConnectionInterval: NodeJS.Timeout
+  private intermittentConnectionInterval: NodeJS.Timeout;
 
   constructor(
     listPeers: () => string[],
@@ -61,23 +61,20 @@ class NatTraversal extends EventEmitter {
     hasPeer: (id: string) => boolean,
     updatePeer: (peerInfo: PeerInfo) => void,
   ) {
-    super()
+    super();
 
-    this.listPeers = listPeers
-    this.getPeer = getPeer
-    this.connectToPeer = connectToPeer
-    this.getPeerInfo = getPeerInfo
-    this.hasPeer = hasPeer
-    this.updatePeer = updatePeer
-    this.server = new MTPServer(
-      this.connectionHandler.bind(this),
-      this.handleNATMessageUDP.bind(this)
-    )
-    const port = parseInt(process.env.PK_PEER_PORT ?? '0')
+    this.listPeers = listPeers;
+    this.getPeer = getPeer;
+    this.connectToPeer = connectToPeer;
+    this.getPeerInfo = getPeerInfo;
+    this.hasPeer = hasPeer;
+    this.updatePeer = updatePeer;
+    this.server = new MTPServer(this.connectionHandler.bind(this), this.handleNATMessageUDP.bind(this));
+    const port = parseInt(process.env.PK_PEER_PORT ?? '0');
     this.server.listenPort(port, () => {
-      const address = this.server.address()
+      const address = this.server.address();
       console.log(`main MTP server is now listening on address: '${address.toString()}'`);
-    })
+    });
 
     // this is just to make sure every other peer has a back connection to this node
     // the idea behind this is that if we are a node that is behind a NAT, then if
@@ -86,20 +83,20 @@ class NatTraversal extends EventEmitter {
     // coordination purposes.
     // TODO: this should only be done if the node detects that it is behind a NAT layer
     this.intermittentConnectionInterval = setInterval(async () => {
-      const promiseList: Promise<void>[] = []
+      const promiseList: Promise<void>[] = [];
       for (const peerId of this.listPeers()) {
         if (!this.server.incomingConnections.has(peerId)) {
-          const count = this.unresponsiveNodes.get(peerId) ?? 0
+          const count = this.unresponsiveNodes.get(peerId) ?? 0;
           if (count < 3) {
-            this.unresponsiveNodes.set(peerId, count + 1)
-            const peerInfo = this.getPeer(peerId)!
-            const udpAddress = await this.requestUDPAddress(peerInfo.id)
-            promiseList.push(this.sendDirectHolePunchConnectionRequest(udpAddress))
+            this.unresponsiveNodes.set(peerId, count + 1);
+            const peerInfo = this.getPeer(peerId)!;
+            const udpAddress = await this.requestUDPAddress(peerInfo.id);
+            promiseList.push(this.sendDirectHolePunchConnectionRequest(udpAddress));
           }
         }
       }
-      await promiseAll(promiseList)
-    }, 30000)
+      await promiseAll(promiseList);
+    }, 30000);
   }
 
   // request the MTP UDP address of a peer
@@ -107,114 +104,122 @@ class NatTraversal extends EventEmitter {
   // 1) the tcp address which is where the raw gRPC service is exposed
   // 2) the udp address which is where that gRPC service is relayed on using MTP
   async requestUDPAddress(peerId: string): Promise<Address> {
-    const pc = this.connectToPeer(peerId)
+    const pc = this.connectToPeer(peerId);
 
-    const request = peerInterface.NatMessage.encodeDelimited({ type: peerInterface.NatMessageType.UDP_ADDRESS }).finish()
-    const response = await pc.sendPeerRequest(peerInterface.SubServiceType.NAT_TRAVERSAL, request)
-    const { type, subMessage } = peerInterface.NatMessage.decodeDelimited(response)
+    const request = peerInterface.NatMessage.encodeDelimited({
+      type: peerInterface.NatMessageType.UDP_ADDRESS,
+    }).finish();
+    const response = await pc.sendPeerRequest(peerInterface.SubServiceType.NAT_TRAVERSAL, request);
+    const { type, subMessage } = peerInterface.NatMessage.decodeDelimited(response);
     if (type != peerInterface.NatMessageType.UDP_ADDRESS) {
-      throw Error('peer did not send back proper response')
+      throw Error('peer did not send back proper response');
     }
-    const { address: addressString } = peerInterface.UDPAddressMessage.decodeDelimited(subMessage)
-    const address = Address.parse(addressString)
-    address.updateHost(this.getPeer(peerId)!.peerAddress?.host)
-    return address
+    const { address: addressString } = peerInterface.UDPAddressMessage.decodeDelimited(subMessage);
+    const address = Address.parse(addressString);
+    address.updateHost(this.getPeer(peerId)!.peerAddress?.host);
+    return address;
   }
 
   // This request will timeout after 'timeout' milliseconds (defaults to 10 seconds)
-  async requestUDPHolePunchDirectly(targetPeerId: string, timeout: number = 10000): Promise<Address> {
+  async requestUDPHolePunchDirectly(targetPeerId: string, timeout = 10000): Promise<Address> {
     return new Promise(async (resolve, reject) => {
       try {
         if (!this.hasPeer(targetPeerId)) {
-          throw Error(`target peer id does not exist in store: ${targetPeerId}`)
+          throw Error(`target peer id does not exist in store: ${targetPeerId}`);
         } else if (this.outgoingTCPHolePunchedRelayServers.has(targetPeerId)) {
           // the outgoing tcp server might already be set up for this peer
-          const addressInfo = <net.AddressInfo>this.outgoingTCPHolePunchedRelayServers.get(targetPeerId)!.address()
-          return Address.fromAddressInfo(addressInfo)
+          const addressInfo = this.outgoingTCPHolePunchedRelayServers.get(targetPeerId)!.address() as net.AddressInfo;
+          return Address.fromAddressInfo(addressInfo);
         } else if (!this.holePunchedConnections.has(targetPeerId)) {
-          throw Error(`target peer id does not exist in hole punched connections: ${targetPeerId}`)
+          throw Error(`target peer id does not exist in hole punched connections: ${targetPeerId}`);
         }
 
-        const conn = this.holePunchedConnections.get(targetPeerId)!
+        const conn = this.holePunchedConnections.get(targetPeerId)!;
         // need to set up a local relay server between the new connection and the gRPC server!
         // this will include 2 socket pipes:
         // 1. one from the grpc connection to the local relay server (tcp packets)
         // 2. another one from the local relay server to the hole punched server address (udp/mtp packets)
-        const newServer = net.createServer((tcpConn) => {
-          tcpConn.on('data', (data) => conn.write(data))
-          conn.on('data', (data) => tcpConn.write(data))
-        }).listen(0, '127.0.01', () => {
-          this.outgoingTCPHolePunchedRelayServers.set(targetPeerId, newServer)
-          resolve(Address.fromAddressInfo(<net.AddressInfo>newServer.address()))
-        })
+        const newServer = net
+          .createServer((tcpConn) => {
+            tcpConn.on('data', (data) => conn.write(data));
+            conn.on('data', (data) => tcpConn.write(data));
+          })
+          .listen(0, '127.0.01', () => {
+            this.outgoingTCPHolePunchedRelayServers.set(targetPeerId, newServer);
+            resolve(Address.fromAddressInfo(newServer.address() as net.AddressInfo));
+          });
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
+    });
   }
 
   // This request will timeout after 'timeout' milliseconds (defaults to 10 seconds)
-  async requestUDPHolePunchViaPeer(targetPeerId: string, adjacentPeerId: string, timeout: number = 10000): Promise<Address> {
+  async requestUDPHolePunchViaPeer(targetPeerId: string, adjacentPeerId: string, timeout = 10000): Promise<Address> {
     return new Promise(async (resolve, reject) => {
-      setTimeout(() => reject(Error('hole punch connection request timed out')), timeout)
+      setTimeout(() => reject(Error('hole punch connection request timed out')), timeout);
       try {
         if (!this.hasPeer(targetPeerId)) {
-          throw Error(`target peer id does not exist in store: ${targetPeerId}`)
+          throw Error(`target peer id does not exist in store: ${targetPeerId}`);
         } else if (!this.hasPeer(adjacentPeerId)) {
-          throw Error(`adjacent peer id does not exist in store: ${adjacentPeerId}`)
+          throw Error(`adjacent peer id does not exist in store: ${adjacentPeerId}`);
         }
-        const udpAddress = await this.requestUDPAddress(adjacentPeerId)
-        await this.sendHolePunchRequest(udpAddress, targetPeerId)
+        const udpAddress = await this.requestUDPAddress(adjacentPeerId);
+        await this.sendHolePunchRequest(udpAddress, targetPeerId);
 
         this.on('hole-punch-connection', (peerId: string, conn: MTPConnection) => {
           // need to set up a local relay server between the new connection and the gRPC server!
           // this will include 2 socket pipes:
           // 1. one from the grpc connection to the local relay server (tcp packets)
           // 2. another one from the local relay server to the hole punched server address (udp/mtp packets)
-          const newServer = net.createServer((tcpConn) => {
-            tcpConn.on('data', (data) => conn.write(data))
-            conn.on('data', (data) => tcpConn.write(data))
-          }).listen(0, '127.0.01', () => {
-            this.outgoingTCPHolePunchedRelayServers.set(peerId, newServer)
-            resolve(Address.fromAddressInfo(<net.AddressInfo>newServer.address()))
-          })
-        })
+          const newServer = net
+            .createServer((tcpConn) => {
+              tcpConn.on('data', (data) => conn.write(data));
+              conn.on('data', (data) => tcpConn.write(data));
+            })
+            .listen(0, '127.0.01', () => {
+              this.outgoingTCPHolePunchedRelayServers.set(peerId, newServer);
+              resolve(Address.fromAddressInfo(newServer.address() as net.AddressInfo));
+            });
+        });
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
+    });
   }
 
   // This request will timeout after 'timeout' milliseconds (defaults to 10 seconds)
-  async requestUDPRelay(targetPeerId: string, adjacentPeerId: string, timeout: number = 10000): Promise<Address> {
+  async requestUDPRelay(targetPeerId: string, adjacentPeerId: string, timeout = 10000): Promise<Address> {
     return new Promise(async (resolve, reject) => {
-      setTimeout(() => reject(Error('relay connection request timed out')), timeout)
+      setTimeout(() => reject(Error('relay connection request timed out')), timeout);
       try {
         if (!this.hasPeer(targetPeerId)) {
-          throw Error(`target peer id does not exist in store: ${targetPeerId}`)
+          throw Error(`target peer id does not exist in store: ${targetPeerId}`);
         } else if (!this.hasPeer(adjacentPeerId)) {
-          throw Error(`adjacent peer id does not exist in store: ${adjacentPeerId}`)
+          throw Error(`adjacent peer id does not exist in store: ${adjacentPeerId}`);
         }
-        const udpAddress = await this.requestUDPAddress(adjacentPeerId)
-        await this.sendHolePunchRequest(udpAddress, targetPeerId)
+        const udpAddress = await this.requestUDPAddress(adjacentPeerId);
+        await this.sendHolePunchRequest(udpAddress, targetPeerId);
 
         this.on('hole-punch-connection', (peerId: string, conn: MTPConnection) => {
           // need to set up a local relay server between the new connection and the gRPC server!
           // this will include 2 socket pipes:
           // 1. one from the grpc connection to the local relay server (tcp packets)
           // 2. another one from the local relay server to the hole punched server address (udp/mtp packets)
-          const newServer = net.createServer((tcpConn) => {
-            tcpConn.on('data', (data) => conn.write(data))
-            conn.on('data', (data) => tcpConn.write(data))
-          }).listen(0, '127.0.01', () => {
-            this.outgoingTCPHolePunchedRelayServers.set(peerId, newServer)
-            resolve(Address.fromAddressInfo(<net.AddressInfo>newServer.address()))
-          })
-        })
+          const newServer = net
+            .createServer((tcpConn) => {
+              tcpConn.on('data', (data) => conn.write(data));
+              conn.on('data', (data) => tcpConn.write(data));
+            })
+            .listen(0, '127.0.01', () => {
+              this.outgoingTCPHolePunchedRelayServers.set(peerId, newServer);
+              resolve(Address.fromAddressInfo(newServer.address() as net.AddressInfo));
+            });
+        });
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
+    });
   }
 
   // ===================================================== //
@@ -232,8 +237,8 @@ class NatTraversal extends EventEmitter {
       rootCertificate: this.getPeerInfo().rootCertificate,
       peerAddress: this.getPeerInfo().peerAddress?.toString(),
       apiAddress: this.getPeerInfo().apiAddress?.toString(),
-    }).finish()
-    this.sendNATMessage(udpAddress, peerInterface.NatMessageType.DIRECT_CONNECTION, message)
+    }).finish();
+    this.sendNATMessage(udpAddress, peerInterface.NatMessageType.DIRECT_CONNECTION, message);
   }
 
   // this request is for when the current node cannot connect directly
@@ -244,40 +249,45 @@ class NatTraversal extends EventEmitter {
     return new Promise<void>((resolve, reject) => {
       try {
         // create socket
-        const socket = dgram.createSocket('udp4')
-        socket.bind()
+        const socket = dgram.createSocket('udp4');
+        socket.bind();
         socket.on('listening', () => {
           // create request
           const request = peerInterface.HolePunchConnectionMessage.encodeDelimited({
             originPeerId: this.getPeerInfo().id,
             targetPeerId: targetPeerId,
-            udpAddress: Address.fromAddressInfo(socket.address()).toString()
-          }).finish()
+            udpAddress: Address.fromAddressInfo(socket.address()).toString(),
+          }).finish();
 
-          this.sendNATMessage(udpAddress, peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION, request, socket)
-          resolve()
-        })
+          this.sendNATMessage(udpAddress, peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION, request, socket);
+          resolve();
+        });
 
         socket.on('message', (message: Buffer, rinfo: dgram.RemoteInfo) => {
-          const address = new Address(rinfo.address, rinfo.port)
-          this.handleNATMessageUDP(message, address)
-        })
+          const address = new Address(rinfo.address, rinfo.port);
+          this.handleNATMessageUDP(message, address);
+        });
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
+    });
   }
 
   // this is just a convenience function to wrap a message in a NATMessage to then send via the MTP server socket
-  private sendNATMessage(udpAddress: Address, type: peerInterface.NatMessageType, message: Uint8Array, socket?: dgram.Socket) {
+  private sendNATMessage(
+    udpAddress: Address,
+    type: peerInterface.NatMessageType,
+    message: Uint8Array,
+    socket?: dgram.Socket,
+  ) {
     const request = peerInterface.NatMessage.encodeDelimited({
       type,
-      subMessage: message
-    }).finish()
+      subMessage: message,
+    }).finish();
     if (socket) {
-      socket.send(request, udpAddress.port, udpAddress.host)
+      socket.send(request, udpAddress.port, udpAddress.host);
     } else {
-      this.server.socket.send(request, udpAddress.port, udpAddress.host)
+      this.server.socket.send(request, udpAddress.port, udpAddress.host);
     }
   }
 
@@ -285,20 +295,20 @@ class NatTraversal extends EventEmitter {
   connectionHandler(conn: MTPConnection) {
     // first check if the connection is for nat message handler
     // if it isn't try to send it to the gRPC service relayed via an internal MTP connection
-    const grpcAddress = this.getPeerInfo().peerAddress!
-    const grpcConn = net.createConnection({ port: grpcAddress?.port, host: grpcAddress?.host })
-    grpcConn.on('data', (data) => conn.write(data))
+    const grpcAddress = this.getPeerInfo().peerAddress!;
+    const grpcConn = net.createConnection({ port: grpcAddress?.port, host: grpcAddress?.host });
+    grpcConn.on('data', (data) => conn.write(data));
     conn.on('data', async (data) => {
       // first try the nat message handler, might be a hole punch or relay request
       try {
-        return await this.handleNATMessageUDP(data, conn.address())
+        return await this.handleNATMessageUDP(data, conn.address());
       } catch (error) {
         // don't want to throw so just log
-        console.log(`new MTP connection error: ${error}`)
+        console.log(`new MTP connection error: ${error}`);
       }
       // this is now assumed to be a message for grpc so need to pipe it over
-      grpcConn.write(data)
-    })
+      grpcConn.write(data);
+    });
   }
 
   async handleNatMessageGRPC(request: Uint8Array): Promise<Uint8Array> {
@@ -313,14 +323,12 @@ class NatTraversal extends EventEmitter {
         }
         break;
       case peerInterface.NatMessageType.DIRECT_CONNECTION:
-        throw Error('not implemented')
-        break;
+        throw Error('not implemented');
       case peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION:
-        throw Error('not implemented')
-        break;
+        throw Error('not implemented');
       case peerInterface.NatMessageType.RELAY_CONNECTION:
         // the relay connection request will come through the grpc channel
-        response = await this.handleRelayRequest(subMessage)
+        response = await this.handleRelayRequest(subMessage);
         break;
       default: {
         throw Error('git message type not supported');
@@ -331,18 +339,18 @@ class NatTraversal extends EventEmitter {
   }
 
   private async handleNATMessageUDP(message: Buffer, address: Address) {
-    const { type, isResponse, subMessage } = peerInterface.NatMessage.decodeDelimited(message)
+    const { type, isResponse, subMessage } = peerInterface.NatMessage.decodeDelimited(message);
     switch (type) {
       case peerInterface.NatMessageType.UDP_ADDRESS:
-        throw Error('message type not supported via udp, try grpc connection')
+        throw Error('message type not supported via udp, try grpc connection');
       case peerInterface.NatMessageType.DIRECT_CONNECTION:
-        await this.handleDirectConnectionRequest(address, isResponse, subMessage)
+        await this.handleDirectConnectionRequest(address, isResponse, subMessage);
         break;
       case peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION:
-        await this.handleHolePunchRequest(address, isResponse, subMessage)
+        await this.handleHolePunchRequest(address, isResponse, subMessage);
         break;
       case peerInterface.NatMessageType.RELAY_CONNECTION:
-        throw Error('message type not supported via udp, try grpc connection')
+        throw Error('message type not supported via udp, try grpc connection');
       default:
         break;
     }
@@ -350,170 +358,173 @@ class NatTraversal extends EventEmitter {
 
   private async handleDirectConnectionRequest(address: Address, isResponse: boolean, request: Uint8Array) {
     try {
-      const {
-        publicKey,
-        rootCertificate,
-        peerAddress,
-        apiAddress
-      } = peerInterface.PeerInfoMessage.decodeDelimited(request)
-      const peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress)
+      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
+        request,
+      );
+      const peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress);
       if (this.hasPeer(peerInfo.id)) {
-        this.updatePeer(peerInfo)
+        this.updatePeer(peerInfo);
       }
 
       if (!isResponse) {
         // create a punched connection
-        const conn = MTPConnection.connect(this.getPeerInfo().id, address.port, address.host, this.server.socket)
+        const conn = MTPConnection.connect(this.getPeerInfo().id, address.port, address.host, this.server.socket);
         // write back response
-        const subMessage = peerInterface.DirectConnectionMessage.encodeDelimited({ peerId: this.getPeerInfo().id }).finish()
+        const subMessage = peerInterface.DirectConnectionMessage.encodeDelimited({
+          peerId: this.getPeerInfo().id,
+        }).finish();
         const response = peerInterface.NatMessage.encodeDelimited({
           type: peerInterface.NatMessageType.DIRECT_CONNECTION,
           isResponse: true,
-          subMessage
-        }).finish()
-        conn.write(response)
-        this.holePunchedConnections.set(peerInfo.id, conn)
+          subMessage,
+        }).finish();
+        conn.write(response);
+        this.holePunchedConnections.set(peerInfo.id, conn);
       } else {
         // is response
         console.log('private node confirms reverse hole punch connection');
       }
     } catch (error) {
-      throw Error(`error in 'handleDirectConnectionRequest': ${error}`)
+      throw Error(`error in 'handleDirectConnectionRequest': ${error}`);
     }
   }
 
   private async handleHolePunchRequest(address: Address, isResponse: boolean, request: Uint8Array) {
     return await new Promise<void>(async (resolve, reject) => {
-      const { originPeerId, targetPeerId, udpAddress } = peerInterface.HolePunchConnectionMessage.decodeDelimited(request)
+      const { originPeerId, targetPeerId, udpAddress } = peerInterface.HolePunchConnectionMessage.decodeDelimited(
+        request,
+      );
       // TODO: make sure origin peer id is known
-      const parsedAddress = Address.parse(udpAddress)
+      const parsedAddress = Address.parse(udpAddress);
       if (isResponse) {
         // case: hole punch has already been requested and adjacent peer has returned a message
         if (this.pendingHolePunchedSockets.has(targetPeerId)) {
-          throw Error(`there are no pending hole punching requests for peerId: ${targetPeerId}`)
+          throw Error(`there are no pending hole punching requests for peerId: ${targetPeerId}`);
         }
         // set a timeout
-        const timeout = 10000
-        setTimeout(() => reject(Error(`hole punching request timed out after ${timeout / 1000}s`)), timeout)
+        const timeout = 10000;
+        setTimeout(() => reject(Error(`hole punching request timed out after ${timeout / 1000}s`)), timeout);
         // now we can start sending packets to the target for creating the entry in the translation table
-        const socket = this.pendingHolePunchedSockets.get(targetPeerId)!
+        const socket = this.pendingHolePunchedSockets.get(targetPeerId)!;
         // send a message at interval for creating the entry in the translation table
         // TODO: not sure if its completely necessary to do this multiple times
-        const conn = MTPConnection.connect(this.getPeerInfo().id, parsedAddress.port, parsedAddress.host, socket)
+        const conn = MTPConnection.connect(this.getPeerInfo().id, parsedAddress.port, parsedAddress.host, socket);
 
         while (conn.connecting) {
-          await new Promise((r, _) => setTimeout(() => r(), 1000))
+          await new Promise((r, _) => setTimeout(() => r(), 1000));
         }
 
-        this.emit('hole-punch-connection', targetPeerId, conn)
+        this.emit('hole-punch-connection', targetPeerId, conn);
 
-        resolve()
+        resolve();
       } else {
         if (targetPeerId == this.getPeerInfo().id) {
           // case: some other node is trying to connect to this node via an adjacent node
           // start sending packets to udpAddress to create entry in NAT translation table
-          this.server.socket.send(this.getPeerInfo().id, parsedAddress.port, parsedAddress.host)
+          this.server.socket.send(this.getPeerInfo().id, parsedAddress.port, parsedAddress.host);
           // send a message at interval for creating the entry in the translation table
           // TODO: not sure if its completely necessary to do this multiple times
           const sendPacketInterval = setInterval(() => {
             // check if node has already connected
             // okay to just send peerId of current node
-            this.server.socket.send(this.getPeerInfo().id, parsedAddress.port, parsedAddress.host)
-          }, 1000)
+            this.server.socket.send(this.getPeerInfo().id, parsedAddress.port, parsedAddress.host);
+          }, 1000);
 
           while (!this.server.incomingConnections.has(originPeerId)) {
             // check if connection has been made
-            await new Promise((r, _) => setTimeout(() => r(), 1000))
+            await new Promise((r, _) => setTimeout(() => r(), 1000));
           }
           // if our code has reached here, the origin peer's hole punch has been successful!
-          clearInterval(sendPacketInterval)
+          clearInterval(sendPacketInterval);
         } else {
           // case: this node is the adjacent node and target peer is assumed to be connected to this node
           // first check if adjacent peer has a hole punched connection for coordination, if not then throw
           if (this.holePunchedConnections.has(targetPeerId)) {
             // if this node has a connection to target peer, then tell the target peer to initiate a connection with the origin peer!
-            const targetConn = this.holePunchedConnections.get(targetPeerId)!
+            const targetConn = this.holePunchedConnections.get(targetPeerId)!;
             const targetSubMessage = peerInterface.HolePunchConnectionMessage.encodeDelimited({
               originPeerId: originPeerId,
               targetPeerId: targetPeerId,
-              udpAddress: address?.toString()
-            }).finish()
+              udpAddress: address?.toString(),
+            }).finish();
             const targetRequest = peerInterface.NatMessage.encodeDelimited({
               type: peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION,
-              subMessage: targetSubMessage
-            }).finish()
-            targetConn.write(targetRequest)
+              subMessage: targetSubMessage,
+            }).finish();
+            targetConn.write(targetRequest);
 
             // finally tell the origin peer the target peers udp address
             const originSubMessage = peerInterface.HolePunchConnectionMessage.encodeDelimited({
               originPeerId: originPeerId,
               targetPeerId: targetPeerId,
-              udpAddress: targetConn.address().toString()
-            }).finish()
+              udpAddress: targetConn.address().toString(),
+            }).finish();
             const originRequest = peerInterface.NatMessage.encodeDelimited({
               type: peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION,
               isResponse: true,
-              subMessage: originSubMessage
-            }).finish()
+              subMessage: originSubMessage,
+            }).finish();
             this.server.socket.send(originRequest, address.port, address.host, (err) => {
               if (err) {
-                reject(err)
+                reject(err);
               } else {
-                resolve()
+                resolve();
               }
-            })
+            });
           } else {
-            throw Error('no connection exists to target peer so cannot coordinate hole punching')
+            throw Error('no connection exists to target peer so cannot coordinate hole punching');
           }
         }
       }
-    })
+    });
   }
 
   private async handleRelayRequest(request: Uint8Array): Promise<Uint8Array> {
     return await new Promise<Uint8Array>(async (resolve, reject) => {
       try {
-        const { originPeerId, targetPeerId } = peerInterface.RelayConnectionMessage.decodeDelimited(request)
+        const { originPeerId, targetPeerId } = peerInterface.RelayConnectionMessage.decodeDelimited(request);
         // first check if there is already a relay set up for the peer
         if (this.peerTCPHolePunchedRelayServers.has(targetPeerId)) {
-          const addressInfo = <net.AddressInfo>this.peerTCPHolePunchedRelayServers.get(targetPeerId)!.address()
-          const relayAddress = Address.fromAddressInfo(addressInfo).toString()
+          const addressInfo = this.peerTCPHolePunchedRelayServers.get(targetPeerId)!.address() as net.AddressInfo;
+          const relayAddress = Address.fromAddressInfo(addressInfo).toString();
           const response = peerInterface.RelayConnectionMessage.encodeDelimited({
             originPeerId: originPeerId,
             targetPeerId: targetPeerId,
-            relayAddress: relayAddress
-          }).finish()
-          resolve(response)
+            relayAddress: relayAddress,
+          }).finish();
+          resolve(response);
         } else {
           // otherwise we need to make sure tell target peer to setup a relay
           if (!this.holePunchedConnections.has(targetPeerId)) {
-            throw Error(`no hole punched connection exists to target peer id: ${targetPeerId}`)
+            throw Error(`no hole punched connection exists to target peer id: ${targetPeerId}`);
           }
-          const udpConnection = this.holePunchedConnections.get(targetPeerId)!
+          const udpConnection = this.holePunchedConnections.get(targetPeerId)!;
 
-          const host = process.env.PK_PEER_HOST ?? '0.0.0.0'
-          const newRelayServer = net.createServer((newConn) => {
-            udpConnection.on('data', (data) => newConn.write(data))
-            newConn.on('data', (data) => udpConnection.write(data))
-          }).listen(0, host, () => {
-            // set the server
-            this.peerTCPHolePunchedRelayServers.set(targetPeerId, newRelayServer)
-            // send the address back to the origin peer
-            const addressInfo = <net.AddressInfo>newRelayServer.address()
-            const relayAddress = Address.fromAddressInfo(addressInfo).toString()
-            const response = peerInterface.RelayConnectionMessage.encodeDelimited({
-              originPeerId: originPeerId,
-              targetPeerId: targetPeerId,
-              relayAddress: relayAddress
-            }).finish()
-            resolve(response)
-          })
+          const host = process.env.PK_PEER_HOST ?? '0.0.0.0';
+          const newRelayServer = net
+            .createServer((newConn) => {
+              udpConnection.on('data', (data) => newConn.write(data));
+              newConn.on('data', (data) => udpConnection.write(data));
+            })
+            .listen(0, host, () => {
+              // set the server
+              this.peerTCPHolePunchedRelayServers.set(targetPeerId, newRelayServer);
+              // send the address back to the origin peer
+              const addressInfo = newRelayServer.address() as net.AddressInfo;
+              const relayAddress = Address.fromAddressInfo(addressInfo).toString();
+              const response = peerInterface.RelayConnectionMessage.encodeDelimited({
+                originPeerId: originPeerId,
+                targetPeerId: targetPeerId,
+                relayAddress: relayAddress,
+              }).finish();
+              resolve(response);
+            });
         }
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
+    });
   }
 }
 
-export default NatTraversal
+export default NatTraversal;
