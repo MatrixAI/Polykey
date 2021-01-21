@@ -34,7 +34,7 @@
   ],
   "scripts": {
     "build:proto": "./scripts/compile_proto.sh",
-    "build:webpack": "webpack",
+    "build:webpack": "rm -rf ./dist & webpack",
     "build:documentation": "arkit src/ -o ./media/dependencies.png && typedoc --media ./media --gitRevision master --mode modules && touch ./docs/.nojekyll",
     "build:all": "npm run build:proto && npm run build:webpack",
     "test": "jest",
