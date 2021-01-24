@@ -2,8 +2,8 @@ import KBucket from './KBucket';
 import PeerInfo from '../PeerInfo';
 import { Mutex } from 'async-mutex';
 import { promiseAll } from '../../utils';
-import { peerInterface } from '../../../proto/js/Peer';
-import { SubServiceType } from '../../../proto/compiled/Peer_pb';
+import * as peerInterface from '../../proto/js/Peer_pb';
+import { SubServiceType } from '../../proto/js/Peer_pb';
 
 // this implements a very basic map of known peer connections
 // TODO: implement full kademlia algorithm for distributed peer connection table
@@ -135,7 +135,7 @@ class PeerDHT {
     }
   }
 
-  private toPeerInfoMessageList(peerIds: string[]): peerInterface.IPeerInfoMessage[] {
+  private toPeerInfoMessageList(peerIds: string[]): peerInterface.PeerInfoMessage[] {
     return peerIds
       .filter((p) => {
         try {
@@ -147,12 +147,16 @@ class PeerDHT {
       })
       .map((p) => {
         const pi = this.getPeerInfo(p);
-        return {
-          publicKey: pi.publicKey,
-          rootCertificate: pi.rootCertificate,
-          peerAddress: pi.peerAddress?.toString(),
-          apiAddress: pi.apiAddress?.toString(),
-        };
+        const piMessage = new peerInterface.PeerInfoMessage
+        piMessage.setPublicKey(pi.publicKey)
+        piMessage.setRootCertificate(pi.rootCertificate)
+        if (pi.peerAddress) {
+          piMessage.setPeerAddress(pi.peerAddress.toString())
+        }
+        if (pi.apiAddress) {
+          piMessage.setApiAddress(pi.apiAddress.toString())
+        }
+        return piMessage
       });
   }
 
@@ -220,36 +224,33 @@ class PeerDHT {
         // encode request
         // note the request is also an opportunity to notify the target node of the closes
         // peers that the local node knows about so the target node kbucket can be updated.
-        const subMessage = peerInterface.PeerDHTFindNodeMessage.encodeDelimited({
-          peerId: peerId,
-          closestPeers: this.toPeerInfoMessageList(closestPeerIds),
-        }).finish();
+        const subMessage = new peerInterface.PeerDHTFindNodeMessage
+        subMessage.setPeerId(peerId)
+        subMessage.setClosestPeersList(this.toPeerInfoMessageList(closestPeerIds))
 
-        const request = peerInterface.PeerDHTMessage.encodeDelimited({
-          type: peerInterface.PeerDHTMessageType.FIND_NODE,
-          isResponse: false,
-          subMessage: subMessage,
-        }).finish();
+        const request = new peerInterface.PeerDHTMessage
+        request.setType(peerInterface.PeerDHTMessageType.FIND_NODE)
+        request.setIsResponse(false)
+        request.setSubMessage(subMessage.serializeBinary())
         // send request
-        const response = await pc.sendPeerRequest(SubServiceType.PEER_DHT, request);
+        const response = await pc.sendPeerRequest(SubServiceType.PEER_DHT, request.serializeBinary());
 
         // decode response
-        const { subMessage: responseSubMessage } = peerInterface.PeerDHTMessage.decodeDelimited(response);
-        const { peerId: responsePeerId, closestPeers } = peerInterface.PeerDHTFindNodeMessage.decodeDelimited(
-          responseSubMessage,
-        );
+        const decodedResponse = peerInterface.PeerDHTMessage.deserializeBinary(response)
+        const responseSubMessage = decodedResponse.getSubMessage_asU8()
+        const { peerId: responsePeerId, closestPeersList } = peerInterface.PeerDHTFindNodeMessage.deserializeBinary(responseSubMessage).toObject();
 
         // make sure request and response public keys are the same
         if (peerId != responsePeerId) {
           throw Error('request and response public keys are not the same!');
         }
 
-        const closestFoundPeerInfoMessageList = closestPeers.map(
+        const closestFoundPeerInfoMessageList = closestPeersList.map(
           (p) => new PeerInfo(p.publicKey!, p.rootCertificate!, p.peerAddress ?? undefined, p.apiAddress ?? undefined),
         );
 
         // Add peers to routing table
-        this.addPeers(closestPeers.map((p) => PeerInfo.publicKeyToId(p.publicKey!)));
+        this.addPeers(closestPeersList.map((p) => PeerInfo.publicKeyToId(p.publicKey!)));
 
         // add peers to peer store
         let foundPeerInfo: PeerInfo | null = null;
@@ -286,7 +287,9 @@ class PeerDHT {
   // gRPC Handlers //
   ///////////////////
   async handleGRPCRequest(request: Uint8Array): Promise<Uint8Array> {
-    const { type, subMessage } = peerInterface.PeerDHTMessage.decodeDelimited(request);
+    const decodedRequest = peerInterface.PeerDHTMessage.deserializeBinary(request)
+    const type = decodedRequest.getType()
+    const subMessage = decodedRequest.getSubMessage_asU8()
     let response: Uint8Array;
     switch (type) {
       case peerInterface.PeerDHTMessageType.PING:
@@ -297,24 +300,22 @@ class PeerDHT {
       default:
         throw Error(`type not supported: ${type}`);
     }
-    const encodedResponse = peerInterface.PeerDHTMessage.encodeDelimited({
-      type,
-      isResponse: true,
-      subMessage: response,
-    }).finish();
-    return encodedResponse;
+    const encodedResponse = new peerInterface.PeerDHTMessage
+    encodedResponse.setType(type)
+    encodedResponse.setIsResponse(true)
+    encodedResponse.setSubMessage(response)
+    return encodedResponse.serializeBinary();
   }
 
   private async handleFindNodeMessage(request: Uint8Array): Promise<Uint8Array> {
-    const { peerId, closestPeers } = peerInterface.PeerDHTFindNodeMessage.decodeDelimited(request);
-    const closestPeerInfoList = closestPeers
+    const { peerId, closestPeersList } = peerInterface.PeerDHTFindNodeMessage.deserializeBinary(request).toObject();
+    const closestPeerInfoList = closestPeersList
       .map((p) => new PeerInfo(p.publicKey!, p.rootCertificate!, p.peerAddress ?? undefined, p.apiAddress ?? undefined))
       .filter((p) => p.id != this.getPeerId());
 
-    const response = peerInterface.PeerDHTFindNodeMessage.encodeDelimited({
-      peerId: peerId,
-      closestPeers: this.toPeerInfoMessageList(this.closestPeers(peerId)),
-    }).finish();
+    const response = new peerInterface.PeerDHTFindNodeMessage
+    response.setPeerId(peerId)
+    response.setClosestPeersList(this.toPeerInfoMessageList(this.closestPeers(peerId)))
 
     // update the peer store
     for (const peerInfo of closestPeerInfoList) {
@@ -323,7 +324,7 @@ class PeerDHT {
         this.addPeer(peerInfo.id);
       }
     }
-    return response;
+    return response.serializeBinary();
   }
 }
 

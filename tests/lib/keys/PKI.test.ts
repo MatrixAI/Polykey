@@ -7,8 +7,8 @@ import forge from 'node-forge';
 import * as grpc from '@grpc/grpc-js';
 import { randomString } from '../../../src/utils';
 import { KeyManager } from '../../../src/Polykey';
-import { PeerMessage, SubServiceType } from '../../../proto/compiled/Peer_pb';
-import { PeerClient, PeerService } from '../../../proto/compiled/Peer_grpc_pb';
+import { PeerMessage, SubServiceType } from '@/proto/js/Peer_pb';
+import { PeerClient, PeerService } from '@/proto/js/Peer_grpc_pb';
 import { TLSCredentials } from '../../../src/keys/pki/PublicKeyInfrastructure';
 
 // TODO: part of adding PKI functionality to polykey

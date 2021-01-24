@@ -1,7 +1,7 @@
 import GitRequest from './GitRequest';
-import { gitInterface } from '../../proto/js/Git';
+import * as gitInterface from '../proto/js/Git_pb';
+import { SubServiceType } from '../proto/js/Peer_pb';
 import PeerConnection from '../peers/peer-connection/PeerConnection';
-import { SubServiceType } from '../../proto/compiled/Peer_pb';
 
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
@@ -19,16 +19,22 @@ class GitFrontend {
    * @param peerConnection A connection object to the peer
    */
   private async requestInfo(vaultName: string, peerConnection: PeerConnection): Promise<Uint8Array> {
-    const request = gitInterface.InfoRequest.encodeDelimited({ vaultName }).finish();
+    const subRequest = new gitInterface.InfoRequest
+    subRequest.setVaultname(vaultName)
+    const request = new gitInterface.GitMessage
+    request.setType(gitInterface.GitMessageType.INFO)
+    request.setSubmessage(subRequest.serializeBinary())
     const response = await peerConnection.sendPeerRequest(
       SubServiceType.GIT,
-      gitInterface.GitMessage.encodeDelimited({ type: gitInterface.GitMessageType.INFO, subMessage: request }).finish(),
+      request.serializeBinary()
     );
-    const { type, subMessage } = gitInterface.GitMessage.decodeDelimited(response);
+    const decodedResponse = gitInterface.GitMessage.deserializeBinary(response)
+    const type = decodedResponse.getType()
+    const subMessage = decodedResponse.getSubmessage_asU8()
 
-    const { body: responseBody } = gitInterface.InfoReply.decodeDelimited(subMessage);
+    const responseBody = gitInterface.InfoReply.deserializeBinary(subMessage)
 
-    return responseBody;
+    return responseBody.getBody_asU8();
   }
 
   /**
@@ -38,14 +44,22 @@ class GitFrontend {
    * @param peerConnection A connection object to the peer
    */
   private async requestPack(vaultName: string, body: Uint8Array, peerConnection: PeerConnection): Promise<Uint8Array> {
-    const request = gitInterface.PackRequest.encodeDelimited({ vaultName, body }).finish();
+    const subRequest = new gitInterface.PackRequest
+
+    subRequest.setVaultname(vaultName)
+    subRequest.setBody(body)
+    const request = new gitInterface.GitMessage
+    request.setType(gitInterface.GitMessageType.PACK)
+    request.setSubmessage(subRequest.serializeBinary())
+
     const response = await peerConnection.sendPeerRequest(
       SubServiceType.GIT,
-      gitInterface.GitMessage.encodeDelimited({ type: gitInterface.GitMessageType.PACK, subMessage: request }).finish(),
+      request.serializeBinary(),
     );
-    const { type, subMessage } = gitInterface.GitMessage.decodeDelimited(response);
-
-    const { body: responseBody } = gitInterface.PackReply.decodeDelimited(subMessage);
+    const decodedResponse = gitInterface.GitMessage.deserializeBinary(response)
+    const subMessage = decodedResponse.getSubmessage_asU8()
+    const decodedSubResponse = gitInterface.PackReply.deserializeBinary(subMessage)
+    const responseBody = decodedSubResponse.getBody_asU8()
 
     return responseBody;
   }
@@ -57,18 +71,20 @@ class GitFrontend {
    * @param peerConnection A connection object to the peer
    */
   private async requestVaultNames(peerConnection: PeerConnection): Promise<string[]> {
+    const request = new gitInterface.GitMessage
+    request.setType(gitInterface.GitMessageType.VAULT_NAMES)
+    request.setSubmessage(Buffer.from(''))
     const response = await peerConnection.sendPeerRequest(
       SubServiceType.GIT,
-      gitInterface.GitMessage.encodeDelimited({
-        type: gitInterface.GitMessageType.VAULT_NAMES,
-        subMessage: Buffer.from(''),
-      }).finish(),
+      request.serializeBinary()
     );
-    const { type, subMessage } = gitInterface.GitMessage.decodeDelimited(response);
 
-    const { vaultNameList } = gitInterface.VaultNamesReply.decodeDelimited(subMessage);
+    const decodedResponse = gitInterface.GitMessage.deserializeBinary(response)
+    const subMessage = decodedResponse.getSubmessage_asU8()
 
-    return vaultNameList;
+    const { vaultNameListList } = gitInterface.VaultNamesReply.deserializeBinary(subMessage).toObject();
+
+    return vaultNameListList;
   }
 
   connectToPeerGit(peerId: string): GitRequest {

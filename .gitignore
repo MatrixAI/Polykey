@@ -1,12 +1,8 @@
-/.env
-/result
-/result-*
-
-# gitlab-runner exec
-/builds
-
-# dist folder
+/tmp
 /dist
+.env*
+!.env.example
+/result*
 
 # Logs
 logs
@@ -81,6 +77,3 @@ typings/
 
 # Serverless directories
 .serverless
-
-# Temporary files
-tmp/

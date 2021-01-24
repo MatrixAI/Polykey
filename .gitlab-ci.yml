@@ -4,10 +4,10 @@ variables:
 stages:
   - check
   - build
-  - deploy
+
+image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 
 lint:
-  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: check
   script:
     - >
@@ -16,38 +16,27 @@ lint:
         npm run lint;
         '
 
-test-npm:
-  image: node:12
+test:
   stage: check
   script:
-    - npm install
-    - npm run build:all
-    - npm run test
+    - >
+        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+        npm install;
+        npm run test;
+        '
 
 nix-dry:
-  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: check
   script:
     - nix-build -v -v --dry-run ./release.nix --attr application
     - nix-build -v -v --dry-run ./release.nix --attr docker
 
 nix:
-  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: build
   script:
     - >
-      nix-build ./release.nix
-      --attr application
-      --attr docker
-
-# TODO: get this deploy phase working
-deploy_npm:
-  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
-  stage: deploy
+        nix-build ./release.nix
+        --attr application
+        --attr docker
   only:
-    - tags
-    - triggers
-  script:
-    - nix-shell --packages nodejs --run "npm install"
-    - npm run build:all
-    # - npm publish
+    - master

@@ -19,7 +19,7 @@ import {
   bufferToPacket,
   packetToBuffer,
 } from './utils';
-import { peerInterface } from '../../../../proto/js/Peer';
+import * as peerInterface from '../../../proto/js/Peer_pb';
 
 class MTPConnection extends Duplex {
   private peerId: string;
@@ -75,10 +75,10 @@ class MTPConnection extends Duplex {
 
     if (syn) {
       this.connecting = false;
-      this.recvId = uint16(syn.connection + 1);
-      this.sendId = syn.connection;
+      this.recvId = uint16(syn.getConnection() + 1);
+      this.sendId = syn.getConnection();
       this.seq = (Math.random() * UINT16) | 0;
-      this.ack = syn.seq;
+      this.ack = syn.getSeq();
       this.synack = MTPConnection.createPacket(
         this.peerId,
         this.recvId,
@@ -294,12 +294,12 @@ class MTPConnection extends Duplex {
       return;
     }
 
-    if (packet.id === PACKET_SYN && this.connecting) {
+    if (packet.getId() === PACKET_SYN && this.connecting) {
       this.transmit(this.synack!);
       return;
     }
 
-    if (packet.id === PACKET_RESET) {
+    if (packet.getId() === PACKET_RESET) {
       this.push(null);
       this.end();
       this.closing();
@@ -307,39 +307,39 @@ class MTPConnection extends Duplex {
     }
 
     if (this.connecting) {
-      if (packet.id !== PACKET_STATE) {
-        return this.incoming.put(packet.seq, packet);
+      if (packet.getId() !== PACKET_STATE) {
+        return this.incoming.put(packet.getSeq(), packet);
       }
 
-      this.ack = uint16(packet.seq - 1);
-      this.recvAck(packet.ack);
+      this.ack = uint16(packet.getSeq() - 1);
+      this.recvAck(packet.getAck());
       this.connecting = false;
       this.emit('connect');
 
-      packet = this.incoming.del(packet.seq);
+      packet = this.incoming.del(packet.getSeq());
       if (!packet) {
         return;
       }
     }
 
-    if (uint16(packet.seq - this.ack) >= BUFFER_SIZE) {
+    if (uint16(packet.getSeq() - this.ack) >= BUFFER_SIZE) {
       return this.sendAck(); // old packet
     }
 
-    this.recvAck(packet.ack); // TODO: other calcs as well
+    this.recvAck(packet.getAck()); // TODO: other calcs as well
 
-    if (packet.id === PACKET_STATE) {
+    if (packet.getAck() === PACKET_STATE) {
       return;
     }
-    this.incoming.put(packet.seq, packet);
+    this.incoming.put(packet.getSeq(), packet);
 
     while ((packet = this.incoming.del(this.ack + 1))) {
       this.ack = uint16(this.ack + 1);
 
-      if (packet.id === PACKET_DATA) {
-        this.push(packet.data);
+      if (packet.getId() === PACKET_DATA) {
+        this.push(packet.getData_asU8());
       }
-      if (packet.id === PACKET_FIN) {
+      if (packet.getId() === PACKET_FIN) {
         this.push(null);
       }
     }
@@ -360,8 +360,8 @@ class MTPConnection extends Duplex {
     this.transmit(packet); // TODO: make this delayed
   }
 
-  private sendOutgoing(packet) {
-    this.outgoing.put(packet.seq, packet);
+  private sendOutgoing(packet: peerInterface.MTPPacket) {
+    this.outgoing.put(packet.getSeq(), packet);
     this.seq = uint16(this.seq + 1);
     this.inflightPackets++;
     this.transmit(packet);
@@ -369,7 +369,7 @@ class MTPConnection extends Duplex {
 
   private transmit(packet: peerInterface.MTPPacket) {
     try {
-      packet.sent = packet.sent === 0 ? packet.timestamp : MTPConnection.timestamp();
+      packet.setSent(packet.getSent() === 0 ? packet.getTimestamp() : MTPConnection.timestamp());
       const message = packetToBuffer(packet);
       this.alive = true;
       this.socket.send(message, 0, message.length, this.port, this.host);
@@ -386,18 +386,20 @@ class MTPConnection extends Duplex {
     id: number,
     data: Uint8Array | null,
   ): peerInterface.MTPPacket {
-    return new peerInterface.MTPPacket({
-      id: id,
-      peerId: peerId,
-      connection: id === PACKET_SYN ? recvId : sendId,
-      seq: seq,
-      ack: ack,
-      timestamp: MTPConnection.timestamp(),
-      timediff: 0,
-      window: DEFAULT_WINDOW_SIZE,
-      data: data ? data : undefined,
-      sent: 0,
-    });
+    const packet = new peerInterface.MTPPacket
+    packet.setId(id)
+    packet.setPeerid(peerId)
+    packet.setConnection(id === PACKET_SYN ? recvId : sendId)
+    packet.setSeq(seq)
+    packet.setAck(ack)
+    packet.setTimestamp(MTPConnection.timestamp())
+    packet.setTimediff(0)
+    packet.setWindow(DEFAULT_WINDOW_SIZE)
+    if (data) {
+      packet.setData(data)
+    }
+    packet.setSent(0)
+    return packet
   }
 
   public static timestamp = (() => {
@@ -426,11 +428,11 @@ class MTPConnection extends Duplex {
       }
 
       const packet = bufferToPacket(message);
-      if (packet.id === PACKET_SYN) {
+      if (packet.getId() === PACKET_SYN) {
         return;
       }
 
-      if (packet.connection !== connection.RecvID) {
+      if (packet.getConnection() !== connection.RecvID) {
         return;
       }
 

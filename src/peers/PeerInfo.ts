@@ -1,8 +1,7 @@
 import crypto from 'crypto';
 import parseUrl from 'parse-url';
-import { pki } from 'node-forge';
 import { AddressInfo } from 'net';
-import { peerInterface } from '../../proto/js/Peer';
+import * as peerInterface from '../proto/js/Peer_pb';
 import { protobufToString, stringToProtobuf } from '../utils';
 
 class Address {
@@ -146,19 +145,22 @@ class PeerInfo {
   }
 
   toStringB64(): string {
-    const message = peerInterface.PeerInfoMessage.encodeDelimited({
-      publicKey: this.publicKey,
-      rootCertificate: this.rootCertificate,
-      peerAddress: this.peerAddress?.toString(),
-      apiAddress: this.apiAddress?.toString(),
-    }).finish();
-    return protobufToString(message);
+    const message = new peerInterface.PeerInfoMessage
+    message.setPublicKey(this.publicKey)
+    message.setRootCertificate(this.rootCertificate)
+    if (this.peerAddress) {
+      message.setPeerAddress(this.peerAddress?.toString())
+    }
+    if (this.apiAddress) {
+      message.setApiAddress(this.apiAddress?.toString())
+    }
+    return protobufToString(message.serializeBinary());
   }
 
   static parseB64(str: string): PeerInfo {
     const message = stringToProtobuf(str);
 
-    const decoded = peerInterface.PeerInfoMessage.decodeDelimited(message);
+    const decoded = peerInterface.PeerInfoMessage.deserializeBinary(message).toObject()
 
     return new PeerInfo(decoded.publicKey, decoded.rootCertificate, decoded.peerAddress, decoded.apiAddress);
   }

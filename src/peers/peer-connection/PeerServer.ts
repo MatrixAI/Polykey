@@ -3,8 +3,8 @@ import * as grpc from '@grpc/grpc-js';
 import PeerManager from '../PeerManager';
 import KeyManager from '../../keys/KeyManager';
 import { stringToProtobuf, protobufToString } from '../../utils';
-import { PeerService, IPeerServer } from '../../../proto/compiled/Peer_grpc_pb';
-import { PeerMessage, SubServiceType } from '../../../proto/compiled/Peer_pb';
+import { PeerService, IPeerServer } from '../../proto/js/Peer_grpc_pb';
+import { PeerMessage, SubServiceType } from '../../proto/js/Peer_pb';
 
 class PeerServer implements IPeerServer {
   private peerManager: PeerManager;

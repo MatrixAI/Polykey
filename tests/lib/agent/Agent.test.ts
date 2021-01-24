@@ -5,8 +5,8 @@ import path from 'path';
 import { randomString } from '../../../src/utils';
 import { PolykeyAgent } from '../../../src/Polykey';
 import { promisifyGrpc } from '../../../src/bin/utils';
-import * as pb from '../../../proto/compiled/Agent_pb';
-import { AgentClient } from '../../../proto/compiled/Agent_grpc_pb';
+import * as pb from '@/proto/js/Agent_pb';
+import { AgentClient } from '@/proto/js/Agent_grpc_pb';
 
 describe('Agent and Client class', () => {
   let tempDir: string

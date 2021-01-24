@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import net from 'net';
-import * as protobufjs from 'protobufjs';
+
 /**
  * Returns a 5 character long random string of lower case letters
  */
@@ -91,19 +91,15 @@ async function promiseAll<T>(promiseList: Promise<T>[]): Promise<T[]> {
 }
 
 function protobufToString(message: Uint8Array): string {
-  return protobufjs.util.base64.encode(message, 0, message.length);
+  return Buffer.from(message).toString('base64')
 }
 
-function stringToProtobuf(str: string): Uint8Array | protobufjs.Buffer {
-  const buffer = protobufjs.util.newBuffer(protobufjs.util.base64.length(str));
-  protobufjs.util.base64.decode(str, buffer, 0);
-  return buffer;
+function stringToProtobuf(str: string): Uint8Array {
+  return Buffer.from(str, 'base64')
 }
 
 async function sleep(ms: number) {
-  await new Promise((resolve, reject) => {
-    setTimeout(() => resolve(), ms);
-  });
+  return await new Promise((r) => setTimeout(r, ms));
 }
 
 async function tryPort(port?: number, host?: string): Promise<number> {

@@ -2,7 +2,7 @@
 // import PeerInfo from '../../../src/peers/PeerInfo';
 // import { peerInterface } from '../../../proto/js/Peer';
 // import PeerDHT from '../../../src/peers/peer-dht/PeerDHT';
-// import { SubServiceType } from '../../../proto/compiled/Peer_pb';
+// import { SubServiceType } from '../../proto/js/Peer_pb';
 // import { peerDHTMachine, PeerDHTStateSchema } from '../../../spec/peers/PeerDHT.spec';
 
 // function toPeerInfoMessageList(peerInfos: PeerInfo[]): peerInterface.IPeerInfoMessage[] {
