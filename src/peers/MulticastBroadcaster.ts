@@ -1,7 +1,7 @@
 import dgram from 'dgram';
 import PeerInfo from './PeerInfo';
 import { EventEmitter } from 'events';
-import { peerInterface } from '../../proto/js/Peer';
+import * as peerInterface from '../proto/js/Peer_pb';
 import KeyManager from '../keys/KeyManager';
 import { protobufToString, stringToProtobuf } from '../utils';
 
@@ -79,18 +79,22 @@ class MulticastBroadcaster extends EventEmitter {
         return;
       }
       const peerInfo = this.getPeerInfo();
-      const encodedPeerInfo = peerInterface.PeerInfoMessage.encodeDelimited({
-        publicKey: peerInfo.publicKey,
-        peerAddress: peerInfo.peerAddress?.toString(),
-        apiAddress: peerInfo.apiAddress?.toString(),
-      }).finish();
+      const encodedPeerInfo = new peerInterface.PeerInfoMessage
+      const { publicKey, peerAddress, apiAddress } = peerInfo
+      encodedPeerInfo.setPublicKey(publicKey)
+      if (peerAddress) {
+        encodedPeerInfo.setPublicKey(peerAddress.toString())
+      }
+      if (apiAddress) {
+        encodedPeerInfo.setPublicKey(apiAddress.toString())
+      }
       // sign it for authenticity
-      const signedPeerInfo = await this.keyManager.signData(Buffer.from(protobufToString(encodedPeerInfo)));
-      const encodedPeerMessage = peerInterface.PeerMessage.encodeDelimited({
-        type: peerInterface.SubServiceType.PING_PEER,
-        publicKey: this.getPeerInfo().publicKey,
-        subMessage: signedPeerInfo.toString(),
-      }).finish();
+      const signedPeerInfo = await this.keyManager.signData(Buffer.from(protobufToString(encodedPeerInfo.serializeBinary())));
+      const peerMessage = new peerInterface.PeerMessage
+      peerMessage.setType(peerInterface.SubServiceType.PING_PEER)
+      peerMessage.setPublicKey(publicKey)
+      peerMessage.setSubMessage(signedPeerInfo.toString())
+      const encodedPeerMessage = peerMessage.serializeBinary()
       this.socket.send(encodedPeerMessage, 0, encodedPeerMessage.length, UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
     };
 
@@ -101,7 +105,7 @@ class MulticastBroadcaster extends EventEmitter {
 
   private async handleBroadcastMessage(request: any, rinfo: any) {
     try {
-      const { publicKey: signingKey, type, subMessage } = peerInterface.PeerMessage.decodeDelimited(request);
+      const { publicKey: signingKey, type, subMessage } = peerInterface.PeerMessage.deserializeBinary(request).toObject()
 
       // only relevant if peer public key exists in store and type is of PING
       if (!this.hasPeer(signingKey)) {
@@ -116,9 +120,7 @@ class MulticastBroadcaster extends EventEmitter {
       const verifiedMessage = await this.keyManager.verifyData(subMessage, Buffer.from(signingKey));
       const encodedMessage = stringToProtobuf(verifiedMessage.toString());
 
-      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
-        encodedMessage,
-      );
+      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.deserializeBinary(encodedMessage).toObject()
 
       // construct a peer info object
       const peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress);

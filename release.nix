@@ -6,6 +6,7 @@ rec {
   docker = dockerTools.buildImage {
     name = application.name;
     contents = [ application ];
+    keepContentsDirlinks = true;
     extraCommands = ''
       mkdir -m 1777 tmp
     '';

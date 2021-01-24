@@ -1,14 +1,13 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import fetch from 'isomorphic-fetch';
 import PeerDHT from './peer-dht/PeerDHT';
 import PeerInfo from '../peers/PeerInfo';
 import KeyManager from '../keys/KeyManager';
-import { peerInterface } from '../../proto/js/Peer';
 import PeerServer from './peer-connection/PeerServer';
 import NatTraversal from './nat-traversal/NatTraversal';
 import { JSONMapReplacer, JSONMapReviver } from '../utils';
+import * as peerInterface from '../proto/js/Peer_pb';
 import PeerConnection from './peer-connection/PeerConnection';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
 import { KeybaseIdentityProvider } from './identity-provider/default';
@@ -349,29 +348,36 @@ class PeerManager {
   /* ============ HELPERS =============== */
   writeMetadata(): void {
     // write peer info
-    const metadata = peerInterface.PeerInfoMessage.encodeDelimited({
-      publicKey: this.peerInfo.publicKey,
-      rootCertificate: this.peerInfo.rootCertificate!,
-      peerAddress: this.peerInfo.peerAddress?.toString(),
-      apiAddress: this.peerInfo.apiAddress?.toString(),
-    }).finish();
+    const metadata = new peerInterface.PeerInfoMessage
+    metadata.setPublicKey(this.peerInfo.publicKey)
+    metadata.setRootCertificate(this.peerInfo.rootCertificate)
+    if (this.peerInfo.peerAddress) {
+      metadata.setPeerAddress(this.peerInfo.peerAddress?.toString())
+    }
+    if (this.peerInfo.apiAddress) {
+      metadata.setApiAddress(this.peerInfo.apiAddress?.toString())
+    }
 
     this.fileSystem.mkdirSync(path.dirname(this.peerInfoMetadataPath), { recursive: true });
-    this.fileSystem.writeFileSync(this.peerInfoMetadataPath, metadata);
+    this.fileSystem.writeFileSync(this.peerInfoMetadataPath, metadata.serializeBinary());
     // write peer store
     const peerInfoList: peerInterface.PeerInfoMessage[] = [];
     for (const [_, peerInfo] of this.peerStore) {
-      peerInfoList.push(
-        new peerInterface.PeerInfoMessage({
-          publicKey: peerInfo.publicKey,
-          rootCertificate: peerInfo.rootCertificate!,
-          peerAddress: peerInfo.peerAddress?.toString(),
-          apiAddress: peerInfo.apiAddress?.toString(),
-        }),
-      );
+      const peerInfoMessage = new peerInterface.PeerInfoMessage
+      peerInfoMessage.setPublicKey(peerInfo.publicKey)
+      peerInfoMessage.setRootCertificate(peerInfo.rootCertificate)
+      if (peerInfo.peerAddress) {
+        peerInfoMessage.setPeerAddress(peerInfo.peerAddress?.toString())
+      }
+      if (peerInfo.apiAddress) {
+        peerInfoMessage.setApiAddress(peerInfo.apiAddress?.toString())
+      }
+      peerInfoList.push(peerInfoMessage);
     }
-    const peerStoreMetadata = peerInterface.PeerInfoListMessage.encodeDelimited({ peerInfoList }).finish();
-    this.fileSystem.writeFileSync(this.peerStoreMetadataPath, peerStoreMetadata);
+
+    const peerStoreMetadata = new peerInterface.PeerInfoListMessage
+    peerStoreMetadata.setPeerInfoListList(peerInfoList)
+    this.fileSystem.writeFileSync(this.peerStoreMetadataPath, peerStoreMetadata.serializeBinary());
     this.fileSystem.writeFileSync(this.peerAliasMetadataPath, JSON.stringify(this.peerAlias, JSONMapReplacer));
   }
 
@@ -379,16 +385,14 @@ class PeerManager {
     // load peer info if path exists
     if (this.fileSystem.existsSync(this.peerInfoMetadataPath)) {
       const metadata = this.fileSystem.readFileSync(this.peerInfoMetadataPath) as Uint8Array;
-      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
-        metadata,
-      );
+      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.deserializeBinary(metadata).toObject();
       this.peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress);
     }
     // load peer store if path exists
     if (this.fileSystem.existsSync(this.peerStoreMetadataPath)) {
       const metadata = this.fileSystem.readFileSync(this.peerStoreMetadataPath) as Uint8Array;
-      const { peerInfoList } = peerInterface.PeerInfoListMessage.decodeDelimited(metadata);
-      for (const peerInfoMessage of peerInfoList) {
+      const { peerInfoListList } = peerInterface.PeerInfoListMessage.deserializeBinary(metadata).toObject();
+      for (const peerInfoMessage of peerInfoListList) {
         const peerInfo = new PeerInfo(
           peerInfoMessage.publicKey!,
           peerInfoMessage.rootCertificate!,

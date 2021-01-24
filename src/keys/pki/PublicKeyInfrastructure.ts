@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pki, md } from 'node-forge';
-import { peerInterface } from '../../../proto/js/Peer';
+import * as peerInterface from '../../proto/js/Peer_pb';
 
 type TLSCredentials = {
   rootCertificate: string;
@@ -78,7 +78,9 @@ class PublicKeyInfrastructure {
   }
 
   async handleGRPCRequest(request: Uint8Array): Promise<Uint8Array> {
-    const { type, subMessage } = peerInterface.CAMessage.decodeDelimited(request);
+    const decodedRequest = peerInterface.CAMessage.deserializeBinary(request)
+    const type = decodedRequest.getType()
+    const subMessage = decodedRequest.getSubMessage_asU8()
     let response: Uint8Array;
     switch (type) {
       case peerInterface.CAMessageType.ROOT_CERT:
@@ -90,12 +92,11 @@ class PublicKeyInfrastructure {
       default:
         throw Error(`type not supported: ${type}`);
     }
-    const encodedResponse = peerInterface.CAMessage.encodeDelimited({
-      type,
-      isResponse: true,
-      subMessage: response,
-    }).finish();
-    return encodedResponse;
+    const encodedResponse = new peerInterface.CAMessage
+    encodedResponse.setType(type)
+    encodedResponse.setIsResponse(true)
+    encodedResponse.setSubMessage(response)
+    return encodedResponse.serializeBinary();
   }
 
   q;

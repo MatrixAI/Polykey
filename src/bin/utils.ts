@@ -3,10 +3,9 @@ import os from 'os';
 import chalk from 'chalk';
 import * as grpc from '@grpc/grpc-js';
 import { PolykeyAgent } from '../Polykey';
-import * as pb from '../../proto/compiled/Agent_pb';
-import { AgentClient } from '../../proto/compiled/Agent_grpc_pb';
+import * as agentPB from '../proto/js/Agent_pb';
+import { AgentClient } from '../proto/js/Agent_grpc_pb';
 
-/*******************************************/
 function actionRunner(fn: (...args: any) => Promise<void>, processExit = true) {
   return (...args: any) =>
     fn(...args)
@@ -27,8 +26,6 @@ function resolveTilde(filePath: string) {
   return filePath;
 }
 
-/*******************************************/
-// Logger
 enum PKMessageType {
   SUCCESS,
   INFO,
@@ -61,12 +58,14 @@ function getPKLogger(verbosityLevel = 1): PKLogger {
   };
   return {
     logV1: (message: string, type?: PKMessageType) => log(message, type),
-    logV2: (message: string, type?: PKMessageType) => (verbosityLevel >= 2 ? log(message, type) : undefined),
-    logV3: (message: string, type?: PKMessageType) => (verbosityLevel >= 3 ? log(message, type) : undefined),
+    logV2: (message: string, type?: PKMessageType) =>
+      verbosityLevel >= 2 ? log(message, type) : undefined,
+    logV3: (message: string, type?: PKMessageType) =>
+      verbosityLevel >= 3 ? log(message, type) : undefined,
   };
 }
 
-function determineNodePath(nodePath?: string) {
+function resolveKeynodeStatePath(nodePath?: string) {
   let defaultPath = '/';
   if (os.platform() === 'win32') {
     defaultPath = process.env.APPDATA ?? os.homedir();
@@ -74,7 +73,8 @@ function determineNodePath(nodePath?: string) {
     defaultPath = os.homedir();
   }
 
-  const resolvedNodePath = nodePath ?? process.env.PK_PATH ?? path.join(defaultPath, '.polykey');
+  const resolvedNodePath =
+    nodePath ?? process.env.PK_PATH ?? path.join(defaultPath, '.polykey');
   if (!resolvedNodePath) {
     throw Error(
       'no keynode path, set as an environment variable "export PK_PATH=\'<path>\'", or as a argument "--node-path \'<path>\'"',
@@ -84,7 +84,10 @@ function determineNodePath(nodePath?: string) {
 }
 
 function promisifyGrpc<t1, t2>(
-  fn: (request: t1, callback: (error: grpc.ServiceError | null, response: t2) => void) => any,
+  fn: (
+    request: t1,
+    callback: (error: grpc.ServiceError | null, response: t2) => void,
+  ) => any,
 ): (request: t1) => Promise<t2> {
   return (request: t1): Promise<t2> => {
     return new Promise<t2>((resolve, reject) => {
@@ -109,19 +112,36 @@ async function getAgentClient(
 ) {
   if (restartOnStopped) {
     // make sure agent is running
-    const pid = await PolykeyAgent.startAgent(polykeyPath, daemon, failOnNotInitialized);
+    const pid = await PolykeyAgent.startAgent(
+      polykeyPath,
+      daemon,
+      failOnNotInitialized,
+    );
     if (typeof pid == 'number') {
-      pkLogger.logV2(`agent has started with a pid of ${pid}`, PKMessageType.SUCCESS);
+      pkLogger.logV2(
+        `agent has started with a pid of ${pid}`,
+        PKMessageType.SUCCESS,
+      );
     }
   }
 
   const client: AgentClient = PolykeyAgent.connectToAgent(polykeyPath);
-  const res = (await promisifyGrpc(client.getStatus.bind(client))(new pb.EmptyMessage())) as pb.AgentStatusMessage;
-  if (res.getStatus() != pb.AgentStatusType.ONLINE) {
+  const res = (await promisifyGrpc(client.getStatus.bind(client))(
+    new agentPB.EmptyMessage(),
+  )) as agentPB.AgentStatusMessage;
+  if (res.getStatus() != agentPB.AgentStatusType.ONLINE) {
     throw Error('agent is not running and could not be restarted');
   } else {
     return client;
   }
 }
 
-export { getPKLogger, actionRunner, PKMessageType, determineNodePath, resolveTilde, promisifyGrpc, getAgentClient };
+export {
+  getPKLogger,
+  actionRunner,
+  PKMessageType,
+  resolveKeynodeStatePath,
+  resolveTilde,
+  promisifyGrpc,
+  getAgentClient,
+};

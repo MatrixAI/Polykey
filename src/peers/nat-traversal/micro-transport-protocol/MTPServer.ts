@@ -110,11 +110,11 @@ class MTPServer extends EventEmitter {
     // // not sure if this id is required but it has now been replaced with peerId pending further testing:
     // const id = rinfo.address + ':' + (packet.id === PACKET_SYN ? uint16(packet.connection + 1) : packet.connection);
 
-    const peerId = packet.peerId;
+    const peerId = packet.getPeerid();
     if (this.incomingConnections.has(peerId) && this.incomingConnections.get(peerId)) {
       return this.incomingConnections.get(peerId)!.recvIncoming(packet);
     }
-    if (packet.id !== PACKET_SYN || this.closed) {
+    if (packet.getId() !== PACKET_SYN || this.closed) {
       return;
     }
 

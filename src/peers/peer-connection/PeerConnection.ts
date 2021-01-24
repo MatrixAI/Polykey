@@ -2,9 +2,9 @@ import PeerInfo, { Address } from '../PeerInfo';
 import { randomBytes } from 'crypto';
 import * as grpc from '@grpc/grpc-js';
 import KeyManager from '../../keys/KeyManager';
-import { PeerClient } from '../../../proto/compiled/Peer_grpc_pb';
+import { PeerClient } from '../../proto/js/Peer_grpc_pb';
 import { stringToProtobuf, protobufToString, promiseAny } from '../../utils';
-import { PeerMessage, SubServiceType } from '../../../proto/compiled/Peer_pb';
+import { PeerMessage, SubServiceType } from '../../proto/js/Peer_pb';
 
 class PeerConnection {
   private peerId: string;

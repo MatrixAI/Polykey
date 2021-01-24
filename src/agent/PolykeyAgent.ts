@@ -6,9 +6,9 @@ import { promisify } from 'util';
 import ConfigStore from 'configstore';
 import * as grpc from '@grpc/grpc-js';
 import { spawn, SpawnOptions } from 'child_process';
-import * as agent from '../../proto/compiled/Agent_pb';
+import * as agent from '../proto/js/Agent_pb';
 import { Polykey, PeerInfo, Address, KeyManager } from '../Polykey';
-import { AgentService, IAgentServer, AgentClient } from '../../proto/compiled/Agent_grpc_pb';
+import { AgentService, IAgentServer, AgentClient } from '../proto/js/Agent_grpc_pb';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;

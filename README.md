@@ -286,3 +286,37 @@ All `.proto` files are stored in the the `proto` directory. JavaScript and type 
 ```
 npm run build:proto
 ```
+
+---
+
+```
+protoc \
+  --proto_path=src/proto/schemas \
+  --plugin=protoc-gen-grpc="$(which grpc_node_plugin)" \
+  --js_out=import_style=commonjs,binary:src/proto/js \
+  --ts_out="src/proto/js" \
+  --grpc_out=grpc_js:src/proto/js \
+  ./src/proto/schemas/*.proto
+```
+
+or
+
+```
+protoc \
+  --proto_path=src/proto/schemas \
+  --plugin=protoc-gen-grpc="$(which grpc_node_plugin)" \
+  --js_out=import_style=commonjs,binary:src/proto/js \
+  --grpc_out=grpc_js:src/proto/js \
+  ./src/proto/schemas/*.proto
+```
+
+Once we have grpc-tools packaged properly.
+
+```
+# builds the dependency graph
+arkit ./src -o ./media/dependencies.png
+
+typedoc --media ./media
+```
+
+Other build instructions above ^.

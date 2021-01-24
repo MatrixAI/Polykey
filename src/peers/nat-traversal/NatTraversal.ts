@@ -1,10 +1,10 @@
 import net from 'net';
 import dgram from 'dgram';
 import { EventEmitter } from 'events';
-import { promiseAll } from '../../utils';
+import { promiseAll, sleep } from '../../utils';
 import PeerInfo, { Address } from '../PeerInfo';
-import { peerInterface } from '../../../proto/js/Peer';
 import PeerConnection from '../peer-connection/PeerConnection';
+import * as peerInterface from '../../proto/js/Peer_pb';
 import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer';
 
 class NatTraversal extends EventEmitter {
@@ -106,15 +106,16 @@ class NatTraversal extends EventEmitter {
   async requestUDPAddress(peerId: string): Promise<Address> {
     const pc = this.connectToPeer(peerId);
 
-    const request = peerInterface.NatMessage.encodeDelimited({
-      type: peerInterface.NatMessageType.UDP_ADDRESS,
-    }).finish();
-    const response = await pc.sendPeerRequest(peerInterface.SubServiceType.NAT_TRAVERSAL, request);
-    const { type, subMessage } = peerInterface.NatMessage.decodeDelimited(response);
+    const request = new peerInterface.NatMessage
+    request.setType(peerInterface.NatMessageType.UDP_ADDRESS)
+    const response = await pc.sendPeerRequest(peerInterface.SubServiceType.NAT_TRAVERSAL, request.serializeBinary());
+    const decodedResponse = peerInterface.NatMessage.deserializeBinary(response)
+    const type = decodedResponse.getType()
+    const subMessage = decodedResponse.getSubMessage_asU8()
     if (type != peerInterface.NatMessageType.UDP_ADDRESS) {
       throw Error('peer did not send back proper response');
     }
-    const { address: addressString } = peerInterface.UDPAddressMessage.decodeDelimited(subMessage);
+    const { address: addressString } = peerInterface.UDPAddressMessage.deserializeBinary(subMessage).toObject();
     const address = Address.parse(addressString);
     address.updateHost(this.getPeer(peerId)!.peerAddress?.host);
     return address;
@@ -232,13 +233,17 @@ class NatTraversal extends EventEmitter {
   // the resulting connection will be used in coordinating NAT traversal
   // requests from other peers via the peer adjacent to this one
   async sendDirectHolePunchConnectionRequest(udpAddress: Address) {
-    const message = peerInterface.PeerInfoMessage.encodeDelimited({
-      publicKey: this.getPeerInfo().publicKey,
-      rootCertificate: this.getPeerInfo().rootCertificate,
-      peerAddress: this.getPeerInfo().peerAddress?.toString(),
-      apiAddress: this.getPeerInfo().apiAddress?.toString(),
-    }).finish();
-    this.sendNATMessage(udpAddress, peerInterface.NatMessageType.DIRECT_CONNECTION, message);
+    const message = new peerInterface.PeerInfoMessage
+    const peerInfo = this.getPeerInfo()
+    message.setPublicKey(peerInfo.publicKey)
+    message.setRootCertificate(peerInfo.rootCertificate)
+    if (peerInfo.peerAddress) {
+      message.setPeerAddress(peerInfo.peerAddress?.toString())
+    }
+    if (peerInfo.apiAddress) {
+      message.setApiAddress(peerInfo.apiAddress?.toString())
+    }
+    this.sendNATMessage(udpAddress, peerInterface.NatMessageType.DIRECT_CONNECTION, message.serializeBinary());
   }
 
   // this request is for when the current node cannot connect directly
@@ -253,13 +258,12 @@ class NatTraversal extends EventEmitter {
         socket.bind();
         socket.on('listening', () => {
           // create request
-          const request = peerInterface.HolePunchConnectionMessage.encodeDelimited({
-            originPeerId: this.getPeerInfo().id,
-            targetPeerId: targetPeerId,
-            udpAddress: Address.fromAddressInfo(socket.address()).toString(),
-          }).finish();
+          const request = new peerInterface.HolePunchConnectionMessage
+          request.setOriginPeerId(this.getPeerInfo().id)
+          request.setTargetPeerId(targetPeerId)
+          request.setUdpAddress(Address.fromAddressInfo(socket.address()).toString())
 
-          this.sendNATMessage(udpAddress, peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION, request, socket);
+          this.sendNATMessage(udpAddress, peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION, request.serializeBinary(), socket);
           resolve();
         });
 
@@ -280,14 +284,13 @@ class NatTraversal extends EventEmitter {
     message: Uint8Array,
     socket?: dgram.Socket,
   ) {
-    const request = peerInterface.NatMessage.encodeDelimited({
-      type,
-      subMessage: message,
-    }).finish();
+    const request = new peerInterface.NatMessage
+    request.setType(type)
+    request.setSubMessage(message)
     if (socket) {
-      socket.send(request, udpAddress.port, udpAddress.host);
+      socket.send(request.serializeBinary(), udpAddress.port, udpAddress.host);
     } else {
-      this.server.socket.send(request, udpAddress.port, udpAddress.host);
+      this.server.socket.send(request.serializeBinary(), udpAddress.port, udpAddress.host);
     }
   }
 
@@ -312,14 +315,16 @@ class NatTraversal extends EventEmitter {
   }
 
   async handleNatMessageGRPC(request: Uint8Array): Promise<Uint8Array> {
-    const { type, subMessage } = peerInterface.NatMessage.decodeDelimited(request);
+    const decodedRequest = peerInterface.NatMessage.deserializeBinary(request)
+    const type = decodedRequest.getType()
+    const subMessage = decodedRequest.getSubMessage_asU8()
     let response: Uint8Array;
     switch (type) {
       case peerInterface.NatMessageType.UDP_ADDRESS:
         {
-          response = peerInterface.UDPAddressMessage.encodeDelimited({
-            address: this.server.address().toString(),
-          }).finish();
+          const encodedResponse = new peerInterface.UDPAddressMessage
+          encodedResponse.setAddress(this.server.address().toString())
+          response = encodedResponse.serializeBinary()
         }
         break;
       case peerInterface.NatMessageType.DIRECT_CONNECTION:
@@ -335,11 +340,17 @@ class NatTraversal extends EventEmitter {
       }
     }
     // encode a git response
-    return peerInterface.NatMessage.encodeDelimited({ type, subMessage: response }).finish();
+    const encodedResponse = new peerInterface.NatMessage
+    encodedResponse.setType(type)
+    encodedResponse.setSubMessage(response)
+    return encodedResponse.serializeBinary();
   }
 
   private async handleNATMessageUDP(message: Buffer, address: Address) {
-    const { type, isResponse, subMessage } = peerInterface.NatMessage.decodeDelimited(message);
+    const decodedRequest = peerInterface.NatMessage.deserializeBinary(message)
+    const type = decodedRequest.getType()
+    const isResponse = decodedRequest.getIsResponse()
+    const subMessage = decodedRequest.getSubMessage_asU8()
     switch (type) {
       case peerInterface.NatMessageType.UDP_ADDRESS:
         throw Error('message type not supported via udp, try grpc connection');
@@ -358,9 +369,7 @@ class NatTraversal extends EventEmitter {
 
   private async handleDirectConnectionRequest(address: Address, isResponse: boolean, request: Uint8Array) {
     try {
-      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.decodeDelimited(
-        request,
-      );
+      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.deserializeBinary(request).toObject();
       const peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress);
       if (this.hasPeer(peerInfo.id)) {
         this.updatePeer(peerInfo);
@@ -370,15 +379,13 @@ class NatTraversal extends EventEmitter {
         // create a punched connection
         const conn = MTPConnection.connect(this.getPeerInfo().id, address.port, address.host, this.server.socket);
         // write back response
-        const subMessage = peerInterface.DirectConnectionMessage.encodeDelimited({
-          peerId: this.getPeerInfo().id,
-        }).finish();
-        const response = peerInterface.NatMessage.encodeDelimited({
-          type: peerInterface.NatMessageType.DIRECT_CONNECTION,
-          isResponse: true,
-          subMessage,
-        }).finish();
-        conn.write(response);
+        const subMessage = new peerInterface.DirectConnectionMessage
+        subMessage.setPeerId(this.getPeerInfo().id)
+        const response = new peerInterface.NatMessage
+        response.setType(peerInterface.NatMessageType.DIRECT_CONNECTION)
+        response.setIsResponse(true)
+        response.setSubMessage(subMessage.serializeBinary())
+        conn.write(response.serializeBinary());
         this.holePunchedConnections.set(peerInfo.id, conn);
       } else {
         // is response
@@ -391,9 +398,7 @@ class NatTraversal extends EventEmitter {
 
   private async handleHolePunchRequest(address: Address, isResponse: boolean, request: Uint8Array) {
     return await new Promise<void>(async (resolve, reject) => {
-      const { originPeerId, targetPeerId, udpAddress } = peerInterface.HolePunchConnectionMessage.decodeDelimited(
-        request,
-      );
+      const { originPeerId, targetPeerId, udpAddress } = peerInterface.HolePunchConnectionMessage.deserializeBinary(request).toObject();
       // TODO: make sure origin peer id is known
       const parsedAddress = Address.parse(udpAddress);
       if (isResponse) {
@@ -411,7 +416,7 @@ class NatTraversal extends EventEmitter {
         const conn = MTPConnection.connect(this.getPeerInfo().id, parsedAddress.port, parsedAddress.host, socket);
 
         while (conn.connecting) {
-          await new Promise((r, _) => setTimeout(() => r(), 1000));
+          await sleep(1000);
         }
 
         this.emit('hole-punch-connection', targetPeerId, conn);
@@ -432,7 +437,7 @@ class NatTraversal extends EventEmitter {
 
           while (!this.server.incomingConnections.has(originPeerId)) {
             // check if connection has been made
-            await new Promise((r, _) => setTimeout(() => r(), 1000));
+            await sleep(1000);
           }
           // if our code has reached here, the origin peer's hole punch has been successful!
           clearInterval(sendPacketInterval);
@@ -442,29 +447,25 @@ class NatTraversal extends EventEmitter {
           if (this.holePunchedConnections.has(targetPeerId)) {
             // if this node has a connection to target peer, then tell the target peer to initiate a connection with the origin peer!
             const targetConn = this.holePunchedConnections.get(targetPeerId)!;
-            const targetSubMessage = peerInterface.HolePunchConnectionMessage.encodeDelimited({
-              originPeerId: originPeerId,
-              targetPeerId: targetPeerId,
-              udpAddress: address?.toString(),
-            }).finish();
-            const targetRequest = peerInterface.NatMessage.encodeDelimited({
-              type: peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION,
-              subMessage: targetSubMessage,
-            }).finish();
-            targetConn.write(targetRequest);
+            const targetSubMessage = new peerInterface.HolePunchConnectionMessage
+            targetSubMessage.setOriginPeerId(originPeerId)
+            targetSubMessage.setTargetPeerId(targetPeerId)
+            targetSubMessage.setUdpAddress(address?.toString())
+            const targetRequest = new peerInterface.NatMessage
+            targetRequest.setType(peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION)
+            targetRequest.setSubMessage(targetSubMessage.serializeBinary())
+            targetConn.write(targetRequest.serializeBinary());
 
             // finally tell the origin peer the target peers udp address
-            const originSubMessage = peerInterface.HolePunchConnectionMessage.encodeDelimited({
-              originPeerId: originPeerId,
-              targetPeerId: targetPeerId,
-              udpAddress: targetConn.address().toString(),
-            }).finish();
-            const originRequest = peerInterface.NatMessage.encodeDelimited({
-              type: peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION,
-              isResponse: true,
-              subMessage: originSubMessage,
-            }).finish();
-            this.server.socket.send(originRequest, address.port, address.host, (err) => {
+            const originSubMessage = new peerInterface.HolePunchConnectionMessage
+            originSubMessage.setOriginPeerId(originPeerId)
+            originSubMessage.setTargetPeerId(targetPeerId)
+            originSubMessage.setUdpAddress(targetConn.address().toString())
+            const originRequest = new peerInterface.NatMessage
+            originRequest.setType(peerInterface.NatMessageType.HOLE_PUNCH_CONNECTION)
+            originRequest.setIsResponse(true)
+            originRequest.setSubMessage(originSubMessage.serializeBinary())
+            this.server.socket.send(originRequest.serializeBinary(), address.port, address.host, (err) => {
               if (err) {
                 reject(err);
               } else {
@@ -482,17 +483,16 @@ class NatTraversal extends EventEmitter {
   private async handleRelayRequest(request: Uint8Array): Promise<Uint8Array> {
     return await new Promise<Uint8Array>(async (resolve, reject) => {
       try {
-        const { originPeerId, targetPeerId } = peerInterface.RelayConnectionMessage.decodeDelimited(request);
+        const { originPeerId, targetPeerId } = peerInterface.RelayConnectionMessage.deserializeBinary(request).toObject();
         // first check if there is already a relay set up for the peer
         if (this.peerTCPHolePunchedRelayServers.has(targetPeerId)) {
           const addressInfo = this.peerTCPHolePunchedRelayServers.get(targetPeerId)!.address() as net.AddressInfo;
           const relayAddress = Address.fromAddressInfo(addressInfo).toString();
-          const response = peerInterface.RelayConnectionMessage.encodeDelimited({
-            originPeerId: originPeerId,
-            targetPeerId: targetPeerId,
-            relayAddress: relayAddress,
-          }).finish();
-          resolve(response);
+          const response = new peerInterface.HolePunchConnectionMessage
+          response.setOriginPeerId(originPeerId)
+          response.setTargetPeerId(targetPeerId)
+          response.setUdpAddress(relayAddress)
+          resolve(response.serializeBinary());
         } else {
           // otherwise we need to make sure tell target peer to setup a relay
           if (!this.holePunchedConnections.has(targetPeerId)) {
@@ -512,12 +512,11 @@ class NatTraversal extends EventEmitter {
               // send the address back to the origin peer
               const addressInfo = newRelayServer.address() as net.AddressInfo;
               const relayAddress = Address.fromAddressInfo(addressInfo).toString();
-              const response = peerInterface.RelayConnectionMessage.encodeDelimited({
-                originPeerId: originPeerId,
-                targetPeerId: targetPeerId,
-                relayAddress: relayAddress,
-              }).finish();
-              resolve(response);
+              const response = new peerInterface.HolePunchConnectionMessage
+              response.setOriginPeerId(originPeerId)
+              response.setTargetPeerId(targetPeerId)
+              response.setUdpAddress(relayAddress)
+              resolve(response.serializeBinary());
             });
         }
       } catch (error) {

@@ -1,6 +1,6 @@
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
-import { gitInterface } from '../../proto/js/Git';
+import * as gitInterface from '../proto/js/Git_pb';
 import { PassThrough } from 'readable-stream';
 import uploadPack from './upload-pack/uploadPack';
 import GitSideBand from './side-band/GitSideBand';
@@ -32,32 +32,37 @@ class GitBackend {
   }
 
   async handleGitMessage(request: Uint8Array, peerId: string): Promise<Uint8Array> {
-    const { type, subMessage } = gitInterface.GitMessage.decodeDelimited(request);
+    const decodedRequest = gitInterface.GitMessage.deserializeBinary(request);
+    const type = decodedRequest.getType()
+    const subMessage = decodedRequest.getSubmessage_asU8()
     let response: Uint8Array;
     switch (type) {
       case gitInterface.GitMessageType.INFO:
         {
-          const { vaultName } = gitInterface.InfoRequest.decodeDelimited(subMessage);
-          response = gitInterface.InfoReply.encodeDelimited({
-            vaultName,
-            body: await this.handleInfoRequest(vaultName),
-          }).finish();
+          const decodedSubMessage = gitInterface.InfoRequest.deserializeBinary(subMessage)
+          const vaultName = decodedSubMessage.getVaultname()
+          const encodedResponse = new gitInterface.InfoReply
+          encodedResponse.setVaultname(vaultName)
+          encodedResponse.setBody(await this.handleInfoRequest(vaultName))
+          response = encodedResponse.serializeBinary()
         }
         break;
       case gitInterface.GitMessageType.PACK:
         {
-          const { vaultName, body } = gitInterface.PackRequest.decodeDelimited(subMessage);
-          response = gitInterface.PackReply.encodeDelimited({
-            vaultName,
-            body: await this.handlePackRequest(vaultName, Buffer.from(body)),
-          }).finish();
+          const decodedSubMessage = gitInterface.PackRequest.deserializeBinary(subMessage)
+          const vaultName = decodedSubMessage.getVaultname()
+          const body = decodedSubMessage.getBody_asU8()
+          const encodedResponse = new gitInterface.PackReply
+          encodedResponse.setVaultname(vaultName)
+          encodedResponse.setBody(await this.handlePackRequest(vaultName, Buffer.from(body)))
+          response = encodedResponse.serializeBinary()
         }
         break;
       case gitInterface.GitMessageType.VAULT_NAMES:
         {
-          response = gitInterface.VaultNamesReply.encodeDelimited({
-            vaultNameList: await this.handleVaultNamesRequest(peerId),
-          }).finish();
+          const encodedResponse = new gitInterface.VaultNamesReply
+          encodedResponse.setVaultNameListList(await this.handleVaultNamesRequest(peerId))
+          response = encodedResponse.serializeBinary()
         }
         break;
       default: {
@@ -65,7 +70,10 @@ class GitBackend {
       }
     }
     // encode a git response
-    const gitResponse = gitInterface.GitMessage.encodeDelimited({ type, subMessage: response }).finish();
+    const encodedResponse = new gitInterface.GitMessage
+    encodedResponse.setType(type)
+    encodedResponse.setSubmessage(response)
+    const gitResponse = encodedResponse.serializeBinary()
     return gitResponse;
   }
 
