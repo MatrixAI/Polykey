@@ -2,6 +2,7 @@
 , nix-gitignore
 , nodejs
 , nodePackages
+, makeWrapper
 , pkgs
 , lib
 }:
@@ -29,7 +30,10 @@ let
   drv = devPackage.overrideAttrs (attrs: {
     src = src;
     dontNpmInstall = true;
+    nativeBuildInputs = (attrs.nativeBuildInputs or []) ++ [ makeWrapper ];
     postInstall = ''
+      ${attrs.postInstall or ""}
+
       # The dependencies were prepared in the install phase
       # See `node2nix` generated `node-env.nix` for details.
       npm run build
@@ -48,6 +52,21 @@ let
       then
           ln -s $out/lib/node_modules/.bin $out/bin
       fi
+    '';
+
+    postFixup = ''
+      ${attrs.postFixup or ""}
+
+      wrapProgram $out/bin/polykey \
+        --set PATH ${lib.makeBinPath [
+          nodejs
+        ]}
+
+      # TODO: Have pk point to polykey?
+      wrapProgram $out/bin/pk \
+        --set PATH ${lib.makeBinPath [
+          nodejs
+        ]}
     '';
   });
 in
