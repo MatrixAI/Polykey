@@ -94,7 +94,7 @@ class PolykeyAgent implements IAgentServer {
     // don't need to catch errors
     try {
       await promisify(this.server.tryShutdown.bind(this))();
-    } catch (error) {}
+    } catch (error) { }
 
     // handle port
     const portString = this.configStore.get('port') ?? process.env.PK_AGENT_PORT ?? 0;
@@ -146,7 +146,7 @@ class PolykeyAgent implements IAgentServer {
   private noThrowRefreshTimeout() {
     try {
       this.pk.keyManager.refreshTimeout();
-    } catch (error) {}
+    } catch (error) { }
   }
 
   async addPeer(
@@ -758,7 +758,7 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { identityProviderName, identifier } = call.request!.toObject();
-      const {type, instructions, proof} = await this.pk.peerManager.proveKeynode(identityProviderName, identifier)
+      const { type, instructions, proof } = await this.pk.peerManager.proveKeynode(identityProviderName, identifier)
 
       const response = new agent.PolykeyProofMessage
       response.setType(type)
@@ -1183,9 +1183,9 @@ class PolykeyAgent implements IAgentServer {
     return parseInt(configStore.get('pid'));
   }
 
-  public static async startAgent(polykeyPath: string, daemon = false, failOnNotInitialized = true) {
+  public static async startAgent(polykeyPath: string, background = false, failOnNotInitialized = true) {
     // either resolves a newly started process ID or true if the process is running already
-    return new Promise<number | true>((resolve, reject) => {
+    return new Promise<number | boolean>(async (resolve, reject) => {
       try {
         if (failOnNotInitialized && !fs.existsSync(path.join(polykeyPath, '.keys', 'private_key'))) {
           throw Error(`polykey node has not been initialized, initialize with 'pk agent init'`);
@@ -1195,47 +1195,53 @@ class PolykeyAgent implements IAgentServer {
         if (PolykeyAgent.AgentIsRunning(polykeyPath)) {
           resolve(true);
         } else {
-          const logPath = path.join(polykeyPath, '.agent', 'log');
+          if (background) {
+            const logPath = path.join(polykeyPath, '.agent', 'log');
 
-          if (fs.existsSync(logPath)) {
-            fs.rmdirSync(logPath, { recursive: true });
-          }
-          fs.mkdirSync(logPath, { recursive: true });
-
-          const options: SpawnOptions = {
-            uid: process.getuid(),
-            detached: daemon,
-            stdio: [
-              'ignore',
-              fs.openSync(path.join(logPath, 'output.log'), 'a'),
-              fs.openSync(path.join(logPath, 'error.log'), 'a'),
-              'ipc',
-            ],
-          };
-
-          const agentProcess = spawn(
-            PolykeyAgent.DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node',
-            [PolykeyAgent.DAEMON_SCRIPT_PATH],
-            options,
-          );
-
-          agentProcess.send(polykeyPath, (err: Error) => {
-            if (err) {
-              agentProcess.kill('SIGTERM');
-              reject(err);
-            } else {
-              const pid = agentProcess.pid;
-              agentProcess.on('message', (msg) => {
-                agentProcess.unref();
-                agentProcess.disconnect();
-                if (msg === 'started') {
-                  resolve(pid);
-                } else {
-                  reject('something went wrong, child process did not start polykey agent');
-                }
-              });
+            if (fs.existsSync(logPath)) {
+              fs.rmdirSync(logPath, { recursive: true });
             }
-          });
+            fs.mkdirSync(logPath, { recursive: true });
+
+            const options: SpawnOptions = {
+              uid: process.getuid(),
+              detached: background,
+              stdio: [
+                'ignore',
+                fs.openSync(path.join(logPath, 'output.log'), 'a'),
+                fs.openSync(path.join(logPath, 'error.log'), 'a'),
+                'ipc',
+              ],
+            };
+
+            const agentProcess = spawn(
+              PolykeyAgent.DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node',
+              [PolykeyAgent.DAEMON_SCRIPT_PATH],
+              options,
+            );
+
+            agentProcess.send(polykeyPath, (err: Error) => {
+              if (err) {
+                agentProcess.kill('SIGTERM');
+                reject(err);
+              } else {
+                const pid = agentProcess.pid;
+                agentProcess.on('message', (msg) => {
+                  agentProcess.unref();
+                  agentProcess.disconnect();
+                  if (msg === 'started') {
+                    resolve(pid);
+                  } else {
+                    reject('something went wrong, child process did not start polykey agent');
+                  }
+                });
+              }
+            });
+          } else {
+            const agent = new PolykeyAgent(polykeyPath);
+            await agent.startServer();
+            resolve(false);
+          }
         }
       } catch (error) {
         reject(error);
