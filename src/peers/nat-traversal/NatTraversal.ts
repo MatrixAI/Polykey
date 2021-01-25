@@ -1,10 +1,11 @@
 import net from 'net';
 import dgram from 'dgram';
+import { promisify } from 'util';
 import { EventEmitter } from 'events';
 import { promiseAll, sleep } from '../../utils';
 import PeerInfo, { Address } from '../PeerInfo';
+import * as peerInterface from '../../../proto/js/Peer_pb';
 import PeerConnection from '../peer-connection/PeerConnection';
-import * as peerInterface from '../../proto/js/Peer_pb';
 import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer';
 
 class NatTraversal extends EventEmitter {
@@ -70,33 +71,47 @@ class NatTraversal extends EventEmitter {
     this.hasPeer = hasPeer;
     this.updatePeer = updatePeer;
     this.server = new MTPServer(this.connectionHandler.bind(this), this.handleNATMessageUDP.bind(this));
-    const port = parseInt(process.env.PK_PEER_PORT ?? '0');
-    this.server.listenPort(port, () => {
-      const address = this.server.address();
-      console.log(`main MTP server is now listening on address: '${address.toString()}'`);
-    });
+  }
 
-    // this is just to make sure every other peer has a back connection to this node
-    // the idea behind this is that if we are a node that is behind a NAT, then if
-    // another node wants to connect via an adjacent node were already connected to,
-    // then that node that has to be able to notify us of the connection attempt for
-    // coordination purposes.
-    // TODO: this should only be done if the node detects that it is behind a NAT layer
-    this.intermittentConnectionInterval = setInterval(async () => {
-      const promiseList: Promise<void>[] = [];
-      for (const peerId of this.listPeers()) {
-        if (!this.server.incomingConnections.has(peerId)) {
-          const count = this.unresponsiveNodes.get(peerId) ?? 0;
-          if (count < 3) {
-            this.unresponsiveNodes.set(peerId, count + 1);
-            const peerInfo = this.getPeer(peerId)!;
-            const udpAddress = await this.requestUDPAddress(peerInfo.id);
-            promiseList.push(this.sendDirectHolePunchConnectionRequest(udpAddress));
+  async start(): Promise<Address> {
+    return new Promise<Address>((resolve, reject) => {
+      const port = parseInt(process.env.PK_PEER_PORT ?? '0');
+
+      this.server.listenPort(port, () => {
+        const address = this.server.address();
+        console.log(`main MTP server is now listening on address: '${address.toString()}'`);
+        resolve(address)
+      });
+
+      // this is just to make sure every other peer has a back connection to this node
+      // the idea behind this is that if we are a node that is behind a NAT, then if
+      // another node wants to connect via an adjacent node were already connected to,
+      // then that node that has to be able to notify us of the connection attempt for
+      // coordination purposes.
+      // TODO: this should only be done if the node detects that it is behind a NAT layer
+      this.intermittentConnectionInterval = setInterval(async () => {
+        const promiseList: Promise<void>[] = [];
+        for (const peerId of this.listPeers()) {
+          if (!this.server.incomingConnections.has(peerId)) {
+            const count = this.unresponsiveNodes.get(peerId) ?? 0;
+            if (count < 3) {
+              this.unresponsiveNodes.set(peerId, count + 1);
+              const peerInfo = this.getPeer(peerId)!;
+              const udpAddress = await this.requestUDPAddress(peerInfo.id);
+              promiseList.push(this.sendDirectHolePunchConnectionRequest(udpAddress));
+            }
           }
         }
-      }
-      await promiseAll(promiseList);
-    }, 30000);
+        await promiseAll(promiseList);
+      }, 30000);
+    })
+  }
+
+  async stop() {
+    if (this.intermittentConnectionInterval) {
+      this.intermittentConnectionInterval.unref()
+    }
+    await this.server.close()
   }
 
   // request the MTP UDP address of a peer

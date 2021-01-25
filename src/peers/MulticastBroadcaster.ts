@@ -1,8 +1,8 @@
 import dgram from 'dgram';
 import PeerInfo from './PeerInfo';
 import { EventEmitter } from 'events';
-import * as peerInterface from '../proto/js/Peer_pb';
 import KeyManager from '../keys/KeyManager';
+import * as peerInterface from '../../proto/js/Peer_pb';
 import { protobufToString, stringToProtobuf } from '../utils';
 
 // This module is based heavily on libp2p's mDNS module:

@@ -3,8 +3,8 @@ import os from 'os';
 import chalk from 'chalk';
 import * as grpc from '@grpc/grpc-js';
 import { PolykeyAgent } from '../Polykey';
-import * as agentPB from '../proto/js/Agent_pb';
-import { AgentClient } from '../proto/js/Agent_grpc_pb';
+import * as agentPB from '../../proto/js/Agent_pb';
+import { AgentClient } from '../../proto/js/Agent_grpc_pb';
 
 function actionRunner(fn: (...args: any) => Promise<void>, processExit = true) {
   return (...args: any) =>
@@ -106,7 +106,7 @@ function promisifyGrpc<t1, t2>(
 async function getAgentClient(
   polykeyPath: string,
   pkLogger: PKLogger,
-  daemon = false,
+  background = false,
   restartOnStopped = true,
   failOnNotInitialized = true,
 ) {
@@ -114,25 +114,28 @@ async function getAgentClient(
     // make sure agent is running
     const pid = await PolykeyAgent.startAgent(
       polykeyPath,
-      daemon,
+      background,
       failOnNotInitialized,
     );
-    if (typeof pid == 'number') {
-      pkLogger.logV2(
-        `agent has started with a pid of ${pid}`,
-        PKMessageType.SUCCESS,
-      );
-    }
+
+    pkLogger.logV2(
+      `agent has started with a pid of ${pid}`,
+      PKMessageType.SUCCESS,
+    );
   }
 
   const client: AgentClient = PolykeyAgent.connectToAgent(polykeyPath);
-  const res = (await promisifyGrpc(client.getStatus.bind(client))(
-    new agentPB.EmptyMessage(),
-  )) as agentPB.AgentStatusMessage;
-  if (res.getStatus() != agentPB.AgentStatusType.ONLINE) {
-    throw Error('agent is not running and could not be restarted');
-  } else {
-    return client;
+  try {
+    const res = (await promisifyGrpc(client.getStatus.bind(client))(
+      new agentPB.EmptyMessage(),
+    )) as agentPB.AgentStatusMessage;
+    if (res.getStatus() != agentPB.AgentStatusType.ONLINE) {
+      throw Error('agent is offline');
+    } else {
+      return client;
+    }
+  } catch (error) {
+    throw Error('agent is offline');
   }
 }
 

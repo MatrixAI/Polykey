@@ -4,7 +4,7 @@ import path from 'path';
 import process from 'process';
 import commander from 'commander';
 import { spawn, execSync } from 'child_process';
-import * as agentPB from '../../proto/js/Agent_pb';
+import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   actionRunner,
   getPKLogger,

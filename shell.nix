@@ -4,6 +4,7 @@ with pkgs;
 pkgs.mkShell {
   nativeBuildInputs = [
     nodejs
+    grpc-tools
     openapi-generator-cli
   ];
   shellHook = ''

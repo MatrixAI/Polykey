@@ -1,6 +1,6 @@
 import commander from 'commander';
 import { PolykeyAgent } from '../../Polykey';
-import * as agentPB from '../../proto/js/Agent_pb';
+import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   actionRunner,
   getPKLogger,
@@ -22,7 +22,7 @@ commandStartAgent.option(
   (str) => parseInt(str),
   1,
 );
-commandStartAgent.option('-f, --foreground', 'start the agent as a foreground process', false);
+commandStartAgent.option('-b, --background', 'start the agent as a background process', false);
 commandStartAgent.option(
   '-pp, --private-passphrase <privatePassphrase>',
   'provide the passphrase to the private key',
@@ -48,23 +48,16 @@ commandStartAgent.action(
         throw Error(`agent is not running`);
       }
     } catch (error) {
-      const pid = await PolykeyAgent.startAgent(nodePath, !options.foreground);
+      const pid = await PolykeyAgent.startAgent(nodePath, options.background);
       const client = PolykeyAgent.connectToAgent(nodePath);
       const res = (await promisifyGrpc(client.getStatus.bind(client))(
         new agentPB.EmptyMessage(),
       )) as agentPB.AgentStatusMessage;
       if (res.getStatus() == agentPB.AgentStatusType.ONLINE) {
-        if (typeof pid == 'boolean') {
-          pkLogger.logV2(
-            `agent has started as a foreground process`,
-            PKMessageType.SUCCESS,
-          );
-        } else {
-          pkLogger.logV2(
-            `agent has started with a pid of ${pid}`,
-            PKMessageType.SUCCESS,
-          );
-        }
+        pkLogger.logV2(
+          `agent has started with a pid of ${pid}`,
+          PKMessageType.SUCCESS,
+        );
       } else {
         throw Error('agent could not be started');
       }
@@ -102,10 +95,7 @@ commandRestartAgent.option(
   (str) => parseInt(str),
   1,
 );
-commandRestartAgent.option(
-  '-d, --daemon',
-  'start the agent as a daemon process',
-);
+commandRestartAgent.option('-b, --background', 'start the agent as a background process', false);
 commandRestartAgent.option(
   '-pp, --private-passphrase <privatePassphrase>',
   'provide the passphrase to the private key',
@@ -122,7 +112,7 @@ commandRestartAgent.action(
     let client = await getAgentClient(
       nodePath,
       pkLogger,
-      options.daemon,
+      options.background,
       false,
       false,
     );
@@ -130,11 +120,18 @@ commandRestartAgent.action(
     await promisifyGrpc(client.stopAgent.bind(client))(
       new agentPB.EmptyMessage(),
     );
-    const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
-    pkLogger.logV2(
-      `agent has restarted with pid of ${pid}`,
-      PKMessageType.SUCCESS,
-    );
+    const pid = await PolykeyAgent.startAgent(nodePath, options.background);
+    if (typeof pid == 'boolean') {
+      pkLogger.logV2(
+        `agent has restarted as a foreground process`,
+        PKMessageType.SUCCESS,
+      );
+    } else {
+      pkLogger.logV2(
+        `agent has restarted with a pid of ${pid}`,
+        PKMessageType.SUCCESS,
+      );
+    }
     // unlock if passphrase was provided
     if (options.privatePassphrase) {
       client = await getAgentClient(nodePath, pkLogger);
@@ -154,7 +151,7 @@ commandRestartAgent.action(
         );
       }
     }
-  }),
+  }, false),
 );
 
 const commandAgentStatus = new commander.Command('status');
@@ -244,6 +241,7 @@ commandInitNode.option(
   (str) => parseInt(str),
   1,
 );
+commandInitNode.option('-b, --background', 'start the agent as a background process', false);
 commandInitNode.requiredOption(
   '-ui, --user-id <userId>',
   '(required) provide an identifier for the keypair to be generated',
@@ -259,7 +257,7 @@ commandInitNode.action(
     const client = await getAgentClient(
       nodePath,
       pkLogger,
-      undefined,
+      options.background,
       true,
       false,
     );
@@ -273,7 +271,7 @@ commandInitNode.action(
       `node was successfully initialized at: '${nodePath}'`,
       PKMessageType.SUCCESS,
     );
-  }),
+  }, false),
 );
 
 const commandUnlockNode = new commander.Command('unlock');
@@ -305,6 +303,8 @@ commandUnlockNode.action(
     const request = new agentPB.UnlockNodeMessage();
     request.setPassphrase(options.privatePassphrase!);
     request.setTimeout(options.timeout!);
+
+
     await promisifyGrpc(client.unlockNode.bind(client))(request);
     if (options.timeout == 0) {
       pkLogger.logV2(

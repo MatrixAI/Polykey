@@ -6,9 +6,9 @@ import { promisify } from 'util';
 import ConfigStore from 'configstore';
 import * as grpc from '@grpc/grpc-js';
 import { spawn, SpawnOptions } from 'child_process';
-import * as agent from '../proto/js/Agent_pb';
+import * as agent from '../../proto/js/Agent_pb';
 import { Polykey, PeerInfo, Address, KeyManager } from '../Polykey';
-import { AgentService, IAgentServer, AgentClient } from '../proto/js/Agent_grpc_pb';
+import { AgentService, IAgentServer, AgentClient } from '../../proto/js/Agent_grpc_pb';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;
@@ -676,13 +676,17 @@ class PolykeyAgent implements IAgentServer {
 
       await km.generateKeyPair(userid, passphrase, true);
 
+      // stop old polykey and start new one to avoid conflicts of tcp/udp ports
+      await this.pk.stopAllServices()
       this.pk = new Polykey(this.pk.polykeyPath, fs, km);
 
       // re-load all meta data
       await this.pk.keyManager.loadEncryptedMetadata();
       this.pk.peerManager.loadMetadata();
       await this.pk.vaultManager.loadEncryptedMetadata();
-      await this.pk.httpApi.start();
+
+      // finally start all services
+      await this.pk.startAllServices()
 
       callback(null, new agent.EmptyMessage());
     } catch (error) {
@@ -986,7 +990,9 @@ class PolykeyAgent implements IAgentServer {
       await this.pk.keyManager.loadEncryptedMetadata();
       this.pk.peerManager.loadMetadata();
       await this.pk.vaultManager.loadEncryptedMetadata();
-      await this.pk.httpApi.start();
+
+      // finally start all services
+      await this.pk.startAllServices()
 
       // send response
       callback(null, new agent.EmptyMessage());
@@ -1143,8 +1149,12 @@ class PolykeyAgent implements IAgentServer {
         credentials = grpc.credentials.createInsecure();
       }
 
-      const client = new AgentClient(`localhost:${port}`, credentials);
-      return client;
+      try {
+        const client = new AgentClient(`localhost:${port}`, credentials);
+        return client;
+      } catch (error) {
+        throw Error('agent is offline')
+      }
     }
   }
 
@@ -1183,9 +1193,9 @@ class PolykeyAgent implements IAgentServer {
     return parseInt(configStore.get('pid'));
   }
 
-  public static async startAgent(polykeyPath: string, background = false, failOnNotInitialized = true) {
+  public static async startAgent(polykeyPath: string, background = false, failOnNotInitialized = true, isElectron = false): Promise<number> {
     // either resolves a newly started process ID or true if the process is running already
-    return new Promise<number | boolean>(async (resolve, reject) => {
+    return new Promise<number>(async (resolve, reject) => {
       try {
         if (failOnNotInitialized && !fs.existsSync(path.join(polykeyPath, '.keys', 'private_key'))) {
           throw Error(`polykey node has not been initialized, initialize with 'pk agent init'`);
@@ -1193,7 +1203,9 @@ class PolykeyAgent implements IAgentServer {
 
         // check if agent is already running
         if (PolykeyAgent.AgentIsRunning(polykeyPath)) {
-          resolve(true);
+          // get the pid from the config
+          const pid = PolykeyAgent.ConfigStore(polykeyPath).get('pid')
+          resolve(pid);
         } else {
           if (background) {
             const logPath = path.join(polykeyPath, '.agent', 'log');
@@ -1204,7 +1216,6 @@ class PolykeyAgent implements IAgentServer {
             fs.mkdirSync(logPath, { recursive: true });
 
             const options: SpawnOptions = {
-              uid: process.getuid(),
               detached: background,
               stdio: [
                 'ignore',
@@ -1213,9 +1224,26 @@ class PolykeyAgent implements IAgentServer {
                 'ipc',
               ],
             };
+            try {
+              options.uid = process.getuid();
+            } catch {
+              // no throw
+            }
+
+            let spawnPath: string
+            if (isElectron) {
+              options.env = {
+                ELECTRON_RUN_AS_NODE: "1"
+              }
+              spawnPath = process.execPath
+            } else {
+              spawnPath = PolykeyAgent.DAEMON_SCRIPT_PATH.includes('.js')
+                ? 'node'
+                : 'ts-node'
+            }
 
             const agentProcess = spawn(
-              PolykeyAgent.DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node',
+              spawnPath,
               [PolykeyAgent.DAEMON_SCRIPT_PATH],
               options,
             );
@@ -1240,7 +1268,7 @@ class PolykeyAgent implements IAgentServer {
           } else {
             const agent = new PolykeyAgent(polykeyPath);
             await agent.startServer();
-            resolve(false);
+            resolve(process.pid);
           }
         }
       } catch (error) {

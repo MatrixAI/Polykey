@@ -1,6 +1,6 @@
 import fs from 'fs';
-import path from 'path';
 import net from 'net';
+import path from 'path';
 
 /**
  * Returns a 5 character long random string of lower case letters
@@ -103,16 +103,15 @@ async function sleep(ms: number) {
 }
 
 async function tryPort(port?: number, host?: string): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.on('error', (error) => reject(error));
-    server.listen({ port: port ?? 0, host: host ?? 'localhost' }, () => {
-      const { port } = server.address() as net.AddressInfo;
-      server.close(() => {
-        resolve(port);
-      });
-    });
+  return new Promise((resolve, reject) => {
+    const options = { port: port ?? 0, host: host ?? 'localhost' }
+    const server = net.createServer()
+      .listen(options, () => {
+        const { port } = server.address() as net.AddressInfo;
+        server.removeAllListeners()
+        server.close(() => resolve(port));
+      })
+      .on('error', (error) => reject(error));
   });
 }
 
@@ -120,11 +119,13 @@ async function getPort(defaultPort?: number, defaultHost?: string): Promise<numb
   // try provided default port and host
   if (defaultPort) {
     try {
-      return await tryPort(defaultPort, defaultHost);
-    } catch (error) {}
+      const port = await tryPort(defaultPort, defaultHost);
+      return port
+    } catch (error) { }
   }
   // get a random port if not
-  return await tryPort(0, defaultHost);
+  const port = await tryPort(0, defaultHost)
+  return port;
 }
 
 function JSONMapReplacer(key: any, value: any) {

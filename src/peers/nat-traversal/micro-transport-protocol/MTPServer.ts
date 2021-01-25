@@ -5,6 +5,7 @@ import { EventEmitter } from 'events';
 import { Address } from '../../PeerInfo';
 import MTPConnection from './MTPConnection';
 import { PACKET_SYN, MIN_PACKET_SIZE, bufferToPacket } from './utils';
+import { promisify } from 'util';
 
 class MTPServer extends EventEmitter {
   socket: dgram.Socket;
@@ -54,34 +55,41 @@ class MTPServer extends EventEmitter {
     socket.bind(port);
   }
 
-  close(cb: () => void) {
-    let openConnections = 0;
-    this.closed = true;
+  close() {
+    return new Promise<void>(async (resolve, reject) => {
+      try {
+        let openConnections = 0;
+        this.closed = true;
 
-    const onClose = () => {
-      if (--openConnections === 0) {
         if (this.socket) {
-          this.socket.close();
+          this.socket.removeAllListeners();
+          await promisify(this.socket.close)();
         }
-        if (cb) {
-          cb();
-        }
-      }
-    };
 
-    for (const id in this.incomingConnections.keys()) {
-      const connection = this.incomingConnections.get(id);
-      if (!connection) {
-        this.incomingConnections.delete(id);
-        continue;
+        const onClose = () => {
+          if (--openConnections === 0) {
+            resolve();
+          }
+        };
+
+        for (const id in this.incomingConnections.keys()) {
+          const connection = this.incomingConnections.get(id);
+          if (!connection) {
+            this.incomingConnections.delete(id);
+            continue;
+          }
+          if (this.incomingConnections.get(id)?.closed) {
+            continue;
+          }
+          openConnections++;
+          connection.once('close', onClose);
+          connection.end();
+        }
+        resolve()
+      } catch (error) {
+        reject(error)
       }
-      if (this.incomingConnections.get(id)?.closed) {
-        continue;
-      }
-      openConnections++;
-      connection.once('close', onClose);
-      connection.end();
-    }
+    })
   }
 
   // ==== Handler Methods ==== //

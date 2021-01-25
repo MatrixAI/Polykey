@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pki, md } from 'node-forge';
-import * as peerInterface from '../../proto/js/Peer_pb';
+import * as peerInterface from '../../../proto/js/Peer_pb';
 
 type TLSCredentials = {
   rootCertificate: string;

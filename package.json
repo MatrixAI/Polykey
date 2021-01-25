@@ -27,10 +27,11 @@
     "type": "git",
     "url": "https://github.com/MatrixAI/js-polykey.git"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/Polykey.js",
+  "types": "dist/Polykey.d.ts",
   "files": [
-    "openapi.yaml"
+    "openapi.yaml",
+    "proto/"
   ],
   "scripts": {
     "build": "tsc",

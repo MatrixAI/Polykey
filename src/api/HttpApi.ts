@@ -5,7 +5,7 @@ import http from 'http';
 import https from 'https';
 import jsyaml from 'js-yaml';
 import passport from 'passport';
-import { getPort } from '../utils';
+import { promisify } from 'util';
 import session from 'express-session';
 import swaggerUI from 'swagger-ui-express';
 import { Address } from '../peers/PeerInfo';
@@ -79,10 +79,14 @@ class HttpApi {
     this.expressServer = express();
   }
 
-  async start(port = 0) {
-    return new Promise<number>(async (resolve, reject) => {
-      const port = await getPort(1314, process.env.PK_PEER_HOST ?? 'localhost');
+  async stop() {
+    if (this.httpServer) {
+      await promisify(this.httpServer.close)()
+    }
+  }
 
+  async start(port = parseInt(process.env.PK_API_PORT ?? '0')) {
+    return new Promise<number>(async (resolve, reject) => {
       this.expressServer.set('view engine', 'ejs');
       // Session Configuration
       const MemoryStore = session.MemoryStore;
@@ -232,6 +236,7 @@ class HttpApi {
         key: this.tlsCredentials.keypair.private,
         ca: this.tlsCredentials.rootCertificate,
       };
+
       this.httpServer = https.createServer(httpsOptions, this.expressServer).listen(port, () => {
         const addressInfo = this.httpServer.address() as net.AddressInfo;
         const address = Address.fromAddressInfo(addressInfo);

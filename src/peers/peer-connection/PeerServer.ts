@@ -1,10 +1,10 @@
-import PeerInfo, { Address } from '../PeerInfo';
 import * as grpc from '@grpc/grpc-js';
 import PeerManager from '../PeerManager';
 import KeyManager from '../../keys/KeyManager';
+import PeerInfo, { Address } from '../PeerInfo';
 import { stringToProtobuf, protobufToString } from '../../utils';
-import { PeerService, IPeerServer } from '../../proto/js/Peer_grpc_pb';
-import { PeerMessage, SubServiceType } from '../../proto/js/Peer_pb';
+import { PeerMessage, SubServiceType } from '../../../proto/js/Peer_pb';
+import { PeerService, IPeerServer } from '../../../proto/js/Peer_grpc_pb';
 
 class PeerServer implements IPeerServer {
   private peerManager: PeerManager;
@@ -12,7 +12,6 @@ class PeerServer implements IPeerServer {
 
   private server: grpc.Server;
   private credentials: grpc.ServerCredentials;
-  started = false;
 
   handleGitRequest: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>;
   handleNatRequest: (request: Uint8Array) => Promise<Uint8Array>;
@@ -41,26 +40,35 @@ class PeerServer implements IPeerServer {
     //   false,
     // );
 
-    const port = process.env.PK_PEER_PORT ?? this.peerManager.peerInfo?.peerAddress?.port ?? 0;
-    const host = process.env.PK_PEER_HOST ?? this.peerManager.peerInfo?.peerAddress?.host ?? 'localhost';
-    this.server.bindAsync(`${host}:${port}`, this.credentials, async (err, boundPort) => {
-      if (err) {
-        throw err;
-      } else {
-        try {
-          const address = new Address(host, boundPort);
-          if (this.peerManager.peerInfo) {
-            this.peerManager.peerInfo.peerAddress = address;
-            this.peerManager.writeMetadata();
+  }
+
+  async start() {
+    return new Promise<void>((resolve, reject) => {
+      const port = process.env.PK_PEER_PORT ?? this.peerManager.peerInfo?.peerAddress?.port ?? 0;
+      const host = process.env.PK_PEER_HOST ?? this.peerManager.peerInfo?.peerAddress?.host ?? 'localhost';
+      this.server.bindAsync(`${host}:${port}`, this.credentials, async (err, boundPort) => {
+        if (err) {
+          reject(err);
+        } else {
+          try {
+            const address = new Address(host, boundPort);
+            if (this.peerManager.peerInfo) {
+              this.peerManager.peerInfo.peerAddress = address;
+              this.peerManager.writeMetadata();
+            }
+            this.server.start();
+            console.log(`Peer Server running on: ${address}`);
+            resolve()
+          } catch (error) {
+            reject(error);
           }
-          this.server.start();
-          console.log(`Peer Server running on: ${address}`);
-          this.started = true;
-        } catch (error) {
-          console.log(error);
         }
-      }
-    });
+      });
+    })
+  }
+
+  async stop() {
+    this.server.forceShutdown()
   }
 
   async messagePeer(call: grpc.ServerUnaryCall<PeerMessage, PeerMessage>, callback: grpc.sendUnaryData<PeerMessage>) {
