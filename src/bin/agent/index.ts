@@ -22,7 +22,7 @@ commandStartAgent.option(
   (str) => parseInt(str),
   1,
 );
-commandStartAgent.option('-d, --daemon', 'start the agent as a daemon process');
+commandStartAgent.option('-f, --foreground', 'start the agent as a foreground process', false);
 commandStartAgent.option(
   '-pp, --private-passphrase <privatePassphrase>',
   'provide the passphrase to the private key',
@@ -48,16 +48,23 @@ commandStartAgent.action(
         throw Error(`agent is not running`);
       }
     } catch (error) {
-      const pid = await PolykeyAgent.startAgent(nodePath, options.daemon);
+      const pid = await PolykeyAgent.startAgent(nodePath, !options.foreground);
       const client = PolykeyAgent.connectToAgent(nodePath);
       const res = (await promisifyGrpc(client.getStatus.bind(client))(
         new agentPB.EmptyMessage(),
       )) as agentPB.AgentStatusMessage;
       if (res.getStatus() == agentPB.AgentStatusType.ONLINE) {
-        pkLogger.logV2(
-          `agent has started with a pid of ${pid}`,
-          PKMessageType.SUCCESS,
-        );
+        if (typeof pid == 'boolean') {
+          pkLogger.logV2(
+            `agent has started as a foreground process`,
+            PKMessageType.SUCCESS,
+          );
+        } else {
+          pkLogger.logV2(
+            `agent has started with a pid of ${pid}`,
+            PKMessageType.SUCCESS,
+          );
+        }
       } else {
         throw Error('agent could not be started');
       }
@@ -80,7 +87,7 @@ commandStartAgent.action(
         }
       }
     }
-  }),
+  }, false),
 );
 
 const commandRestartAgent = new commander.Command('restart');
