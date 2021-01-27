@@ -38,7 +38,7 @@ describe('KeyManager class', () => {
 
     const keypair = await km.generateKeyPair('John Smith', 'passphrase')
 
-    const identity = await km.getIdentityFromPublicKey(Buffer.from(keypair.public!))
+    const identity = await KeyManager.getIdentityFromPublicKey(Buffer.from(keypair.public!))
 
     expect(identity).not.toEqual(undefined)
   })
@@ -47,7 +47,7 @@ describe('KeyManager class', () => {
 
     const keypair = await km.generateKeyPair('John Smith', 'passphrase')
 
-    const identity = await km.getIdentityFromPrivateKey(Buffer.from(keypair.private!), 'passphrase')
+    const identity = await KeyManager.getIdentityFromPrivateKey(Buffer.from(keypair.private!), 'passphrase')
 
     expect(identity).not.toEqual(undefined)
   })

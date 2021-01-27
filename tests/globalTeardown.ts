@@ -1,4 +1,4 @@
-async function teardown () {
+async function teardown() {
   console.log('GLOBAL TEARDOWN');
 }
 

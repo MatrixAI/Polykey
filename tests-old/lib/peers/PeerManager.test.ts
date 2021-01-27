@@ -3,6 +3,7 @@ import os from 'os'
 import {Polykey} from "../../../src/Polykey"
 import { randomString } from '../../../src/utils'
 import KeyManager from '../../../src/keys/KeyManager'
+import { KeybaseIdentityProvider } from '../../../src/peers/identity-provider/default';
 
 describe('PeerManager class', () => {
   type PKNode = {
@@ -27,7 +28,7 @@ describe('PeerManager class', () => {
     )
     while (!peerA.peerManager.peerServer.started) {
       await new Promise((resolve, reject) => {
-        setTimeout(() => resolve(), 500)
+        setTimeout(() => resolve(null), 500)
       })
     }
 
@@ -47,7 +48,7 @@ describe('PeerManager class', () => {
     )
     while (!peerB.peerManager.peerServer.started) {
       await new Promise((resolve, reject) => {
-        setTimeout(() => resolve(), 500)
+        setTimeout(() => resolve(null), 500)
       })
     }
 
@@ -89,24 +90,26 @@ describe('PeerManager class', () => {
     test('can ping peer', async done => {
       // ==== A to B ==== //
       const peerBPubKey = peerB.peerManager.peerInfo.publicKey
+      const peerBId = peerB.peerManager.peerInfo.id
 
-      const pc = peerA.peerManager.connectToPeer(peerBPubKey)
+      const pc = peerA.peerManager.connectToPeer(peerBId)
 
       expect(await pc.pingPeer(5000)).toEqual(true)
 
+      expect(1+1).toEqual(2);
       done()
-    })
+    }, 20000)
 
     test('can connect securely to another peer and send data back and forth', async () => {
       // ==== A to B ==== //
-      const peerConnectionAB = peerA.peerManager.connectToPeer(peerB.peerManager.peerInfo.publicKey)
+      const peerConnectionAB = peerA.peerManager.connectToPeer(peerB.peerManager.peerInfo.id)
       expect(peerConnectionAB).not.toEqual(undefined)
       expect(await peerConnectionAB.pingPeer(5000)).toEqual(true)
       // ==== B to A ==== //
-      const peerConnectionBA = peerB.peerManager.connectToPeer(peerA.peerManager.peerInfo.publicKey)
+      const peerConnectionBA = peerB.peerManager.connectToPeer(peerA.peerManager.peerInfo.id)
       expect(peerConnectionBA).not.toEqual(undefined)
       expect(await peerConnectionBA.pingPeer(5000)).toEqual(true)
-    })
+    }, 10000)
   })
 
   describe('NAT Traversal via Peer Relay', () => {
@@ -165,11 +168,11 @@ describe('PeerManager class', () => {
         const vaultName = `Vault-${randomString()}`
         const vault = await peerB.vaultManager.newVault(vaultName)
 
-        const clonedVault = await peerC.vaultManager.cloneVault(vault.name, peerB.peerManager.peerInfo.publicKey)
+        const clonedVault = await peerC.vaultManager.cloneVault(vault.name, peerB.peerManager.peerInfo.id)
         expect(vault.name).toEqual(clonedVault.name)
 
         done()
-      })
+      }, 100000)
 
       test('can clone many vaults through a peer relay connection', async done => {
         // ==== Pull Vaults B to C ==== //
@@ -299,15 +302,17 @@ describe('PeerManager class', () => {
 
       // need to mock a social discovery service
       // For peer A
-      peerA.peerManager.socialDiscoveryServices = [{
-        name: 'MockSocialDiscoveryForPeerA',
-        findUser: async (handle: string, service: string) => peerB.peerManager.peerInfo.publicKey
-      }]
+      // peerA.peerManager.socialDiscoveryServices = [{
+      //   name: 'MockSocialDiscoveryForPeerA',
+      //   findUser: async (handle: string, service: string) => peerB.peerManager.peerInfo.publicKey
+      // }]
+      peerA.peerManager.identityProviderPlugins.set("MockSocialDiscoveryForPeerA", KeybaseIdentityProvider)
       // For peer B
-      peerB.peerManager.socialDiscoveryServices = [{
-        name: 'MockSocialDiscoveryForPeerB',
-        findUser: async (handle: string, service: string) => peerA.peerManager.peerInfo.publicKey
-      }]
+      // peerB.peerManager.socialDiscoveryServices = [{
+      //   name: 'MockSocialDiscoveryForPeerB',
+      //   findUser: async (handle: string, service: string) => peerA.peerManager.peerInfo.publicKey
+      // }]
+      peerB.peerManager.identityProviderPlugins.set("MockSocialDiscoveryForPeerB", KeybaseIdentityProvider)
     })
 
     afterAll(() => {
@@ -319,7 +324,7 @@ describe('PeerManager class', () => {
       // TODO: try to find a way to test this, currently its untestable because keybase login integration hasn't been completed
       const successful = await peerA.peerManager.findPublicKey(peerB.peerManager.peerInfo.publicKey)
       expect(successful).toEqual(true)
-    })
+    }, 100000)
 
     test('find a user via a social discovery service', async () => {
       // TODO: try to find a way to test this, currently its untestable because keybase login integration hasn't been completed

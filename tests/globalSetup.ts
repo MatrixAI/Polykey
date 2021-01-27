@@ -1,4 +1,4 @@
-async function setup () {
+async function setup() {
   console.log('GLOBAL SETUP');
 }
 
