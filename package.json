@@ -31,7 +31,8 @@
   "types": "dist/Polykey.d.ts",
   "files": [
     "openapi.yaml",
-    "proto/"
+    "proto/",
+    "dist/"
   ],
   "scripts": {
     "build": "tsc",
