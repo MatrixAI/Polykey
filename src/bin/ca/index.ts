@@ -1,6 +1,6 @@
 import path from 'path';
 import commander from 'commander';
-import * as agentPB from '../../proto/js/Agent_pb';
+import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   actionRunner,
   PKMessageType,

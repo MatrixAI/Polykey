@@ -1,10 +1,10 @@
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
-import * as gitInterface from '../proto/js/Git_pb';
 import { PassThrough } from 'readable-stream';
 import uploadPack from './upload-pack/uploadPack';
 import GitSideBand from './side-band/GitSideBand';
 import packObjects from './pack-objects/packObjects';
+import * as gitInterface from '../../proto/js/Git_pb';
 
 // Here is the protocol git outlines for sending pack files over http:
 // https://git-scm.com/docs/pack-protocol/2.17.0

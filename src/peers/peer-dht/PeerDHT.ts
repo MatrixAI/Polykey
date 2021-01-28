@@ -2,8 +2,8 @@ import KBucket from './KBucket';
 import PeerInfo from '../PeerInfo';
 import { Mutex } from 'async-mutex';
 import { promiseAll } from '../../utils';
-import * as peerInterface from '../../proto/js/Peer_pb';
-import { SubServiceType } from '../../proto/js/Peer_pb';
+import * as peerInterface from '../../../proto/js/Peer_pb';
+import { SubServiceType } from '../../../proto/js/Peer_pb';
 
 // this implements a very basic map of known peer connections
 // TODO: implement full kademlia algorithm for distributed peer connection table

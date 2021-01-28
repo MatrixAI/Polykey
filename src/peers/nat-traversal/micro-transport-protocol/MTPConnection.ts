@@ -19,7 +19,7 @@ import {
   bufferToPacket,
   packetToBuffer,
 } from './utils';
-import * as peerInterface from '../../../proto/js/Peer_pb';
+import * as peerInterface from '../../../../proto/js/Peer_pb';
 
 class MTPConnection extends Duplex {
   private peerId: string;

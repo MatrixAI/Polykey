@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import parseUrl from 'parse-url';
 import { AddressInfo } from 'net';
-import * as peerInterface from '../proto/js/Peer_pb';
+import * as peerInterface from '../../proto/js/Peer_pb';
 import { protobufToString, stringToProtobuf } from '../utils';
 
 class Address {

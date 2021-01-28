@@ -3,7 +3,7 @@
     "outDir": "./dist",
     "sourceMap": false,
     "declaration": true,
-    "allowJs": true,
+    "allowJs": false,
     "strictNullChecks": true,
     "noImplicitAny": false,
     "esModuleInterop": true,

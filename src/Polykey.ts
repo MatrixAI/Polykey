@@ -72,6 +72,16 @@ class Polykey {
       }).bind(this),
     );
   }
+
+  // helper methods
+  async startAllServices() {
+    await this.peerManager.start()
+    await this.httpApi.start()
+  }
+  async stopAllServices() {
+    await this.peerManager.stop()
+    await this.httpApi.stop()
+  }
 }
 
 export { Polykey, KeyManager, VaultManager, PeerManager, PolykeyAgent, PeerInfo, Address, promisifyGrpc };

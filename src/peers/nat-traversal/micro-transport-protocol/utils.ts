@@ -1,4 +1,4 @@
-import * as peerInterface from '../../../proto/js/Peer_pb';
+import * as peerInterface from '../../../../proto/js/Peer_pb';
 
 const EXTENSION = 0;
 const VERSION = 1;

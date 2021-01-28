@@ -7,7 +7,7 @@ import KeyManager from '../keys/KeyManager';
 import PeerServer from './peer-connection/PeerServer';
 import NatTraversal from './nat-traversal/NatTraversal';
 import { JSONMapReplacer, JSONMapReviver } from '../utils';
-import * as peerInterface from '../proto/js/Peer_pb';
+import * as peerInterface from '../../proto/js/Peer_pb';
 import PeerConnection from './peer-connection/PeerConnection';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
 import { KeybaseIdentityProvider } from './identity-provider/default';
@@ -117,6 +117,22 @@ class PeerManager {
     return {
       stealthMode: this.stealthMode,
     };
+  }
+
+  async start() {
+    this.multicastBroadcaster.startBroadcasting()
+    try {
+      await this.peerServer.start()
+    } catch (error) {
+      // no throw
+    }
+    await this.natTraversal.start()
+  }
+
+  async stop() {
+    this.multicastBroadcaster.stopBroadcasting()
+    await this.peerServer.stop()
+    await this.natTraversal.stop()
   }
 
   toggleStealthMode(active: boolean) {

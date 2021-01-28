@@ -1,6 +1,6 @@
 import GitRequest from './GitRequest';
-import * as gitInterface from '../proto/js/Git_pb';
-import { SubServiceType } from '../proto/js/Peer_pb';
+import * as gitInterface from '../../proto/js/Git_pb';
+import { SubServiceType } from '../../proto/js/Peer_pb';
 import PeerConnection from '../peers/peer-connection/PeerConnection';
 
 /**
