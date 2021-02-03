@@ -180,6 +180,17 @@ function deserialize_agentInterface_PeerInfoMessage(buffer_arg) {
   return Agent_pb.PeerInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_PeerInfoReadOnlyMessage(arg) {
+  if (!(arg instanceof Agent_pb.PeerInfoReadOnlyMessage)) {
+    throw new Error('Expected argument of type agentInterface.PeerInfoReadOnlyMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_PeerInfoReadOnlyMessage(buffer_arg) {
+  return Agent_pb.PeerInfoReadOnlyMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_PolykeyProofMessage(arg) {
   if (!(arg instanceof Agent_pb.PolykeyProofMessage)) {
     throw new Error('Expected argument of type agentInterface.PolykeyProofMessage');
@@ -189,6 +200,17 @@ function serialize_agentInterface_PolykeyProofMessage(arg) {
 
 function deserialize_agentInterface_PolykeyProofMessage(buffer_arg) {
   return Agent_pb.PolykeyProofMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_RecoverKeynodeMessage(arg) {
+  if (!(arg instanceof Agent_pb.RecoverKeynodeMessage)) {
+    throw new Error('Expected argument of type agentInterface.RecoverKeynodeMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_RecoverKeynodeMessage(buffer_arg) {
+  return Agent_pb.RecoverKeynodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_RenameVaultMessage(arg) {
@@ -321,10 +343,10 @@ var AgentService = exports.AgentService = {
     path: '/agentInterface.Agent/AddPeer',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.PeerInfoMessage,
+    requestType: Agent_pb.PeerInfoReadOnlyMessage,
     responseType: Agent_pb.StringMessage,
-    requestSerialize: serialize_agentInterface_PeerInfoMessage,
-    requestDeserialize: deserialize_agentInterface_PeerInfoMessage,
+    requestSerialize: serialize_agentInterface_PeerInfoReadOnlyMessage,
+    requestDeserialize: deserialize_agentInterface_PeerInfoReadOnlyMessage,
     responseSerialize: serialize_agentInterface_StringMessage,
     responseDeserialize: deserialize_agentInterface_StringMessage,
   },
@@ -691,6 +713,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
+  recoverKeynode: {
+    path: '/agentInterface.Agent/RecoverKeynode',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.RecoverKeynodeMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_RecoverKeynodeMessage,
+    requestDeserialize: deserialize_agentInterface_RecoverKeynodeMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
   revokeOAuthToken: {
     path: '/agentInterface.Agent/RevokeOAuthToken',
     requestStream: false,
@@ -816,10 +849,10 @@ var AgentService = exports.AgentService = {
     path: '/agentInterface.Agent/UpdatePeerInfo',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.PeerInfoMessage,
+    requestType: Agent_pb.PeerInfoReadOnlyMessage,
     responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_PeerInfoMessage,
-    requestDeserialize: deserialize_agentInterface_PeerInfoMessage,
+    requestSerialize: serialize_agentInterface_PeerInfoReadOnlyMessage,
+    requestDeserialize: deserialize_agentInterface_PeerInfoReadOnlyMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
@@ -842,6 +875,17 @@ var AgentService = exports.AgentService = {
     responseType: Agent_pb.EmptyMessage,
     requestSerialize: serialize_agentInterface_VerifyFileMessage,
     requestDeserialize: deserialize_agentInterface_VerifyFileMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  verifyMnemonic: {
+    path: '/agentInterface.Agent/VerifyMnemonic',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.StringMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_StringMessage,
+    requestDeserialize: deserialize_agentInterface_StringMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },

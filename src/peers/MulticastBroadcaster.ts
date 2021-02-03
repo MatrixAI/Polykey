@@ -1,9 +1,7 @@
 import dgram from 'dgram';
-import PeerInfo from './PeerInfo';
 import { EventEmitter } from 'events';
 import KeyManager from '../keys/KeyManager';
-import * as peerInterface from '../../proto/js/Peer_pb';
-import { protobufToString, stringToProtobuf } from '../utils';
+import { PeerInfo, PeerInfoReadOnly } from './PeerInfo';
 
 // This module is based heavily on libp2p's mDNS module:
 // https://github.com/libp2p/js-libp2p-mdns
@@ -23,7 +21,8 @@ const UDP_MULTICAST_ADDR = process.env.UDP_MULTICAST_ADDR ?? '224.0.0.251';
 class MulticastBroadcaster extends EventEmitter {
   getPeerInfo: () => PeerInfo;
   hasPeer: (id: string) => boolean;
-  updatePeer: (peerInfo: PeerInfo) => void;
+  addPeer: (peerInfo: PeerInfoReadOnly) => void;
+  updatePeer: (peerInfo: PeerInfoReadOnly) => void;
   private keyManager: KeyManager;
 
   private socket: dgram.Socket;
@@ -33,13 +32,15 @@ class MulticastBroadcaster extends EventEmitter {
   constructor(
     getPeerInfo: () => PeerInfo,
     hasPeer: (id: string) => boolean,
-    updatePeer: (peerInfo: PeerInfo) => void,
+    addPeer: (peerInfo: PeerInfoReadOnly) => void,
+    updatePeer: (peerInfo: PeerInfoReadOnly) => void,
     keyManager: KeyManager,
   ) {
     super();
 
     this.getPeerInfo = getPeerInfo;
     this.hasPeer = hasPeer;
+    this.addPeer = addPeer;
     this.updatePeer = updatePeer;
     this.keyManager = keyManager;
 
@@ -78,24 +79,8 @@ class MulticastBroadcaster extends EventEmitter {
       if (!this.keyManager.KeypairUnlocked) {
         return;
       }
-      const peerInfo = this.getPeerInfo();
-      const encodedPeerInfo = new peerInterface.PeerInfoMessage
-      const { publicKey, peerAddress, apiAddress } = peerInfo
-      encodedPeerInfo.setPublicKey(publicKey)
-      if (peerAddress) {
-        encodedPeerInfo.setPublicKey(peerAddress.toString())
-      }
-      if (apiAddress) {
-        encodedPeerInfo.setPublicKey(apiAddress.toString())
-      }
-      // sign it for authenticity
-      const signedPeerInfo = await this.keyManager.signData(Buffer.from(protobufToString(encodedPeerInfo.serializeBinary())));
-      const peerMessage = new peerInterface.PeerMessage
-      peerMessage.setType(peerInterface.SubServiceType.PING_PEER)
-      peerMessage.setPublicKey(publicKey)
-      peerMessage.setSubMessage(signedPeerInfo.toString())
-      const encodedPeerMessage = peerMessage.serializeBinary()
-      this.socket.send(encodedPeerMessage, 0, encodedPeerMessage.length, UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
+      const peerInfoPem = this.getPeerInfo().toX509Pem(this.keyManager.getPrivateKey())
+      this.socket.send(peerInfoPem, 0, peerInfoPem.length, UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
     };
 
     // Immediately start a query, then do it every interval.
@@ -105,29 +90,24 @@ class MulticastBroadcaster extends EventEmitter {
 
   private async handleBroadcastMessage(request: any, rinfo: any) {
     try {
-      const { publicKey: signingKey, type, subMessage } = peerInterface.PeerMessage.deserializeBinary(request).toObject()
+      // construct a peer info object
+      const peerInfo = new PeerInfoReadOnly(request);
 
       // only relevant if peer public key exists in store and type is of PING
-      if (!this.hasPeer(signingKey)) {
-        throw Error('peer does not exist in store');
-      } else if (this.getPeerInfo().publicKey == signingKey) {
+      if (this.getPeerInfo().id == peerInfo.id) {
         throw Error('peer message is from self');
-      } else if (!(type == peerInterface.SubServiceType.PING_PEER)) {
-        throw Error(`peer message is not of type PING, type is: ${peerInterface.SubServiceType[type]}`);
+      } else if (!this.hasPeer(peerInfo.id)) {
+        throw Error('peer does not exist in store');
       }
 
-      // verify the subMessage
-      const verifiedMessage = await this.keyManager.verifyData(subMessage, Buffer.from(signingKey));
-      const encodedMessage = stringToProtobuf(verifiedMessage.toString());
-
-      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.deserializeBinary(encodedMessage).toObject()
-
-      // construct a peer info object
-      const peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress);
       // update the peer store
-      this.updatePeer(peerInfo);
+      if (this.hasPeer(peerInfo.id)) {
+        this.updatePeer(peerInfo)
+      } else {
+        this.updatePeer(peerInfo);
+      }
 
-      this.emit('found', publicKey);
+      this.emit('found', peerInfo.publicKey);
     } catch (err) {
       // Couldn't decode message
       // We don't want the multicast discovery to error on every message it coudln't decode!

@@ -1,4 +1,4 @@
-import PeerInfo from "../PeerInfo";
+import { PeerInfoReadOnly } from "../PeerInfo";
 
 enum PolykeyProofType {
   AUTOMATIC,
@@ -17,10 +17,10 @@ interface IdentityProviderPlugin {
   name: string;
   // must return the PeerInfo(s) that the user has advertised on their account
   // the identifier can be any arbitrary identifying string (e.g. '@github/john-smith' or a phone number)
-  determineKeynodes(identifier: string): Promise<PeerInfo[]>;
+  determineKeynodes(identifier: string): Promise<PeerInfoReadOnly[]>;
   // this must either use the provider's API to post polykey proof of
   // this keynode or return instructions for the user to do so manually
-  proveKeynode(identifier: string, peerInfo: PeerInfo): Promise<PolykeyProof>
+  proveKeynode(identifier: string, peerInfo: PeerInfoReadOnly): Promise<PolykeyProof>
 }
 
 export default IdentityProviderPlugin

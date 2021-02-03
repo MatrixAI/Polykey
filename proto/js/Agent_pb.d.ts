@@ -88,18 +88,57 @@ export namespace StringListMessage {
     }
 }
 
+export class DIProofMessage extends jspb.Message { 
+    getDigitalIdentityLink(): string;
+    setDigitalIdentityLink(value: string): DIProofMessage;
+
+    getProofLink(): string;
+    setProofLink(value: string): DIProofMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): DIProofMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: DIProofMessage): DIProofMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: DIProofMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): DIProofMessage;
+    static deserializeBinaryFromReader(message: DIProofMessage, reader: jspb.BinaryReader): DIProofMessage;
+}
+
+export namespace DIProofMessage {
+    export type AsObject = {
+        digitalIdentityLink: string,
+        proofLink: string,
+    }
+}
+
 export class PeerInfoMessage extends jspb.Message { 
+    getPeerId(): string;
+    setPeerId(value: string): PeerInfoMessage;
+
+    getAlias(): string;
+    setAlias(value: string): PeerInfoMessage;
+
     getPublicKey(): string;
     setPublicKey(value: string): PeerInfoMessage;
 
-    getRootCertificate(): string;
-    setRootCertificate(value: string): PeerInfoMessage;
+    getRootPublicKey(): string;
+    setRootPublicKey(value: string): PeerInfoMessage;
 
     getPeerAddress(): string;
     setPeerAddress(value: string): PeerInfoMessage;
 
     getApiAddress(): string;
     setApiAddress(value: string): PeerInfoMessage;
+
+    clearProofListList(): void;
+    getProofListList(): Array<DIProofMessage>;
+    setProofListList(value: Array<DIProofMessage>): PeerInfoMessage;
+    addProofList(value?: DIProofMessage, index?: number): DIProofMessage;
+
+    getPem(): string;
+    setPem(value: string): PeerInfoMessage;
 
 
     serializeBinary(): Uint8Array;
@@ -114,10 +153,51 @@ export class PeerInfoMessage extends jspb.Message {
 
 export namespace PeerInfoMessage {
     export type AsObject = {
+        peerId: string,
+        alias: string,
         publicKey: string,
-        rootCertificate: string,
+        rootPublicKey: string,
         peerAddress: string,
         apiAddress: string,
+        proofListList: Array<DIProofMessage.AsObject>,
+        pem: string,
+    }
+}
+
+export class PeerInfoReadOnlyMessage extends jspb.Message { 
+    getPeerId(): string;
+    setPeerId(value: string): PeerInfoReadOnlyMessage;
+
+    getPem(): string;
+    setPem(value: string): PeerInfoReadOnlyMessage;
+
+    getUnsignedAlias(): string;
+    setUnsignedAlias(value: string): PeerInfoReadOnlyMessage;
+
+    getUnsignedPeerAddress(): string;
+    setUnsignedPeerAddress(value: string): PeerInfoReadOnlyMessage;
+
+    getUnsignedApiAddress(): string;
+    setUnsignedApiAddress(value: string): PeerInfoReadOnlyMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PeerInfoReadOnlyMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PeerInfoReadOnlyMessage): PeerInfoReadOnlyMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PeerInfoReadOnlyMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PeerInfoReadOnlyMessage;
+    static deserializeBinaryFromReader(message: PeerInfoReadOnlyMessage, reader: jspb.BinaryReader): PeerInfoReadOnlyMessage;
+}
+
+export namespace PeerInfoReadOnlyMessage {
+    export type AsObject = {
+        peerId: string,
+        pem: string,
+        unsignedAlias: string,
+        unsignedPeerAddress: string,
+        unsignedApiAddress: string,
     }
 }
 
@@ -143,11 +223,11 @@ export namespace AgentStatusMessage {
 }
 
 export class NewKeyPairMessage extends jspb.Message { 
-    getUserid(): string;
-    setUserid(value: string): NewKeyPairMessage;
-
     getPassphrase(): string;
     setPassphrase(value: string): NewKeyPairMessage;
+
+    getNbits(): number;
+    setNbits(value: number): NewKeyPairMessage;
 
 
     serializeBinary(): Uint8Array;
@@ -162,8 +242,8 @@ export class NewKeyPairMessage extends jspb.Message {
 
 export namespace NewKeyPairMessage {
     export type AsObject = {
-        userid: string,
         passphrase: string,
+        nbits: number,
     }
 }
 
@@ -721,6 +801,35 @@ export namespace GestaltIdentityMessage {
     export type AsObject = {
         identityProviderName: string,
         identifier: string,
+    }
+}
+
+export class RecoverKeynodeMessage extends jspb.Message { 
+    getMnemonic(): string;
+    setMnemonic(value: string): RecoverKeynodeMessage;
+
+    getUserId(): string;
+    setUserId(value: string): RecoverKeynodeMessage;
+
+    getPassphrase(): string;
+    setPassphrase(value: string): RecoverKeynodeMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RecoverKeynodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: RecoverKeynodeMessage): RecoverKeynodeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RecoverKeynodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RecoverKeynodeMessage;
+    static deserializeBinaryFromReader(message: RecoverKeynodeMessage, reader: jspb.BinaryReader): RecoverKeynodeMessage;
+}
+
+export namespace RecoverKeynodeMessage {
+    export type AsObject = {
+        mnemonic: string,
+        userId: string,
+        passphrase: string,
     }
 }
 

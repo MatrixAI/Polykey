@@ -1,16 +1,18 @@
 import KBucket from './KBucket';
-import PeerInfo from '../PeerInfo';
 import { Mutex } from 'async-mutex';
 import { promiseAll } from '../../utils';
+import { promisifyGrpc } from '../../bin/utils';
+import { PeerInfo, PeerInfoReadOnly } from '../PeerInfo';
 import * as peerInterface from '../../../proto/js/Peer_pb';
-import { SubServiceType } from '../../../proto/js/Peer_pb';
+import * as agentInterface from '../../../proto/js/Agent_pb';
+import PeerConnection from '../peer-connection/PeerConnection';
 
 // this implements a very basic map of known peer connections
 // TODO: implement full kademlia algorithm for distributed peer connection table
 class PeerDHT {
-  private getPeerId: () => string;
-  private getPeerInfo: (id: string) => PeerInfo;
-  private updatePeerStore: (peerInfo: PeerInfo) => void;
+  private getLocalPeerId: () => string;
+  private getPeerInfo: (id: string) => PeerInfoReadOnly | null;
+  private updatePeerStore: (peerInfo: PeerInfoReadOnly) => void;
 
   // state
   private findingLocalPeer = false;
@@ -19,34 +21,24 @@ class PeerDHT {
   private addingPeer = false;
   private deletingPeer = false;
 
-  // Concurrency
-  private mutex: Mutex = new Mutex();
+  // // Concurrency
+  // private mutex: Mutex = new Mutex();
 
   kBucket: KBucket;
-  connectToPeer: (
-    id: string,
-  ) => {
-    pingPeer: (timeout?: number | undefined) => Promise<boolean>;
-    sendPeerRequest: (type: SubServiceType, request: Uint8Array) => Promise<Uint8Array>;
-  };
+  connectToPeer: (id: string) => PeerConnection;
 
   constructor(
-    getPeerId: () => string,
-    connectToPeer: (
-      id: string,
-    ) => {
-      pingPeer: (timeout?: number | undefined) => Promise<boolean>;
-      sendPeerRequest: (type: SubServiceType, request: Uint8Array) => Promise<Uint8Array>;
-    },
-    getPeerInfo: (id: string) => PeerInfo,
-    updatePeerStore: (peerInfo: PeerInfo) => void,
+    getLocalPeerId: () => string,
+    connectToPeer: (id: string) => PeerConnection,
+    getPeerInfo: (id: string) => PeerInfoReadOnly | null,
+    updatePeerStore: (peerInfo: PeerInfoReadOnly) => void,
   ) {
-    this.getPeerId = getPeerId;
+    this.getLocalPeerId = getLocalPeerId;
     this.connectToPeer = connectToPeer;
     this.getPeerInfo = getPeerInfo;
     this.updatePeerStore = updatePeerStore;
 
-    this.kBucket = new KBucket(this.getPeerId, this.pingNodeUpdate.bind(this));
+    this.kBucket = new KBucket(this.getLocalPeerId, this.pingNodeUpdate.bind(this));
   }
 
   public get Status() {
@@ -94,36 +86,34 @@ class PeerDHT {
   }
 
   async addPeer(id: string) {
-    const release = await this.mutex.acquire();
     this.addingPeer = true;
     try {
-      if (this.getPeerId() != id) {
+      if (this.getLocalPeerId() != id) {
         await this.kBucket.add(id);
       }
     } catch (error) {
       throw error;
     } finally {
       this.addingPeer = false;
-      release();
     }
   }
 
   async addPeers(ids: string[]) {
-    const release = await this.mutex.acquire();
     this.addingPeers = true;
-    const promiseList = ids
-      .filter((v) => {
-        v != this.getPeerId();
-      })
-      .map((id) => this.kBucket.add(id));
-    await promiseAll(promiseList).finally(() => {
+    try {
+      for (const id of ids) {
+        if (this.getLocalPeerId() != id) {
+          await this.kBucket.add(id);
+        }
+      }
+    } catch (error) {
+      throw error
+    } finally {
       this.addingPeers = false;
-      release();
-    });
+    }
   }
 
   async deletePeer(id: string) {
-    const release = await this.mutex.acquire();
     this.deletingPeer = true;
     try {
       this.kBucket.remove(id);
@@ -131,51 +121,31 @@ class PeerDHT {
       throw error;
     } finally {
       this.deletingPeer = false;
-      release();
     }
   }
 
-  private toPeerInfoMessageList(peerIds: string[]): peerInterface.PeerInfoMessage[] {
+  private toPeerInfoReadOnlyMessageList(peerIds: string[]): agentInterface.PeerInfoReadOnlyMessage[] {
     return peerIds
-      .filter((p) => {
-        try {
-          const pi = this.getPeerInfo(p);
-          return pi ? true : false;
-        } catch {
-          return false;
-        }
-      })
+      .filter((p) => p != this.getLocalPeerId())
       .map((p) => {
-        const pi = this.getPeerInfo(p);
-        const piMessage = new peerInterface.PeerInfoMessage
-        piMessage.setPublicKey(pi.publicKey)
-        piMessage.setRootCertificate(pi.rootCertificate)
-        if (pi.peerAddress) {
-          piMessage.setPeerAddress(pi.peerAddress.toString())
-        }
-        if (pi.apiAddress) {
-          piMessage.setApiAddress(pi.apiAddress.toString())
-        }
-        return piMessage
-      });
+        const peerInfo = this.getPeerInfo(p)
+        return peerInfo ? peerInfo.toPeerInfoReadOnlyMessage() : null
+      }).filter(p => p != null) as agentInterface.PeerInfoReadOnlyMessage[];
   }
 
-  async findLocalPeer(peerId: string): Promise<PeerInfo | null> {
-    const release = await this.mutex.acquire();
+  async findLocalPeer(peerId: string): Promise<PeerInfoReadOnly | null> {
     this.findingLocalPeer = true;
     const closestPeerId = this.closestPeer(peerId);
     if (closestPeerId && closestPeerId == peerId) {
       const foundPeerInfo = this.getPeerInfo(peerId);
       // Found local peer
       this.findingLocalPeer = false;
-      release();
       return foundPeerInfo ?? null;
     } else {
       // Either can't find public key in k bucket or
       // PeerInfo doesn't exist in store. Either way,
       // we just return null
       this.findingLocalPeer = false;
-      release();
       return null;
     }
   }
@@ -187,26 +157,31 @@ class PeerDHT {
   async findPeer(
     peerId: string,
   ): Promise<{
-    adjacentPeerInfo?: PeerInfo;
-    targetPeerInfo?: PeerInfo;
+    adjacentPeerInfo?: PeerInfoReadOnly;
+    targetPeerInfo?: PeerInfoReadOnly;
   }> {
-    const release = await this.mutex.acquire();
+    // there is an issue here with the mutex not being acquired
     this.findingPeer = true;
-    // Return local peer if it exists in routing table and has a connected peerAddress
-    const localPeerInfo = await this.findLocalPeer(peerId);
-    if (localPeerInfo && localPeerInfo?.peerAddress != undefined) {
-      this.findingPeer = false;
-      release();
-      return {
-        targetPeerInfo: localPeerInfo,
-      };
-    }
+    // // Return local peer if it exists in routing table and has a connected peerAddress
+    // const localPeerInfo = await this.findLocalPeer(peerId);
+    // if (localPeerInfo && localPeerInfo?.peerAddress != undefined) {
+    //   this.findingPeer = false;
+    //   return {
+    //     targetPeerInfo: localPeerInfo,
+    //   };
+    // }
 
     // If local peer was not found, get closest peers and
     // start querying the network
     const kBucketSize = this.kBucket.numberOfNodesPerKBucket;
     // get rid of the target peer id as it is not onsidered a close peer
+    console.log('peerIddddddddd');
+    console.log(peerId);
+
     const closestPeerIds = this.closestPeers(peerId, kBucketSize).filter((pi) => pi != peerId);
+    console.log('closestPeerIds');
+    console.log(closestPeerIds);
+
 
     // If there are no closest peers, we have failed to find that peer
     if (closestPeerIds.length === 0) {
@@ -215,57 +190,51 @@ class PeerDHT {
 
     // Query the network until the peer public key is found
     for (const closePeerId of closestPeerIds) {
-      if (closePeerId == this.getPeerId()) {
+      if (closePeerId == this.getLocalPeerId() || closePeerId == peerId) {
         continue;
       }
       try {
         const pc = this.connectToPeer(closePeerId);
+        const client = await pc.getPeerClient(true);
 
         // encode request
-        // note the request is also an opportunity to notify the target node of the closes
-        // peers that the local node knows about so the target node kbucket can be updated.
-        const subMessage = new peerInterface.PeerDHTFindNodeMessage
-        subMessage.setPeerId(peerId)
-        subMessage.setClosestPeersList(this.toPeerInfoMessageList(closestPeerIds))
+        const request = new peerInterface.PeerDHTFindNodeRequest
+        request.setTargetPeerId(peerId)
 
-        const request = new peerInterface.PeerDHTMessage
-        request.setType(peerInterface.PeerDHTMessageType.FIND_NODE)
-        request.setIsResponse(false)
-        request.setSubMessage(subMessage.serializeBinary())
         // send request
-        const response = await pc.sendPeerRequest(SubServiceType.PEER_DHT, request.serializeBinary());
+        const response = await promisifyGrpc(client.peerDHTFindNode.bind(client))(request) as peerInterface.PeerDHTFindNodeReply;
 
         // decode response
-        const decodedResponse = peerInterface.PeerDHTMessage.deserializeBinary(response)
-        const responseSubMessage = decodedResponse.getSubMessage_asU8()
-        const { peerId: responsePeerId, closestPeersList } = peerInterface.PeerDHTFindNodeMessage.deserializeBinary(responseSubMessage).toObject();
+        const { closestPeersList } = response.toObject();
+        const closestFoundPeerInfoList = closestPeersList
+          .map((p) => PeerInfoReadOnly.fromPeerInfoReadOnlyMessage(p))
+          .filter((p) => p.id != this.getLocalPeerId());
+        console.log('I got a response!');
+        console.log(closestFoundPeerInfoList);
 
-        // make sure request and response public keys are the same
-        if (peerId != responsePeerId) {
-          throw Error('request and response public keys are not the same!');
-        }
-
-        const closestFoundPeerInfoMessageList = closestPeersList.map(
-          (p) => new PeerInfo(p.publicKey!, p.rootCertificate!, p.peerAddress ?? undefined, p.apiAddress ?? undefined),
-        );
 
         // Add peers to routing table
-        this.addPeers(closestPeersList.map((p) => PeerInfo.publicKeyToId(p.publicKey!)));
+        this.addPeers(closestFoundPeerInfoList.map((p) => p.id));
 
         // add peers to peer store
-        let foundPeerInfo: PeerInfo | null = null;
-        for (const peerInfo of closestFoundPeerInfoMessageList) {
-          if (this.getPeerId() != peerInfo.id) {
+        let foundPeerInfo: PeerInfoReadOnly | null = null;
+        for (const peerInfo of closestFoundPeerInfoList) {
+          if (this.getLocalPeerId() != peerInfo.id) {
             this.updatePeerStore(peerInfo);
           }
           if (peerInfo.id == peerId) {
             foundPeerInfo = peerInfo;
           }
         }
+        console.log('foundPeerInfo: ', foundPeerInfo);
+        console.log({
+          adjacentPeerInfo: this.getPeerInfo(closePeerId)!,
+          targetPeerInfo: foundPeerInfo,
+        });
+
 
         if (foundPeerInfo) {
           this.findingPeer = false;
-          release();
           return {
             adjacentPeerInfo: this.getPeerInfo(closePeerId)!,
             targetPeerInfo: foundPeerInfo,
@@ -279,52 +248,14 @@ class PeerDHT {
       }
     }
     this.findingPeer = false;
-    release();
     return {};
   }
 
   ///////////////////
   // gRPC Handlers //
   ///////////////////
-  async handleGRPCRequest(request: Uint8Array): Promise<Uint8Array> {
-    const decodedRequest = peerInterface.PeerDHTMessage.deserializeBinary(request)
-    const type = decodedRequest.getType()
-    const subMessage = decodedRequest.getSubMessage_asU8()
-    let response: Uint8Array;
-    switch (type) {
-      case peerInterface.PeerDHTMessageType.PING:
-        throw Error('dht ping is not implemented, use peer ping channel as a proxy for a peer aliveness');
-      case peerInterface.PeerDHTMessageType.FIND_NODE:
-        response = await this.handleFindNodeMessage(subMessage);
-        break;
-      default:
-        throw Error(`type not supported: ${type}`);
-    }
-    const encodedResponse = new peerInterface.PeerDHTMessage
-    encodedResponse.setType(type)
-    encodedResponse.setIsResponse(true)
-    encodedResponse.setSubMessage(response)
-    return encodedResponse.serializeBinary();
-  }
-
-  private async handleFindNodeMessage(request: Uint8Array): Promise<Uint8Array> {
-    const { peerId, closestPeersList } = peerInterface.PeerDHTFindNodeMessage.deserializeBinary(request).toObject();
-    const closestPeerInfoList = closestPeersList
-      .map((p) => new PeerInfo(p.publicKey!, p.rootCertificate!, p.peerAddress ?? undefined, p.apiAddress ?? undefined))
-      .filter((p) => p.id != this.getPeerId());
-
-    const response = new peerInterface.PeerDHTFindNodeMessage
-    response.setPeerId(peerId)
-    response.setClosestPeersList(this.toPeerInfoMessageList(this.closestPeers(peerId)))
-
-    // update the peer store
-    for (const peerInfo of closestPeerInfoList) {
-      if (this.getPeerId() != peerInfo.id) {
-        this.updatePeerStore(peerInfo);
-        this.addPeer(peerInfo.id);
-      }
-    }
-    return response.serializeBinary();
+  handleFindNodeMessage(targetPeerId: string): agentInterface.PeerInfoReadOnlyMessage[] {
+    return this.toPeerInfoReadOnlyMessageList(this.closestPeers(targetPeerId))
   }
 }
 

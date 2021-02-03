@@ -17,7 +17,7 @@ import * as config from './AuthorizationServer/Config';
 import * as OpenApiValidator from 'express-openapi-validator';
 import { User, Client } from './AuthorizationServer/OAuth2Store';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
-import { TLSCredentials } from '../keys/pki/PublicKeyInfrastructure';
+import { TLSCredentials } from '../peers/pki/PublicKeyInfrastructure';
 import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
 
 class HttpApi {
@@ -27,6 +27,7 @@ class HttpApi {
   private handleCSR: (csr: string) => string;
   private getRootCertificate: () => string;
   private getCertificateChain: () => string[];
+  private getTlsCredentials: () => TLSCredentials;
   private getVaultNames: () => string[];
   private newVault: (vaultName: string) => Promise<void>;
   private deleteVault: (vaultName: string) => Promise<void>;
@@ -66,6 +67,7 @@ class HttpApi {
     this.handleCSR = handleCSR;
     this.getRootCertificate = getRootCertificate;
     this.getCertificateChain = getCertificateChain;
+    this.getTlsCredentials = getTlsCredentials;
     this.getVaultNames = getVaultNames;
     this.newVault = newVault;
     this.deleteVault = deleteVault;
@@ -73,10 +75,6 @@ class HttpApi {
     this.getSecret = getSecret;
     this.newSecret = newSecret;
     this.deleteSecret = deleteSecret;
-
-    this.tlsCredentials = getTlsCredentials();
-    this.oauth = new OAuth2(this.tlsCredentials.keypair.public, this.tlsCredentials.keypair.private);
-    this.expressServer = express();
   }
 
   async stop() {
@@ -85,169 +83,180 @@ class HttpApi {
     }
   }
 
-  async start(port = parseInt(process.env.PK_API_PORT ?? '0')) {
+  async start(
+    host = process.env.PK_API_HOST ?? '0.0.0.0',
+    port = parseInt(process.env.PK_API_PORT ?? '0')
+  ) {
     return new Promise<number>(async (resolve, reject) => {
-      this.expressServer.set('view engine', 'ejs');
-      // Session Configuration
-      const MemoryStore = session.MemoryStore;
-      this.expressServer.use(
-        session({
-          saveUninitialized: true,
-          resave: true,
-          secret: 'secret',
-          store: new MemoryStore(),
-          cookie: { maxAge: 3600000 * 24 * 7 * 52 },
-        }),
-      );
+      try {
+        this.tlsCredentials = this.getTlsCredentials();
+        this.oauth = new OAuth2(this.tlsCredentials.keypair.public, this.tlsCredentials.keypair.private);
+        this.expressServer = express();
 
-      this.expressServer.use(express.json());
-      this.expressServer.use(express.text());
-      this.expressServer.use(express.urlencoded({ extended: false }));
+        this.expressServer.set('view engine', 'ejs');
+        // Session Configuration
+        const MemoryStore = session.MemoryStore;
+        this.expressServer.use(
+          session({
+            saveUninitialized: true,
+            resave: true,
+            secret: 'secret',
+            store: new MemoryStore(),
+            cookie: { maxAge: 3600000 * 24 * 7 * 52 },
+          }),
+        );
 
-      // create default client and user for the polykey node (highest priviledge)
-      this.oauth.store.saveClient('polykey', utils.createUuid(), ['admin'], true);
-      this.oauth.store.saveUser('polykey', 'polykey', utils.createUuid(), ['admin'], true);
+        this.expressServer.use(express.json());
+        this.expressServer.use(express.text());
+        this.expressServer.use(express.urlencoded({ extended: false }));
 
-      this.expressServer.use(passport.initialize());
-      this.expressServer.use(passport.session());
+        // create default client and user for the polykey node (highest priviledge)
+        this.oauth.store.saveClient('polykey', utils.createUuid(), ['admin'], true);
+        this.oauth.store.saveUser('polykey', 'polykey', utils.createUuid(), ['admin'], true);
 
-      // redirect from base url to docs
-      this.expressServer.get('/', (req, res, next) => {
-        res.redirect('/docs');
-      });
+        this.expressServer.use(passport.initialize());
+        this.expressServer.use(passport.session());
 
-      passport.use(
-        'clientBasic',
-        new BasicStrategy((clientId, clientSecret, done) => {
+        // redirect from base url to docs
+        this.expressServer.get('/', (req, res, next) => {
+          res.redirect('/docs');
+        });
+
+        passport.use(
+          'clientBasic',
+          new BasicStrategy((clientId, clientSecret, done) => {
+            try {
+              const client = this.oauth.store.getClient(clientId);
+              client.validate(clientSecret);
+              done(null, client);
+            } catch (error) {
+              done(null, false);
+            }
+          }),
+        );
+        /**
+         * BearerStrategy
+         *
+         * This strategy is used to authenticate either users or clients based on an access token
+         * (aka a bearer token).  If a user, they must have previously authorized a client
+         * application, which is issued an access token to make requests on behalf of
+         * the authorizing user.
+         *
+         * To keep this example simple, restricted scopes are not implemented, and this is just for
+         * illustrative purposes
+         */
+        passport.use(
+          'accessToken',
+          new BearerStrategy((token, done) => {
+            try {
+              const accessToken = this.oauth.store.getAccessToken(token);
+              const user = this.oauth.store.getUser(accessToken.userId!);
+              done(null, user, { scope: accessToken.scope ?? [] });
+            } catch (error) {
+              done(null, false);
+            }
+          }),
+        );
+
+        /**
+         * Client Password strategy
+         *
+         * The OAuth 2.0 client password authentication strategy authenticates clients
+         * using a client ID and client secret. The strategy requires a verify callback,
+         * which accepts those credentials and calls done providing a client.
+         */
+        passport.use(
+          'clientPassword',
+          new ClientPasswordStrategy((clientId, clientSecret, done) => {
+            try {
+              const client = this.oauth.store.getClient(clientId);
+              client.validate(clientSecret);
+              done(null, client);
+            } catch (error) {
+              done(null, false);
+            }
+          }),
+        );
+
+        // Register serialialization and deserialization functions.
+        //
+        // When a client redirects a user to user authorization endpoint, an
+        // authorization transaction is initiated.  To complete the transaction, the
+        // user must authenticate and approve the authorization request.  Because this
+        // may involve multiple HTTPS request/response exchanges, the transaction is
+        // stored in the session.
+        //
+        // An application must supply serialization functions, which determine how the
+        // client object is serialized into the session.  Typically this will be a
+        // simple matter of serializing the client's ID, and deserializing by finding
+        // the client by ID from the database.
+        passport.serializeUser((user: User, done) => {
+          done(null, user.id);
+        });
+
+        passport.deserializeUser((id: string, done) => {
           try {
-            const client = this.oauth.store.getClient(clientId);
-            client.validate(clientSecret);
-            done(null, client);
+            const user = this.oauth.store.getUser(id);
+            done(null, user);
           } catch (error) {
-            done(null, false);
+            done(error);
           }
-        }),
-      );
-      /**
-       * BearerStrategy
-       *
-       * This strategy is used to authenticate either users or clients based on an access token
-       * (aka a bearer token).  If a user, they must have previously authorized a client
-       * application, which is issued an access token to make requests on behalf of
-       * the authorizing user.
-       *
-       * To keep this example simple, restricted scopes are not implemented, and this is just for
-       * illustrative purposes
-       */
-      passport.use(
-        'accessToken',
-        new BearerStrategy((token, done) => {
-          try {
-            const accessToken = this.oauth.store.getAccessToken(token);
-            const user = this.oauth.store.getUser(accessToken.userId!);
-            done(null, user, { scope: accessToken.scope ?? [] });
-          } catch (error) {
-            done(null, false);
-          }
-        }),
-      );
+        });
 
-      /**
-       * Client Password strategy
-       *
-       * The OAuth 2.0 client password authentication strategy authenticates clients
-       * using a client ID and client secret. The strategy requires a verify callback,
-       * which accepts those credentials and calls done providing a client.
-       */
-      passport.use(
-        'clientPassword',
-        new ClientPasswordStrategy((clientId, clientSecret, done) => {
-          try {
-            const client = this.oauth.store.getClient(clientId);
-            client.validate(clientSecret);
-            done(null, client);
-          } catch (error) {
-            done(null, false);
-          }
-        }),
-      );
+        // token endpoints
+        this.expressServer.post('/oauth/token', this.oauth.token);
+        this.expressServer.post('/oauth/refresh', this.oauth.token);
+        this.expressServer.get('/oauth/tokeninfo', [
+          passport.authenticate(['accessToken'], { session: true }),
+          this.oauth.tokenInfo.bind(this.oauth),
+        ]);
+        this.expressServer.get('/oauth/revoke', this.oauth.revokeToken.bind(this.oauth));
 
-      // Register serialialization and deserialization functions.
-      //
-      // When a client redirects a user to user authorization endpoint, an
-      // authorization transaction is initiated.  To complete the transaction, the
-      // user must authenticate and approve the authorization request.  Because this
-      // may involve multiple HTTPS request/response exchanges, the transaction is
-      // stored in the session.
-      //
-      // An application must supply serialization functions, which determine how the
-      // client object is serialized into the session.  Typically this will be a
-      // simple matter of serializing the client's ID, and deserializing by finding
-      // the client by ID from the database.
-      passport.serializeUser((user: User, done) => {
-        done(null, user.id);
-      });
+        // OpenAPI endpoints
+        const schema = jsyaml.load(fs.readFileSync(this.openApiPath).toString());
+        this.expressServer.get('/spec', (req, res) => {
+          res.type('json').send(JSON.stringify(schema, null, 2));
+        });
+        this.expressServer.use(
+          '/docs',
+          swaggerUI.serve,
+          swaggerUI.setup(schema, undefined, {
+            oauth: {
+              clientId: 'polykey',
+            },
+          }),
+        );
 
-      passport.deserializeUser((id: string, done) => {
-        try {
-          const user = this.oauth.store.getUser(id);
-          done(null, user);
-        } catch (error) {
-          done(error);
-        }
-      });
+        this.expressServer.use(
+          OpenApiValidator.middleware({
+            apiSpec: schema,
+            validateResponses: true,
+          }),
+        );
+        this.setupOpenApiRouter();
 
-      // token endpoints
-      this.expressServer.post('/oauth/token', this.oauth.token);
-      this.expressServer.post('/oauth/refresh', this.oauth.token);
-      this.expressServer.get('/oauth/tokeninfo', [
-        passport.authenticate(['accessToken'], { session: true }),
-        this.oauth.tokenInfo.bind(this.oauth),
-      ]);
-      this.expressServer.get('/oauth/revoke', this.oauth.revokeToken.bind(this.oauth));
+        // Start the server
+        const pkHost = process.env.PK_PEER_HOST ?? 'localhost';
+        const httpsOptions: https.ServerOptions = {
+          cert: this.tlsCredentials.certificate,
+          key: this.tlsCredentials.keypair.private,
+          ca: this.tlsCredentials.rootCertificate,
+        };
 
-      // OpenAPI endpoints
-      const schema = jsyaml.load(fs.readFileSync(this.openApiPath).toString());
-      this.expressServer.get('/spec', (req, res) => {
-        res.type('json').send(JSON.stringify(schema, null, 2));
-      });
-      this.expressServer.use(
-        '/docs',
-        swaggerUI.serve,
-        swaggerUI.setup(schema, undefined, {
-          oauth: {
-            clientId: 'polykey',
-          },
-        }),
-      );
+        this.httpServer = https.createServer(httpsOptions, this.expressServer).listen({ port, host }, () => {
+          const addressInfo = this.httpServer.address() as net.AddressInfo;
+          const address = Address.fromAddressInfo(addressInfo);
+          address.updateHost(pkHost);
+          this.updateApiAddress(address);
 
-      this.expressServer.use(
-        OpenApiValidator.middleware({
-          apiSpec: schema,
-          validateResponses: true,
-        }),
-      );
-      this.setupOpenApiRouter();
+          console.log(`HTTP API endpoint: https://${address.toString()}`);
+          console.log(`HTTP API docs: https://${address.toString()}/docs/`);
 
-      // Start the server
-      const pkHost = process.env.PK_PEER_HOST ?? 'localhost';
-      const httpsOptions: https.ServerOptions = {
-        cert: this.tlsCredentials.certificate,
-        key: this.tlsCredentials.keypair.private,
-        ca: this.tlsCredentials.rootCertificate,
-      };
-
-      this.httpServer = https.createServer(httpsOptions, this.expressServer).listen(port, () => {
-        const addressInfo = this.httpServer.address() as net.AddressInfo;
-        const address = Address.fromAddressInfo(addressInfo);
-        address.updateHost(pkHost);
-        this.updateApiAddress(address);
-
-        console.log(`HTTP API endpoint: https://${address.toString()}`);
-        console.log(`HTTP API docs: https://${address.toString()}/docs/`);
-
-        resolve(port);
-      });
+          resolve(port);
+        });
+      } catch (error) {
+        reject(error)
+      }
     });
   }
 

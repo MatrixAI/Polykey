@@ -2,15 +2,15 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import PeerDHT from './peer-dht/PeerDHT';
-import PeerInfo from '../peers/PeerInfo';
 import KeyManager from '../keys/KeyManager';
 import PeerServer from './peer-connection/PeerServer';
 import NatTraversal from './nat-traversal/NatTraversal';
 import { JSONMapReplacer, JSONMapReviver } from '../utils';
-import * as peerInterface from '../../proto/js/Peer_pb';
 import PeerConnection from './peer-connection/PeerConnection';
+import { PeerInfo, PeerInfoReadOnly } from '../peers/PeerInfo';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
 import { KeybaseIdentityProvider } from './identity-provider/default';
+import PublicKeyInfrastructure from '../peers/pki/PublicKeyInfrastructure';
 import IdentityProviderPlugin, { PolykeyProof } from './identity-provider/IdentityProvider';
 
 class PeerManager {
@@ -20,9 +20,14 @@ class PeerManager {
   private peerStoreMetadataPath: string;
   private peerAliasMetadataPath: string;
 
+  /////////
+  // PKI //
+  /////////
+  pki: PublicKeyInfrastructure;
+
   peerInfo: PeerInfo;
-  // peerId -> PeerInfo
-  private peerStore: Map<string, PeerInfo>;
+  // peerId -> PeerInfoReadOnly
+  private peerStore: Map<string, PeerInfoReadOnly>;
   // peerId -> peerAlias
   private peerAlias: Map<string, string>;
 
@@ -65,8 +70,8 @@ class PeerManager {
     if (peerInfo) {
       this.peerInfo = peerInfo;
       this.writeMetadata();
-    } else if (this.keyManager.hasPublicKey() && !this.peerInfo) {
-      this.peerInfo = new PeerInfo(this.keyManager.getPublicKey(), this.keyManager.pki.RootCert);
+    } else if (this.keyManager.getKeyPair().publicKey && !this.peerInfo) {
+      this.peerInfo = new PeerInfo('', this.keyManager.getPublicKeyString());
     }
 
     // add default identity provider plugins
@@ -77,6 +82,7 @@ class PeerManager {
     this.multicastBroadcaster = new MulticastBroadcaster(
       (() => this.peerInfo).bind(this),
       this.hasPeer.bind(this),
+      this.addPeer.bind(this),
       this.updatePeer.bind(this),
       this.keyManager,
     );
@@ -84,7 +90,7 @@ class PeerManager {
     ////////////
     // Server //
     ////////////
-    this.peerServer = new PeerServer(this, this.keyManager);
+    this.peerServer = new PeerServer(this);
     this.peerConnections = new Map();
 
     //////////////
@@ -93,14 +99,19 @@ class PeerManager {
     this.peerDHT = new PeerDHT(
       () => this.peerInfo.id,
       this.connectToPeer.bind(this),
-      ((id: string) => this.getPeer(id)).bind(this),
-      ((peerInfo: PeerInfo) => {
+      this.getPeer.bind(this),
+      ((peerInfo: PeerInfoReadOnly) => {
         if (!this.hasPeer(peerInfo.id)) {
           this.addPeer(peerInfo);
+        } else {
+          this.updatePeer(peerInfo)
         }
       }).bind(this),
     );
+    // add all peers to peerDHT from peerStore
     this.peerDHT.addPeers(this.listPeers());
+
+    // initialize nat traversal
     this.natTraversal = new NatTraversal(
       this.listPeers.bind(this),
       this.getPeer.bind(this),
@@ -108,8 +119,18 @@ class PeerManager {
       (() => this.peerInfo).bind(this),
       this.hasPeer.bind(this),
       this.updatePeer.bind(this),
+      this.keyManager.getPrivateKey.bind(this.keyManager),
     );
-    this.setNatHandler(this.natTraversal.handleNatMessageGRPC.bind(this.natTraversal));
+
+    /////////
+    // PKI //
+    /////////
+    this.pki = new PublicKeyInfrastructure(
+      polykeyPath,
+      this.fileSystem,
+      (() => this.peerInfo).bind(this),
+      this.keyManager.getPrivateKey.bind(this.keyManager),
+    );
   }
 
   // Gets the status of the BackupService
@@ -120,6 +141,7 @@ class PeerManager {
   }
 
   async start() {
+    this.pki.loadMetadata()
     this.multicastBroadcaster.startBroadcasting()
     try {
       await this.peerServer.start()
@@ -144,12 +166,14 @@ class PeerManager {
     this.stealthMode = active;
   }
 
-  setGitHandler(handler: (request: Uint8Array, publicKey: string) => Promise<Uint8Array>) {
-    this.peerServer.handleGitRequest = handler;
-  }
-
-  setNatHandler(handler: (request: Uint8Array) => Promise<Uint8Array>) {
-    this.peerServer.handleNatRequest = handler;
+  setGitHandlers(
+    handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>,
+    handleGitPackRequest: (vaultName: string, body: Buffer) => Promise<Uint8Array>,
+    handleGetVaultNames: () => Promise<string[]>,
+  ) {
+    this.peerServer.handleGitInfoRequest = handleGitInfoRequest;
+    this.peerServer.handleGitPackRequest = handleGitPackRequest;
+    this.peerServer.handleGetVaultNames = handleGetVaultNames;
   }
 
   ////////////////
@@ -160,7 +184,7 @@ class PeerManager {
    * @param peerInfo Info of the peer to be added
    * @param alias Optional alias for the new peer
    */
-  addPeer(peerInfo: PeerInfo, alias?: string): string {
+  addPeer(peerInfo: PeerInfoReadOnly, alias?: string): string {
     const peerId = peerInfo.id;
     if (this.hasPeer(peerId)) {
       throw Error('peer already exists in peer store');
@@ -217,7 +241,7 @@ class PeerManager {
    * Update a peer's info in the peerStore
    * @param peerInfo Info of the peer to be updated
    */
-  updatePeer(peerInfo: PeerInfo): void {
+  updatePeer(peerInfo: PeerInfoReadOnly): void {
     if (!this.hasPeer(peerInfo.id)) {
       throw Error('peer does not exist in peer store');
     }
@@ -242,7 +266,7 @@ class PeerManager {
    * Retrieves a peer for the given public key
    * @param publicKey ID of the desired peer
    */
-  getPeer(id: string): PeerInfo | null {
+  getPeer(id: string): PeerInfoReadOnly | null {
     return this.peerStore.get(id)?.deepCopy() ?? null;
   }
 
@@ -293,7 +317,8 @@ class PeerManager {
       throw Error(`no plugin found of the name '${identityPluginName}'`)
     }
 
-    return await plugin.proveKeynode(identifier, this.peerInfo)
+    const peerInfoReadOnly = new PeerInfoReadOnly(this.peerInfo.toX509Pem(this.keyManager.getPrivateKey()))
+    return await plugin.proveKeynode(identifier, peerInfoReadOnly)
   }
 
   /**
@@ -303,7 +328,7 @@ class PeerManager {
    */
   async findGestaltKeynodes(identifier: string, timeout?: number): Promise<string[]> {
     // parse with regex
-    const tasks: Promise<PeerInfo[]>[] = []
+    const tasks: Promise<PeerInfoReadOnly[]>[] = []
 
     for (const idP of this.identityProviderPlugins.values()) {
       tasks.push(idP.determineKeynodes(identifier))
@@ -343,8 +368,7 @@ class PeerManager {
     // try to create a connection to the address
     const peerConnection = new PeerConnection(
       peerId,
-      this.keyManager,
-      (() => this.peerInfo).bind(this),
+      this.pki,
       this.getPeer.bind(this),
       this.peerDHT.findPeer.bind(this.peerDHT),
       this.natTraversal.requestUDPHolePunchDirectly.bind(this.natTraversal),
@@ -364,60 +388,34 @@ class PeerManager {
   /* ============ HELPERS =============== */
   writeMetadata(): void {
     // write peer info
-    const metadata = new peerInterface.PeerInfoMessage
-    metadata.setPublicKey(this.peerInfo.publicKey)
-    metadata.setRootCertificate(this.peerInfo.rootCertificate)
-    if (this.peerInfo.peerAddress) {
-      metadata.setPeerAddress(this.peerInfo.peerAddress?.toString())
-    }
-    if (this.peerInfo.apiAddress) {
-      metadata.setApiAddress(this.peerInfo.apiAddress?.toString())
-    }
-
     this.fileSystem.mkdirSync(path.dirname(this.peerInfoMetadataPath), { recursive: true });
-    this.fileSystem.writeFileSync(this.peerInfoMetadataPath, metadata.serializeBinary());
+    const peerInfoPem = this.peerInfo.toX509Pem(this.keyManager.getPrivateKey())
+    this.fileSystem.writeFileSync(this.peerInfoMetadataPath, peerInfoPem);
     // write peer store
-    const peerInfoList: peerInterface.PeerInfoMessage[] = [];
+    const peerInfoList: string[] = [];
     for (const [_, peerInfo] of this.peerStore) {
-      const peerInfoMessage = new peerInterface.PeerInfoMessage
-      peerInfoMessage.setPublicKey(peerInfo.publicKey)
-      peerInfoMessage.setRootCertificate(peerInfo.rootCertificate)
-      if (peerInfo.peerAddress) {
-        peerInfoMessage.setPeerAddress(peerInfo.peerAddress?.toString())
-      }
-      if (peerInfo.apiAddress) {
-        peerInfoMessage.setApiAddress(peerInfo.apiAddress?.toString())
-      }
-      peerInfoList.push(peerInfoMessage);
+      peerInfoList.push(peerInfo.pem);
     }
 
-    const peerStoreMetadata = new peerInterface.PeerInfoListMessage
-    peerStoreMetadata.setPeerInfoListList(peerInfoList)
-    this.fileSystem.writeFileSync(this.peerStoreMetadataPath, peerStoreMetadata.serializeBinary());
+    this.fileSystem.writeFileSync(this.peerStoreMetadataPath, JSON.stringify(peerInfoList));
     this.fileSystem.writeFileSync(this.peerAliasMetadataPath, JSON.stringify(this.peerAlias, JSONMapReplacer));
   }
 
   loadMetadata(): void {
     // load peer info if path exists
     if (this.fileSystem.existsSync(this.peerInfoMetadataPath)) {
-      const metadata = this.fileSystem.readFileSync(this.peerInfoMetadataPath) as Uint8Array;
-      const { publicKey, rootCertificate, peerAddress, apiAddress } = peerInterface.PeerInfoMessage.deserializeBinary(metadata).toObject();
-      this.peerInfo = new PeerInfo(publicKey, rootCertificate, peerAddress, apiAddress);
+      const metadata = this.fileSystem.readFileSync(this.peerInfoMetadataPath).toString();
+      this.peerInfo = PeerInfo.fromX509Pem(metadata);
     }
     // load peer store if path exists
     if (this.fileSystem.existsSync(this.peerStoreMetadataPath)) {
-      const metadata = this.fileSystem.readFileSync(this.peerStoreMetadataPath) as Uint8Array;
-      const { peerInfoListList } = peerInterface.PeerInfoListMessage.deserializeBinary(metadata).toObject();
-      for (const peerInfoMessage of peerInfoListList) {
-        const peerInfo = new PeerInfo(
-          peerInfoMessage.publicKey!,
-          peerInfoMessage.rootCertificate!,
-          peerInfoMessage.peerAddress ?? undefined,
-          peerInfoMessage.apiAddress ?? undefined,
-        );
+      const metadata = this.fileSystem.readFileSync(this.peerStoreMetadataPath).toString();
+      for (const peerInfoPem of JSON.parse(metadata)) {
+        const peerInfo = new PeerInfoReadOnly(peerInfoPem);
         this.peerStore.set(peerInfo.id, peerInfo);
       }
     }
+    // load the peer aliases
     if (this.fileSystem.existsSync(this.peerAliasMetadataPath)) {
       this.peerAlias = JSON.parse(this.fileSystem.readFileSync(this.peerAliasMetadataPath).toString(), JSONMapReviver);
     }

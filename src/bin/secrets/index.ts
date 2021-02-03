@@ -30,14 +30,17 @@ commandListSecrets.option(
   (str) => parseInt(str),
   1,
 );
-commandListSecrets.arguments('vault name(s) to list');
+commandListSecrets.requiredOption(
+  '-vn, --vault-names, <vaultNames>',
+  'the vault names to list secrets for, e.g. vault1 or "vault1 vault2"',
+);
 commandListSecrets.action(
   actionRunner(async (options) => {
     const nodePath = resolveKeynodeStatePath(options.nodePath);
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const vaultNames: string[] = Array.from(options.args.values());
+    const vaultNames: string[] = options.vaultNames.split(' ')
 
     if (!vaultNames.length) {
       throw Error('no vault names provided');
@@ -103,19 +106,13 @@ commandNewSecret.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const secretPath: string[] = Array.from<string>(options.args.values());
-    if (
-      secretPath.length < 1 ||
-      (secretPath.length == 1 && !pathRegex.test(secretPath[0]))
-    ) {
+    const secretPath: string = options.secretPath;
+    if (!pathRegex.test(secretPath)) {
       throw Error(
         "please specify a new secret name using the format: '<existingVaultName>:<secretName>'",
       );
-    } else if (secretPath.length > 1) {
-      throw Error('you can only add one secret at a time');
     }
-    const firstEntry = secretPath[0];
-    const [, vaultName, secretName] = firstEntry.match(pathRegex)!;
+    const [, vaultName, secretName] = secretPath.match(pathRegex)!;
     try {
       // Add the secret
       const request = new agentPB.SecretContentMessage();
@@ -199,7 +196,8 @@ commandUpdateSecret.option(
   (str) => parseInt(str),
   1,
 );
-commandUpdateSecret.arguments(
+commandUpdateSecret.requiredOption(
+  '-sp, --secret-path <secretPath>',
   "secret path of the format '<vaultName>:<secretPath>'",
 );
 commandUpdateSecret.requiredOption(
@@ -212,19 +210,13 @@ commandUpdateSecret.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const secretPath: string[] = Array.from<string>(options.args.values());
-    if (
-      secretPath.length < 1 ||
-      (secretPath.length == 1 && !pathRegex.test(secretPath[0]))
-    ) {
+    const secretPath: string = options.secretPath;
+    if (!pathRegex.test(secretPath)) {
       throw Error(
-        "please specify the secret using the format: '<vaultName>:<secretPath>'",
+        "please specify a new secret name using the format: '<existingVaultName>:<secretName>'",
       );
-    } else if (secretPath.length > 1) {
-      throw Error('you can only update one secret at a time');
     }
-    const firstEntry = secretPath[0];
-    const [, vaultName, secretName] = firstEntry.match(pathRegex)!;
+    const [, vaultName, secretName] = secretPath.match(pathRegex)!;
     try {
       // Update the secret
       const request = new agentPB.SecretContentMessage();
@@ -260,7 +252,8 @@ commandEditSecret.option(
   (str) => parseInt(str),
   1,
 );
-commandEditSecret.arguments(
+commandEditSecret.requiredOption(
+  '-sp, --secret-path <secretPath>',
   "secret path of the format '<vaultName>:<secretPath>'",
 );
 commandEditSecret.action(
@@ -269,19 +262,13 @@ commandEditSecret.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const secretPath: string[] = Array.from<string>(options.args.values());
-    if (
-      secretPath.length < 1 ||
-      (secretPath.length == 1 && !pathRegex.test(secretPath[0]))
-    ) {
+    const secretPath: string = options.secretPath;
+    if (!pathRegex.test(secretPath)) {
       throw Error(
-        "please specify the secret using the format: '<vaultName>:<secretPath>'",
+        "please specify a new secret name using the format: '<existingVaultName>:<secretName>'",
       );
-    } else if (secretPath.length > 1) {
-      throw Error('you can only update one secret at a time');
     }
-    const firstEntry = secretPath[0];
-    const [, vaultName, secretName] = firstEntry.match(pathRegex)!;
+    const [, vaultName, secretName] = secretPath.match(pathRegex)!;
     try {
       // Retrieve the secret
       const request = new agentPB.SecretPathMessage();
@@ -346,8 +333,9 @@ commandDeleteSecret.option(
   (str) => parseInt(str),
   1,
 );
-commandDeleteSecret.arguments(
-  "secret path of the format '<vaultName>:<secretPath|subDirectoryPath>'",
+commandDeleteSecret.requiredOption(
+  '-sp, --secret-path <secretPath>',
+  "secret path of the format '<vaultName>:<secretPath>'",
 );
 commandDeleteSecret.action(
   actionRunner(async (options) => {
@@ -355,19 +343,13 @@ commandDeleteSecret.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const secretPath: string[] = Array.from<string>(options.args.values());
-    if (
-      secretPath.length < 1 ||
-      (secretPath.length == 1 && !pathRegex.test(secretPath[0]))
-    ) {
+    const secretPath: string = options.secretPath;
+    if (!pathRegex.test(secretPath)) {
       throw Error(
-        "please specify the secret using the format: '<vaultName>:<secretPath>'",
+        "please specify a new secret name using the format: '<existingVaultName>:<secretName>'",
       );
-    } else if (secretPath.length > 1) {
-      throw Error('you can only delete one secret at a time');
     }
-    const firstEntry = secretPath[0];
-    const [, vaultName, secretName] = firstEntry.match(pathRegex)!;
+    const [, vaultName, secretName] = secretPath.match(pathRegex)!;
     try {
       // Remove secret
       const request = new agentPB.SecretPathMessage();
@@ -399,7 +381,8 @@ commandGetSecret.option(
   (str) => parseInt(str),
   1,
 );
-commandGetSecret.arguments(
+commandGetSecret.requiredOption(
+  '-sp, --secret-path <secretPath>',
   "secret path of the format '<vaultName>:<secretPath>'",
 );
 commandGetSecret.option(
@@ -414,19 +397,13 @@ commandGetSecret.action(
 
     const isEnv: boolean = options.env ?? false;
 
-    const secretPath: string[] = Array.from<string>(options.args.values());
-    if (
-      secretPath.length < 1 ||
-      (secretPath.length == 1 && !pathRegex.test(secretPath[0]))
-    ) {
+    const secretPath: string = options.secretPath;
+    if (!pathRegex.test(secretPath)) {
       throw Error(
-        "please specify the secret using the format: '<vaultName>:<secretPath>'",
+        "please specify a new secret name using the format: '<existingVaultName>:<secretName>'",
       );
-    } else if (secretPath.length > 1) {
-      throw Error('you can only get one secret at a time');
     }
-    const firstEntry = secretPath[0];
-    const [, vaultName, secretName] = firstEntry.match(pathRegex)!;
+    const [, vaultName, secretName] = secretPath.match(pathRegex)!;
     try {
       // Retrieve secret
       const request = new agentPB.SecretPathMessage();

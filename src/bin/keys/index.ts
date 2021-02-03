@@ -58,12 +58,13 @@ commandNewKeyPair.option(
   1,
 );
 commandNewKeyPair.requiredOption(
-  '-ui, --user-id <userId>',
-  '(required) provide an identifier for the keypair to be generated',
-);
-commandNewKeyPair.requiredOption(
   '-pp, --private-passphrase <privatePassphrase>',
   '(required) provide the passphrase to the private key',
+);
+commandNewKeyPair.option(
+  '-nb, --nbits <nbits>',
+  '(optional) number of bits to go into the rsa keypair generation',
+  '4096'
 );
 commandNewKeyPair.requiredOption(
   '-priv, --private-path <privatePath>',
@@ -79,8 +80,8 @@ commandNewKeyPair.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
     const subRequest = new agentPB.NewKeyPairMessage();
-    subRequest.setUserid(options.userId!);
-    subRequest.setPassphrase(options.passphrase!);
+    subRequest.setNbits(options.nbits);
+    subRequest.setPassphrase(options.passphrase);
     const request = new agentPB.DeriveKeyPairMessage();
     request.setKeypairDetails(subRequest);
     request.setPublicKeyPath(options.publicPath!);

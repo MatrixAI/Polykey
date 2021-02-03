@@ -1,5 +1,5 @@
 import http from 'https'
-import PeerInfo from "../../PeerInfo";
+import { PeerInfoReadOnly } from "../../PeerInfo";
 import { JSONMapReplacer, JSONMapReviver } from '../../../utils';
 import IdentityProviderPlugin, { PolykeyProofType } from "../IdentityProvider";
 
@@ -54,9 +54,9 @@ async function getKeynodeList(username: string, publicKey: string) {
     // decode the list of polykey keys
     // default storage is as a map encoded in json
     const peerInfoStringList: Map<string, string> = JSON.parse(proof, JSONMapReviver)
-    const peerInfoList: PeerInfo[] = []
+    const peerInfoList: PeerInfoReadOnly[] = []
     for (const [_, value] of peerInfoStringList.entries()) {
-      peerInfoList.push(PeerInfo.parseB64(value))
+      peerInfoList.push(new PeerInfoReadOnly(value))
     }
 
     return peerInfoList;
@@ -70,7 +70,7 @@ const KeybaseDiscovery: IdentityProviderPlugin = {
 
     return await getKeynodeList(username, publicKey)
   },
-  proveKeynode: async (identifier: string, peerInfo: PeerInfo) => {
+  proveKeynode: async (identifier: string, peerInfo: PeerInfoReadOnly) => {
     const { username, publicKey } = await getKeybaseInfo(identifier)
     const peerInfoList = await getKeynodeList(username, publicKey)
 
@@ -82,7 +82,7 @@ const KeybaseDiscovery: IdentityProviderPlugin = {
     peerInfoList.push(peerInfo)
     const peerInfoStringList: Map<string, string> = new Map
     for (const p of peerInfoList) {
-      peerInfoStringList.set(p.id, p.toStringB64())
+      peerInfoStringList.set(p.id, p.pem)
     }
 
     return {

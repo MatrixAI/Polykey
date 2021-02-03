@@ -18,6 +18,10 @@ pkgs.mkShell {
     npm install
     mkdir --parents "$(pwd)/tmp"
 
+    # add aliases for easy development
+    alias polykey='npm run polykey --'
+    alias pk='polykey'
+
     set +v
   '';
 }

@@ -20,25 +20,21 @@ commandAddPeer.option(
   (str) => parseInt(str),
   1,
 );
-commandAddPeer.option(
-  '-b64, --base64 <base64>',
-  'decode the peer info from a base64 string',
+commandAddPeer.requiredOption(
+  '-p, --pem <pem>',
+  '(required) the file that contains the decode the peer info from a pem encoded string',
 );
 commandAddPeer.option(
-  '-pk, --public-key <publicKey>',
-  'path to the file which contains the public key',
-);
-commandAddPeer.option(
-  '-rc, --root-certificate <rootCertificate>',
-  'path to the file which contains the peer root certificate',
+  '-a, --alias <alias>',
+  '(optional) a custom unsigned alias for the peer',
 );
 commandAddPeer.option(
   '-pa, --peer-address <peerAddress>',
-  'address on which the node can be contacted',
+  '(optional) address that overwrites the signed peer address on which the peer is served',
 );
 commandAddPeer.option(
   '-aa, --api-address <apiAddress>',
-  'address on which the HTTP API is served',
+  '(optional) address that overwrites the signed api address on which the peers HTTP API is served',
 );
 commandAddPeer.action(
   actionRunner(async (options) => {
@@ -46,36 +42,18 @@ commandAddPeer.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const base64String = options?.base64?.replace('\r', '')?.replace('\n', '');
+    const pemFileData = fs.readFileSync(options.pem).toString()
 
-    const request = new agentPB.PeerInfoMessage();
-    if (base64String != undefined) {
-      // read in peer info string
-      const {
-        publicKey,
-        rootCertificate,
-        peerAddress,
-        apiAddress,
-      } = PeerInfo.parseB64(base64String);
-      request.setPublicKey(publicKey);
-      request.setRootCertificate(rootCertificate);
-      if (peerAddress) {
-        request.setPeerAddress(peerAddress?.toString());
-      }
-      if (apiAddress) {
-        request.setApiAddress(apiAddress?.toString());
-      }
-    } else {
-      // read in publicKey if it exists
-      const publicKey = fs.readFileSync(options.publicKey).toString();
-      const rootCertificate = fs
-        .readFileSync(options.rootCertificate)
-        .toString();
-
-      request.setPublicKey(publicKey);
-      request.setRootCertificate(rootCertificate);
-      request.setPeerAddress(options.peerAddress);
-      request.setApiAddress(options.apiAddress);
+    const request = new agentPB.PeerInfoReadOnlyMessage();
+    request.setPem(pemFileData)
+    if (options.alias) {
+      request.setUnsignedAlias(options.alias)
+    }
+    if (options.peerAddress) {
+      request.setUnsignedPeerAddress(options.peerAddress)
+    }
+    if (options.apiAddress) {
+      request.setUnsignedApiAddress(options.apiAddress)
     }
 
     const res = (await promisifyGrpc(client.addPeer.bind(client))(
@@ -106,7 +84,7 @@ commandAddAlias.requiredOption(
   '(required) id of the peer for which an alias is to be set',
 );
 commandAddAlias.option('-a, --alias <alias>', 'new alias for the target peer');
-commandAddAlias.option('-u, --unset', 'new alias for the target peer');
+commandAddAlias.option('-u, --unset', 'unset the alias for the target peer');
 commandAddAlias.action(
   actionRunner(async (options) => {
     const nodePath = resolveKeynodeStatePath(options.nodePath);
@@ -188,8 +166,8 @@ commandGetPeerInfo.option(
   1,
 );
 commandGetPeerInfo.option(
-  '-b64, --base64',
-  'output peer info as a base64 string',
+  '-p, --pem',
+  'output peer info a pem encoded string',
 );
 commandGetPeerInfo.option(
   '-cn, --current-node',
@@ -218,24 +196,22 @@ commandGetPeerInfo.action(
         request,
       )) as agentPB.PeerInfoMessage;
     }
-    const peerInfo = new PeerInfo(
-      res.getPublicKey(),
-      res.getRootCertificate(),
-      res.getPeerAddress(),
-      res.getApiAddress(),
-    );
+    const peerInfo = res.toObject()
 
-    if (options.base64 as boolean) {
-      pkLogger.logV1(peerInfo.toStringB64(), PKMessageType.SUCCESS);
+    if (options.pem as boolean) {
+      pkLogger.logV1(peerInfo.pem, PKMessageType.SUCCESS);
     } else {
       pkLogger.logV1('Peer Id:', PKMessageType.INFO);
-      pkLogger.logV1(peerInfo.id, PKMessageType.SUCCESS);
+      pkLogger.logV1(peerInfo.peerId, PKMessageType.SUCCESS);
 
-      pkLogger.logV1('Peer Public Key:', PKMessageType.INFO);
+      pkLogger.logV1('Alias:', PKMessageType.INFO);
+      pkLogger.logV1(peerInfo.alias, PKMessageType.SUCCESS);
+
+      pkLogger.logV1('Public Key:', PKMessageType.INFO);
       pkLogger.logV1(peerInfo.publicKey, PKMessageType.SUCCESS);
 
-      pkLogger.logV1('Peer Root Certificate:', PKMessageType.INFO);
-      pkLogger.logV1(peerInfo.rootCertificate, PKMessageType.SUCCESS);
+      pkLogger.logV1('Root Public Key:', PKMessageType.INFO);
+      pkLogger.logV1(peerInfo.rootPublicKey, PKMessageType.SUCCESS);
 
       pkLogger.logV1('Peer Address:', PKMessageType.INFO);
       pkLogger.logV1(
@@ -248,6 +224,18 @@ commandGetPeerInfo.action(
         peerInfo.apiAddress?.toString() ?? '',
         PKMessageType.SUCCESS,
       );
+
+      pkLogger.logV1('Digitial Identity Proofs:', PKMessageType.INFO);
+      peerInfo.proofListList.forEach(p => {
+        pkLogger.logV1(
+          `Identity Link: '${p.digitalIdentityLink}'`,
+          PKMessageType.SUCCESS,
+        );
+        pkLogger.logV1(
+          `Proof Link: '${p.proofLink}'`,
+          PKMessageType.SUCCESS,
+        );
+      })
     }
   }),
 );
@@ -395,16 +383,16 @@ commandUpdatePeerInfo.option(
   'only list the peer information for the current node, useful for sharing',
 );
 commandUpdatePeerInfo.option(
-  '-b64, --base64 <base64>',
-  'decode the peer info from a base64 string',
-);
-commandUpdatePeerInfo.option(
   '-pi, --peer-id <peerId>',
   'the id of the peer to be updated',
 );
 commandUpdatePeerInfo.option(
-  '-rc, --root-certificate <rootCertificate>',
-  'path to the file which contains the peer root certificate',
+  '-p, --pem <pem>',
+  'the file that contains the decode the peer info from a pem encoded string',
+);
+commandUpdatePeerInfo.option(
+  '-a, --alias <alias>',
+  'update the peer alias',
 );
 commandUpdatePeerInfo.option(
   '-pa, --peer-address <peerAddress>',
@@ -420,47 +408,37 @@ commandUpdatePeerInfo.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const request = new agentPB.PeerInfoMessage();
-
-    const base64String = options?.base64?.replace('\r', '')?.replace('\n', '');
-    if (base64String != undefined) {
-      // read in peer info string
-      const {
-        publicKey,
-        rootCertificate,
-        peerAddress,
-        apiAddress,
-      } = PeerInfo.parseB64(base64String);
-      request.setPublicKey(PeerInfo.publicKeyToId(publicKey));
-      request.setRootCertificate(rootCertificate);
-      if (peerAddress) {
-        request.setPeerAddress(peerAddress?.toString());
-      }
-      if (apiAddress) {
-        request.setApiAddress(apiAddress?.toString());
-      }
-    } else {
-      if (!options.currentNode && !options.peerId) {
-        throw Error('must specify peer id');
-      }
-      if (!options.currentNode) {
-        request.setPublicKey(options.peerId);
-      }
-      if (options.rootCertificate) {
-        request.setRootCertificate(options.rootCertificate);
-      }
-      if (options.peerAddress || options.peerAddress == '') {
-        request.setPeerAddress(options.peerAddress);
-      }
-      if (options.apiAddress || options.apiAddress == '') {
-        request.setApiAddress(options.apiAddress);
-      }
-    }
-
     if (options.currentNode) {
-      await promisifyGrpc(client.updateLocalPeerInfo.bind(client))(request);
+      const peerInfo = new agentPB.PeerInfoMessage
+      if (options.alias) {
+        peerInfo.setAlias(options.alias)
+      } else if (options.peerAddress) {
+        peerInfo.setPeerAddress(options.peerAddress)
+      } else if (options.apiAddress) {
+        peerInfo.setApiAddress(options.apiAddress)
+      } else {
+        throw Error('no changes were provided')
+      }
+      await promisifyGrpc(client.updateLocalPeerInfo.bind(client))(peerInfo);
+    } else if (options.pem) {
+      const pem = fs.readFileSync(options.pem).toString()
+      const peerInfo = new agentPB.PeerInfoReadOnlyMessage
+      peerInfo.setPem(pem)
+      await promisifyGrpc(client.updatePeerInfo.bind(client))(peerInfo);
+    } else if (options.peerId) {
+      const peerInfo = new agentPB.PeerInfoReadOnlyMessage
+      if (options.alias) {
+        peerInfo.setUnsignedAlias(options.alias)
+      } else if (options.peerAddress || options.peerAddress == '') {
+        peerInfo.setUnsignedPeerAddress(options.peerAddress)
+      } else if (options.apiAddress || options.apiAddress == '') {
+        peerInfo.setUnsignedApiAddress(options.apiAddress)
+      } else {
+        throw Error('no changes were provided')
+      }
+      await promisifyGrpc(client.updatePeerInfo.bind(client))(peerInfo);
     } else {
-      await promisifyGrpc(client.updatePeerInfo.bind(client))(request);
+      throw Error('currentNode, pem or peerId must be provided to identify peer')
     }
 
     pkLogger.logV2('peer info was successfully updated', PKMessageType.SUCCESS);

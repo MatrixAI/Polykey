@@ -1,4 +1,4 @@
-import cyclist from 'cyclist';
+import Cyclist from './Cyclist';
 import dgram from 'dgram';
 import { Duplex } from 'readable-stream';
 import { Address } from '../../PeerInfo';
@@ -20,6 +20,7 @@ import {
   packetToBuffer,
 } from './utils';
 import * as peerInterface from '../../../../proto/js/Peer_pb';
+import { sleep } from '../../../utils';
 
 class MTPConnection extends Duplex {
   private peerId: string;
@@ -28,8 +29,8 @@ class MTPConnection extends Duplex {
   private host: string;
   socket: dgram.Socket;
   remoteAddress: Address;
-  private outgoing: any;
-  private incoming: any;
+  private outgoing: Cyclist<peerInterface.MTPPacket>;
+  private incoming: Cyclist<peerInterface.MTPPacket>;
   closed: boolean;
   private inflightPackets: number;
   private alive: boolean;
@@ -65,15 +66,26 @@ class MTPConnection extends Duplex {
     this.host = host;
     this.socket = socket;
 
-    this.outgoing = cyclist(BUFFER_SIZE);
-    this.incoming = cyclist(BUFFER_SIZE);
+    this.outgoing = new Cyclist(BUFFER_SIZE);
+    this.incoming = new Cyclist(BUFFER_SIZE);
     this.closed = false;
 
     this.inflightPackets = 0;
     this.closed = false;
     this.alive = false;
 
+    // the MTPConnection object could be constructed in 3 ways:
+    // 1. with a syn packet (i.e. this is the server receiving a new connection
+    //    request from a client that sent a syn packet)
+    // 2. without a syn packet and with an already bound socket (i.e. this is a client asking
+    //    for a direct hole punch connection from a dgram socket they already setup)
+    // 3. without a syn packet and no bound socket (i.e. this is the client initiating
+    //    a connection and asking for a new dgram socket to be created for the connection)
     if (syn) {
+      console.log('case1: syn packet');
+      // a connecting boolean of 'true' is only used for clients that are waiting for the
+      // server to send back a synack packet. if it is false, it means the server is waiting
+      // for the client to connect.
       this.connecting = false;
       this.recvId = uint16(syn.getConnection() + 1);
       this.sendId = syn.getConnection();
@@ -92,6 +104,7 @@ class MTPConnection extends Duplex {
       this.transmit(this.synack);
     } else {
       if (socketIsBound) {
+        console.log('case2: socket Is Bound');
         this.connecting = true;
         this.recvId = 0; // tmp value for v8 opt
         this.sendId = 0; // tmp value for v8 opt
@@ -118,6 +131,8 @@ class MTPConnection extends Duplex {
           this.emit('error', err);
         });
       } else {
+        console.log('case3: socket Is not Bound');
+
         this.connecting = true;
         this.recvId = 0; // tmp value for v8 opt
         this.sendId = 0; // tmp value for v8 opt
@@ -127,6 +142,7 @@ class MTPConnection extends Duplex {
 
         socket.on('listening', () => {
           this.recvId = Math.floor(Math.random() * 89999) + 10000;
+          // this.recvId = socket.address().port;
           this.sendId = uint16(this.recvId + 1);
 
           const initialPacket = MTPConnection.createPacket(
@@ -243,13 +259,13 @@ class MTPConnection extends Duplex {
     const timeout = 500000;
     const now = MTPConnection.timestamp();
 
-    if (uint32(first.sent - now) < timeout) {
+    if (uint32(first.getSent() - now) < timeout) {
       return;
     }
 
     for (let i = 0; i < this.inflightPackets; i++) {
-      const packet = this.outgoing.get(offset + i);
-      if (uint32(packet.sent - now) >= timeout) {
+      const packet = this.outgoing.get(offset + i)!;
+      if (uint32(packet.getSent() - now) >= timeout) {
         this.transmit(packet);
       }
     }
@@ -289,16 +305,28 @@ class MTPConnection extends Duplex {
     }
   }
 
-  recvIncoming(packet: peerInterface.MTPPacket) {
+  async recvIncoming(packet: peerInterface.MTPPacket) {
+    // connection is closed
     if (this.closed) {
       return;
     }
 
+    // temporary to slow down looping traffic for debugging
+    await sleep(1000)
+    if (packet.getId() === PACKET_SYN) {
+      console.log('it is a syn packet');
+
+    }
+
+    // send synack
     if (packet.getId() === PACKET_SYN && this.connecting) {
+      console.log('packet is syn packet');
+
       this.transmit(this.synack!);
       return;
     }
 
+    // packet is a reset packet
     if (packet.getId() === PACKET_RESET) {
       this.push(null);
       this.end();
@@ -306,7 +334,13 @@ class MTPConnection extends Duplex {
       return;
     }
 
+    // still connecting
     if (this.connecting) {
+      console.log('connnnnneccccint');
+      console.log(packet.getId());
+      console.log(PACKET_STATE);
+
+      // if the id
       if (packet.getId() !== PACKET_STATE) {
         return this.incoming.put(packet.getSeq(), packet);
       }
@@ -316,7 +350,7 @@ class MTPConnection extends Duplex {
       this.connecting = false;
       this.emit('connect');
 
-      packet = this.incoming.del(packet.getSeq());
+      packet = this.incoming.del(packet.getSeq())!;
       if (!packet) {
         return;
       }
@@ -333,7 +367,11 @@ class MTPConnection extends Duplex {
     }
     this.incoming.put(packet.getSeq(), packet);
 
-    while ((packet = this.incoming.del(this.ack + 1))) {
+    while ((packet = this.incoming.del(this.ack + 1)!)) {
+      console.log(packet);
+
+      console.log('sending ack');
+
       this.ack = uint16(this.ack + 1);
 
       if (packet.getId() === PACKET_DATA) {
@@ -373,7 +411,9 @@ class MTPConnection extends Duplex {
       const message = packetToBuffer(packet);
       this.alive = true;
       this.socket.send(message, 0, message.length, this.port, this.host);
-    } catch (error) {}
+    } catch (error) {
+      console.log('MTPConnection: error when trying to transmit packet: ', error);
+    }
   }
 
   // ==== Helper methods ==== //
@@ -413,10 +453,11 @@ class MTPConnection extends Duplex {
 
   public static connect(localPeerId: string, port: number, host?: string, socket?: dgram.Socket) {
     const internalSocket = socket ?? dgram.createSocket('udp4');
+
     const connection = new MTPConnection(
       localPeerId,
       port,
-      host || '127.0.0.1',
+      host ?? '0.0.0.0',
       internalSocket,
       undefined,
       socket ? true : false,
@@ -427,16 +468,27 @@ class MTPConnection extends Duplex {
         return;
       }
 
-      const packet = bufferToPacket(message);
-      if (packet.getId() === PACKET_SYN) {
-        return;
-      }
+      // sometimes if the packet is of a particular format, google-protobuf
+      // will throw an assertion error and the whole application will stop
+      // so this try catch block is here to catch and then not throw any
+      // errors since if the packet is not of the right protobuf type
+      // we don't want to throw anyway
+      try {
+        const packet = bufferToPacket(message);
+        if (packet.getId() === PACKET_SYN) {
+          return;
+        }
 
-      if (packet.getConnection() !== connection.RecvID) {
-        return;
-      }
+        if (packet.getConnection() !== connection.RecvID) {
+          return;
+        }
 
-      connection.recvIncoming(packet);
+        connection.recvIncoming(packet);
+      } catch (error) {
+        console.log(error);
+
+        // no throw
+      }
     });
 
     return connection;
