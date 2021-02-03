@@ -18,7 +18,6 @@ interface IPeerService extends grpc.ServiceDefinition<grpc.UntypedServiceImpleme
     getRootCertificate: IPeerService_IGetRootCertificate;
     requestCertificateSigning: IPeerService_IRequestCertificateSigning;
     peerDHTFindNode: IPeerService_IPeerDHTFindNode;
-    addPeerInfo: IPeerService_IAddPeerInfo;
 }
 
 interface IPeerService_IPingPeer extends grpc.MethodDefinition<Peer_pb.PingPeerMessage, Peer_pb.PingPeerMessage> {
@@ -66,14 +65,14 @@ interface IPeerService_IGetUDPAddress extends grpc.MethodDefinition<Agent_pb.Emp
     responseSerialize: grpc.serialize<Agent_pb.StringMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
-interface IPeerService_IRequestPublicRelay extends grpc.MethodDefinition<Peer_pb.PublicRelayRequest, Peer_pb.PublicRelayReply> {
+interface IPeerService_IRequestPublicRelay extends grpc.MethodDefinition<Agent_pb.PeerInfoReadOnlyMessage, Agent_pb.StringMessage> {
     path: string; // "/peerInterface.Peer/RequestPublicRelay"
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<Peer_pb.PublicRelayRequest>;
-    requestDeserialize: grpc.deserialize<Peer_pb.PublicRelayRequest>;
-    responseSerialize: grpc.serialize<Peer_pb.PublicRelayReply>;
-    responseDeserialize: grpc.deserialize<Peer_pb.PublicRelayReply>;
+    requestSerialize: grpc.serialize<Agent_pb.PeerInfoReadOnlyMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.PeerInfoReadOnlyMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.StringMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface IPeerService_IGetRootCertificate extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringMessage> {
     path: string; // "/peerInterface.Peer/GetRootCertificate"
@@ -102,15 +101,6 @@ interface IPeerService_IPeerDHTFindNode extends grpc.MethodDefinition<Peer_pb.Pe
     responseSerialize: grpc.serialize<Peer_pb.PeerDHTFindNodeReply>;
     responseDeserialize: grpc.deserialize<Peer_pb.PeerDHTFindNodeReply>;
 }
-interface IPeerService_IAddPeerInfo extends grpc.MethodDefinition<Agent_pb.PeerInfoReadOnlyMessage, Agent_pb.EmptyMessage> {
-    path: string; // "/peerInterface.Peer/AddPeerInfo"
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<Agent_pb.PeerInfoReadOnlyMessage>;
-    requestDeserialize: grpc.deserialize<Agent_pb.PeerInfoReadOnlyMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
-}
 
 export const PeerService: IPeerService;
 
@@ -120,11 +110,10 @@ export interface IPeerServer {
     getGitPack: grpc.handleUnaryCall<Peer_pb.PackRequest, Peer_pb.PackReply>;
     getVaultNames: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Peer_pb.VaultNamesReply>;
     getUDPAddress: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringMessage>;
-    requestPublicRelay: grpc.handleUnaryCall<Peer_pb.PublicRelayRequest, Peer_pb.PublicRelayReply>;
+    requestPublicRelay: grpc.handleUnaryCall<Agent_pb.PeerInfoReadOnlyMessage, Agent_pb.StringMessage>;
     getRootCertificate: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringMessage>;
     requestCertificateSigning: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.StringMessage>;
     peerDHTFindNode: grpc.handleUnaryCall<Peer_pb.PeerDHTFindNodeRequest, Peer_pb.PeerDHTFindNodeReply>;
-    addPeerInfo: grpc.handleUnaryCall<Agent_pb.PeerInfoReadOnlyMessage, Agent_pb.EmptyMessage>;
 }
 
 export interface IPeerClient {
@@ -143,9 +132,9 @@ export interface IPeerClient {
     getUDPAddress(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     getUDPAddress(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     getUDPAddress(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    requestPublicRelay(request: Peer_pb.PublicRelayRequest, callback: (error: grpc.ServiceError | null, response: Peer_pb.PublicRelayReply) => void): grpc.ClientUnaryCall;
-    requestPublicRelay(request: Peer_pb.PublicRelayRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Peer_pb.PublicRelayReply) => void): grpc.ClientUnaryCall;
-    requestPublicRelay(request: Peer_pb.PublicRelayRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Peer_pb.PublicRelayReply) => void): grpc.ClientUnaryCall;
+    requestPublicRelay(request: Agent_pb.PeerInfoReadOnlyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    requestPublicRelay(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    requestPublicRelay(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     getRootCertificate(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
@@ -155,9 +144,6 @@ export interface IPeerClient {
     peerDHTFindNode(request: Peer_pb.PeerDHTFindNodeRequest, callback: (error: grpc.ServiceError | null, response: Peer_pb.PeerDHTFindNodeReply) => void): grpc.ClientUnaryCall;
     peerDHTFindNode(request: Peer_pb.PeerDHTFindNodeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Peer_pb.PeerDHTFindNodeReply) => void): grpc.ClientUnaryCall;
     peerDHTFindNode(request: Peer_pb.PeerDHTFindNodeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Peer_pb.PeerDHTFindNodeReply) => void): grpc.ClientUnaryCall;
-    addPeerInfo(request: Agent_pb.PeerInfoReadOnlyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    addPeerInfo(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    addPeerInfo(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }
 
 export class PeerClient extends grpc.Client implements IPeerClient {
@@ -177,9 +163,9 @@ export class PeerClient extends grpc.Client implements IPeerClient {
     public getUDPAddress(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public getUDPAddress(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public getUDPAddress(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
-    public requestPublicRelay(request: Peer_pb.PublicRelayRequest, callback: (error: grpc.ServiceError | null, response: Peer_pb.PublicRelayReply) => void): grpc.ClientUnaryCall;
-    public requestPublicRelay(request: Peer_pb.PublicRelayRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Peer_pb.PublicRelayReply) => void): grpc.ClientUnaryCall;
-    public requestPublicRelay(request: Peer_pb.PublicRelayRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Peer_pb.PublicRelayReply) => void): grpc.ClientUnaryCall;
+    public requestPublicRelay(request: Agent_pb.PeerInfoReadOnlyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    public requestPublicRelay(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
+    public requestPublicRelay(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public getRootCertificate(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
@@ -189,7 +175,4 @@ export class PeerClient extends grpc.Client implements IPeerClient {
     public peerDHTFindNode(request: Peer_pb.PeerDHTFindNodeRequest, callback: (error: grpc.ServiceError | null, response: Peer_pb.PeerDHTFindNodeReply) => void): grpc.ClientUnaryCall;
     public peerDHTFindNode(request: Peer_pb.PeerDHTFindNodeRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Peer_pb.PeerDHTFindNodeReply) => void): grpc.ClientUnaryCall;
     public peerDHTFindNode(request: Peer_pb.PeerDHTFindNodeRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Peer_pb.PeerDHTFindNodeReply) => void): grpc.ClientUnaryCall;
-    public addPeerInfo(request: Agent_pb.PeerInfoReadOnlyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public addPeerInfo(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public addPeerInfo(request: Agent_pb.PeerInfoReadOnlyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }

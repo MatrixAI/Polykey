@@ -115,28 +115,6 @@ function deserialize_peerInterface_PingPeerMessage(buffer_arg) {
   return Peer_pb.PingPeerMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_peerInterface_PublicRelayReply(arg) {
-  if (!(arg instanceof Peer_pb.PublicRelayReply)) {
-    throw new Error('Expected argument of type peerInterface.PublicRelayReply');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_peerInterface_PublicRelayReply(buffer_arg) {
-  return Peer_pb.PublicRelayReply.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_peerInterface_PublicRelayRequest(arg) {
-  if (!(arg instanceof Peer_pb.PublicRelayRequest)) {
-    throw new Error('Expected argument of type peerInterface.PublicRelayRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_peerInterface_PublicRelayRequest(buffer_arg) {
-  return Peer_pb.PublicRelayRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_peerInterface_VaultNamesReply(arg) {
   if (!(arg instanceof Peer_pb.VaultNamesReply)) {
     throw new Error('Expected argument of type peerInterface.VaultNamesReply');
@@ -218,12 +196,12 @@ getUDPAddress: {
     path: '/peerInterface.Peer/RequestPublicRelay',
     requestStream: false,
     responseStream: false,
-    requestType: Peer_pb.PublicRelayRequest,
-    responseType: Peer_pb.PublicRelayReply,
-    requestSerialize: serialize_peerInterface_PublicRelayRequest,
-    requestDeserialize: deserialize_peerInterface_PublicRelayRequest,
-    responseSerialize: serialize_peerInterface_PublicRelayReply,
-    responseDeserialize: deserialize_peerInterface_PublicRelayReply,
+    requestType: Agent_pb.PeerInfoReadOnlyMessage,
+    responseType: Agent_pb.StringMessage,
+    requestSerialize: serialize_agentInterface_PeerInfoReadOnlyMessage,
+    requestDeserialize: deserialize_agentInterface_PeerInfoReadOnlyMessage,
+    responseSerialize: serialize_agentInterface_StringMessage,
+    responseDeserialize: deserialize_agentInterface_StringMessage,
   },
   // CA functionality
 getRootCertificate: {
@@ -259,20 +237,6 @@ peerDHTFindNode: {
     requestDeserialize: deserialize_peerInterface_PeerDHTFindNodeRequest,
     responseSerialize: serialize_peerInterface_PeerDHTFindNodeReply,
     responseDeserialize: deserialize_peerInterface_PeerDHTFindNodeReply,
-  },
-  // This method is for public relay nodes only and by default
-// it rejects all calls to it in order to protect private nodes
-// from adding random peers
-addPeerInfo: {
-    path: '/peerInterface.Peer/AddPeerInfo',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.PeerInfoReadOnlyMessage,
-    responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_PeerInfoReadOnlyMessage,
-    requestDeserialize: deserialize_agentInterface_PeerInfoReadOnlyMessage,
-    responseSerialize: serialize_agentInterface_EmptyMessage,
-    responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
 };
 

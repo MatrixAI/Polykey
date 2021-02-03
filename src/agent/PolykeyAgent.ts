@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import process from 'process';
 import { promisify } from 'util';
@@ -701,12 +702,8 @@ class PolykeyAgent implements IAgentServer {
       const { passphrase, nbits } = call.request!.toObject();
 
       // check node is already initialized
-      try {
-        if (fs.existsSync(path.join(this.pk.polykeyPath, '.keys', 'private_key'))) {
-          throw Error(`polykey keypair already exists at node path: '${this.pk.polykeyPath}'`);
-        }
-      } catch (error) {
-        // no throw
+      if (fs.existsSync(path.join(this.pk.polykeyPath, '.keys', 'private_key'))) {
+        throw Error(`polykey keypair already exists at node path: '${this.pk.polykeyPath}'`);
       }
 
       const km = new KeyManager(this.pk.polykeyPath, fs);
@@ -1025,6 +1022,21 @@ class PolykeyAgent implements IAgentServer {
 
       // finally start all services
       await this.pk.startAllServices()
+
+      try {
+        // TODO: remove this part after demo (to be replaced with real NAT traversal)
+        // read in demo config
+        const bootstrapPeerInfoPem = fs.readFileSync(path.join(os.homedir(), 'bootstrapPeerInfo.pem')).toString()
+        // add bootstrap nodes peerInfo
+        const bootstrapPeerInfo = new PeerInfoReadOnly(bootstrapPeerInfoPem)
+        if (this.pk.peerManager.hasPeer(bootstrapPeerInfo.id)) {
+          this.pk.peerManager.updatePeer(bootstrapPeerInfo)
+        } else {
+          this.pk.peerManager.addPeer(bootstrapPeerInfo)
+        }
+      } catch (error) {
+        // no throw
+      }
 
       // send response
       callback(null, new agent.EmptyMessage());

@@ -16,13 +16,13 @@ class PeerConnection {
     peerId: string,
   ) => Promise<{ adjacentPeerInfo?: PeerInfoReadOnly | undefined; targetPeerInfo?: PeerInfoReadOnly | undefined }>;
 
-  private requestUDPHolePunchViaPeer: (
-    targetPeerId: string,
-    adjacentPeerId: string,
-    timeout?: number | undefined,
-  ) => Promise<Address>;
+  // private requestUDPHolePunchViaPeer: (
+  //   targetPeerId: string,
+  //   adjacentPeerId: string,
+  //   timeout?: number | undefined,
+  // ) => Promise<Address>;
 
-  private requestUDPHolePunchDirectly: (targetPeerId: string, timeout?: number | undefined) => Promise<Address>;
+  // private requestUDPHolePunchDirectly: (targetPeerId: string, timeout?: number | undefined) => Promise<Address>;
 
   private peerClient: PeerClient;
   async getPeerClient(directOnly: boolean = false): Promise<PeerClient> {
@@ -44,15 +44,15 @@ class PeerConnection {
       adjacentPeerInfo?: PeerInfoReadOnly | undefined;
       targetPeerInfo?: PeerInfoReadOnly | undefined;
     }>,
-    requestUDPHolePunchDirectly: (targetPeerId: string, timeout?: number) => Promise<Address>,
-    requestUDPHolePunchViaPeer: (targetPeerId: string, adjacentPeerId: string, timeout?: number) => Promise<Address>,
+    // requestUDPHolePunchDirectly: (targetPeerId: string, timeout?: number) => Promise<Address>,
+    // requestUDPHolePunchViaPeer: (targetPeerId: string, adjacentPeerId: string, timeout?: number) => Promise<Address>,
   ) {
     this.peerId = peerId;
     this.pki = pki;
     this.getPeerInfo = getPeerInfo;
     this.findPeerDHT = findPeerDHT;
-    this.requestUDPHolePunchViaPeer = requestUDPHolePunchViaPeer;
-    this.requestUDPHolePunchDirectly = requestUDPHolePunchDirectly;
+    // this.requestUDPHolePunchViaPeer = requestUDPHolePunchViaPeer;
+    // this.requestUDPHolePunchDirectly = requestUDPHolePunchDirectly;
 
     const peerInfo = this.getPeerInfo(this.peerId);
     if (!peerInfo) {
@@ -73,14 +73,16 @@ class PeerConnection {
   private async connectDirectly(peerAddress?: Address): Promise<PeerClient> {
     const address = peerAddress ?? this.getPeerInfo(this.peerId)?.peerAddress;
 
-    // const host = address?.host ?? ''
-    // // this is for testing the public relay or hole punching with 2 local peers
-    // if (host == '0.0.0.0' || host == '127.0.0.1' || host == 'localhost') {
-    //   throw Error('temporary error to simulate no direct connection ability')
-    // }
+    const host = address?.host ?? ''
+    // this is for testing the public relay or hole punching with 2 local peers
+    if (host == '0.0.0.0' || host == '127.0.0.1' || host == 'localhost') {
+      throw Error('temporary error to simulate no direct connection ability')
+    }
     try {
       // try to create a direct connection
       if (address) {
+        console.log('connectingNode: connecting directly to address: ', address.toString());
+
         const peerClient = new PeerClient(address.toString(), this.credentials);
         await this.waitForReadyAsync(peerClient);
         this.connected = true;
@@ -105,6 +107,8 @@ class PeerConnection {
 
       // TODO: reenable connectHolePunchDirectly and connectHolePunchViaPeer and connectRelay after the demo
       // we only want relay
+      console.log('connectingPeer: found target peer: ', targetPeerInfo);
+
       const promiseList: Promise<PeerClient>[] = [
         this.connectDirectly(targetPeerInfo?.peerAddress),
         // this.connectHolePunchDirectly(),
@@ -120,66 +124,66 @@ class PeerConnection {
     }
   }
 
-  // 3rd connection option: hole punch directly to the target peer
-  // (will only work if a direct hole punch connection already exists)
-  // triggered by 2nd option
-  private async connectHolePunchDirectly(): Promise<PeerClient> {
-    // try to hole punch directly to peer via already udp-holepunched connection (if it exists)
-    try {
-      if (!this.connected) {
-        // connect to relay and ask it to create a relay
-        const connectedAddress = await this.requestUDPHolePunchDirectly(this.getPeerInfo(this.peerId)!.id);
-        const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
-        await this.waitForReadyAsync(peerClient);
-        this.connected = true;
-        return peerClient;
-      } else {
-        throw Error('peer is already connected');
-      }
-    } catch (error) {
-      throw Error(`connecting hole punch directly failed: ${error}`);
-    }
-  }
+  // // 3rd connection option: hole punch directly to the target peer
+  // // (will only work if a direct hole punch connection already exists)
+  // // triggered by 2nd option
+  // private async connectHolePunchDirectly(): Promise<PeerClient> {
+  //   // try to hole punch directly to peer via already udp-holepunched connection (if it exists)
+  //   try {
+  //     if (!this.connected) {
+  //       // connect to relay and ask it to create a relay
+  //       const connectedAddress = await this.requestUDPHolePunchDirectly(this.getPeerInfo(this.peerId)!.id);
+  //       const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
+  //       await this.waitForReadyAsync(peerClient);
+  //       this.connected = true;
+  //       return peerClient;
+  //     } else {
+  //       throw Error('peer is already connected');
+  //     }
+  //   } catch (error) {
+  //     throw Error(`connecting hole punch directly failed: ${error}`);
+  //   }
+  // }
 
-  // 4th connection option: hole punch facilitated by a peer adjacent (i.e. connected) to the target peer
-  // triggered by 2nd option
-  private async connectHolePunchViaPeer(adjacentPeerInfo: PeerInfoReadOnly): Promise<PeerClient> {
-    // try to hole punch to peer via relay peer
-    if (adjacentPeerInfo.peerAddress && !this.connected) {
-      // connect to relay and ask it to create a relay
-      const connectedAddress = await this.requestUDPHolePunchViaPeer(
-        this.getPeerInfo(this.peerId)!.id,
-        adjacentPeerInfo.id,
-        10000,
-      );
-      const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
-      await this.waitForReadyAsync(peerClient);
-      this.connected = true;
-      return peerClient;
-    } else {
-      throw Error('peer is already connected');
-    }
-  }
+  // // 4th connection option: hole punch facilitated by a peer adjacent (i.e. connected) to the target peer
+  // // triggered by 2nd option
+  // private async connectHolePunchViaPeer(adjacentPeerInfo: PeerInfoReadOnly): Promise<PeerClient> {
+  //   // try to hole punch to peer via relay peer
+  //   if (adjacentPeerInfo.peerAddress && !this.connected) {
+  //     // connect to relay and ask it to create a relay
+  //     const connectedAddress = await this.requestUDPHolePunchViaPeer(
+  //       this.getPeerInfo(this.peerId)!.id,
+  //       adjacentPeerInfo.id,
+  //       10000,
+  //     );
+  //     const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
+  //     await this.waitForReadyAsync(peerClient);
+  //     this.connected = true;
+  //     return peerClient;
+  //   } else {
+  //     throw Error('peer is already connected');
+  //   }
+  // }
 
-  // 5th connection option: relay connection facilitated by a peer adjacent (i.e. connected) to the target peer
-  // triggered by 2nd option
-  private async connectRelay(adjacentPeerInfo: PeerInfoReadOnly): Promise<PeerClient> {
-    // try to hole punch to peer via relay peer
-    if (adjacentPeerInfo.peerAddress && !this.connected) {
-      // connect to relay and ask it to create a relay
-      const connectedAddress = await this.requestUDPHolePunchViaPeer(
-        this.getPeerInfo(this.peerId)!.id,
-        adjacentPeerInfo.id,
-        10000,
-      );
-      const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
-      await this.waitForReadyAsync(peerClient);
-      this.connected = true;
-      return peerClient;
-    } else {
-      throw Error('peer is already connected');
-    }
-  }
+  // // 5th connection option: relay connection facilitated by a peer adjacent (i.e. connected) to the target peer
+  // // triggered by 2nd option
+  // private async connectRelay(adjacentPeerInfo: PeerInfoReadOnly): Promise<PeerClient> {
+  //   // try to hole punch to peer via relay peer
+  //   if (adjacentPeerInfo.peerAddress && !this.connected) {
+  //     // connect to relay and ask it to create a relay
+  //     const connectedAddress = await this.requestUDPHolePunchViaPeer(
+  //       this.getPeerInfo(this.peerId)!.id,
+  //       adjacentPeerInfo.id,
+  //       10000,
+  //     );
+  //     const peerClient = new PeerClient(connectedAddress.toString(), this.credentials);
+  //     await this.waitForReadyAsync(peerClient);
+  //     this.connected = true;
+  //     return peerClient;
+  //   } else {
+  //     throw Error('peer is already connected');
+  //   }
+  // }
 
   async connectFirstChannel(directOnly: boolean = false) {
     if (!this.connected) {
@@ -192,7 +196,7 @@ class PeerConnection {
     throw Error('peer is already connected!');
   }
 
-  private async connect(timeout: number = 20000, directOnly: boolean = false): Promise<void> {
+  private async connect(timeout: number = 200000, directOnly: boolean = false): Promise<void> {
     return await new Promise<void>(async (resolve, reject) => {
       if (timeout) {
         setTimeout(() => reject(Error('connection request timed out')), timeout);
@@ -209,7 +213,7 @@ class PeerConnection {
         }
 
         // try a ping
-        if (this.connected && (await this.sendPingRequest(5000))) {
+        if (this.connected && (await this.sendPingRequest(50000))) {
           resolve();
         } else {
           try {
@@ -227,7 +231,7 @@ class PeerConnection {
 
   }
 
-  private async sendPingRequest(timeout?: number, directConnectionOnly = false): Promise<boolean> {
+  private async sendPingRequest(timeout: number = 50000, directConnectionOnly = false): Promise<boolean> {
     // eslint-disable-next-line
     return await new Promise<boolean>(async (resolve, _) => {
       try {
@@ -255,7 +259,7 @@ class PeerConnection {
     });
   }
 
-  async pingPeer(timeout?: number): Promise<boolean> {
+  async pingPeer(timeout: number = 50000): Promise<boolean> {
     // connect to peer
     await this.connect(timeout);
     // send ping request
@@ -263,7 +267,7 @@ class PeerConnection {
   }
 
   // ======== Helper Methods ======== //
-  private async waitForReadyAsync(peerClient: PeerClient, timeout = 10000): Promise<void> {
+  private async waitForReadyAsync(peerClient: PeerClient, timeout = 100000): Promise<void> {
     // eslint-disable-next-line
     await new Promise<void>(async (resolve, reject) => {
       try {

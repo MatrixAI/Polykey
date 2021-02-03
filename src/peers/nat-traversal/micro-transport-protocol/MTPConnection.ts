@@ -112,7 +112,7 @@ class MTPConnection extends Duplex {
         this.ack = 0;
         this.synack = undefined;
 
-        this.recvId = Math.floor(Math.random() * 900000) + 100000;
+        this.recvId = uint16(Math.floor(Math.random() * 89999) + 10000);
         this.sendId = uint16(this.recvId + 1);
 
         const initialPacket = MTPConnection.createPacket(
@@ -141,8 +141,7 @@ class MTPConnection extends Duplex {
         this.synack = undefined;
 
         socket.on('listening', () => {
-          this.recvId = Math.floor(Math.random() * 89999) + 10000;
-          // this.recvId = socket.address().port;
+          this.recvId = uint16(Math.floor(Math.random() * 89999) + 10000);
           this.sendId = uint16(this.recvId + 1);
 
           const initialPacket = MTPConnection.createPacket(
@@ -212,7 +211,7 @@ class MTPConnection extends Duplex {
     // do nothing...
   }
 
-  _write(data: any[], enc: string, callback: (error?: Error | null | undefined) => void): void {
+  _write(data: Buffer, enc: string, callback: (error?: Error | null | undefined) => void): void {
     if (this.connecting) {
       return this.writeOnce('connect', data, enc, callback);
     }
@@ -251,6 +250,7 @@ class MTPConnection extends Duplex {
 
   private resend() {
     const offset = this.seq - this.inflightPackets;
+
     const first = this.outgoing.get(offset);
     if (!first) {
       return;
@@ -263,8 +263,13 @@ class MTPConnection extends Duplex {
       return;
     }
 
+    // BUG: there is a bug here wherby packets are always inflight and
+    // never get cleared, in other words it just keeps transmitting
     for (let i = 0; i < this.inflightPackets; i++) {
-      const packet = this.outgoing.get(offset + i)!;
+      const packet = this.outgoing.get(offset + i);
+      if (!packet) {
+        throw Error('packet doesn not exist')
+      }
       if (uint32(packet.getSent() - now) >= timeout) {
         this.transmit(packet);
       }
@@ -306,6 +311,8 @@ class MTPConnection extends Duplex {
   }
 
   async recvIncoming(packet: peerInterface.MTPPacket) {
+
+    let internalPacket: peerInterface.MTPPacket | undefined = packet
     // connection is closed
     if (this.closed) {
       return;
@@ -313,76 +320,69 @@ class MTPConnection extends Duplex {
 
     // temporary to slow down looping traffic for debugging
     await sleep(1000)
-    if (packet.getId() === PACKET_SYN) {
-      console.log('it is a syn packet');
-
-    }
 
     // send synack
-    if (packet.getId() === PACKET_SYN && this.connecting) {
-      console.log('packet is syn packet');
-
-      this.transmit(this.synack!);
+    if (internalPacket.getId() === PACKET_SYN && this.connecting && this.synack) {
+      this.transmit(this.synack);
       return;
     }
 
     // packet is a reset packet
-    if (packet.getId() === PACKET_RESET) {
-      this.push(null);
-      this.end();
-      this.closing();
-      return;
+    if (internalPacket.getId() === PACKET_RESET) {
+      console.log('PACKET_RESET!!');
+      // this.push(null);
+      // this.end();
+      // this.closing();
+      // return;
     }
 
     // still connecting
     if (this.connecting) {
-      console.log('connnnnneccccint');
-      console.log(packet.getId());
-      console.log(PACKET_STATE);
-
       // if the id
-      if (packet.getId() !== PACKET_STATE) {
-        return this.incoming.put(packet.getSeq(), packet);
+      if (internalPacket.getId() !== PACKET_STATE) {
+        return this.incoming.put(internalPacket.getSeq(), internalPacket);
       }
 
-      this.ack = uint16(packet.getSeq() - 1);
-      this.recvAck(packet.getAck());
+      this.ack = uint16(internalPacket.getSeq() - 1);
+      this.recvAck(internalPacket.getAck());
       this.connecting = false;
       this.emit('connect');
 
-      packet = this.incoming.del(packet.getSeq())!;
-      if (!packet) {
+      internalPacket = this.incoming.del(internalPacket.getSeq());
+      if (!internalPacket) {
         return;
       }
     }
 
-    if (uint16(packet.getSeq() - this.ack) >= BUFFER_SIZE) {
+    if (uint16(internalPacket.getSeq() - this.ack) >= BUFFER_SIZE) {
       return this.sendAck(); // old packet
     }
 
-    this.recvAck(packet.getAck()); // TODO: other calcs as well
+    this.recvAck(internalPacket.getAck()); // TODO: other calcs as well
 
-    if (packet.getAck() === PACKET_STATE) {
+    if (internalPacket.getAck() === PACKET_STATE) {
       return;
     }
-    this.incoming.put(packet.getSeq(), packet);
+    this.incoming.put(internalPacket.getSeq(), internalPacket);
 
-    while ((packet = this.incoming.del(this.ack + 1)!)) {
-      console.log(packet);
-
-      console.log('sending ack');
-
+    while ((internalPacket = this.incoming.del(this.ack + 1))) {
       this.ack = uint16(this.ack + 1);
 
-      if (packet.getId() === PACKET_DATA) {
-        this.push(packet.getData_asU8());
+      if (internalPacket.getId() === PACKET_DATA) {
+        this.push(internalPacket.getData_asU8());
       }
-      if (packet.getId() === PACKET_FIN) {
+      if (internalPacket.getId() === PACKET_FIN) {
         this.push(null);
       }
     }
 
-    this.sendAck();
+    // TODO: reenable this.sendAck after the below bug has been fixed:
+    // // for some reason this sendAck makes the whole loop get stuck resending the ack
+    // // then the other side acknowledging the ack packet and vice versa, never ending
+    // // this is perhaps because somewhere in the loop, the code can't tell what is an
+    // // ack what is note. so the fix for now is to just disable ack-knowledging (seems
+    // // to work with out it ¯\_(ツ)_/¯)
+    // this.sendAck();
   }
 
   private sendAck() {
