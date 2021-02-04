@@ -16,6 +16,7 @@ service Agent {
   rpc DeriveKey (DeriveKeyMessage) returns (EmptyMessage) {};
   rpc DeriveKeyPair (DeriveKeyPairMessage) returns (EmptyMessage) {};
   rpc DiscoverGestaltIdentity (IdentityMessage) returns (stream EmptyMessage) {};
+  rpc DiscoverGestaltNode (IdentityMessage) returns (stream EmptyMessage) {};
   rpc EncryptFile (EncryptFileMessage) returns (StringMessage) {};
   rpc FindPeer (ContactPeerMessage) returns (EmptyMessage) {};
   rpc GetConnectedIdentityInfos (ProviderSearchMessage) returns (stream IdentityInfoMessage) {};
