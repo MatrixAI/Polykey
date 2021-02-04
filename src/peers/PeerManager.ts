@@ -316,7 +316,7 @@ class PeerManager {
   }
 
   async getLinkInfos(id: string): Promise<LinkInfo[]> {
-Bu    const targetPeerInfo = (await this.peerDHT.findPeer(id))?.targetPeerInfo
+    const targetPeerInfo = (await this.peerDHT.findPeer(id))?.targetPeerInfo
     return targetPeerInfo?.linkInfoList ?? []
   }
 
