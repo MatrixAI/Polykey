@@ -369,6 +369,22 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async discoverGestaltNode(
+    call: grpc.ServerWritableStream<agent.IdentityMessage, agent.EmptyMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { key } = call.request!.toObject();
+      for await (const _ of this.pk.gestaltGraph.discoverGestaltNode(key)) {
+        call.write(new agent.EmptyMessage)
+      }
+      call.end()
+    } catch (error) {
+      call.end()
+    }
+  }
+
   async discoverGestaltIdentity(
     call: grpc.ServerWritableStream<agent.IdentityMessage, agent.EmptyMessage>,
   ) {
