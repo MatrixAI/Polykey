@@ -13,6 +13,7 @@ import { PeerInfoReadOnly } from '../peers/PeerInfo';
 import Polykey, { Address, KeyManager } from '../Polykey';
 import { TLSCredentials } from '../peers/pki/PublicKeyInfrastructure';
 import { AgentService, IAgentServer, AgentClient } from '../../proto/js/Agent_grpc_pb';
+import { LinkInfo, LinkInfoIdentity } from '../links';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;
@@ -182,6 +183,80 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async augmentKeynode(
+    call: grpc.ServerUnaryCall<agent.AugmentKeynodeRequest, agent.AugmentKeynodeReply>,
+    callback: grpc.sendUnaryData<agent.AugmentKeynodeReply>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+
+      const { providerKey, identityKey } = call.request!.toObject();
+
+      // create link claim
+      const linkClaim = await this.pk.peerManager.makeLinkClaimIdentity(providerKey, identityKey)
+
+
+      // publish the newly made link claim
+      const provider = this.pk.providerManager.getProvider(providerKey ?? 'github.com')
+      const linkInfoIdentity = await provider.publishLinkClaim(linkClaim)
+      const linkInfo = linkInfoIdentity as LinkInfo
+
+      // // publish it to the peer info
+      this.pk.peerManager.peerInfo.publishLinkInfo(linkInfo)
+      this.pk.peerManager.writeMetadata()
+
+      // get identity details
+      const identityInfo = await provider.getIdentityInfo(identityKey)
+      if (identityInfo) {
+        // set the link identity in the gestalt graph
+        this.pk.gestaltGraph.setLinkIdentity(
+          linkInfoIdentity,
+          { id: this.pk.peerManager.peerInfo.id },
+          identityInfo
+        )
+      }
+
+      const response = new agent.AugmentKeynodeReply();
+
+      response.setUrl(linkInfoIdentity.url ?? '');
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async authenticateProvider(
+    call: grpc.ServerUnaryCall<agent.AuthenticateProviderRequest, agent.AuthenticateProviderReply>,
+    callback: grpc.sendUnaryData<agent.AuthenticateProviderReply>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+
+      const { providerKey } = call.request!.toObject();
+
+      const provider = this.pk.providerManager.getProvider(providerKey ?? 'github.com')
+      const authFlow = provider.authenticate();
+      // get user code
+      const userCode = (await authFlow.next()).value;
+      if (typeof userCode != 'string') {
+        throw Error('userCode was not a string')
+      }
+
+      // trigger next as a lazy promise o the code can continue
+      // after grpc destroys this functions context
+      authFlow.next()
+
+      // return the usercode tot he client
+      const response = new agent.AuthenticateProviderReply();
+      response.setUserCode(userCode)
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
   async decryptFile(
     call: grpc.ServerUnaryCall<agent.DecryptFileMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
@@ -294,6 +369,22 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async discoverGestaltIdentity(
+    call: grpc.ServerWritableStream<agent.IdentityMessage, agent.EmptyMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { key, providerKey } = call.request!.toObject();
+      for await (const _ of this.pk.gestaltGraph.discoverGestaltIdentity(key, providerKey)) {
+        call.write(new agent.EmptyMessage)
+      }
+      call.end()
+    } catch (error) {
+      call.end()
+    }
+  }
+
   async encryptFile(
     call: grpc.ServerUnaryCall<agent.EncryptFileMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
@@ -328,17 +419,101 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async findSocialPeer(
-    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.StringListMessage>,
-    callback: grpc.sendUnaryData<agent.StringListMessage>,
+  async gestaltIsTrusted(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const { publicKeyOrHandle, timeout } = call.request!.toObject();
-      const peerIdList = await this.pk.peerManager.findGestaltKeynodes(publicKeyOrHandle, timeout);
-      const response = new agent.StringListMessage
-      response.setSList(peerIdList)
+      const { s } = call.request!.toObject();
+      const response = new agent.BooleanMessage
+      response.setB(this.pk.gestaltGraph.trusted(s))
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async getConnectedIdentityInfos(
+    call: grpc.ServerWritableStream<agent.ProviderSearchMessage, agent.IdentityInfoMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { providerKey, searchTermList } = call.request!.toObject();
+      const provider = this.pk.providerManager.getProvider(providerKey);
+
+      console.log('ehhhee');
+
+      for await (const identityInfo of provider.getConnectedIdentityInfos(searchTermList)) {
+        console.log('ehhhee');
+        const identityInfoMessage = new agent.IdentityInfoMessage
+        if (identityInfo.email) {
+          identityInfoMessage.setEmail(identityInfo.email)
+        }
+        if (identityInfo.key) {
+          identityInfoMessage.setKey(identityInfo.key)
+        }
+        if (identityInfo.name) {
+          identityInfoMessage.setName(identityInfo.name)
+        }
+        if (identityInfo.provider) {
+          identityInfoMessage.setProvider(identityInfo.provider)
+        }
+        if (identityInfo.url) {
+          identityInfoMessage.setUrl(identityInfo.url)
+        }
+        call.write(identityInfoMessage)
+      }
+      call.end()
+    } catch (error) {
+      call.end()
+    }
+  }
+
+  async getGestaltByIdentity(
+    call: grpc.ServerUnaryCall<agent.IdentityMessage, agent.GestaltMessage>,
+    callback: grpc.sendUnaryData<agent.GestaltMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { providerKey, key } = call.request!.toObject();
+      const gestalt = this.pk.gestaltGraph.getGestaltByIdentity(key, providerKey);
+      if (!gestalt) {
+        throw Error('gestalt was not found')
+      }
+
+      const response = new agent.GestaltMessage
+      response.setGestaltMatrix(Buffer.from(JSON.stringify(gestalt.graph)).toString('base64'))
+      response.setIdentities(Buffer.from(JSON.stringify(gestalt.identities)).toString('base64'))
+      response.setGestaltNodes(Buffer.from(JSON.stringify(gestalt.nodes)).toString('base64'))
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async getGestalts(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.GestaltListMessage>,
+    callback: grpc.sendUnaryData<agent.GestaltListMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const gestaltList = this.pk.gestaltGraph.getGestalts();
+      console.log(gestaltList);
+
+      const gestaltListMessage = gestaltList.map(g => {
+        const msg = new agent.GestaltMessage
+        msg.setGestaltMatrix(Buffer.from(JSON.stringify(g.graph)).toString('base64'))
+        msg.setIdentities(Buffer.from(JSON.stringify(g.identities)).toString('base64'))
+        msg.setGestaltNodes(Buffer.from(JSON.stringify(g.nodes)).toString('base64'))
+        return msg
+      })
+      const response = new agent.GestaltListMessage();
+      response.setGestaltMessageList(gestaltListMessage);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -398,11 +573,18 @@ class PolykeyAgent implements IAgentServer {
       if (peerInfo.apiAddress) {
         response.setApiAddress(peerInfo.apiAddress.toString());
       }
-      response.setProofListList(peerInfo.proofList.map(p => {
-        const proof = new agent.DIProofMessage
-        proof.setDigitalIdentityLink(p.digitalIdentityLink)
-        proof.setProofLink(p.proofLink)
-        return proof
+      response.setLinkInfoList(peerInfo.linkInfoList.map(l => {
+        const linkInfo = l as LinkInfoIdentity
+        const linkInfoMessage = new agent.LinkInfoIdentity
+        linkInfoMessage.setDateissued(linkInfo.dateIssued)
+        linkInfoMessage.setIdentity(linkInfo.identity)
+        linkInfoMessage.setKey(linkInfo.key)
+        linkInfoMessage.setNode(linkInfo.node)
+        linkInfoMessage.setProvider(linkInfo.provider)
+        linkInfoMessage.setSignature(linkInfo.signature)
+        linkInfoMessage.setType(linkInfo.type)
+        linkInfoMessage.setUrl(linkInfo.url ?? '')
+        return linkInfoMessage
       }));
 
       const peerInfoPem = peerInfo.toX509Pem(this.pk.keyManager.getPrivateKey())
@@ -436,11 +618,18 @@ class PolykeyAgent implements IAgentServer {
       if (peerInfo.apiAddress) {
         response.setApiAddress(peerInfo.apiAddress.toString());
       }
-      response.setProofListList(peerInfo.proofList.map(p => {
-        const proof = new agent.DIProofMessage
-        proof.setDigitalIdentityLink(p.digitalIdentityLink)
-        proof.setProofLink(p.proofLink)
-        return proof
+      response.setLinkInfoList(peerInfo.linkInfoList.map(l => {
+        const linkInfo = l as LinkInfoIdentity
+        const linkInfoMessage = new agent.LinkInfoIdentity
+        linkInfoMessage.setDateissued(linkInfo.dateIssued)
+        linkInfoMessage.setIdentity(linkInfo.identity)
+        linkInfoMessage.setKey(linkInfo.key)
+        linkInfoMessage.setNode(linkInfo.node)
+        linkInfoMessage.setProvider(linkInfo.provider)
+        linkInfoMessage.setSignature(linkInfo.signature)
+        linkInfoMessage.setType(linkInfo.type)
+        linkInfoMessage.setUrl(linkInfo.url ?? '')
+        return linkInfoMessage
       }));
       response.setPem(peerInfo.pem)
       callback(null, response);
@@ -788,26 +977,6 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async proveKeynode(
-    call: grpc.ServerUnaryCall<agent.GestaltIdentityMessage, agent.PolykeyProofMessage>,
-    callback: grpc.sendUnaryData<agent.PolykeyProofMessage>,
-  ) {
-    this.refreshTimeout();
-    try {
-      this.failOnLocked();
-      const { identityProviderName, identifier } = call.request!.toObject();
-      const { type, instructions, proof } = await this.pk.peerManager.proveKeynode(identityProviderName, identifier)
-
-      const response = new agent.PolykeyProofMessage
-      response.setType(type)
-      response.setInstructions(instructions)
-      response.setProof(proof)
-      callback(null, response);
-    } catch (error) {
-      callback(error, null);
-    }
-  }
-
   async pullVault(
     call: grpc.ServerUnaryCall<agent.VaultPathMessage, agent.EmptyMessage>,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
@@ -988,6 +1157,36 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async trustGestalt(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      this.pk.gestaltGraph.trust(s);
+      callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async untrustGestalt(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      this.pk.gestaltGraph.untrust(s);
+      callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
   async unsetAlias(
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.EmptyMessage>,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
@@ -1080,7 +1279,7 @@ class PolykeyAgent implements IAgentServer {
         rootPublicKey,
         peerAddress,
         apiAddress,
-        proofListList,
+        linkInfoList,
         pem
       } = call.request!.toObject();
 
@@ -1102,7 +1301,7 @@ class PolykeyAgent implements IAgentServer {
       if (apiAddress) {
         throw Error('cannot modify peerAddress, try setting PK_API_HOST or PK_API_PORT env variables instead')
       }
-      if (proofListList) {
+      if (linkInfoList) {
         throw Error('cannot modify proofList, try using the social proof API instead')
       }
       if (pem) {

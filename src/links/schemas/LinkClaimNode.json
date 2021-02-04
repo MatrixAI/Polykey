@@ -2,15 +2,15 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "keynode": {
+    "type": {
+      "type": "string",
+      "const": "node"
+    },
+    "node1": {
       "type": "string",
       "minLength": 1
     },
-    "identity": {
-      "type": "string",
-      "minLength": 1
-    },
-    "provider": {
+    "node2": {
       "type": "string",
       "minLength": 1
     },
@@ -24,9 +24,9 @@
     }
   },
   "required": [
-    "keynode",
-    "identity",
-    "provider",
+    "type",
+    "node1",
+    "node2",
     "dateIssued",
     "signature"
   ],

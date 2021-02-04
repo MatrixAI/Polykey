@@ -40,13 +40,15 @@
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
-    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts"
+    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts",
+    "gestalt": "ts-node -r tsconfig-paths/register src/bin/gestalt.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.2.4",
     "ajv": "^7.0.4",
     "async-mutex": "^0.2.4",
     "bip39": "^3.0.3",
+    "canonicalize": "^1.0.5",
     "chalk": "^4.0.0",
     "cheerio": "^1.0.0-rc.5",
     "commander": "^7.0.0",

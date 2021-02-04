@@ -7,15 +7,21 @@ package agentInterface;
 ///////////////////
 service Agent {
   rpc AddPeer (PeerInfoReadOnlyMessage) returns (StringMessage) {};
+  rpc AugmentKeynode (AugmentKeynodeRequest) returns (AugmentKeynodeReply) {};
+  rpc AuthenticateProvider (AuthenticateProviderRequest) returns (AuthenticateProviderReply) {};
   rpc DecryptFile (DecryptFileMessage) returns (StringMessage) {};
   rpc DeleteKey (StringMessage) returns (EmptyMessage) {};
   rpc DeleteSecret (SecretPathMessage) returns (EmptyMessage) {};
   rpc DeleteVault (StringMessage) returns (EmptyMessage) {};
   rpc DeriveKey (DeriveKeyMessage) returns (EmptyMessage) {};
   rpc DeriveKeyPair (DeriveKeyPairMessage) returns (EmptyMessage) {};
+  rpc DiscoverGestaltIdentity (IdentityMessage) returns (stream EmptyMessage) {};
   rpc EncryptFile (EncryptFileMessage) returns (StringMessage) {};
   rpc FindPeer (ContactPeerMessage) returns (EmptyMessage) {};
-  rpc FindSocialPeer (ContactPeerMessage) returns (StringListMessage) {};
+  rpc GetConnectedIdentityInfos (ProviderSearchMessage) returns (stream IdentityInfoMessage) {};
+  rpc GetGestalts (EmptyMessage) returns (GestaltListMessage) {};
+  rpc GetGestaltByIdentity (IdentityMessage) returns (GestaltMessage) {};
+  rpc GestaltIsTrusted (StringMessage) returns (BooleanMessage) {};
   rpc GetOAuthClient (EmptyMessage) returns (OAuthClientMessage) {};
   rpc GetKey (StringMessage) returns (StringMessage) {};
   rpc GetLocalPeerInfo (EmptyMessage) returns (PeerInfoMessage) {};
@@ -37,7 +43,6 @@ service Agent {
   rpc NewOAuthToken (NewOAuthTokenMessage) returns (StringMessage) {};
   rpc NewVault (StringMessage) returns (EmptyMessage) {};
   rpc PingPeer (ContactPeerMessage) returns (EmptyMessage) {};
-  rpc ProveKeynode (GestaltIdentityMessage) returns (PolykeyProofMessage) {};
   rpc PullVault (VaultPathMessage) returns (EmptyMessage) {};
   rpc RenameVault (RenameVaultMessage) returns (EmptyMessage) {};
   rpc RecoverKeynode (RecoverKeynodeMessage) returns (EmptyMessage) {};
@@ -48,9 +53,11 @@ service Agent {
   rpc SignFile (SignFileMessage) returns (StringMessage) {};
   rpc StopAgent (EmptyMessage) returns (EmptyMessage) {};
   rpc ToggleStealthMode (BooleanMessage) returns (EmptyMessage) {};
+  rpc TrustGestalt (StringMessage) returns (EmptyMessage) {};
   rpc UnlockNode (UnlockNodeMessage) returns (EmptyMessage) {};
   rpc UnsetAlias (StringMessage) returns (EmptyMessage) {};
   rpc UnshareVault (VaultPathMessage) returns (EmptyMessage) {};
+  rpc UntrustGestalt (StringMessage) returns (EmptyMessage) {};
   rpc UpdateLocalPeerInfo (PeerInfoMessage) returns (EmptyMessage) {};
   rpc UpdatePeerInfo (PeerInfoReadOnlyMessage) returns (EmptyMessage) {};
   rpc UpdateSecret (SecretContentMessage) returns (EmptyMessage) {};
@@ -68,10 +75,26 @@ message StringListMessage {
   repeated string s = 1;
 }
 
-// === DIProof (Digital Identity Proof) === //
-message DIProofMessage {
-  string digital_identity_link = 1;
-  string proof_link = 2;
+// === LinkInfoIdentity === //
+message LinkInfoIdentity {
+  string type = 1;
+  string node = 2;
+  string identity = 3;
+  string provider = 4;
+  string dateIssued = 5;
+  string signature = 6;
+  string key = 7;
+  string url = 8;
+}
+// === LinkInfoNode === //
+message LinkInfoNode {
+  string type = 1;
+  string node1 = 2;
+  string node2 = 3;
+  string dateIssued = 4;
+  string signature = 5;
+  string key = 6;
+  string url = 7;
 }
 
 // === PeerInfo === //
@@ -100,16 +123,9 @@ message PeerInfoMessage {
   // oid: 1.3.1.4.4
   string api_address = 6;
 
-  // The proof list will look something like this:
-  // [
-  //   {
-  //      digital_identity_link: "https://gist.github.com/CMCDragonkai",
-  //      proof_link: "https://gist.github.com/CMCDragonkai/557548fbca5f2285dcbe9f03e3d4cfcd",
-  //   },
-  //   ...
-  // ]
+  // The LinkInfo list
   // oid: 1.3.1.4.5
-  repeated DIProofMessage proof_list = 7;
+  repeated LinkInfoIdentity link_info = 7;
 
   // This is the original pem x.509 certificate that is signed
   // by the private key of the peer
@@ -292,4 +308,48 @@ message RecoverKeynodeMessage {
   string mnemonic = 1;
   string user_id = 2;
   string passphrase = 3;
+}
+
+// === AuthenticateProvider === //
+message AuthenticateProviderRequest {
+  string provider_key = 1;
+}
+message AuthenticateProviderReply {
+  string user_code = 1;
+}
+
+// === AugmentKeynode === //
+message AugmentKeynodeRequest {
+  string provider_key = 1;
+  string identity_key = 2;
+}
+message AugmentKeynodeReply {
+  string url = 1;
+}
+
+// === GestaltListMessage === //
+message GestaltMessage {
+  string gestalt_matrix = 1;
+  string gestalt_nodes = 2;
+  string identities = 3;
+}
+message GestaltListMessage {
+  repeated GestaltMessage gestalt_message = 1;
+}
+
+// === Message === //
+message ProviderSearchMessage {
+  string provider_key = 1;
+  repeated string search_term = 2;
+}
+message IdentityInfoMessage {
+  string key = 1;
+  string provider = 2;
+  string name = 3;
+  string email = 4;
+  string url = 5;
+}
+message IdentityMessage {
+  string key = 1;
+  string provider_key = 2;
 }

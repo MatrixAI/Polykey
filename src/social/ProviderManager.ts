@@ -1,4 +1,4 @@
-import type { ProviderKey } from './types';
+import type { ProviderKey } from '../types';
 
 import Provider from './Provider';
 import { ErrorProvider } from './errors';
