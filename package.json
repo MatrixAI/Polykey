@@ -1,6 +1,6 @@
 {
   "name": "@matrixai/polykey",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "bin": {
     "polykey": "dist/bin/polykey.js",
     "pk": "dist/bin/polykey.js"
