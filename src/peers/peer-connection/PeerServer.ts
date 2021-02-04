@@ -1,4 +1,4 @@
-import { Address, PeerInfoReadOnly } from '../PeerInfo';
+import { Address, PeerInfo, PeerInfoReadOnly } from '../PeerInfo';
 import * as grpc from '@grpc/grpc-js';
 import PeerManager from '../PeerManager';
 import * as peer from '../../../proto/js/Peer_pb';
@@ -143,16 +143,29 @@ class PeerServer implements IPeerServer {
   }
 
   async requestPublicRelay(
-    call: grpc.ServerUnaryCall<peer.PublicRelayRequest, peer.PublicRelayReply>,
-    callback: grpc.sendUnaryData<peer.PublicRelayReply>,
+    call: grpc.ServerUnaryCall<agent.PeerInfoReadOnlyMessage, agent.StringMessage>,
+    callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
     try {
-      throw Error('not supported')
-      // const { originPeerId, targetPeerId } = call.request!.toObject();
-      // const response = new peer.PublicRelayReply();
-      // const relayAddress = await this.peerManager.natTraversal.handlePublicRelayRequest(originPeerId, targetPeerId)
-      // response.setRelayAddress(relayAddress)
-      // callback(null, response);
+      const peerInfoReadOnly = PeerInfoReadOnly.fromPeerInfoReadOnlyMessage(call.request.toObject())
+      if (this.peerManager.hasPeer(peerInfoReadOnly.id)) {
+        this.peerManager.updatePeer(peerInfoReadOnly)
+      } else {
+        this.peerManager.addPeer(peerInfoReadOnly)
+      }
+      // if (process.env.PUBLIC_RELAY_NODE) {
+      //   if (!this.peerManager.hasPeer(peerInfoReadOnly.id)) {
+      //     this.peerManager.addPeer(peerInfoReadOnly)
+      //   }
+      //   const relayAddress = await this.peerManager.natTraversal.handlePublicRelayRequest(peerInfoReadOnly.id)
+      //   console.log('publicNode: relay has been setup, sending UDP address back to privateNode: ', relayAddress.toString());
+
+      //   const response = new agent.StringMessage;
+      //   response.setS(relayAddress.toString())
+      //   callback(null, response);
+      // } else {
+      //   throw Error('peer is not a public relay')
+      // }
     } catch (error) {
       callback(error, null);
     }
@@ -196,40 +209,6 @@ class PeerServer implements IPeerServer {
       const response = new peer.PeerDHTFindNodeReply();
       response.setClosestPeersList(peerInfoList)
       callback(null, response);
-    } catch (error) {
-      callback(error, null);
-    }
-  }
-
-  async addPeerInfo(
-    call: grpc.ServerUnaryCall<agent.PeerInfoReadOnlyMessage, agent.EmptyMessage>,
-    callback: grpc.sendUnaryData<agent.EmptyMessage>,
-  ) {
-    try {
-      // only want to accept this if peer is a public relay node
-      if (process.env.PUBLIC_RELAY_NODE) {
-        try {
-          const { pem, unsignedAlias, unsignedApiAddress, unsignedPeerAddress } = call.request!.toObject();
-          const peerInfo = new PeerInfoReadOnly(pem)
-          if (unsignedAlias) {
-            peerInfo.alias = unsignedAlias
-          }
-          if (unsignedApiAddress) {
-            peerInfo.apiAddress = Address.parse(unsignedApiAddress)
-          }
-          if (unsignedPeerAddress) {
-            peerInfo.peerAddress = Address.parse(unsignedPeerAddress)
-          }
-          if (this.peerManager.hasPeer(peerInfo.id)) {
-            this.peerManager.updatePeer(peerInfo)
-          } else {
-            this.peerManager.addPeer(peerInfo, peerInfo.alias)
-          }
-        } catch (error) {
-          // no throw
-        }
-      }
-      callback(null, new agent.EmptyMessage);
     } catch (error) {
       callback(error, null);
     }

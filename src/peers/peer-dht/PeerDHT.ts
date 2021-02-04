@@ -175,13 +175,8 @@ class PeerDHT {
     // start querying the network
     const kBucketSize = this.kBucket.numberOfNodesPerKBucket;
     // get rid of the target peer id as it is not onsidered a close peer
-    console.log('peerIddddddddd');
-    console.log(peerId);
 
     const closestPeerIds = this.closestPeers(peerId, kBucketSize).filter((pi) => pi != peerId);
-    console.log('closestPeerIds');
-    console.log(closestPeerIds);
-
 
     // If there are no closest peers, we have failed to find that peer
     if (closestPeerIds.length === 0) {
@@ -209,9 +204,6 @@ class PeerDHT {
         const closestFoundPeerInfoList = closestPeersList
           .map((p) => PeerInfoReadOnly.fromPeerInfoReadOnlyMessage(p))
           .filter((p) => p.id != this.getLocalPeerId());
-        console.log('I got a response!');
-        console.log(closestFoundPeerInfoList);
-
 
         // Add peers to routing table
         this.addPeers(closestFoundPeerInfoList.map((p) => p.id));
@@ -226,12 +218,6 @@ class PeerDHT {
             foundPeerInfo = peerInfo;
           }
         }
-        console.log('foundPeerInfo: ', foundPeerInfo);
-        console.log({
-          adjacentPeerInfo: this.getPeerInfo(closePeerId)!,
-          targetPeerInfo: foundPeerInfo,
-        });
-
 
         if (foundPeerInfo) {
           this.findingPeer = false;

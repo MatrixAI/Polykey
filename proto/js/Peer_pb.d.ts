@@ -174,52 +174,6 @@ export namespace UDPAddressResponse {
     }
 }
 
-export class PublicRelayRequest extends jspb.Message { 
-    getTargetPeerId(): string;
-    setTargetPeerId(value: string): PublicRelayRequest;
-
-    getOriginPeerId(): string;
-    setOriginPeerId(value: string): PublicRelayRequest;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PublicRelayRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: PublicRelayRequest): PublicRelayRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PublicRelayRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PublicRelayRequest;
-    static deserializeBinaryFromReader(message: PublicRelayRequest, reader: jspb.BinaryReader): PublicRelayRequest;
-}
-
-export namespace PublicRelayRequest {
-    export type AsObject = {
-        targetPeerId: string,
-        originPeerId: string,
-    }
-}
-
-export class PublicRelayReply extends jspb.Message { 
-    getRelayAddress(): string;
-    setRelayAddress(value: string): PublicRelayReply;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PublicRelayReply.AsObject;
-    static toObject(includeInstance: boolean, msg: PublicRelayReply): PublicRelayReply.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PublicRelayReply, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PublicRelayReply;
-    static deserializeBinaryFromReader(message: PublicRelayReply, reader: jspb.BinaryReader): PublicRelayReply;
-}
-
-export namespace PublicRelayReply {
-    export type AsObject = {
-        relayAddress: string,
-    }
-}
-
 export class NatUdpMessage extends jspb.Message { 
     getType(): NatUdpMessageType;
     setType(value: NatUdpMessageType): NatUdpMessage;

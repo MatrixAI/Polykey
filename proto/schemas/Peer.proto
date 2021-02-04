@@ -22,7 +22,7 @@ service Peer {
   // RequestPublicRelay. The other two (RequestDirectHolePunch and RequestHolePunch)
   // will only be available via the UDP channels
   rpc GetUDPAddress (agentInterface.EmptyMessage) returns (agentInterface.StringMessage) {};
-  rpc RequestPublicRelay (PublicRelayRequest) returns (PublicRelayReply) {};
+  rpc RequestPublicRelay (agentInterface.PeerInfoReadOnlyMessage) returns (agentInterface.StringMessage) {};
 
   // CA functionality
   rpc GetRootCertificate (agentInterface.EmptyMessage) returns (agentInterface.StringMessage) {};
@@ -30,11 +30,6 @@ service Peer {
 
   // DHT Functionality
   rpc PeerDHTFindNode (PeerDHTFindNodeRequest) returns (PeerDHTFindNodeReply) {};
-
-  // This method is for public relay nodes only and by default
-  // it rejects all calls to it in order to protect private nodes
-  // from adding random peers
-  rpc AddPeerInfo (agentInterface.PeerInfoReadOnlyMessage) returns (agentInterface.EmptyMessage) {};
 }
 
 ///////////////
@@ -77,14 +72,6 @@ message VaultNamesReply {
 // ==== UDPAddress ==== //
 message UDPAddressResponse {
   string address = 1;
-}
-// ==== PublicRelay ==== //
-message PublicRelayRequest {
-  string target_peer_id = 1;
-  string origin_peer_id = 2;
-}
-message PublicRelayReply {
-  string relay_address = 3;
 }
 
 // ==== UDP specific messages ==== //

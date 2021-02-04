@@ -371,8 +371,8 @@ class PeerManager {
       this.pki,
       this.getPeer.bind(this),
       this.peerDHT.findPeer.bind(this.peerDHT),
-      this.natTraversal.requestUDPHolePunchDirectly.bind(this.natTraversal),
-      this.natTraversal.requestUDPHolePunchViaPeer.bind(this.natTraversal),
+      // this.natTraversal.requestUDPHolePunchDirectly.bind(this.natTraversal),
+      // this.natTraversal.requestUDPHolePunchViaPeer.bind(this.natTraversal),
     );
 
     this.peerConnections.set(peerId, peerConnection);

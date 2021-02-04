@@ -4,8 +4,10 @@ import dgram from 'dgram';
 import { EventEmitter } from 'events';
 import { Address } from '../../PeerInfo';
 import MTPConnection from './MTPConnection';
-import { PACKET_SYN, MIN_PACKET_SIZE, bufferToPacket, uint16 } from './utils';
 import { promisify } from 'util';
+import * as peerInterface from '../../../../proto/js/Peer_pb';
+import * as agentInterface from '../../../../proto/js/Agent_pb';
+import { PACKET_SYN, MIN_PACKET_SIZE, bufferToPacket, uint16 } from './utils';
 
 class MTPServer extends EventEmitter {
   socket: dgram.Socket;
@@ -13,14 +15,14 @@ class MTPServer extends EventEmitter {
 
   // peerId -> connection
   private incomingConnections: Map<string, MTPConnection>;
-  tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>;
+  // tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>;
 
   constructor(
     handleIncomingConnection: (conn: MTPConnection) => void,
-    tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>,
+    // tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>,
   ) {
     super();
-    this.tertiaryMessageHandler = tertiaryMessageHandler;
+    // this.tertiaryMessageHandler = tertiaryMessageHandler;
 
     this.on('connection', handleIncomingConnection);
 
@@ -40,14 +42,18 @@ class MTPServer extends EventEmitter {
   }
 
   // this is the method where both listenConnection and listPort call
-  private listenSocket(socket: dgram.Socket, onListening: (address: Address) => void) {
+  listenSocket(socket: dgram.Socket, onListening: (address: Address) => void, socketIsBound: boolean = false) {
     this.socket = socket;
 
     socket.on('message', (message, rinfo) => this.handleMessage(message, rinfo));
 
-    socket.once('listening', () => {
+    if (!socketIsBound) {
+      socket.once('listening', () => {
+        onListening(this.address());
+      });
+    } else {
       onListening(this.address());
-    });
+    }
   }
 
   // can either listen on an existing connection
@@ -59,8 +65,6 @@ class MTPServer extends EventEmitter {
   listenPort(port: number, host: string, onListening: (address: Address) => void) {
     const socket = dgram.createSocket('udp4');
     this.listenSocket(socket, onListening);
-    console.log(port);
-
     socket.bind(port, host);
   }
 
@@ -103,21 +107,20 @@ class MTPServer extends EventEmitter {
 
   // ==== Handler Methods ==== //
   private async handleMessage(message: Buffer, rinfo: dgram.RemoteInfo) {
-    // ================================//
-    // handle additional request handler
-    // ================================//
-    if (this.tertiaryMessageHandler) {
-      try {
-        const address = new Address(rinfo.address, rinfo.port);
-        return await this.tertiaryMessageHandler(message, address);
-      } catch (error) {
-        // if anything went wrong, assume it is a direct connection request and move on
-      }
+    // since this could very well be a server on a private node, we need to have
+    // keepalive packets to keep the address translation rule in the NAT layer
+    if (message.toString() == 'keepalive') {
+      console.log('privateNode: got a keepalive packet, sending ok response');
+      this.socket.send('okay-keepalive', rinfo.port, rinfo.address, (err) => {
+        if (err) {
+          console.log('privateNode: sending okay-keepalive packet failed with error: ', err);
+        } else {
+          console.log('privateNode: sending okay-keepalive succeeded');
+        }
+      })
     }
 
-    // ============================================================================//
-    // handle all other messages! they are direct connection requests to gRPC server
-    // ============================================================================//
+    // treat the message as intended for one of the connections
     if (message.length < MIN_PACKET_SIZE) {
       return;
     }
@@ -125,44 +128,28 @@ class MTPServer extends EventEmitter {
     const packet = bufferToPacket(message);
 
 
+    // I think the issue is that this id is the same for every new relay connection
+    const id = packet.getPeerid() + ':' + (packet.getId() === PACKET_SYN ? uint16(packet.getConnection() + 1) : packet.getConnection());
+    console.log('privateNode: handleMessage id: ', id);
 
-
-    var id = rinfo.address + ':' + (packet.getId() === PACKET_SYN ? uint16(packet.getConnection() + 1) : packet.getConnection());
-    if (this.incomingConnections.has(id)) {
-      return this.incomingConnections.get(id)!.recvIncoming(packet);
+    const incomingConnection = this.incomingConnections.get(id)
+    if (incomingConnection) {
+      console.log('privateNode: sending packet to an incoming connection');
+      return incomingConnection.recvIncoming(packet);
     }
     if (packet.getId() !== PACKET_SYN || this.closed) {
+
       return;
     }
+
     const peerId = packet.getPeerid();
     const newConnection = new MTPConnection(peerId, rinfo.port, rinfo.address, this.socket, packet);
-    this.incomingConnections.set(id, newConnection);
+    this.incomingConnections.set(id, newConnection)
     newConnection.on('close', () => {
       this.incomingConnections.delete(id);
     });
 
     this.emit('connection', newConnection);
-
-
-
-
-    // // // not sure if this id is required but it has now been replaced with peerId pending further testing:
-    // // const id = rinfo.address + ':' + (packet.id === PACKET_SYN ? uint16(packet.connection + 1) : packet.connection);
-    // const peerId = packet.getPeerid();
-    // if (this.incomingConnections.has(peerId) && this.incomingConnections.get(peerId)) {
-    //   // return this.incomingConnections.get(peerId)!.recvIncoming(packet);
-    // }
-    // if (packet.getId() !== PACKET_SYN || this.closed) {
-    //   return;
-    // }
-
-    // const newConnection = new MTPConnection(peerId, rinfo.port, rinfo.address, this.socket, packet);
-    // this.incomingConnections.set(peerId, newConnection);
-    // newConnection.on('close', () => {
-    //   this.incomingConnections.delete(peerId);
-    // });
-
-    // this.emit('connection', newConnection);
   }
 }
 
