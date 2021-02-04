@@ -1,18 +1,20 @@
-import type { ProviderKey, IdentityInfo, LinkClaim, LinkInfo, TokenData } from '../../types';
+import type { ProviderKey  } from '../../../types';
+import type { LinkKey, LinkClaimIdentity, LinkInfoIdentity, LinkClaim } from '../../../links';
+import type { IdentityInfo, TokenData } from '../../types';
 import type ProviderTokens from '../../ProviderTokens';
 
 import { fetch, Request, Response, Headers } from 'cross-fetch';
 import { Searcher } from 'fast-fuzzy';
 import cheerio from 'cheerio';
 import Provider from '../../Provider';
+import { sleep } from '../../../utils';
+import { browser } from '../../utils';
 import {
   ErrorProviderCall,
   ErrorProviderUnimplemented,
   ErrorProviderAuthentication,
   ErrorProviderUnauthenticated
 } from '../../errors';
-import { sleep } from '../../../utils';
-import { browser } from '../../utils';
 
 type Username = string;
 type GistId = string;
@@ -317,7 +319,7 @@ class GitHubProvider extends Provider {
    * Gets the LinkInfo.
    * GitHub LinkInfos are published as gists.
    */
-  public async getLinkInfo (linkKey: GistId): Promise<LinkInfo|undefined> {
+  public async getLinkInfo (linkKey: GistId): Promise<LinkInfoIdentity|undefined> {
     const tokenData = this.getTokenData();
     const request = this.createRequest(
       `${this.apiUrl}/gists/${linkKey}`,
@@ -366,7 +368,7 @@ class GitHubProvider extends Provider {
    */
   public async * getLinkInfos (
     identityKey: Username
-  ): AsyncGenerator<LinkInfo> {
+  ): AsyncGenerator<LinkInfoIdentity> {
     const gistsSearchUrl= "https://gist.github.com/search";
     let pageNum = 1;
     while (true) {
@@ -407,8 +409,8 @@ class GitHubProvider extends Provider {
    * These are published as gists.
    */
   public async publishLinkClaim (
-    linkClaim: LinkClaim
-  ): Promise<LinkInfo> {
+    linkClaim: LinkClaimIdentity
+  ): Promise<LinkInfoIdentity> {
     const tokenData = this.getTokenData();
     const payload = {
       'description': this.gistDescription,

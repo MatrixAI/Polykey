@@ -3,6 +3,7 @@
 import process from 'process';
 import commander from 'commander';
 import commandKeys from './keys';
+import commandGestalts from './gestalts';
 import commandSocial from './social';
 import commandSecrets from './secrets';
 import commandVaults from './vaults';
@@ -20,6 +21,7 @@ function main(argv = process.argv): number {
   polykey.addCommand(commandSecrets);
   polykey.addCommand(commandVaults);
   polykey.addCommand(commandPeers);
+  polykey.addCommand(commandGestalts);
   polykey.addCommand(commandSocial);
   polykey.addCommand(commandCrypto);
   polykey.addCommand(commandAgent);

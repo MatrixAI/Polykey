@@ -1,39 +1,33 @@
 import type {
   ProviderKey,
-  IdentityKey,
+  IdentityKey
+} from '../types';
+import type {
   LinkKey,
+  LinkClaimIdentity,
+  LinkInfoIdentity
+} from '../links';
+import type {
   IdentityInfo,
-  LinkClaim,
-  LinkInfo,
-  AuthCodeData,
   TokenData,
 } from './types';
 
 import http from 'http';
-import Ajv, { JSONSchemaType } from 'ajv';
 import { fetch, Request, Response } from 'cross-fetch';
-
+import { linkClaimIdentityValidate } from '../links';
 import ProviderTokens from './ProviderTokens';
-import LinkClaimSchema from './schemas/LinkClaim.json';
-import { browser } from './utils';
-import {
-  ErrorProviderUnauthenticated
-} from './errors';
 import { randomString } from '../utils';
+import { browser } from './utils';
+import { ErrorProviderUnauthenticated } from './errors';
 
 abstract class Provider {
 
   public readonly key: ProviderKey;
   public readonly tokens: ProviderTokens;
 
-  protected linkClaimValidate;
-
   public constructor (key, tokens) {
     this.key = key;
     this.tokens = tokens;
-    const ajv = new Ajv();
-    const linkClaimSchema = LinkClaimSchema as JSONSchemaType<LinkClaim>;
-    this.linkClaimValidate = ajv.compile(linkClaimSchema);
   }
 
   public abstract authenticate (timeout?: number): AsyncGenerator<string|undefined, void, void>;
@@ -44,11 +38,11 @@ abstract class Provider {
 
   public abstract getConnectedIdentityInfos (searchTerms?: Array<string>): AsyncGenerator<IdentityInfo>;
 
-  public abstract getLinkInfo (linkKey: LinkKey): Promise<LinkInfo|undefined>;
+  public abstract getLinkInfo (linkKey: LinkKey): Promise<LinkInfoIdentity|undefined>;
 
-  public abstract getLinkInfos (identityKey: IdentityKey): AsyncGenerator<LinkInfo>;
+  public abstract getLinkInfos (identityKey: IdentityKey): AsyncGenerator<LinkInfoIdentity>;
 
-  public abstract publishLinkClaim (linkClaim: LinkClaim): Promise<LinkInfo>;
+  public abstract publishLinkClaim (linkClaim: LinkClaimIdentity): Promise<LinkInfoIdentity>;
 
   public getTokenData (): TokenData {
     const tokenData = this.tokens.getToken();
@@ -58,14 +52,14 @@ abstract class Provider {
     return tokenData;
   }
 
-  public parseLinkClaim (linkClaimData: string): LinkClaim|undefined {
+  public parseLinkClaim (linkClaimData: string): LinkClaimIdentity|undefined {
     let linkClaim;
     try {
       linkClaim = JSON.parse(linkClaimData);
     } catch (e) {
       return;
     }
-    if (!this.linkClaimValidate(linkClaim)) {
+    if (!linkClaimIdentityValidate(linkClaim)) {
       return;
     }
     return linkClaim;

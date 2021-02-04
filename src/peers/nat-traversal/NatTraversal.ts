@@ -127,35 +127,41 @@ class NatTraversal extends EventEmitter {
               //   }
               // }
               if (!this.outgoingTCPHolePunchedRelayServers.has(peerId) && !process.env.PUBLIC_RELAY_NODE) {
-                const count = this.unresponsiveRelayNodes.get(peerId) ?? 0;
-                if (count < 1) {
-                  console.log('privateNode: beginning the process of asking for a public relay');
+                // const count = this.unresponsiveRelayNodes.get(peerId) ?? 0;
+                // if (count < 3) {
+                console.log('privateNode: beginning the process of asking for a public relay');
 
-                  this.unresponsiveRelayNodes.set(peerId, count + 1);
-                  const peerInfo = this.getPeerInfo(peerId)!;
-                  // ask for direct hole punch
-                  const peerConnection = this.connectToPeer(peerInfo.id)
-                  const client = await peerConnection.getPeerClient(true)
-                  const localPeerInfo = new PeerInfoReadOnly(this.getLocalPeerInfo().toX509Pem(this.getPrimaryPrivateKey()))
+                // this.unresponsiveRelayNodes.set(peerId, count + 1);
+                const peerInfo = this.getPeerInfo(peerId)!;
+                // ask for direct hole punch
+                const peerConnection = this.connectToPeer(peerInfo.id)
+                const client = await peerConnection.getPeerClient(true)
+                const localPeerInfo = new PeerInfoReadOnly(this.getLocalPeerInfo().toX509Pem(this.getPrimaryPrivateKey()))
 
-                  // read in demo config
-                  const demoConfig = JSON.parse(fs.readFileSync(path.join(os.homedir(), 'demo-config.json')).toString())
-                  // update localPeerInfo with ngrok address
-                  const ngrokAddress: Address = Address.parse(demoConfig.ngrokAddress)
-                  localPeerInfo.peerAddress = ngrokAddress
+                // read in demo config
+                const demoConfigRaw = fs.readFileSync(path.join(os.homedir(), 'demo-config.json')).toString()
+                console.log('privateNode: parsing ~/demo-config.json, raw: ', demoConfigRaw);
+                console.log(demoConfigRaw);
 
-                  const request = localPeerInfo.toPeerInfoReadOnlyMessage()
-                  console.log('privateNode: requesting public relay');
-                  // all this is actually doing is just telling the public node to add its peerinfo
-                  const res = await promisifyGrpc(client.requestPublicRelay.bind(client))(request) as agentInterface.StringMessage;
-                  // const udpRelaySocketAddress = Address.parse(res.getS())
-                  // console.log('privateNode: udpRelaySocketAddress: ', udpRelaySocketAddress.toString());
+                const demoConfig = JSON.parse(demoConfigRaw)
+                // update localPeerInfo with ngrok address
+                const ngrokAddress: Address = Address.parse(demoConfig.ngrokAddress)
+                console.log('privateNode: ngrokAddress: ', ngrokAddress.toString());
 
-                  // await this.setupLocalGRPCRelay(udpRelaySocketAddress, peerInfo.id)
-                }
+                localPeerInfo.peerAddress = ngrokAddress
+
+                const request = localPeerInfo.toPeerInfoReadOnlyMessage()
+                console.log('privateNode: requesting public relay');
+                // all this is actually doing is just telling the public node to add its peerinfo
+                const res = await promisifyGrpc(client.requestPublicRelay.bind(client))(request) as agentInterface.StringMessage;
+                // const udpRelaySocketAddress = Address.parse(res.getS())
+                // console.log('privateNode: udpRelaySocketAddress: ', udpRelaySocketAddress.toString());
+
+                // await this.setupLocalGRPCRelay(udpRelaySocketAddress, peerInfo.id)
+                // }
               }
             }
-            await promiseAll(promiseList);
+            // await promiseAll(promiseList);
           }
           this.intermittentConnectionInterval = setInterval(intermittentConnectionCallback, 6000);
           // this.intermittentConnectionInterval = setInterval(intermittentConnectionCallback, 30000);

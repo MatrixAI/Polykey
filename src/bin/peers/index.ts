@@ -225,16 +225,16 @@ commandGetPeerInfo.action(
         PKMessageType.SUCCESS,
       );
 
-      pkLogger.logV1('Digitial Identity Proofs:', PKMessageType.INFO);
-      peerInfo.proofListList.forEach(p => {
-        pkLogger.logV1(
-          `Identity Link: '${p.digitalIdentityLink}'`,
-          PKMessageType.SUCCESS,
-        );
-        pkLogger.logV1(
-          `Proof Link: '${p.proofLink}'`,
-          PKMessageType.SUCCESS,
-        );
+      pkLogger.logV1('Link Info List:', PKMessageType.INFO);
+      peerInfo.linkInfoList.forEach(l => {
+        pkLogger.logV1(`Link Info Identity: '${l.identity}'`, PKMessageType.INFO);
+        pkLogger.logV1(`Node Provider: '${l.provider}'`, PKMessageType.SUCCESS);
+        pkLogger.logV1(`Key: '${l.key}'`, PKMessageType.SUCCESS);
+        pkLogger.logV1(`Date Issued: '${new Date(l.dateissued)}'`, PKMessageType.SUCCESS);
+        pkLogger.logV1(`Node:`, PKMessageType.SUCCESS);
+        pkLogger.logV1(JSON.parse(l.node), PKMessageType.SUCCESS);
+        pkLogger.logV1(`Signature:`, PKMessageType.SUCCESS);
+        pkLogger.logV1(l.signature, PKMessageType.SUCCESS);
       })
     }
   }),

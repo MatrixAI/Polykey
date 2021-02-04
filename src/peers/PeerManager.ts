@@ -1,6 +1,7 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
+import { LinkClaimIdentity, LinkInfo } from '../links';
 import PeerDHT from './peer-dht/PeerDHT';
 import KeyManager from '../keys/KeyManager';
 import PeerServer from './peer-connection/PeerServer';
@@ -9,9 +10,7 @@ import { JSONMapReplacer, JSONMapReviver } from '../utils';
 import PeerConnection from './peer-connection/PeerConnection';
 import { PeerInfo, PeerInfoReadOnly } from '../peers/PeerInfo';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
-import { KeybaseIdentityProvider } from './identity-provider/default';
 import PublicKeyInfrastructure from '../peers/pki/PublicKeyInfrastructure';
-import IdentityProviderPlugin, { PolykeyProof } from './identity-provider/IdentityProvider';
 
 class PeerManager {
   private fileSystem: typeof fs;
@@ -33,7 +32,6 @@ class PeerManager {
 
   private keyManager: KeyManager;
   multicastBroadcaster: MulticastBroadcaster;
-  identityProviderPlugins: Map<string, IdentityProviderPlugin> = new Map;
 
   // Peer connections
   peerServer: PeerServer;
@@ -48,7 +46,6 @@ class PeerManager {
     fileSystem: typeof fs,
     keyManager: KeyManager,
     peerInfo?: PeerInfo,
-    identityProviderPlugins: IdentityProviderPlugin[] = [],
   ) {
     this.fileSystem = fileSystem;
 
@@ -73,11 +70,6 @@ class PeerManager {
     } else if (this.keyManager.getKeyPair().publicKey && !this.peerInfo) {
       this.peerInfo = new PeerInfo('', this.keyManager.getPublicKeyString());
     }
-
-    // add default identity provider plugins
-    this.identityProviderPlugins.set(KeybaseIdentityProvider.name, KeybaseIdentityProvider);
-    // add given identity provider plugins
-    identityProviderPlugins.forEach(idP => this.identityProviderPlugins.set(idP.name.toLowerCase(), idP))
 
     this.multicastBroadcaster = new MulticastBroadcaster(
       (() => this.peerInfo).bind(this),
@@ -306,45 +298,61 @@ class PeerManager {
   }
 
   /**
-   * Prove this keynode on an identity provider
-   * @param identityPluginName The name of the identity plugin to be used (e.g. keybase or signal)
-   * @param identifier Any unique identifying string (e.g. @github/john-smith or a phone number)
+   * Retrieve all the link claims for which a particular peer is linked to
+   * @param peerId The id of the peer for which link claims are to be found
    */
-  async proveKeynode(identityPluginName: string, identifier: string): Promise<PolykeyProof> {
-    // parse with regex
-    const plugin = this.identityProviderPlugins.get(identityPluginName.toLowerCase())
-    if (!plugin) {
-      throw Error(`no plugin found of the name '${identityPluginName}'`)
+  // TODO: make it follow second degree claims (perhaps as an async generator).
+  // at the moment it only retrieves the link claims on the single requested keynode
+  async findLinkClaims(peerId: string): Promise<LinkInfo[]> {
+    if (this.peerInfo.id == peerId) {
+      return this.peerInfo?.linkInfoList ?? []
+    } else {
+      const peerInfo = this.getPeer(peerId)
+      if (!peerInfo) {
+        throw Error(`peer does not exist in peer store for peerId: ${peerId}`)
+      }
+      return peerInfo?.linkInfoList ?? []
     }
-
-    const peerInfoReadOnly = new PeerInfoReadOnly(this.peerInfo.toX509Pem(this.keyManager.getPrivateKey()))
-    return await plugin.proveKeynode(identifier, peerInfoReadOnly)
   }
 
+  async getLinkInfos(id: string): Promise<LinkInfo[]> {
+    return this.getPeer(id)?.linkInfoList ?? []
+  }
+  // TODO: find a better home for these next two methods (i.e. makeLinkClaimIdentity and verifyLinkClaim) or leave them?
   /**
-   * Finds all keynodes advertised by a given gestalt given that gestalt's unique identifying string
-   * @param identifier Any unique identifying string (e.g. @github/john-smith or a phone number)
-   * @param timeout The timeout after which the trying is stopped
+   * Create a link claim identity that claims this keynode and an already authenticated
+   * provider and identity
+   * @param providerKey The key to identify the already authenticated provider
+   * @param identityKey The key that identifies a particular identity on the provider
    */
-  async findGestaltKeynodes(identifier: string, timeout?: number): Promise<string[]> {
-    // parse with regex
-    const tasks: Promise<PeerInfoReadOnly[]>[] = []
-
-    for (const idP of this.identityProviderPlugins.values()) {
-      tasks.push(idP.determineKeynodes(identifier))
+  async makeLinkClaimIdentity(providerKey: string, identityKey: string): Promise<LinkClaimIdentity> {
+    const toBeSigned = {
+      node: JSON.stringify(this.peerInfo.publicKey),
+      identity: identityKey,
+      provider: providerKey,
+      dateIssued: (new Date(Date.now())).toISOString(),
     }
-
-    const peerInfoList = await Promise.race(tasks);
-
-    if (!peerInfoList) {
-      throw Error('could not find any keynodes advertised by identifier');
+    const signature = await this.keyManager.signData((JSON as any).canonicalize(toBeSigned))
+    const linkClaim: LinkClaimIdentity = {
+      type: 'identity',
+      ...toBeSigned,
+      signature,
     }
-
-    // add all found peers to the peer store if they are not in there already
-    peerInfoList.forEach(p => { try { this.addPeer(p, `${identifier}-${p.id}`) } catch { } })
-
-    // return a list of peer id's found
-    return peerInfoList.map(p => p.id)
+    return linkClaim
+  }
+  // this method is for the gestalt graph to make sure what it is claiming is verified
+  // i.e. the a signature from the public key attached to it is valid
+  async verifyLinkClaim(linkClaim: LinkClaimIdentity): Promise<boolean> {
+    const linkClaimIdentity = linkClaim as LinkClaimIdentity
+    const toBeVerified = {
+      node: linkClaimIdentity.node,
+      identity: linkClaimIdentity.identity,
+      provider: linkClaimIdentity.provider,
+      dateIssued: linkClaimIdentity.dateIssued,
+    }
+    const signature = linkClaimIdentity.signature
+    const publicKey = PeerInfo.formatPublicKey(JSON.stringify(linkClaimIdentity.node))
+    return await this.keyManager.verifyData((JSON as any).canonicalize(toBeVerified), signature, publicKey)
   }
 
   ///////////////////////

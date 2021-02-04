@@ -1,8 +1,11 @@
 import crypto from 'crypto';
 import parseUrl from 'parse-url';
 import { AddressInfo } from 'net';
+import { LinkInfo, LinkInfoIdentity } from '../links';
 import { md, pki } from 'node-forge';
+import { gestaltKey, GestaltKey } from '../gestalts';
 import * as agentInterface from '../../proto/js/Agent_pb';
+import { JSONMapReplacer, JSONMapReviver } from '../utils';
 
 class Address {
   host: string;
@@ -66,7 +69,6 @@ class Address {
 // as we have the ability to change its information and re-sign it as the owner
 // of the private key it describes.
 class PeerInfo {
-  private pemString?: string
   private internalAlias: string;
   public get alias(): string {
     return this.internalAlias;
@@ -118,21 +120,26 @@ class PeerInfo {
   }
 
   // List of social proofs made by this peer
-  private internalProofList: {
-    digitalIdentityLink: string;
-    proofLink: string;
-  }[] = [];
-  public get proofList(): {
-    digitalIdentityLink: string;
-    proofLink: string;
-  }[] {
-    return this.internalProofList;
+  private internalLinkInfoMap: Map<GestaltKey, LinkInfo> = new Map;
+  public get linkInfoList(): LinkInfo[] {
+    return Array.from(this.internalLinkInfoMap.values());
   }
-  public set proofList(value: {
-    digitalIdentityLink: string;
-    proofLink: string;
-  }[]) {
-    this.internalProofList = value;
+  public set linkInfoList(values: LinkInfo[]) {
+    this.internalLinkInfoMap = new Map
+    values.forEach(li => this.publishLinkInfo(li))
+  }
+  publishLinkInfo(linkInfo: LinkInfo) {
+    let provider: string | undefined = undefined
+    try {
+      provider = (linkInfo as LinkInfoIdentity).provider
+    } catch (error) {
+      // no throw in case linkInfo is LinkInfoNode
+    }
+    const gKey = gestaltKey(linkInfo.key, provider)
+    this.internalLinkInfoMap.set(gKey, linkInfo)
+  }
+  getLinkInfo(gKey: GestaltKey): LinkInfo | undefined {
+    return this.internalLinkInfoMap.get(gKey)
   }
 
   constructor(
@@ -141,11 +148,7 @@ class PeerInfo {
     rootPublicKey?: string,
     peerAddress?: string,
     apiAddress?: string,
-    proofList?: {
-      digitalIdentityLink: string
-      proofLink: string;
-    }[],
-
+    linkInfoList?: LinkInfo[],
   ) {
     this.internalAlias = alias
     this.internalPublicKey = PeerInfo.formatPublicKey(publicKey);
@@ -159,8 +162,9 @@ class PeerInfo {
     if (apiAddress) {
       this.internalApiAddress = Address.parse(apiAddress);
     }
-    if (proofList) {
-      this.internalProofList.push(...proofList)
+    if (linkInfoList) {
+      this.internalLinkInfoMap = new Map
+      linkInfoList.forEach(li => this.publishLinkInfo(li))
     }
   }
 
@@ -190,7 +194,7 @@ class PeerInfo {
       this.rootPublicKey,
       this.internalPeerAddress?.toString(),
       this.internalApiAddress?.toString(),
-      this.internalProofList,
+      this.linkInfoList,
     );
   }
 
@@ -229,9 +233,9 @@ class PeerInfo {
         value: this.internalApiAddress?.toString() ?? ''
       },
       {
-        // proof list
+        // link claim identity list
         type: '1.3.1.4.5',
-        value: JSON.stringify(this.internalProofList)
+        value: JSON.stringify(this.internalLinkInfoMap, JSONMapReplacer)
       }
     ];
 
@@ -290,18 +294,15 @@ class PeerInfo {
     const rootPublicKey: string = attributes.get('1.3.1.4.2') ?? ''
     const peerAddress: string = attributes.get('1.3.1.4.3') ?? ''
     const apiAddress: string = attributes.get('1.3.1.4.4') ?? ''
-    const proofListString: string = attributes.get('1.3.1.4.5') ?? '[]'
-    const proofList: {
-      digitalIdentityLink: string
-      proofLink: string;
-    }[] = JSON.parse(proofListString)
+    const linkInfoListString: string = attributes.get('1.3.1.4.5')
+    const linkInfoList: Map<GestaltKey, LinkInfo> = JSON.parse(linkInfoListString, JSONMapReviver) ?? new Map
     return {
       alias,
       publicKey: pki.publicKeyToPem(cert.publicKey),
       rootPublicKey,
       peerAddress,
       apiAddress,
-      proofList
+      linkInfoList
     }
   }
 
@@ -313,7 +314,7 @@ class PeerInfo {
       parsedCert.rootPublicKey,
       parsedCert.peerAddress,
       parsedCert.apiAddress,
-      parsedCert.proofList
+      Array.from(parsedCert.linkInfoList.values())
     )
   }
 }
@@ -349,16 +350,11 @@ class PeerInfoReadOnly extends PeerInfo {
   public set rootPublicKey(v: string) {
     throw Error('cannot set rootPublicKey on a readonly peer info')
   }
-  public get proofList(): {
-    digitalIdentityLink: string;
-    proofLink: string;
-  }[] {
-    return super.proofList
+  public get linkInfoList(): LinkInfo[] {
+    // underlying array should be immutable
+    return [...super.linkInfoList]
   }
-  public set proofList(v: {
-    digitalIdentityLink: string;
-    proofLink: string;
-  }[]) {
+  public set linkInfoList(v: LinkInfo[]) {
     throw Error('cannot set proofList on a readonly peer info')
   }
 
@@ -422,7 +418,7 @@ class PeerInfoReadOnly extends PeerInfo {
       parsedCert.rootPublicKey,
       parsedCert.peerAddress,
       parsedCert.apiAddress,
-      parsedCert.proofList
+      Array.from(parsedCert.linkInfoList.values())
     )
     this.internalPem = pem
     this.signedAlias = parsedCert.alias

@@ -15,6 +15,50 @@ function deserialize_agentInterface_AgentStatusMessage(buffer_arg) {
   return Agent_pb.AgentStatusMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_AugmentKeynodeReply(arg) {
+  if (!(arg instanceof Agent_pb.AugmentKeynodeReply)) {
+    throw new Error('Expected argument of type agentInterface.AugmentKeynodeReply');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_AugmentKeynodeReply(buffer_arg) {
+  return Agent_pb.AugmentKeynodeReply.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_AugmentKeynodeRequest(arg) {
+  if (!(arg instanceof Agent_pb.AugmentKeynodeRequest)) {
+    throw new Error('Expected argument of type agentInterface.AugmentKeynodeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_AugmentKeynodeRequest(buffer_arg) {
+  return Agent_pb.AugmentKeynodeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_AuthenticateProviderReply(arg) {
+  if (!(arg instanceof Agent_pb.AuthenticateProviderReply)) {
+    throw new Error('Expected argument of type agentInterface.AuthenticateProviderReply');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_AuthenticateProviderReply(buffer_arg) {
+  return Agent_pb.AuthenticateProviderReply.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_AuthenticateProviderRequest(arg) {
+  if (!(arg instanceof Agent_pb.AuthenticateProviderRequest)) {
+    throw new Error('Expected argument of type agentInterface.AuthenticateProviderRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_AuthenticateProviderRequest(buffer_arg) {
+  return Agent_pb.AuthenticateProviderRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_BooleanMessage(arg) {
   if (!(arg instanceof Agent_pb.BooleanMessage)) {
     throw new Error('Expected argument of type agentInterface.BooleanMessage');
@@ -92,15 +136,48 @@ function deserialize_agentInterface_EncryptFileMessage(buffer_arg) {
   return Agent_pb.EncryptFileMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_GestaltIdentityMessage(arg) {
-  if (!(arg instanceof Agent_pb.GestaltIdentityMessage)) {
-    throw new Error('Expected argument of type agentInterface.GestaltIdentityMessage');
+function serialize_agentInterface_GestaltListMessage(arg) {
+  if (!(arg instanceof Agent_pb.GestaltListMessage)) {
+    throw new Error('Expected argument of type agentInterface.GestaltListMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_GestaltIdentityMessage(buffer_arg) {
-  return Agent_pb.GestaltIdentityMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_agentInterface_GestaltListMessage(buffer_arg) {
+  return Agent_pb.GestaltListMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_GestaltMessage(arg) {
+  if (!(arg instanceof Agent_pb.GestaltMessage)) {
+    throw new Error('Expected argument of type agentInterface.GestaltMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_GestaltMessage(buffer_arg) {
+  return Agent_pb.GestaltMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_IdentityInfoMessage(arg) {
+  if (!(arg instanceof Agent_pb.IdentityInfoMessage)) {
+    throw new Error('Expected argument of type agentInterface.IdentityInfoMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_IdentityInfoMessage(buffer_arg) {
+  return Agent_pb.IdentityInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_IdentityMessage(arg) {
+  if (!(arg instanceof Agent_pb.IdentityMessage)) {
+    throw new Error('Expected argument of type agentInterface.IdentityMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_IdentityMessage(buffer_arg) {
+  return Agent_pb.IdentityMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_KeyPairMessage(arg) {
@@ -191,15 +268,15 @@ function deserialize_agentInterface_PeerInfoReadOnlyMessage(buffer_arg) {
   return Agent_pb.PeerInfoReadOnlyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_PolykeyProofMessage(arg) {
-  if (!(arg instanceof Agent_pb.PolykeyProofMessage)) {
-    throw new Error('Expected argument of type agentInterface.PolykeyProofMessage');
+function serialize_agentInterface_ProviderSearchMessage(arg) {
+  if (!(arg instanceof Agent_pb.ProviderSearchMessage)) {
+    throw new Error('Expected argument of type agentInterface.ProviderSearchMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_PolykeyProofMessage(buffer_arg) {
-  return Agent_pb.PolykeyProofMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_agentInterface_ProviderSearchMessage(buffer_arg) {
+  return Agent_pb.ProviderSearchMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_RecoverKeynodeMessage(arg) {
@@ -350,6 +427,28 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_StringMessage,
     responseDeserialize: deserialize_agentInterface_StringMessage,
   },
+  augmentKeynode: {
+    path: '/agentInterface.Agent/AugmentKeynode',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.AugmentKeynodeRequest,
+    responseType: Agent_pb.AugmentKeynodeReply,
+    requestSerialize: serialize_agentInterface_AugmentKeynodeRequest,
+    requestDeserialize: deserialize_agentInterface_AugmentKeynodeRequest,
+    responseSerialize: serialize_agentInterface_AugmentKeynodeReply,
+    responseDeserialize: deserialize_agentInterface_AugmentKeynodeReply,
+  },
+  authenticateProvider: {
+    path: '/agentInterface.Agent/AuthenticateProvider',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.AuthenticateProviderRequest,
+    responseType: Agent_pb.AuthenticateProviderReply,
+    requestSerialize: serialize_agentInterface_AuthenticateProviderRequest,
+    requestDeserialize: deserialize_agentInterface_AuthenticateProviderRequest,
+    responseSerialize: serialize_agentInterface_AuthenticateProviderReply,
+    responseDeserialize: deserialize_agentInterface_AuthenticateProviderReply,
+  },
   decryptFile: {
     path: '/agentInterface.Agent/DecryptFile',
     requestStream: false,
@@ -438,16 +537,82 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
-  findSocialPeer: {
-    path: '/agentInterface.Agent/FindSocialPeer',
+  getConnectedIdentityInfos: {
+    path: '/agentInterface.Agent/GetConnectedIdentityInfos',
+    requestStream: false,
+    responseStream: true,
+    requestType: Agent_pb.ProviderSearchMessage,
+    responseType: Agent_pb.IdentityInfoMessage,
+    requestSerialize: serialize_agentInterface_ProviderSearchMessage,
+    requestDeserialize: deserialize_agentInterface_ProviderSearchMessage,
+    responseSerialize: serialize_agentInterface_IdentityInfoMessage,
+    responseDeserialize: deserialize_agentInterface_IdentityInfoMessage,
+  },
+  discoverGestaltIdentity: {
+    path: '/agentInterface.Agent/DiscoverGestaltIdentity',
+    requestStream: false,
+    responseStream: true,
+    requestType: Agent_pb.IdentityMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_IdentityMessage,
+    requestDeserialize: deserialize_agentInterface_IdentityMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  getGestalts: {
+    path: '/agentInterface.Agent/GetGestalts',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.ContactPeerMessage,
-    responseType: Agent_pb.StringListMessage,
-    requestSerialize: serialize_agentInterface_ContactPeerMessage,
-    requestDeserialize: deserialize_agentInterface_ContactPeerMessage,
-    responseSerialize: serialize_agentInterface_StringListMessage,
-    responseDeserialize: deserialize_agentInterface_StringListMessage,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.GestaltListMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_GestaltListMessage,
+    responseDeserialize: deserialize_agentInterface_GestaltListMessage,
+  },
+  getGestaltByIdentity: {
+    path: '/agentInterface.Agent/GetGestaltByIdentity',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.IdentityMessage,
+    responseType: Agent_pb.GestaltMessage,
+    requestSerialize: serialize_agentInterface_IdentityMessage,
+    requestDeserialize: deserialize_agentInterface_IdentityMessage,
+    responseSerialize: serialize_agentInterface_GestaltMessage,
+    responseDeserialize: deserialize_agentInterface_GestaltMessage,
+  },
+  trustGestalt: {
+    path: '/agentInterface.Agent/TrustGestalt',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.StringMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_StringMessage,
+    requestDeserialize: deserialize_agentInterface_StringMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  untrustGestalt: {
+    path: '/agentInterface.Agent/UntrustGestalt',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.StringMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_StringMessage,
+    requestDeserialize: deserialize_agentInterface_StringMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  gestaltIsTrusted: {
+    path: '/agentInterface.Agent/GestaltIsTrusted',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.StringMessage,
+    responseType: Agent_pb.BooleanMessage,
+    requestSerialize: serialize_agentInterface_StringMessage,
+    requestDeserialize: deserialize_agentInterface_StringMessage,
+    responseSerialize: serialize_agentInterface_BooleanMessage,
+    responseDeserialize: deserialize_agentInterface_BooleanMessage,
   },
   getOAuthClient: {
     path: '/agentInterface.Agent/GetOAuthClient',
@@ -679,17 +844,6 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_ContactPeerMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
-  },
-  proveKeynode: {
-    path: '/agentInterface.Agent/ProveKeynode',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.GestaltIdentityMessage,
-    responseType: Agent_pb.PolykeyProofMessage,
-    requestSerialize: serialize_agentInterface_GestaltIdentityMessage,
-    requestDeserialize: deserialize_agentInterface_GestaltIdentityMessage,
-    responseSerialize: serialize_agentInterface_PolykeyProofMessage,
-    responseDeserialize: deserialize_agentInterface_PolykeyProofMessage,
   },
   pullVault: {
     path: '/agentInterface.Agent/PullVault',

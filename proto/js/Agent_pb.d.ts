@@ -88,28 +88,97 @@ export namespace StringListMessage {
     }
 }
 
-export class DIProofMessage extends jspb.Message { 
-    getDigitalIdentityLink(): string;
-    setDigitalIdentityLink(value: string): DIProofMessage;
+export class LinkInfoIdentity extends jspb.Message { 
+    getType(): string;
+    setType(value: string): LinkInfoIdentity;
 
-    getProofLink(): string;
-    setProofLink(value: string): DIProofMessage;
+    getNode(): string;
+    setNode(value: string): LinkInfoIdentity;
+
+    getIdentity(): string;
+    setIdentity(value: string): LinkInfoIdentity;
+
+    getProvider(): string;
+    setProvider(value: string): LinkInfoIdentity;
+
+    getDateissued(): string;
+    setDateissued(value: string): LinkInfoIdentity;
+
+    getSignature(): string;
+    setSignature(value: string): LinkInfoIdentity;
+
+    getKey(): string;
+    setKey(value: string): LinkInfoIdentity;
+
+    getUrl(): string;
+    setUrl(value: string): LinkInfoIdentity;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): DIProofMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: DIProofMessage): DIProofMessage.AsObject;
+    toObject(includeInstance?: boolean): LinkInfoIdentity.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkInfoIdentity): LinkInfoIdentity.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: DIProofMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): DIProofMessage;
-    static deserializeBinaryFromReader(message: DIProofMessage, reader: jspb.BinaryReader): DIProofMessage;
+    static serializeBinaryToWriter(message: LinkInfoIdentity, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkInfoIdentity;
+    static deserializeBinaryFromReader(message: LinkInfoIdentity, reader: jspb.BinaryReader): LinkInfoIdentity;
 }
 
-export namespace DIProofMessage {
+export namespace LinkInfoIdentity {
     export type AsObject = {
-        digitalIdentityLink: string,
-        proofLink: string,
+        type: string,
+        node: string,
+        identity: string,
+        provider: string,
+        dateissued: string,
+        signature: string,
+        key: string,
+        url: string,
+    }
+}
+
+export class LinkInfoNode extends jspb.Message { 
+    getType(): string;
+    setType(value: string): LinkInfoNode;
+
+    getNode1(): string;
+    setNode1(value: string): LinkInfoNode;
+
+    getNode2(): string;
+    setNode2(value: string): LinkInfoNode;
+
+    getDateissued(): string;
+    setDateissued(value: string): LinkInfoNode;
+
+    getSignature(): string;
+    setSignature(value: string): LinkInfoNode;
+
+    getKey(): string;
+    setKey(value: string): LinkInfoNode;
+
+    getUrl(): string;
+    setUrl(value: string): LinkInfoNode;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkInfoNode.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkInfoNode): LinkInfoNode.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkInfoNode, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkInfoNode;
+    static deserializeBinaryFromReader(message: LinkInfoNode, reader: jspb.BinaryReader): LinkInfoNode;
+}
+
+export namespace LinkInfoNode {
+    export type AsObject = {
+        type: string,
+        node1: string,
+        node2: string,
+        dateissued: string,
+        signature: string,
+        key: string,
+        url: string,
     }
 }
 
@@ -132,10 +201,10 @@ export class PeerInfoMessage extends jspb.Message {
     getApiAddress(): string;
     setApiAddress(value: string): PeerInfoMessage;
 
-    clearProofListList(): void;
-    getProofListList(): Array<DIProofMessage>;
-    setProofListList(value: Array<DIProofMessage>): PeerInfoMessage;
-    addProofList(value?: DIProofMessage, index?: number): DIProofMessage;
+    clearLinkInfoList(): void;
+    getLinkInfoList(): Array<LinkInfoIdentity>;
+    setLinkInfoList(value: Array<LinkInfoIdentity>): PeerInfoMessage;
+    addLinkInfo(value?: LinkInfoIdentity, index?: number): LinkInfoIdentity;
 
     getPem(): string;
     setPem(value: string): PeerInfoMessage;
@@ -159,7 +228,7 @@ export namespace PeerInfoMessage {
         rootPublicKey: string,
         peerAddress: string,
         apiAddress: string,
-        proofListList: Array<DIProofMessage.AsObject>,
+        linkInfoList: Array<LinkInfoIdentity.AsObject>,
         pem: string,
     }
 }
@@ -830,6 +899,235 @@ export namespace RecoverKeynodeMessage {
         mnemonic: string,
         userId: string,
         passphrase: string,
+    }
+}
+
+export class AuthenticateProviderRequest extends jspb.Message { 
+    getProviderKey(): string;
+    setProviderKey(value: string): AuthenticateProviderRequest;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AuthenticateProviderRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: AuthenticateProviderRequest): AuthenticateProviderRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AuthenticateProviderRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AuthenticateProviderRequest;
+    static deserializeBinaryFromReader(message: AuthenticateProviderRequest, reader: jspb.BinaryReader): AuthenticateProviderRequest;
+}
+
+export namespace AuthenticateProviderRequest {
+    export type AsObject = {
+        providerKey: string,
+    }
+}
+
+export class AuthenticateProviderReply extends jspb.Message { 
+    getUserCode(): string;
+    setUserCode(value: string): AuthenticateProviderReply;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AuthenticateProviderReply.AsObject;
+    static toObject(includeInstance: boolean, msg: AuthenticateProviderReply): AuthenticateProviderReply.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AuthenticateProviderReply, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AuthenticateProviderReply;
+    static deserializeBinaryFromReader(message: AuthenticateProviderReply, reader: jspb.BinaryReader): AuthenticateProviderReply;
+}
+
+export namespace AuthenticateProviderReply {
+    export type AsObject = {
+        userCode: string,
+    }
+}
+
+export class AugmentKeynodeRequest extends jspb.Message { 
+    getProviderKey(): string;
+    setProviderKey(value: string): AugmentKeynodeRequest;
+
+    getIdentityKey(): string;
+    setIdentityKey(value: string): AugmentKeynodeRequest;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AugmentKeynodeRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: AugmentKeynodeRequest): AugmentKeynodeRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AugmentKeynodeRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AugmentKeynodeRequest;
+    static deserializeBinaryFromReader(message: AugmentKeynodeRequest, reader: jspb.BinaryReader): AugmentKeynodeRequest;
+}
+
+export namespace AugmentKeynodeRequest {
+    export type AsObject = {
+        providerKey: string,
+        identityKey: string,
+    }
+}
+
+export class AugmentKeynodeReply extends jspb.Message { 
+    getUrl(): string;
+    setUrl(value: string): AugmentKeynodeReply;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AugmentKeynodeReply.AsObject;
+    static toObject(includeInstance: boolean, msg: AugmentKeynodeReply): AugmentKeynodeReply.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AugmentKeynodeReply, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AugmentKeynodeReply;
+    static deserializeBinaryFromReader(message: AugmentKeynodeReply, reader: jspb.BinaryReader): AugmentKeynodeReply;
+}
+
+export namespace AugmentKeynodeReply {
+    export type AsObject = {
+        url: string,
+    }
+}
+
+export class GestaltMessage extends jspb.Message { 
+    getGestaltMatrix(): string;
+    setGestaltMatrix(value: string): GestaltMessage;
+
+    getGestaltNodes(): string;
+    setGestaltNodes(value: string): GestaltMessage;
+
+    getIdentities(): string;
+    setIdentities(value: string): GestaltMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GestaltMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GestaltMessage): GestaltMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GestaltMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GestaltMessage;
+    static deserializeBinaryFromReader(message: GestaltMessage, reader: jspb.BinaryReader): GestaltMessage;
+}
+
+export namespace GestaltMessage {
+    export type AsObject = {
+        gestaltMatrix: string,
+        gestaltNodes: string,
+        identities: string,
+    }
+}
+
+export class GestaltListMessage extends jspb.Message { 
+    clearGestaltMessageList(): void;
+    getGestaltMessageList(): Array<GestaltMessage>;
+    setGestaltMessageList(value: Array<GestaltMessage>): GestaltListMessage;
+    addGestaltMessage(value?: GestaltMessage, index?: number): GestaltMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GestaltListMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GestaltListMessage): GestaltListMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GestaltListMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GestaltListMessage;
+    static deserializeBinaryFromReader(message: GestaltListMessage, reader: jspb.BinaryReader): GestaltListMessage;
+}
+
+export namespace GestaltListMessage {
+    export type AsObject = {
+        gestaltMessageList: Array<GestaltMessage.AsObject>,
+    }
+}
+
+export class ProviderSearchMessage extends jspb.Message { 
+    getProviderKey(): string;
+    setProviderKey(value: string): ProviderSearchMessage;
+
+    clearSearchTermList(): void;
+    getSearchTermList(): Array<string>;
+    setSearchTermList(value: Array<string>): ProviderSearchMessage;
+    addSearchTerm(value: string, index?: number): string;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ProviderSearchMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ProviderSearchMessage): ProviderSearchMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ProviderSearchMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ProviderSearchMessage;
+    static deserializeBinaryFromReader(message: ProviderSearchMessage, reader: jspb.BinaryReader): ProviderSearchMessage;
+}
+
+export namespace ProviderSearchMessage {
+    export type AsObject = {
+        providerKey: string,
+        searchTermList: Array<string>,
+    }
+}
+
+export class IdentityInfoMessage extends jspb.Message { 
+    getKey(): string;
+    setKey(value: string): IdentityInfoMessage;
+
+    getProvider(): string;
+    setProvider(value: string): IdentityInfoMessage;
+
+    getName(): string;
+    setName(value: string): IdentityInfoMessage;
+
+    getEmail(): string;
+    setEmail(value: string): IdentityInfoMessage;
+
+    getUrl(): string;
+    setUrl(value: string): IdentityInfoMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): IdentityInfoMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: IdentityInfoMessage): IdentityInfoMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: IdentityInfoMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): IdentityInfoMessage;
+    static deserializeBinaryFromReader(message: IdentityInfoMessage, reader: jspb.BinaryReader): IdentityInfoMessage;
+}
+
+export namespace IdentityInfoMessage {
+    export type AsObject = {
+        key: string,
+        provider: string,
+        name: string,
+        email: string,
+        url: string,
+    }
+}
+
+export class IdentityMessage extends jspb.Message { 
+    getKey(): string;
+    setKey(value: string): IdentityMessage;
+
+    getProviderKey(): string;
+    setProviderKey(value: string): IdentityMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): IdentityMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: IdentityMessage): IdentityMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: IdentityMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): IdentityMessage;
+    static deserializeBinaryFromReader(message: IdentityMessage, reader: jspb.BinaryReader): IdentityMessage;
+}
+
+export namespace IdentityMessage {
+    export type AsObject = {
+        key: string,
+        providerKey: string,
     }
 }
 

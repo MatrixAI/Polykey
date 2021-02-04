@@ -2,11 +2,17 @@ import os from 'os';
 import fs from 'fs';
 import HttpApi from './api/HttpApi';
 import KeyManager from './keys/KeyManager';
-import PeerManager from './peers/PeerManager';
-import VaultManager from './vaults/VaultManager';
-import PolykeyAgent from './agent/PolykeyAgent';
+import { LinkInfoIdentity } from './links';
 import { promisifyGrpc } from './bin/utils';
+import PeerManager from './peers/PeerManager';
+import PolykeyAgent from './agent/PolykeyAgent';
+import VaultManager from './vaults/VaultManager';
+import GestaltGraph from './gestalts/GestaltGraph';
+import GestaltTrust from './gestalts/GestaltTrust';
+import { ProviderManager, ProviderTokens } from './social';
+import { GitHubProvider } from './social/providers/github';
 import { PeerInfo, PeerInfoReadOnly, Address } from './peers/PeerInfo';
+(JSON as any).canonicalize = require('canonicalize');
 
 class Polykey {
   polykeyPath: string;
@@ -15,6 +21,9 @@ class Polykey {
   keyManager: KeyManager;
   peerManager: PeerManager;
   httpApi: HttpApi;
+  providerManager: ProviderManager
+  gestaltGraph: GestaltGraph;
+  gestaltTrust: GestaltTrust;
 
   constructor(
     polykeyPath = `${os.homedir()}/.polykey`,
@@ -71,10 +80,57 @@ class Polykey {
         await vault.deleteSecret(secretName);
       }).bind(this),
     );
+
+
+    ////////////
+    // Social //
+    ////////////
+    // TODO: this stuff is still just a WIP, so need to fix any hardcoded values after demo
+    this.providerManager = new ProviderManager([
+      new GitHubProvider(new ProviderTokens(this.polykeyPath, 'github.com'), 'ca5c4c520da868387c52')
+    ])
+
+    this.gestaltTrust = new GestaltTrust()
+    this.gestaltGraph = new GestaltGraph(
+      this.gestaltTrust,
+      this.peerManager,
+      this.providerManager,
+      this.peerManager.verifyLinkClaim.bind(this.peerManager),
+    )
   }
 
   // helper methods
+  async loadGestaltGraph() {
+    try {
+      // get own username
+      const gitHubProvider = this.providerManager.getProvider('github.com')
+      const identityKey = await gitHubProvider.getIdentityKey()
+      // get identity details
+      const identityInfo = await gitHubProvider.getIdentityInfo(identityKey)
+      // set initials on the gestalt graph
+      this.gestaltGraph.setNode({ id: this.peerManager.peerInfo.id })
+      const linkInfoList = this.peerManager.peerInfo.linkInfoList
+      const linkInfo = linkInfoList.length != 0 ? linkInfoList[0] : undefined
+      if (identityInfo && linkInfo) {
+        console.log('setting gestalt graph');
+        this.gestaltGraph.setLinkIdentity(
+          linkInfo as LinkInfoIdentity,
+          { id: this.peerManager.peerInfo.id },
+          identityInfo
+        )
+        console.log('gestalt graph has been loaded');
+      } else {
+        console.log('gestalt could not be loaded because either identityInfo or linkInfo was undefined');
+        console.log('identityInfo: ', identityInfo);
+        console.log('linkInfo: ', linkInfo);
+      }
+    } catch (error) {
+      // no throw
+      console.log(error);
+    }
+  }
   async startAllServices() {
+    this.loadGestaltGraph()
     await this.peerManager.start()
     await this.httpApi.start()
   }

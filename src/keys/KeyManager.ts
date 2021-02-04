@@ -284,9 +284,15 @@ class KeyManager {
     } else {
       const encryptedPrivateKey = this.primaryKeyPair.encryptedPrivateKey;
       if (!encryptedPrivateKey) {
-        throw Error('private key has not been read from file yet')
+        // Load keys if they were provided
+        if (this.metadata.privateKeyPath && this.metadata.publicKeyPath) {
+          // Load files into memory
+          this.loadKeyPair(this.metadata.publicKeyPath, this.metadata.privateKeyPath);
+        } else {
+          throw Error('keypair path is not defined')
+        }
       }
-      this.primaryKeyPair.privateKey = pki.decryptRsaPrivateKey(encryptedPrivateKey, passphrase) as pki.rsa.PrivateKey
+      this.primaryKeyPair.privateKey = pki.decryptRsaPrivateKey(encryptedPrivateKey!, passphrase) as pki.rsa.PrivateKey
     }
 
     // set a new timeout
