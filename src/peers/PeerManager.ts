@@ -316,8 +316,10 @@ class PeerManager {
   }
 
   async getLinkInfos(id: string): Promise<LinkInfo[]> {
-    return this.getPeer(id)?.linkInfoList ?? []
+Bu    const targetPeerInfo = (await this.peerDHT.findPeer(id))?.targetPeerInfo
+    return targetPeerInfo?.linkInfoList ?? []
   }
+
   // TODO: find a better home for these next two methods (i.e. makeLinkClaimIdentity and verifyLinkClaim) or leave them?
   /**
    * Create a link claim identity that claims this keynode and an already authenticated
