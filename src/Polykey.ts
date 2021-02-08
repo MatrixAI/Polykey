@@ -12,6 +12,7 @@ import GestaltTrust from './gestalts/GestaltTrust';
 import { ProviderManager, ProviderTokens } from './social';
 import { GitHubProvider } from './social/providers/github';
 import { PeerInfo, PeerInfoReadOnly, Address } from './peers/PeerInfo';
+import Logger from '@matrixai/js-logger';
 (JSON as any).canonicalize = require('canonicalize');
 
 class Polykey {
@@ -24,6 +25,7 @@ class Polykey {
   providerManager: ProviderManager;
   gestaltGraph: GestaltGraph;
   gestaltTrust: GestaltTrust;
+  logger: Logger;
 
   constructor(
     polykeyPath = `${os.homedir()}/.polykey`,
@@ -31,17 +33,30 @@ class Polykey {
     keyManager?: KeyManager,
     peerManager?: PeerManager,
     vaultManager?: VaultManager,
+    logger?: Logger,
   ) {
     this.polykeyPath = polykeyPath;
 
+    this.logger = logger ?? new Logger();
+
     // Set key manager
     this.keyManager =
-      keyManager ?? new KeyManager(this.polykeyPath, fileSystem);
+      keyManager ??
+      new KeyManager(
+        this.polykeyPath,
+        fileSystem,
+        this.logger.getLogger('KeyManager'),
+      );
 
     // Initialize peer store and peer discovery classes
     this.peerManager =
       peerManager ??
-      new PeerManager(this.polykeyPath, fileSystem, this.keyManager);
+      new PeerManager(
+        this.polykeyPath,
+        fileSystem,
+        this.keyManager,
+        this.logger.getLogger('PeerManager'),
+      );
 
     // Set or Initialize vaultManager
     this.vaultManager =
@@ -52,6 +67,7 @@ class Polykey {
         this.keyManager,
         this.peerManager.connectToPeer.bind(this.peerManager),
         this.peerManager.setGitHandlers.bind(this.peerManager),
+        this.logger.getLogger('VaultManager'),
       );
 
     // start the api
@@ -84,6 +100,7 @@ class Polykey {
         const vault = this.vaultManager.getVault(vaultName);
         await vault.deleteSecret(secretName);
       }).bind(this),
+      this.logger.getLogger('HTTPAPI'),
     );
 
     ////////////
@@ -94,6 +111,7 @@ class Polykey {
       new GitHubProvider(
         new ProviderTokens(this.polykeyPath, 'github.com'),
         'ca5c4c520da868387c52',
+        this.logger.getLogger('GithubProvider'),
       ),
     ]);
 
@@ -103,6 +121,7 @@ class Polykey {
       this.peerManager,
       this.providerManager,
       this.peerManager.verifyLinkClaim.bind(this.peerManager),
+      this.logger.getLogger('GestaltGraph'),
     );
   }
 
@@ -119,23 +138,26 @@ class Polykey {
       const linkInfoList = this.peerManager.peerInfo.linkInfoList;
       const linkInfo = linkInfoList.length != 0 ? linkInfoList[0] : undefined;
       if (identityInfo && linkInfo) {
-        console.log('setting gestalt graph');
+        this.logger.info('Setting gestalt graph');
+        // console.log('setting gestalt graph');
         this.gestaltGraph.setLinkIdentity(
           linkInfo as LinkInfoIdentity,
           { id: this.peerManager.peerInfo.id },
           identityInfo,
         );
-        console.log('gestalt graph has been loaded');
+        this.logger.info('Gestalt graph has been loaded');
+        // console.log('gestalt graph has been loaded');
       } else {
-        console.log(
-          'gestalt could not be loaded because either identityInfo or linkInfo was undefined',
+        this.logger.error(
+          'Gestalt could not be loaded because either identityInfo or linkInfo was undefined',
         );
-        console.log('identityInfo: ', identityInfo);
-        console.log('linkInfo: ', linkInfo);
+        this.logger.error('identityInfo: ' + identityInfo?.toString());
+        this.logger.error('linkInfo: ' + linkInfo?.toString());
       }
     } catch (error) {
       // no throw
-      console.log(error);
+      this.logger.error(error);
+      // console.log(error);
     }
   }
   async startAllServices() {

@@ -7,6 +7,7 @@ import * as peer from '../../../proto/js/Peer_pb';
 import { PeerClient } from '../../../proto/js/Peer_grpc_pb';
 import { PeerInfo, PeerInfoReadOnly, Address } from '../PeerInfo';
 import PublicKeyInfrastructure from '../pki/PublicKeyInfrastructure';
+import Logger from '@matrixai/js-logger';
 
 class PeerConnection {
   private peerId: string;
@@ -18,7 +19,7 @@ class PeerConnection {
     adjacentPeerInfo?: PeerInfoReadOnly | undefined;
     targetPeerInfo?: PeerInfoReadOnly | undefined;
   }>;
-
+  private logger: Logger;
   // private requestUDPHolePunchViaPeer: (
   //   targetPeerId: string,
   //   adjacentPeerId: string,
@@ -47,9 +48,12 @@ class PeerConnection {
       adjacentPeerInfo?: PeerInfoReadOnly | undefined;
       targetPeerInfo?: PeerInfoReadOnly | undefined;
     }>,
+    logger: Logger,
     // requestUDPHolePunchDirectly: (targetPeerId: string, timeout?: number) => Promise<Address>,
     // requestUDPHolePunchViaPeer: (targetPeerId: string, adjacentPeerId: string, timeout?: number) => Promise<Address>,
   ) {
+    this.logger = logger;
+
     this.peerId = peerId;
     this.pki = pki;
     this.getPeerInfo = getPeerInfo;
@@ -84,9 +88,9 @@ class PeerConnection {
     try {
       // try to create a direct connection
       if (address) {
-        console.log(
-          'connectingNode: connecting directly to address: ',
-          address.toString(),
+        this.logger.info(
+          'connectingNode: connecting directly to address: ' +
+            address.toString(),
         );
 
         const peerClient = new PeerClient(address.toString(), this.credentials);
@@ -115,7 +119,9 @@ class PeerConnection {
 
       // TODO: reenable connectHolePunchDirectly and connectHolePunchViaPeer and connectRelay after the demo
       // we only want relay
-      console.log('connectingPeer: found target peer: ', targetPeerInfo);
+      this.logger.info(
+        'connectingPeer: found target peer: ' + targetPeerInfo?.toString(),
+      );
 
       const promiseList: Promise<PeerClient>[] = [
         this.connectDirectly(targetPeerInfo?.peerAddress),

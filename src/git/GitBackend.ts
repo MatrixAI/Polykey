@@ -5,6 +5,7 @@ import { PassThrough } from 'readable-stream';
 import uploadPack from './upload-pack/uploadPack';
 import GitSideBand from './side-band/GitSideBand';
 import packObjects from './pack-objects/packObjects';
+import Logger from '@matrixai/js-logger';
 
 // Here is the protocol git outlines for sending pack files over http:
 // https://git-scm.com/docs/pack-protocol/2.17.0
@@ -21,14 +22,18 @@ class GitBackend {
   private getFileSystem: (repoName: string) => EncryptedFS;
   private getVaultNames: (peerId: string) => string[];
 
+  private logger: Logger;
+
   constructor(
     repoDirectoryPath: string,
     getFileSystem: (repoName: string) => any,
     getVaultNames: (peerId: string) => string[],
+    logger: Logger,
   ) {
     this.repoDirectoryPath = repoDirectoryPath;
     this.getFileSystem = getFileSystem;
     this.getVaultNames = getVaultNames;
+    this.logger = logger;
   }
 
   async handleInfoRequest(repoName: string): Promise<Buffer> {

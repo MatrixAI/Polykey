@@ -8,10 +8,12 @@ import { promisify } from 'util';
 import * as peerInterface from '../../../../proto/js/Peer_pb';
 import * as agentInterface from '../../../../proto/js/Agent_pb';
 import { PACKET_SYN, MIN_PACKET_SIZE, bufferToPacket, uint16 } from './utils';
+import Logger from '@matrixai/js-logger';
 
 class MTPServer extends EventEmitter {
   socket: dgram.Socket;
   closed: boolean;
+  private logger: Logger;
 
   // peerId -> connection
   private incomingConnections: Map<string, MTPConnection>;
@@ -20,6 +22,7 @@ class MTPServer extends EventEmitter {
   constructor(
     handleIncomingConnection: (conn: MTPConnection) => void,
     // tertiaryMessageHandler?: (message: Uint8Array, address: Address) => Promise<void>,
+    logger: Logger,
   ) {
     super();
     // this.tertiaryMessageHandler = tertiaryMessageHandler;
@@ -27,6 +30,8 @@ class MTPServer extends EventEmitter {
     this.on('connection', handleIncomingConnection);
 
     this.incomingConnections = new Map();
+
+    this.logger = logger;
   }
 
   // this is the udp address for the MTP server
@@ -117,15 +122,17 @@ class MTPServer extends EventEmitter {
     // since this could very well be a server on a private node, we need to have
     // keepalive packets to keep the address translation rule in the NAT layer
     if (message.toString() == 'keepalive') {
-      console.log('privateNode: got a keepalive packet, sending ok response');
+      this.logger.info(
+        'privateNode: got a keepalive packet, sending ok response',
+      );
       this.socket.send('okay-keepalive', rinfo.port, rinfo.address, (err) => {
         if (err) {
-          console.log(
-            'privateNode: sending okay-keepalive packet failed with error: ',
-            err,
+          this.logger.error(
+            'privateNode: sending okay-keepalive packet failed with error: ' +
+              err.toString(),
           );
         } else {
-          console.log('privateNode: sending okay-keepalive succeeded');
+          this.logger.info('privateNode: sending okay-keepalive succeeded');
         }
       });
     }
@@ -144,11 +151,11 @@ class MTPServer extends EventEmitter {
       (packet.getId() === PACKET_SYN
         ? uint16(packet.getConnection() + 1)
         : packet.getConnection());
-    console.log('privateNode: handleMessage id: ', id);
+    this.logger.info('privateNode: handleMessage id: ' + id.toString());
 
     const incomingConnection = this.incomingConnections.get(id);
     if (incomingConnection) {
-      console.log('privateNode: sending packet to an incoming connection');
+      this.logger.info('privateNode: sending packet to an incoming connection');
       return incomingConnection.recvIncoming(packet);
     }
     if (packet.getId() !== PACKET_SYN || this.closed) {
@@ -161,6 +168,7 @@ class MTPServer extends EventEmitter {
       rinfo.port,
       rinfo.address,
       this.socket,
+      this.logger.getLogger('MTPConnection'),
       packet,
     );
     this.incomingConnections.set(id, newConnection);

@@ -9,6 +9,7 @@ import { VirtualFS } from 'virtualfs';
 import { EncryptedFS } from 'encryptedfs';
 import { Pool, ModuleThread } from 'threads';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
+import Logger from '@matrixai/js-logger';
 
 type KeyManagerMetadata = {
   privateKeyPath: string | null;
@@ -35,6 +36,7 @@ class KeyManager {
   private derivedKeysPath: string;
   private useWebWorkers: boolean;
   private workerPool?: Pool<ModuleThread<KeyManagerWorker>>;
+  private logger: Logger;
 
   polykeyPath: string;
   private fileSystem: typeof fs;
@@ -73,6 +75,7 @@ class KeyManager {
   constructor(
     polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
+    logger: Logger,
     useWebWorkers = false,
     workerPool?: Pool<ModuleThread<KeyManagerWorker>>,
   ) {
@@ -80,6 +83,7 @@ class KeyManager {
     this.workerPool = workerPool;
     this.derivedKeys = new Map();
     this.fileSystem = fileSystem;
+    this.logger = logger;
 
     // Load key manager metadata
     this.polykeyPath = polykeyPath;

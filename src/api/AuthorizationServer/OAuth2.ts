@@ -1,4 +1,5 @@
 import passport from 'passport';
+import Logger from '@matrixai/js-logger';
 import * as utils from './utils';
 import * as config from './Config';
 import oauth2orize from 'oauth2orize';
@@ -10,10 +11,13 @@ class OAuth2 {
   private server: oauth2orize.OAuth2Server;
   private validation: Validation;
   private expiresIn = { expires_in: config.token.expiresIn };
-  constructor(publicKey: string, privateKey: string) {
+  private logger: Logger;
+
+  constructor(publicKey: string, privateKey: string, logger: Logger) {
     this.store = new OAuth2Store(publicKey, privateKey);
     this.server = oauth2orize.createServer();
     this.validation = new Validation(this.store);
+    this.logger = logger;
 
     /**
      * Exchange client credentials for access tokens.
@@ -68,7 +72,7 @@ class OAuth2 {
       );
       res.status(200).json({ audience: client.id, expires_in: expirationLeft });
     } catch (error) {
-      console.log(error);
+      this.logger.error(error.toString());
       res.status(500).json({ error: error.message });
     }
   }

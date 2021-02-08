@@ -11,9 +11,11 @@ import PeerConnection from './peer-connection/PeerConnection';
 import { PeerInfo, PeerInfoReadOnly } from '../peers/PeerInfo';
 import MulticastBroadcaster from '../peers/MulticastBroadcaster';
 import PublicKeyInfrastructure from '../peers/pki/PublicKeyInfrastructure';
+import Logger from '@matrixai/js-logger';
 
 class PeerManager {
   private fileSystem: typeof fs;
+  private logger: Logger;
 
   private peerInfoMetadataPath: string;
   private peerStoreMetadataPath: string;
@@ -45,9 +47,12 @@ class PeerManager {
     polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager: KeyManager,
+    logger: Logger,
     peerInfo?: PeerInfo,
   ) {
     this.fileSystem = fileSystem;
+
+    this.logger = logger;
 
     this.peerStore = new Map();
     this.peerAlias = new Map();
@@ -82,7 +87,10 @@ class PeerManager {
     ////////////
     // Server //
     ////////////
-    this.peerServer = new PeerServer(this);
+    this.peerServer = new PeerServer(
+      this,
+      this.logger.getLogger('Peer Server'),
+    );
     this.peerConnections = new Map();
 
     //////////////
@@ -112,6 +120,7 @@ class PeerManager {
       this.hasPeer.bind(this),
       this.updatePeer.bind(this),
       this.keyManager.getPrivateKey.bind(this.keyManager),
+      this.logger.getLogger('NATTraversal'),
     );
 
     /////////
@@ -400,6 +409,7 @@ class PeerManager {
       this.pki,
       this.getPeer.bind(this),
       this.peerDHT.findPeer.bind(this.peerDHT),
+      this.logger.getLogger('PeerConnection'),
       // this.natTraversal.requestUDPHolePunchDirectly.bind(this.natTraversal),
       // this.natTraversal.requestUDPHolePunchViaPeer.bind(this.natTraversal),
     );
