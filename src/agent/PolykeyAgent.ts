@@ -13,7 +13,8 @@ import { PeerInfoReadOnly } from '../peers/PeerInfo';
 import Polykey, { Address, KeyManager } from '../Polykey';
 import { TLSCredentials } from '../peers/pki/PublicKeyInfrastructure';
 import { AgentService, IAgentServer, AgentClient } from '../../proto/js/Agent_grpc_pb';
-import { LinkInfo, LinkInfoIdentity } from '../links';
+import { LinkInfo, LinkInfoIdentity, LinkInfoNode } from '../links';
+import { gestaltToProtobuf } from '@/gestalts';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;
@@ -500,11 +501,7 @@ class PolykeyAgent implements IAgentServer {
       if (!gestalt) {
         throw Error('gestalt was not found')
       }
-
-      const response = new agent.GestaltMessage
-      response.setGestaltMatrix(Buffer.from(JSON.stringify(gestalt.graph)).toString('base64'))
-      response.setIdentities(Buffer.from(JSON.stringify(gestalt.identities)).toString('base64'))
-      response.setGestaltNodes(Buffer.from(JSON.stringify(gestalt.nodes)).toString('base64'))
+      const response = gestaltToProtobuf(gestalt)
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -521,13 +518,7 @@ class PolykeyAgent implements IAgentServer {
       const gestaltList = this.pk.gestaltGraph.getGestalts();
       console.log(gestaltList);
 
-      const gestaltListMessage = gestaltList.map(g => {
-        const msg = new agent.GestaltMessage
-        msg.setGestaltMatrix(Buffer.from(JSON.stringify(g.graph)).toString('base64'))
-        msg.setIdentities(Buffer.from(JSON.stringify(g.identities)).toString('base64'))
-        msg.setGestaltNodes(Buffer.from(JSON.stringify(g.nodes)).toString('base64'))
-        return msg
-      })
+      const gestaltListMessage = gestaltList.map(gestalt => gestaltToProtobuf(gestalt))
       const response = new agent.GestaltListMessage();
       response.setGestaltMessageList(gestaltListMessage);
       callback(null, response);
@@ -591,7 +582,7 @@ class PolykeyAgent implements IAgentServer {
       }
       response.setLinkInfoList(peerInfo.linkInfoList.map(l => {
         const linkInfo = l as LinkInfoIdentity
-        const linkInfoMessage = new agent.LinkInfoIdentity
+        const linkInfoMessage = new agent.LinkInfoIdentityMessage
         linkInfoMessage.setDateissued(linkInfo.dateIssued)
         linkInfoMessage.setIdentity(linkInfo.identity)
         linkInfoMessage.setKey(linkInfo.key)
@@ -636,7 +627,7 @@ class PolykeyAgent implements IAgentServer {
       }
       response.setLinkInfoList(peerInfo.linkInfoList.map(l => {
         const linkInfo = l as LinkInfoIdentity
-        const linkInfoMessage = new agent.LinkInfoIdentity
+        const linkInfoMessage = new agent.LinkInfoIdentityMessage
         linkInfoMessage.setDateissued(linkInfo.dateIssued)
         linkInfoMessage.setIdentity(linkInfo.identity)
         linkInfoMessage.setKey(linkInfo.key)

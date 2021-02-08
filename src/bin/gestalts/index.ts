@@ -148,11 +148,11 @@ commandGetByIdentity.action(
     )) as agentPB.GestaltMessage;
 
     pkLogger.logV1('GestaltMatrix: ', PKMessageType.INFO);
-    pkLogger.logV1(response.getGestaltMatrix(), PKMessageType.SUCCESS);
+    pkLogger.logV1(JSON.stringify(response.getGestaltMatrixMap()), PKMessageType.SUCCESS);
     pkLogger.logV1('Identities: ', PKMessageType.INFO);
-    pkLogger.logV1(response.getIdentities(), PKMessageType.SUCCESS);
+    pkLogger.logV1(JSON.stringify(response.getIdentitiesMap()), PKMessageType.SUCCESS);
     pkLogger.logV1('GestaltNodes: ', PKMessageType.INFO);
-    pkLogger.logV1(response.getGestaltNodes(), PKMessageType.SUCCESS);
+    pkLogger.logV1(JSON.stringify(response.getGestaltNodesMap()), PKMessageType.SUCCESS);
   }),
 );
 
@@ -282,11 +282,11 @@ commandGetGestalts.action(
 
     gestaltList.forEach(g => {
       pkLogger.logV1('GestaltMatrix: ', PKMessageType.INFO);
-      pkLogger.logV1(g.getGestaltMatrix(), PKMessageType.SUCCESS);
+      pkLogger.logV1(JSON.stringify(g.getGestaltMatrixMap()), PKMessageType.SUCCESS);
       pkLogger.logV1('Identities: ', PKMessageType.INFO);
-      pkLogger.logV1(g.getIdentities(), PKMessageType.SUCCESS);
+      pkLogger.logV1(JSON.stringify(g.getIdentitiesMap()), PKMessageType.SUCCESS);
       pkLogger.logV1('GestaltNodes: ', PKMessageType.INFO);
-      pkLogger.logV1(g.getGestaltNodes(), PKMessageType.SUCCESS);
+      pkLogger.logV1(JSON.stringify(g.getGestaltNodesMap()), PKMessageType.SUCCESS);
     })
   }),
 );
