@@ -28,7 +28,7 @@ class MulticastBroadcaster extends EventEmitter {
   private socket: dgram.Socket;
 
   private interval = 1e5;
-  private broadcastInterval: NodeJS.Timeout | null = null;
+  private broadcastInterval: ReturnType<typeof setInterval> | null = null;
   constructor(
     getPeerInfo: () => PeerInfo,
     hasPeer: (id: string) => boolean,
@@ -53,8 +53,6 @@ class MulticastBroadcaster extends EventEmitter {
       'listening',
       (() => {
         this.socket.addMembership(UDP_MULTICAST_ADDR);
-        const address = this.socket.address();
-
         // Start the broadcasting process
         this.startBroadcasting();
       }).bind(this),
@@ -79,8 +77,16 @@ class MulticastBroadcaster extends EventEmitter {
       if (!this.keyManager.KeypairUnlocked) {
         return;
       }
-      const peerInfoPem = this.getPeerInfo().toX509Pem(this.keyManager.getPrivateKey())
-      this.socket.send(peerInfoPem, 0, peerInfoPem.length, UDP_MULTICAST_PORT, UDP_MULTICAST_ADDR);
+      const peerInfoPem = this.getPeerInfo().toX509Pem(
+        this.keyManager.getPrivateKey(),
+      );
+      this.socket.send(
+        peerInfoPem,
+        0,
+        peerInfoPem.length,
+        UDP_MULTICAST_PORT,
+        UDP_MULTICAST_ADDR,
+      );
     };
 
     // Immediately start a query, then do it every interval.
@@ -102,7 +108,7 @@ class MulticastBroadcaster extends EventEmitter {
 
       // update the peer store
       if (this.hasPeer(peerInfo.id)) {
-        this.updatePeer(peerInfo)
+        this.updatePeer(peerInfo);
       } else {
         this.updatePeer(peerInfo);
       }

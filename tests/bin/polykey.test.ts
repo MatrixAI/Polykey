@@ -1,14 +1,10 @@
-import main from "@/bin/polykey";
+import main from '@/bin/polykey';
 
 describe('main', () => {
-
   test('main does something', () => {
-
     // jest can also "spy on" the console object
     // and then you can test on stdout
     // you can call main() like a function
-    expect('1').toEqual('1');
-
+    expect(main([])).toEqual(0);
   });
-
 });

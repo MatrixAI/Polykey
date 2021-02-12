@@ -2,13 +2,19 @@ import shasum from './shasum';
 
 class GitObject {
   static hash({ type, object }) {
-    const buffer = Buffer.concat([Buffer.from(`${type} ${object.byteLength.toString()}\0`), Buffer.from(object)]);
+    const buffer = Buffer.concat([
+      Buffer.from(`${type} ${object.byteLength.toString()}\0`),
+      Buffer.from(object),
+    ]);
     const oid = shasum(buffer);
     return oid;
   }
 
   static wrap({ type, object }) {
-    const buffer = Buffer.concat([Buffer.from(`${type} ${object.byteLength.toString()}\0`), object]);
+    const buffer = Buffer.concat([
+      Buffer.from(`${type} ${object.byteLength.toString()}\0`),
+      object,
+    ]);
     const oid = shasum(buffer);
     return {
       oid,
@@ -30,7 +36,9 @@ class GitObject {
     const actualLength = buffer.length - (i + 1);
     // verify length
     if (parseInt(length) !== actualLength) {
-      throw new Error(`Length mismatch: expected ${length} bytes but got ${actualLength} instead.`);
+      throw new Error(
+        `Length mismatch: expected ${length} bytes but got ${actualLength} instead.`,
+      );
     }
     return {
       type,

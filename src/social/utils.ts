@@ -7,28 +7,28 @@ import { spawn } from 'child_process';
 import http from 'http';
 import { createHttpTerminator } from 'http-terminator';
 
-function browser (url: string): void {
+function browser(url: string): void {
   let platform = process.platform;
-  if (platform === "linux" && os.release().indexOf("Microsoft") !== -1) {
-    platform = "win32";
+  if (platform === 'linux' && os.release().indexOf('Microsoft') !== -1) {
+    platform = 'win32';
   }
   let command;
   switch (platform) {
-    case "win32": {
-      command = "cmd.exe";
+    case 'win32': {
+      command = 'cmd.exe';
       break;
     }
-    case "darwin": {
-      command = "open";
+    case 'darwin': {
+      command = 'open';
       break;
     }
     default: {
-      command = "xdg-open";
+      command = 'xdg-open';
       break;
     }
   }
   let args = [url];
-  if (platform === "win32") {
+  if (platform === 'win32') {
     // On Windows, we really want to use the "start" command. But, the rules
     // regarding arguments with spaces, and escaping them with quotes, can get
     // really arcane. So the easiest way to deal with this is to pass off the
@@ -41,80 +41,79 @@ function browser (url: string): void {
     // Additionally, on Windows ampersand and caret need to be escaped when
     // passed to "start"
     args = args.map(function (value) {
-      return value.replace(/[&^]/g, "^$&");
+      return value.replace(/[&^]/g, '^$&');
     });
-    args = ["/c", "start", "\"\""].concat(args);
+    args = ['/c', 'start', '""'].concat(args);
   }
-  const browserProcess = spawn(command, args, { detached: true, stdio: 'ignore' });
+  const browserProcess = spawn(command, args, {
+    detached: true,
+    stdio: 'ignore',
+  });
   browserProcess.unref();
 }
 
 class AuthCodeServer {
-
   public readonly port: number;
   protected server: http.Server;
-  protected httpTerminator: { terminate: Function };
-  protected status: "initial" | "started" | "stopped";
+  protected httpTerminator: { terminate: () => void };
+  protected status: 'initial' | 'started' | 'stopped';
   protected redirectUri?: string;
 
-  public constructor (port: number = 0) {
+  public constructor(port: number = 0) {
     this.port = port;
     this.server = http.createServer();
-    this.httpTerminator = createHttpTerminator({server: this.server});
-    this.status = "initial";
+    this.httpTerminator = createHttpTerminator({ server: this.server });
+    this.status = 'initial';
   }
 
-  public async start (
+  public async start(
     handleAuthCodeData: (d: AuthCodeData, u: string) => void,
   ): Promise<string> {
-    if (this.status === "started") {
+    if (this.status === 'started') {
       return this.redirectUri!;
     }
     const serverListen = new Promise<number>((resolve) => {
-      this.server.listen(this.port, "127.0.0.1", () => {
+      this.server.listen(this.port, '127.0.0.1', () => {
         resolve((this.server.address() as AddressInfo).port);
       });
     });
     const port = await serverListen;
     this.redirectUri = `http://127.0.0.1:${port}`;
     this.server.on(
-      "request",
+      'request',
       async (request: http.IncomingMessage, response: http.ServerResponse) => {
         const url = new URL(request.url!, `http://${request.headers.host}`);
         const code = url.searchParams.get('code') || undefined;
         const state = url.searchParams.get('state') || undefined;
         const error = url.searchParams.get('error') || undefined;
-        const errorDescription = url.searchParams.get('error_description') || undefined;
+        const errorDescription =
+          url.searchParams.get('error_description') || undefined;
         if (!code && !error) {
           response.writeHead(400);
           response.end();
           return;
         }
-        response.end("Close this window!");
+        response.end('Close this window!');
         let authCodeData;
         if (code) {
-          authCodeData = {status: 'success', code, state};
+          authCodeData = { status: 'success', code, state };
         } else if (error) {
-          authCodeData = {status: 'failure', error, errorDescription};
+          authCodeData = { status: 'failure', error, errorDescription };
         }
         handleAuthCodeData(authCodeData, this.redirectUri!);
         await this.stop();
-      }
+      },
     );
-    this.status = "started";
+    this.status = 'started';
     return this.redirectUri;
   }
 
-  public async stop (): Promise<void> {
-    if (this.status === "started") {
+  public async stop(): Promise<void> {
+    if (this.status === 'started') {
       await this.httpTerminator.terminate();
     }
-    this.status = "stopped";
+    this.status = 'stopped';
   }
-
 }
 
-export {
-  browser,
-  AuthCodeServer
-};
+export { browser, AuthCodeServer };

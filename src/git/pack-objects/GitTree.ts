@@ -78,7 +78,11 @@ class GitTree {
   }
 
   render() {
-    return this._entries.map((entry) => `${entry.mode} ${entry.type} ${entry.oid}    ${entry.path}`).join('\n');
+    return this._entries
+      .map(
+        (entry) => `${entry.mode} ${entry.type} ${entry.oid}    ${entry.path}`,
+      )
+      .join('\n');
   }
 
   toObject() {
@@ -89,7 +93,9 @@ class GitTree {
         const path = Buffer.from(entry.path);
         // let path = Buffer.from(entry.path, { encoding: 'utf8' })
         const nullchar = Buffer.from([0]);
-        const oid = Buffer.from(entry.oid.match(/../g).map((n) => parseInt(n, 16)));
+        const oid = Buffer.from(
+          entry.oid.match(/../g).map((n) => parseInt(n, 16)),
+        );
         return Buffer.concat([mode, space, path, nullchar, oid]);
       }),
     );

@@ -38,7 +38,10 @@ class PeerDHT {
     this.getPeerInfo = getPeerInfo;
     this.updatePeerStore = updatePeerStore;
 
-    this.kBucket = new KBucket(this.getLocalPeerId, this.pingNodeUpdate.bind(this));
+    this.kBucket = new KBucket(
+      this.getLocalPeerId,
+      this.pingNodeUpdate.bind(this),
+    );
   }
 
   public get Status() {
@@ -107,7 +110,7 @@ class PeerDHT {
         }
       }
     } catch (error) {
-      throw error
+      throw error;
     } finally {
       this.addingPeers = false;
     }
@@ -124,13 +127,16 @@ class PeerDHT {
     }
   }
 
-  private toPeerInfoReadOnlyMessageList(peerIds: string[]): agentInterface.PeerInfoReadOnlyMessage[] {
+  private toPeerInfoReadOnlyMessageList(
+    peerIds: string[],
+  ): agentInterface.PeerInfoReadOnlyMessage[] {
     return peerIds
       .filter((p) => p != this.getLocalPeerId())
       .map((p) => {
-        const peerInfo = this.getPeerInfo(p)
-        return peerInfo ? peerInfo.toPeerInfoReadOnlyMessage() : null
-      }).filter(p => p != null) as agentInterface.PeerInfoReadOnlyMessage[];
+        const peerInfo = this.getPeerInfo(p);
+        return peerInfo ? peerInfo.toPeerInfoReadOnlyMessage() : null;
+      })
+      .filter((p) => p != null) as agentInterface.PeerInfoReadOnlyMessage[];
   }
 
   async findLocalPeer(peerId: string): Promise<PeerInfoReadOnly | null> {
@@ -176,7 +182,9 @@ class PeerDHT {
     const kBucketSize = this.kBucket.numberOfNodesPerKBucket;
     // get rid of the target peer id as it is not onsidered a close peer
 
-    const closestPeerIds = this.closestPeers(peerId, kBucketSize).filter((pi) => pi != peerId);
+    const closestPeerIds = this.closestPeers(peerId, kBucketSize).filter(
+      (pi) => pi != peerId,
+    );
 
     // If there are no closest peers, we have failed to find that peer
     if (closestPeerIds.length === 0) {
@@ -193,11 +201,13 @@ class PeerDHT {
         const client = await pc.getPeerClient(true);
 
         // encode request
-        const request = new peerInterface.PeerDHTFindNodeRequest
-        request.setTargetPeerId(peerId)
+        const request = new peerInterface.PeerDHTFindNodeRequest();
+        request.setTargetPeerId(peerId);
 
         // send request
-        const response = await promisifyGrpc(client.peerDHTFindNode.bind(client))(request) as peerInterface.PeerDHTFindNodeReply;
+        const response = (await promisifyGrpc(
+          client.peerDHTFindNode.bind(client),
+        )(request)) as peerInterface.PeerDHTFindNodeReply;
 
         // decode response
         const { closestPeersList } = response.toObject();
@@ -240,8 +250,10 @@ class PeerDHT {
   ///////////////////
   // gRPC Handlers //
   ///////////////////
-  handleFindNodeMessage(targetPeerId: string): agentInterface.PeerInfoReadOnlyMessage[] {
-    return this.toPeerInfoReadOnlyMessageList(this.closestPeers(targetPeerId))
+  handleFindNodeMessage(
+    targetPeerId: string,
+  ): agentInterface.PeerInfoReadOnlyMessage[] {
+    return this.toPeerInfoReadOnlyMessageList(this.closestPeers(targetPeerId));
   }
 }
 

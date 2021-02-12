@@ -64,7 +64,7 @@ commandNewKeyPair.requiredOption(
 commandNewKeyPair.option(
   '-nb, --nbits <nbits>',
   '(optional) number of bits to go into the rsa keypair generation',
-  '4096'
+  '4096',
 );
 commandNewKeyPair.requiredOption(
   '-priv, --private-path <privatePath>',

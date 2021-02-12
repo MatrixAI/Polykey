@@ -33,8 +33,15 @@ class HttpApi {
   private deleteVault: (vaultName: string) => Promise<void>;
   private listSecrets: (vaultName: string) => string[];
   private getSecret: (vaultName: string, secretName: string) => Buffer;
-  private newSecret: (vaultName: string, secretName: string, secretContent: Buffer) => Promise<void>;
-  private deleteSecret: (vaultName: string, secretName: string) => Promise<void>;
+  private newSecret: (
+    vaultName: string,
+    secretName: string,
+    secretContent: Buffer,
+  ) => Promise<void>;
+  private deleteSecret: (
+    vaultName: string,
+    secretName: string,
+  ) => Promise<void>;
 
   private tlsCredentials: TLSCredentials;
   private oauth: OAuth2;
@@ -52,7 +59,11 @@ class HttpApi {
     deleteVault: (vaultName: string) => Promise<void>,
     listSecrets: (vaultName: string) => string[],
     getSecret: (vaultName: string, secretName: string) => Buffer,
-    newSecret: (vaultName: string, secretName: string, secretContent: string | Buffer) => Promise<void>,
+    newSecret: (
+      vaultName: string,
+      secretName: string,
+      secretContent: string | Buffer,
+    ) => Promise<void>,
     deleteSecret: (vaultName: string, secretName: string) => Promise<void>,
   ) {
     // this code is needed as we can't require yaml files
@@ -79,18 +90,21 @@ class HttpApi {
 
   async stop() {
     if (this.httpServer) {
-      await promisify(this.httpServer.close)()
+      await promisify(this.httpServer.close)();
     }
   }
 
   async start(
     host = process.env.PK_API_HOST ?? '0.0.0.0',
-    port = parseInt(process.env.PK_API_PORT ?? '0')
+    port = parseInt(process.env.PK_API_PORT ?? '0'),
   ) {
-    return new Promise<number>(async (resolve, reject) => {
+    return new Promise<number>((resolve, reject) => {
       try {
         this.tlsCredentials = this.getTlsCredentials();
-        this.oauth = new OAuth2(this.tlsCredentials.keypair.public, this.tlsCredentials.keypair.private);
+        this.oauth = new OAuth2(
+          this.tlsCredentials.keypair.public,
+          this.tlsCredentials.keypair.private,
+        );
         this.expressServer = express();
 
         this.expressServer.set('view engine', 'ejs');
@@ -111,14 +125,25 @@ class HttpApi {
         this.expressServer.use(express.urlencoded({ extended: false }));
 
         // create default client and user for the polykey node (highest priviledge)
-        this.oauth.store.saveClient('polykey', utils.createUuid(), ['admin'], true);
-        this.oauth.store.saveUser('polykey', 'polykey', utils.createUuid(), ['admin'], true);
+        this.oauth.store.saveClient(
+          'polykey',
+          utils.createUuid(),
+          ['admin'],
+          true,
+        );
+        this.oauth.store.saveUser(
+          'polykey',
+          'polykey',
+          utils.createUuid(),
+          ['admin'],
+          true,
+        );
 
         this.expressServer.use(passport.initialize());
         this.expressServer.use(passport.session());
 
         // redirect from base url to docs
-        this.expressServer.get('/', (req, res, next) => {
+        this.expressServer.get('/', (req, res) => {
           res.redirect('/docs');
         });
 
@@ -210,10 +235,15 @@ class HttpApi {
           passport.authenticate(['accessToken'], { session: true }),
           this.oauth.tokenInfo.bind(this.oauth),
         ]);
-        this.expressServer.get('/oauth/revoke', this.oauth.revokeToken.bind(this.oauth));
+        this.expressServer.get(
+          '/oauth/revoke',
+          this.oauth.revokeToken.bind(this.oauth),
+        );
 
         // OpenAPI endpoints
-        const schema = jsyaml.load(fs.readFileSync(this.openApiPath).toString());
+        const schema = jsyaml.load(
+          fs.readFileSync(this.openApiPath).toString(),
+        );
         this.expressServer.get('/spec', (req, res) => {
           res.type('json').send(JSON.stringify(schema, null, 2));
         });
@@ -243,19 +273,21 @@ class HttpApi {
           ca: this.tlsCredentials.rootCertificate,
         };
 
-        this.httpServer = https.createServer(httpsOptions, this.expressServer).listen({ port, host }, () => {
-          const addressInfo = this.httpServer.address() as net.AddressInfo;
-          const address = Address.fromAddressInfo(addressInfo);
-          address.updateHost(pkHost);
-          this.updateApiAddress(address);
+        this.httpServer = https
+          .createServer(httpsOptions, this.expressServer)
+          .listen({ port, host }, () => {
+            const addressInfo = this.httpServer.address() as net.AddressInfo;
+            const address = Address.fromAddressInfo(addressInfo);
+            address.updateHost(pkHost);
+            this.updateApiAddress(address);
 
-          console.log(`HTTP API endpoint: https://${address.toString()}`);
-          console.log(`HTTP API docs: https://${address.toString()}/docs/`);
+            console.log(`HTTP API endpoint: https://${address.toString()}`);
+            console.log(`HTTP API docs: https://${address.toString()}/docs/`);
 
-          resolve(port);
-        });
+            resolve(port);
+          });
       } catch (error) {
-        reject(error)
+        reject(error);
       }
     });
   }
@@ -270,8 +302,18 @@ class HttpApi {
 
   newOAuthToken(scopes: string[] = [], expiry = 3600): string {
     const expiryDate = new Date(Date.now() + expiry * 1000);
-    const token = utils.createToken(this.oauth.store.privateKey, config.token.expiresIn, 'polykey');
-    this.oauth.store.saveAccessToken(token, expiryDate, 'polykey', 'polykey', scopes);
+    const token = utils.createToken(
+      this.oauth.store.privateKey,
+      config.token.expiresIn,
+      'polykey',
+    );
+    this.oauth.store.saveAccessToken(
+      token,
+      expiryDate,
+      'polykey',
+      'polykey',
+      scopes,
+    );
     return token;
   }
 
@@ -281,7 +323,7 @@ class HttpApi {
   }
 
   // === openapi endpoints === //
-  private handleRootCertificateRequest: RequestHandler = async (req, res, next) => {
+  private handleRootCertificateRequest: RequestHandler = async (req, res) => {
     try {
       const response = this.getRootCertificate();
       this.writeString(res, response);
@@ -290,7 +332,7 @@ class HttpApi {
     }
   };
 
-  private handleCertificateChainRequest: RequestHandler = async (req, res, next) => {
+  private handleCertificateChainRequest: RequestHandler = async (req, res) => {
     try {
       const response = this.getCertificateChain();
       this.writeStringList(res, response);
@@ -299,7 +341,10 @@ class HttpApi {
     }
   };
 
-  private handleCertificateSigningRequest: RequestHandler = async (req, res, next) => {
+  private handleCertificateSigningRequest: RequestHandler = async (
+    req,
+    res,
+  ) => {
     try {
       const body = req.body;
       const response = this.handleCSR(body);
@@ -309,7 +354,7 @@ class HttpApi {
     }
   };
 
-  private handleVaultsListRequest: RequestHandler = async (req, res, next) => {
+  private handleVaultsListRequest: RequestHandler = async (req, res) => {
     try {
       const response = this.getVaultNames();
       this.writeStringList(res, response);
@@ -318,7 +363,7 @@ class HttpApi {
     }
   };
 
-  private handleNewVaultRequest: RequestHandler = async (req, res, next) => {
+  private handleNewVaultRequest: RequestHandler = async (req, res) => {
     try {
       const vaultName = (req as any).openapi.pathParams.vaultName;
       await this.newVault(vaultName);
@@ -328,7 +373,7 @@ class HttpApi {
     }
   };
 
-  private handleDeleteVaultRequest: RequestHandler = async (req, res, next) => {
+  private handleDeleteVaultRequest: RequestHandler = async (req, res) => {
     try {
       const vaultName = (req as any).openapi.pathParams.vaultName;
       await this.deleteVault(vaultName);
@@ -338,7 +383,7 @@ class HttpApi {
     }
   };
 
-  private handleSecretsListRequest: RequestHandler = async (req, res, next) => {
+  private handleSecretsListRequest: RequestHandler = async (req, res) => {
     try {
       const vaultName = (req as any).openapi.pathParams.vaultName;
       const response = this.listSecrets(vaultName);
@@ -348,7 +393,7 @@ class HttpApi {
     }
   };
 
-  private handleGetSecretRequest: RequestHandler = async (req, res, next) => {
+  private handleGetSecretRequest: RequestHandler = async (req, res) => {
     try {
       const vaultName = (req as any).openapi.pathParams.vaultName;
       const secretName = (req as any).openapi.pathParams.secretName;
@@ -367,7 +412,7 @@ class HttpApi {
     }
   };
 
-  private handleNewSecretRequest: RequestHandler = async (req, res, next) => {
+  private handleNewSecretRequest: RequestHandler = async (req, res) => {
     try {
       const vaultName = (req as any).openapi.pathParams.vaultName;
       const secretName = (req as any).openapi.pathParams.secretName;
@@ -394,7 +439,7 @@ class HttpApi {
     }
   };
 
-  private handleDeleteSecretRequest: RequestHandler = async (req, res, next) => {
+  private handleDeleteSecretRequest: RequestHandler = async (req, res) => {
     try {
       const vaultName = (req as any).openapi.pathParams.vaultName;
       const secretName = (req as any).openapi.pathParams.secretName;
@@ -431,7 +476,11 @@ class HttpApi {
     res.end(JSON.stringify(payload, null, 2));
   }
 
-  private writeBinary(res: http.ServerResponse, filename: string, payload: Buffer) {
+  private writeBinary(
+    res: http.ServerResponse,
+    filename: string,
+    payload: Buffer,
+  ) {
     res.writeHead(200, {
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': `file; filename="${filename}"`,

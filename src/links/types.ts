@@ -9,7 +9,7 @@ import type { IdentityKey, ProviderKey, PeerId } from '../types';
 type LinkKey = string;
 
 type LinkClaimIdentity = {
-  type: "identity";
+  type: 'identity';
   node: string;
   identity: IdentityKey;
   provider: ProviderKey;
@@ -18,7 +18,7 @@ type LinkClaimIdentity = {
 };
 
 type LinkClaimNode = {
-  type: "node";
+  type: 'node';
   node1: PeerId;
   node2: PeerId;
   dateIssued: string;
@@ -46,5 +46,5 @@ export {
   LinkClaim,
   LinkInfoIdentity,
   LinkInfoNode,
-  LinkInfo
+  LinkInfo,
 };

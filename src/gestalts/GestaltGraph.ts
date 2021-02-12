@@ -1,28 +1,20 @@
-import type {
-  IdentityKey,
-  PeerId,
-  ProviderKey
-} from '../types';
+import type { IdentityKey, PeerId, ProviderKey } from '../types';
 import type {
   LinkClaimIdentity,
   LinkClaimNode,
   LinkClaim,
   LinkInfo,
   LinkInfoIdentity,
-  LinkInfoNode
+  LinkInfoNode,
 } from '../links';
-import type {
-  IdentityInfo
-} from '../social';
-import type {
-  NodeInfo
-} from '../peers';
+import type { IdentityInfo } from '../social';
+import type { NodeInfo } from '../peers';
 import type {
   GestaltMatrix,
   GestaltNodes,
   GestaltIdentities,
   Gestalt,
-  GestaltKey
+  GestaltKey,
 } from './types';
 
 import { ProviderManager } from '../social';
@@ -40,7 +32,6 @@ type VerifyLinkInfoHandler = (linkInfo: LinkInfo) => boolean;
 // }
 
 class GestaltGraph {
-
   public graph: GestaltMatrix = {};
   public nodes: GestaltNodes = {};
   public identities: GestaltIdentities = {};
@@ -50,34 +41,34 @@ class GestaltGraph {
   protected gestaltTrust: GestaltTrust;
   protected peerManager: PeerManager;
 
-  public constructor (
+  public constructor(
     gestaltTrust: GestaltTrust,
     peerManager: PeerManager,
     providerManager: ProviderManager,
-    verifyLinkInfo: VerifyLinkInfoHandler
+    verifyLinkInfo: VerifyLinkInfoHandler,
   ) {
-    this.gestaltTrust = gestaltTrust
+    this.gestaltTrust = gestaltTrust;
     this.peerManager = peerManager;
     this.providerManager = providerManager;
     this.verifyLinkInfo = verifyLinkInfo;
   }
 
-  public setNode (nodeInfo: NodeInfo): void {
+  public setNode(nodeInfo: NodeInfo): void {
     const peerId = gestaltKey(nodeInfo.id);
     this.nodes[peerId] = nodeInfo;
     this.graph[peerId] = this.graph[peerId] || {};
   }
 
-  public setIdentity (identityInfo: IdentityInfo): void {
+  public setIdentity(identityInfo: IdentityInfo): void {
     const identityKey = gestaltKey(identityInfo.key, identityInfo.provider);
     this.identities[identityKey] = identityInfo;
     this.graph[identityKey] = this.graph[identityKey] || {};
   }
 
-  public setLinkIdentity (
+  public setLinkIdentity(
     linkInfo: LinkInfoIdentity,
     nodeInfo: NodeInfo,
-    identityInfo: IdentityInfo
+    identityInfo: IdentityInfo,
   ): void {
     const peerId = gestaltKey(nodeInfo.id);
     const identityKey = gestaltKey(identityInfo.key, identityInfo.provider);
@@ -87,10 +78,10 @@ class GestaltGraph {
     this.graph[identityKey][peerId] = linkInfo;
   }
 
-  public setLinkNode (
+  public setLinkNode(
     linkInfo: LinkInfoNode,
     nodeInfo1: NodeInfo,
-    nodeInfo2: NodeInfo
+    nodeInfo2: NodeInfo,
   ): void {
     const peerId1 = gestaltKey(nodeInfo1.id);
     const peerId2 = gestaltKey(nodeInfo2.id);
@@ -100,13 +91,9 @@ class GestaltGraph {
     this.graph[peerId2][peerId1] = linkInfo;
   }
 
-  public unsetNode (nodeInfo: NodeInfo): void {
+  public unsetNode(nodeInfo: NodeInfo): void {
     const peerId_ = gestaltKey(nodeInfo.id);
-    for (
-      const [key_, linkClaim] of Object.entries(
-        this.graph[peerId_] ?? {}
-      )
-    ) {
+    for (const [key_, linkClaim] of Object.entries(this.graph[peerId_] ?? {})) {
       if (linkClaim.type === 'identity') {
         delete this.identities[key_];
       } else if (linkClaim.type === 'node') {
@@ -117,13 +104,11 @@ class GestaltGraph {
     delete this.graph[peerId_];
   }
 
-  public unsetIdentity (identityInfo: IdentityInfo): void {
+  public unsetIdentity(identityInfo: IdentityInfo): void {
     const identityKey_ = gestaltKey(identityInfo.key, identityInfo.provider);
-    for (
-      const [key_, linkClaim] of Object.entries(
-        this.graph[identityKey_] ?? {}
-      )
-    ) {
+    for (const [key_, linkClaim] of Object.entries(
+      this.graph[identityKey_] ?? {},
+    )) {
       if (linkClaim.type === 'identity') {
         delete this.identities[key_];
       } else if (linkClaim.type === 'node') {
@@ -134,7 +119,7 @@ class GestaltGraph {
     delete this.graph[identityKey_];
   }
 
-  public unsetLink (linkClaim: LinkClaim) {
+  public unsetLink(linkClaim: LinkClaim) {
     if (linkClaim.type === 'identity') {
       const peerId = gestaltKey(linkClaim.node);
       const identityKey = gestaltKey(linkClaim.identity, linkClaim.provider);
@@ -148,22 +133,25 @@ class GestaltGraph {
     }
   }
 
-  public getGestaltByNode (key: PeerId): Gestalt | undefined {
+  public getGestaltByNode(key: PeerId): Gestalt | undefined {
     return this.getGestalt(gestaltKey(key));
   }
 
-  public getGestaltByIdentity (key: IdentityKey, providerKey: ProviderKey): Gestalt | undefined {
+  public getGestaltByIdentity(
+    key: IdentityKey,
+    providerKey: ProviderKey,
+  ): Gestalt | undefined {
     return this.getGestalt(gestaltKey(key, providerKey));
   }
 
-  protected getGestalt (key: GestaltKey): Gestalt | undefined {
+  protected getGestalt(key: GestaltKey): Gestalt | undefined {
     if (!this.nodes[key] && !this.identities[key]) {
       return;
     }
     const gestalt: Gestalt = {
       graph: {},
       nodes: {},
-      identities: {}
+      identities: {},
     };
     const queue = [key];
     const visited = new Set();
@@ -179,7 +167,9 @@ class GestaltGraph {
       }
       gestalt.graph[vertex] = this.graph[vertex];
       visited.add(vertex);
-      const neighbours = Object.keys(this.graph[vertex]).filter(k => !visited.has(k));
+      const neighbours = Object.keys(this.graph[vertex]).filter(
+        (k) => !visited.has(k),
+      );
       queue.push(...neighbours);
     }
     return gestalt;
@@ -195,7 +185,7 @@ class GestaltGraph {
       gestalt = {
         graph: {},
         nodes: {},
-        identities: {}
+        identities: {},
       };
       const queue = [key];
       while (true) {
@@ -211,51 +201,53 @@ class GestaltGraph {
         }
         gestalt.graph[vertex] = this.graph[vertex];
         unvisited.delete(vertex);
-        const neighbours = Object.keys(this.graph[vertex]).filter(k => unvisited.has(k));
+        const neighbours = Object.keys(this.graph[vertex]).filter((k) =>
+          unvisited.has(k),
+        );
         queue.push(...neighbours);
       }
     }
     return gestalts;
   }
 
-  public trusted (key: PeerId | IdentityKey) {
+  public trusted(key: PeerId | IdentityKey) {
     return this.gestaltTrust.trusted(gestaltKey(key));
   }
 
-  public trust (key: PeerId | IdentityKey) {
+  public trust(key: PeerId | IdentityKey) {
     const gestalt = this.getGestalt(key);
     if (gestalt) {
       this.gestaltTrust.trustGestalt(gestalt);
     }
   }
 
-  public untrust (key: PeerId | IdentityKey) {
+  public untrust(key: PeerId | IdentityKey) {
     const gestalt = this.getGestalt(key);
     if (gestalt) {
       this.gestaltTrust.untrustGestalt(gestalt);
     }
   }
 
-  public discoverGestaltNode (key: PeerId): AsyncGenerator<void, void, void> {
+  public discoverGestaltNode(key: PeerId): AsyncGenerator<void, void, void> {
     return this.discoverGestalt(gestaltKey(key));
   }
 
-  public discoverGestaltIdentity (
+  public discoverGestaltIdentity(
     key: IdentityKey,
-    providerKey: ProviderKey
+    providerKey: ProviderKey,
   ): AsyncGenerator<void, void, void> {
     return this.discoverGestalt(gestaltKey(key, providerKey));
   }
 
-  protected async * discoverGestalt (key: GestaltKey): AsyncGenerator<void, void, void> {
-
+  protected async *discoverGestalt(
+    key: GestaltKey,
+  ): AsyncGenerator<void, void, void> {
     if (!this.nodes[key] && !this.identities[key]) {
       return;
     }
     const queue = [key];
     const visited = new Set();
     while (true) {
-
       const vertex = queue.shift();
 
       if (!vertex) {
@@ -266,7 +258,6 @@ class GestaltGraph {
       let identityInfo = this.identities[vertex];
 
       if (nodeInfo) {
-
         // need to query the DHT for the node IP
         // contact the IP to get the peer info
         // then acquire all the link infos here
@@ -274,13 +265,9 @@ class GestaltGraph {
         const linkInfos = await this.peerManager.getLinkInfos(nodeInfo.id);
 
         for (const linkInfo of linkInfos) {
-
-          if (linkInfo.type === "node") {
-
+          if (linkInfo.type === 'node') {
             throw new Error('UNIMPLEMENTED');
-
-          } else if (linkInfo.type === "identity") {
-
+          } else if (linkInfo.type === 'identity') {
             // this has to use md5 hash?
             if (PeerInfo.publicKeyToId(linkInfo.node) !== nodeInfo.id) {
               continue;
@@ -290,9 +277,13 @@ class GestaltGraph {
               continue;
             }
 
-            const provider = this.providerManager.getProvider(linkInfo.provider);
+            const provider = this.providerManager.getProvider(
+              linkInfo.provider,
+            );
 
-            const identityInfoNew = await provider.getIdentityInfo(linkInfo.identity);
+            const identityInfoNew = await provider.getIdentityInfo(
+              linkInfo.identity,
+            );
 
             if (!identityInfoNew) {
               continue;
@@ -309,11 +300,7 @@ class GestaltGraph {
               identityInfo.url = identityInfoNew.url;
             }
 
-            this.setLinkIdentity(
-              linkInfo,
-              nodeInfo,
-              identityInfo
-            );
+            this.setLinkIdentity(linkInfo, nodeInfo, identityInfo);
 
             visited.add(vertex);
 
@@ -325,28 +312,28 @@ class GestaltGraph {
             if (!visited.has(identityInfo.key)) {
               queue.push(identityInfo.key);
             }
-
           }
-
         }
-
       } else if (identityInfo) {
-
-        const provider = this.providerManager.getProvider(identityInfo.provider);
+        const provider = this.providerManager.getProvider(
+          identityInfo.provider,
+        );
 
         // get the new identityInfo
-        const identityInfoNew = await provider.getIdentityInfo(identityInfo.key);
+        const identityInfoNew = await provider.getIdentityInfo(
+          identityInfo.key,
+        );
 
         if (identityInfoNew) {
-
           // merge/update the identityInfo (must be a mutation)
           identityInfo.name = identityInfoNew.name;
           identityInfo.email = identityInfoNew.email;
           identityInfo.url = identityInfoNew.url;
 
           // possible exceptions can occur here
-          for await (const linkInfoIdentity of provider.getLinkInfos(identityInfo.key)) {
-
+          for await (const linkInfoIdentity of provider.getLinkInfos(
+            identityInfo.key,
+          )) {
             // if the identity key doesn't match, discard
             if (linkInfoIdentity.identity !== identityInfo.key) {
               continue;
@@ -381,11 +368,7 @@ class GestaltGraph {
             // it should be changed to remove existing edges
 
             // create gestalt graph edge betwen this DI and the node
-            this.setLinkIdentity(
-              linkInfoIdentity,
-              nodeInfo,
-              identityInfo
-            );
+            this.setLinkIdentity(linkInfoIdentity, nodeInfo, identityInfo);
 
             visited.add(vertex);
 
@@ -397,22 +380,16 @@ class GestaltGraph {
             if (!visited.has(nodeInfo.id)) {
               queue.push(nodeInfo.id);
             }
-
           }
-
         }
-
       }
 
       // pause for the next step
       yield;
-
     }
-
   }
 
   // public async * gestaltDiscovery (gk: GestaltKey): AsyncGenerator<void, void, void> {
-
 
   //   const queue: GraphSearchNode[] = [];
   //   const visitedNodes: string[] = [];
@@ -426,7 +403,6 @@ class GestaltGraph {
 
   //   const notAlreadyVisited = (value: string) => visitedNodes.indexOf(value) === -1;
 
-
   //   const linksEqual = (a: LinkClaim, b: LinkClaim) => {
   //     for (let key in a) {
   //       if (a[key] !== b[key]) return false;
@@ -438,8 +414,6 @@ class GestaltGraph {
 
   //     const currentNode = queue.shift();
   //     if (!currentNode) break;
-
-
 
   //     currentNode.isVisited = true; // this might be pointless... but doesnt hurt
 
@@ -542,7 +516,6 @@ class GestaltGraph {
   //   }
   //   return [];
   // }
-
 }
 
 export default GestaltGraph;

@@ -5,7 +5,7 @@ pkgs.mkShell {
   nativeBuildInputs = [
     nodejs
     ngrok
-    # grpc-tools
+    grpc-tools
     openapi-generator-cli
   ];
   shellHook = ''

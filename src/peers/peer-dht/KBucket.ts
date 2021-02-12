@@ -29,7 +29,10 @@ class KBucket {
   private numberOfNodesToPing: number;
   private root: Node;
 
-  constructor(getPeerId: () => string, pingNode: (oldContacts: string[], newContact: string) => void) {
+  constructor(
+    getPeerId: () => string,
+    pingNode: (oldContacts: string[], newContact: string) => void,
+  ) {
     this.getPeerId = getPeerId;
     this.pingNode = pingNode;
 
@@ -123,7 +126,9 @@ class KBucket {
       // only if one of the pinged nodes does not respond, can the new contact
       // be added (this prevents DoS flodding with new invalid contacts)
       this.pingNode(
-        node.contacts.slice(0, this.numberOfNodesToPing).map((i) => this.u8ToPeerId(i)),
+        node.contacts
+          .slice(0, this.numberOfNodesToPing)
+          .map((i) => this.u8ToPeerId(i)),
         this.u8ToPeerId(id),
       );
       return;
@@ -149,7 +154,11 @@ class KBucket {
 
     let contacts: Uint8Array[] = [];
 
-    for (let nodes = [this.root], bitIndex = 0; nodes.length > 0 && contacts.length < num;) {
+    for (
+      let nodes = [this.root], bitIndex = 0;
+      nodes.length > 0 && contacts.length < num;
+
+    ) {
       const node = nodes.pop();
 
       if (node) {
@@ -182,11 +191,16 @@ class KBucket {
    */
   count(): number {
     let count = 0;
-    for (const nodes = [this.root]; nodes.length > 0;) {
+    for (const nodes = [this.root]; nodes.length > 0; ) {
       const node = nodes.pop();
       if (node) {
         if (node.contacts === null) {
-          nodes.push({ contacts: [], right: node.right, left: node.left, dontSplit: true });
+          nodes.push({
+            contacts: [],
+            right: node.right,
+            left: node.left,
+            dontSplit: true,
+          });
         } else {
           count += node.contacts.length;
         }
@@ -205,7 +219,11 @@ class KBucket {
    *                           to check in the id Uint8Array.
    * @return {Object}          left leaf if id at bitIndex is 0, right leaf otherwise.
    */
-  private determineNode(node: Node, id: Uint8Array, bitIndex: number): Node | null {
+  private determineNode(
+    node: Node,
+    id: Uint8Array,
+    bitIndex: number,
+  ): Node | null {
     // **NOTE** remember that id is a Uint8Array and has granularity of
     // bytes (8 bits), whereas the bitIndex is the _bit_ index (not byte)
 
@@ -354,7 +372,7 @@ class KBucket {
    */
   toArray(): string[] {
     let result: string[] = [];
-    for (const nodes = [this.root]; nodes.length > 0;) {
+    for (const nodes = [this.root]; nodes.length > 0; ) {
       const node = nodes.pop();
       if (node) {
         if (node.contacts === null) {
@@ -408,7 +426,11 @@ class KBucket {
   // ==== Helper methods ==== //
   private peerIdToU8(id: string) {
     const b = Buffer.from(id);
-    return new Uint8Array(b.buffer, b.byteOffset, b.byteLength / Uint8Array.BYTES_PER_ELEMENT);
+    return new Uint8Array(
+      b.buffer,
+      b.byteOffset,
+      b.byteLength / Uint8Array.BYTES_PER_ELEMENT,
+    );
   }
 
   private u8ToPeerId(ui8: Uint8Array) {

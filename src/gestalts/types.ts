@@ -6,13 +6,13 @@ type GestaltKey = string;
 
 type GestaltMatrix = {
   [key: string]: {
-    [key: string]: LinkInfo
-  }
+    [key: string]: LinkInfo;
+  };
 };
 
-type GestaltNodes = {[key: string]: NodeInfo};
+type GestaltNodes = { [key: string]: NodeInfo };
 
-type GestaltIdentities = {[key: string]: IdentityInfo};
+type GestaltIdentities = { [key: string]: IdentityInfo };
 
 type Gestalt = {
   graph: GestaltMatrix;
@@ -20,10 +20,4 @@ type Gestalt = {
   identities: GestaltIdentities;
 };
 
-export {
-  GestaltKey,
-  GestaltMatrix,
-  GestaltNodes,
-  GestaltIdentities,
-  Gestalt
-};
+export { GestaltKey, GestaltMatrix, GestaltNodes, GestaltIdentities, Gestalt };

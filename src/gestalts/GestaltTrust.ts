@@ -1,10 +1,9 @@
 import type { GestaltKey, Gestalt } from './types';
 
 class GestaltTrust {
-
   protected db: Set<GestaltKey> = new Set();
 
-  public trustGestalt (gestalt: Gestalt): void {
+  public trustGestalt(gestalt: Gestalt): void {
     for (const nodeKey of Object.keys(gestalt.nodes)) {
       this.db.add(nodeKey);
     }
@@ -13,7 +12,7 @@ class GestaltTrust {
     }
   }
 
-  public untrustGestalt (gestalt: Gestalt): void {
+  public untrustGestalt(gestalt: Gestalt): void {
     for (const nodeKey of Object.keys(gestalt.nodes)) {
       this.db.delete(nodeKey);
     }
@@ -22,18 +21,17 @@ class GestaltTrust {
     }
   }
 
-  public trusted (key: GestaltKey): boolean {
+  public trusted(key: GestaltKey): boolean {
     return this.db.has(key);
   }
 
-  public addTrust (key: GestaltKey) {
+  public addTrust(key: GestaltKey) {
     this.db.add(key);
   }
 
-  public unaddTrust (key: GestaltKey) {
+  public unaddTrust(key: GestaltKey) {
     this.db.delete(key);
   }
-
 }
 
 export default GestaltTrust;

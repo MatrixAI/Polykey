@@ -1,6 +1,5 @@
 import fs from 'fs';
 import commander from 'commander';
-import { PeerInfo } from '../../Polykey';
 import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   actionRunner,
@@ -42,18 +41,18 @@ commandAddPeer.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const pemFileData = fs.readFileSync(options.pem).toString()
+    const pemFileData = fs.readFileSync(options.pem).toString();
 
     const request = new agentPB.PeerInfoReadOnlyMessage();
-    request.setPem(pemFileData)
+    request.setPem(pemFileData);
     if (options.alias) {
-      request.setUnsignedAlias(options.alias)
+      request.setUnsignedAlias(options.alias);
     }
     if (options.peerAddress) {
-      request.setUnsignedPeerAddress(options.peerAddress)
+      request.setUnsignedPeerAddress(options.peerAddress);
     }
     if (options.apiAddress) {
-      request.setUnsignedApiAddress(options.apiAddress)
+      request.setUnsignedApiAddress(options.apiAddress);
     }
 
     const res = (await promisifyGrpc(client.addPeer.bind(client))(
@@ -165,10 +164,7 @@ commandGetPeerInfo.option(
   (str) => parseInt(str),
   1,
 );
-commandGetPeerInfo.option(
-  '-p, --pem',
-  'output peer info a pem encoded string',
-);
+commandGetPeerInfo.option('-p, --pem', 'output peer info a pem encoded string');
 commandGetPeerInfo.option(
   '-cn, --current-node',
   'only list the peer information for the current node, useful for sharing',
@@ -196,7 +192,7 @@ commandGetPeerInfo.action(
         request,
       )) as agentPB.PeerInfoMessage;
     }
-    const peerInfo = res.toObject()
+    const peerInfo = res.toObject();
 
     if (options.pem as boolean) {
       pkLogger.logV1(peerInfo.pem, PKMessageType.SUCCESS);
@@ -226,16 +222,22 @@ commandGetPeerInfo.action(
       );
 
       pkLogger.logV1('Link Info List:', PKMessageType.INFO);
-      peerInfo.linkInfoList.forEach(l => {
-        pkLogger.logV1(`Link Info Identity: '${l.identity}'`, PKMessageType.INFO);
+      peerInfo.linkInfoList.forEach((l) => {
+        pkLogger.logV1(
+          `Link Info Identity: '${l.identity}'`,
+          PKMessageType.INFO,
+        );
         pkLogger.logV1(`Node Provider: '${l.provider}'`, PKMessageType.SUCCESS);
         pkLogger.logV1(`Key: '${l.key}'`, PKMessageType.SUCCESS);
-        pkLogger.logV1(`Date Issued: '${new Date(l.dateissued)}'`, PKMessageType.SUCCESS);
+        pkLogger.logV1(
+          `Date Issued: '${new Date(l.dateissued)}'`,
+          PKMessageType.SUCCESS,
+        );
         pkLogger.logV1(`Node:`, PKMessageType.SUCCESS);
         pkLogger.logV1(JSON.parse(l.node), PKMessageType.SUCCESS);
         pkLogger.logV1(`Signature:`, PKMessageType.SUCCESS);
         pkLogger.logV1(l.signature, PKMessageType.SUCCESS);
-      })
+      });
     }
   }),
 );
@@ -390,10 +392,7 @@ commandUpdatePeerInfo.option(
   '-p, --pem <pem>',
   'the file that contains the decode the peer info from a pem encoded string',
 );
-commandUpdatePeerInfo.option(
-  '-a, --alias <alias>',
-  'update the peer alias',
-);
+commandUpdatePeerInfo.option('-a, --alias <alias>', 'update the peer alias');
 commandUpdatePeerInfo.option(
   '-pa, --peer-address <peerAddress>',
   'update the peer address',
@@ -409,36 +408,38 @@ commandUpdatePeerInfo.action(
     const client = await getAgentClient(nodePath, pkLogger);
 
     if (options.currentNode) {
-      const peerInfo = new agentPB.PeerInfoMessage
+      const peerInfo = new agentPB.PeerInfoMessage();
       if (options.alias) {
-        peerInfo.setAlias(options.alias)
+        peerInfo.setAlias(options.alias);
       } else if (options.peerAddress) {
-        peerInfo.setPeerAddress(options.peerAddress)
+        peerInfo.setPeerAddress(options.peerAddress);
       } else if (options.apiAddress) {
-        peerInfo.setApiAddress(options.apiAddress)
+        peerInfo.setApiAddress(options.apiAddress);
       } else {
-        throw Error('no changes were provided')
+        throw Error('no changes were provided');
       }
       await promisifyGrpc(client.updateLocalPeerInfo.bind(client))(peerInfo);
     } else if (options.pem) {
-      const pem = fs.readFileSync(options.pem).toString()
-      const peerInfo = new agentPB.PeerInfoReadOnlyMessage
-      peerInfo.setPem(pem)
+      const pem = fs.readFileSync(options.pem).toString();
+      const peerInfo = new agentPB.PeerInfoReadOnlyMessage();
+      peerInfo.setPem(pem);
       await promisifyGrpc(client.updatePeerInfo.bind(client))(peerInfo);
     } else if (options.peerId) {
-      const peerInfo = new agentPB.PeerInfoReadOnlyMessage
+      const peerInfo = new agentPB.PeerInfoReadOnlyMessage();
       if (options.alias) {
-        peerInfo.setUnsignedAlias(options.alias)
+        peerInfo.setUnsignedAlias(options.alias);
       } else if (options.peerAddress || options.peerAddress == '') {
-        peerInfo.setUnsignedPeerAddress(options.peerAddress)
+        peerInfo.setUnsignedPeerAddress(options.peerAddress);
       } else if (options.apiAddress || options.apiAddress == '') {
-        peerInfo.setUnsignedApiAddress(options.apiAddress)
+        peerInfo.setUnsignedApiAddress(options.apiAddress);
       } else {
-        throw Error('no changes were provided')
+        throw Error('no changes were provided');
       }
       await promisifyGrpc(client.updatePeerInfo.bind(client))(peerInfo);
     } else {
-      throw Error('currentNode, pem or peerId must be provided to identify peer')
+      throw Error(
+        'currentNode, pem or peerId must be provided to identify peer',
+      );
     }
 
     pkLogger.logV2('peer info was successfully updated', PKMessageType.SUCCESS);

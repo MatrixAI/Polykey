@@ -28,7 +28,10 @@ function compareRefNames(a, b) {
 // @see https://git-scm.com/docs/gitrepository-layout
 const GIT_FILES = ['config', 'description', 'index', 'shallow', 'commondir'];
 // This function is used to get all the files in the refs folder for listRefs function
-async function recursiveDirectoryWalk(dir: string, fileSystem: EncryptedFS): Promise<string[]> {
+async function recursiveDirectoryWalk(
+  dir: string,
+  fileSystem: EncryptedFS,
+): Promise<string[]> {
   return new Promise((resolve, reject) => {
     let results: string[] = [];
     fileSystem.promises
@@ -58,13 +61,19 @@ async function recursiveDirectoryWalk(dir: string, fileSystem: EncryptedFS): Pro
 
 class GitRefManager {
   static async packedRefs(fileSystem: EncryptedFS, gitdir: string) {
-    const text = fileSystem.readFileSync(`${gitdir}/packed-refs`, { encoding: 'utf8' });
+    const text = fileSystem.readFileSync(`${gitdir}/packed-refs`, {
+      encoding: 'utf8',
+    });
     const packed = GitPackedRefs.from(text);
     return packed.refs;
   }
 
   // List all the refs that match the `filepath` prefix
-  static async listRefs(fileSystem: EncryptedFS, gitdir: string, filepath: string): Promise<string[]> {
+  static async listRefs(
+    fileSystem: EncryptedFS,
+    gitdir: string,
+    filepath: string,
+  ): Promise<string[]> {
     const packedMap = GitRefManager.packedRefs(fileSystem, gitdir);
     let files: string[] = [];
     try {
@@ -91,7 +100,12 @@ class GitRefManager {
     return files;
   }
 
-  static async resolve(fileSystem: EncryptedFS, gitdir: string, ref: string, depth?: number) {
+  static async resolve(
+    fileSystem: EncryptedFS,
+    gitdir: string,
+    ref: string,
+    depth?: number,
+  ) {
     if (depth !== undefined) {
       depth--;
       if (depth === -1) {
@@ -113,7 +127,10 @@ class GitRefManager {
     const allpaths = refpaths(ref).filter((p) => !GIT_FILES.includes(p)); // exclude git system files (#709)
 
     for (const ref of allpaths) {
-      const sha = fileSystem.readFileSync(`${gitdir}/${ref}`, { encoding: 'utf8' }).toString() || packedMap.get(ref);
+      const sha =
+        fileSystem
+          .readFileSync(`${gitdir}/${ref}`, { encoding: 'utf8' })
+          .toString() || packedMap.get(ref);
       if (sha) {
         return GitRefManager.resolve(fileSystem, gitdir, sha.trim(), depth);
       }

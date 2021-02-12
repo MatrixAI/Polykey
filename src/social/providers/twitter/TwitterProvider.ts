@@ -48,7 +48,6 @@
 
 //         // step 3
 
-
 //       }
 //     })
 //   }
@@ -69,8 +68,6 @@
 //   protected buildAccessToken (oauthVerifier: string, oauthToken: string): string {
 //     return ""
 //   }
-
-
 
 //   protected createRequest (url: string, options: any, tokenData: TokenData): Request {
 //     let headers = options.headers;
@@ -171,16 +168,13 @@
 //     }
 //   }
 
-
 //   public getLinkInfo(linkKey: TweetKey): Promise<any> {
 //     throw new Error("LinkedIn does not provide permissions for this functionality.")
 //   }
 
-
 //   public async * getLinkInfos(identityKey: UserKey): AsyncGenerator<any, any, unknown> {
 //     throw new Error("LinkedIn does not provide permissions for this functionality.")
 //   }
-
 
 //   protected buildRefreshTokenRequest (redirectUri: string): Request {
 //     throw new Error('Unimplemented');

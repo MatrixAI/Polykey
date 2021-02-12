@@ -10,24 +10,27 @@
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "prettier/@typescript-eslint",
-    "plugin:prettier/recommended"
+    "plugin:prettier/recommended",
+    "prettier",
+    "prettier/@typescript-eslint"
   ],
   "parserOptions": {
     "sourceType": "module",
-    "ecmaVersion": 2018
+    "ecmaVersion": 2020
   },
   "rules": {
-    "no-useless-escape": 0,
-    "no-async-promise-executor": 0,
-    "@typescript-eslint/camelcase": 0,
+    "linebreak-style": ["error", "unix"],
+    "no-empty": 1,
+    "no-undef": 1,
+    "no-useless-catch": 1,
+    "no-prototype-builtins": 1,
+    "no-constant-condition": 0,
     "@typescript-eslint/no-namespace": 0,
     "@typescript-eslint/no-explicit-any": 0,
     "@typescript-eslint/explicit-module-boundary-types": 0,
-    "no-prototype-builtins": 1,
-    "no-useless-catch": 1,
-    "no-undef": 1,
-    "no-empty": 1,
-    "linebreak-style": ["error", "unix"]
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-inferrable-types": 0,
+    "@typescript-eslint/no-non-null-assertion": 0,
+    "@typescript-eslint/no-this-alias": 0
   }
 }

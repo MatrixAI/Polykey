@@ -1,9 +1,6 @@
 import * as utils from './utils';
 import * as config from './Config';
-import OAuth2Store, { AccessToken, AuthorizationCode, Client } from './OAuth2Store';
-
-/** Suppress tracing for things like unit testing */
-const suppressTrace = process.env.OAUTHRECIPES_SURPRESS_TRACE === 'true';
+import OAuth2Store, { AuthorizationCode, Client } from './OAuth2Store';
 
 class Validation {
   store: OAuth2Store;
@@ -41,7 +38,12 @@ class Validation {
     return token;
   }
 
-  authCode(code: string, authCode: AuthorizationCode, client: Client, redirectURI: string) {
+  authCode(
+    code: string,
+    authCode: AuthorizationCode,
+    client: Client,
+    redirectURI: string,
+  ) {
     utils.verifyToken(code, this.store.publicKey);
     if (client.id !== authCode.clientId) {
       throw Error('AuthCode clientID does not match client id given');
@@ -57,21 +59,43 @@ class Validation {
   }
 
   generateRefreshToken(authCode: AuthorizationCode) {
-    const refreshToken = utils.createToken(this.store.privateKey, config.refreshToken.expiresIn, authCode.userId);
+    const refreshToken = utils.createToken(
+      this.store.privateKey,
+      config.refreshToken.expiresIn,
+      authCode.userId,
+    );
     const expiration = config.token.calculateExpirationDate();
-    return this.store.saveRefreshToken(refreshToken, expiration, authCode.clientId, authCode.userId, authCode.scope)
-      .token;
+    return this.store.saveRefreshToken(
+      refreshToken,
+      expiration,
+      authCode.clientId,
+      authCode.userId,
+      authCode.scope,
+    ).token;
   }
 
   generateToken(authCode: AuthorizationCode) {
-    const token = utils.createToken(this.store.privateKey, config.token.expiresIn, authCode.userId);
+    const token = utils.createToken(
+      this.store.privateKey,
+      config.token.expiresIn,
+      authCode.userId,
+    );
     const expiration = config.token.calculateExpirationDate();
-    return this.store.saveAccessToken(token, expiration, authCode.userId, authCode.clientId, authCode.scope).token;
+    return this.store.saveAccessToken(
+      token,
+      expiration,
+      authCode.userId,
+      authCode.clientId,
+      authCode.scope,
+    ).token;
   }
 
   generateTokens(authCode: AuthorizationCode) {
     if (this.isRefreshToken(authCode)) {
-      return Promise.all([this.generateToken(authCode), this.generateRefreshToken(authCode)]);
+      return Promise.all([
+        this.generateToken(authCode),
+        this.generateRefreshToken(authCode),
+      ]);
     }
     return Promise.all([this.generateToken(authCode)]);
   }
@@ -82,15 +106,15 @@ class Validation {
     } catch (error) {
       throw Error('invalid_token');
     }
-    try {
-      const accessToken = this.store.getAccessToken(token);
-      return accessToken;
-    } catch (err) {}
-    try {
-      const accessToken = this.store.getRefreshToken(token);
-      return accessToken;
-    } catch (err) {}
-    throw Error('token not found');
+    let accessToken;
+    accessToken = this.store.getAccessToken(token);
+    if (!accessToken) {
+      accessToken = this.store.getRefreshToken(token);
+    }
+    if (!accessToken) {
+      throw Error('token not found');
+    }
+    return accessToken;
   }
 
   /**

@@ -23,8 +23,8 @@ class PublicKeyInfrastructure {
   private pkiFs: typeof fs;
 
   // peer info
-  private getLocalPeerInfo: () => PeerInfo
-  private getPrivateKey: () => pki.rsa.PrivateKey
+  private getLocalPeerInfo: () => PeerInfo;
+  private getPrivateKey: () => pki.rsa.PrivateKey;
 
   // certificate signed by another
   private keypair: pki.rsa.KeyPair;
@@ -37,12 +37,11 @@ class PublicKeyInfrastructure {
   }
 
   public get RootCertificatePem(): string {
-    return this.getLocalPeerInfo().toX509Pem(this.getPrivateKey())
+    return this.getLocalPeerInfo().toX509Pem(this.getPrivateKey());
   }
   public get RootCertificate(): pki.Certificate {
-    return pki.certificateFromPem(this.RootCertificatePem)
+    return pki.certificateFromPem(this.RootCertificatePem);
   }
-
 
   public get TLSClientCredentials(): TLSCredentials {
     return {
@@ -86,14 +85,18 @@ class PublicKeyInfrastructure {
     this.CAStore = pki.createCaStore();
     this.pkiFs = fileSystem;
 
-    this.getLocalPeerInfo = getLocalPeerInfo
-    this.getPrivateKey = getPrivateKey
+    this.getLocalPeerInfo = getLocalPeerInfo;
+    this.getPrivateKey = getPrivateKey;
   }
 
   //////////////////////////////////
   // Certificate Signing Requests //
   //////////////////////////////////
-  createCSR(commonName: string, challengePassword: string, keypair?: pki.rsa.KeyPair) {
+  createCSR(
+    commonName: string,
+    challengePassword: string,
+    keypair?: pki.rsa.KeyPair,
+  ) {
     // create a certification request (CSR)
     const csr = pki.createCertificationRequest();
 
@@ -129,7 +132,7 @@ class PublicKeyInfrastructure {
   }
 
   handleCSR(csrPem: string) {
-    const rootCertificate = this.RootCertificate
+    const rootCertificate = this.RootCertificate;
 
     const csr = pki.certificationRequestFromPem(csrPem);
     // verify certification request
@@ -148,7 +151,9 @@ class PublicKeyInfrastructure {
     certificate.serialNumber = '01';
     certificate.validity.notBefore = new Date();
     certificate.validity.notAfter = new Date();
-    certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
+    certificate.validity.notAfter.setMonth(
+      certificate.validity.notBefore.getMonth() + 3,
+    );
     certificate.setSubject(csr.subject.attributes);
     certificate.setIssuer(rootCertificate.issuer.attributes);
     certificate.publicKey = csr.publicKey;
@@ -204,14 +209,16 @@ class PublicKeyInfrastructure {
   // Agent & Client Comms //
   //////////////////////////
   createServerCredentials(): TLSCredentials {
-    const rootCertificate = this.RootCertificate
+    const rootCertificate = this.RootCertificate;
     const keypair = this.createKeypair();
     // create a certification request (CSR)
     const certificate = pki.createCertificate();
     certificate.serialNumber = '01';
     certificate.validity.notBefore = new Date();
     certificate.validity.notAfter = new Date();
-    certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
+    certificate.validity.notAfter.setMonth(
+      certificate.validity.notBefore.getMonth() + 3,
+    );
 
     certificate.setSubject([
       {
@@ -269,14 +276,16 @@ class PublicKeyInfrastructure {
   }
 
   createClientCredentials(): TLSCredentials {
-    const rootCertificate = this.RootCertificate
+    const rootCertificate = this.RootCertificate;
     const keypair = this.createKeypair();
     // create a certification request (CSR)
     const certificate = pki.createCertificate();
     certificate.serialNumber = '01';
     certificate.validity.notBefore = new Date();
     certificate.validity.notAfter = new Date();
-    certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
+    certificate.validity.notAfter.setMonth(
+      certificate.validity.notBefore.getMonth() + 3,
+    );
 
     certificate.setSubject([
       {
@@ -336,14 +345,19 @@ class PublicKeyInfrastructure {
   ////////////////////
   // Helper methods //
   ////////////////////
-  createTLSCredentials(organizationName = 'MatrixAI', isCA = false): TLSCredentials {
+  createTLSCredentials(
+    organizationName = 'MatrixAI',
+    isCA = false,
+  ): TLSCredentials {
     const certificate = pki.createCertificate();
     const keypair = this.createKeypair();
     certificate.publicKey = keypair.publicKey;
     certificate.serialNumber = '01';
     certificate.validity.notBefore = new Date();
     certificate.validity.notAfter = new Date();
-    certificate.validity.notAfter.setMonth(certificate.validity.notBefore.getMonth() + 3);
+    certificate.validity.notAfter.setMonth(
+      certificate.validity.notBefore.getMonth() + 3,
+    );
 
     const attrs = [
       {
@@ -433,15 +447,22 @@ class PublicKeyInfrastructure {
 
   loadMetadata(): void {
     if (this.pkiFs) {
-    // make the pkiPath directory
+      // make the pkiPath directory
       this.pkiFs.mkdirSync(this.pkiPath, { recursive: true });
 
       // load keypair and certificate
       const keypairPath = path.join(this.pkiPath, 'keypair');
       const certificatePath = path.join(this.pkiPath, 'certificate');
-    if (this.pkiFs.existsSync(keypairPath) && this.pkiFs.existsSync(certificatePath)) {
-        this.keypair = this.jsonToKeyPair(this.pkiFs.readFileSync(keypairPath).toString());
-        this.certificate = pki.certificateFromPem(this.pkiFs.readFileSync(certificatePath).toString());
+      if (
+        this.pkiFs.existsSync(keypairPath) &&
+        this.pkiFs.existsSync(certificatePath)
+      ) {
+        this.keypair = this.jsonToKeyPair(
+          this.pkiFs.readFileSync(keypairPath).toString(),
+        );
+        this.certificate = pki.certificateFromPem(
+          this.pkiFs.readFileSync(certificatePath).toString(),
+        );
       } else {
         // create the keypair and cert if it doesn't exist
         const tlsCredentials = this.createTLSCredentials(undefined, false);
@@ -455,15 +476,15 @@ class PublicKeyInfrastructure {
       // load certificate chain
       const certificateChainPath = path.join(this.pkiPath, 'certificate_chain');
       if (this.pkiFs.existsSync(certificateChainPath)) {
-        this.certificateChain = JSON.parse(this.pkiFs.readFileSync(certificateChainPath).toString()).map((s: string) =>
-          pki.certificateFromPem(s),
-        );
+        this.certificateChain = JSON.parse(
+          this.pkiFs.readFileSync(certificateChainPath).toString(),
+        ).map((s: string) => pki.certificateFromPem(s));
       } else {
         // create the certificate chain if it doesn't exist
         if (this.getLocalPeerInfo()) {
           this.certificateChain = [this.RootCertificate];
         } else {
-          this.certificateChain = []
+          this.certificateChain = [];
         }
       }
 
@@ -471,8 +492,12 @@ class PublicKeyInfrastructure {
       const parsedCertificates: pki.Certificate[] = [];
       const caStorePath = path.join(this.pkiPath, 'ca_store_certificates');
       if (this.pkiFs.existsSync(caStorePath)) {
-        const certificates: string[] = JSON.parse(this.pkiFs.readFileSync(caStorePath).toString());
-        parsedCertificates.push(...certificates.map((c) => pki.certificateFromPem(c)));
+        const certificates: string[] = JSON.parse(
+          this.pkiFs.readFileSync(caStorePath).toString(),
+        );
+        parsedCertificates.push(
+          ...certificates.map((c) => pki.certificateFromPem(c)),
+        );
       }
       this.CAStore = pki.createCaStore(parsedCertificates);
 
@@ -484,7 +509,10 @@ class PublicKeyInfrastructure {
   private writeMetadata(): void {
     if (this.pkiFs) {
       // write keypair and certificate
-      this.pkiFs.writeFileSync(path.join(this.pkiPath, 'keypair'), Buffer.from(this.keyPairToJSON(this.keypair)));
+      this.pkiFs.writeFileSync(
+        path.join(this.pkiPath, 'keypair'),
+        Buffer.from(this.keyPairToJSON(this.keypair)),
+      );
       if (this.certificate) {
         this.pkiFs.writeFileSync(
           path.join(this.pkiPath, 'certificate'),
@@ -498,8 +526,13 @@ class PublicKeyInfrastructure {
       );
 
       // write ca store
-      const certsJson = JSON.stringify(this.CAStore.listAllCertificates().map((c) => pki.certificateToPem(c)));
-      this.pkiFs.writeFileSync(path.join(this.pkiPath, 'ca_store_certificates'), certsJson);
+      const certsJson = JSON.stringify(
+        this.CAStore.listAllCertificates().map((c) => pki.certificateToPem(c)),
+      );
+      this.pkiFs.writeFileSync(
+        path.join(this.pkiPath, 'ca_store_certificates'),
+        certsJson,
+      );
     }
   }
 

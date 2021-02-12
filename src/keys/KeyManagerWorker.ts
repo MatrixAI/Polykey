@@ -9,7 +9,7 @@ const keyManagerWorker = {
    * @param decryptedPrivateKey the decrypted key with which to sign with.
    */
   async signData(data: string, decryptedPrivateKey: string): Promise<string> {
-    const privateKey = pki.privateKeyFromPem(decryptedPrivateKey)
+    const privateKey = pki.privateKeyFromPem(decryptedPrivateKey);
     const digest = md.sha512.create();
     digest.update(data.toString(), 'raw');
     const signature = privateKey.sign(digest);
@@ -21,8 +21,12 @@ const keyManagerWorker = {
    * @param signature the signature
    * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
    */
-  async verifyData(data: string, signature: string, publicKey: string): Promise<boolean> {
-    const resolvedKey = pki.publicKeyFromPem(publicKey)
+  async verifyData(
+    data: string,
+    signature: string,
+    publicKey: string,
+  ): Promise<boolean> {
+    const resolvedKey = pki.publicKeyFromPem(publicKey);
     const digest = md.sha512.create();
     digest.update(data.toString(), 'raw');
     const verified = resolvedKey.verify(digest.digest().bytes(), signature);
@@ -45,8 +49,8 @@ const keyManagerWorker = {
    * @param passphrase Required if privateKey is provided.
    */
   async decryptData(data: string, privateKey: string): Promise<string> {
-    const resolvedKey = pki.privateKeyFromPem(privateKey)
-    const decryptedData = resolvedKey.decrypt(data)
+    const resolvedKey = pki.privateKeyFromPem(privateKey);
+    const decryptedData = resolvedKey.decrypt(data);
     return decryptedData;
   },
 };

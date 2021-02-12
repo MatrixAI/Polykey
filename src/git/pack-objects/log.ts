@@ -4,9 +4,18 @@ import { EncryptedFS } from 'encryptedfs';
 import GitObjectManager from './GitObjectManager';
 import GitRefManager from '../upload-pack/GitRefManager';
 
-async function logCommit(fileSystem: EncryptedFS, gitdir: string, oid: string, signing: boolean) {
+async function logCommit(
+  fileSystem: EncryptedFS,
+  gitdir: string,
+  oid: string,
+  signing: boolean,
+) {
   try {
-    const { type, object } = await GitObjectManager.read(fileSystem, gitdir, oid);
+    const { type, object } = await GitObjectManager.read(
+      fileSystem,
+      gitdir,
+      oid,
+    );
     if (type !== 'commit') {
       throw new Error('expected type to be commit');
     }
@@ -43,7 +52,8 @@ async function log(
   signing = false,
 ) {
   try {
-    const sinceTimestamp = since === undefined ? undefined : Math.floor(since.valueOf() / 1000);
+    const sinceTimestamp =
+      since === undefined ? undefined : Math.floor(since.valueOf() / 1000);
     // TODO: In the future, we may want to have an API where we return a
     // async iterator that emits commits.
     const commits: any[] = [];
@@ -61,7 +71,10 @@ async function log(
       }
 
       // Stop the log if we've hit the age limit
-      if (sinceTimestamp !== undefined && commit.committer.timestamp <= sinceTimestamp) {
+      if (
+        sinceTimestamp !== undefined &&
+        commit.committer.timestamp <= sinceTimestamp
+      ) {
         break;
       }
 

@@ -96,7 +96,7 @@ class PeerManager {
         if (!this.hasPeer(peerInfo.id)) {
           this.addPeer(peerInfo);
         } else {
-          this.updatePeer(peerInfo)
+          this.updatePeer(peerInfo);
         }
       }).bind(this),
     );
@@ -133,20 +133,20 @@ class PeerManager {
   }
 
   async start() {
-    this.pki.loadMetadata()
-    this.multicastBroadcaster.startBroadcasting()
+    this.pki.loadMetadata();
+    this.multicastBroadcaster.startBroadcasting();
     try {
-      await this.peerServer.start()
+      await this.peerServer.start();
     } catch (error) {
       // no throw
     }
-    await this.natTraversal.start()
+    await this.natTraversal.start();
   }
 
   async stop() {
-    this.multicastBroadcaster.stopBroadcasting()
-    await this.peerServer.stop()
-    await this.natTraversal.stop()
+    this.multicastBroadcaster.stopBroadcasting();
+    await this.peerServer.stop();
+    await this.natTraversal.stop();
   }
 
   toggleStealthMode(active: boolean) {
@@ -160,7 +160,10 @@ class PeerManager {
 
   setGitHandlers(
     handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>,
-    handleGitPackRequest: (vaultName: string, body: Buffer) => Promise<Uint8Array>,
+    handleGitPackRequest: (
+      vaultName: string,
+      body: Buffer,
+    ) => Promise<Uint8Array>,
     handleGetVaultNames: () => Promise<string[]>,
   ) {
     this.peerServer.handleGitInfoRequest = handleGitInfoRequest;
@@ -187,9 +190,8 @@ class PeerManager {
     this.peerStore.set(peerInfo.id, peerInfo.deepCopy());
     if (alias) {
       try {
-        this.peerAlias.set(alias, peerInfo.id)
-      } catch (error) {
-      }
+        this.peerAlias.set(alias, peerInfo.id);
+      } catch (error) {}
     }
     this.peerDHT.addPeer(peerInfo.id);
     this.writeMetadata();
@@ -288,12 +290,18 @@ class PeerManager {
     return new Promise<boolean>((resolve, reject) => {
       this.multicastBroadcaster.startListening();
       this.multicastBroadcaster.on('found', (foundPublicKey: string) => {
-        if (PeerInfo.formatPublicKey(foundPublicKey) == PeerInfo.formatPublicKey(publicKey)) {
+        if (
+          PeerInfo.formatPublicKey(foundPublicKey) ==
+          PeerInfo.formatPublicKey(publicKey)
+        ) {
           resolve(true);
         }
       });
 
-      setTimeout(() => reject(Error('peer discovery timed out')), timeout && timeout != 0 ? timeout : 5e4);
+      setTimeout(
+        () => reject(Error('peer discovery timed out')),
+        timeout && timeout != 0 ? timeout : 5e4,
+      );
     });
   }
 
@@ -305,19 +313,19 @@ class PeerManager {
   // at the moment it only retrieves the link claims on the single requested keynode
   async findLinkClaims(peerId: string): Promise<LinkInfo[]> {
     if (this.peerInfo.id == peerId) {
-      return this.peerInfo?.linkInfoList ?? []
+      return this.peerInfo?.linkInfoList ?? [];
     } else {
-      const peerInfo = this.getPeer(peerId)
+      const peerInfo = this.getPeer(peerId);
       if (!peerInfo) {
-        throw Error(`peer does not exist in peer store for peerId: ${peerId}`)
+        throw Error(`peer does not exist in peer store for peerId: ${peerId}`);
       }
-      return peerInfo?.linkInfoList ?? []
+      return peerInfo?.linkInfoList ?? [];
     }
   }
 
   async getLinkInfos(id: string): Promise<LinkInfo[]> {
-    const targetPeerInfo = (await this.peerDHT.findPeer(id))?.targetPeerInfo
-    return targetPeerInfo?.linkInfoList ?? []
+    const targetPeerInfo = (await this.peerDHT.findPeer(id))?.targetPeerInfo;
+    return targetPeerInfo?.linkInfoList ?? [];
   }
 
   // TODO: find a better home for these next two methods (i.e. makeLinkClaimIdentity and verifyLinkClaim) or leave them?
@@ -327,34 +335,45 @@ class PeerManager {
    * @param providerKey The key to identify the already authenticated provider
    * @param identityKey The key that identifies a particular identity on the provider
    */
-  async makeLinkClaimIdentity(providerKey: string, identityKey: string): Promise<LinkClaimIdentity> {
+  async makeLinkClaimIdentity(
+    providerKey: string,
+    identityKey: string,
+  ): Promise<LinkClaimIdentity> {
     const toBeSigned = {
       node: JSON.stringify(this.peerInfo.publicKey),
       identity: identityKey,
       provider: providerKey,
-      dateIssued: (new Date(Date.now())).toISOString(),
-    }
-    const signature = await this.keyManager.signData((JSON as any).canonicalize(toBeSigned))
+      dateIssued: new Date(Date.now()).toISOString(),
+    };
+    const signature = await this.keyManager.signData(
+      (JSON as any).canonicalize(toBeSigned),
+    );
     const linkClaim: LinkClaimIdentity = {
       type: 'identity',
       ...toBeSigned,
       signature,
-    }
-    return linkClaim
+    };
+    return linkClaim;
   }
   // this method is for the gestalt graph to make sure what it is claiming is verified
   // i.e. the a signature from the public key attached to it is valid
   async verifyLinkClaim(linkClaim: LinkClaimIdentity): Promise<boolean> {
-    const linkClaimIdentity = linkClaim as LinkClaimIdentity
+    const linkClaimIdentity = linkClaim as LinkClaimIdentity;
     const toBeVerified = {
       node: linkClaimIdentity.node,
       identity: linkClaimIdentity.identity,
       provider: linkClaimIdentity.provider,
       dateIssued: linkClaimIdentity.dateIssued,
-    }
-    const signature = linkClaimIdentity.signature
-    const publicKey = PeerInfo.formatPublicKey(JSON.stringify(linkClaimIdentity.node))
-    return await this.keyManager.verifyData((JSON as any).canonicalize(toBeVerified), signature, publicKey)
+    };
+    const signature = linkClaimIdentity.signature;
+    const publicKey = PeerInfo.formatPublicKey(
+      JSON.stringify(linkClaimIdentity.node),
+    );
+    return await this.keyManager.verifyData(
+      (JSON as any).canonicalize(toBeVerified),
+      signature,
+      publicKey,
+    );
   }
 
   ///////////////////////
@@ -398,8 +417,12 @@ class PeerManager {
   /* ============ HELPERS =============== */
   writeMetadata(): void {
     // write peer info
-    this.fileSystem.mkdirSync(path.dirname(this.peerInfoMetadataPath), { recursive: true });
-    const peerInfoPem = this.peerInfo.toX509Pem(this.keyManager.getPrivateKey())
+    this.fileSystem.mkdirSync(path.dirname(this.peerInfoMetadataPath), {
+      recursive: true,
+    });
+    const peerInfoPem = this.peerInfo.toX509Pem(
+      this.keyManager.getPrivateKey(),
+    );
     this.fileSystem.writeFileSync(this.peerInfoMetadataPath, peerInfoPem);
     // write peer store
     const peerInfoList: string[] = [];
@@ -407,19 +430,29 @@ class PeerManager {
       peerInfoList.push(peerInfo.pem);
     }
 
-    this.fileSystem.writeFileSync(this.peerStoreMetadataPath, JSON.stringify(peerInfoList));
-    this.fileSystem.writeFileSync(this.peerAliasMetadataPath, JSON.stringify(this.peerAlias, JSONMapReplacer));
+    this.fileSystem.writeFileSync(
+      this.peerStoreMetadataPath,
+      JSON.stringify(peerInfoList),
+    );
+    this.fileSystem.writeFileSync(
+      this.peerAliasMetadataPath,
+      JSON.stringify(this.peerAlias, JSONMapReplacer),
+    );
   }
 
   loadMetadata(): void {
     // load peer info if path exists
     if (this.fileSystem.existsSync(this.peerInfoMetadataPath)) {
-      const metadata = this.fileSystem.readFileSync(this.peerInfoMetadataPath).toString();
+      const metadata = this.fileSystem
+        .readFileSync(this.peerInfoMetadataPath)
+        .toString();
       this.peerInfo = PeerInfo.fromX509Pem(metadata);
     }
     // load peer store if path exists
     if (this.fileSystem.existsSync(this.peerStoreMetadataPath)) {
-      const metadata = this.fileSystem.readFileSync(this.peerStoreMetadataPath).toString();
+      const metadata = this.fileSystem
+        .readFileSync(this.peerStoreMetadataPath)
+        .toString();
       for (const peerInfoPem of JSON.parse(metadata)) {
         const peerInfo = new PeerInfoReadOnly(peerInfoPem);
         this.peerStore.set(peerInfo.id, peerInfo);
@@ -427,7 +460,10 @@ class PeerManager {
     }
     // load the peer aliases
     if (this.fileSystem.existsSync(this.peerAliasMetadataPath)) {
-      this.peerAlias = JSON.parse(this.fileSystem.readFileSync(this.peerAliasMetadataPath).toString(), JSONMapReviver);
+      this.peerAlias = JSON.parse(
+        this.fileSystem.readFileSync(this.peerAliasMetadataPath).toString(),
+        JSONMapReviver,
+      );
     }
   }
 }
