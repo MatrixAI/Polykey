@@ -88,100 +88,6 @@ export namespace StringListMessage {
     }
 }
 
-export class LinkInfoIdentity extends jspb.Message { 
-    getType(): string;
-    setType(value: string): LinkInfoIdentity;
-
-    getNode(): string;
-    setNode(value: string): LinkInfoIdentity;
-
-    getIdentity(): string;
-    setIdentity(value: string): LinkInfoIdentity;
-
-    getProvider(): string;
-    setProvider(value: string): LinkInfoIdentity;
-
-    getDateissued(): string;
-    setDateissued(value: string): LinkInfoIdentity;
-
-    getSignature(): string;
-    setSignature(value: string): LinkInfoIdentity;
-
-    getKey(): string;
-    setKey(value: string): LinkInfoIdentity;
-
-    getUrl(): string;
-    setUrl(value: string): LinkInfoIdentity;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): LinkInfoIdentity.AsObject;
-    static toObject(includeInstance: boolean, msg: LinkInfoIdentity): LinkInfoIdentity.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: LinkInfoIdentity, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): LinkInfoIdentity;
-    static deserializeBinaryFromReader(message: LinkInfoIdentity, reader: jspb.BinaryReader): LinkInfoIdentity;
-}
-
-export namespace LinkInfoIdentity {
-    export type AsObject = {
-        type: string,
-        node: string,
-        identity: string,
-        provider: string,
-        dateissued: string,
-        signature: string,
-        key: string,
-        url: string,
-    }
-}
-
-export class LinkInfoNode extends jspb.Message { 
-    getType(): string;
-    setType(value: string): LinkInfoNode;
-
-    getNode1(): string;
-    setNode1(value: string): LinkInfoNode;
-
-    getNode2(): string;
-    setNode2(value: string): LinkInfoNode;
-
-    getDateissued(): string;
-    setDateissued(value: string): LinkInfoNode;
-
-    getSignature(): string;
-    setSignature(value: string): LinkInfoNode;
-
-    getKey(): string;
-    setKey(value: string): LinkInfoNode;
-
-    getUrl(): string;
-    setUrl(value: string): LinkInfoNode;
-
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): LinkInfoNode.AsObject;
-    static toObject(includeInstance: boolean, msg: LinkInfoNode): LinkInfoNode.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: LinkInfoNode, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): LinkInfoNode;
-    static deserializeBinaryFromReader(message: LinkInfoNode, reader: jspb.BinaryReader): LinkInfoNode;
-}
-
-export namespace LinkInfoNode {
-    export type AsObject = {
-        type: string,
-        node1: string,
-        node2: string,
-        dateissued: string,
-        signature: string,
-        key: string,
-        url: string,
-    }
-}
-
 export class PeerInfoMessage extends jspb.Message { 
     getPeerId(): string;
     setPeerId(value: string): PeerInfoMessage;
@@ -202,9 +108,9 @@ export class PeerInfoMessage extends jspb.Message {
     setApiAddress(value: string): PeerInfoMessage;
 
     clearLinkInfoList(): void;
-    getLinkInfoList(): Array<LinkInfoIdentity>;
-    setLinkInfoList(value: Array<LinkInfoIdentity>): PeerInfoMessage;
-    addLinkInfo(value?: LinkInfoIdentity, index?: number): LinkInfoIdentity;
+    getLinkInfoList(): Array<LinkInfoIdentityMessage>;
+    setLinkInfoList(value: Array<LinkInfoIdentityMessage>): PeerInfoMessage;
+    addLinkInfo(value?: LinkInfoIdentityMessage, index?: number): LinkInfoIdentityMessage;
 
     getPem(): string;
     setPem(value: string): PeerInfoMessage;
@@ -228,7 +134,7 @@ export namespace PeerInfoMessage {
         rootPublicKey: string,
         peerAddress: string,
         apiAddress: string,
-        linkInfoList: Array<LinkInfoIdentity.AsObject>,
+        linkInfoList: Array<LinkInfoIdentityMessage.AsObject>,
         pem: string,
     }
 }
@@ -990,15 +896,187 @@ export namespace AugmentKeynodeReply {
     }
 }
 
+export class LinkInfoIdentityMessage extends jspb.Message { 
+    getType(): string;
+    setType(value: string): LinkInfoIdentityMessage;
+
+    getNode(): string;
+    setNode(value: string): LinkInfoIdentityMessage;
+
+    getIdentity(): string;
+    setIdentity(value: string): LinkInfoIdentityMessage;
+
+    getProvider(): string;
+    setProvider(value: string): LinkInfoIdentityMessage;
+
+    getDateissued(): string;
+    setDateissued(value: string): LinkInfoIdentityMessage;
+
+    getSignature(): string;
+    setSignature(value: string): LinkInfoIdentityMessage;
+
+    getKey(): string;
+    setKey(value: string): LinkInfoIdentityMessage;
+
+    getUrl(): string;
+    setUrl(value: string): LinkInfoIdentityMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkInfoIdentityMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkInfoIdentityMessage): LinkInfoIdentityMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkInfoIdentityMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkInfoIdentityMessage;
+    static deserializeBinaryFromReader(message: LinkInfoIdentityMessage, reader: jspb.BinaryReader): LinkInfoIdentityMessage;
+}
+
+export namespace LinkInfoIdentityMessage {
+    export type AsObject = {
+        type: string,
+        node: string,
+        identity: string,
+        provider: string,
+        dateissued: string,
+        signature: string,
+        key: string,
+        url: string,
+    }
+}
+
+export class LinkInfoNodeMessage extends jspb.Message { 
+    getType(): string;
+    setType(value: string): LinkInfoNodeMessage;
+
+    getNode1(): string;
+    setNode1(value: string): LinkInfoNodeMessage;
+
+    getNode2(): string;
+    setNode2(value: string): LinkInfoNodeMessage;
+
+    getDateissued(): string;
+    setDateissued(value: string): LinkInfoNodeMessage;
+
+    getSignature(): string;
+    setSignature(value: string): LinkInfoNodeMessage;
+
+    getKey(): string;
+    setKey(value: string): LinkInfoNodeMessage;
+
+    getUrl(): string;
+    setUrl(value: string): LinkInfoNodeMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkInfoNodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkInfoNodeMessage): LinkInfoNodeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkInfoNodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkInfoNodeMessage;
+    static deserializeBinaryFromReader(message: LinkInfoNodeMessage, reader: jspb.BinaryReader): LinkInfoNodeMessage;
+}
+
+export namespace LinkInfoNodeMessage {
+    export type AsObject = {
+        type: string,
+        node1: string,
+        node2: string,
+        dateissued: string,
+        signature: string,
+        key: string,
+        url: string,
+    }
+}
+
+export class LinkInfoMessage extends jspb.Message { 
+
+    hasLinkInfoIdentity(): boolean;
+    clearLinkInfoIdentity(): void;
+    getLinkInfoIdentity(): LinkInfoIdentityMessage | undefined;
+    setLinkInfoIdentity(value?: LinkInfoIdentityMessage): LinkInfoMessage;
+
+
+    hasLinkInfoNode(): boolean;
+    clearLinkInfoNode(): void;
+    getLinkInfoNode(): LinkInfoNodeMessage | undefined;
+    setLinkInfoNode(value?: LinkInfoNodeMessage): LinkInfoMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkInfoMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkInfoMessage): LinkInfoMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkInfoMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkInfoMessage;
+    static deserializeBinaryFromReader(message: LinkInfoMessage, reader: jspb.BinaryReader): LinkInfoMessage;
+}
+
+export namespace LinkInfoMessage {
+    export type AsObject = {
+        linkInfoIdentity?: LinkInfoIdentityMessage.AsObject,
+        linkInfoNode?: LinkInfoNodeMessage.AsObject,
+    }
+}
+
+export class GestaltMatrixEdgeMessage extends jspb.Message { 
+
+    getPairsMap(): jspb.Map<string, LinkInfoMessage>;
+    clearPairsMap(): void;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GestaltMatrixEdgeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GestaltMatrixEdgeMessage): GestaltMatrixEdgeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GestaltMatrixEdgeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GestaltMatrixEdgeMessage;
+    static deserializeBinaryFromReader(message: GestaltMatrixEdgeMessage, reader: jspb.BinaryReader): GestaltMatrixEdgeMessage;
+}
+
+export namespace GestaltMatrixEdgeMessage {
+    export type AsObject = {
+
+        pairsMap: Array<[string, LinkInfoMessage.AsObject]>,
+    }
+}
+
+export class GestaltNodeMessage extends jspb.Message { 
+    getId(): string;
+    setId(value: string): GestaltNodeMessage;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GestaltNodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GestaltNodeMessage): GestaltNodeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GestaltNodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GestaltNodeMessage;
+    static deserializeBinaryFromReader(message: GestaltNodeMessage, reader: jspb.BinaryReader): GestaltNodeMessage;
+}
+
+export namespace GestaltNodeMessage {
+    export type AsObject = {
+        id: string,
+    }
+}
+
 export class GestaltMessage extends jspb.Message { 
-    getGestaltMatrix(): string;
-    setGestaltMatrix(value: string): GestaltMessage;
 
-    getGestaltNodes(): string;
-    setGestaltNodes(value: string): GestaltMessage;
+    getGestaltMatrixMap(): jspb.Map<string, GestaltMatrixEdgeMessage>;
+    clearGestaltMatrixMap(): void;
 
-    getIdentities(): string;
-    setIdentities(value: string): GestaltMessage;
+
+    getGestaltNodesMap(): jspb.Map<string, GestaltNodeMessage>;
+    clearGestaltNodesMap(): void;
+
+
+    getIdentitiesMap(): jspb.Map<string, IdentityInfoMessage>;
+    clearIdentitiesMap(): void;
 
 
     serializeBinary(): Uint8Array;
@@ -1013,9 +1091,12 @@ export class GestaltMessage extends jspb.Message {
 
 export namespace GestaltMessage {
     export type AsObject = {
-        gestaltMatrix: string,
-        gestaltNodes: string,
-        identities: string,
+
+        gestaltMatrixMap: Array<[string, GestaltMatrixEdgeMessage.AsObject]>,
+
+        gestaltNodesMap: Array<[string, GestaltNodeMessage.AsObject]>,
+
+        identitiesMap: Array<[string, IdentityInfoMessage.AsObject]>,
     }
 }
 
