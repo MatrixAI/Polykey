@@ -12,11 +12,6 @@ type ProviderKey = string;
  */
 type IdentityKey = string;
 
-type POJO = {[key: string]: any};
+type POJO = { [key: string]: any };
 
-export {
-  PeerId,
-  ProviderKey,
-  IdentityKey,
-  POJO
-};
+export { PeerId, ProviderKey, IdentityKey, POJO };

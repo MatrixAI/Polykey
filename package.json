@@ -40,8 +40,7 @@
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
-    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts",
-    "gestalt": "ts-node -r tsconfig-paths/register src/bin/gestalt.ts"
+    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.2.4",
@@ -98,6 +97,8 @@
     "@types/passport-oauth2-client-password": "^0.1.2",
     "@types/swagger-ui-express": "^4.1.2",
     "@types/uuid": "^8.3.0",
+    "@typescript-eslint/eslint-plugin": "^4.12.0",
+    "@typescript-eslint/parser": "^4.12.0",
     "@xstate/test": "^0.4.1",
     "arkit": "^1.6.4",
     "eslint": "^7.17.0",

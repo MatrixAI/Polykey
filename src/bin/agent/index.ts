@@ -22,7 +22,11 @@ commandStartAgent.option(
   (str) => parseInt(str),
   1,
 );
-commandStartAgent.option('-b, --background', 'start the agent as a background process', false);
+commandStartAgent.option(
+  '-b, --background',
+  'start the agent as a background process',
+  false,
+);
 commandStartAgent.option(
   '-pp, --private-passphrase <privatePassphrase>',
   'provide the passphrase to the private key',
@@ -95,7 +99,11 @@ commandRestartAgent.option(
   (str) => parseInt(str),
   1,
 );
-commandRestartAgent.option('-b, --background', 'start the agent as a background process', false);
+commandRestartAgent.option(
+  '-b, --background',
+  'start the agent as a background process',
+  false,
+);
 commandRestartAgent.option(
   '-pp, --private-passphrase <privatePassphrase>',
   'provide the passphrase to the private key',
@@ -240,7 +248,11 @@ commandInitNode.option(
   (str) => parseInt(str),
   1,
 );
-commandInitNode.option('-b, --background', 'start the agent as a background process', false);
+commandInitNode.option(
+  '-b, --background',
+  'start the agent as a background process',
+  false,
+);
 commandInitNode.requiredOption(
   '-pp, --private-passphrase <privatePassphrase>',
   '(required) provide the passphrase to the private key',
@@ -248,7 +260,7 @@ commandInitNode.requiredOption(
 commandInitNode.option(
   '-nb, --nbits <nbits>',
   '(optional) number of bits to go into the rsa keypair generation',
-  '4096'
+  '4096',
 );
 commandInitNode.action(
   actionRunner(async (options) => {
@@ -303,7 +315,6 @@ commandUnlockNode.action(
     const request = new agentPB.UnlockNodeMessage();
     request.setPassphrase(options.privatePassphrase!);
     request.setTimeout(options.timeout!);
-
 
     await promisifyGrpc(client.unlockNode.bind(client))(request);
     if (options.timeout == 0) {

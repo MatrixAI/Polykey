@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
-import { randomString } from '../../utils';
 
 function createUuid(): string {
   return uuid();

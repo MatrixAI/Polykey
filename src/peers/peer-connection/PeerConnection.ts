@@ -14,7 +14,10 @@ class PeerConnection {
   private getPeerInfo: (id: string) => PeerInfoReadOnly | null;
   private findPeerDHT: (
     peerId: string,
-  ) => Promise<{ adjacentPeerInfo?: PeerInfoReadOnly | undefined; targetPeerInfo?: PeerInfoReadOnly | undefined }>;
+  ) => Promise<{
+    adjacentPeerInfo?: PeerInfoReadOnly | undefined;
+    targetPeerInfo?: PeerInfoReadOnly | undefined;
+  }>;
 
   // private requestUDPHolePunchViaPeer: (
   //   targetPeerId: string,
@@ -27,8 +30,8 @@ class PeerConnection {
   private peerClient: PeerClient;
   async getPeerClient(directOnly: boolean = false): Promise<PeerClient> {
     // connect to peer
-    await this.connect(undefined, directOnly)
-    return this.peerClient
+    await this.connect(undefined, directOnly);
+    return this.peerClient;
   }
 
   private connected = false;
@@ -56,11 +59,11 @@ class PeerConnection {
 
     const peerInfo = this.getPeerInfo(this.peerId);
     if (!peerInfo) {
-      throw Error('peer info was not found in peer store')
+      throw Error('peer info was not found in peer store');
     }
-    const peerInfoPem = Buffer.from(peerInfo.pem)
-    const tlsClientCredentials = this.pki.createClientCredentials()
-    this.credentials = grpc.ChannelCredentials.createInsecure()
+    const peerInfoPem = Buffer.from(peerInfo.pem);
+    const tlsClientCredentials = this.pki.createClientCredentials();
+    this.credentials = grpc.ChannelCredentials.createInsecure();
     // this.credentials = grpc.ChannelCredentials.createSsl(
     //   peerInfoPem,
     //   // these two have to be key from a cert signed by this peers CA cert
@@ -73,15 +76,18 @@ class PeerConnection {
   private async connectDirectly(peerAddress?: Address): Promise<PeerClient> {
     const address = peerAddress ?? this.getPeerInfo(this.peerId)?.peerAddress;
 
-    const host = address?.host ?? ''
+    const host = address?.host ?? '';
     // this is for testing the public relay or hole punching with 2 local peers
     if (host == '0.0.0.0' || host == '127.0.0.1' || host == 'localhost') {
-      throw Error('temporary error to simulate no direct connection ability')
+      throw Error('temporary error to simulate no direct connection ability');
     }
     try {
       // try to create a direct connection
       if (address) {
-        console.log('connectingNode: connecting directly to address: ', address.toString());
+        console.log(
+          'connectingNode: connecting directly to address: ',
+          address.toString(),
+        );
 
         const peerClient = new PeerClient(address.toString(), this.credentials);
         await this.waitForReadyAsync(peerClient);
@@ -99,11 +105,13 @@ class PeerConnection {
   private async connectDHT(): Promise<PeerClient> {
     try {
       // try to find peer directly from intermediary peers
-      const peerId = this.getPeerInfo(this.peerId)?.id
+      const peerId = this.getPeerInfo(this.peerId)?.id;
       if (!peerId) {
-        throw Error('connectDHT: peer was not found in peer store')
+        throw Error('connectDHT: peer was not found in peer store');
       }
-      const { targetPeerInfo, adjacentPeerInfo } = await this.findPeerDHT(peerId);
+      const { targetPeerInfo, adjacentPeerInfo } = await this.findPeerDHT(
+        peerId,
+      );
 
       // TODO: reenable connectHolePunchDirectly and connectHolePunchViaPeer and connectRelay after the demo
       // we only want relay
@@ -189,17 +197,23 @@ class PeerConnection {
     if (!this.connected) {
       const promiseList = [this.connectDirectly()];
       if (!directOnly) {
-        promiseList.push(this.connectDHT())
+        promiseList.push(this.connectDHT());
       }
       return await promiseAny(promiseList);
     }
     throw Error('peer is already connected!');
   }
 
-  private async connect(timeout: number = 200000, directOnly: boolean = false): Promise<void> {
+  private async connect(
+    timeout: number = 200000,
+    directOnly: boolean = false,
+  ): Promise<void> {
     return await new Promise<void>(async (resolve, reject) => {
       if (timeout) {
-        setTimeout(() => reject(Error('connection request timed out')), timeout);
+        setTimeout(
+          () => reject(Error('connection request timed out')),
+          timeout,
+        );
       }
       try {
         // connect if not already connected
@@ -225,13 +239,15 @@ class PeerConnection {
           }
         }
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
-
+    });
   }
 
-  private async sendPingRequest(timeout: number = 50000, directConnectionOnly = false): Promise<boolean> {
+  private async sendPingRequest(
+    timeout: number = 50000,
+    directConnectionOnly = false,
+  ): Promise<boolean> {
     // eslint-disable-next-line
     return await new Promise<boolean>(async (resolve, _) => {
       try {
@@ -249,10 +265,12 @@ class PeerConnection {
         const challenge = randomBytes(16).toString('base64');
 
         // send request
-        const req = new peer.PingPeerMessage
-        req.setChallenge(challenge)
-        const res = await promisifyGrpc(peerClient.pingPeer.bind(peerClient))(req) as peer.PingPeerMessage
-        resolve(res.getChallenge() == challenge)
+        const req = new peer.PingPeerMessage();
+        req.setChallenge(challenge);
+        const res = (await promisifyGrpc(peerClient.pingPeer.bind(peerClient))(
+          req,
+        )) as peer.PingPeerMessage;
+        resolve(res.getChallenge() == challenge);
       } catch (error) {
         resolve(false);
       }
@@ -267,7 +285,10 @@ class PeerConnection {
   }
 
   // ======== Helper Methods ======== //
-  private async waitForReadyAsync(peerClient: PeerClient, timeout = 100000): Promise<void> {
+  private async waitForReadyAsync(
+    peerClient: PeerClient,
+    timeout = 100000,
+  ): Promise<void> {
     // eslint-disable-next-line
     await new Promise<void>(async (resolve, reject) => {
       try {
@@ -278,10 +299,12 @@ class PeerConnection {
         const challenge = randomBytes(16).toString('base64');
 
         // send request
-        const req = new peer.PingPeerMessage
-        req.setChallenge(challenge)
-        await promisifyGrpc(peerClient.pingPeer.bind(peerClient))(req) as peer.PingPeerMessage
-        resolve()
+        const req = new peer.PingPeerMessage();
+        req.setChallenge(challenge);
+        (await promisifyGrpc(peerClient.pingPeer.bind(peerClient))(
+          req,
+        )) as peer.PingPeerMessage;
+        resolve();
       } catch (error) {
         reject(error);
       }

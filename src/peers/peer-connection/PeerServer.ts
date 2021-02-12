@@ -11,7 +11,10 @@ class PeerServer implements IPeerServer {
   private server: grpc.Server;
 
   handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>;
-  handleGitPackRequest: (vaultName: string, body: Buffer) => Promise<Uint8Array>;
+  handleGitPackRequest: (
+    vaultName: string,
+    body: Buffer,
+  ) => Promise<Uint8Array>;
   handleGetVaultNames: () => Promise<string[]>;
 
   constructor(peerManager: PeerManager) {
@@ -21,15 +24,18 @@ class PeerServer implements IPeerServer {
     // GRPC Server //
     /////////////////
     this.server = new grpc.Server();
-    this.server.addService(PeerService, (this as any) as grpc.UntypedServiceImplementation);
+    this.server.addService(
+      PeerService,
+      (this as any) as grpc.UntypedServiceImplementation,
+    );
   }
 
   async start() {
     return new Promise<void>((resolve, reject) => {
       try {
         // get the server credentials
-        const tlsServerCredentials = this.peerManager.pki.createServerCredentials()
-        const credentials = grpc.ServerCredentials.createInsecure()
+        const tlsServerCredentials = this.peerManager.pki.createServerCredentials();
+        const credentials = grpc.ServerCredentials.createInsecure();
         // const credentials = grpc.ServerCredentials.createSsl(
         //   Buffer.from(tlsServerCredentials.rootCertificate),
         //   // this has to be key/cert pair signed by this peers CA cert for
@@ -44,34 +50,44 @@ class PeerServer implements IPeerServer {
         //   false,
         // );
         // start the server
-        const port = process.env.PK_PEER_PORT ?? this.peerManager.peerInfo?.peerAddress?.port ?? 0;
-        const host = process.env.PK_PEER_HOST ?? this.peerManager.peerInfo?.peerAddress?.host ?? 'localhost';
-        this.server.bindAsync(`${host}:${port}`, credentials, async (err, boundPort) => {
-          if (err) {
-            reject(err);
-          } else {
-            try {
-              const address = new Address(host, boundPort);
-              if (this.peerManager.peerInfo) {
-                this.peerManager.peerInfo.peerAddress = address;
-                this.peerManager.writeMetadata();
+        const port =
+          process.env.PK_PEER_PORT ??
+          this.peerManager.peerInfo?.peerAddress?.port ??
+          0;
+        const host =
+          process.env.PK_PEER_HOST ??
+          this.peerManager.peerInfo?.peerAddress?.host ??
+          'localhost';
+        this.server.bindAsync(
+          `${host}:${port}`,
+          credentials,
+          async (err, boundPort) => {
+            if (err) {
+              reject(err);
+            } else {
+              try {
+                const address = new Address(host, boundPort);
+                if (this.peerManager.peerInfo) {
+                  this.peerManager.peerInfo.peerAddress = address;
+                  this.peerManager.writeMetadata();
+                }
+                this.server.start();
+                console.log(`Peer Server running on: ${address}`);
+                resolve();
+              } catch (error) {
+                reject(error);
               }
-              this.server.start();
-              console.log(`Peer Server running on: ${address}`);
-              resolve()
-            } catch (error) {
-              reject(error);
             }
-          }
-        });
+          },
+        );
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
+    });
   }
 
   async stop() {
-    this.server.forceShutdown()
+    this.server.forceShutdown();
   }
 
   async pingPeer(
@@ -91,9 +107,9 @@ class PeerServer implements IPeerServer {
   ) {
     try {
       const { vaultName } = call.request!.toObject();
-      const responseBody = await this.handleGitInfoRequest(vaultName)
+      const responseBody = await this.handleGitInfoRequest(vaultName);
       const response = new peer.InfoReply();
-      response.setBody(responseBody)
+      response.setBody(responseBody);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -105,11 +121,14 @@ class PeerServer implements IPeerServer {
     callback: grpc.sendUnaryData<peer.PackReply>,
   ) {
     try {
-      const vaultName = call.request.getVaultName()
-      const body = call.request.getBody_asU8()
-      const responseBody = await this.handleGitPackRequest(vaultName, Buffer.from(body))
+      const vaultName = call.request.getVaultName();
+      const body = call.request.getBody_asU8();
+      const responseBody = await this.handleGitPackRequest(
+        vaultName,
+        Buffer.from(body),
+      );
       const response = new peer.PackReply();
-      response.setBody(responseBody)
+      response.setBody(responseBody);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -122,7 +141,7 @@ class PeerServer implements IPeerServer {
   ) {
     try {
       const response = new peer.VaultNamesReply();
-      response.setVaultNameListList(await this.handleGetVaultNames())
+      response.setVaultNameListList(await this.handleGetVaultNames());
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -135,7 +154,7 @@ class PeerServer implements IPeerServer {
   ) {
     try {
       const response = new agent.StringMessage();
-      response.setS(this.peerManager.natTraversal.handleGetUDPAddress())
+      response.setS(this.peerManager.natTraversal.handleGetUDPAddress());
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -143,15 +162,20 @@ class PeerServer implements IPeerServer {
   }
 
   async requestPublicRelay(
-    call: grpc.ServerUnaryCall<agent.PeerInfoReadOnlyMessage, agent.StringMessage>,
+    call: grpc.ServerUnaryCall<
+      agent.PeerInfoReadOnlyMessage,
+      agent.StringMessage
+    >,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
     try {
-      const peerInfoReadOnly = PeerInfoReadOnly.fromPeerInfoReadOnlyMessage(call.request.toObject())
+      const peerInfoReadOnly = PeerInfoReadOnly.fromPeerInfoReadOnlyMessage(
+        call.request.toObject(),
+      );
       if (this.peerManager.hasPeer(peerInfoReadOnly.id)) {
-        this.peerManager.updatePeer(peerInfoReadOnly)
+        this.peerManager.updatePeer(peerInfoReadOnly);
       } else {
-        this.peerManager.addPeer(peerInfoReadOnly)
+        this.peerManager.addPeer(peerInfoReadOnly);
       }
       // if (process.env.PUBLIC_RELAY_NODE) {
       //   if (!this.peerManager.hasPeer(peerInfoReadOnly.id)) {
@@ -177,7 +201,7 @@ class PeerServer implements IPeerServer {
   ) {
     try {
       const response = new agent.StringMessage();
-      response.setS(this.peerManager.pki.RootCertificatePem)
+      response.setS(this.peerManager.pki.RootCertificatePem);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -191,8 +215,8 @@ class PeerServer implements IPeerServer {
     try {
       const { s } = call.request!.toObject();
       const response = new agent.StringMessage();
-      const signedCertificate = this.peerManager.pki.handleCSR(s)
-      response.setS(signedCertificate)
+      const signedCertificate = this.peerManager.pki.handleCSR(s);
+      response.setS(signedCertificate);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -200,14 +224,19 @@ class PeerServer implements IPeerServer {
   }
 
   async peerDHTFindNode(
-    call: grpc.ServerUnaryCall<peer.PeerDHTFindNodeRequest, peer.PeerDHTFindNodeReply>,
+    call: grpc.ServerUnaryCall<
+      peer.PeerDHTFindNodeRequest,
+      peer.PeerDHTFindNodeReply
+    >,
     callback: grpc.sendUnaryData<peer.PeerDHTFindNodeReply>,
   ) {
     try {
       const { targetPeerId } = call.request!.toObject();
-      const peerInfoList = this.peerManager.peerDHT.handleFindNodeMessage(targetPeerId)
+      const peerInfoList = this.peerManager.peerDHT.handleFindNodeMessage(
+        targetPeerId,
+      );
       const response = new peer.PeerDHTFindNodeReply();
-      response.setClosestPeersList(peerInfoList)
+      response.setClosestPeersList(peerInfoList);
       callback(null, response);
     } catch (error) {
       callback(error, null);

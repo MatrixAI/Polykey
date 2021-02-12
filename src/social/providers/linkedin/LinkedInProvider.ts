@@ -64,7 +64,6 @@
 //     throw new Error("LinkedIn has not provided permissions for this functionality.")
 //   }
 
-
 //   public publishLinkClaim(linkClaim: LinkClaim): Promise<LinkInfo> {
 //     throw new Error("LinkedIn has not provided permissions for this functionality.")
 //   }
@@ -114,7 +113,6 @@
 //   public async * getLinkInfos(identityKey: UserURN): AsyncGenerator<any, any, unknown> {
 //     throw new Error("LinkedIn does not provide permissions for this functionality.")
 //   }
-
 
 //   protected buildRefreshTokenRequest (redirectUri: string): Request {
 //     throw new Error('Unimplemented');

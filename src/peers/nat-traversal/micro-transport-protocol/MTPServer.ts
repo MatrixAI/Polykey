@@ -31,8 +31,8 @@ class MTPServer extends EventEmitter {
 
   // this is the udp address for the MTP server
   remoteAddress() {
-    const address = this.address()
-    address.updateHost(process.env.PK_PEER_HOST ?? '0.0.0.0')
+    const address = this.address();
+    address.updateHost(process.env.PK_PEER_HOST ?? '0.0.0.0');
     return address;
   }
 
@@ -42,10 +42,16 @@ class MTPServer extends EventEmitter {
   }
 
   // this is the method where both listenConnection and listPort call
-  listenSocket(socket: dgram.Socket, onListening: (address: Address) => void, socketIsBound: boolean = false) {
+  listenSocket(
+    socket: dgram.Socket,
+    onListening: (address: Address) => void,
+    socketIsBound: boolean = false,
+  ) {
     this.socket = socket;
 
-    socket.on('message', (message, rinfo) => this.handleMessage(message, rinfo));
+    socket.on('message', (message, rinfo) =>
+      this.handleMessage(message, rinfo),
+    );
 
     if (!socketIsBound) {
       socket.once('listening', () => {
@@ -57,52 +63,53 @@ class MTPServer extends EventEmitter {
   }
 
   // can either listen on an existing connection
-  listenConnection(connection: MTPConnection, onListening: (address: Address) => void) {
+  listenConnection(
+    connection: MTPConnection,
+    onListening: (address: Address) => void,
+  ) {
     this.listenSocket(connection.socket, onListening);
   }
 
   // or listen on a port
-  listenPort(port: number, host: string, onListening: (address: Address) => void) {
+  listenPort(
+    port: number,
+    host: string,
+    onListening: (address: Address) => void,
+  ) {
     const socket = dgram.createSocket('udp4');
     this.listenSocket(socket, onListening);
     socket.bind(port, host);
   }
 
-  close() {
-    return new Promise<void>(async (resolve, reject) => {
-      try {
-        let openConnections = 0;
-        this.closed = true;
+  async close() {
+    let openConnections = 0;
+    this.closed = true;
 
-        if (this.socket) {
-          this.socket.removeAllListeners();
-          await promisify(this.socket.close)();
-        }
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      await promisify(this.socket.close)();
+    }
 
-        const onClose = () => {
-          if (--openConnections === 0) {
-            resolve();
-          }
-        };
-
-        for (const id in this.incomingConnections.keys()) {
-          const connection = this.incomingConnections.get(id);
-          if (!connection) {
-            this.incomingConnections.delete(id);
-            continue;
-          }
-          if (this.incomingConnections.get(id)?.closed) {
-            continue;
-          }
-          openConnections++;
-          connection.once('close', onClose);
-          connection.end();
-        }
-        resolve()
-      } catch (error) {
-        reject(error)
+    const onClose = () => {
+      if (--openConnections === 0) {
+        return;
       }
-    })
+    };
+
+    for (const id in this.incomingConnections.keys()) {
+      const connection = this.incomingConnections.get(id);
+      if (!connection) {
+        this.incomingConnections.delete(id);
+        continue;
+      }
+      if (this.incomingConnections.get(id)?.closed) {
+        continue;
+      }
+      openConnections++;
+      connection.once('close', onClose);
+      connection.end();
+    }
+    return;
   }
 
   // ==== Handler Methods ==== //
@@ -113,11 +120,14 @@ class MTPServer extends EventEmitter {
       console.log('privateNode: got a keepalive packet, sending ok response');
       this.socket.send('okay-keepalive', rinfo.port, rinfo.address, (err) => {
         if (err) {
-          console.log('privateNode: sending okay-keepalive packet failed with error: ', err);
+          console.log(
+            'privateNode: sending okay-keepalive packet failed with error: ',
+            err,
+          );
         } else {
           console.log('privateNode: sending okay-keepalive succeeded');
         }
-      })
+      });
     }
 
     // treat the message as intended for one of the connections
@@ -127,24 +137,33 @@ class MTPServer extends EventEmitter {
 
     const packet = bufferToPacket(message);
 
-
     // I think the issue is that this id is the same for every new relay connection
-    const id = packet.getPeerid() + ':' + (packet.getId() === PACKET_SYN ? uint16(packet.getConnection() + 1) : packet.getConnection());
+    const id =
+      packet.getPeerid() +
+      ':' +
+      (packet.getId() === PACKET_SYN
+        ? uint16(packet.getConnection() + 1)
+        : packet.getConnection());
     console.log('privateNode: handleMessage id: ', id);
 
-    const incomingConnection = this.incomingConnections.get(id)
+    const incomingConnection = this.incomingConnections.get(id);
     if (incomingConnection) {
       console.log('privateNode: sending packet to an incoming connection');
       return incomingConnection.recvIncoming(packet);
     }
     if (packet.getId() !== PACKET_SYN || this.closed) {
-
       return;
     }
 
     const peerId = packet.getPeerid();
-    const newConnection = new MTPConnection(peerId, rinfo.port, rinfo.address, this.socket, packet);
-    this.incomingConnections.set(id, newConnection)
+    const newConnection = new MTPConnection(
+      peerId,
+      rinfo.port,
+      rinfo.address,
+      this.socket,
+      packet,
+    );
+    this.incomingConnections.set(id, newConnection);
     newConnection.on('close', () => {
       this.incomingConnections.delete(id);
     });

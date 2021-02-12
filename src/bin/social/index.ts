@@ -36,9 +36,14 @@ commandAuthenticateProvider.action(
 
     const request = new agentPB.AuthenticateProviderRequest();
     request.setProviderKey(options.providerKey);
-    const res = await promisifyGrpc(client.authenticateProvider.bind(client))(request) as agentPB.AuthenticateProviderReply;
+    const res = (await promisifyGrpc(client.authenticateProvider.bind(client))(
+      request,
+    )) as agentPB.AuthenticateProviderReply;
 
-    pkLogger.logV1(`please enter user code: '${res.getUserCode()}'`, PKMessageType.SUCCESS);
+    pkLogger.logV1(
+      `please enter user code: '${res.getUserCode()}'`,
+      PKMessageType.SUCCESS,
+    );
   }),
 );
 

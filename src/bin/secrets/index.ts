@@ -40,7 +40,7 @@ commandListSecrets.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
 
-    const vaultNames: string[] = options.vaultNames.split(' ')
+    const vaultNames: string[] = options.vaultNames.split(' ');
 
     if (!vaultNames.length) {
       throw Error('no vault names provided');
@@ -292,8 +292,6 @@ commandEditSecret.action(
       fs.writeFileSync(tmpFile, secret);
       // open editor
       execSync(`$EDITOR \"${tmpFile}\"`, { stdio: 'inherit' });
-      // read updated secret
-      const updatedSecret = fs.readFileSync(tmpFile);
       // send updated secret to polykey
       const updateRequest = new agentPB.SecretContentMessage();
       const secretPath = new agentPB.SecretPathMessage();

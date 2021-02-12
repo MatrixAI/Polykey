@@ -12,7 +12,4 @@ const linkClaimIdentityValidate = ajv.compile(linkClaimIdentitySchema);
 const linkClaimNodeSchema = LinkClaimNodeSchema as JSONSchemaType<LinkClaimNode>;
 const linkClaimNodeValidate = ajv.compile(linkClaimNodeSchema);
 
-export {
-  linkClaimIdentityValidate,
-  linkClaimNodeValidate
-};
+export { linkClaimIdentityValidate, linkClaimNodeValidate };

@@ -1,9 +1,7 @@
 import type { PeerId } from '../types';
 
 type NodeInfo = {
-  id: PeerId
+  id: PeerId;
 };
 
-export {
-  NodeInfo
-};
+export { NodeInfo };

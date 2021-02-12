@@ -43,10 +43,17 @@ class GitBackend {
       throw Error(`repository does not exist: '${repoName}'`);
     }
 
-    responseBuffers.push(Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')));
+    responseBuffers.push(
+      Buffer.from(this.createGitPacketLine('# service=git-' + service + '\n')),
+    );
     responseBuffers.push(Buffer.from('0000'));
 
-    const buffers = await uploadPack(fileSystem, path.join(this.repoDirectoryPath, repoName), undefined, true);
+    const buffers = await uploadPack(
+      fileSystem,
+      path.join(this.repoDirectoryPath, repoName),
+      undefined,
+      true,
+    );
     const buffersToWrite = buffers ?? [];
     responseBuffers.push(...buffersToWrite);
 
@@ -61,7 +68,7 @@ class GitBackend {
         const fileSystem = this.getFileSystem(repoName);
         // Check if repo exists
         if (!fs.existsSync(path.join(this.repoDirectoryPath, repoName))) {
-          throw  Error(`repository does not exist: '${repoName}'`);
+          throw Error(`repository does not exist: '${repoName}'`);
         }
 
         if (body.toString().slice(4, 8) == 'want') {
@@ -79,7 +86,13 @@ class GitBackend {
           // This is to get the side band stuff working
           const readable = new PassThrough();
           const progressStream = new PassThrough();
-          const sideBand = GitSideBand.mux('side-band-64', readable, packResult.packstream, progressStream, []);
+          const sideBand = GitSideBand.mux(
+            'side-band-64',
+            readable,
+            packResult.packstream,
+            progressStream,
+            [],
+          );
           sideBand.on('data', (data: Buffer) => {
             responseBuffers.push(data);
           });
@@ -94,10 +107,12 @@ class GitBackend {
           progressStream.write(Buffer.from('0014progress is at 50%\n'));
           progressStream.end();
         } else {
-          throw Error("git pack request body message is not prefixed by 'want'")
+          throw Error(
+            "git pack request body message is not prefixed by 'want'",
+          );
         }
       } catch (error) {
-        reject(error)
+        reject(error);
       }
     });
   }

@@ -10,7 +10,9 @@ async function writeRefsAdResponse({ capabilities, refs, symrefs }) {
   for (const [key, value] of Object.entries(symrefs)) {
     syms += `symref=${key}:${value} `;
   }
-  let caps = `\x00${[...capabilities].join(' ')} ${syms}agent=git/isomorphic-git@1.4.0`;
+  let caps = `\x00${[...capabilities].join(
+    ' ',
+  )} ${syms}agent=git/isomorphic-git@1.4.0`;
   // stream.write(GitPktLine.encode(`# service=${service}\n`))
   // stream.write(GitPktLine.flush())
   // Note: In the edge case of a brand new repo, zero refs (and zero capabilities)
@@ -43,7 +45,12 @@ async function uploadPack(
 
       const symrefs = {};
 
-      symrefs['HEAD'] = await GitRefManager.resolve(fileSystem, gitdir, 'HEAD', 2);
+      symrefs['HEAD'] = await GitRefManager.resolve(
+        fileSystem,
+        gitdir,
+        'HEAD',
+        2,
+      );
 
       return writeRefsAdResponse({
         capabilities,

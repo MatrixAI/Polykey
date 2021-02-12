@@ -180,7 +180,15 @@ class MTPConnection extends Duplex {
         return this.once('connect', sendFin);
       }
       this.sendOutgoing(
-        MTPConnection.createPacket(this.peerId, this.recvId, this.sendId, this.seq, this.ack, PACKET_FIN, null),
+        MTPConnection.createPacket(
+          this.peerId,
+          this.recvId,
+          this.sendId,
+          this.seq,
+          this.ack,
+          PACKET_FIN,
+          null,
+        ),
       );
       this.once('flush', closed);
     };
@@ -198,7 +206,10 @@ class MTPConnection extends Duplex {
     });
   }
 
-  destroy(err?: Error | undefined, callback?: ((error: Error | null) => void) | undefined) {
+  destroy(
+    err?: Error | undefined,
+    callback?: ((error: Error | null) => void) | undefined,
+  ) {
     this.end();
     return this;
   }
@@ -211,7 +222,11 @@ class MTPConnection extends Duplex {
     // do nothing...
   }
 
-  _write(data: Buffer, enc: string, callback: (error?: Error | null | undefined) => void): void {
+  _write(
+    data: Buffer,
+    enc: string,
+    callback: (error?: Error | null | undefined) => void,
+  ): void {
     if (this.connecting) {
       return this.writeOnce('connect', data, enc, callback);
     }
@@ -219,7 +234,15 @@ class MTPConnection extends Duplex {
     while (this._writable) {
       const payload = this.payload(data);
       this.sendOutgoing(
-        MTPConnection.createPacket(this.peerId, this.recvId, this.sendId, this.seq, this.ack, PACKET_DATA, payload),
+        MTPConnection.createPacket(
+          this.peerId,
+          this.recvId,
+          this.sendId,
+          this.seq,
+          this.ack,
+          PACKET_DATA,
+          payload,
+        ),
       );
 
       if (payload.length === data.length) {
@@ -268,7 +291,7 @@ class MTPConnection extends Duplex {
     for (let i = 0; i < this.inflightPackets; i++) {
       const packet = this.outgoing.get(offset + i);
       if (!packet) {
-        throw Error('packet doesn not exist')
+        throw Error('packet doesn not exist');
       }
       if (uint32(packet.getSent() - now) >= timeout) {
         this.transmit(packet);
@@ -311,18 +334,21 @@ class MTPConnection extends Duplex {
   }
 
   async recvIncoming(packet: peerInterface.MTPPacket) {
-
-    let internalPacket: peerInterface.MTPPacket | undefined = packet
+    let internalPacket: peerInterface.MTPPacket | undefined = packet;
     // connection is closed
     if (this.closed) {
       return;
     }
 
     // temporary to slow down looping traffic for debugging
-    await sleep(1000)
+    await sleep(1000);
 
     // send synack
-    if (internalPacket.getId() === PACKET_SYN && this.connecting && this.synack) {
+    if (
+      internalPacket.getId() === PACKET_SYN &&
+      this.connecting &&
+      this.synack
+    ) {
       this.transmit(this.synack);
       return;
     }
@@ -407,12 +433,19 @@ class MTPConnection extends Duplex {
 
   private transmit(packet: peerInterface.MTPPacket) {
     try {
-      packet.setSent(packet.getSent() === 0 ? packet.getTimestamp() : MTPConnection.timestamp());
+      packet.setSent(
+        packet.getSent() === 0
+          ? packet.getTimestamp()
+          : MTPConnection.timestamp(),
+      );
       const message = packetToBuffer(packet);
       this.alive = true;
       this.socket.send(message, 0, message.length, this.port, this.host);
     } catch (error) {
-      console.log('MTPConnection: error when trying to transmit packet: ', error);
+      console.log(
+        'MTPConnection: error when trying to transmit packet: ',
+        error,
+      );
     }
   }
 
@@ -426,20 +459,20 @@ class MTPConnection extends Duplex {
     id: number,
     data: Uint8Array | null,
   ): peerInterface.MTPPacket {
-    const packet = new peerInterface.MTPPacket
-    packet.setId(id)
-    packet.setPeerid(peerId)
-    packet.setConnection(id === PACKET_SYN ? recvId : sendId)
-    packet.setSeq(seq)
-    packet.setAck(ack)
-    packet.setTimestamp(MTPConnection.timestamp())
-    packet.setTimediff(0)
-    packet.setWindow(DEFAULT_WINDOW_SIZE)
+    const packet = new peerInterface.MTPPacket();
+    packet.setId(id);
+    packet.setPeerid(peerId);
+    packet.setConnection(id === PACKET_SYN ? recvId : sendId);
+    packet.setSeq(seq);
+    packet.setAck(ack);
+    packet.setTimestamp(MTPConnection.timestamp());
+    packet.setTimediff(0);
+    packet.setWindow(DEFAULT_WINDOW_SIZE);
     if (data) {
-      packet.setData(data)
+      packet.setData(data);
     }
-    packet.setSent(0)
-    return packet
+    packet.setSent(0);
+    return packet;
   }
 
   public static timestamp = (() => {
@@ -451,7 +484,12 @@ class MTPConnection extends Duplex {
     };
   })();
 
-  public static connect(localPeerId: string, port: number, host?: string, socket?: dgram.Socket) {
+  public static connect(
+    localPeerId: string,
+    port: number,
+    host?: string,
+    socket?: dgram.Socket,
+  ) {
     const internalSocket = socket ?? dgram.createSocket('udp4');
 
     const connection = new MTPConnection(

@@ -20,7 +20,10 @@ type SecretPathComponents = {
 
 function parseSecretPath(secretPath: string): SecretPathComponents {
   const pathRegex = /^([a-zA-Z0-9_ -]+)(?::)([a-zA-Z0-9_ -]+)(?:=)?([a-zA-Z_][a-zA-Z0-9_]+)?$/;
-  if (secretPath.length < 1 || (secretPath.length == 1 && !pathRegex.test(secretPath[0]))) {
+  if (
+    secretPath.length < 1 ||
+    (secretPath.length == 1 && !pathRegex.test(secretPath[0]))
+  ) {
     throw Error('secret path is of the wrong format');
   }
 
@@ -80,7 +83,11 @@ async function promiseAll<T>(promiseList: Promise<T>[]): Promise<T[]> {
           if (count >= promiseList.length) {
             // check if all have failed
             if (errorList.length == promiseList.length) {
-              reject(errorList.reduceRight((p, c) => Error(`${p.message}||${c.message}`)));
+              reject(
+                errorList.reduceRight((p, c) =>
+                  Error(`${p.message}||${c.message}`),
+                ),
+              );
             } else {
               resolve(outputList);
             }
@@ -91,11 +98,11 @@ async function promiseAll<T>(promiseList: Promise<T>[]): Promise<T[]> {
 }
 
 function protobufToString(message: Uint8Array): string {
-  return Buffer.from(message).toString('base64')
+  return Buffer.from(message).toString('base64');
 }
 
 function stringToProtobuf(str: string): Uint8Array {
-  return Buffer.from(str, 'base64')
+  return Buffer.from(str, 'base64');
 }
 
 async function sleep(ms: number) {
@@ -104,27 +111,31 @@ async function sleep(ms: number) {
 
 async function tryPort(port?: number, host?: string): Promise<number> {
   return new Promise((resolve, reject) => {
-    const options = { port: port ?? 0, host: host ?? 'localhost' }
-    const server = net.createServer()
+    const options = { port: port ?? 0, host: host ?? 'localhost' };
+    const server = net
+      .createServer()
       .listen(options, () => {
         const { port } = server.address() as net.AddressInfo;
-        server.removeAllListeners()
+        server.removeAllListeners();
         server.close(() => resolve(port));
       })
       .on('error', (error) => reject(error));
   });
 }
 
-async function getPort(defaultPort?: number, defaultHost?: string): Promise<number> {
+async function getPort(
+  defaultPort?: number,
+  defaultHost?: string,
+): Promise<number> {
   // try provided default port and host
   if (defaultPort) {
     try {
       const port = await tryPort(defaultPort, defaultHost);
-      return port
-    } catch (error) { }
+      return port;
+    } catch (error) {}
   }
   // get a random port if not
-  const port = await tryPort(0, defaultHost)
+  const port = await tryPort(0, defaultHost);
   return port;
 }
 

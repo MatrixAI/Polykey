@@ -7,7 +7,13 @@ class AuthorizationCode {
   userId: string;
   scope: string[];
 
-  constructor(code: string, clientId: string, redirectURI: string, userId: string, scope: string[]) {
+  constructor(
+    code: string,
+    clientId: string,
+    redirectURI: string,
+    userId: string,
+    scope: string[],
+  ) {
     this.code = code;
     this.clientId = clientId;
     this.redirectURI = redirectURI;
@@ -21,7 +27,13 @@ class AccessToken {
   userId?: string;
   clientId?: string;
   scope?: string[];
-  constructor(token: string, expiration: Date, userId: string, clientId: string, scope: string[]) {
+  constructor(
+    token: string,
+    expiration: Date,
+    userId: string,
+    clientId: string,
+    scope: string[],
+  ) {
     this.token = token;
     this.expiration = expiration;
     this.userId = userId;
@@ -35,7 +47,12 @@ class Client {
   private secret: string;
   scope: string[];
   trusted: boolean;
-  constructor(id: string, secret: string, scope: string[] = [], trusted = false) {
+  constructor(
+    id: string,
+    secret: string,
+    scope: string[] = [],
+    trusted = false,
+  ) {
     this.id = id;
     this.secret = secret;
     this.scope = scope;
@@ -63,7 +80,13 @@ class User {
   private password: string;
   scope: string[];
   trusted: boolean;
-  constructor(id: string, username: string, password: string, scope: string[] = [], trusted = false) {
+  constructor(
+    id: string,
+    username: string,
+    password: string,
+    scope: string[] = [],
+    trusted = false,
+  ) {
     this.id = id;
     this.username = username;
     this.password = password;
@@ -121,8 +144,17 @@ class OAuth2Store {
     return this.accessCodeStore.get(code)!;
   }
 
-  saveAuthorizationCode(code: string, clientId: string, redirectURI: string, userId: string, scope: string[]): void {
-    this.accessCodeStore.set(code, new AuthorizationCode(code, clientId, redirectURI, userId, scope));
+  saveAuthorizationCode(
+    code: string,
+    clientId: string,
+    redirectURI: string,
+    userId: string,
+    scope: string[],
+  ): void {
+    this.accessCodeStore.set(
+      code,
+      new AuthorizationCode(code, clientId, redirectURI, userId, scope),
+    );
   }
 
   deleteAuthorizationCode(code: string): AuthorizationCode {
@@ -152,7 +184,10 @@ class OAuth2Store {
     clientId: string,
     scope: string[] = [],
   ): AccessToken {
-    this.accessTokenStore.set(token, new AccessToken(token, expiration, userId, clientId, scope));
+    this.accessTokenStore.set(
+      token,
+      new AccessToken(token, expiration, userId, clientId, scope),
+    );
     return this.accessTokenStore.get(token)!;
   }
 
@@ -183,7 +218,10 @@ class OAuth2Store {
     clientId: string,
     scope: string[] = [],
   ): AccessToken {
-    this.refreshTokenStore.set(token, new AccessToken(token, expiration, userId, clientId, scope));
+    this.refreshTokenStore.set(
+      token,
+      new AccessToken(token, expiration, userId, clientId, scope),
+    );
     return this.refreshTokenStore.get(token)!;
   }
 
@@ -207,11 +245,21 @@ class OAuth2Store {
     return this.clientStore.get(id)!;
   }
 
-  saveClient(id: string = createUuid(), secret: string, scope?: string[], trusted?: boolean): void {
+  saveClient(
+    id: string = createUuid(),
+    secret: string,
+    scope?: string[],
+    trusted?: boolean,
+  ): void {
     this.clientStore.set(id, new Client(id, secret, scope, trusted));
   }
 
-  updateClient(id: string, secret?: string, scope?: string[], trusted?: boolean): void {
+  updateClient(
+    id: string,
+    secret?: string,
+    scope?: string[],
+    trusted?: boolean,
+  ): void {
     const client = this.getClient(id);
     if (secret) {
       client.updateSecret(secret);
@@ -247,17 +295,28 @@ class OAuth2Store {
 
   findUserByUsername(username: string): User {
     const values = Array.from(this.userStore.values());
-    if (values.findIndex((v, i) => v.username == username) == -1) {
+    if (values.findIndex((v) => v.username == username) == -1) {
       throw Error('user does not exist');
     }
-    return values.find((v, i) => v.username == username)!;
+    return values.find((v) => v.username == username)!;
   }
 
-  saveUser(id: string = createUuid(), username: string, password: string, scope?: string[], trusted?: boolean): void {
+  saveUser(
+    id: string = createUuid(),
+    username: string,
+    password: string,
+    scope?: string[],
+    trusted?: boolean,
+  ): void {
     this.userStore.set(id, new User(id, username, password, scope, trusted));
   }
 
-  updateUser(username: string, password?: string, scope?: string[], trusted?: boolean): void {
+  updateUser(
+    username: string,
+    password?: string,
+    scope?: string[],
+    trusted?: boolean,
+  ): void {
     const user = this.findUserByUsername(username);
     if (password) {
       user.updatePassword(password);

@@ -41,7 +41,8 @@ class Address {
    * @param addressInfo AddressInfo of desired address
    */
   static fromAddressInfo(addressInfo: AddressInfo) {
-    const host = addressInfo.address == '::' ? 'localhost' : addressInfo.address;
+    const host =
+      addressInfo.address == '::' ? 'localhost' : addressInfo.address;
     return new Address(host, addressInfo.port);
   }
 
@@ -55,12 +56,14 @@ class Address {
   /**
    * Parses an address string in the format of `host:port`
    */
-  private static parseHelper(addressString: string): { host: string; port: number } {
+  private static parseHelper(
+    addressString: string,
+  ): { host: string; port: number } {
     if (!addressString || addressString == '') {
       throw Error(`cannot parse empty or undefined string`);
     }
     const url = new URL(addressString);
-    return {host: url.hostname, port: Number(url.port)};
+    return { host: url.hostname, port: Number(url.port) };
   }
 }
 
@@ -119,26 +122,26 @@ class PeerInfo {
   }
 
   // List of social proofs made by this peer
-  private internalLinkInfoMap: Map<GestaltKey, LinkInfo> = new Map;
+  private internalLinkInfoMap: Map<GestaltKey, LinkInfo> = new Map();
   public get linkInfoList(): LinkInfo[] {
     return Array.from(this.internalLinkInfoMap.values());
   }
   public set linkInfoList(values: LinkInfo[]) {
-    this.internalLinkInfoMap = new Map
-    values.forEach(li => this.publishLinkInfo(li))
+    this.internalLinkInfoMap = new Map();
+    values.forEach((li) => this.publishLinkInfo(li));
   }
   publishLinkInfo(linkInfo: LinkInfo) {
-    let provider: string | undefined = undefined
+    let provider: string | undefined = undefined;
     try {
-      provider = (linkInfo as LinkInfoIdentity).provider
+      provider = (linkInfo as LinkInfoIdentity).provider;
     } catch (error) {
       // no throw in case linkInfo is LinkInfoNode
     }
-    const gKey = gestaltKey(linkInfo.key, provider)
-    this.internalLinkInfoMap.set(gKey, linkInfo)
+    const gKey = gestaltKey(linkInfo.key, provider);
+    this.internalLinkInfoMap.set(gKey, linkInfo);
   }
   getLinkInfo(gKey: GestaltKey): LinkInfo | undefined {
-    return this.internalLinkInfoMap.get(gKey)
+    return this.internalLinkInfoMap.get(gKey);
   }
 
   constructor(
@@ -149,7 +152,7 @@ class PeerInfo {
     apiAddress?: string,
     linkInfoList?: LinkInfo[],
   ) {
-    this.internalAlias = alias
+    this.internalAlias = alias;
     this.internalPublicKey = PeerInfo.formatPublicKey(publicKey);
     this.internalId = PeerInfo.publicKeyToId(this.internalPublicKey);
     if (rootPublicKey) {
@@ -162,8 +165,8 @@ class PeerInfo {
       this.internalApiAddress = Address.parse(apiAddress);
     }
     if (linkInfoList) {
-      this.internalLinkInfoMap = new Map
-      linkInfoList.forEach(li => this.publishLinkInfo(li))
+      this.internalLinkInfoMap = new Map();
+      linkInfoList.forEach((li) => this.publishLinkInfo(li));
     }
   }
 
@@ -177,13 +180,19 @@ class PeerInfo {
   static formatPublicKey(str: string): string {
     const startString = '-----BEGIN PUBLIC KEY-----';
     const endString = '-----END PUBLIC KEY-----';
-    return str.slice(str.indexOf(startString), str.indexOf(endString) + endString.length);
+    return str.slice(
+      str.indexOf(startString),
+      str.indexOf(endString) + endString.length,
+    );
   }
 
   static formatPemCertificate(str: string): string {
     const startString = '-----BEGIN CERTIFICATE-----';
     const endString = '-----END CERTIFICATE-----';
-    return str.slice(str.indexOf(startString), str.indexOf(endString) + endString.length);
+    return str.slice(
+      str.indexOf(startString),
+      str.indexOf(endString) + endString.length,
+    );
   }
 
   deepCopy(): PeerInfo {
@@ -204,7 +213,9 @@ class PeerInfo {
     certificate.validity.notBefore = new Date();
     certificate.validity.notAfter = new Date();
     // valid for 10 years
-    certificate.validity.notAfter.setFullYear(certificate.validity.notBefore.getFullYear() + 10);
+    certificate.validity.notAfter.setFullYear(
+      certificate.validity.notBefore.getFullYear() + 10,
+    );
 
     const attrs = [
       {
@@ -214,28 +225,28 @@ class PeerInfo {
       {
         // alias
         type: '1.3.1.4.1',
-        value: this.alias
+        value: this.alias,
       },
       {
         // root certificate
         type: '1.3.1.4.2',
-        value: this.rootPublicKey ?? ''
+        value: this.rootPublicKey ?? '',
       },
       {
         // peer address
         type: '1.3.1.4.3',
-        value: this.internalPeerAddress?.toString() ?? ''
+        value: this.internalPeerAddress?.toString() ?? '',
       },
       {
         // api address
         type: '1.3.1.4.4',
-        value: this.internalApiAddress?.toString() ?? ''
+        value: this.internalApiAddress?.toString() ?? '',
       },
       {
         // link claim identity list
         type: '1.3.1.4.5',
-        value: JSON.stringify(this.internalLinkInfoMap, JSONMapReplacer)
-      }
+        value: JSON.stringify(this.internalLinkInfoMap, JSONMapReplacer),
+      },
     ];
 
     certificate.setSubject(attrs);
@@ -282,79 +293,81 @@ class PeerInfo {
   }
 
   static parseX509Pem(pem: string) {
-    const cert = pki.certificateFromPem(pem)
+    const cert = pki.certificateFromPem(pem);
 
     // create a mapping from type to value
-    const attributes: Map<string, any> = new Map
-    cert.issuer.attributes.forEach(a => { attributes.set(a.type, a.value) })
+    const attributes: Map<string, any> = new Map();
+    cert.issuer.attributes.forEach((a) => {
+      attributes.set(a.type, a.value);
+    });
 
     // retrieve attributes
-    const alias: string = attributes.get('1.3.1.4.1') ?? ''
-    const rootPublicKey: string = attributes.get('1.3.1.4.2') ?? ''
-    const peerAddress: string = attributes.get('1.3.1.4.3') ?? ''
-    const apiAddress: string = attributes.get('1.3.1.4.4') ?? ''
-    const linkInfoListString: string = attributes.get('1.3.1.4.5')
-    const linkInfoList: Map<GestaltKey, LinkInfo> = JSON.parse(linkInfoListString, JSONMapReviver) ?? new Map
+    const alias: string = attributes.get('1.3.1.4.1') ?? '';
+    const rootPublicKey: string = attributes.get('1.3.1.4.2') ?? '';
+    const peerAddress: string = attributes.get('1.3.1.4.3') ?? '';
+    const apiAddress: string = attributes.get('1.3.1.4.4') ?? '';
+    const linkInfoListString: string = attributes.get('1.3.1.4.5');
+    const linkInfoList: Map<GestaltKey, LinkInfo> =
+      JSON.parse(linkInfoListString, JSONMapReviver) ?? new Map();
     return {
       alias,
       publicKey: pki.publicKeyToPem(cert.publicKey),
       rootPublicKey,
       peerAddress,
       apiAddress,
-      linkInfoList
-    }
+      linkInfoList,
+    };
   }
 
   static fromX509Pem(pem: string): PeerInfo {
-    const parsedCert = PeerInfo.parseX509Pem(pem)
+    const parsedCert = PeerInfo.parseX509Pem(pem);
     return new PeerInfo(
       parsedCert.alias,
       parsedCert.publicKey,
       parsedCert.rootPublicKey,
       parsedCert.peerAddress,
       parsedCert.apiAddress,
-      Array.from(parsedCert.linkInfoList.values())
-    )
+      Array.from(parsedCert.linkInfoList.values()),
+    );
   }
 }
-
 
 // This class is meant to be a readonly version of PeerInfo as we
 // do not own the private key it describes so we can not resign
 // changes made to it. The peerAddress and apiAddresses are
 // however changeable to make certain use cases practical.
 class PeerInfoReadOnly extends PeerInfo {
-  private internalPem: string
+  private internalPem: string;
   public get pem(): string {
-    return this.internalPem
+    return this.internalPem;
   }
   public set pem(value: string) {
-    throw Error('pem cannot be set')
+    throw Error('pem cannot be set');
   }
   public get id(): string {
-    return super.id
+    return super.id;
   }
   public set id(v: string) {
-    throw Error('cannot set peerId on a readonly peer info')
+    throw Error('cannot set peerId on a readonly peer info');
   }
   public get publicKey(): string {
-    return super.publicKey
+    return super.publicKey;
   }
   public set publicKey(v: string) {
-    throw Error('cannot set publicKey on a readonly peer info')
+    throw Error('cannot set publicKey on a readonly peer info');
   }
   public get rootPublicKey(): string {
-    return super.rootPublicKey
+    return super.rootPublicKey;
   }
   public set rootPublicKey(v: string) {
-    throw Error('cannot set rootPublicKey on a readonly peer info')
+    throw Error('cannot set rootPublicKey on a readonly peer info');
   }
   public get linkInfoList(): LinkInfo[] {
     // underlying array should be immutable
-    return [...super.linkInfoList]
+    return [...super.linkInfoList];
   }
   public set linkInfoList(v: LinkInfo[]) {
-    throw Error('cannot set proofList on a readonly peer info')
+    throw Error('cannot set proofList on a readonly peer info');
   }
 
   // the only 3 things that can change in a read only peer info
@@ -362,111 +375,111 @@ class PeerInfoReadOnly extends PeerInfo {
   // the user being able to change these if new knowledge becomes
   // available
   // unsignedAlias
-  private signedAlias: string
-  private unsignedAlias?: string
+  private signedAlias: string;
+  private unsignedAlias?: string;
   public get hasUnsignedAlias(): boolean {
-    return this.unsignedAlias != undefined
+    return this.unsignedAlias != undefined;
   }
   public get alias(): string {
     if (this.unsignedAlias) {
-      return this.unsignedAlias
+      return this.unsignedAlias;
     } else {
-      return this.signedAlias
+      return this.signedAlias;
     }
   }
   public set alias(v: string) {
-    this.unsignedAlias = v
+    this.unsignedAlias = v;
   }
   // unsignedPeerAddress
-  private unsignedPeerAddress?: Address
+  private unsignedPeerAddress?: Address;
   public get hasUnsignedPeerAddress(): boolean {
-    return this.unsignedPeerAddress != undefined
+    return this.unsignedPeerAddress != undefined;
   }
   public get peerAddress(): Address | undefined {
     if (this.unsignedPeerAddress) {
-      return this.unsignedPeerAddress
+      return this.unsignedPeerAddress;
     } else {
-      return super.peerAddress
+      return super.peerAddress;
     }
   }
   public set peerAddress(v: Address | undefined) {
-    this.unsignedPeerAddress = v
+    this.unsignedPeerAddress = v;
   }
   // unsignedApiAddress
-  private unsignedApiAddress?: Address
+  private unsignedApiAddress?: Address;
   public get hasUnsignedApiAddress(): boolean {
-    return this.unsignedApiAddress != undefined
+    return this.unsignedApiAddress != undefined;
   }
   public get apiAddress(): Address | undefined {
     if (this.unsignedApiAddress) {
-      return this.unsignedApiAddress
+      return this.unsignedApiAddress;
     } else {
-      return super.apiAddress
+      return super.apiAddress;
     }
   }
   public set apiAddress(v: Address | undefined) {
-    this.unsignedApiAddress = v
+    this.unsignedApiAddress = v;
   }
 
   constructor(peerInfoPem: string) {
-    const pem = PeerInfo.formatPemCertificate(peerInfoPem)
-    const parsedCert = PeerInfo.parseX509Pem(pem)
+    const pem = PeerInfo.formatPemCertificate(peerInfoPem);
+    const parsedCert = PeerInfo.parseX509Pem(pem);
     super(
       parsedCert.alias,
       parsedCert.publicKey,
       parsedCert.rootPublicKey,
       parsedCert.peerAddress,
       parsedCert.apiAddress,
-      Array.from(parsedCert.linkInfoList.values())
-    )
-    this.internalPem = pem
-    this.signedAlias = parsedCert.alias
+      Array.from(parsedCert.linkInfoList.values()),
+    );
+    this.internalPem = pem;
+    this.signedAlias = parsedCert.alias;
   }
 
   deepCopy(): PeerInfoReadOnly {
     const newPeerInfo = new PeerInfoReadOnly(this.internalPem);
-    newPeerInfo.unsignedAlias = this.unsignedAlias
-    newPeerInfo.unsignedApiAddress = this.unsignedApiAddress
-    newPeerInfo.unsignedPeerAddress = this.unsignedPeerAddress
-    return newPeerInfo
+    newPeerInfo.unsignedAlias = this.unsignedAlias;
+    newPeerInfo.unsignedApiAddress = this.unsignedApiAddress;
+    newPeerInfo.unsignedPeerAddress = this.unsignedPeerAddress;
+    return newPeerInfo;
   }
 
   toPeerInfoReadOnlyMessage(): agentInterface.PeerInfoReadOnlyMessage {
-    const message = new agentInterface.PeerInfoReadOnlyMessage
-    message.setPeerId(this.id)
-    message.setPem(this.pem)
+    const message = new agentInterface.PeerInfoReadOnlyMessage();
+    message.setPeerId(this.id);
+    message.setPem(this.pem);
     if (this.hasUnsignedAlias) {
-      message.setUnsignedAlias(this.alias)
+      message.setUnsignedAlias(this.alias);
     }
     if (this.hasUnsignedPeerAddress) {
-      message.setUnsignedPeerAddress(this.peerAddress?.toString() ?? '')
+      message.setUnsignedPeerAddress(this.peerAddress?.toString() ?? '');
     }
     if (this.hasUnsignedApiAddress) {
-      message.setUnsignedApiAddress(this.apiAddress?.toString() ?? '')
+      message.setUnsignedApiAddress(this.apiAddress?.toString() ?? '');
     }
-    return message
+    return message;
   }
 
   static fromPeerInfoReadOnlyMessage(
-    message: agentInterface.PeerInfoReadOnlyMessage.AsObject
+    message: agentInterface.PeerInfoReadOnlyMessage.AsObject,
   ): PeerInfoReadOnly {
     const {
       pem,
       unsignedAlias,
       unsignedPeerAddress,
       unsignedApiAddress,
-    } = message
-    const peerInfo = new PeerInfoReadOnly(pem)
+    } = message;
+    const peerInfo = new PeerInfoReadOnly(pem);
     if (unsignedAlias) {
-      peerInfo.alias = unsignedAlias
+      peerInfo.alias = unsignedAlias;
     }
     if (unsignedPeerAddress) {
-      peerInfo.peerAddress = Address.parse(unsignedPeerAddress)
+      peerInfo.peerAddress = Address.parse(unsignedPeerAddress);
     }
     if (unsignedApiAddress) {
-      peerInfo.apiAddress = Address.parse(unsignedApiAddress)
+      peerInfo.apiAddress = Address.parse(unsignedApiAddress);
     }
-    return peerInfo
+    return peerInfo;
   }
 }
 

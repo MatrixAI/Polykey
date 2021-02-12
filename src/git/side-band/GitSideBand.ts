@@ -105,13 +105,20 @@ class GitSideBand {
     let packfileEnded = false;
     let progressEnded = false;
     const errorEnded = true;
-    const goodbye = Buffer.concat([GitPktLine.encode(Buffer.from('010A', 'hex')), GitPktLine.flush()]);
+    const goodbye = Buffer.concat([
+      GitPktLine.encode(Buffer.from('010A', 'hex')),
+      GitPktLine.flush(),
+    ]);
     packfile
       .on('data', (data) => {
         packfileWasEmpty = false;
         const buffers = splitBuffer(data, MAX_PACKET_LENGTH);
         for (const buffer of buffers) {
-          output.write(GitPktLine.encode(Buffer.concat([Buffer.from('01', 'hex'), buffer])));
+          output.write(
+            GitPktLine.encode(
+              Buffer.concat([Buffer.from('01', 'hex'), buffer]),
+            ),
+          );
         }
       })
       .on('end', () => {
@@ -123,7 +130,11 @@ class GitSideBand {
       .on('data', (data) => {
         const buffers = splitBuffer(data, MAX_PACKET_LENGTH);
         for (const buffer of buffers) {
-          output.write(GitPktLine.encode(Buffer.concat([Buffer.from('02', 'hex'), buffer])));
+          output.write(
+            GitPktLine.encode(
+              Buffer.concat([Buffer.from('02', 'hex'), buffer]),
+            ),
+          );
         }
       })
       .on('end', () => {

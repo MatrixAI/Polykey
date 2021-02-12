@@ -8,15 +8,17 @@ type IdentityInfo = {
   url?: string;
 };
 
-type AuthCodeData = {
-  status: 'success';
-  code: string;
-  state?: string;
-} | {
-  status: 'failure';
-  error: string;
-  errorDescription?: string;
-};
+type AuthCodeData =
+  | {
+      status: 'success';
+      code: string;
+      state?: string;
+    }
+  | {
+      status: 'failure';
+      error: string;
+      errorDescription?: string;
+    };
 
 type TokenData = {
   accessToken: string;
@@ -25,8 +27,4 @@ type TokenData = {
   refreshTokenExpiresIn?: string;
 };
 
-export {
-  IdentityInfo,
-  AuthCodeData,
-  TokenData
-};
+export { IdentityInfo, AuthCodeData, TokenData };

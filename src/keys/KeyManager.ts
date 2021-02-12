@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import * as bip39 from 'bip39';
 import { promisify } from 'util';
 import { pki, md } from 'node-forge';
+import { VirtualFS } from 'virtualfs';
 import { EncryptedFS } from 'encryptedfs';
 import { Pool, ModuleThread } from 'threads';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
@@ -15,11 +16,11 @@ type KeyManagerMetadata = {
 };
 
 type KeyPair = {
-  publicKey?: pki.rsa.PublicKey,
-  privateKey?: pki.rsa.PrivateKey,
+  publicKey?: pki.rsa.PublicKey;
+  privateKey?: pki.rsa.PrivateKey;
   // This encryptedPrivateKey is used as an intermediary step
   // so the keypair can be loaded and unlocked at different intervals
-  encryptedPrivateKey?: string
+  encryptedPrivateKey?: string;
 };
 
 type ReencryptHandler = (
@@ -28,7 +29,7 @@ type ReencryptHandler = (
 ) => Promise<void>;
 
 class KeyManager {
-  private primaryKeyPair: KeyPair = {}
+  private primaryKeyPair: KeyPair = {};
   private unlockedTimeout?: NodeJS.Timeout;
   private derivedKeys: Map<string, Buffer>;
   private derivedKeysPath: string;
@@ -41,12 +42,18 @@ class KeyManager {
   // mnemonic data
   private mnemonicStore: string;
   private get mnemonic(): string {
-    return this.mnemonicStore
+    return this.mnemonicStore;
   }
   private set mnemonic(mnemonic: string) {
-    this.mnemonicStore = mnemonic
-    const vfsInstance = new (require('virtualfs').VirtualFS)();
-    this.mnemonicEfs = new EncryptedFS(mnemonic, vfsInstance, vfsInstance, fs, process);
+    this.mnemonicStore = mnemonic;
+    const vfsInstance = new VirtualFS();
+    this.mnemonicEfs = new EncryptedFS(
+      mnemonic,
+      vfsInstance,
+      vfsInstance,
+      fs,
+      process,
+    );
   }
   private mnemonicFilePath: string;
   private mnemonicEfs: EncryptedFS;
@@ -88,7 +95,10 @@ class KeyManager {
     // Load keys if they were provided
     if (this.metadata.privateKeyPath && this.metadata.publicKeyPath) {
       // Load files into memory
-      this.loadKeyPair(this.metadata.publicKeyPath, this.metadata.privateKeyPath);
+      this.loadKeyPair(
+        this.metadata.publicKeyPath,
+        this.metadata.privateKeyPath,
+      );
     }
   }
 
@@ -116,12 +126,15 @@ class KeyManager {
     passphrase: string,
     nbits: number = 4096,
     replacePrimary = false,
-  ): Promise<{ publicKey: string, privateKey: string }> {
-    const keypair = await promisify(pki.rsa.generateKeyPair)({ bits: nbits })
+  ): Promise<{ publicKey: string; privateKey: string }> {
+    const keypair = await promisify(pki.rsa.generateKeyPair)({ bits: nbits });
 
     // encrypt private key using sensible defaults
-    const encodedPublicKey = pki.publicKeyToPem(keypair.publicKey)
-    const encodedPrivateKey = pki.encryptRsaPrivateKey(keypair.privateKey, passphrase)
+    const encodedPublicKey = pki.publicKeyToPem(keypair.publicKey);
+    const encodedPrivateKey = pki.encryptRsaPrivateKey(
+      keypair.privateKey,
+      passphrase,
+    );
 
     // Resolve to parent promise
     if (replacePrimary) {
@@ -138,12 +151,15 @@ class KeyManager {
       const publicKeyPath = path.join(this.keypairPath, 'public_key');
       const privateKeyPath = path.join(this.keypairPath, 'private_key');
       await this.fileSystem.promises.writeFile(publicKeyPath, encodedPublicKey);
-      await this.fileSystem.promises.writeFile(privateKeyPath, encodedPrivateKey);
+      await this.fileSystem.promises.writeFile(
+        privateKeyPath,
+        encodedPrivateKey,
+      );
       // Set metadata
       this.metadata.publicKeyPath = publicKeyPath;
       this.metadata.privateKeyPath = privateKeyPath;
       // create a new mnemonic as a backup
-      this.mnemonic = bip39.generateMnemonic()
+      this.mnemonic = bip39.generateMnemonic();
 
       // write metadata
       await this.writeMetadata();
@@ -161,18 +177,22 @@ class KeyManager {
    * @param userId The user id of the newly created keypair
    * @param passphrase The new passphrase with which to protect the new
    */
-  async recoverKeynode(mnemonic: string, userId: string, passphrase: string): Promise<void> {
+  async recoverKeynode(
+    mnemonic: string,
+    userId: string,
+    passphrase: string,
+  ): Promise<void> {
     // set mnemonic
-    this.mnemonic = mnemonic
+    this.mnemonic = mnemonic;
     // decrypt the data with mnemonic
-    const vaultKeysPath = path.join(this.polykeyPath, '.vaultKeysBackup')
-    const vaultKeys = await this.readFileWithMnemonic(vaultKeysPath)
+    const vaultKeysPath = path.join(this.polykeyPath, '.vaultKeysBackup');
+    const vaultKeys = await this.readFileWithMnemonic(vaultKeysPath);
     // replace primary keypair
-    await this.generateKeyPair(passphrase, undefined, true)
+    await this.generateKeyPair(passphrase, undefined, true);
     // reencrypt data with newly generated keypair
-    const encryptedVaultKeys = this.encryptData(vaultKeys.toString())
+    const encryptedVaultKeys = this.encryptData(vaultKeys.toString());
     // write encrypted data to file
-    await this.fileSystem.promises.writeFile(vaultKeysPath, encryptedVaultKeys)
+    await this.fileSystem.promises.writeFile(vaultKeysPath, encryptedVaultKeys);
   }
 
   /**
@@ -180,7 +200,7 @@ class KeyManager {
    * @param mnemonic The mnemonic to be verified
    */
   async verifyMnemonic(mnemonic: string): Promise<boolean> {
-    return mnemonic == this.mnemonic
+    return mnemonic == this.mnemonic;
   }
 
   /**
@@ -195,16 +215,16 @@ class KeyManager {
    */
   getPublicKey(): pki.rsa.PublicKey {
     if (!this.primaryKeyPair.publicKey) {
-      throw Error('public key is not loaded yet')
+      throw Error('public key is not loaded yet');
     }
-    return this.primaryKeyPair.publicKey
+    return this.primaryKeyPair.publicKey;
   }
 
   /**
    * Get the public key of the primary keypair
    */
   getPublicKeyString(): string {
-    return pki.publicKeyToPem(this.getPublicKey())
+    return pki.publicKeyToPem(this.getPublicKey());
   }
 
   /**
@@ -212,12 +232,10 @@ class KeyManager {
    */
   getPrivateKey(): pki.rsa.PrivateKey {
     if (!this.primaryKeyPair.privateKey) {
-      throw Error('private key is not loaded yet')
+      throw Error('private key is not loaded yet');
     }
-    return this.primaryKeyPair.privateKey
+    return this.primaryKeyPair.privateKey;
   }
-
-
 
   /**
    * Get the private key of the primary keypair
@@ -225,7 +243,7 @@ class KeyManager {
   getPrivateKeyString(): string {
     // this is used for symmetric key derivation and is the unlocked keypair string
     // i.e. not protected by any passphrase so it is secure to use as a seed for pbkdf2
-    return pki.privateKeyToPem(this.getPrivateKey())
+    return pki.privateKeyToPem(this.getPrivateKey());
   }
 
   /**
@@ -270,8 +288,6 @@ class KeyManager {
     this.primaryKeyPair.publicKey = pki.publicKeyFromPem(keyBuffer.toString());
   }
 
-
-
   /**
    * Loads the primary identity into the key manager from the existing keypair
    * @param passphrase Passphrase to unlock the private key
@@ -287,12 +303,18 @@ class KeyManager {
         // Load keys if they were provided
         if (this.metadata.privateKeyPath && this.metadata.publicKeyPath) {
           // Load files into memory
-          this.loadKeyPair(this.metadata.publicKeyPath, this.metadata.privateKeyPath);
+          this.loadKeyPair(
+            this.metadata.publicKeyPath,
+            this.metadata.privateKeyPath,
+          );
         } else {
-          throw Error('keypair path is not defined')
+          throw Error('keypair path is not defined');
         }
       }
-      this.primaryKeyPair.privateKey = pki.decryptRsaPrivateKey(encryptedPrivateKey!, passphrase) as pki.rsa.PrivateKey
+      this.primaryKeyPair.privateKey = pki.decryptRsaPrivateKey(
+        encryptedPrivateKey!,
+        passphrase,
+      ) as pki.rsa.PrivateKey;
     }
 
     // set a new timeout
@@ -356,9 +378,19 @@ class KeyManager {
    * @param passphrase Passphrase to derive the key from
    * @param storeKey Whether to store the key in the key manager
    */
-  async generateKey(name: string, passphrase: string, storeKey = true): Promise<Buffer> {
+  async generateKey(
+    name: string,
+    passphrase: string,
+    storeKey = true,
+  ): Promise<Buffer> {
     const salt = crypto.randomBytes(32);
-    const key = await promisify(crypto.pbkdf2)(passphrase, salt, 10000, 256 / 8, 'sha256');
+    const key = await promisify(crypto.pbkdf2)(
+      passphrase,
+      salt,
+      10000,
+      256 / 8,
+      'sha256',
+    );
     if (storeKey) {
       this.derivedKeys[name] = key;
       await this.writeMetadata();
@@ -447,12 +479,18 @@ class KeyManager {
    * @param dest Destination path
    * @param createPath If set to true, the path is recursively created
    */
-  async exportKey(name: string, dest: string, createPath?: boolean): Promise<void> {
+  async exportKey(
+    name: string,
+    dest: string,
+    createPath?: boolean,
+  ): Promise<void> {
     if (!this.derivedKeys.has(name)) {
       throw Error(`There is no key loaded for name: ${name}`);
     }
     if (createPath) {
-      await this.fileSystem.promises.mkdir(path.dirname(dest), { recursive: true });
+      await this.fileSystem.promises.mkdir(path.dirname(dest), {
+        recursive: true,
+      });
     }
     await this.fileSystem.promises.writeFile(dest, this.derivedKeys[name]);
   }
@@ -463,13 +501,20 @@ class KeyManager {
    * @param privateKey the key to sign with. Defaults to primary private key if no key is given.
    * @param passphrase Required if privateKey is provided.
    */
-  async signData(data: string, privateKey?: string, passphrase?: string): Promise<string> {
+  async signData(
+    data: string,
+    privateKey?: string,
+    passphrase?: string,
+  ): Promise<string> {
     let resolvedKey: pki.rsa.PrivateKey;
     if (privateKey) {
       if (!passphrase) {
         throw Error('passphrase for private key was not provided');
       }
-      resolvedKey = pki.decryptRsaPrivateKey(privateKey.toString(), passphrase) as pki.rsa.PrivateKey;
+      resolvedKey = pki.decryptRsaPrivateKey(
+        privateKey.toString(),
+        passphrase,
+      ) as pki.rsa.PrivateKey;
     } else if (this.primaryKeyPair.privateKey) {
       resolvedKey = this.primaryKeyPair.privateKey;
     } else {
@@ -477,9 +522,14 @@ class KeyManager {
     }
 
     if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(async (workerCrypto) => {
-        return await workerCrypto.signData(data, pki.privateKeyToPem(resolvedKey));
-      });
+      const workerResponse = await this.workerPool.queue(
+        async (workerCrypto) => {
+          return await workerCrypto.signData(
+            data,
+            pki.privateKeyToPem(resolvedKey),
+          );
+        },
+      );
       return workerResponse;
     } else {
       const digest = md.sha512.create();
@@ -495,7 +545,11 @@ class KeyManager {
    * @param privateKey The key to sign with. Defaults to primary public key if no key is given.
    * @param passphrase Required if privateKey is provided.
    */
-  async signFile(filePath: string, privateKey?: string | Buffer, passphrase?: string): Promise<string> {
+  async signFile(
+    filePath: string,
+    privateKey?: string | Buffer,
+    passphrase?: string,
+  ): Promise<string> {
     // Get key if provided
     let keyBuffer: Buffer | undefined;
     if (privateKey) {
@@ -511,7 +565,11 @@ class KeyManager {
     // Read file into buffer
     const buffer = this.fileSystem.readFileSync(filePath);
     // Sign the buffer
-    const signature = await this.signData(buffer.toString(), keyBuffer?.toString() ?? undefined, passphrase);
+    const signature = await this.signData(
+      buffer.toString(),
+      keyBuffer?.toString() ?? undefined,
+      passphrase,
+    );
     // Write buffer to signed file
     const signedPath = `${filePath}.sig`;
     this.fileSystem.writeFileSync(signedPath, signature);
@@ -524,7 +582,11 @@ class KeyManager {
    * @param signature the signature
    * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
    */
-  async verifyData(data: string, signature: string, publicKey?: string): Promise<boolean> {
+  async verifyData(
+    data: string,
+    signature: string,
+    publicKey?: string,
+  ): Promise<boolean> {
     let resolvedKey: pki.rsa.PublicKey;
     if (publicKey) {
       resolvedKey = pki.publicKeyFromPem(publicKey);
@@ -535,9 +597,15 @@ class KeyManager {
     }
 
     if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(async (workerCrypto) => {
-        return await workerCrypto.verifyData(data, signature, pki.publicKeyToPem(resolvedKey));
-      });
+      const workerResponse = await this.workerPool.queue(
+        async (workerCrypto) => {
+          return await workerCrypto.verifyData(
+            data,
+            signature,
+            pki.publicKeyToPem(resolvedKey),
+          );
+        },
+      );
       return workerResponse;
     } else {
       const digest = md.sha512.create();
@@ -552,7 +620,11 @@ class KeyManager {
    * @param filePath Path to file containing the data to be verified
    * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
    */
-  async verifyFile(filePath: string, signature: string | Buffer, publicKey?: string | Buffer): Promise<boolean> {
+  async verifyFile(
+    filePath: string,
+    signature: string | Buffer,
+    publicKey?: string | Buffer,
+  ): Promise<boolean> {
     // Get key if provided
     let keyBuffer: Buffer | undefined;
     if (publicKey) {
@@ -576,7 +648,11 @@ class KeyManager {
     }
     // Read in file buffer and signature
     const fileData = this.fileSystem.readFileSync(filePath);
-    const verifiedMessage = await this.verifyData(fileData.toString(), signatureBuffer.toString(), keyBuffer?.toString());
+    const verifiedMessage = await this.verifyData(
+      fileData.toString(),
+      signatureBuffer.toString(),
+      keyBuffer?.toString(),
+    );
     this.fileSystem.writeFileSync(filePath, verifiedMessage);
 
     return true;
@@ -597,15 +673,19 @@ class KeyManager {
       throw Error('key pair is not loaded');
     }
 
-
     if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(async (workerCrypto) => {
-        return await workerCrypto.encryptData(data, pki.publicKeyToPem(resolvedKey));
-      });
+      const workerResponse = await this.workerPool.queue(
+        async (workerCrypto) => {
+          return await workerCrypto.encryptData(
+            data,
+            pki.publicKeyToPem(resolvedKey),
+          );
+        },
+      );
       return workerResponse;
     } else {
-      const encryptedData = resolvedKey.encrypt(data)
-      return encryptedData
+      const encryptedData = resolvedKey.encrypt(data);
+      return encryptedData;
     }
   }
 
@@ -614,7 +694,10 @@ class KeyManager {
    * @param filePath Path to file containing the data to be encrypted
    * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
    */
-  async encryptFile(filePath: string, publicKey?: string | Buffer): Promise<string> {
+  async encryptFile(
+    filePath: string,
+    publicKey?: string | Buffer,
+  ): Promise<string> {
     // Get key if provided
     let keyBuffer: Buffer | undefined;
     if (publicKey) {
@@ -629,7 +712,10 @@ class KeyManager {
     // Read file into buffer
     const fileData = this.fileSystem.readFileSync(filePath);
     // Encrypt the buffer
-    const encryptedBuffer = await this.encryptData(fileData.toString(), keyBuffer?.toString());
+    const encryptedBuffer = await this.encryptData(
+      fileData.toString(),
+      keyBuffer?.toString(),
+    );
     // Write buffer to encrypted file
     this.fileSystem.writeFileSync(filePath, encryptedBuffer);
     return filePath;
@@ -641,13 +727,22 @@ class KeyManager {
    * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
    * @param passphrase Required if privateKey is provided.
    */
-  async decryptData(data: string, privateKey?: string, passphrase?: string): Promise<string> {
+  async decryptData(
+    data: string,
+    privateKey?: string,
+    passphrase?: string,
+  ): Promise<string> {
     let resolvedKey: pki.rsa.PrivateKey;
     if (privateKey) {
       if (!passphrase) {
-        throw Error('A key passphrase must be supplied if a privateKey is specified');
+        throw Error(
+          'A key passphrase must be supplied if a privateKey is specified',
+        );
       }
-      resolvedKey = pki.decryptRsaPrivateKey(privateKey, passphrase) as pki.rsa.PrivateKey
+      resolvedKey = pki.decryptRsaPrivateKey(
+        privateKey,
+        passphrase,
+      ) as pki.rsa.PrivateKey;
     } else if (this.primaryKeyPair.privateKey) {
       resolvedKey = this.primaryKeyPair.privateKey;
     } else {
@@ -655,12 +750,17 @@ class KeyManager {
     }
 
     if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(async (workerCrypto) => {
-        return await workerCrypto.decryptData(data, pki.privateKeyToPem(resolvedKey));
-      });
+      const workerResponse = await this.workerPool.queue(
+        async (workerCrypto) => {
+          return await workerCrypto.decryptData(
+            data,
+            pki.privateKeyToPem(resolvedKey),
+          );
+        },
+      );
       return workerResponse;
     } else {
-      const decryptedData = resolvedKey.decrypt(data)
+      const decryptedData = resolvedKey.decrypt(data);
       return decryptedData;
     }
   }
@@ -671,7 +771,11 @@ class KeyManager {
    * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
    * @param passphrase Required if privateKey is provided.
    */
-  async decryptFile(filePath: string, privateKey?: string | Buffer, passphrase?: string): Promise<string> {
+  async decryptFile(
+    filePath: string,
+    privateKey?: string | Buffer,
+    passphrase?: string,
+  ): Promise<string> {
     // Get key if provided
     let keyBuffer: Buffer | undefined;
     if (privateKey) {
@@ -686,7 +790,11 @@ class KeyManager {
     // Read in file buffer
     const fileData = this.fileSystem.readFileSync(filePath);
     // Decrypt file buffer
-    const decryptedData = await this.decryptData(fileData.toString(), keyBuffer?.toString(), passphrase);
+    const decryptedData = await this.decryptData(
+      fileData.toString(),
+      keyBuffer?.toString(),
+      passphrase,
+    );
     // Write buffer to decrypted file
     this.fileSystem.writeFileSync(filePath, decryptedData);
     return filePath;
@@ -694,10 +802,10 @@ class KeyManager {
 
   /* ============ HELPERS =============== */
   async writeFileWithMnemonic(path: string, data: Buffer): Promise<void> {
-    return await this.mnemonicEfs.promises.writeFile(path, data, {})
+    return await this.mnemonicEfs.promises.writeFile(path, data, {});
   }
   async readFileWithMnemonic(path: string): Promise<Buffer> {
-    return Buffer.from(await this.mnemonicEfs.promises.readFile(path))
+    return Buffer.from(await this.mnemonicEfs.promises.readFile(path));
   }
 
   /**
@@ -731,17 +839,25 @@ class KeyManager {
       // write derived keys to file
       const derivedKeys = JSON.stringify(this.derivedKeys);
       const encryptedMetadata = await this.encryptData(derivedKeys);
-      await this.fileSystem.promises.writeFile(this.derivedKeysPath, encryptedMetadata);
+      await this.fileSystem.promises.writeFile(
+        this.derivedKeysPath,
+        encryptedMetadata,
+      );
       // write mnemonic to file
-      const encryptedMnemonic = await this.encryptData(this.mnemonic)
-      await this.fileSystem.promises.writeFile(this.mnemonicFilePath, encryptedMnemonic)
+      const encryptedMnemonic = await this.encryptData(this.mnemonic);
+      await this.fileSystem.promises.writeFile(
+        this.mnemonicFilePath,
+        encryptedMnemonic,
+      );
     }
   }
 
   async loadMetadata(): Promise<void> {
     // Check if file exists
     if (this.fileSystem.existsSync(this.metadataPath)) {
-      const metadata = this.fileSystem.readFileSync(this.metadataPath).toString();
+      const metadata = this.fileSystem
+        .readFileSync(this.metadataPath)
+        .toString();
       this.metadata = JSON.parse(metadata);
       await this.loadEncryptedMetadata();
     }
@@ -750,7 +866,9 @@ class KeyManager {
   async loadEncryptedMetadata(): Promise<void> {
     if (this.KeypairUnlocked) {
       if (this.fileSystem.existsSync(this.derivedKeysPath)) {
-        const encryptedMetadata = this.fileSystem.readFileSync(this.derivedKeysPath).toString();
+        const encryptedMetadata = this.fileSystem
+          .readFileSync(this.derivedKeysPath)
+          .toString();
         const metadata = await this.decryptData(encryptedMetadata);
         const derivedKeys = JSON.parse(metadata);
         for (const key of Object.keys(derivedKeys)) {
@@ -758,7 +876,9 @@ class KeyManager {
         }
       }
       if (this.fileSystem.existsSync(this.mnemonicFilePath)) {
-        const encryptedMetadata = this.fileSystem.readFileSync(this.mnemonicFilePath).toString();
+        const encryptedMetadata = this.fileSystem
+          .readFileSync(this.mnemonicFilePath)
+          .toString();
         this.mnemonic = (await this.decryptData(encryptedMetadata)).toString();
       }
     }
