@@ -3,8 +3,8 @@ import path from 'path';
 declare global {
   namespace NodeJS {
     interface Global {
-      projectDir: string,
-      testDir: string
+      projectDir: string;
+      testDir: string;
     }
   }
 }

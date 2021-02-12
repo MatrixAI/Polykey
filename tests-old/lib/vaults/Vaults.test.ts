@@ -58,6 +58,10 @@ describe('VaultManager class', () => {
     randomVaultName = `Vault-${randomString()}`
   })
 
+  test('test', () => {
+    expect(1+1).toEqual(2);
+  })
+
   test('can create vault', async () => {
     // Create vault
     await vm.newVault(randomVaultName)

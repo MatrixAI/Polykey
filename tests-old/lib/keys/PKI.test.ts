@@ -60,6 +60,7 @@ describe('PKI testing', () => {
     const csr = kmA.pki.createCSR('localhost', 'passphrase')
     const certificate = kmCA.pki.handleCSR(csr)
     expect(certificate).not.toEqual(undefined)
+    expect(1+1).toEqual(2);
   })
 
   describe('Transport Layer Security', () => {

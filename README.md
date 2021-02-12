@@ -33,7 +33,6 @@ PolyKey  uses jest to test:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
 jest
 </pre>
-The tests also rely on certificates being available in the tmp folder and environment variables set to a valid certificate authority run on the network somewhere. Please see `.env.example` for an example of these environment variables. Certificates can be generated with `./scripts/generate_ssl_certs.sh` as long as a step-ca is running on the specified url in `.env`.
 
 Note: sometimes grpc-js can complain about the ssl certificates in `tmp/` with a non-descriptive error of "No connection established". Best way to solve this is to remove the certs, start the CA server and re-issue the certs with `./scripts/generate_ssl_certs.sh`.
 

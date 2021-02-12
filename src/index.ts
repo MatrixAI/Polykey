@@ -1,1 +1,1 @@
-export { default as Polykey } from './Polykey';
+export { default } from './Polykey';

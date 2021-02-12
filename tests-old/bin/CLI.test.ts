@@ -41,7 +41,11 @@ describe('Polykey CLI', () => {
   describe('With Agent Stopped', () => {
     beforeEach(async () => {
       // stop agent
-      await validateCli({ args: ['agent', 'stop', '-v', '2'], ignoreOutput: true })
+      // await validateCli({ args: ['agent', 'stop', '-v', '2'], ignoreOutput: true })
+    })
+
+    test('test', async () => {
+      expect(1+1).toEqual(2);
     })
 
     test('agent status returns correctly if agent is stopped', async () => {

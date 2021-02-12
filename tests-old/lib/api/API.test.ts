@@ -67,7 +67,12 @@ describe('HTTP API', () => {
     expect(response).toEqual(tlsCredentials.rootCertificate)
   })
 
+  test('test', () => {
+    expect(1+1).toEqual(2);
+  })
+
   test('can get certificate chain', async () => {
+    console.log([tlsCredentials.rootCertificate])
     const response = await makeRequest('GET', '/ca/certificate_chain')
     expect(response).toEqual([tlsCredentials.rootCertificate])
   })
@@ -179,7 +184,7 @@ describe('HTTP API', () => {
           reject(err)
         })
         res.on('end', () => {
-          resolve()
+          resolve(null)
         })
       });
       req.on('error', (e) => {
