@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import parseUrl from 'parse-url';
 import { AddressInfo } from 'net';
 import { LinkInfo, LinkInfoIdentity } from '../links';
 import { md, pki } from 'node-forge';
@@ -60,8 +59,8 @@ class Address {
     if (!addressString || addressString == '') {
       throw Error(`cannot parse empty or undefined string`);
     }
-    const { resource, port }: { resource: string; port: number } = parseUrl(addressString);
-    return { host: resource, port };
+    const url = new URL(addressString);
+    return {host: url.hostname, port: Number(url.port)};
   }
 }
 

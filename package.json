@@ -71,7 +71,6 @@
     "oauth2orize": "^1.11.0",
     "octonode": "^0.10.0",
     "pako": "^1.0.11",
-    "parse-url": "^5.0.2",
     "passport": "^0.4.1",
     "passport-http": "^0.3.0",
     "passport-http-bearer": "^1.0.1",
