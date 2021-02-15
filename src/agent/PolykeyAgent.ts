@@ -1050,6 +1050,10 @@ class PolykeyAgent implements IAgentServer {
         secretFilePath,
         secretContent,
       } = call.request!.toObject();
+      // Check to make sure file path is a file and not a directory
+      if (!fs.statSync(secretFilePath).isFile()) {
+        throw Error('secret must be a file, a directory path was provided');
+      }
       const vault = this.pk.vaultManager.getVault(secretPath!.vaultName);
       if (fs.statSync(secretFilePath).isDirectory()) {
         await vault.addSecrets(secretFilePath);
