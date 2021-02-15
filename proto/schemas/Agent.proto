@@ -20,6 +20,7 @@ service Agent {
   rpc EncryptFile (EncryptFileMessage) returns (StringMessage) {};
   rpc FindPeer (ContactPeerMessage) returns (EmptyMessage) {};
   rpc GetConnectedIdentityInfos (ProviderSearchMessage) returns (stream IdentityInfoMessage) {};
+  rpc GetIdentityInfo (EmptyMessage) returns (IdentityInfo) {};
   rpc GetGestalts (EmptyMessage) returns (GestaltListMessage) {};
   rpc GetGestaltByIdentity (IdentityMessage) returns (GestaltMessage) {};
   rpc GestaltIsTrusted (StringMessage) returns (BooleanMessage) {};
@@ -50,6 +51,7 @@ service Agent {
   rpc RevokeOAuthToken (StringMessage) returns (EmptyMessage) {};
   rpc ScanVaultNames (StringMessage) returns (StringListMessage) {};
   rpc SetAlias (PeerAliasMessage) returns (EmptyMessage) {};
+  rpc SetIdentity (StringMessage) returns (EmptyMessage) {};
   rpc ShareVault (ShareVaultMessage) returns (EmptyMessage) {};
   rpc SignFile (SignFileMessage) returns (StringMessage) {};
   rpc StopAgent (EmptyMessage) returns (EmptyMessage) {};
@@ -367,4 +369,8 @@ message IdentityInfoMessage {
 message IdentityMessage {
   string key = 1;
   string provider_key = 2;
+}
+
+message IdentityInfo {
+  string key = 1;
 }

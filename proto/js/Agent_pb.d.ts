@@ -1212,6 +1212,27 @@ export namespace IdentityMessage {
     }
 }
 
+export class IdentityInfo extends jspb.Message { 
+    getKey(): string;
+    setKey(value: string): IdentityInfo;
+
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): IdentityInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: IdentityInfo): IdentityInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: IdentityInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): IdentityInfo;
+    static deserializeBinaryFromReader(message: IdentityInfo, reader: jspb.BinaryReader): IdentityInfo;
+}
+
+export namespace IdentityInfo {
+    export type AsObject = {
+        key: string,
+    }
+}
+
 export enum AgentStatusType {
     ONLINE = 0,
     OFFLINE = 1,

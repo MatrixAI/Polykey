@@ -158,6 +158,17 @@ function deserialize_agentInterface_GestaltMessage(buffer_arg) {
   return Agent_pb.GestaltMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_IdentityInfo(arg) {
+  if (!(arg instanceof Agent_pb.IdentityInfo)) {
+    throw new Error('Expected argument of type agentInterface.IdentityInfo');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_IdentityInfo(buffer_arg) {
+  return Agent_pb.IdentityInfo.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_IdentityInfoMessage(arg) {
   if (!(arg instanceof Agent_pb.IdentityInfoMessage)) {
     throw new Error('Expected argument of type agentInterface.IdentityInfoMessage');
@@ -570,6 +581,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_IdentityInfoMessage,
     responseDeserialize: deserialize_agentInterface_IdentityInfoMessage,
   },
+  getIdentityInfo: {
+    path: '/agentInterface.Agent/GetIdentityInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.IdentityInfo,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_IdentityInfo,
+    responseDeserialize: deserialize_agentInterface_IdentityInfo,
+  },
   getGestalts: {
     path: '/agentInterface.Agent/GetGestalts',
     requestStream: false,
@@ -897,6 +919,17 @@ var AgentService = exports.AgentService = {
     responseType: Agent_pb.EmptyMessage,
     requestSerialize: serialize_agentInterface_PeerAliasMessage,
     requestDeserialize: deserialize_agentInterface_PeerAliasMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  setIdentity: {
+    path: '/agentInterface.Agent/SetIdentity',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.StringMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_StringMessage,
+    requestDeserialize: deserialize_agentInterface_StringMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },

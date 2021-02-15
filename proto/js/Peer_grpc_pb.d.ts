@@ -21,7 +21,7 @@ interface IPeerService extends grpc.ServiceDefinition<grpc.UntypedServiceImpleme
 }
 
 interface IPeerService_IPingPeer extends grpc.MethodDefinition<Peer_pb.PingPeerMessage, Peer_pb.PingPeerMessage> {
-    path: string; // "/peerInterface.Peer/PingPeer"
+    path: "/peerInterface.Peer/PingPeer";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Peer_pb.PingPeerMessage>;
@@ -30,7 +30,7 @@ interface IPeerService_IPingPeer extends grpc.MethodDefinition<Peer_pb.PingPeerM
     responseDeserialize: grpc.deserialize<Peer_pb.PingPeerMessage>;
 }
 interface IPeerService_IGetGitInfo extends grpc.MethodDefinition<Peer_pb.InfoRequest, Peer_pb.InfoReply> {
-    path: string; // "/peerInterface.Peer/GetGitInfo"
+    path: "/peerInterface.Peer/GetGitInfo";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Peer_pb.InfoRequest>;
@@ -39,7 +39,7 @@ interface IPeerService_IGetGitInfo extends grpc.MethodDefinition<Peer_pb.InfoReq
     responseDeserialize: grpc.deserialize<Peer_pb.InfoReply>;
 }
 interface IPeerService_IGetGitPack extends grpc.MethodDefinition<Peer_pb.PackRequest, Peer_pb.PackReply> {
-    path: string; // "/peerInterface.Peer/GetGitPack"
+    path: "/peerInterface.Peer/GetGitPack";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Peer_pb.PackRequest>;
@@ -48,7 +48,7 @@ interface IPeerService_IGetGitPack extends grpc.MethodDefinition<Peer_pb.PackReq
     responseDeserialize: grpc.deserialize<Peer_pb.PackReply>;
 }
 interface IPeerService_IGetVaultNames extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Peer_pb.VaultNamesReply> {
-    path: string; // "/peerInterface.Peer/GetVaultNames"
+    path: "/peerInterface.Peer/GetVaultNames";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
@@ -57,7 +57,7 @@ interface IPeerService_IGetVaultNames extends grpc.MethodDefinition<Agent_pb.Emp
     responseDeserialize: grpc.deserialize<Peer_pb.VaultNamesReply>;
 }
 interface IPeerService_IGetUDPAddress extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringMessage> {
-    path: string; // "/peerInterface.Peer/GetUDPAddress"
+    path: "/peerInterface.Peer/GetUDPAddress";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
@@ -66,7 +66,7 @@ interface IPeerService_IGetUDPAddress extends grpc.MethodDefinition<Agent_pb.Emp
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface IPeerService_IRequestPublicRelay extends grpc.MethodDefinition<Agent_pb.PeerInfoReadOnlyMessage, Agent_pb.StringMessage> {
-    path: string; // "/peerInterface.Peer/RequestPublicRelay"
+    path: "/peerInterface.Peer/RequestPublicRelay";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.PeerInfoReadOnlyMessage>;
@@ -75,7 +75,7 @@ interface IPeerService_IRequestPublicRelay extends grpc.MethodDefinition<Agent_p
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface IPeerService_IGetRootCertificate extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringMessage> {
-    path: string; // "/peerInterface.Peer/GetRootCertificate"
+    path: "/peerInterface.Peer/GetRootCertificate";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
@@ -84,7 +84,7 @@ interface IPeerService_IGetRootCertificate extends grpc.MethodDefinition<Agent_p
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface IPeerService_IRequestCertificateSigning extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.StringMessage> {
-    path: string; // "/peerInterface.Peer/RequestCertificateSigning"
+    path: "/peerInterface.Peer/RequestCertificateSigning";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.StringMessage>;
@@ -93,7 +93,7 @@ interface IPeerService_IRequestCertificateSigning extends grpc.MethodDefinition<
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface IPeerService_IPeerDHTFindNode extends grpc.MethodDefinition<Peer_pb.PeerDHTFindNodeRequest, Peer_pb.PeerDHTFindNodeReply> {
-    path: string; // "/peerInterface.Peer/PeerDHTFindNode"
+    path: "/peerInterface.Peer/PeerDHTFindNode";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Peer_pb.PeerDHTFindNodeRequest>;

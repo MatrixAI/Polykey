@@ -284,6 +284,26 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async getIdentityInfo(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.IdentityInfo>,
+    callback: grpc.sendUnaryData<agent.IdentityInfo>,
+  ): Promise<void> {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      // get own username
+      const gitHubProvider = this.pk.providerManager.getProvider('github.com');
+      const identityKey = await gitHubProvider.getIdentityKey();
+      // get identity details
+      const identityInfo = await gitHubProvider.getIdentityInfo(identityKey);
+      const response = new agent.IdentityInfo();
+      response.setKey(identityInfo!.key);
+      callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
   async authenticateProvider(
     call: grpc.ServerUnaryCall<
       agent.AuthenticateProviderRequest,
@@ -2011,6 +2031,24 @@ class PolykeyAgent implements IAgentServer {
         reject(error);
       }
     });
+  }
+
+  async setIdentity(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { s } = call.request!.toObject();
+      this.pk.gestaltGraph.setIdentity({
+        key: s,
+        provider: 'github.com',
+      });
+      callback(null, new agent.EmptyMessage());
+    } catch (error) {
+      callback(error, null);
+    }
   }
 }
 

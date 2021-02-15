@@ -386,6 +386,7 @@ class GitHubProvider extends Provider {
         );
       }
       const data = await response.text();
+
       const linkKeys = await this.extractLinkKeys(data);
       for (const linkKey of linkKeys) {
         const linkInfo = await this.getLinkInfo(linkKey);
