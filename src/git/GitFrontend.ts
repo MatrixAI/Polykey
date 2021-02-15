@@ -3,15 +3,21 @@ import { promisifyGrpc } from '../bin/utils';
 import * as peerInterface from '../../proto/js/Peer_pb';
 import * as agentInterface from '../../proto/js/Agent_pb';
 import PeerConnection from '../peers/peer-connection/PeerConnection';
+import Logger from '@matrixai/js-logger';
 
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
  */
 class GitFrontend {
   private connectToPeer: (peerId: string) => PeerConnection;
+  private logger: Logger;
 
-  constructor(connectToPeer: (peerId: string) => PeerConnection) {
+  constructor(
+    connectToPeer: (peerId: string) => PeerConnection,
+    logger: Logger,
+  ) {
     this.connectToPeer = connectToPeer;
+    this.logger = logger;
   }
 
   /**

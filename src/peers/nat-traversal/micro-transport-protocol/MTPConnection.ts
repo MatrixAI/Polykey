@@ -21,9 +21,11 @@ import {
 } from './utils';
 import * as peerInterface from '../../../../proto/js/Peer_pb';
 import { sleep } from '../../../utils';
+import Logger from '@matrixai/js-logger';
 
 class MTPConnection extends Duplex {
   private peerId: string;
+  private logger: Logger;
 
   private port: number;
   private host: string;
@@ -50,6 +52,7 @@ class MTPConnection extends Duplex {
     port: number,
     host: string,
     socket: dgram.Socket,
+    logger: Logger,
     syn?: peerInterface.MTPPacket,
     socketIsBound = false,
   ) {
@@ -65,6 +68,8 @@ class MTPConnection extends Duplex {
     this.port = port;
     this.host = host;
     this.socket = socket;
+
+    this.logger = logger;
 
     this.outgoing = new Cyclist(BUFFER_SIZE);
     this.incoming = new Cyclist(BUFFER_SIZE);
@@ -82,7 +87,7 @@ class MTPConnection extends Duplex {
     // 3. without a syn packet and no bound socket (i.e. this is the client initiating
     //    a connection and asking for a new dgram socket to be created for the connection)
     if (syn) {
-      console.log('case1: syn packet');
+      this.logger.info('case1: syn packet');
       // a connecting boolean of 'true' is only used for clients that are waiting for the
       // server to send back a synack packet. if it is false, it means the server is waiting
       // for the client to connect.
@@ -104,7 +109,7 @@ class MTPConnection extends Duplex {
       this.transmit(this.synack);
     } else {
       if (socketIsBound) {
-        console.log('case2: socket Is Bound');
+        this.logger.info('case2: socket Is Bound');
         this.connecting = true;
         this.recvId = 0; // tmp value for v8 opt
         this.sendId = 0; // tmp value for v8 opt
@@ -131,7 +136,7 @@ class MTPConnection extends Duplex {
           this.emit('error', err);
         });
       } else {
-        console.log('case3: socket Is not Bound');
+        this.logger.info('case3: socket Is not Bound');
 
         this.connecting = true;
         this.recvId = 0; // tmp value for v8 opt
@@ -355,7 +360,7 @@ class MTPConnection extends Duplex {
 
     // packet is a reset packet
     if (internalPacket.getId() === PACKET_RESET) {
-      console.log('PACKET_RESET!!');
+      this.logger.info('PACKET_RESET!!');
       // this.push(null);
       // this.end();
       // this.closing();
@@ -442,9 +447,9 @@ class MTPConnection extends Duplex {
       this.alive = true;
       this.socket.send(message, 0, message.length, this.port, this.host);
     } catch (error) {
-      console.log(
-        'MTPConnection: error when trying to transmit packet: ',
-        error,
+      this.logger.error(
+        'MTPConnection: error when trying to transmit packet: ' +
+          error.toString(),
       );
     }
   }
@@ -497,6 +502,7 @@ class MTPConnection extends Duplex {
       port,
       host ?? '0.0.0.0',
       internalSocket,
+      new Logger('MTPconnection'),
       undefined,
       socket ? true : false,
     );
@@ -523,7 +529,7 @@ class MTPConnection extends Duplex {
 
         connection.recvIncoming(packet);
       } catch (error) {
-        console.log(error);
+        connection.logger.error(error);
 
         // no throw
       }

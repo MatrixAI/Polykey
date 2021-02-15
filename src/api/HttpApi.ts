@@ -8,6 +8,8 @@ import passport from 'passport';
 import { promisify } from 'util';
 import session from 'express-session';
 import swaggerUI from 'swagger-ui-express';
+import Logger from '@matrixai/js-logger';
+import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
 import { Address } from '../peers/PeerInfo';
 import { BasicStrategy } from 'passport-http';
 import OAuth2 from './AuthorizationServer/OAuth2';
@@ -18,10 +20,10 @@ import * as OpenApiValidator from 'express-openapi-validator';
 import { User, Client } from './AuthorizationServer/OAuth2Store';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
 import { TLSCredentials } from '../peers/pki/PublicKeyInfrastructure';
-import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
 
 class HttpApi {
   private openApiPath: string;
+  private logger: Logger;
 
   private updateApiAddress: (apiAddress: Address) => void;
   private handleCSR: (csr: string) => string;
@@ -65,6 +67,7 @@ class HttpApi {
       secretContent: string | Buffer,
     ) => Promise<void>,
     deleteSecret: (vaultName: string, secretName: string) => Promise<void>,
+    logger?: Logger,
   ) {
     // this code is needed as we can't require yaml files
     const fromSrcFolderPath = path.join(__dirname, '../../openapi.yaml');
@@ -86,10 +89,12 @@ class HttpApi {
     this.getSecret = getSecret;
     this.newSecret = newSecret;
     this.deleteSecret = deleteSecret;
+    this.logger = logger ?? new Logger();
   }
 
   async stop() {
     if (this.httpServer) {
+      this.logger.info('Shutting down HTTP server');
       await promisify(this.httpServer.close)();
     }
   }
@@ -104,6 +109,7 @@ class HttpApi {
         this.oauth = new OAuth2(
           this.tlsCredentials.keypair.public,
           this.tlsCredentials.keypair.private,
+          this.logger.getLogger('OAuth2'),
         );
         this.expressServer = express();
 
@@ -281,8 +287,12 @@ class HttpApi {
             address.updateHost(pkHost);
             this.updateApiAddress(address);
 
-            console.log(`HTTP API endpoint: https://${address.toString()}`);
-            console.log(`HTTP API docs: https://${address.toString()}/docs/`);
+            this.logger.info(
+              `HTTP API endpoint: https://${address.toString()}`,
+            );
+            this.logger.info(
+              `HTTP API docs: https://${address.toString()}/docs/`,
+            );
 
             resolve(port);
           });

@@ -44,11 +44,11 @@
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.2.4",
+    "@matrixai/js-logger": "^1.0.3",
     "ajv": "^7.0.4",
     "async-mutex": "^0.2.4",
     "bip39": "^3.0.3",
     "canonicalize": "^1.0.5",
-    "chalk": "^4.0.0",
     "cheerio": "^1.0.0-rc.5",
     "commander": "^7.0.0",
     "configstore": "^5.0.1",

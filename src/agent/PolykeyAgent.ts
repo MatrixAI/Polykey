@@ -19,21 +19,37 @@ import {
 } from '../../proto/js/Agent_grpc_pb';
 import { LinkInfo, LinkInfoIdentity } from '../links';
 import { gestaltToProtobuf } from '@/gestalts';
+import Logger from '@matrixai/js-logger';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;
   private pk: Polykey;
   private configStore: ConfigStore;
+  private logger: Logger;
 
   private server: grpc.Server;
   private pidCheckInterval: ReturnType<typeof setInterval>;
 
   constructor(polykeyPath: string) {
     /////////////
+    //  Logger //
+    /////////////
+    // create a root logger
+    const logger = new Logger();
+    this.logger = logger;
+
+    /////////////
     // Polykey //
     /////////////
     // construct polykey instance if already initialized
-    this.pk = new Polykey(polykeyPath, fs);
+    this.pk = new Polykey(
+      polykeyPath,
+      fs,
+      undefined,
+      undefined,
+      undefined,
+      logger,
+    );
 
     //////////////////
     // Config Store //
@@ -152,19 +168,19 @@ class PolykeyAgent implements IAgentServer {
         const pid = this.configStore.get('pid');
         if (pid !== this.pid) {
           shutdown = true;
-          console.log(
-            'agent process pid does not match pk state pid, shutting down',
+          this.logger.info(
+            'Agent process pid does not match pk state pid, shutting down',
           );
         }
       } catch (error) {
         shutdown = true;
-        console.log('pid is not set in pk state, shutting down');
+        this.logger.info('Pid is not set in pk state, shutting down');
       } finally {
         if (shutdown) {
           this.server.tryShutdown((err) => {
             if (err) {
-              console.log(
-                `ran into errors when shutting down grpc server: ${err}`,
+              this.logger.error(
+                `Ran into errors when shutting down grpc server: ${err}`,
               );
             }
             process.kill(this.pid);
@@ -175,7 +191,7 @@ class PolykeyAgent implements IAgentServer {
 
     this.server.start();
     this.configStore.set('port', boundPort);
-    console.log(`Agent started on: 'localhost:${boundPort}'`);
+    this.logger.info(`Agent started on: 'localhost:${boundPort}'`);
   }
 
   private refreshTimeout() {
@@ -291,11 +307,11 @@ class PolykeyAgent implements IAgentServer {
         throw Error('userCode was not a string');
       }
 
-      // trigger next as a lazy promise o the code can continue
+      // trigger next as a lazy promise so the code can continue
       // after grpc destroys this functions context
       authFlow.next();
 
-      // return the usercode tot he client
+      // return the usercode to the client
       const response = new agent.AuthenticateProviderReply();
       response.setUserCode(userCode);
       callback(null, response);
@@ -538,12 +554,9 @@ class PolykeyAgent implements IAgentServer {
       const { providerKey, searchTermList } = call.request!.toObject();
       const provider = this.pk.providerManager.getProvider(providerKey);
 
-      console.log('ehhhee');
-
       for await (const identityInfo of provider.getConnectedIdentityInfos(
         searchTermList,
       )) {
-        console.log('ehhhee');
         const identityInfoMessage = new agent.IdentityInfoMessage();
         if (identityInfo.email) {
           identityInfoMessage.setEmail(identityInfo.email);
@@ -999,7 +1012,11 @@ class PolykeyAgent implements IAgentServer {
         );
       }
 
-      const km = new KeyManager(this.pk.polykeyPath, fs);
+      const km = new KeyManager(
+        this.pk.polykeyPath,
+        fs,
+        this.logger.getLogger('KeyManager'),
+      );
 
       await km.generateKeyPair(passphrase, nbits, true);
 

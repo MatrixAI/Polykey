@@ -10,6 +10,7 @@ import GitBackend from '../git/GitBackend';
 import KeyManager from '../keys/KeyManager';
 import GitFrontend from '../git/GitFrontend';
 import PeerConnection from '../peers/peer-connection/PeerConnection';
+import Logger from '@matrixai/js-logger';
 
 class VaultManager {
   polykeyPath: string;
@@ -31,6 +32,8 @@ class VaultManager {
 
   private gitBackend: GitBackend;
   private gitFrontend: GitFrontend;
+
+  private logger: Logger;
 
   // status
   private creatingVault = false;
@@ -54,6 +57,7 @@ class VaultManager {
       ) => Promise<Uint8Array>,
       handleGetVaultNames: () => Promise<string[]>,
     ) => void,
+    logger: Logger,
   ) {
     // class variables
     this.polykeyPath = polykeyPath;
@@ -71,12 +75,18 @@ class VaultManager {
     this.vaults = new Map();
     this.vaultKeys = new Map();
 
+    this.logger = logger;
+
     this.gitBackend = new GitBackend(
       polykeyPath,
       ((repoName: string) => this.getVault(repoName).EncryptedFS).bind(this),
       this.getVaultNames.bind(this),
+      this.logger.getLogger('GitBackend'),
     );
-    this.gitFrontend = new GitFrontend(this.connectToPeer.bind(this));
+    this.gitFrontend = new GitFrontend(
+      this.connectToPeer.bind(this),
+      this.logger.getLogger('GitFrontend'),
+    );
 
     this.setGitHandlers(
       this.gitBackend.handleInfoRequest.bind(this.gitBackend),

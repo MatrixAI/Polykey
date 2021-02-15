@@ -22,6 +22,7 @@ import { gestaltKey, ungestaltKey } from './utils';
 import { PeerInfo, PeerInfo as PI } from '../peers/PeerInfo';
 import PeerManager from '../peers/PeerManager';
 import GestaltTrust from './GestaltTrust';
+import Logger from '@matrixai/js-logger';
 
 type VerifyLinkInfoHandler = (linkInfo: LinkInfo) => boolean;
 
@@ -41,16 +42,20 @@ class GestaltGraph {
   protected gestaltTrust: GestaltTrust;
   protected peerManager: PeerManager;
 
+  private logger: Logger;
+
   public constructor(
     gestaltTrust: GestaltTrust,
     peerManager: PeerManager,
     providerManager: ProviderManager,
     verifyLinkInfo: VerifyLinkInfoHandler,
+    logger: Logger,
   ) {
     this.gestaltTrust = gestaltTrust;
     this.peerManager = peerManager;
     this.providerManager = providerManager;
     this.verifyLinkInfo = verifyLinkInfo;
+    this.logger = logger;
   }
 
   public setNode(nodeInfo: NodeInfo): void {

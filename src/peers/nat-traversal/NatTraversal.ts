@@ -14,6 +14,7 @@ import * as agentInterface from '../../../proto/js/Agent_pb';
 import PeerConnection from '../peer-connection/PeerConnection';
 import { PeerInfo, PeerInfoReadOnly, Address } from '../PeerInfo';
 import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer';
+import Logger from '@matrixai/js-logger';
 
 class NatTraversal extends EventEmitter {
   private listPeers: () => string[];
@@ -22,6 +23,7 @@ class NatTraversal extends EventEmitter {
   private getLocalPeerInfo: () => PeerInfo;
   private hasPeer: (id: string) => boolean;
   private updatePeerInfo: (peerInfo: PeerInfoReadOnly) => void;
+  private logger: Logger;
 
   // this is requried for converting the PeerInfo into pem format
   private getPrimaryPrivateKey: () => pki.rsa.PrivateKey;
@@ -87,6 +89,7 @@ class NatTraversal extends EventEmitter {
     hasPeer: (id: string) => boolean,
     updatePeerInfo: (peerInfo: PeerInfoReadOnly) => void,
     getPrimaryPrivateKey: () => pki.rsa.PrivateKey,
+    logger: Logger,
   ) {
     super();
 
@@ -97,9 +100,11 @@ class NatTraversal extends EventEmitter {
     this.hasPeer = hasPeer;
     this.updatePeerInfo = updatePeerInfo;
     this.getPrimaryPrivateKey = getPrimaryPrivateKey;
+    this.logger = logger;
     this.server = new MTPServer(
       this.connectionHandler.bind(this),
       // this.handleNatUdpMessage.bind(this)
+      logger.getLogger('MTPServer'),
     );
   }
 
@@ -113,7 +118,7 @@ class NatTraversal extends EventEmitter {
           process.env.PK_PEER_HOST ?? '0.0.0.0',
           () => {
             const address = this.server.address();
-            console.log(
+            this.logger.info(
               `main MTP server is now listening on address: '${address.toString()}'`,
             );
 
@@ -125,6 +130,7 @@ class NatTraversal extends EventEmitter {
             // TODO: this should only be done if the node detects that it is behind a NAT layer
             const intermittentConnectionCallback = async () => {
               const promiseList: Promise<any>[] = [];
+
               for (const peerId of this.listPeers()) {
                 // if (!this.server.incomingConnections.has(peerId)) {
                 //   const count = this.unresponsiveHolePunchNodes.get(peerId) ?? 0;
@@ -137,13 +143,14 @@ class NatTraversal extends EventEmitter {
                 //     promiseList.push(this.sendDirectHolePunchConnectionRequest(udpAddress));
                 //   }
                 // }
+
                 if (
                   !this.outgoingTCPHolePunchedRelayServers.has(peerId) &&
                   !process.env.PUBLIC_RELAY_NODE
                 ) {
                   // const count = this.unresponsiveRelayNodes.get(peerId) ?? 0;
                   // if (count < 3) {
-                  console.log(
+                  this.logger.info(
                     'privateNode: beginning the process of asking for a public relay',
                   );
 
@@ -162,26 +169,78 @@ class NatTraversal extends EventEmitter {
                   const demoConfigRaw = fs
                     .readFileSync(path.join(os.homedir(), 'demo-config.json'))
                     .toString();
-                  console.log(
-                    'privateNode: parsing ~/demo-config.json, raw: ',
-                    demoConfigRaw,
+                  this.logger.info(
+                    'privateNode: parsing ~/demo-config.json, raw: ' +
+                      demoConfigRaw.toString(),
                   );
-                  console.log(demoConfigRaw);
 
                   const demoConfig = JSON.parse(demoConfigRaw);
                   // update localPeerInfo with ngrok address
                   const ngrokAddress: Address = Address.parse(
                     demoConfig.ngrokAddress,
                   );
-                  console.log(
-                    'privateNode: ngrokAddress: ',
-                    ngrokAddress.toString(),
+                  this.logger.info(
+                    'privateNode: ngrokAddress: ' + ngrokAddress.toString(),
                   );
 
                   localPeerInfo.peerAddress = ngrokAddress;
 
                   const request = localPeerInfo.toPeerInfoReadOnlyMessage();
-                  console.log('privateNode: requesting public relay');
+                  this.logger.info('privateNode: requesting public relay');
+                  // all this is actually doing is just telling the public node to add its peerinfo
+                  const res = (await promisifyGrpc(
+                    client.requestPublicRelay.bind(client),
+                  )(request)) as agentInterface.StringMessage;
+                  // const udpRelaySocketAddress = Address.parse(res.getS())
+                  // console.log('privateNode: udpRelaySocketAddress: ', udpRelaySocketAddress.toString());
+
+                  // await this.setupLocalGRPCRelay(udpRelaySocketAddress, peerInfo.id)
+                }
+
+                if (
+                  !this.outgoingTCPHolePunchedRelayServers.has(peerId) &&
+                  !process.env.PUBLIC_RELAY_NODE
+                ) {
+                  // const count = this.unresponsiveRelayNodes.get(peerId) ?? 0;
+                  // if (count < 3) {
+                  this.logger.info(
+                    'privateNode: beginning the process of asking for a public relay',
+                  );
+
+                  // this.unresponsiveRelayNodes.set(peerId, count + 1);
+                  const peerInfo = this.getPeerInfo(peerId)!;
+                  // ask for direct hole punch
+                  const peerConnection = this.connectToPeer(peerInfo.id);
+                  const client = await peerConnection.getPeerClient(true);
+                  const localPeerInfo = new PeerInfoReadOnly(
+                    this.getLocalPeerInfo().toX509Pem(
+                      this.getPrimaryPrivateKey(),
+                    ),
+                  );
+
+                  // read in demo config
+                  const demoConfigRaw = fs
+                    .readFileSync(path.join(os.homedir(), 'demo-config.json'))
+                    .toString();
+                  this.logger.info(
+                    'privateNode: parsing ~/demo-config.json, raw: ' +
+                      demoConfigRaw.toString(),
+                  );
+                  this.logger.info(demoConfigRaw);
+
+                  const demoConfig = JSON.parse(demoConfigRaw);
+                  // update localPeerInfo with ngrok address
+                  const ngrokAddress: Address = Address.parse(
+                    demoConfig.ngrokAddress,
+                  );
+                  this.logger.info(
+                    'privateNode: ngrokAddress: ' + ngrokAddress.toString(),
+                  );
+
+                  localPeerInfo.peerAddress = ngrokAddress;
+
+                  const request = localPeerInfo.toPeerInfoReadOnlyMessage();
+                  this.logger.info('privateNode: requesting public relay');
                   // all this is actually doing is just telling the public node to add its peerinfo
                   const res = (await promisifyGrpc(
                     client.requestPublicRelay.bind(client),
@@ -990,15 +1049,18 @@ class NatTraversal extends EventEmitter {
         const subMessage = decodedRequest.getSubMessage_asU8();
         switch (type) {
           case peerInterface.NatUdpMessageType.DIRECT_CONNECTION:
-            console.log('DIRECT_CONNECTION is not supported via MTP');
-            console.log(data.toString());
+            this.logger.info(
+              'DIRECT_CONNECTION is not supported via MTP' + data.toString(),
+            );
             break;
           case peerInterface.NatUdpMessageType.HOLE_PUNCH_CONNECTION:
-            console.log('HOLE_PUNCH_CONNECTION is not supported via MTP');
-            console.log(data.toString());
+            this.logger.info(
+              'HOLE_PUNCH_CONNECTION is not supported via MTP' +
+                data.toString(),
+            );
             break;
           case peerInterface.NatUdpMessageType.PUBLIC_RELAY_REQUEST:
-            console.log('PUBLIC_RELAY_REQUEST is not supported via MTP');
+            this.logger.info('PUBLIC_RELAY_REQUEST is not supported via MTP');
             // await this.handleUDPPublicRelayRequest(conn, isResponse, subMessage);
             break;
           default:

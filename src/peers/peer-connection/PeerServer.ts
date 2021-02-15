@@ -4,9 +4,11 @@ import PeerManager from '../PeerManager';
 import * as peer from '../../../proto/js/Peer_pb';
 import * as agent from '../../../proto/js/Agent_pb';
 import { PeerService, IPeerServer } from '../../../proto/js/Peer_grpc_pb';
+import Logger from '@matrixai/js-logger';
 
 class PeerServer implements IPeerServer {
   private peerManager: PeerManager;
+  private logger: Logger;
 
   private server: grpc.Server;
 
@@ -17,8 +19,10 @@ class PeerServer implements IPeerServer {
   ) => Promise<Uint8Array>;
   handleGetVaultNames: () => Promise<string[]>;
 
-  constructor(peerManager: PeerManager) {
+  constructor(peerManager: PeerManager, logger: Logger) {
     this.peerManager = peerManager;
+
+    this.logger = logger;
 
     /////////////////
     // GRPC Server //
@@ -72,7 +76,7 @@ class PeerServer implements IPeerServer {
                   this.peerManager.writeMetadata();
                 }
                 this.server.start();
-                console.log(`Peer Server running on: ${address}`);
+                this.logger.info(`Peer Server running on: ${address}`);
                 resolve();
               } catch (error) {
                 reject(error);

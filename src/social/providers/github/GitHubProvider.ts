@@ -20,6 +20,7 @@ import {
   ErrorProviderAuthentication,
   ErrorProviderUnauthenticated,
 } from '../../errors';
+import Logger from '@matrixai/js-logger';
 
 type Username = string;
 type GistId = string;
@@ -33,9 +34,12 @@ class GitHubProvider extends Provider {
     'Cryptolink between Polykey Keynode and Github Identity';
   protected scope: string = 'gist user:email read:user';
 
-  public constructor(tokens: ProviderTokens, clientId: string) {
+  private logger: Logger;
+
+  public constructor(tokens: ProviderTokens, clientId: string, logger: Logger) {
     super('github.com', tokens);
     this.clientId = clientId;
+    this.logger = logger;
   }
 
   public async *authenticate(
@@ -50,6 +54,7 @@ class GitHubProvider extends Provider {
         method: 'POST',
       },
     );
+    this.logger.info('Sending authentication request to Github');
     const response = await fetch(request);
     if (!response.ok) {
       throw new ErrorProviderAuthentication(
@@ -102,6 +107,7 @@ class GitHubProvider extends Provider {
       );
       while (true) {
         if (pollTimedOut) {
+          this.logger.info('Poll has timed out');
           return;
         }
         const response = await fetch(request);
