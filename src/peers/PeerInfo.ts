@@ -62,7 +62,7 @@ class Address {
     if (!addressString || addressString == '') {
       throw Error(`cannot parse empty or undefined string`);
     }
-    const url = new URL(addressString);
+    const url = new URL('http://'+addressString);
     return { host: url.hostname, port: Number(url.port) };
   }
 }

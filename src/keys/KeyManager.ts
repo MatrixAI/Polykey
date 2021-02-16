@@ -333,7 +333,7 @@ class KeyManager {
   refreshTimeout(timeout = 15) {
     if (!this.unlockedTimeout) {
       if (!this.primaryKeyPair.privateKey) {
-        throw Error('node is locked');
+        return
       }
     } else {
       clearTimeout(this.unlockedTimeout);

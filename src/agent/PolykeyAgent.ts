@@ -136,7 +136,9 @@ class PolykeyAgent implements IAgentServer {
 
   async startServer() {
     // first try and stop server if its still running
-    await promisify(this.server.tryShutdown.bind(this))();
+    if (this.server) {
+      this.server.forceShutdown()
+    }
 
     // handle port
     const portString =
