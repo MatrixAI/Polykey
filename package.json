@@ -60,7 +60,6 @@
     "fast-fuzzy": "^1.10.8",
     "get-port": "^5.1.1",
     "google-protobuf": "^3.14.0",
-    "http-terminator": "^2.0.3",
     "isomorphic-git": "^1.8.0",
     "js-yaml": "^3.3.0",
     "jsonwebtoken": "^8.5.1",
