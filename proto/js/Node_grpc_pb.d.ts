@@ -20,7 +20,7 @@ interface INodeService extends grpc.ServiceDefinition<grpc.UntypedServiceImpleme
 }
 
 interface INodeService_IPingNode extends grpc.MethodDefinition<Node_pb.PingNodeMessage, Node_pb.PingNodeMessage> {
-    path: string; // "/nodeInterface.Node/PingNode"
+    path: "/nodeInterface.Node/PingNode";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Node_pb.PingNodeMessage>;
@@ -29,7 +29,7 @@ interface INodeService_IPingNode extends grpc.MethodDefinition<Node_pb.PingNodeM
     responseDeserialize: grpc.deserialize<Node_pb.PingNodeMessage>;
 }
 interface INodeService_IGetGitInfo extends grpc.MethodDefinition<Node_pb.InfoRequest, Node_pb.InfoReply> {
-    path: string; // "/nodeInterface.Node/GetGitInfo"
+    path: "/nodeInterface.Node/GetGitInfo";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Node_pb.InfoRequest>;
@@ -38,7 +38,7 @@ interface INodeService_IGetGitInfo extends grpc.MethodDefinition<Node_pb.InfoReq
     responseDeserialize: grpc.deserialize<Node_pb.InfoReply>;
 }
 interface INodeService_IGetGitPack extends grpc.MethodDefinition<Node_pb.PackRequest, Node_pb.PackReply> {
-    path: string; // "/nodeInterface.Node/GetGitPack"
+    path: "/nodeInterface.Node/GetGitPack";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Node_pb.PackRequest>;
@@ -47,7 +47,7 @@ interface INodeService_IGetGitPack extends grpc.MethodDefinition<Node_pb.PackReq
     responseDeserialize: grpc.deserialize<Node_pb.PackReply>;
 }
 interface INodeService_IGetVaultNames extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Node_pb.VaultNamesReply> {
-    path: string; // "/nodeInterface.Node/GetVaultNames"
+    path: "/nodeInterface.Node/GetVaultNames";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
@@ -56,7 +56,7 @@ interface INodeService_IGetVaultNames extends grpc.MethodDefinition<Agent_pb.Emp
     responseDeserialize: grpc.deserialize<Node_pb.VaultNamesReply>;
 }
 interface INodeService_IGetUDPAddress extends grpc.MethodDefinition<Agent_pb.NodeInfoReadOnlyMessage, Agent_pb.StringMessage> {
-    path: string; // "/nodeInterface.Node/GetUDPAddress"
+    path: "/nodeInterface.Node/GetUDPAddress";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.NodeInfoReadOnlyMessage>;
@@ -65,7 +65,7 @@ interface INodeService_IGetUDPAddress extends grpc.MethodDefinition<Agent_pb.Nod
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface INodeService_IGetRootCertificate extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringMessage> {
-    path: string; // "/nodeInterface.Node/GetRootCertificate"
+    path: "/nodeInterface.Node/GetRootCertificate";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
@@ -74,7 +74,7 @@ interface INodeService_IGetRootCertificate extends grpc.MethodDefinition<Agent_p
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface INodeService_IRequestCertificateSigning extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.StringMessage> {
-    path: string; // "/nodeInterface.Node/RequestCertificateSigning"
+    path: "/nodeInterface.Node/RequestCertificateSigning";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.StringMessage>;
@@ -83,7 +83,7 @@ interface INodeService_IRequestCertificateSigning extends grpc.MethodDefinition<
     responseDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
 }
 interface INodeService_INodeDHTFindNode extends grpc.MethodDefinition<Node_pb.NodeDHTFindNodeRequest, Node_pb.NodeDHTFindNodeReply> {
-    path: string; // "/nodeInterface.Node/NodeDHTFindNode"
+    path: "/nodeInterface.Node/NodeDHTFindNode";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Node_pb.NodeDHTFindNodeRequest>;

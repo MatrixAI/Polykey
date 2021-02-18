@@ -5,13 +5,13 @@ import { EventEmitter } from 'events';
 import { Address } from '../../nodes/NodeInfo';
 import MTPConnection from './MTPConnection';
 import { promisify } from 'util';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 import NatTraversal from '../nat-traversal/NatTraversal';
 import {
   PACKET_SYN,
   MIN_PACKET_SIZE,
   bufferToPacket,
-  uint16
+  uint16,
 } from './MTPPacket';
 
 class MTPServer extends EventEmitter {
@@ -124,7 +124,10 @@ class MTPServer extends EventEmitter {
   private async handleMessage(message: Buffer, rinfo: dgram.RemoteInfo) {
     // want to ignore any keepalive packets because its not the MTPServer's
     // job to handle these
-    if (NatTraversal.KeepaliveRegex.test(message.toString()) || NatTraversal.OkayKeepaliveRegex.test(message.toString())) {
+    if (
+      NatTraversal.KeepaliveRegex.test(message.toString()) ||
+      NatTraversal.OkayKeepaliveRegex.test(message.toString())
+    ) {
       return;
     }
 

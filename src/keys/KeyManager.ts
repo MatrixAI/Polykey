@@ -333,7 +333,7 @@ class KeyManager {
   refreshTimeout(timeout = 15) {
     if (!this.unlockedTimeout) {
       if (!this.primaryKeyPair.privateKey) {
-        return
+        return;
       }
     } else {
       clearTimeout(this.unlockedTimeout);

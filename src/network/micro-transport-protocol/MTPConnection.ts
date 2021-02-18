@@ -1,6 +1,6 @@
 // adapted from https://github.com/mafintosh/utp
 import dgram from 'dgram';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 import { Duplex } from 'readable-stream';
 import CyclicalBuffer from './CyclicalBuffer';
 import { Address } from '../../nodes/NodeInfo';
@@ -92,12 +92,7 @@ class MTPConnection extends Duplex {
       this.sendId = syn.connection;
       this.seq = (Math.random() * UINT16) | 0;
       this.ack = syn.seq;
-      this.synack = createPacket(
-        this,
-        PACKET_STATE,
-        this.nodeId,
-        null,
-      );
+      this.synack = createPacket(this, PACKET_STATE, this.nodeId, null);
 
       this.transmit(this.synack);
     } else {
@@ -113,12 +108,7 @@ class MTPConnection extends Duplex {
         this.recvId = uint16(Math.floor(Math.random() * 89999) + 10000);
         this.sendId = uint16(this.recvId + 1);
 
-        const initialPacket = createPacket(
-          this,
-          PACKET_SYN,
-          this.nodeId,
-          null,
-        );
+        const initialPacket = createPacket(this, PACKET_SYN, this.nodeId, null);
         this.sendOutgoing(initialPacket);
 
         socket.on('error', (err) => {
@@ -169,14 +159,7 @@ class MTPConnection extends Duplex {
       if (this.connecting) {
         return this.once('connect', sendFin);
       }
-      this.sendOutgoing(
-        createPacket(
-          this,
-          PACKET_FIN,
-          this.nodeId,
-          null,
-        ),
-      );
+      this.sendOutgoing(createPacket(this, PACKET_FIN, this.nodeId, null));
       this.once('flush', closed);
     };
 
@@ -193,7 +176,10 @@ class MTPConnection extends Duplex {
     });
   }
 
-  destroy(err?: Error | undefined, callback?: ((error: Error | null) => void) | undefined) {
+  destroy(
+    err?: Error | undefined,
+    callback?: ((error: Error | null) => void) | undefined,
+  ) {
     if (err) {
       console.log(err);
     }
@@ -220,14 +206,7 @@ class MTPConnection extends Duplex {
 
     while (this._writable()) {
       const payload = this.payload(data);
-      this.sendOutgoing(
-        createPacket(
-          this,
-          PACKET_DATA,
-          this.nodeId,
-          payload,
-        ),
-      );
+      this.sendOutgoing(createPacket(this, PACKET_DATA, this.nodeId, payload));
 
       if (payload.length === data.length) {
         return callback();
@@ -243,7 +222,7 @@ class MTPConnection extends Duplex {
     event: string,
     data: Buffer,
     enc: string,
-    callback: (error?: Error | null | undefined) => void
+    callback: (error?: Error | null | undefined) => void,
   ) {
     this.once(event, () => {
       this._write(data, enc, callback);
@@ -330,10 +309,7 @@ class MTPConnection extends Duplex {
     }
 
     // send synack
-    if (
-      packet.id === PACKET_SYN &&
-      this.connecting
-    ) {
+    if (packet.id === PACKET_SYN && this.connecting) {
       this.transmit(this.synack!);
       return;
     }
@@ -375,7 +351,7 @@ class MTPConnection extends Duplex {
     }
     this.incoming.put(packet.seq, packet);
 
-    while ((packet as any) = this.incoming.del(this.ack + 1)) {
+    while (((packet as any) = this.incoming.del(this.ack + 1))) {
       this.ack = uint16(this.ack + 1);
 
       if (packet.id === PACKET_DATA) {
@@ -390,12 +366,7 @@ class MTPConnection extends Duplex {
   }
 
   private sendAck() {
-    const packet = createPacket(
-      this,
-      PACKET_STATE,
-      this.nodeId,
-      null,
-    );
+    const packet = createPacket(this, PACKET_STATE, this.nodeId, null);
     this.transmit(packet); // TODO: make this delayed
   }
 
@@ -415,7 +386,7 @@ class MTPConnection extends Duplex {
     } catch (error) {
       this.logger.error(
         'MTPConnection: error when trying to transmit packet: ' +
-        error.toString(),
+          error.toString(),
       );
     }
   }

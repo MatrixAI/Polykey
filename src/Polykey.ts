@@ -9,6 +9,7 @@ import PolykeyAgent from './agent/PolykeyAgent';
 import VaultManager from './vaults/VaultManager';
 import GestaltGraph from './gestalts/GestaltGraph';
 import GestaltTrust from './gestalts/GestaltTrust';
+import Discovery from './directory/Discovery';
 import { ProviderManager, ProviderTokens } from './social';
 import { GitHubProvider } from './social/providers/github';
 import { NodeInfo, NodeInfoReadOnly, Address } from './nodes/NodeInfo';
@@ -25,6 +26,7 @@ class Polykey {
   providerManager: ProviderManager;
   gestaltGraph: GestaltGraph;
   gestaltTrust: GestaltTrust;
+  discovery: Discovery;
   logger: Logger;
 
   constructor(
@@ -122,6 +124,15 @@ class Polykey {
       this.providerManager,
       this.nodeManager.verifyLinkClaim.bind(this.nodeManager),
       this.logger.getChild('GestaltGraph'),
+    );
+
+    this.discovery = new Discovery(
+      this.gestaltTrust,
+      this.nodeManager,
+      this.providerManager,
+      this.nodeManager.verifyLinkClaim.bind(this.nodeManager),
+      this.gestaltGraph,
+      this.logger.getChild('Discovery'),
     );
   }
 

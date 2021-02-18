@@ -137,7 +137,7 @@ class PolykeyAgent implements IAgentServer {
   async startServer() {
     // first try and stop server if its still running
     if (this.server) {
-      this.server.forceShutdown()
+      this.server.forceShutdown();
     }
 
     // handle port
@@ -496,7 +496,7 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { key, providerKey } = call.request!.toObject();
-      for await (const _ of this.pk.gestaltGraph.discoverGestaltIdentity(
+      for await (const _ of this.pk.discovery.discoverIdentity(
         key,
         providerKey,
       )) {
@@ -1500,14 +1500,14 @@ class PolykeyAgent implements IAgentServer {
         secretFilePath,
         secretContent,
       } = call.request!.toObject();
-      const vault = this.pk.vaultManager.getVault(secretPath?.vaultName!);
+      const vault = this.pk.vaultManager.getVault(secretPath!.vaultName!);
       let secretBuffer: Buffer;
       if (secretFilePath) {
         secretBuffer = await fs.promises.readFile(secretFilePath);
       } else {
         secretBuffer = Buffer.from(secretContent);
       }
-      await vault.updateSecret(secretPath?.secretName!, secretBuffer);
+      await vault.updateSecret(secretPath!.secretName!, secretBuffer);
       callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
