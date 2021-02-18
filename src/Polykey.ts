@@ -4,15 +4,15 @@ import HttpApi from './api/HttpApi';
 import KeyManager from './keys/KeyManager';
 import { LinkInfoIdentity } from './links';
 import { promisifyGrpc } from './bin/utils';
-import PeerManager from './peers/PeerManager';
+import NodeManager from './nodes/NodeManager';
 import PolykeyAgent from './agent/PolykeyAgent';
 import VaultManager from './vaults/VaultManager';
 import GestaltGraph from './gestalts/GestaltGraph';
 import GestaltTrust from './gestalts/GestaltTrust';
 import { ProviderManager, ProviderTokens } from './social';
 import { GitHubProvider } from './social/providers/github';
-import { PeerInfo, PeerInfoReadOnly, Address } from './peers/PeerInfo';
-import Logger from '@matrixai/js-logger';
+import { NodeInfo, NodeInfoReadOnly, Address } from './nodes/NodeInfo';
+import Logger from '@matrixai/logger';
 (JSON as any).canonicalize = require('canonicalize');
 
 class Polykey {
@@ -20,7 +20,7 @@ class Polykey {
 
   vaultManager: VaultManager;
   keyManager: KeyManager;
-  peerManager: PeerManager;
+  nodeManager: NodeManager;
   httpApi: HttpApi;
   providerManager: ProviderManager;
   gestaltGraph: GestaltGraph;
@@ -31,7 +31,7 @@ class Polykey {
     polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager?: KeyManager,
-    peerManager?: PeerManager,
+    nodeManager?: NodeManager,
     vaultManager?: VaultManager,
     logger?: Logger,
   ) {
@@ -45,17 +45,17 @@ class Polykey {
       new KeyManager(
         this.polykeyPath,
         fileSystem,
-        this.logger.getLogger('KeyManager'),
+        this.logger.getChild('KeyManager'),
       );
 
-    // Initialize peer store and peer discovery classes
-    this.peerManager =
-      peerManager ??
-      new PeerManager(
+    // Initialize node store and node discovery classes
+    this.nodeManager =
+      nodeManager ??
+      new NodeManager(
         this.polykeyPath,
         fileSystem,
         this.keyManager,
-        this.logger.getLogger('PeerManager'),
+        this.logger.getChild('NodeManager'),
       );
 
     // Set or Initialize vaultManager
@@ -65,20 +65,20 @@ class Polykey {
         this.polykeyPath,
         fileSystem,
         this.keyManager,
-        this.peerManager.connectToPeer.bind(this.peerManager),
-        this.peerManager.setGitHandlers.bind(this.peerManager),
-        this.logger.getLogger('VaultManager'),
+        this.nodeManager.connectToNode.bind(this.nodeManager),
+        this.nodeManager.setGitHandlers.bind(this.nodeManager),
+        this.logger.getChild('VaultManager'),
       );
 
     // start the api
     this.httpApi = new HttpApi(
       ((apiAddress: Address) => {
-        this.peerManager.peerInfo.apiAddress = apiAddress;
+        this.nodeManager.nodeInfo.apiAddress = apiAddress;
       }).bind(this),
-      this.peerManager.pki.handleCSR.bind(this.peerManager.pki),
-      (() => this.peerManager.pki.RootCertificatePem).bind(this),
-      (() => this.peerManager.pki.CertChain).bind(this),
-      this.peerManager.pki.createServerCredentials.bind(this.peerManager.pki),
+      this.nodeManager.pki.handleCSR.bind(this.nodeManager.pki),
+      (() => this.nodeManager.pki.RootCertificatePem).bind(this),
+      (() => this.nodeManager.pki.CertChain).bind(this),
+      this.nodeManager.pki.createServerCredentials.bind(this.nodeManager.pki),
       this.vaultManager.getVaultNames.bind(this.vaultManager),
       ((vaultName: string) => this.vaultManager.newVault(vaultName)).bind(this),
       ((vaultName: string) => this.vaultManager.deleteVault(vaultName)).bind(
@@ -100,7 +100,7 @@ class Polykey {
         const vault = this.vaultManager.getVault(vaultName);
         await vault.deleteSecret(secretName);
       }).bind(this),
-      this.logger.getLogger('HTTPAPI'),
+      this.logger.getChild('HTTPAPI'),
     );
 
     ////////////
@@ -111,17 +111,17 @@ class Polykey {
       new GitHubProvider(
         new ProviderTokens(this.polykeyPath, 'github.com'),
         'ca5c4c520da868387c52',
-        this.logger.getLogger('GithubProvider'),
+        this.logger.getChild('GithubProvider'),
       ),
     ]);
 
     this.gestaltTrust = new GestaltTrust();
     this.gestaltGraph = new GestaltGraph(
       this.gestaltTrust,
-      this.peerManager,
+      this.nodeManager,
       this.providerManager,
-      this.peerManager.verifyLinkClaim.bind(this.peerManager),
-      this.logger.getLogger('GestaltGraph'),
+      this.nodeManager.verifyLinkClaim.bind(this.nodeManager),
+      this.logger.getChild('GestaltGraph'),
     );
   }
 
@@ -134,19 +134,17 @@ class Polykey {
       // get identity details
       const identityInfo = await gitHubProvider.getIdentityInfo(identityKey);
       // set initials on the gestalt graph
-      this.gestaltGraph.setNode({ id: this.peerManager.peerInfo.id });
-      const linkInfoList = this.peerManager.peerInfo.linkInfoList;
+      this.gestaltGraph.setNode({ id: this.nodeManager.nodeInfo.id });
+      const linkInfoList = this.nodeManager.nodeInfo.linkInfoList;
       const linkInfo = linkInfoList.length != 0 ? linkInfoList[0] : undefined;
       if (identityInfo && linkInfo) {
         this.logger.info('Setting gestalt graph');
-        // console.log('setting gestalt graph');
         this.gestaltGraph.setLinkIdentity(
           linkInfo as LinkInfoIdentity,
-          { id: this.peerManager.peerInfo.id },
+          { id: this.nodeManager.nodeInfo.id },
           identityInfo,
         );
         this.logger.info('Gestalt graph has been loaded');
-        // console.log('gestalt graph has been loaded');
       } else {
         this.logger.error(
           'Gestalt could not be loaded because either identityInfo or linkInfo was undefined',
@@ -157,16 +155,15 @@ class Polykey {
     } catch (error) {
       // no throw
       this.logger.error(error);
-      // console.log(error);
     }
   }
   async startAllServices() {
     this.loadGestaltGraph();
-    await this.peerManager.start();
+    await this.nodeManager.start();
     await this.httpApi.start();
   }
   async stopAllServices() {
-    await this.peerManager.stop();
+    await this.nodeManager.stop();
     await this.httpApi.stop();
   }
 }
@@ -175,9 +172,9 @@ export default Polykey;
 export {
   KeyManager,
   VaultManager,
-  PeerManager,
-  PeerInfo,
-  PeerInfoReadOnly,
+  NodeManager,
+  NodeInfo,
+  NodeInfoReadOnly,
   PolykeyAgent,
   Address,
   promisifyGrpc,

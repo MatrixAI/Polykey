@@ -9,17 +9,17 @@ import ConfigStore from 'configstore';
 import * as grpc from '@grpc/grpc-js';
 import * as agent from '../../proto/js/Agent_pb';
 import { spawn, SpawnOptions } from 'child_process';
-import { PeerInfoReadOnly } from '../peers/PeerInfo';
+import { NodeInfoReadOnly } from '../nodes/NodeInfo';
 import Polykey, { Address, KeyManager } from '../Polykey';
-import { TLSCredentials } from '../peers/pki/PublicKeyInfrastructure';
+import { TLSCredentials } from '../nodes/pki/PublicKeyInfrastructure';
 import {
   AgentService,
   IAgentServer,
   AgentClient,
 } from '../../proto/js/Agent_grpc_pb';
 import { LinkInfo, LinkInfoIdentity } from '../links';
-import { gestaltToProtobuf } from '@/gestalts';
-import Logger from '@matrixai/js-logger';
+import { gestaltToProtobuf } from '../gestalts';
+import Logger from '@matrixai/logger';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;
@@ -200,9 +200,9 @@ class PolykeyAgent implements IAgentServer {
     this.pk.keyManager.refreshTimeout();
   }
 
-  async addPeer(
+  async addNode(
     call: grpc.ServerUnaryCall<
-      agent.PeerInfoReadOnlyMessage,
+      agent.NodeInfoReadOnlyMessage,
       agent.StringMessage
     >,
     callback: grpc.sendUnaryData<agent.StringMessage>,
@@ -214,22 +214,22 @@ class PolykeyAgent implements IAgentServer {
       const {
         pem,
         unsignedAlias,
-        unsignedPeerAddress,
+        unsignedNodeAddress,
         unsignedApiAddress,
       } = call.request!.toObject();
-      const peerInfo = new PeerInfoReadOnly(pem);
+      const nodeInfo = new NodeInfoReadOnly(pem);
       if (unsignedAlias) {
-        peerInfo.alias = unsignedAlias;
+        nodeInfo.alias = unsignedAlias;
       }
-      if (unsignedPeerAddress) {
-        peerInfo.peerAddress = Address.parse(unsignedPeerAddress);
+      if (unsignedNodeAddress) {
+        nodeInfo.nodeAddress = Address.parse(unsignedNodeAddress);
       }
       if (unsignedApiAddress) {
-        peerInfo.apiAddress = Address.parse(unsignedApiAddress);
+        nodeInfo.apiAddress = Address.parse(unsignedApiAddress);
       }
-      const peerId = this.pk.peerManager.addPeer(peerInfo);
+      const nodeId = this.pk.nodeManager.addNode(nodeInfo);
       const response = new agent.StringMessage();
-      response.setS(peerId);
+      response.setS(nodeId);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -250,7 +250,7 @@ class PolykeyAgent implements IAgentServer {
       const { providerKey, identityKey } = call.request!.toObject();
 
       // create link claim
-      const linkClaim = await this.pk.peerManager.makeLinkClaimIdentity(
+      const linkClaim = await this.pk.nodeManager.makeLinkClaimIdentity(
         providerKey,
         identityKey,
       );
@@ -262,9 +262,9 @@ class PolykeyAgent implements IAgentServer {
       const linkInfoIdentity = await provider.publishLinkClaim(linkClaim);
       const linkInfo = linkInfoIdentity as LinkInfo;
 
-      // // publish it to the peer info
-      this.pk.peerManager.peerInfo.publishLinkInfo(linkInfo);
-      this.pk.peerManager.writeMetadata();
+      // // publish it to the node info
+      this.pk.nodeManager.nodeInfo.publishLinkInfo(linkInfo);
+      this.pk.nodeManager.writeMetadata();
 
       // get identity details
       const identityInfo = await provider.getIdentityInfo(identityKey);
@@ -272,7 +272,7 @@ class PolykeyAgent implements IAgentServer {
         // set the link identity in the gestalt graph
         this.pk.gestaltGraph.setLinkIdentity(
           linkInfoIdentity,
-          { id: this.pk.peerManager.peerInfo.id },
+          { id: this.pk.nodeManager.nodeInfo.id },
           identityInfo,
         );
       }
@@ -528,15 +528,15 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async findPeer(
-    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.BooleanMessage>,
+  async findNode(
+    call: grpc.ServerUnaryCall<agent.ContactNodeMessage, agent.BooleanMessage>,
     callback: grpc.sendUnaryData<agent.BooleanMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
       const { publicKeyOrHandle, timeout } = call.request!.toObject();
-      const successful = await this.pk.peerManager.findPublicKey(
+      const successful = await this.pk.nodeManager.findPublicKey(
         publicKeyOrHandle,
         timeout,
       );
@@ -633,8 +633,6 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const gestaltList = this.pk.gestaltGraph.getGestalts();
-      console.log(gestaltList);
-
       const gestaltListMessage = gestaltList.map((gestalt) =>
         gestaltToProtobuf(gestalt),
       );
@@ -680,27 +678,27 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async getLocalPeerInfo(
-    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.PeerInfoMessage>,
-    callback: grpc.sendUnaryData<agent.PeerInfoMessage>,
+  async getLocalNodeInfo(
+    call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.NodeInfoMessage>,
+    callback: grpc.sendUnaryData<agent.NodeInfoMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const peerInfo = this.pk.peerManager.peerInfo;
-      const response = new agent.PeerInfoMessage();
-      response.setPeerId(peerInfo.id);
-      response.setAlias(peerInfo.alias);
-      response.setPublicKey(peerInfo.publicKey);
-      response.setRootPublicKey(peerInfo.rootPublicKey);
-      if (peerInfo.peerAddress) {
-        response.setPeerAddress(peerInfo.peerAddress.toString());
+      const nodeInfo = this.pk.nodeManager.nodeInfo;
+      const response = new agent.NodeInfoMessage();
+      response.setNodeId(nodeInfo.id);
+      response.setAlias(nodeInfo.alias);
+      response.setPublicKey(nodeInfo.publicKey);
+      response.setRootPublicKey(nodeInfo.rootPublicKey);
+      if (nodeInfo.nodeAddress) {
+        response.setNodeAddress(nodeInfo.nodeAddress.toString());
       }
-      if (peerInfo.apiAddress) {
-        response.setApiAddress(peerInfo.apiAddress.toString());
+      if (nodeInfo.apiAddress) {
+        response.setApiAddress(nodeInfo.apiAddress.toString());
       }
       response.setLinkInfoList(
-        peerInfo.linkInfoList.map((l) => {
+        nodeInfo.linkInfoList.map((l) => {
           const linkInfo = l as LinkInfoIdentity;
           const linkInfoMessage = new agent.LinkInfoIdentityMessage();
           linkInfoMessage.setDateissued(linkInfo.dateIssued);
@@ -715,41 +713,41 @@ class PolykeyAgent implements IAgentServer {
         }),
       );
 
-      const peerInfoPem = peerInfo.toX509Pem(
+      const nodeInfoPem = nodeInfo.toX509Pem(
         this.pk.keyManager.getPrivateKey(),
       );
-      response.setPem(peerInfoPem);
+      response.setPem(nodeInfoPem);
       callback(null, response);
     } catch (error) {
       callback(error, null);
     }
   }
 
-  async getPeerInfo(
-    call: grpc.ServerUnaryCall<agent.StringMessage, agent.PeerInfoMessage>,
-    callback: grpc.sendUnaryData<agent.PeerInfoMessage>,
+  async getNodeInfo(
+    call: grpc.ServerUnaryCall<agent.StringMessage, agent.NodeInfoMessage>,
+    callback: grpc.sendUnaryData<agent.NodeInfoMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
-      const peerInfo = this.pk.peerManager.getPeer(s);
-      if (!peerInfo) {
-        throw Error('public key does not exist in peer store');
+      const nodeInfo = this.pk.nodeManager.getNodeInfo(s);
+      if (!nodeInfo) {
+        throw Error('public key does not exist in node store');
       }
-      const response = new agent.PeerInfoMessage();
-      response.setPeerId(peerInfo.id);
-      response.setAlias(peerInfo.alias);
-      response.setPublicKey(peerInfo.publicKey);
-      response.setRootPublicKey(peerInfo.rootPublicKey);
-      if (peerInfo.peerAddress) {
-        response.setPeerAddress(peerInfo.peerAddress.toString());
+      const response = new agent.NodeInfoMessage();
+      response.setNodeId(nodeInfo.id);
+      response.setAlias(nodeInfo.alias);
+      response.setPublicKey(nodeInfo.publicKey);
+      response.setRootPublicKey(nodeInfo.rootPublicKey);
+      if (nodeInfo.nodeAddress) {
+        response.setNodeAddress(nodeInfo.nodeAddress.toString());
       }
-      if (peerInfo.apiAddress) {
-        response.setApiAddress(peerInfo.apiAddress.toString());
+      if (nodeInfo.apiAddress) {
+        response.setApiAddress(nodeInfo.apiAddress.toString());
       }
       response.setLinkInfoList(
-        peerInfo.linkInfoList.map((l) => {
+        nodeInfo.linkInfoList.map((l) => {
           const linkInfo = l as LinkInfoIdentity;
           const linkInfoMessage = new agent.LinkInfoIdentityMessage();
           linkInfoMessage.setDateissued(linkInfo.dateIssued);
@@ -763,7 +761,7 @@ class PolykeyAgent implements IAgentServer {
           return linkInfoMessage;
         }),
       );
-      response.setPem(peerInfo.pem);
+      response.setPem(nodeInfo.pem);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -873,21 +871,6 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  listNodes(
-    call: grpc.ServerUnaryCall<agent.BooleanMessage, agent.StringListMessage>,
-    callback: grpc.sendUnaryData<agent.StringListMessage>,
-  ) {
-    this.refreshTimeout();
-    try {
-      const { b } = call.request!.toObject();
-      const response = new agent.StringListMessage();
-      response.setSList([this.pk.polykeyPath]);
-      callback(null, response);
-    } catch (error) {
-      callback(error, null);
-    }
-  }
-
   async getRootCertificate(
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringMessage>,
     callback: grpc.sendUnaryData<agent.StringMessage>,
@@ -895,7 +878,7 @@ class PolykeyAgent implements IAgentServer {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const rootCert = this.pk.peerManager.pki.RootCertificatePem;
+      const rootCert = this.pk.nodeManager.pki.RootCertificatePem;
       const response = new agent.StringMessage();
       response.setS(rootCert);
       callback(null, response);
@@ -904,23 +887,23 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async listPeers(
+  async listNodes(
     call: grpc.ServerUnaryCall<agent.EmptyMessage, agent.StringListMessage>,
     callback: grpc.sendUnaryData<agent.StringListMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const publicKeys = this.pk.peerManager.listPeers();
-      const peerList = publicKeys.map((peerId) => {
-        const alias = this.pk.peerManager.getPeerAlias(peerId);
+      const publicKeys = this.pk.nodeManager.listNodes();
+      const nodeList = publicKeys.map((nodeId) => {
+        const alias = this.pk.nodeManager.getNodeAlias(nodeId);
         if (!alias) {
-          return peerId;
+          return nodeId;
         }
-        return `${alias} (${peerId})`;
+        return `${alias} (${nodeId})`;
       });
       const response = new agent.StringListMessage();
-      response.setSList(peerList);
+      response.setSList(nodeList);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -1001,7 +984,7 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { domain, certFile, keyFile } = call.request!.toObject();
-      const pki = this.pk.peerManager.pki;
+      const pki = this.pk.nodeManager.pki;
       const keypair = pki.createKeypair();
       const csr = pki.createCSR(domain, '', keypair);
       const cert = pki.handleCSR(csr);
@@ -1037,7 +1020,7 @@ class PolykeyAgent implements IAgentServer {
       const km = new KeyManager(
         this.pk.polykeyPath,
         fs,
-        this.logger.getLogger('KeyManager'),
+        this.logger.getChild('KeyManager'),
       );
 
       await km.generateKeyPair(passphrase, nbits, true);
@@ -1048,7 +1031,7 @@ class PolykeyAgent implements IAgentServer {
 
       // re-load all meta data
       await this.pk.keyManager.loadEncryptedMetadata();
-      this.pk.peerManager.loadMetadata();
+      this.pk.nodeManager.loadMetadata();
       await this.pk.vaultManager.loadEncryptedMetadata();
 
       // finally start all services
@@ -1110,20 +1093,20 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async pingPeer(
-    call: grpc.ServerUnaryCall<agent.ContactPeerMessage, agent.EmptyMessage>,
+  async pingNode(
+    call: grpc.ServerUnaryCall<agent.ContactNodeMessage, agent.EmptyMessage>,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
       const { publicKeyOrHandle, timeout } = call.request!.toObject();
-      const successful = await this.pk.peerManager.pingPeer(
+      const successful = await this.pk.nodeManager.pingNode(
         publicKeyOrHandle,
         timeout,
       );
       if (!successful) {
-        throw Error('peer did not respond to ping before timeout');
+        throw Error('node did not respond to ping before timeout');
       }
       callback(null, new agent.EmptyMessage());
     } catch (error) {
@@ -1221,14 +1204,14 @@ class PolykeyAgent implements IAgentServer {
   }
 
   async setAlias(
-    call: grpc.ServerUnaryCall<agent.PeerAliasMessage, agent.EmptyMessage>,
+    call: grpc.ServerUnaryCall<agent.NodeAliasMessage, agent.EmptyMessage>,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const { peerId, alias } = call.request!.toObject();
-      this.pk.peerManager.setPeerAlias(peerId, alias);
+      const { nodeId, alias } = call.request!.toObject();
+      this.pk.nodeManager.setNodeAlias(nodeId, alias);
       callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
@@ -1242,9 +1225,9 @@ class PolykeyAgent implements IAgentServer {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const { vaultName, peerId, canEdit } = call.request!.toObject();
+      const { vaultName, nodeId, canEdit } = call.request!.toObject();
       const vault = this.pk.vaultManager.getVault(vaultName);
-      vault.shareVault(peerId, canEdit);
+      vault.shareVault(nodeId, canEdit);
       callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
@@ -1278,7 +1261,7 @@ class PolykeyAgent implements IAgentServer {
   ) {
     try {
       clearInterval(this.pidCheckInterval);
-      this.pk.peerManager.multicastBroadcaster.stopBroadcasting();
+      this.pk.nodeManager.multicastBroadcaster.stopBroadcasting();
       this.configStore.clear();
       callback(null, new agent.EmptyMessage());
       await promisify(this.server.tryShutdown.bind(this.server))();
@@ -1300,7 +1283,7 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { b } = call.request!.toObject();
-      this.pk.peerManager.toggleStealthMode(b);
+      this.pk.nodeManager.toggleStealthMode(b);
       callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
@@ -1345,7 +1328,7 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
-      this.pk.peerManager.unsetPeerAlias(s);
+      this.pk.nodeManager.unsetNodeAlias(s);
       callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
@@ -1366,28 +1349,11 @@ class PolykeyAgent implements IAgentServer {
 
       // re-load all meta data
       await this.pk.keyManager.loadEncryptedMetadata();
-      this.pk.peerManager.loadMetadata();
+      this.pk.nodeManager.loadMetadata();
       await this.pk.vaultManager.loadEncryptedMetadata();
 
       // finally start all services
       await this.pk.startAllServices();
-
-      try {
-        // TODO: remove this part after demo (to be replaced with real NAT traversal)
-        // read in demo config
-        const bootstrapPeerInfoPem = fs
-          .readFileSync(path.join(os.homedir(), 'bootstrapPeerInfo.pem'))
-          .toString();
-        // add bootstrap nodes peerInfo
-        const bootstrapPeerInfo = new PeerInfoReadOnly(bootstrapPeerInfoPem);
-        if (this.pk.peerManager.hasPeer(bootstrapPeerInfo.id)) {
-          this.pk.peerManager.updatePeer(bootstrapPeerInfo);
-        } else {
-          this.pk.peerManager.addPeer(bootstrapPeerInfo);
-        }
-      } catch (error) {
-        // no throw
-      }
 
       // send response
       callback(null, new agent.EmptyMessage());
@@ -1413,33 +1379,33 @@ class PolykeyAgent implements IAgentServer {
   }
 
   // this is probably a redundant method as most of the information managed
-  // by local peer info is meant to be secure and managed only by the peer
+  // by local node info is meant to be secure and managed only by the node
   // not to mentioned it is a signed and verifiable source of truth.
   // the only thing that can be changed is the alias so this could
   // probably be replaced in future with a simple setLocalAlias RPC.
-  async updateLocalPeerInfo(
-    call: grpc.ServerUnaryCall<agent.PeerInfoMessage, agent.EmptyMessage>,
+  async updateLocalNodeInfo(
+    call: grpc.ServerUnaryCall<agent.NodeInfoMessage, agent.EmptyMessage>,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
       const {
-        peerId,
+        nodeId,
         alias,
         publicKey,
         rootPublicKey,
-        peerAddress,
+        nodeAddress,
         apiAddress,
         linkInfoList,
         pem,
       } = call.request!.toObject();
 
-      if (peerId) {
-        throw Error('cannot modify peerId');
+      if (nodeId) {
+        throw Error('cannot modify nodeId');
       }
       if (alias) {
-        this.pk.peerManager.peerInfo.alias = alias;
+        this.pk.nodeManager.nodeInfo.alias = alias;
       }
       if (publicKey) {
         throw Error('cannot modify publicKey, try recycling keypair instead');
@@ -1447,14 +1413,14 @@ class PolykeyAgent implements IAgentServer {
       if (rootPublicKey) {
         throw Error('cannot modify rootPublicKey');
       }
-      if (peerAddress) {
+      if (nodeAddress) {
         throw Error(
-          'cannot modify peerAddress, try setting PK_PEER_HOST or PK_PEER_PORT env variables instead',
+          'cannot modify nodeAddress, try setting PK_PEER_HOST or PK_PEER_PORT env variables instead',
         );
       }
       if (apiAddress) {
         throw Error(
-          'cannot modify peerAddress, try setting PK_API_HOST or PK_API_PORT env variables instead',
+          'cannot modify nodeAddress, try setting PK_API_HOST or PK_API_PORT env variables instead',
         );
       }
       if (linkInfoList) {
@@ -1464,7 +1430,7 @@ class PolykeyAgent implements IAgentServer {
       }
       if (pem) {
         throw Error(
-          'cannot modify peerInfo pem as it is signed and managed internally',
+          'cannot modify nodeInfo pem as it is signed and managed internally',
         );
       }
 
@@ -1474,9 +1440,9 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
-  async updatePeerInfo(
+  async updateNodeInfo(
     call: grpc.ServerUnaryCall<
-      agent.PeerInfoReadOnlyMessage,
+      agent.NodeInfoReadOnlyMessage,
       agent.EmptyMessage
     >,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
@@ -1485,37 +1451,37 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const {
-        peerId,
+        nodeId,
         pem,
         unsignedAlias,
-        unsignedPeerAddress,
+        unsignedNodeAddress,
         unsignedApiAddress,
       } = call.request!.toObject();
-      let peerInfo: PeerInfoReadOnly | null;
-      if (peerId) {
-        peerInfo = this.pk.peerManager.getPeer(peerId);
+      let nodeInfo: NodeInfoReadOnly | null;
+      if (nodeId) {
+        nodeInfo = this.pk.nodeManager.getNodeInfo(nodeId);
       } else if (pem) {
-        peerInfo = new PeerInfoReadOnly(pem);
+        nodeInfo = new NodeInfoReadOnly(pem);
       } else {
-        throw Error('peerId or pem must be specified to  identify peer');
+        throw Error('nodeId or pem must be specified to  identify node');
       }
-      if (!peerInfo || !this.pk.peerManager.hasPeer(peerInfo.id)) {
-        throw 'peer does not exist in store';
+      if (!nodeInfo || !this.pk.nodeManager.hasNode(nodeInfo.id)) {
+        throw 'node does not exist in store';
       }
       if (unsignedAlias) {
-        peerInfo.alias = unsignedAlias;
+        nodeInfo.alias = unsignedAlias;
       }
-      if (unsignedPeerAddress) {
-        peerInfo.peerAddress = Address.parse(unsignedPeerAddress);
-      } else if (unsignedPeerAddress == '') {
-        peerInfo.peerAddress = undefined;
+      if (unsignedNodeAddress) {
+        nodeInfo.nodeAddress = Address.parse(unsignedNodeAddress);
+      } else if (unsignedNodeAddress == '') {
+        nodeInfo.nodeAddress = undefined;
       }
       if (unsignedApiAddress) {
-        peerInfo.apiAddress = Address.parse(unsignedApiAddress);
+        nodeInfo.apiAddress = Address.parse(unsignedApiAddress);
       } else if (unsignedApiAddress == '') {
-        peerInfo.apiAddress = undefined;
+        nodeInfo.apiAddress = undefined;
       }
-      this.pk.peerManager.updatePeer(peerInfo);
+      this.pk.nodeManager.updateNode(nodeInfo);
       callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);

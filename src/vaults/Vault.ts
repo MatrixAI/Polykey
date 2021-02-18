@@ -7,8 +7,8 @@ import { EncryptedFS } from 'encryptedfs';
 import GitFrontend from '../git/GitFrontend';
 import { JSONMapReplacer, JSONMapReviver, readdirRecursively } from '../utils';
 
-interface PeerIdPermissions {
-  peerId: string;
+interface NodeIdPermissions {
+  nodeId: string;
   canEdit: boolean;
 }
 
@@ -18,7 +18,7 @@ class Vault {
   private efs: EncryptedFS;
   vaultPath: string;
   private secrets: Map<string, any>;
-  private sharedPeerIds: Map<string, PeerIdPermissions>;
+  private sharedNodeIds: Map<string, NodeIdPermissions>;
   private metadataPath: string;
 
   private gitFrontend: GitFrontend;
@@ -328,36 +328,36 @@ class Vault {
   // Sharing //
   /////////////
   /**
-   * Allows a particular peer to access the vault
-   * @param peerId PeerId of the peer to share with
+   * Allows a particular node to access the vault
+   * @param nodeId NodeId of the node to share with
    */
-  shareVault(peerId: string, canEdit?: boolean) {
-    if (this.sharedPeerIds.has(peerId)) {
-      if (canEdit && this.sharedPeerIds.get(peerId)?.canEdit == canEdit) {
+  shareVault(nodeId: string, canEdit?: boolean) {
+    if (this.sharedNodeIds.has(nodeId)) {
+      if (canEdit && this.sharedNodeIds.get(nodeId)?.canEdit == canEdit) {
         throw Error(
-          'vault is already shared with given peer id and has the same permissions',
+          'vault is already shared with given node id and has the same permissions',
         );
       } else {
-        throw Error('vault is already shared with given peer id');
+        throw Error('vault is already shared with given node id');
       }
     }
 
-    this.sharedPeerIds.set(peerId, { peerId, canEdit: canEdit ?? false });
+    this.sharedNodeIds.set(nodeId, { nodeId, canEdit: canEdit ?? false });
 
     // Write metadata
     this.writeMetadata();
   }
 
   /**
-   * Removes access to the vault for a particular peer
-   * @param peerId PeerId of the peer to unshare with
+   * Removes access to the vault for a particular node
+   * @param nodeId NodeId of the node to unshare with
    */
-  unshareVault(peerId: string) {
-    if (!this.sharedPeerIds.has(peerId)) {
-      throw Error('vault is not shared with given peerId');
+  unshareVault(nodeId: string) {
+    if (!this.sharedNodeIds.has(nodeId)) {
+      throw Error('vault is not shared with given nodeId');
     }
 
-    this.sharedPeerIds.delete(peerId);
+    this.sharedNodeIds.delete(nodeId);
 
     // Write metadata
     this.writeMetadata();
@@ -365,28 +365,28 @@ class Vault {
 
   /**
    * Determines if a particular public key can access the vault
-   * @param peerId Public key to check
+   * @param nodeId Public key to check
    */
-  peerCanPull(peerId: string): boolean {
-    return this.sharedPeerIds.has(peerId);
+  nodeCanPull(nodeId: string): boolean {
+    return this.sharedNodeIds.has(nodeId);
   }
 
   /**
    * Determines if a particular public key can push to the vault upstream
-   * @param peerId Public key to check
+   * @param nodeId Public key to check
    */
-  peerCanPush(peerId: string): boolean {
+  nodeCanPush(nodeId: string): boolean {
     return (
-      this.sharedPeerIds.has(peerId) &&
-      (this.sharedPeerIds.get(peerId)?.canEdit ?? false)
+      this.sharedNodeIds.has(nodeId) &&
+      (this.sharedNodeIds.get(nodeId)?.canEdit ?? false)
     );
   }
 
   /**
-   * Pulls the vault from a specific peer
-   * @param peerId PeerId of peer that owns vault to be pulled
+   * Pulls the vault from a specific node
+   * @param nodeId NodeId of node that owns vault to be pulled
    */
-  async pullVault(peerId: string) {
+  async pullVault(nodeId: string) {
     const release = await this.mutex.acquire();
     try {
       // Strangely enough this is needed for pulls along with ref set to 'HEAD'
@@ -399,7 +399,7 @@ class Vault {
         fullname: true,
       });
       // First pull
-      const gitClient = this.gitFrontend.connectToPeerGit(peerId);
+      const gitClient = this.gitFrontend.connectToNodeGit(nodeId);
       await git.pull({
         fs: { promises: this.efs.promises },
         http: gitClient,
@@ -440,17 +440,17 @@ class Vault {
     // Create and write metadata
     this.efs.writeFileSync(
       this.metadataPath,
-      JSON.stringify(this.sharedPeerIds, JSONMapReplacer),
+      JSON.stringify(this.sharedNodeIds, JSONMapReplacer),
     );
   }
 
   private loadMetadata(): void {
     if (this.efs.existsSync(this.metadataPath)) {
       const fileContents = this.efs.readFileSync(this.metadataPath).toString();
-      this.sharedPeerIds = JSON.parse(fileContents, JSONMapReviver);
+      this.sharedNodeIds = JSON.parse(fileContents, JSONMapReviver);
     } else {
       // Need to create it
-      this.sharedPeerIds = new Map();
+      this.sharedNodeIds = new Map();
       this.writeMetadata();
     }
   }

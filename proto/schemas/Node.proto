@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package nodeInterface;
+
+// need to import the peerInfo classes from Agent.proto
+import "Agent.proto";
+
+//////////////////
+// Node Service //
+//////////////////
+service Node {
+  // general p2p stuff
+  rpc PingNode (PingNodeMessage) returns (PingNodeMessage) {};
+
+  // git
+  rpc GetGitInfo (InfoRequest) returns (InfoReply) {};
+  rpc GetGitPack (PackRequest) returns (PackReply) {};
+  rpc GetVaultNames (agentInterface.EmptyMessage) returns (VaultNamesReply) {};
+
+  // // === NAT traversal === //
+  // // BindAddress is for a client to request a public relay node to bind its UDP address
+  // // this method returns the udp address of the public relay nodes' main udp socket
+  // // it will bind the local udp socket to the remote one which creates a NAT table entry
+  // // note: only public relay nodes can respond
+  // rpc BindAddress (agentInterface.NodeInfoReadOnlyMessage) returns (agentInterface.StringMessage) {};
+  // // === Hole Punching
+
+  rpc GetUDPAddress (agentInterface.NodeInfoReadOnlyMessage) returns (agentInterface.StringMessage) {};
+
+  // CA functionality
+  rpc GetRootCertificate (agentInterface.EmptyMessage) returns (agentInterface.StringMessage) {};
+  rpc RequestCertificateSigning (agentInterface.StringMessage) returns (agentInterface.StringMessage) {};
+
+  // DHT Functionality
+  rpc NodeDHTFindNode (NodeDHTFindNodeRequest) returns (NodeDHTFindNodeReply) {};
+}
+
+///////////////
+// Ping Node //
+///////////////
+message PingNodeMessage {
+  string challenge = 1;
+}
+
+/////////
+// Git //
+/////////
+// ==== Vault Info ==== //
+message InfoRequest {
+  string vault_name = 1;
+}
+message InfoReply {
+  string vault_name = 1;
+  bytes body = 2;
+}
+
+// ==== PackRequest ==== //
+message PackRequest {
+  string vault_name = 1;
+  bytes body = 2;
+}
+message PackReply {
+  string vault_name = 1;
+  bytes body = 2;
+}
+
+// ==== VaultNamesRequest ==== //
+message VaultNamesReply {
+  repeated string vault_name_list = 1;
+}
+
+///////////////////
+// NAT Traversal //
+///////////////////
+// ==== UDPAddress ==== //
+message UDPAddressResponse {
+  string address = 1;
+}
+
+// ==== UDP specific messages ==== //
+enum NatUdpMessageType {
+  DIRECT_CONNECTION = 0;
+  HOLE_PUNCH_CONNECTION = 1;
+  PUBLIC_RELAY_REQUEST = 2;
+}
+message NatUdpMessage {
+  NatUdpMessageType type = 1;
+  bool is_response = 2;
+  bytes sub_message = 3;
+}
+
+///////////////////////
+// Direct Connection //
+///////////////////////
+message DirectConnectionMessage {
+  string peer_id = 1;
+}
+///////////////////////////
+// Hole Punch Connection //
+///////////////////////////
+message HolePunchConnectionMessage {
+  string target_peer_id = 1;
+  string origin_peer_id = 2;
+  bool is_response = 3;
+  string udp_address = 4;
+}
+
+///////////////////////
+// DHT Functionality //
+///////////////////////
+message NodeDHTFindNodeRequest {
+  string target_peer_id = 1;
+}
+message NodeDHTFindNodeReply {
+  repeated agentInterface.NodeInfoReadOnlyMessage closest_peers = 2;
+}
+
+//////////////////////////////
+// Micro Transport Protocol //
+//////////////////////////////
+// this is only used via UDP and does not have any corresponding rpc method
+message MTPPacket {
+  int64 id = 1;
+  string peerId = 2;
+  int64 connection = 3;
+  int64 timestamp = 4;
+  int64 timediff = 5;
+  int64 window = 6;
+  int64 seq = 7;
+  int64 ack = 8;
+  bytes data = 9;
+  int64 sent = 10;
+}
+

@@ -1,4 +1,4 @@
-import type { IdentityKey, ProviderKey, PeerId } from '../types';
+import type { IdentityKey, ProviderKey, NodeId } from '../types';
 
 /**
  * Link key must uniquely identify the cryptolink on the identity provider.
@@ -19,8 +19,8 @@ type LinkClaimIdentity = {
 
 type LinkClaimNode = {
   type: 'node';
-  node1: PeerId;
-  node2: PeerId;
+  node1: NodeId;
+  node2: NodeId;
   dateIssued: string;
   signature: string;
 };

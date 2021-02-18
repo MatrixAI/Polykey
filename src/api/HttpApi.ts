@@ -8,9 +8,9 @@ import passport from 'passport';
 import { promisify } from 'util';
 import session from 'express-session';
 import swaggerUI from 'swagger-ui-express';
-import Logger from '@matrixai/js-logger';
+import Logger from '@matrixai/logger';
 import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
-import { Address } from '../peers/PeerInfo';
+import { Address } from '../nodes/NodeInfo';
 import { BasicStrategy } from 'passport-http';
 import OAuth2 from './AuthorizationServer/OAuth2';
 import express, { RequestHandler } from 'express';
@@ -19,7 +19,7 @@ import * as config from './AuthorizationServer/Config';
 import * as OpenApiValidator from 'express-openapi-validator';
 import { User, Client } from './AuthorizationServer/OAuth2Store';
 import { Strategy as BearerStrategy } from 'passport-http-bearer';
-import { TLSCredentials } from '../peers/pki/PublicKeyInfrastructure';
+import { TLSCredentials } from '../nodes/pki/PublicKeyInfrastructure';
 
 class HttpApi {
   private openApiPath: string;
@@ -109,7 +109,8 @@ class HttpApi {
         this.oauth = new OAuth2(
           this.tlsCredentials.keypair.public,
           this.tlsCredentials.keypair.private,
-          this.logger.getLogger('OAuth2'),
+          // this.logger.getLogger('OAuth2'),
+          this.logger,
         );
         this.expressServer = express();
 

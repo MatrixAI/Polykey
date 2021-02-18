@@ -42,15 +42,15 @@ commandListVaults.action(
 );
 
 const commandScanVaults = new commander.Command('scan');
-commandScanVaults.description('scan a known peer for accessible vaults');
+commandScanVaults.description('scan a known node for accessible vaults');
 commandScanVaults.option(
   '-k, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandScanVaults.option('-v, --verbose', 'increase verbosity by one level');
 commandScanVaults.requiredOption(
-  '-pi, --peer-id <peerId>',
-  '(required) id string of the peer to be scanned',
+  '-pi, --node-id <nodeId>',
+  '(required) id string of the node to be scanned',
 );
 commandScanVaults.action(
   actionRunner(async (options) => {
@@ -59,7 +59,7 @@ commandScanVaults.action(
     const client = await getAgentClient(nodePath, pkLogger);
 
     const request = new agentPB.StringMessage();
-    request.setS(options.peerId);
+    request.setS(options.nodeId);
     const res = (await promisifyGrpc(client.scanVaultNames.bind(client))(
       request,
     )) as agentPB.StringListMessage;
@@ -70,7 +70,7 @@ commandScanVaults.action(
     }
 
     pkLogger.logV2(
-      `Vault names from peer - ${options.peerId}`,
+      `Vault names from node - ${options.nodeId}`,
       PKMessageType.INFO,
     );
     for (const vaultName of vaultNames) {
@@ -162,14 +162,14 @@ commandVaultStats.action(
 );
 
 const commandPullVault = new commander.Command('pull');
-commandPullVault.description('pull a vault from a peer');
+commandPullVault.description('pull a vault from a node');
 commandPullVault.option(
   '-k, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandPullVault.requiredOption(
-  '-pi, --peer-id <peerId>',
-  '(required) id string of the peer who has the vault',
+  '-pi, --node-id <nodeId>',
+  '(required) id string of the node who has the vault',
 );
 commandPullVault.requiredOption(
   '-vn, --vault-name <vaultName>',
@@ -184,7 +184,7 @@ commandPullVault.action(
     const vaultName = options.vaultName;
 
     const request = new agentPB.VaultPathMessage();
-    request.setPublicKey(options.peerId);
+    request.setPublicKey(options.nodeId);
     request.setVaultName(vaultName);
     await promisifyGrpc(client.pullVault.bind(client))(request);
 
@@ -196,7 +196,7 @@ commandPullVault.action(
 );
 
 const commandShareVault = new commander.Command('share');
-commandShareVault.description('pull a vault from a peer');
+commandShareVault.description('pull a vault from a node');
 commandShareVault.option(
   '-k, --node-path <nodePath>',
   'provide the polykey path',
@@ -206,12 +206,12 @@ commandShareVault.requiredOption(
   '(required) name of the vault to be shared',
 );
 commandShareVault.requiredOption(
-  '-pi, --peer-id <peerId>',
-  '(required) id string of the peer which the vault is to be shared with',
+  '-pi, --node-id <nodeId>',
+  '(required) id string of the node which the vault is to be shared with',
 );
 commandShareVault.option(
   '-ce, --can-edit <canEdit>',
-  'peer can edit vault (i.e. push as well as pull)',
+  'node can edit vault (i.e. push as well as pull)',
 );
 commandShareVault.action(
   actionRunner(async (options) => {
@@ -220,24 +220,24 @@ commandShareVault.action(
     const client = await getAgentClient(nodePath, pkLogger);
 
     const vaultName = options.vaultName;
-    const peerId = options.vaultName;
+    const nodeId = options.vaultName;
     const canEdit = options.canEdit;
 
     const request = new agentPB.ShareVaultMessage();
     request.setVaultName(vaultName);
-    request.setPeerId(peerId);
+    request.setNodeId(nodeId);
     request.setCanEdit(canEdit);
     await promisifyGrpc(client.shareVault.bind(client))(request);
 
     pkLogger.logV2(
-      `vault '${vaultName}' successfully shared with peerId: '${peerId}'`,
+      `vault '${vaultName}' successfully shared with nodeId: '${nodeId}'`,
       PKMessageType.SUCCESS,
     );
   }),
 );
 
 const commandUnshareVault = new commander.Command('unshare');
-commandUnshareVault.description('pull a vault from a peer');
+commandUnshareVault.description('pull a vault from a node');
 commandUnshareVault.option(
   '-k, --node-path <nodePath>',
   'provide the polykey path',
@@ -247,8 +247,8 @@ commandUnshareVault.requiredOption(
   '(required) name of the vault to be unshared',
 );
 commandUnshareVault.requiredOption(
-  '-pi, --peer-id <peerId>',
-  '(required) id string of the peer which the vault is to be unshared with',
+  '-pi, --node-id <nodeId>',
+  '(required) id string of the node which the vault is to be unshared with',
 );
 commandUnshareVault.action(
   actionRunner(async (options) => {
@@ -256,13 +256,13 @@ commandUnshareVault.action(
     const pkLogger = getPKLogger(options.verbosity);
     const client = await getAgentClient(nodePath, pkLogger);
     const vaultName = options.vaultName;
-    const peerId = options.vaultName;
+    const nodeId = options.vaultName;
     const request = new agentPB.VaultPathMessage();
-    request.setPublicKey(peerId);
+    request.setPublicKey(nodeId);
     request.setVaultName(vaultName);
     await promisifyGrpc(client.unshareVault.bind(client))(request);
     pkLogger.logV2(
-      `vault '${vaultName}' successfully unshared from peerId: '${peerId}'`,
+      `vault '${vaultName}' successfully unshared from nodeId: '${nodeId}'`,
       PKMessageType.SUCCESS,
     );
   }),

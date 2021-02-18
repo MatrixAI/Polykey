@@ -1,90 +1,90 @@
 import GitRequest from './GitRequest';
 import { promisifyGrpc } from '../bin/utils';
-import * as peerInterface from '../../proto/js/Peer_pb';
+import * as nodeInterface from '../../proto/js/Node_pb';
 import * as agentInterface from '../../proto/js/Agent_pb';
-import PeerConnection from '../peers/peer-connection/PeerConnection';
-import Logger from '@matrixai/js-logger';
+import NodeConnection from '../nodes/node-connection/NodeConnection';
+import Logger from '@matrixai/logger'
 
 /**
- * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
+ * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
  */
 class GitFrontend {
-  private connectToPeer: (peerId: string) => PeerConnection;
+  private connectToNode: (nodeId: string) => NodeConnection;
   private logger: Logger;
 
   constructor(
-    connectToPeer: (peerId: string) => PeerConnection,
+    connectToNode: (nodeId: string) => NodeConnection,
     logger: Logger,
   ) {
-    this.connectToPeer = connectToPeer;
+    this.connectToNode = connectToNode;
     this.logger = logger;
   }
 
   /**
-   * Requests remote info from the connected peer for the named vault.
+   * Requests remote info from the connected node for the named vault.
    * @param vaultName Name of the desired vault
-   * @param peerConnection A connection object to the peer
+   * @param nodeConnection A connection object to the node
    */
   private async requestInfo(
     vaultName: string,
-    peerConnection: PeerConnection,
+    nodeConnection: NodeConnection,
   ): Promise<Uint8Array> {
-    const client = await peerConnection.getPeerClient();
-    const request = new peerInterface.InfoRequest();
+    const client = await nodeConnection.getNodeClient();
+    const request = new nodeInterface.InfoRequest();
     request.setVaultName(vaultName);
     const response = (await promisifyGrpc(client.getGitInfo.bind(client))(
       request,
-    )) as peerInterface.InfoReply;
+    )) as nodeInterface.InfoReply;
     return response.getBody_asU8();
   }
 
   /**
-   * Requests a pack from the connected peer for the named vault.
+   * Requests a pack from the connected node for the named vault.
    * @param vaultName Name of the desired vault
    * @param body Contains the pack request
-   * @param peerConnection A connection object to the peer
+   * @param nodeConnection A connection object to the node
    */
   private async requestPack(
     vaultName: string,
     body: Uint8Array,
-    peerConnection: PeerConnection,
+    nodeConnection: NodeConnection,
   ): Promise<Uint8Array> {
-    const client = await peerConnection.getPeerClient();
-    const request = new peerInterface.PackRequest();
+    const client = await nodeConnection.getNodeClient();
+    const request = new nodeInterface.PackRequest();
     request.setVaultName(vaultName);
     request.setBody(body);
     const response = (await promisifyGrpc(client.getGitPack.bind(client))(
       request,
-    )) as peerInterface.PackReply;
+    )) as nodeInterface.PackReply;
     return response.getBody_asU8();
   }
 
   /**
-   * Requests a pack from the connected peer for the named vault.
+   * Requests a pack from the connected node for the named vault.
    * @param vaultName Name of the desired vault
    * @param body Contains the pack request
-   * @param peerConnection A connection object to the peer
+   * @param nodeConnection A connection object to the node
    */
   private async requestVaultNames(
-    peerConnection: PeerConnection,
+    nodeConnection: NodeConnection,
   ): Promise<string[]> {
-    const client = await peerConnection.getPeerClient();
+    const client = await nodeConnection.getNodeClient();
     const request = new agentInterface.EmptyMessage();
     const response = (await promisifyGrpc(client.getVaultNames.bind(client))(
       request,
-    )) as peerInterface.VaultNamesReply;
+    )) as nodeInterface.VaultNamesReply;
     return response.getVaultNameListList();
   }
 
-  connectToPeerGit(peerId: string): GitRequest {
-    const peerConnection = this.connectToPeer(peerId);
+  connectToNodeGit(nodeId: string): GitRequest {
+    const nodeConnection = this.connectToNode(nodeId);
     const gitRequest = new GitRequest(
-      ((vaultName: string) => this.requestInfo(vaultName, peerConnection)).bind(
+      ((vaultName: string) => this.requestInfo(vaultName, nodeConnection)).bind(
         this,
       ),
       ((vaultName: string, body: Buffer) =>
-        this.requestPack(vaultName, body, peerConnection)).bind(this),
-      (() => this.requestVaultNames(peerConnection)).bind(this),
+        this.requestPack(vaultName, body, nodeConnection)).bind(this),
+      (() => this.requestVaultNames(nodeConnection)).bind(this),
     );
     return gitRequest;
   }

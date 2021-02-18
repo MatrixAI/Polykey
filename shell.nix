@@ -4,7 +4,6 @@ with pkgs;
 pkgs.mkShell {
   nativeBuildInputs = [
     nodejs
-    ngrok
     grpc-tools
     openapi-generator-cli
   ];

@@ -70,15 +70,15 @@ function deserialize_agentInterface_BooleanMessage(buffer_arg) {
   return Agent_pb.BooleanMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_ContactPeerMessage(arg) {
-  if (!(arg instanceof Agent_pb.ContactPeerMessage)) {
-    throw new Error('Expected argument of type agentInterface.ContactPeerMessage');
+function serialize_agentInterface_ContactNodeMessage(arg) {
+  if (!(arg instanceof Agent_pb.ContactNodeMessage)) {
+    throw new Error('Expected argument of type agentInterface.ContactNodeMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_ContactPeerMessage(buffer_arg) {
-  return Agent_pb.ContactPeerMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_agentInterface_ContactNodeMessage(buffer_arg) {
+  return Agent_pb.ContactNodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_DecryptFileMessage(arg) {
@@ -235,6 +235,39 @@ function deserialize_agentInterface_NewOAuthTokenMessage(buffer_arg) {
   return Agent_pb.NewOAuthTokenMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_NodeAliasMessage(arg) {
+  if (!(arg instanceof Agent_pb.NodeAliasMessage)) {
+    throw new Error('Expected argument of type agentInterface.NodeAliasMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NodeAliasMessage(buffer_arg) {
+  return Agent_pb.NodeAliasMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_NodeInfoMessage(arg) {
+  if (!(arg instanceof Agent_pb.NodeInfoMessage)) {
+    throw new Error('Expected argument of type agentInterface.NodeInfoMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NodeInfoMessage(buffer_arg) {
+  return Agent_pb.NodeInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_NodeInfoReadOnlyMessage(arg) {
+  if (!(arg instanceof Agent_pb.NodeInfoReadOnlyMessage)) {
+    throw new Error('Expected argument of type agentInterface.NodeInfoReadOnlyMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NodeInfoReadOnlyMessage(buffer_arg) {
+  return Agent_pb.NodeInfoReadOnlyMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_OAuthClientMessage(arg) {
   if (!(arg instanceof Agent_pb.OAuthClientMessage)) {
     throw new Error('Expected argument of type agentInterface.OAuthClientMessage');
@@ -244,39 +277,6 @@ function serialize_agentInterface_OAuthClientMessage(arg) {
 
 function deserialize_agentInterface_OAuthClientMessage(buffer_arg) {
   return Agent_pb.OAuthClientMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_agentInterface_PeerAliasMessage(arg) {
-  if (!(arg instanceof Agent_pb.PeerAliasMessage)) {
-    throw new Error('Expected argument of type agentInterface.PeerAliasMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_PeerAliasMessage(buffer_arg) {
-  return Agent_pb.PeerAliasMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_agentInterface_PeerInfoMessage(arg) {
-  if (!(arg instanceof Agent_pb.PeerInfoMessage)) {
-    throw new Error('Expected argument of type agentInterface.PeerInfoMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_PeerInfoMessage(buffer_arg) {
-  return Agent_pb.PeerInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_agentInterface_PeerInfoReadOnlyMessage(arg) {
-  if (!(arg instanceof Agent_pb.PeerInfoReadOnlyMessage)) {
-    throw new Error('Expected argument of type agentInterface.PeerInfoReadOnlyMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_PeerInfoReadOnlyMessage(buffer_arg) {
-  return Agent_pb.PeerInfoReadOnlyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_ProviderSearchMessage(arg) {
@@ -427,14 +427,14 @@ function deserialize_agentInterface_VerifyFileMessage(buffer_arg) {
 // Agent Service //
 // /////////////////
 var AgentService = exports.AgentService = {
-  addPeer: {
-    path: '/agentInterface.Agent/AddPeer',
+  addNode: {
+    path: '/agentInterface.Agent/AddNode',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.PeerInfoReadOnlyMessage,
+    requestType: Agent_pb.NodeInfoReadOnlyMessage,
     responseType: Agent_pb.StringMessage,
-    requestSerialize: serialize_agentInterface_PeerInfoReadOnlyMessage,
-    requestDeserialize: deserialize_agentInterface_PeerInfoReadOnlyMessage,
+    requestSerialize: serialize_agentInterface_NodeInfoReadOnlyMessage,
+    requestDeserialize: deserialize_agentInterface_NodeInfoReadOnlyMessage,
     responseSerialize: serialize_agentInterface_StringMessage,
     responseDeserialize: deserialize_agentInterface_StringMessage,
   },
@@ -559,14 +559,14 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_StringMessage,
     responseDeserialize: deserialize_agentInterface_StringMessage,
   },
-  findPeer: {
-    path: '/agentInterface.Agent/FindPeer',
+  findNode: {
+    path: '/agentInterface.Agent/FindNode',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.ContactPeerMessage,
+    requestType: Agent_pb.ContactNodeMessage,
     responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_ContactPeerMessage,
-    requestDeserialize: deserialize_agentInterface_ContactPeerMessage,
+    requestSerialize: serialize_agentInterface_ContactNodeMessage,
+    requestDeserialize: deserialize_agentInterface_ContactNodeMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
@@ -647,27 +647,27 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_StringMessage,
     responseDeserialize: deserialize_agentInterface_StringMessage,
   },
-  getLocalPeerInfo: {
-    path: '/agentInterface.Agent/GetLocalPeerInfo',
+  getLocalNodeInfo: {
+    path: '/agentInterface.Agent/GetLocalNodeInfo',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.EmptyMessage,
-    responseType: Agent_pb.PeerInfoMessage,
+    responseType: Agent_pb.NodeInfoMessage,
     requestSerialize: serialize_agentInterface_EmptyMessage,
     requestDeserialize: deserialize_agentInterface_EmptyMessage,
-    responseSerialize: serialize_agentInterface_PeerInfoMessage,
-    responseDeserialize: deserialize_agentInterface_PeerInfoMessage,
+    responseSerialize: serialize_agentInterface_NodeInfoMessage,
+    responseDeserialize: deserialize_agentInterface_NodeInfoMessage,
   },
-  getPeerInfo: {
-    path: '/agentInterface.Agent/GetPeerInfo',
+  getNodeInfo: {
+    path: '/agentInterface.Agent/GetNodeInfo',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.StringMessage,
-    responseType: Agent_pb.PeerInfoMessage,
+    responseType: Agent_pb.NodeInfoMessage,
     requestSerialize: serialize_agentInterface_StringMessage,
     requestDeserialize: deserialize_agentInterface_StringMessage,
-    responseSerialize: serialize_agentInterface_PeerInfoMessage,
-    responseDeserialize: deserialize_agentInterface_PeerInfoMessage,
+    responseSerialize: serialize_agentInterface_NodeInfoMessage,
+    responseDeserialize: deserialize_agentInterface_NodeInfoMessage,
   },
   getPrimaryKeyPair: {
     path: '/agentInterface.Agent/GetPrimaryKeyPair',
@@ -757,8 +757,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_StringListMessage,
     responseDeserialize: deserialize_agentInterface_StringListMessage,
   },
-  listPeers: {
-    path: '/agentInterface.Agent/ListPeers',
+  listNodes: {
+    path: '/agentInterface.Agent/ListNodes',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.EmptyMessage,
@@ -845,14 +845,14 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
-  pingPeer: {
-    path: '/agentInterface.Agent/PingPeer',
+  pingNode: {
+    path: '/agentInterface.Agent/PingNode',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.ContactPeerMessage,
+    requestType: Agent_pb.ContactNodeMessage,
     responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_ContactPeerMessage,
-    requestDeserialize: deserialize_agentInterface_ContactPeerMessage,
+    requestSerialize: serialize_agentInterface_ContactNodeMessage,
+    requestDeserialize: deserialize_agentInterface_ContactNodeMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
@@ -915,10 +915,10 @@ var AgentService = exports.AgentService = {
     path: '/agentInterface.Agent/SetAlias',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.PeerAliasMessage,
+    requestType: Agent_pb.NodeAliasMessage,
     responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_PeerAliasMessage,
-    requestDeserialize: deserialize_agentInterface_PeerAliasMessage,
+    requestSerialize: serialize_agentInterface_NodeAliasMessage,
+    requestDeserialize: deserialize_agentInterface_NodeAliasMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
@@ -1032,25 +1032,25 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
-  updateLocalPeerInfo: {
-    path: '/agentInterface.Agent/UpdateLocalPeerInfo',
+  updateLocalNodeInfo: {
+    path: '/agentInterface.Agent/UpdateLocalNodeInfo',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.PeerInfoMessage,
+    requestType: Agent_pb.NodeInfoMessage,
     responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_PeerInfoMessage,
-    requestDeserialize: deserialize_agentInterface_PeerInfoMessage,
+    requestSerialize: serialize_agentInterface_NodeInfoMessage,
+    requestDeserialize: deserialize_agentInterface_NodeInfoMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
-  updatePeerInfo: {
-    path: '/agentInterface.Agent/UpdatePeerInfo',
+  updateNodeInfo: {
+    path: '/agentInterface.Agent/UpdateNodeInfo',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.PeerInfoReadOnlyMessage,
+    requestType: Agent_pb.NodeInfoReadOnlyMessage,
     responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_PeerInfoReadOnlyMessage,
-    requestDeserialize: deserialize_agentInterface_PeerInfoReadOnlyMessage,
+    requestSerialize: serialize_agentInterface_NodeInfoReadOnlyMessage,
+    requestDeserialize: deserialize_agentInterface_NodeInfoReadOnlyMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },

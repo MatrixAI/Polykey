@@ -1,5 +1,5 @@
 import type { LinkInfo } from '../links';
-import type { NodeInfo } from '../peers';
+import type { NodeInfo } from '../nodes';
 import type { IdentityInfo } from '../social';
 
 type GestaltKey = string;

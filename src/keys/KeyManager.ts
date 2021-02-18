@@ -9,7 +9,7 @@ import { VirtualFS } from 'virtualfs';
 import { EncryptedFS } from 'encryptedfs';
 import { Pool, ModuleThread } from 'threads';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
-import Logger from '@matrixai/js-logger';
+import Logger from '@matrixai/logger'
 
 type KeyManagerMetadata = {
   privateKeyPath: string | null;

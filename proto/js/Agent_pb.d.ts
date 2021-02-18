@@ -88,90 +88,90 @@ export namespace StringListMessage {
     }
 }
 
-export class PeerInfoMessage extends jspb.Message { 
-    getPeerId(): string;
-    setPeerId(value: string): PeerInfoMessage;
+export class NodeInfoMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeInfoMessage;
 
     getAlias(): string;
-    setAlias(value: string): PeerInfoMessage;
+    setAlias(value: string): NodeInfoMessage;
 
     getPublicKey(): string;
-    setPublicKey(value: string): PeerInfoMessage;
+    setPublicKey(value: string): NodeInfoMessage;
 
     getRootPublicKey(): string;
-    setRootPublicKey(value: string): PeerInfoMessage;
+    setRootPublicKey(value: string): NodeInfoMessage;
 
-    getPeerAddress(): string;
-    setPeerAddress(value: string): PeerInfoMessage;
+    getNodeAddress(): string;
+    setNodeAddress(value: string): NodeInfoMessage;
 
     getApiAddress(): string;
-    setApiAddress(value: string): PeerInfoMessage;
+    setApiAddress(value: string): NodeInfoMessage;
 
     clearLinkInfoList(): void;
     getLinkInfoList(): Array<LinkInfoIdentityMessage>;
-    setLinkInfoList(value: Array<LinkInfoIdentityMessage>): PeerInfoMessage;
+    setLinkInfoList(value: Array<LinkInfoIdentityMessage>): NodeInfoMessage;
     addLinkInfo(value?: LinkInfoIdentityMessage, index?: number): LinkInfoIdentityMessage;
 
     getPem(): string;
-    setPem(value: string): PeerInfoMessage;
+    setPem(value: string): NodeInfoMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PeerInfoMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: PeerInfoMessage): PeerInfoMessage.AsObject;
+    toObject(includeInstance?: boolean): NodeInfoMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeInfoMessage): NodeInfoMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PeerInfoMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PeerInfoMessage;
-    static deserializeBinaryFromReader(message: PeerInfoMessage, reader: jspb.BinaryReader): PeerInfoMessage;
+    static serializeBinaryToWriter(message: NodeInfoMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeInfoMessage;
+    static deserializeBinaryFromReader(message: NodeInfoMessage, reader: jspb.BinaryReader): NodeInfoMessage;
 }
 
-export namespace PeerInfoMessage {
+export namespace NodeInfoMessage {
     export type AsObject = {
-        peerId: string,
+        nodeId: string,
         alias: string,
         publicKey: string,
         rootPublicKey: string,
-        peerAddress: string,
+        nodeAddress: string,
         apiAddress: string,
         linkInfoList: Array<LinkInfoIdentityMessage.AsObject>,
         pem: string,
     }
 }
 
-export class PeerInfoReadOnlyMessage extends jspb.Message { 
-    getPeerId(): string;
-    setPeerId(value: string): PeerInfoReadOnlyMessage;
+export class NodeInfoReadOnlyMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeInfoReadOnlyMessage;
 
     getPem(): string;
-    setPem(value: string): PeerInfoReadOnlyMessage;
+    setPem(value: string): NodeInfoReadOnlyMessage;
 
     getUnsignedAlias(): string;
-    setUnsignedAlias(value: string): PeerInfoReadOnlyMessage;
+    setUnsignedAlias(value: string): NodeInfoReadOnlyMessage;
 
-    getUnsignedPeerAddress(): string;
-    setUnsignedPeerAddress(value: string): PeerInfoReadOnlyMessage;
+    getUnsignedNodeAddress(): string;
+    setUnsignedNodeAddress(value: string): NodeInfoReadOnlyMessage;
 
     getUnsignedApiAddress(): string;
-    setUnsignedApiAddress(value: string): PeerInfoReadOnlyMessage;
+    setUnsignedApiAddress(value: string): NodeInfoReadOnlyMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PeerInfoReadOnlyMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: PeerInfoReadOnlyMessage): PeerInfoReadOnlyMessage.AsObject;
+    toObject(includeInstance?: boolean): NodeInfoReadOnlyMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeInfoReadOnlyMessage): NodeInfoReadOnlyMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PeerInfoReadOnlyMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PeerInfoReadOnlyMessage;
-    static deserializeBinaryFromReader(message: PeerInfoReadOnlyMessage, reader: jspb.BinaryReader): PeerInfoReadOnlyMessage;
+    static serializeBinaryToWriter(message: NodeInfoReadOnlyMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeInfoReadOnlyMessage;
+    static deserializeBinaryFromReader(message: NodeInfoReadOnlyMessage, reader: jspb.BinaryReader): NodeInfoReadOnlyMessage;
 }
 
-export namespace PeerInfoReadOnlyMessage {
+export namespace NodeInfoReadOnlyMessage {
     export type AsObject = {
-        peerId: string,
+        nodeId: string,
         pem: string,
         unsignedAlias: string,
-        unsignedPeerAddress: string,
+        unsignedNodeAddress: string,
         unsignedApiAddress: string,
     }
 }
@@ -494,25 +494,25 @@ export namespace VaultPathMessage {
     }
 }
 
-export class ContactPeerMessage extends jspb.Message { 
+export class ContactNodeMessage extends jspb.Message { 
     getPublicKeyOrHandle(): string;
-    setPublicKeyOrHandle(value: string): ContactPeerMessage;
+    setPublicKeyOrHandle(value: string): ContactNodeMessage;
 
     getTimeout(): number;
-    setTimeout(value: number): ContactPeerMessage;
+    setTimeout(value: number): ContactNodeMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ContactPeerMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: ContactPeerMessage): ContactPeerMessage.AsObject;
+    toObject(includeInstance?: boolean): ContactNodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ContactNodeMessage): ContactNodeMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ContactPeerMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ContactPeerMessage;
-    static deserializeBinaryFromReader(message: ContactPeerMessage, reader: jspb.BinaryReader): ContactPeerMessage;
+    static serializeBinaryToWriter(message: ContactNodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ContactNodeMessage;
+    static deserializeBinaryFromReader(message: ContactNodeMessage, reader: jspb.BinaryReader): ContactNodeMessage;
 }
 
-export namespace ContactPeerMessage {
+export namespace ContactNodeMessage {
     export type AsObject = {
         publicKeyOrHandle: string,
         timeout: number,
@@ -625,27 +625,27 @@ export namespace OAuthClientMessage {
     }
 }
 
-export class PeerAliasMessage extends jspb.Message { 
-    getPeerId(): string;
-    setPeerId(value: string): PeerAliasMessage;
+export class NodeAliasMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeAliasMessage;
 
     getAlias(): string;
-    setAlias(value: string): PeerAliasMessage;
+    setAlias(value: string): NodeAliasMessage;
 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PeerAliasMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: PeerAliasMessage): PeerAliasMessage.AsObject;
+    toObject(includeInstance?: boolean): NodeAliasMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeAliasMessage): NodeAliasMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PeerAliasMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PeerAliasMessage;
-    static deserializeBinaryFromReader(message: PeerAliasMessage, reader: jspb.BinaryReader): PeerAliasMessage;
+    static serializeBinaryToWriter(message: NodeAliasMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeAliasMessage;
+    static deserializeBinaryFromReader(message: NodeAliasMessage, reader: jspb.BinaryReader): NodeAliasMessage;
 }
 
-export namespace PeerAliasMessage {
+export namespace NodeAliasMessage {
     export type AsObject = {
-        peerId: string,
+        nodeId: string,
         alias: string,
     }
 }
@@ -697,8 +697,8 @@ export namespace VaultStatsMessage {
 }
 
 export class ShareVaultMessage extends jspb.Message { 
-    getPeerId(): string;
-    setPeerId(value: string): ShareVaultMessage;
+    getNodeId(): string;
+    setNodeId(value: string): ShareVaultMessage;
 
     getVaultName(): string;
     setVaultName(value: string): ShareVaultMessage;
@@ -719,7 +719,7 @@ export class ShareVaultMessage extends jspb.Message {
 
 export namespace ShareVaultMessage {
     export type AsObject = {
-        peerId: string,
+        nodeId: string,
         vaultName: string,
         canEdit: boolean,
     }

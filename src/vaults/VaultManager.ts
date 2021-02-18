@@ -9,14 +9,14 @@ import { EncryptedFS } from 'encryptedfs';
 import GitBackend from '../git/GitBackend';
 import KeyManager from '../keys/KeyManager';
 import GitFrontend from '../git/GitFrontend';
-import PeerConnection from '../peers/peer-connection/PeerConnection';
-import Logger from '@matrixai/js-logger';
+import NodeConnection from '../nodes/node-connection/NodeConnection';
+import Logger from '@matrixai/logger'
 
 class VaultManager {
   polykeyPath: string;
   private fileSystem: typeof fs;
   private keyManager: KeyManager;
-  private connectToPeer: (peerId: string) => PeerConnection;
+  private connectToNode: (nodeId: string) => NodeConnection;
   private setGitHandlers: (
     handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>,
     handleGitPackRequest: (
@@ -48,7 +48,7 @@ class VaultManager {
     polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager: KeyManager,
-    connectToPeer: (peerId: string) => PeerConnection,
+    connectToNode: (nodeId: string) => NodeConnection,
     setGitHandlers: (
       handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>,
       handleGitPackRequest: (
@@ -63,7 +63,7 @@ class VaultManager {
     this.polykeyPath = polykeyPath;
     this.fileSystem = fileSystem;
     this.keyManager = keyManager;
-    this.connectToPeer = connectToPeer;
+    this.connectToNode = connectToNode;
     this.setGitHandlers = setGitHandlers;
     this.metadataPath = path.join(polykeyPath, '.vaultKeys');
     this.metadataBackupPath = path.join(polykeyPath, '.vaultKeysBackup');
@@ -81,11 +81,13 @@ class VaultManager {
       polykeyPath,
       ((repoName: string) => this.getVault(repoName).EncryptedFS).bind(this),
       this.getVaultNames.bind(this),
-      this.logger.getLogger('GitBackend'),
+      // this.logger.getLogger('GitBackend'),
+      this.logger,
     );
     this.gitFrontend = new GitFrontend(
-      this.connectToPeer.bind(this),
-      this.logger.getLogger('GitFrontend'),
+      this.connectToNode.bind(this),
+      // this.logger.getLogger('GitFrontend'),
+      this.logger,
     );
 
     this.setGitHandlers(
@@ -112,12 +114,12 @@ class VaultManager {
   /**
    * Get the names of all vaults in memory
    */
-  getVaultNames(peerId?: string): string[] {
+  getVaultNames(nodeId?: string): string[] {
     const vaultNames = Array.from(this.vaults.keys());
-    if (peerId) {
+    if (nodeId) {
       const allowedVaultNames: string[] = [];
       for (const vaultName of vaultNames) {
-        if (this.getVault(vaultName).peerCanPull(peerId)) {
+        if (this.getVault(vaultName).nodeCanPull(nodeId)) {
           allowedVaultNames.push(vaultName);
         }
       }
@@ -243,11 +245,11 @@ class VaultManager {
   }
 
   /**
-   * Clone a vault from a peer
+   * Clone a vault from a node
    * @param vaultName Name of vault to be cloned
-   * @param peerId PeerId of peer that has the vault to be cloned
+   * @param nodeId NodeId of node that has the vault to be cloned
    */
-  async cloneVault(vaultName: string, peerId: string): Promise<Vault> {
+  async cloneVault(vaultName: string, nodeId: string): Promise<Vault> {
     this.cloningVault = true;
     // Confirm it doesn't exist locally already
     if (this.vaultExists(vaultName)) {
@@ -263,7 +265,7 @@ class VaultManager {
     const vaultUrl = `http://0.0.0.0/${vaultName}`;
 
     // First check if it exists on remote
-    const gitRequest = this.gitFrontend.connectToPeerGit(peerId);
+    const gitRequest = this.gitFrontend.connectToNodeGit(nodeId);
     const info = await git.getRemoteInfo({
       http: gitRequest,
       url: vaultUrl,
@@ -271,7 +273,7 @@ class VaultManager {
 
     if (!info.refs) {
       this.cloningVault = false;
-      throw Error(`Peer does not have vault: '${vaultName}'`);
+      throw Error(`Node does not have vault: '${vaultName}'`);
     }
 
     // Create new efs first
@@ -317,25 +319,25 @@ class VaultManager {
   }
 
   /**
-   * Scan vaults of a particulr peer
+   * Scan vaults of a particulr node
    * @param vaultName Name of vault to be cloned
-   * @param peerId PeerId of peer that has the vault to be cloned
+   * @param nodeId NodeId of node that has the vault to be cloned
    */
-  async scanVaultNames(peerId: string): Promise<string[]> {
-    const gitRequest = this.gitFrontend.connectToPeerGit(peerId);
+  async scanVaultNames(nodeId: string): Promise<string[]> {
+    const gitRequest = this.gitFrontend.connectToNodeGit(nodeId);
     const vaultNameList = await gitRequest.scanVaults();
     return vaultNameList;
   }
 
   /**
-   * Pull a vault from a specific peer
+   * Pull a vault from a specific node
    * @param vaultName Name of vault to be pulled
-   * @param peerId PeerId of polykey node that owns vault to be pulled
+   * @param nodeId NodeId of polykey node that owns vault to be pulled
    */
-  async pullVault(vaultName: string, peerId: string) {
+  async pullVault(vaultName: string, nodeId: string) {
     this.pullingVault = true;
     const vault = this.getVault(vaultName);
-    await vault.pullVault(peerId);
+    await vault.pullVault(nodeId);
     this.pullingVault = false;
   }
 
