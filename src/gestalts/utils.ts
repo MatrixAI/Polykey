@@ -7,16 +7,16 @@ import type {
 } from './types';
 import * as agent from '../../proto/js/Agent_pb';
 import { LinkInfoIdentity, LinkInfoNode, LinkInfo } from '../links';
-import type { IdentityKey, ProviderKey, PeerId } from '../types';
+import type { IdentityKey, ProviderKey, NodeId } from '../types';
 
 function gestaltKey(
-  key: PeerId | IdentityKey,
+  key: NodeId | IdentityKey,
   providerKey: ProviderKey | null = null,
 ): GestaltKey {
   return JSON.stringify({ p: providerKey, key: key });
 }
 
-function ungestaltKey(gestaltKey: GestaltKey): PeerId | IdentityKey {
+function ungestaltKey(gestaltKey: GestaltKey): NodeId | IdentityKey {
   return JSON.parse(gestaltKey).key;
 }
 

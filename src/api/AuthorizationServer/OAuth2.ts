@@ -1,5 +1,5 @@
 import passport from 'passport';
-import Logger from '@matrixai/js-logger';
+import Logger from '@matrixai/logger';
 import * as utils from './utils';
 import * as config from './Config';
 import oauth2orize from 'oauth2orize';

@@ -1,5 +1,5 @@
 /**
- * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific peer.
+ * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
  */
 class GitRequest {
   private requestInfo: (vaultName: string) => Promise<Buffer>;

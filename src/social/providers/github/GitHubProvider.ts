@@ -20,7 +20,7 @@ import {
   ErrorProviderAuthentication,
   ErrorProviderUnauthenticated,
 } from '../../errors';
-import Logger from '@matrixai/js-logger';
+import Logger from '@matrixai/logger'
 
 type Username = string;
 type GistId = string;

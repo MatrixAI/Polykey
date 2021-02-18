@@ -1,4 +1,4 @@
-type PeerId = string;
+type NodeId = string;
 
 /**
  * Provider key should be the domain of the identity provider
@@ -14,4 +14,4 @@ type IdentityKey = string;
 
 type POJO = { [key: string]: any };
 
-export { PeerId, ProviderKey, IdentityKey, POJO };
+export { NodeId, ProviderKey, IdentityKey, POJO };

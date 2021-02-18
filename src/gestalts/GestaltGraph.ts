@@ -1,4 +1,4 @@
-import type { IdentityKey, PeerId, ProviderKey } from '../types';
+import type { IdentityKey, NodeId, ProviderKey } from '../types';
 import type {
   LinkClaimIdentity,
   LinkClaimNode,
@@ -8,7 +8,8 @@ import type {
   LinkInfoNode,
 } from '../links';
 import type { IdentityInfo } from '../social';
-import type { NodeInfo } from '../peers';
+import {NodeInfo as PeerInfo} from '../nodes/NodeInfo'
+import { NodeInfo } from '../nodes';
 import type {
   GestaltMatrix,
   GestaltNodes,
@@ -19,10 +20,10 @@ import type {
 
 import { ProviderManager } from '../social';
 import { gestaltKey, ungestaltKey } from './utils';
-import { PeerInfo, PeerInfo as PI } from '../peers/PeerInfo';
-import PeerManager from '../peers/PeerManager';
+// import { NodeInfo, NodeInfo as PI } from '../nodes/NodeInfo';
+import NodeManager from '../nodes/NodeManager';
 import GestaltTrust from './GestaltTrust';
-import Logger from '@matrixai/js-logger';
+import Logger from '@matrixai/logger';
 
 type VerifyLinkInfoHandler = (linkInfo: LinkInfo) => boolean;
 
@@ -40,13 +41,13 @@ class GestaltGraph {
   protected providerManager: ProviderManager;
   protected verifyLinkInfo: VerifyLinkInfoHandler;
   protected gestaltTrust: GestaltTrust;
-  protected peerManager: PeerManager;
+  protected peerManager: NodeManager;
 
   private logger: Logger;
 
   public constructor(
     gestaltTrust: GestaltTrust,
-    peerManager: PeerManager,
+    peerManager: NodeManager,
     providerManager: ProviderManager,
     verifyLinkInfo: VerifyLinkInfoHandler,
     logger: Logger,
@@ -138,7 +139,7 @@ class GestaltGraph {
     }
   }
 
-  public getGestaltByNode(key: PeerId): Gestalt | undefined {
+  public getGestaltByNode(key: NodeId): Gestalt | undefined {
     return this.getGestalt(gestaltKey(key));
   }
 
@@ -215,25 +216,25 @@ class GestaltGraph {
     return gestalts;
   }
 
-  public trusted(key: PeerId | IdentityKey) {
+  public trusted(key: NodeId | IdentityKey) {
     return this.gestaltTrust.trusted(gestaltKey(key));
   }
 
-  public trust(key: PeerId | IdentityKey) {
+  public trust(key: NodeId | IdentityKey) {
     const gestalt = this.getGestalt(key);
     if (gestalt) {
       this.gestaltTrust.trustGestalt(gestalt);
     }
   }
 
-  public untrust(key: PeerId | IdentityKey) {
+  public untrust(key: NodeId | IdentityKey) {
     const gestalt = this.getGestalt(key);
     if (gestalt) {
       this.gestaltTrust.untrustGestalt(gestalt);
     }
   }
 
-  public discoverGestaltNode(key: PeerId): AsyncGenerator<void, void, void> {
+  public discoverGestaltNode(key: NodeId): AsyncGenerator<void, void, void> {
     return this.discoverGestalt(gestaltKey(key));
   }
 
@@ -356,7 +357,7 @@ class GestaltGraph {
             // TODO:
             // get the new NodeInfo
             // this is not actually the node info yet
-            const nodeInfoNew = this.peerManager.getPeer(linkInfoIdentity.node);
+            const nodeInfoNew = this.peerManager.getNodeInfo(linkInfoIdentity.node);
 
             if (!nodeInfoNew) {
               continue;
