@@ -174,16 +174,19 @@ class NodeInfo {
     const formatedPublicKey = NodeInfo.formatPublicKey(publicKey);
     // we are using md5 for hash + hex for encoding on the public key to make a short,
     // human readable/sharable name. example nodeId: 167dcbfa28e9425f3db39e89ab748540
-    return crypto.createHash('md5').update(formatedPublicKey).digest('hex');
+    const id = crypto.createHash('md5').update(formatedPublicKey).digest('hex');
+    return id
   }
 
   static formatPublicKey(str: string): string {
     const startString = '-----BEGIN PUBLIC KEY-----';
     const endString = '-----END PUBLIC KEY-----';
-    return str.slice(
+    const publicKeyString = str.slice(
       str.indexOf(startString),
       str.indexOf(endString) + endString.length,
     );
+    const publicKeyForge = pki.publicKeyFromPem(publicKeyString)
+    return pki.publicKeyToPem(publicKeyForge)
   }
 
   static formatPemCertificate(str: string): string {

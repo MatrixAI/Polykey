@@ -174,6 +174,14 @@ class MTPConnection extends Duplex {
     this.once('end', () => {
       process.nextTick(closed);
     });
+
+    this.socket.on('close', () => {
+      this.end()
+    })
+    this.socket.on('error', (err) => {
+      this.logger.error(err)
+      this.end()
+    })
   }
 
   destroy(
@@ -386,8 +394,15 @@ class MTPConnection extends Duplex {
     } catch (error) {
       this.logger.error(
         'MTPConnection: error when trying to transmit packet: ' +
-          error.toString(),
+        error.toString(),
       );
+      if (error.toString().includes("ERR_SOCKET_DGRAM_NOT_RUNNING")) {
+        this.logger.error('dgram socket is not running, destroying connection')
+        this.destroy(error, (err) => {
+          this.logger.error(`MTPConnection could not be destroyed, closing connection: "${err?.toString()}"`)
+          this.end()
+        })
+      }
     }
   }
 

@@ -266,10 +266,21 @@ class NodeManager {
 
   /**
    * Retrieves a node for the given public key
-   * @param publicKey ID of the desired node
+   * @param id ID of the desired node
    */
   getNodeInfo(id: string): NodeInfoReadOnly | null {
     return this.nodeStore.get(id)?.deepCopy() ?? null;
+  }
+
+  /**
+   * Retrieves a node for the given public key
+   * @param id ID of the desired node
+   */
+  async getNodeInfoFromDHT(id: string): Promise<NodeInfoReadOnly | null> {
+    this.logger.info(`searching DHT for node id: '${id}'`)
+    const targetNodeInfo = (await this.nodeDHT.findNode(id))?.targetNodeInfo;
+    this.logger.info(`found node info from DHT for node id: '${id}': ${targetNodeInfo}`)
+    return targetNodeInfo ?? null;
   }
 
   /**

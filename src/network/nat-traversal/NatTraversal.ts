@@ -61,7 +61,7 @@ class NatTraversal {
         if (!process.env.PUBLIC_RELAY_NODE) {
           this.keepAliveInterval = setInterval(async () => {
             for (const nodeId of this.listNodes()) {
-              if (!this.unresponsiveNodes.get(nodeId) ?? 0 < 5) {
+              // if (!this.unresponsiveNodes.get(nodeId) ?? 0 < 5) {
                 try {
                   let address: Address
                   let currentAttempts: number
@@ -92,7 +92,7 @@ class NatTraversal {
                 } catch (error) {
                   // no throw
                 }
-              }
+              // }
             }
           }, 5000)
         }
