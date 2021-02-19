@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import type { IdentityKey, NodeId, ProviderKey } from '../types';
 import type {
   LinkClaimIdentity,
@@ -8,7 +11,7 @@ import type {
   LinkInfoNode,
 } from '../links';
 import type { IdentityInfo } from '../social';
-import {NodeInfo as PeerInfo} from '../nodes/NodeInfo'
+import { NodeInfo as PeerInfo } from '../nodes/NodeInfo';
 import { NodeInfo } from '../nodes';
 import type {
   GestaltMatrix,
@@ -20,18 +23,11 @@ import type {
 
 import { ProviderManager } from '../social';
 import { gestaltKey, ungestaltKey } from './utils';
-// import { NodeInfo, NodeInfo as PI } from '../nodes/NodeInfo';
 import NodeManager from '../nodes/NodeManager';
 import GestaltTrust from './GestaltTrust';
 import Logger from '@matrixai/logger';
 
 type VerifyLinkInfoHandler = (linkInfo: LinkInfo) => boolean;
-
-// type GraphSearchNode = {
-//   value: string;
-//   isVisited: boolean;
-//   parent: GraphSearchNode|null;
-// }
 
 class GestaltGraph {
   public graph: GestaltMatrix = {};
@@ -44,6 +40,9 @@ class GestaltGraph {
   protected peerManager: NodeManager;
 
   private logger: Logger;
+  private graphData: string;
+  private nodesData: string;
+  private identitiesData: string;
 
   public constructor(
     gestaltTrust: GestaltTrust,
@@ -57,18 +56,60 @@ class GestaltGraph {
     this.providerManager = providerManager;
     this.verifyLinkInfo = verifyLinkInfo;
     this.logger = logger;
+
+    /** Get persisted data */
+    const polykeyPath = `${os.homedir()}/.polykey`;
+    this.graphData = path.join(polykeyPath, '.gestalt-graph', 'graph');
+    this.nodesData = path.join(polykeyPath, '.gestalt-graph', 'nodes');
+    this.identitiesData = path.join(
+      polykeyPath,
+      '.gestalt-graph',
+      'identities',
+    );
+    this.loadMetadata();
+  }
+
+  writeMetadata() {
+    if (this.graph) {
+      fs.mkdirSync(path.dirname(this.graphData), { recursive: true });
+      fs.writeFileSync(this.graphData, JSON.stringify(this.graph));
+    }
+    if (this.nodes) {
+      fs.mkdirSync(path.dirname(this.nodesData), { recursive: true });
+      fs.writeFileSync(this.nodesData, JSON.stringify(this.nodes));
+    }
+    if (this.identities) {
+      fs.mkdirSync(path.dirname(this.identitiesData), { recursive: true });
+      fs.writeFileSync(this.identitiesData, JSON.stringify(this.identities));
+    }
+  }
+
+  loadMetadata() {
+    if (fs.existsSync(this.graphData)) {
+      this.graph = JSON.parse(fs.readFileSync(this.graphData).toString());
+    }
+    if (fs.existsSync(this.nodesData)) {
+      this.nodes = JSON.parse(fs.readFileSync(this.nodesData).toString());
+    }
+    if (fs.existsSync(this.identitiesData)) {
+      this.identities = JSON.parse(
+        fs.readFileSync(this.identitiesData).toString(),
+      );
+    }
   }
 
   public setNode(nodeInfo: NodeInfo): void {
     const peerId = gestaltKey(nodeInfo.id);
     this.nodes[peerId] = nodeInfo;
     this.graph[peerId] = this.graph[peerId] || {};
+    this.writeMetadata();
   }
 
   public setIdentity(identityInfo: IdentityInfo): void {
     const identityKey = gestaltKey(identityInfo.key, identityInfo.provider);
     this.identities[identityKey] = identityInfo;
     this.graph[identityKey] = this.graph[identityKey] || {};
+    this.writeMetadata();
   }
 
   public setLinkIdentity(
@@ -82,6 +123,7 @@ class GestaltGraph {
     this.setIdentity(identityInfo);
     this.graph[peerId][identityKey] = linkInfo;
     this.graph[identityKey][peerId] = linkInfo;
+    this.writeMetadata();
   }
 
   public setLinkNode(
@@ -95,6 +137,7 @@ class GestaltGraph {
     this.setNode(nodeInfo2);
     this.graph[peerId1][peerId2] = linkInfo;
     this.graph[peerId2][peerId1] = linkInfo;
+    this.writeMetadata();
   }
 
   public unsetNode(nodeInfo: NodeInfo): void {
@@ -123,6 +166,7 @@ class GestaltGraph {
       this.unsetLink(linkClaim);
     }
     delete this.graph[identityKey_];
+    this.writeMetadata();
   }
 
   public unsetLink(linkClaim: LinkClaim) {
@@ -137,6 +181,7 @@ class GestaltGraph {
       delete this.graph[peerId1]?.[peerId2];
       delete this.graph[peerId2]?.[peerId1];
     }
+    this.writeMetadata();
   }
 
   public getGestaltByNode(key: NodeId): Gestalt | undefined {
@@ -357,7 +402,9 @@ class GestaltGraph {
             // TODO:
             // get the new NodeInfo
             // this is not actually the node info yet
-            const nodeInfoNew = this.peerManager.getNodeInfo(linkInfoIdentity.node);
+            const nodeInfoNew = await this.peerManager.getNodeInfoFromDHT(
+              PeerInfo.publicKeyToId(JSON.parse(linkInfoIdentity.node)),
+            );
 
             if (!nodeInfoNew) {
               continue;

@@ -7,6 +7,7 @@ import { gestaltKey } from '../gestalts/utils';
 import NodeManager from '../nodes/NodeManager';
 import { ProviderManager } from '../social';
 import { NodeInfo } from '../nodes/NodeInfo';
+import { NodeInfo as PeerInfo } from '../nodes/NodeInfo';
 
 /** Types */
 import type { IdentityKey, NodeId, ProviderKey } from '../types';
@@ -92,7 +93,9 @@ class Discovery {
 
         for (const linkInfo of linkInfos) {
           if (linkInfo.type === 'node') {
-            const nodeInfoNew = this.peerManager.getNodeInfo(linkInfo.node2);
+            const nodeInfoNew = await this.peerManager.getNodeInfoFromDHT(
+              PeerInfo.publicKeyToId(JSON.parse(linkInfo.node2)),
+            );
             /** There is a possibility that there is no NodeInfo */
             if (nodeInfoNew) {
               this.gestaltGraph.setLinkNode(linkInfo, nodeInfo, nodeInfoNew);
@@ -203,8 +206,8 @@ class Discovery {
 
             // 12. Get the NodeInfo
             this.logger.info(`getting link info for ${linkInfoIdentity.node}`);
-            const nodeInfoNew = this.peerManager.getNodeInfo(
-              linkInfoIdentity.node,
+            const nodeInfoNew = await this.peerManager.getNodeInfoFromDHT(
+              PeerInfo.publicKeyToId(JSON.parse(linkInfoIdentity.node)),
             );
 
             // 13. skip if there is no nodeInfo
