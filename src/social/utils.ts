@@ -5,7 +5,7 @@ import os from 'os';
 import process from 'process';
 import { spawn } from 'child_process';
 import http from 'http';
-import { createHttpTerminator } from 'http-terminator';
+import { terminatingHttpServer } from '../utils';
 
 function browser(url: string): void {
   let platform = process.platform;
@@ -55,14 +55,14 @@ function browser(url: string): void {
 class AuthCodeServer {
   public readonly port: number;
   protected server: http.Server;
-  protected httpTerminator: { terminate: () => void };
+  protected serverTerminate: () => Promise<void>;
   protected status: 'initial' | 'started' | 'stopped';
   protected redirectUri?: string;
 
   public constructor(port: number = 0) {
     this.port = port;
     this.server = http.createServer();
-    this.httpTerminator = createHttpTerminator({ server: this.server });
+    this.serverTerminate = terminatingHttpServer(this.server);
     this.status = 'initial';
   }
 
@@ -110,7 +110,7 @@ class AuthCodeServer {
 
   public async stop(): Promise<void> {
     if (this.status === 'started') {
-      await this.httpTerminator.terminate();
+      await this.serverTerminate();
     }
     this.status = 'stopped';
   }
