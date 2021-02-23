@@ -77,7 +77,6 @@
 // // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 // type STUNXORMappedAddress = STUNMappedAddress
 
-
 // export {
 //   STUNMagicCookie,
 //   STUNAttributeType,

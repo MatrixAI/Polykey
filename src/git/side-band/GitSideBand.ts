@@ -90,6 +90,7 @@ class GitSideBand {
     packetlines,
     packfile,
     progress,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     error,
   ) {
     const MAX_PACKET_LENGTH = protocol === 'side-band-64k' ? 999 : 65519;

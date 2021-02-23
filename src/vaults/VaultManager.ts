@@ -10,7 +10,7 @@ import GitBackend from '../git/GitBackend';
 import KeyManager from '../keys/KeyManager';
 import GitFrontend from '../git/GitFrontend';
 import NodeConnection from '../nodes/node-connection/NodeConnection';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 
 class VaultManager {
   polykeyPath: string;
@@ -252,9 +252,11 @@ class VaultManager {
   async cloneVault(vaultName: string, nodeId: string): Promise<Vault> {
     this.cloningVault = true;
     // Confirm it doesn't exist locally already
+    this.logger.info(`cloning vault: ${vaultName} from node id: ${nodeId}`);
+
     if (this.vaultExists(vaultName)) {
       this.cloningVault = false;
-      throw Error('Vault name already exists locally, try pulling instead');
+      throw Error('vault name already exists locally, try pulling instead');
     }
 
     const vaultPath = path.join(this.polykeyPath, vaultName);

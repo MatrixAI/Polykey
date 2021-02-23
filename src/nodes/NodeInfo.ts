@@ -42,7 +42,8 @@ class Address {
    * @param addressInfo AddressInfo of desired address
    */
   static fromAddressInfo(addressInfo: net.AddressInfo | dgram.RemoteInfo) {
-    const host = addressInfo.address == '::' ? 'localhost' : addressInfo.address;
+    const host =
+      addressInfo.address == '::' ? 'localhost' : addressInfo.address;
     return new Address(host, addressInfo.port);
   }
 
@@ -62,7 +63,7 @@ class Address {
     if (!addressString || addressString == '') {
       throw Error(`cannot parse empty or undefined string`);
     }
-    const url = new URL('http://'+addressString);
+    const url = new URL('http://' + addressString);
     return { host: url.hostname, port: Number(url.port) };
   }
 }
@@ -175,7 +176,7 @@ class NodeInfo {
     // we are using md5 for hash + hex for encoding on the public key to make a short,
     // human readable/sharable name. example nodeId: 167dcbfa28e9425f3db39e89ab748540
     const id = crypto.createHash('md5').update(formatedPublicKey).digest('hex');
-    return id
+    return id;
   }
 
   static formatPublicKey(str: string): string {
@@ -185,8 +186,8 @@ class NodeInfo {
       str.indexOf(startString),
       str.indexOf(endString) + endString.length,
     );
-    const publicKeyForge = pki.publicKeyFromPem(publicKeyString)
-    return pki.publicKeyToPem(publicKeyForge)
+    const publicKeyForge = pki.publicKeyFromPem(publicKeyString);
+    return pki.publicKeyToPem(publicKeyForge);
   }
 
   static formatPemCertificate(str: string): string {

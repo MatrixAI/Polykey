@@ -3,25 +3,32 @@ import { EventEmitter } from 'events';
 import { Address } from '../../nodes/NodeInfo';
 import MTPConnection from '../micro-transport-protocol/MTPConnection';
 import { randomString } from '../../utils';
+import Logger from '@matrixai/logger';
 
 // This class is used when you have an existing mtp connection and want to
 // pipe it to a tcp address (i.e. that tcp socket doesn't exist yet)
 class MTPToTCPSocketPipe extends EventEmitter {
   id: string;
-  tcpAddress: Address;
 
   tcpSocket: net.Socket;
+  tcpAddress: Address;
+  logger: Logger;
+
   targetSocketPending: boolean;
   buffer: Buffer[];
   mtpConnection: MTPConnection;
 
-  constructor(mtpConnection: MTPConnection, tcpAddress: Address) {
+  constructor(
+    mtpConnection: MTPConnection,
+    tcpAddress: Address,
+    logger: Logger = new Logger('MTPToTCPSocketPipe'),
+  ) {
     super();
     this.id = randomString();
 
-    this.tcpAddress = tcpAddress;
-
     this.mtpConnection = mtpConnection;
+    this.tcpAddress = tcpAddress;
+    this.logger = logger;
 
     this.targetSocketPending = true;
     this.buffer = [];
@@ -82,27 +89,33 @@ class MTPToTCPSocketPipe extends EventEmitter {
     console.log(`piping TCP Socket to MTP connection.`);
 
     // Or use TCP
-    this.tcpSocket = net.connect(this.tcpAddress.port, this.tcpAddress.host, () => {
-      console.log(`Successfully connected to target ${this.tcpAddress.toString()}.`);
+    this.tcpSocket = net.connect(
+      this.tcpAddress.port,
+      this.tcpAddress.host,
+      () => {
+        console.log(
+          `Successfully connected to target ${this.tcpAddress.toString()}.`,
+        );
 
-      // Configure socket for keeping connections alive
-      this.tcpSocket.setKeepAlive(true, 120 * 1000);
+        // Configure socket for keeping connections alive
+        this.tcpSocket.setKeepAlive(true, 120 * 1000);
 
-      // Connected, not pending anymore
-      this.targetSocketPending = false;
+        // Connected, not pending anymore
+        this.targetSocketPending = false;
 
-      // And if we have any buffered data, forward it
-      try {
-        for (const bufferItem of this.buffer) {
-          this.tcpSocket.write(bufferItem);
+        // And if we have any buffered data, forward it
+        try {
+          for (const bufferItem of this.buffer) {
+            this.tcpSocket.write(bufferItem);
+          }
+        } catch (error) {
+          console.error(`Error writing to TCP Socket: `, error);
         }
-      } catch (error) {
-        console.error(`Error writing to TCP Socket: `, error);
-      }
 
-      // Clear the array
-      this.buffer.length = 0;
-    });
+        // Clear the array
+        this.buffer.length = 0;
+      },
+    );
 
     // Got data from the target socket?
     this.tcpSocket.on('data', (data) => {
@@ -124,9 +137,16 @@ class MTPToTCPSocketPipe extends EventEmitter {
   }
 
   terminate() {
-    console.log(`Terminating socket pipe...`);
+    this.logger.info(`terminating socket pipe...`);
     this.removeAllListeners();
-    this.mtpConnection.destroy();
+    this.logger.info(`removed all listeners`);
+    this.mtpConnection.destroy(undefined, (error) => {
+      if (error) {
+        this.logger.error(`socket pipe could not be destroyed: ${error}`);
+      } else {
+        this.logger.info(`socket pipe successfully destroyed`);
+      }
+    });
   }
 }
 

@@ -1,14 +1,8 @@
-import type { ProviderKey } from '../../../types';
-import type {
-  LinkKey,
-  LinkClaimIdentity,
-  LinkInfoIdentity,
-  LinkClaim,
-} from '../../../links';
+import type { LinkClaimIdentity, LinkInfoIdentity } from '../../../links';
 import type { IdentityInfo, TokenData } from '../../types';
 import type ProviderTokens from '../../ProviderTokens';
 
-import { fetch, Request, Response, Headers } from 'cross-fetch';
+import { fetch, Request, Headers } from 'cross-fetch';
 import { Searcher } from 'fast-fuzzy';
 import cheerio from 'cheerio';
 import Provider from '../../Provider';
@@ -16,11 +10,10 @@ import { sleep } from '../../../utils';
 import { browser } from '../../utils';
 import {
   ErrorProviderCall,
-  ErrorProviderUnimplemented,
   ErrorProviderAuthentication,
   ErrorProviderUnauthenticated,
 } from '../../errors';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 
 type Username = string;
 type GistId = string;
@@ -147,8 +140,6 @@ class GitHubProvider extends Provider {
     let tokenData;
     try {
       tokenData = await Promise.race([pollAccessToken(), pollTimerP]);
-    } catch (e) {
-      throw e;
     } finally {
       clearTimeout(pollTimer);
     }

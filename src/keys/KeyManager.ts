@@ -9,7 +9,7 @@ import { VirtualFS } from 'virtualfs';
 import { EncryptedFS } from 'encryptedfs';
 import { Pool, ModuleThread } from 'threads';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 
 type KeyManagerMetadata = {
   privateKeyPath: string | null;
@@ -31,6 +31,7 @@ type ReencryptHandler = (
 
 class KeyManager {
   private primaryKeyPair: KeyPair = {};
+  // eslint-disable-next-line no-undef
   private unlockedTimeout?: NodeJS.Timeout;
   private derivedKeys: Map<string, Buffer>;
   private derivedKeysPath: string;

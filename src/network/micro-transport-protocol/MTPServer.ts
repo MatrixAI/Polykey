@@ -95,7 +95,11 @@ class MTPServer extends EventEmitter {
 
     if (this.socket) {
       this.socket.removeAllListeners();
-      await promisify(this.socket.close)();
+      try {
+        await promisify(this.socket.close)();
+      } catch (error) {
+        // no throw
+      }
     }
 
     const onClose = () => {

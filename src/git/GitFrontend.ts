@@ -3,7 +3,7 @@ import { promisifyGrpc } from '../bin/utils';
 import * as nodeInterface from '../../proto/js/Node_pb';
 import * as agentInterface from '../../proto/js/Agent_pb';
 import NodeConnection from '../nodes/node-connection/NodeConnection';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.

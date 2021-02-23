@@ -144,8 +144,8 @@ class PublicKeyInfrastructure {
       throw new Error('Signature not verified.');
     }
 
-    // TODO validate challenge password
-    const challengePassword = csr.getAttribute({ name: 'challengePassword' });
+    // // TODO validate challenge password
+    // const challengePassword = csr.getAttribute({ name: 'challengePassword' });
 
     const certificate = pki.createCertificate();
     certificate.serialNumber = '01';

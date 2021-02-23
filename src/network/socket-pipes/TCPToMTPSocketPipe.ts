@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import { Address } from '../../nodes/NodeInfo';
 import MTPConnection from '../micro-transport-protocol/MTPConnection';
 import { randomString } from '../../utils';
+import Logger from '@matrixai/logger';
 
 // This class is used when you have an existing tcp socket and want to
 // pipe it to a udp address (i.e. via a new MTP connection)
@@ -13,13 +14,20 @@ class TCPToMTPSocketPipe extends EventEmitter {
   localNodeId: string;
   udpAddress: Address;
   udpSocket: dgram.Socket;
+  logger: Logger;
 
   mtpConnection: MTPConnection;
   targetSocketPending: boolean;
   buffer: Buffer[];
   tcpSocket: net.Socket;
 
-  constructor(localNodeId: string, tcpSocket: net.Socket, udpAddress: Address, udpSocket: dgram.Socket) {
+  constructor(
+    localNodeId: string,
+    tcpSocket: net.Socket,
+    udpAddress: Address,
+    udpSocket: dgram.Socket,
+    logger: Logger = new Logger('TCPToMTPSocketPipe'),
+  ) {
     super();
 
     this.id = randomString();
@@ -28,6 +36,7 @@ class TCPToMTPSocketPipe extends EventEmitter {
     this.tcpSocket = tcpSocket;
     this.udpAddress = udpAddress;
     this.udpSocket = udpSocket;
+    this.logger = logger;
 
     this.targetSocketPending = true;
     this.buffer = [];
@@ -84,9 +93,16 @@ class TCPToMTPSocketPipe extends EventEmitter {
 
   private pipeMTPToTCP() {
     // connect udp socket
-    this.mtpConnection = MTPConnection.connect(this.localNodeId, this.udpAddress.port, this.udpAddress.host, this.udpSocket);
+    this.mtpConnection = MTPConnection.connect(
+      this.localNodeId,
+      this.udpAddress.port,
+      this.udpAddress.host,
+      this.udpSocket,
+    );
 
-    console.log(`Successfully connected to udp address ${this.udpAddress.toString()}.`);
+    console.log(
+      `Successfully connected to udp address ${this.udpAddress.toString()}.`,
+    );
 
     // Connected, not pending anymore
     this.targetSocketPending = false;
@@ -125,9 +141,19 @@ class TCPToMTPSocketPipe extends EventEmitter {
   }
 
   terminate() {
-    console.log(`Terminating socket pipe...`);
+    this.logger.info(`terminating socket pipe...`);
+    this.mtpConnection.destroy(undefined, (error) => {
+      if (error) {
+        this.logger.error(`socket pipe could not be destroyed: ${error}`);
+      } else {
+        this.logger.info(`socket pipe successfully destroyed`);
+      }
+    });
+    this.logger.info(`removed all listeners`);
     this.removeAllListeners();
+    this.logger.info(`removed all listeners`);
     this.tcpSocket.destroy();
+    this.logger.info(`socket pipe successfully destroyed`);
   }
 }
 

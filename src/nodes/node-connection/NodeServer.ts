@@ -1,5 +1,5 @@
 import * as grpc from '@grpc/grpc-js';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 import NodeManager from '../NodeManager';
 import * as node from '../../../proto/js/Node_pb';
 import * as agent from '../../../proto/js/Agent_pb';
@@ -38,7 +38,7 @@ class NodeServer implements INodeServer {
     return new Promise<void>((resolve, reject) => {
       try {
         // get the server credentials
-        const tlsServerCredentials = this.nodeManager.pki.createServerCredentials();
+        // const tlsServerCredentials = this.nodeManager.pki.createServerCredentials();
         const credentials = grpc.ServerCredentials.createInsecure();
         // const credentials = grpc.ServerCredentials.createSsl(
         //   Buffer.from(tlsServerCredentials.rootCertificate),
@@ -155,23 +155,28 @@ class NodeServer implements INodeServer {
   // This is strictly a public relay node method so don't want
   // to return if not a public relay node
   async getUDPAddress(
-    call: grpc.ServerUnaryCall<agent.NodeInfoReadOnlyMessage, agent.StringMessage>,
+    call: grpc.ServerUnaryCall<
+      agent.NodeInfoReadOnlyMessage,
+      agent.StringMessage
+    >,
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
     try {
       if (!process.env.PUBLIC_RELAY_NODE) {
-        throw Error('node is not a public relay')
+        throw Error('node is not a public relay');
       } else {
         const nodeInfoReadOnly = NodeInfoReadOnly.fromNodeInfoReadOnlyMessage(
           call.request.toObject(),
         );
         if (!this.nodeManager.hasNode(nodeInfoReadOnly.id)) {
-          this.nodeManager.addNode(nodeInfoReadOnly)
+          this.nodeManager.addNode(nodeInfoReadOnly);
         }
         const response = new agent.StringMessage();
-        const udpAddress = await this.nodeManager.network.handleGetUDPAddress(nodeInfoReadOnly.id)
+        const udpAddress = await this.nodeManager.network.handleGetUDPAddress(
+          nodeInfoReadOnly.id,
+        );
         if (process.env.PK_PEER_HOST) {
-          udpAddress.updateHost(process.env.PK_PEER_HOST)
+          udpAddress.updateHost(process.env.PK_PEER_HOST);
         }
         response.setS(udpAddress.toString());
         callback(null, response);

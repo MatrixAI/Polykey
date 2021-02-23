@@ -200,6 +200,21 @@ class PolykeyAgent implements IAgentServer {
     this.pk.keyManager.refreshTimeout();
   }
 
+  private addBootstrapNodeInfo() {
+    this.logger.info('adding bootstrap node info');
+    const bootstrapNodeInfoPath =
+      process.env.BOOTSTRAP_NODE_INFO_PATH ??
+      path.join(os.homedir(), 'bootstrapNode.pem');
+    const bootstrapNodeInfo = new NodeInfoReadOnly(
+      fs.readFileSync(bootstrapNodeInfoPath).toString(),
+    );
+    if (this.pk.nodeManager.hasNode(bootstrapNodeInfo.id)) {
+      this.pk.nodeManager.updateNode(bootstrapNodeInfo);
+    } else {
+      this.pk.nodeManager.addNode(bootstrapNodeInfo);
+    }
+  }
+
   async addNode(
     call: grpc.ServerUnaryCall<
       agent.NodeInfoReadOnlyMessage,
@@ -480,6 +495,7 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { key } = call.request!.toObject();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for await (const _ of this.pk.gestaltGraph.discoverGestaltNode(key)) {
         call.write(new agent.EmptyMessage());
       }
@@ -496,6 +512,7 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { key, providerKey } = call.request!.toObject();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for await (const _ of this.pk.discovery.discoverIdentity(
         key,
         providerKey,
@@ -1037,50 +1054,8 @@ class PolykeyAgent implements IAgentServer {
       // finally start all services
       await this.pk.startAllServices();
 
-      this.pk.nodeManager.addNode(
-        new NodeInfoReadOnly(
-          `
-          -----BEGIN CERTIFICATE-----
-MIIGlDCCBHygAwIBAgIBATANBgkqhkiG9w0BAQ0FADCB2jEQMA4GA1UEAxMHcG9s
-eWtleTEKMAgGBCsBBAETADEKMAgGBCsBBAITADFBMD8GBCsBBAMTN2VjMi0zLTI2
-LTctNTAuYXAtc291dGhlYXN0LTIuY29tcHV0ZS5hbWF6b25hd3MuY29tOjEzMTQx
-QjBABgQrAQQEEzhlYzItMy0yNi03LTUwLmFwLXNvdXRoZWFzdC0yLmNvbXB1dGUu
-YW1hem9uYXdzLmNvbTo0NDY5NzEnMCUGBCsBBAUTHXsiZGF0YVR5cGUiOiJNYXAi
-LCJ2YWx1ZSI6W119MB4XDTIxMDIxOTAzMTQ0M1oXDTMxMDIxOTAzMTQ0M1owgdox
-EDAOBgNVBAMTB3BvbHlrZXkxCjAIBgQrAQQBEwAxCjAIBgQrAQQCEwAxQTA/BgQr
-AQQDEzdlYzItMy0yNi03LTUwLmFwLXNvdXRoZWFzdC0yLmNvbXB1dGUuYW1hem9u
-YXdzLmNvbToxMzE0MUIwQAYEKwEEBBM4ZWMyLTMtMjYtNy01MC5hcC1zb3V0aGVh
-c3QtMi5jb21wdXRlLmFtYXpvbmF3cy5jb206NDQ2OTcxJzAlBgQrAQQFEx17ImRh
-dGFUeXBlIjoiTWFwIiwidmFsdWUiOltdfTCCAiIwDQYJKoZIhvcNAQEBBQADggIP
-ADCCAgoCggIBAMKRsQUwaEY3losMhxRnvhT16DjWfdWNaezCo8NymlqDAR1ChUtj
-apmEAVHhbiMLmQoFLWMfuE580sIS6Y6EXmlGkj5haljANMPYAx2GDJOQmq7LuCuG
-kezsVRdS+giv0/HHQgTNAxf2U9OTHMLIZ11w+w4RlXQDMqR1Z8hjCYXqNmC+Pqp2
-f0rwDuypgt/WilKgRvGatgjtXiTupr59ynpANEoKXFkQVTUp1La20WeNaE0/+rCo
-CvIFdh0Y2m5LXBA1nPz7h0sMggLF/4TXFqkzGH1FpwfrrEHT5xZVZ2nYi8biBEct
-GgRfRccPLCjbAVbEEzzw/Mxg/ME8UW4QRF+n+7EHn4DLTinkV7wNZDziEQ8V891D
-IB6DZu83k9PcAwQsaLYYcqlbaFsVyNkpapmQySs3RavEKJvVQt1GfymIIaT4UwM/
-yWOaX28QGh2iBFJ8ZFBl+lZh/cvvsnwht2ml3+wZEmAER1ZSeVHZvQhWrD4mazeP
-lFMqOeWgoyXTjYctLFeW1q3pVvP2n2oVTfit9X6pRb896drYecswMjqU8UXl9ujP
-6yKRr+sWHy8nL5LtgPuy3htaw+auIl8d0TyfxmPHkvgkZ88GOMywy5MxDMiTswig
-acgm9horXZpHGu5gh0RiQKHCnQaUoBPgrwV9qJhWay8AueUksCCnL/wFAgMBAAGj
-YzBhMAwGA1UdEwQFMAMBAf8wCwYDVR0PBAQDAgL0MDEGA1UdJQQqMCgGCCsGAQUF
-BwMBBggrBgEFBQcDAgYIKwYBBQUHAwMGCCsGAQUFBwMIMBEGCWCGSAGG+EIBAQQE
-AwIAxTANBgkqhkiG9w0BAQ0FAAOCAgEAiSqECWa5jBgDXkXa6HHSuWAPiG3dZOS1
-aMu0fhGR/Szb6ryh735Qtz//2WmADj4KqT9bV7tvkcToikFtETi870/7xaLkE/uw
-NrSv3LF7JKfKbKSKOShvgXqNALUtyQnIfP1yhBmu9dFq14X3SOxo+9rFxa3xnpiO
-1WTlwQF1FngUNGYn/K0cPIru4TgSheK5T9RrzNdThvcWNjkvhUncmoVKFZ9XARUo
-VG7vizTEgk0oYl07IOiC/tiN6eED0DHLK/cEl5kzIcVx/lqIIHSfs1tO4j86a4h1
-vzesLVC0sJI90/Ufp8MQ9Bx/bNLdFAx4dEbLk2dk0zr2GMELAb0XbMdG2BEZXMW7
-j5oC3+kkogyZD0EPFq4XrOG6AaDpLqTWTWQ3e24WZ5Dvl0yJ3wDLr6Xl8ZNm12jE
-yP/w4T74N4Zb4rR+Q5b4AKtKVaSKc3XV5qtaHV1t1rE/rxUmqvEQwsjH3kOoDGgQ
-yFKxZANkt42HGhABtLig2S8JrZ7HVERXNRqRV8+DJZZExY3E8ibD2s2Qy0H7nWOb
-dekm1Qwa8o5uNH3JSPo7TEmobMSrmHc058UDvERbYk1LOhZ4ZbysMniIEOYcjpPN
-0/uj7Lr5RsY9TvxAoP/0Y9qAk+Qyo1AUEzwnA7P6Q9DP1LuxjpIVjQ3FX47mQXh0
-3xQMEUL++A4=
------END CERTIFICATE-----
-          `
-        )
-      )
+      // add bootstrap nodes
+      this.addBootstrapNodeInfo();
 
       callback(null, new agent.EmptyMessage());
     } catch (error) {
@@ -1399,6 +1374,9 @@ dekm1Qwa8o5uNH3JSPo7TEmobMSrmHc058UDvERbYk1LOhZ4ZbysMniIEOYcjpPN
 
       // finally start all services
       await this.pk.startAllServices();
+
+      // add bootstrap nodes
+      this.addBootstrapNodeInfo();
 
       // send response
       callback(null, new agent.EmptyMessage());
@@ -1957,6 +1935,7 @@ dekm1Qwa8o5uNH3JSPo7TEmobMSrmHc058UDvERbYk1LOhZ4ZbysMniIEOYcjpPN
     isElectron = false,
   ): Promise<number> {
     // either resolves a newly started process ID or true if the process is running already
+    // eslint-disable-next-line no-async-promise-executor
     return new Promise<number>(async (resolve, reject) => {
       try {
         if (

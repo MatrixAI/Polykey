@@ -61,13 +61,16 @@ const bufferToPacket = function (buffer: Buffer) {
     seq: buffer.readUInt16BE(16),
     ack: buffer.readUInt16BE(18),
     nodeId: buffer.toString('hex', 20, 36),
-    data: buffer.length > MIN_PACKET_SIZE ? buffer.slice(MIN_PACKET_SIZE) : null,
+    data:
+      buffer.length > MIN_PACKET_SIZE ? buffer.slice(MIN_PACKET_SIZE) : null,
   };
   return packet;
 };
 
 const packetToBuffer = function (packet: MTPPacket) {
-  const buffer = Buffer.alloc(MIN_PACKET_SIZE + (packet.data ? packet.data.length : 0));
+  const buffer = Buffer.alloc(
+    MIN_PACKET_SIZE + (packet.data ? packet.data.length : 0),
+  );
   buffer[0] = packet.id | VERSION;
   buffer[1] = EXTENSION;
   buffer.writeUInt16BE(packet.connection, 2);
@@ -77,11 +80,11 @@ const packetToBuffer = function (packet: MTPPacket) {
   buffer.writeUInt16BE(packet.seq, 16);
   buffer.writeUInt16BE(packet.ack, 18);
   // write node id
-  const nodeIdBuf = Buffer.from(packet.nodeId, 'hex')
-  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(0), 20)
-  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(4), 24)
-  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(8), 28)
-  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(12), 32)
+  const nodeIdBuf = Buffer.from(packet.nodeId, 'hex');
+  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(0), 20);
+  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(4), 24);
+  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(8), 28);
+  buffer.writeUInt32BE(nodeIdBuf.readUInt32BE(12), 32);
   // write data
   if (packet.data) {
     packet.data.copy(buffer, MIN_PACKET_SIZE);
@@ -93,7 +96,7 @@ const createPacket = function (
   connection: MTPConnection,
   id: number,
   nodeId: string,
-  data: Buffer | null
+  data: Buffer | null,
 ): MTPPacket {
   return {
     id: id,
@@ -108,7 +111,6 @@ const createPacket = function (
     sent: 0,
   };
 };
-
 
 export {
   EXTENSION,
@@ -130,6 +132,6 @@ export {
   packetToBuffer,
   createPacket,
   timestamp,
-  MTPPacket
+  MTPPacket,
 };
-export default MTPPacket
+export default MTPPacket;

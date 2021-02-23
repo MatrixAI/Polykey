@@ -1,7 +1,7 @@
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 import NodeDHT from './dht/NodeDHT';
 import Network from '../network/Network';
 import KeyManager from '../keys/KeyManager';
@@ -87,10 +87,7 @@ class NodeManager {
     ////////////
     // Server //
     ////////////
-    this.nodeServer = new NodeServer(
-      this,
-      this.logger.getChild('NodeServer'),
-    );
+    this.nodeServer = new NodeServer(this, this.logger.getChild('NodeServer'));
     this.nodeConnections = new Map();
 
     //////////////
@@ -199,7 +196,9 @@ class NodeManager {
     if (alias) {
       try {
         this.nodeAlias.set(alias, nodeInfo.id);
-      } catch (error) {}
+      } catch (error) {
+        // no throw
+      }
     }
     this.nodeDHT.addNode(nodeInfo.id);
     this.writeMetadata();
@@ -277,9 +276,11 @@ class NodeManager {
    * @param id ID of the desired node
    */
   async getNodeInfoFromDHT(id: string): Promise<NodeInfoReadOnly | null> {
-    this.logger.info(`searching DHT for node id: '${id}'`)
+    this.logger.info(`searching DHT for node id: '${id}'`);
     const targetNodeInfo = (await this.nodeDHT.findNode(id))?.targetNodeInfo;
-    this.logger.info(`found node info from DHT for node id: '${id}': ${targetNodeInfo}`)
+    this.logger.info(
+      `found node info from DHT for node id: '${id}': ${targetNodeInfo}`,
+    );
     return targetNodeInfo ?? null;
   }
 
@@ -444,7 +445,7 @@ class NodeManager {
     this.fileSystem.writeFileSync(this.nodeInfoMetadataPath, nodeInfoPem);
     // write node store
     const nodeInfoList: string[] = [];
-    for (const [_, nodeInfo] of this.nodeStore) {
+    for (const [, nodeInfo] of this.nodeStore) {
       nodeInfoList.push(nodeInfo.pem);
     }
 

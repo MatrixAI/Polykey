@@ -30,7 +30,7 @@ function parseSecretPath(secretPath: string): SecretPathComponents {
     throw Error('secret path is of the wrong format');
   }
 
-  const [_, vaultName, secretName, variableName] = secretPath.match(pathRegex)!;
+  const [, vaultName, secretName, variableName] = secretPath.match(pathRegex)!;
 
   return {
     vaultName,
@@ -51,7 +51,7 @@ async function promiseAny<T>(promiseList: Promise<T>[]): Promise<T> {
         .then((p) => {
           resolve(p);
         })
-        .catch((_) => null);
+        .catch(() => null);
 
       promise.catch((error) => {
         errorList.push(error);
@@ -135,7 +135,9 @@ async function getPort(
     try {
       const port = await tryPort(defaultPort, defaultHost);
       return port;
-    } catch (error) {}
+    } catch (error) {
+      // no throw
+    }
   }
   // get a random port if not
   const port = await tryPort(0, defaultHost);
