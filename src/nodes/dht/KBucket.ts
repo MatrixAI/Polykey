@@ -319,11 +319,11 @@ class KBucket {
       }
     }
 
-    const index = this.indexOf(node, idU8);
-    if (index >= 0) {
-      const contact = node.contacts.splice(index, 1)[0];
-      // this.emit('removed', contact)
-    }
+    // const index = this.indexOf(node, idU8);
+    // if (index >= 0) {
+    //   const contact = node.contacts.splice(index, 1)[0];
+    //   // this.emit('removed', contact)
+    // }
 
     return this;
   }

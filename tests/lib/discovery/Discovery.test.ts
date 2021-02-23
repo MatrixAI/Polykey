@@ -1,199 +1,199 @@
-/** To test */
-import Discovery from '../../../src/directory/Discovery';
+// /** To test */
+// import Discovery from '../../../src/directory/Discovery';
 
-/** Mock dependencies */
-import fs from 'fs';
-import Logger from '@matrixai/js-logger';
-import KeyManager from '../../../src/keys/KeyManager';
-import GestaltTrust from '../../../src/gestalts/GestaltTrust';
-import GestaltGraph from '../../../src/gestalts/GestaltGraph';
-import PeerManager from '../../../src/peers/PeerManager';
-import {
-  IdentityInfo,
-  ProviderManager,
-  ProviderTokens,
-} from '../../../src/social';
-import { GitHubProvider } from '../../../src/social/providers/github';
+// /** Mock dependencies */
+// import fs from 'fs';
+// import Logger from '@matrixai/js-logger';
+// import KeyManager from '../../../src/keys/KeyManager';
+// import GestaltTrust from '../../../src/gestalts/GestaltTrust';
+// import GestaltGraph from '../../../src/gestalts/GestaltGraph';
+// import PeerManager from '../../../src/peers/PeerManager';
+// import {
+//   IdentityInfo,
+//   ProviderManager,
+//   ProviderTokens,
+// } from '../../../src/social';
+// import { GitHubProvider } from '../../../src/social/providers/github';
 
-/** Types */
-import type { LinkInfoIdentity } from '../../../src/links';
-import { PeerInfoReadOnly } from '../../../src/Polykey';
+// /** Types */
+// import type { LinkInfoIdentity } from '../../../src/links';
+// import { PeerInfoReadOnly } from '../../../src/Polykey';
 
-/** Mock */
-jest.mock('../../../src/keys/KeyManager', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      getKeyPair: () => {
-        return {
-          publicKey: 'publicKey',
-        };
-      },
-      getPublicKeyString: () => {
-        return 'PublicKeyString';
-      },
-      getPrivateKey: () => {
-        return 'privateKey';
-      },
-    };
-  });
-});
-// jest.mock('../../../src/gestalts/GestaltTrust', () => {
-//   return jest.fn().mockImplementation(() => {
-//     return {};
-//   });
-// });
-
-jest.mock('../../../src/peers/PeerManager', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      verifyLinkClaim(): Promise<boolean> {
-        return Promise.resolve(true);
-      },
-      getPeer(): any {
-        return 'peerid';
-      },
-    };
-  });
-});
-// jest.mock('../../../src/social', () => {
-//   return {
-//     ProviderManager: jest.fn().mockImplementation(() => {
-//       return {
-
-//       };
-//     }),
-//     ProviderTokens: jest.fn().mockImplementation(() => {
-//       return {
-
-//       };
-//     })
-//   }
-// });
-
-// jest.mock('../../../src/social/providers/github', () => {
-//   return {
-//     GitHubProvider: jest.fn().mockImplementation(() => {
-//       return {
-
-//       };
-//     })
-//   }
-// });
-
-// jest.mock('../../../src/gestalts/GestaltGraph', () => {
+// /** Mock */
+// jest.mock('../../../src/keys/KeyManager', () => {
 //   return jest.fn().mockImplementation(() => {
 //     return {
-//       setIdentity: () => {
-
+//       getKeyPair: () => {
+//         return {
+//           publicKey: 'publicKey',
+//         };
 //       },
-//       identities: {
-//         'key1' : {}
-//       }
+//       getPublicKeyString: () => {
+//         return 'PublicKeyString';
+//       },
+//       getPrivateKey: () => {
+//         return 'privateKey';
+//       },
 //     };
-//   })
+//   });
 // });
+// // jest.mock('../../../src/gestalts/GestaltTrust', () => {
+// //   return jest.fn().mockImplementation(() => {
+// //     return {};
+// //   });
+// // });
 
-describe('Discovery', () => {
-  test('Discovery using Identities', async () => {
-    console.log('start');
+// jest.mock('../../../src/peers/PeerManager', () => {
+//   return jest.fn().mockImplementation(() => {
+//     return {
+//       verifyLinkClaim(): Promise<boolean> {
+//         return Promise.resolve(true);
+//       },
+//       getPeer(): any {
+//         return 'peerid';
+//       },
+//     };
+//   });
+// });
+// // jest.mock('../../../src/social', () => {
+// //   return {
+// //     ProviderManager: jest.fn().mockImplementation(() => {
+// //       return {
 
-    // /** This should be transfered to a setup and teardown */
-    const fakePath = 'test';
-    const fakeKey = 'gideonairex';
-    const fakeProvider = 'github.com';
-    const logger = new Logger();
+// //       };
+// //     }),
+// //     ProviderTokens: jest.fn().mockImplementation(() => {
+// //       return {
 
-    /** Mock  */
-    const spyGetIdentityInfo = jest
-      .spyOn(GitHubProvider.prototype, 'getIdentityInfo')
-      .mockImplementation(
-        (): Promise<IdentityInfo> => {
-          return Promise.resolve({
-            key: fakeKey,
-            provider: fakeProvider,
-          });
-        },
-      );
+// //       };
+// //     })
+// //   }
+// // });
 
-    const spyGetLinkInfos = jest
-      .spyOn(GitHubProvider.prototype, 'getLinkInfos')
-      .mockImplementation(
-        async function* getLinkInfos(): AsyncGenerator<LinkInfoIdentity> {
-          yield {
-            key: 'dd',
-            type: 'identity',
-            node: 'ad',
-            identity: 'gideonairex',
-            provider: 'github.com',
-            dateIssued: '2231',
-            signature: 'adawd',
-          };
-        },
-      );
+// // jest.mock('../../../src/social/providers/github', () => {
+// //   return {
+// //     GitHubProvider: jest.fn().mockImplementation(() => {
+// //       return {
 
-    // /** Init */
-    const keyManager = new KeyManager(
-      fakePath,
-      fs,
-      logger.getLogger('KeyManager'),
-    );
+// //       };
+// //     })
+// //   }
+// // });
 
-    const gestaltTrust = new GestaltTrust();
+// // jest.mock('../../../src/gestalts/GestaltGraph', () => {
+// //   return jest.fn().mockImplementation(() => {
+// //     return {
+// //       setIdentity: () => {
 
-    const peerManager = new PeerManager(
-      fakePath,
-      fs,
-      keyManager,
-      logger.getLogger('PeerManager'),
-    );
+// //       },
+// //       identities: {
+// //         'key1' : {}
+// //       }
+// //     };
+// //   })
+// // });
 
-    const providerManger = new ProviderManager([
-      new GitHubProvider(
-        new ProviderTokens(fakePath, 'github.com'),
-        'ca5c4c520da868387c52',
-        logger.getLogger('ProviderManager'),
-      ),
-    ]);
+// describe('Discovery', () => {
+//   test('Discovery using Identities', async () => {
+//     console.log('start');
 
-    const gestaltGraph = new GestaltGraph(
-      gestaltTrust,
-      peerManager,
-      providerManger,
-      peerManager.verifyLinkClaim.bind(peerManager),
-      logger.getLogger('KeyManager'),
-    );
+//     // /** This should be transfered to a setup and teardown */
+//     const fakePath = 'test';
+//     const fakeKey = 'gideonairex';
+//     const fakeProvider = 'github.com';
+//     const logger = new Logger();
 
-    /** Intitialize Discovery */
-    const discovery = new Discovery(
-      gestaltTrust,
-      peerManager,
-      providerManger,
-      peerManager.verifyLinkClaim.bind(peerManager),
-      gestaltGraph,
-    );
+//     /** Mock  */
+//     const spyGetIdentityInfo = jest
+//       .spyOn(GitHubProvider.prototype, 'getIdentityInfo')
+//       .mockImplementation(
+//         (): Promise<IdentityInfo> => {
+//           return Promise.resolve({
+//             key: fakeKey,
+//             provider: fakeProvider,
+//           });
+//         },
+//       );
 
-    console.log('setIdentity');
+//     const spyGetLinkInfos = jest
+//       .spyOn(GitHubProvider.prototype, 'getLinkInfos')
+//       .mockImplementation(
+//         async function* getLinkInfos(): AsyncGenerator<LinkInfoIdentity> {
+//           yield {
+//             key: 'dd',
+//             type: 'identity',
+//             node: 'ad',
+//             identity: 'gideonairex',
+//             provider: 'github.com',
+//             dateIssued: '2231',
+//             signature: 'adawd',
+//           };
+//         },
+//       );
 
-    /** setIdentity  */
-    gestaltGraph.setIdentity({
-      key: 'gideonairex',
-      provider: 'github.com',
-    });
+//     // /** Init */
+//     const keyManager = new KeyManager(
+//       fakePath,
+//       fs,
+//       logger.getLogger('KeyManager'),
+//     );
 
-    console.log('discoverIdentity');
+//     const gestaltTrust = new GestaltTrust();
 
-    const discoveryNode = await discovery.discoverIdentity(
-      fakeKey,
-      fakeProvider,
-    );
+//     const peerManager = new PeerManager(
+//       fakePath,
+//       fs,
+//       keyManager,
+//       logger.getLogger('PeerManager'),
+//     );
 
-    console.log('starting');
-    await discoveryNode.next();
+//     const providerManger = new ProviderManager([
+//       new GitHubProvider(
+//         new ProviderTokens(fakePath, 'github.com'),
+//         'ca5c4c520da868387c52',
+//         logger.getLogger('ProviderManager'),
+//       ),
+//     ]);
 
-    console.log(gestaltGraph.identities);
-    console.log(gestaltGraph.nodes);
+//     const gestaltGraph = new GestaltGraph(
+//       gestaltTrust,
+//       peerManager,
+//       providerManger,
+//       peerManager.verifyLinkClaim.bind(peerManager),
+//       logger.getLogger('KeyManager'),
+//     );
 
-    spyGetIdentityInfo.mockRestore();
-    spyGetLinkInfos.mockRestore();
-  });
-});
+//     /** Intitialize Discovery */
+//     const discovery = new Discovery(
+//       gestaltTrust,
+//       peerManager,
+//       providerManger,
+//       peerManager.verifyLinkClaim.bind(peerManager),
+//       gestaltGraph,
+//     );
+
+//     console.log('setIdentity');
+
+//     /** setIdentity  */
+//     gestaltGraph.setIdentity({
+//       key: 'gideonairex',
+//       provider: 'github.com',
+//     });
+
+//     console.log('discoverIdentity');
+
+//     const discoveryNode = await discovery.discoverIdentity(
+//       fakeKey,
+//       fakeProvider,
+//     );
+
+//     console.log('starting');
+//     await discoveryNode.next();
+
+//     console.log(gestaltGraph.identities);
+//     console.log(gestaltGraph.nodes);
+
+//     spyGetIdentityInfo.mockRestore();
+//     spyGetLinkInfos.mockRestore();
+//   });
+// });

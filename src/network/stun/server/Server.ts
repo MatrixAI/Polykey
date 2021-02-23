@@ -4,7 +4,6 @@
 // import { Address } from '../../../peers/PeerInfo'
 // import { EventEmitter } from 'events'
 
-
 // class Server extends EventEmitter {
 //   // config
 //   relayIpList: string[]

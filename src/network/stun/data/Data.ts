@@ -26,7 +26,6 @@
 //     return true;
 //   };
 
-
 //   readUncontiguous(indexArray: number[]) {
 //     let value = 0;
 //     for (const [idx, bitIdx] of indexArray.entries()) {

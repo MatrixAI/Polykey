@@ -117,8 +117,6 @@ class Vault {
     const release = await this.mutex.acquire();
     try {
       this.efs.renameSync(`../${this.name}`, `../${newName}`);
-    } catch (error) {
-      throw error;
     } finally {
       release();
     }
@@ -131,8 +129,6 @@ class Vault {
     const release = await this.mutex.acquire();
     try {
       return this.efs.statSync(`../${this.name}`);
-    } catch (error) {
-      throw error;
     } finally {
       release();
     }
@@ -153,8 +149,6 @@ class Vault {
         [{ secretName, action: 'added' }],
         `Add secret: ${secretName}`,
       );
-    } catch (error) {
-      throw error;
     } finally {
       release();
     }
@@ -189,8 +183,6 @@ class Vault {
           commitList[1].secretName
         } and ${commitList.length - 2} more`,
       );
-    } catch (error) {
-      throw error;
     } finally {
       release();
     }
@@ -233,8 +225,6 @@ class Vault {
         [{ secretName, action: 'modified' }],
         `Update secret: ${secretName}`,
       );
-    } catch (error) {
-      throw error;
     } finally {
       release();
     }
@@ -301,8 +291,6 @@ class Vault {
         }
       }
       throw Error('path: ' + secretName + ' does not exist in vault');
-    } catch (error) {
-      throw error;
     } finally {
       release();
     }
@@ -414,8 +402,6 @@ class Vault {
 
       // Load any new secrets
       await this.loadSecrets();
-    } catch (error) {
-      throw error;
     } finally {
       release();
     }

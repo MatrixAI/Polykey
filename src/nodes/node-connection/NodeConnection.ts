@@ -1,13 +1,12 @@
-import { pki } from 'node-forge';
 import { randomBytes } from 'crypto';
 import * as grpc from '@grpc/grpc-js';
 import { promiseAny } from '../../utils';
 import { promisifyGrpc } from '../../bin/utils';
 import * as node from '../../../proto/js/Node_pb';
 import { NodeClient } from '../../../proto/js/Node_grpc_pb';
-import { NodeInfo, NodeInfoReadOnly, Address } from '../NodeInfo';
+import { NodeInfoReadOnly, Address } from '../NodeInfo';
 import PublicKeyInfrastructure from '../pki/PublicKeyInfrastructure';
-import Logger from '@matrixai/logger'
+import Logger from '@matrixai/logger';
 
 class NodeConnection {
   private nodeId: string;
@@ -28,14 +27,10 @@ class NodeConnection {
 
   // private requestUDPHolePunchDirectly: (targetNodeId: string, timeout?: number | undefined) => Promise<Address>;
 
-
-
-
   private channelOptions: grpc.ChannelOptions = {
-    "grpc.keepalive_permit_without_calls": 0,
-    "grpc.keepalive_time_ms": 1000,
-
-  }
+    'grpc.keepalive_permit_without_calls': 0,
+    'grpc.keepalive_time_ms': 1000,
+  };
   private nodeClient: NodeClient;
   async getNodeClient(directOnly: boolean = false): Promise<NodeClient> {
     // connect to node
@@ -73,8 +68,8 @@ class NodeConnection {
     if (!nodeInfo) {
       throw Error('node info was not found in node store');
     }
-    const nodeInfoPem = Buffer.from(nodeInfo.pem);
-    const tlsClientCredentials = this.pki.createClientCredentials();
+    // const nodeInfoPem = Buffer.from(nodeInfo.pem);
+    // const tlsClientCredentials = this.pki.createClientCredentials();
     this.credentials = grpc.ChannelCredentials.createInsecure();
     // this.credentials = grpc.ChannelCredentials.createSsl(
     //   nodeInfoPem,
@@ -93,23 +88,22 @@ class NodeConnection {
     if (host == '0.0.0.0' || host == '127.0.0.1' || host == 'localhost') {
       throw Error('temporary error to simulate no direct connection ability');
     }
-    try {
-      // try to create a direct connection
-      if (address) {
-        this.logger.info(
-          'connectingNode: connecting directly to address: ' +
-            address.toString(),
-        );
+    // try to create a direct connection
+    if (address) {
+      this.logger.info(
+        'connectingNode: connecting directly to address: ' + address.toString(),
+      );
 
-        const nodeClient = new NodeClient(address.toString(), this.credentials, this.channelOptions);
-        await this.waitForReadyAsync(nodeClient);
-        this.connected = true;
-        return nodeClient;
-      } else {
-        throw Error('node does not have a connected address');
-      }
-    } catch (error) {
-      throw error;
+      const nodeClient = new NodeClient(
+        address.toString(),
+        this.credentials,
+        this.channelOptions,
+      );
+      await this.waitForReadyAsync(nodeClient);
+      this.connected = true;
+      return nodeClient;
+    } else {
+      throw Error('node does not have a connected address');
     }
   }
 
@@ -121,9 +115,7 @@ class NodeConnection {
       if (!nodeId) {
         throw Error('connectDHT: node was not found in node store');
       }
-      const { targetNodeInfo, adjacentNodeInfo } = await this.findNodeDHT(
-        nodeId,
-      );
+      const { targetNodeInfo } = await this.findNodeDHT(nodeId);
 
       // TODO: reenable connectHolePunchDirectly and connectHolePunchViaNode and connectRelay after the demo
       // we only want relay
@@ -222,6 +214,7 @@ class NodeConnection {
     timeout: number = 200000,
     directOnly: boolean = false,
   ): Promise<void> {
+    // eslint-disable-next-line no-async-promise-executor
     return await new Promise<void>(async (resolve, reject) => {
       if (timeout) {
         setTimeout(
@@ -242,7 +235,7 @@ class NodeConnection {
 
         // try a ping
         if (this.connected) {
-        // if (this.connected && (await this.sendPingRequest(50000))) {
+          // if (this.connected && (await this.sendPingRequest(50000))) {
           resolve();
         } else {
           try {

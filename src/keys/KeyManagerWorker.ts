@@ -1,4 +1,3 @@
-import { promisify } from 'util';
 import { pki, md } from 'node-forge';
 import { expose } from 'threads/worker';
 

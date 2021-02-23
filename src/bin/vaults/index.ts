@@ -237,7 +237,7 @@ commandShareVault.action(
 );
 
 const commandUnshareVault = new commander.Command('unshare');
-commandUnshareVault.description('pull a vault from a node');
+commandUnshareVault.description('unshare a vault from a node');
 commandUnshareVault.option(
   '-k, --node-path <nodePath>',
   'provide the polykey path',

@@ -89,8 +89,6 @@ class NodeDHT {
       if (this.getLocalPeerId() != id) {
         await this.kBucket.add(id);
       }
-    } catch (error) {
-      throw error;
     } finally {
       this.addingPeer = false;
     }
@@ -104,8 +102,6 @@ class NodeDHT {
           await this.kBucket.add(id);
         }
       }
-    } catch (error) {
-      throw error;
     } finally {
       this.addingPeers = false;
     }
@@ -115,8 +111,6 @@ class NodeDHT {
     this.deletingPeer = true;
     try {
       this.kBucket.remove(id);
-    } catch (error) {
-      throw error;
     } finally {
       this.deletingPeer = false;
     }

@@ -1,8 +1,8 @@
 // adapted from https://github.com/mafintosh/cyclist
 class CyclicalBuffer<T> {
-  mask: number
-  size: number
-  values: Map<number, T | undefined> = new Map
+  mask: number;
+  size: number;
+  values: Map<number, T | undefined> = new Map();
 
   private twoify(n: number) {
     if (n && !(n & (n - 1))) return n;
@@ -12,9 +12,9 @@ class CyclicalBuffer<T> {
   }
 
   constructor(size: number) {
-    size = this.twoify(size)
-    this.mask = size - 1
-    this.size = size
+    size = this.twoify(size);
+    this.mask = size - 1;
+    this.size = size;
   }
 
   put(index: number, val: T): number {
@@ -35,4 +35,4 @@ class CyclicalBuffer<T> {
   }
 }
 
-export default CyclicalBuffer
+export default CyclicalBuffer;

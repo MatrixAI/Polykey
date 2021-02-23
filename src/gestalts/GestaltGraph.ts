@@ -3,8 +3,6 @@ import path from 'path';
 import os from 'os';
 import type { IdentityKey, NodeId, ProviderKey } from '../types';
 import type {
-  LinkClaimIdentity,
-  LinkClaimNode,
   LinkClaim,
   LinkInfo,
   LinkInfoIdentity,
@@ -22,7 +20,7 @@ import type {
 } from './types';
 
 import { ProviderManager } from '../social';
-import { gestaltKey, ungestaltKey } from './utils';
+import { gestaltKey } from './utils';
 import NodeManager from '../nodes/NodeManager';
 import GestaltTrust from './GestaltTrust';
 import Logger from '@matrixai/logger';

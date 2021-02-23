@@ -94,6 +94,7 @@ class MulticastBroadcaster extends EventEmitter {
     this.broadcastInterval = setInterval(broadcast, this.interval);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleBroadcastMessage(request: any, rinfo: any) {
     try {
       // construct a node info object

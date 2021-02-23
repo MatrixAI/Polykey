@@ -42,6 +42,10 @@ class MTPConnection extends Duplex {
   seq: number;
   ack: number;
   private synack?: MTPPacket;
+  // eslint-disable-next-line no-undef
+  private resendInterval: NodeJS.Timeout;
+  // eslint-disable-next-line no-undef
+  private keepAliveInterval: NodeJS.Timeout;
 
   constructor(
     nodeId: string,
@@ -145,8 +149,8 @@ class MTPConnection extends Duplex {
       }
     }
 
-    const resend = setInterval(this.resend.bind(this), 500);
-    const keepAlive = setInterval(this.keepAlive.bind(this), 10 * 1000);
+    this.resendInterval = setInterval(this.resend.bind(this), 500);
+    this.keepAliveInterval = setInterval(this.keepAlive.bind(this), 10 * 1000);
     let tick = 0;
 
     const closed = () => {
@@ -166,22 +170,28 @@ class MTPConnection extends Duplex {
     this.once('finish', sendFin);
     this.once('close', () => {
       if (!syn) {
-        setTimeout(socket.close.bind(socket), CLOSE_GRACE);
+        setTimeout(() => {
+          try {
+            socket.close();
+          } catch (error) {
+            // no throw
+          }
+        }, CLOSE_GRACE);
       }
-      clearInterval(resend);
-      clearInterval(keepAlive);
+      clearInterval(this.resendInterval);
+      clearInterval(this.keepAliveInterval);
     });
     this.once('end', () => {
       process.nextTick(closed);
     });
 
     this.socket.on('close', () => {
-      this.end()
-    })
+      this.end();
+    });
     this.socket.on('error', (err) => {
-      this.logger.error(err)
-      this.end()
-    })
+      this.logger.error(err);
+      this.end();
+    });
   }
 
   destroy(
@@ -189,8 +199,11 @@ class MTPConnection extends Duplex {
     callback?: ((error: Error | null) => void) | undefined,
   ) {
     if (err) {
-      console.log(err);
+      this.logger.info(err);
     }
+    // clear all intervals
+    clearInterval(this.resendInterval);
+    clearInterval(this.keepAliveInterval);
     this.end(callback);
     return this;
   }
@@ -394,14 +407,17 @@ class MTPConnection extends Duplex {
     } catch (error) {
       this.logger.error(
         'MTPConnection: error when trying to transmit packet: ' +
-        error.toString(),
+          error.toString(),
       );
-      if (error.toString().includes("ERR_SOCKET_DGRAM_NOT_RUNNING")) {
-        this.logger.error('dgram socket is not running, destroying connection')
+      if (error.toString().includes('ERR_SOCKET_DGRAM_NOT_RUNNING')) {
+        this.logger.error('dgram socket is not running, destroying connection');
         this.destroy(error, (err) => {
-          this.logger.error(`MTPConnection could not be destroyed, closing connection: "${err?.toString()}"`)
-          this.end()
-        })
+          if (err) {
+            this.logger.error(
+              `MTPConnection could not be destroyed, closing connection: "${err?.toString()}"`,
+            );
+          }
+        });
       }
     }
   }

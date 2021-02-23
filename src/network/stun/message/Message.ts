@@ -127,11 +127,9 @@
 //     // read attributes
 //     let attributes = data.slice(20) as Data;
 
-
 //     while (attributes.length >= 4) {
 //       const attribute = new Attribute(this);
 //       attribute.read(attributes);
-
 
 //       // if (attribute.type === STUNAttributeType.MESSAGE_INTEGRITY) {
 //       //   let hmacInput = data.slice(0, 20 + this.length);
@@ -143,7 +141,6 @@
 //       //     let password = this.socket.authentification.credentials[username];
 //       //     if (!password) {
 //       //       console.log('password not provided');
-
 
 //       //       attribute.value = false;
 //       //     } else {
@@ -192,7 +189,6 @@
 //     if (this.state == MessageStateType.WAITING) {
 //       return;
 //     }
-
 
 //     this.class = MessageClassType.ERROR;
 //     this.addAttribute(STUNAttributeType.ERROR_CODE, {
