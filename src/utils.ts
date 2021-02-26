@@ -6,7 +6,10 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 import process from 'process';
+
+/** Internal  */
 import { ErrorPolykey } from './errors';
+import { PK_NODE_PATH } from './config';
 
 /**
  * Returns a 5 character long random string of lower case letters
@@ -307,7 +310,7 @@ function terminatingHttpServer(
   return terminate;
 }
 
-function getDefaultNodePath(prefix: string = 'polykey'): string {
+function getDefaultNodePath(prefix: string = '.polykey'): string {
   const platform = os.platform();
   let p;
   if (platform === 'linux') {
@@ -336,6 +339,16 @@ function getDefaultNodePath(prefix: string = 'polykey'): string {
   return p;
 }
 
+function getNodePath(nodePath?: string) {
+  if (nodePath) {
+    return nodePath;
+  }
+  if (PK_NODE_PATH) {
+    return PK_NODE_PATH;
+  }
+  return getDefaultNodePath();
+}
+
 export {
   randomString,
   parseSecretPath,
@@ -352,4 +365,5 @@ export {
   readdirRecursively,
   terminatingHttpServer,
   getDefaultNodePath,
+  getNodePath,
 };

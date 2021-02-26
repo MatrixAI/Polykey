@@ -3,10 +3,10 @@ import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../utils';
+import { getNodePath } from '../../utils';
 
 const commandAuthenticateProvider = createCommand('authenticate', {
   verbose: true,
@@ -27,7 +27,7 @@ commandAuthenticateProvider.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.AuthenticateProviderRequest();
   request.setProviderKey(options.providerKey);
@@ -58,7 +58,7 @@ commandAugmentKeynode.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.AugmentKeynodeRequest();
   request.setProviderKey(options.providerKey);

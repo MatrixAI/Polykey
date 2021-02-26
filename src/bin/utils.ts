@@ -48,31 +48,6 @@ function createCommand(
   return cmd;
 }
 
-function resolveTilde(filePath: string) {
-  if (filePath[0] === '~' && (filePath[1] === '/' || filePath.length === 1)) {
-    filePath = filePath.replace('~', os.homedir());
-  }
-  return filePath;
-}
-
-function resolveKeynodeStatePath(nodePath?: string) {
-  let defaultPath = '/';
-  if (os.platform() === 'win32') {
-    defaultPath = process.env.APPDATA ?? os.homedir();
-  } else if (os.homedir()) {
-    defaultPath = os.homedir();
-  }
-
-  const resolvedNodePath =
-    nodePath ?? process.env.PK_PATH ?? path.join(defaultPath, '.polykey');
-  if (!resolvedNodePath) {
-    throw Error(
-      'no keynode path, set as an environment variable "export PK_PATH=\'<path>\'", or as a argument "--node-path \'<path>\'"',
-    );
-  }
-  return resolveTilde(resolvedNodePath);
-}
-
 function promisifyGrpc<t1, t2>(
   fn: (
     request: t1,
@@ -129,8 +104,6 @@ async function getAgentClient(
 export {
   verboseToLogLevel,
   createCommand,
-  resolveKeynodeStatePath,
-  resolveTilde,
   promisifyGrpc,
   getAgentClient,
   PolykeyCommand,

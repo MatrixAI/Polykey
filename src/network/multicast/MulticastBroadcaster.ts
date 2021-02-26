@@ -1,5 +1,6 @@
 import dgram from 'dgram';
 import { EventEmitter } from 'events';
+import { PK_NODE_MULTICAST_PORT, PK_NODE_MULTICAST_HOST } from '../../config';
 import KeyManager from '../../keys/KeyManager';
 import { Node, NodePeer } from '../../nodes/Node';
 
@@ -14,9 +15,6 @@ import { Node, NodePeer } from '../../nodes/Node';
 // resolves hostnames to IP addresses within small networks
 // that do not include a local name server
 // """
-
-const UDP_MULTICAST_PORT = parseInt(process.env.UDP_MULTICAST_PORT ?? '5353');
-const UDP_MULTICAST_ADDR = process.env.UDP_MULTICAST_ADDR ?? '224.0.0.251';
 
 class MulticastBroadcaster extends EventEmitter {
   getNodeInfo: () => Node;
@@ -46,13 +44,13 @@ class MulticastBroadcaster extends EventEmitter {
 
     // Create socket
     this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
-    this.socket.bind(UDP_MULTICAST_PORT as number);
+    this.socket.bind(PK_NODE_MULTICAST_PORT as number);
 
     // Set up listener
     this.socket.on(
       'listening',
       (() => {
-        this.socket.addMembership(UDP_MULTICAST_ADDR);
+        this.socket.addMembership(PK_NODE_MULTICAST_HOST);
         // Start the broadcasting process
         this.startBroadcasting();
       }).bind(this),
@@ -84,8 +82,8 @@ class MulticastBroadcaster extends EventEmitter {
         nodeInfoPem,
         0,
         nodeInfoPem.length,
-        UDP_MULTICAST_PORT,
-        UDP_MULTICAST_ADDR,
+        PK_NODE_MULTICAST_PORT as number,
+        PK_NODE_MULTICAST_HOST,
       );
     };
 

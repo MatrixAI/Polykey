@@ -3,10 +3,10 @@ import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../utils';
+import { getNodePath } from '../../utils';
 
 const commandSign = createCommand('sign', { verbose: true });
 commandSign.description('signing operations [files]');
@@ -24,7 +24,7 @@ commandSign.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const signingKeyPath = options.signingKey;
   const keyPassphrase = options.keyPassphrase;
@@ -68,7 +68,7 @@ commandVerify.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const filePath = options.signedFile;
   const request = new agentPB.VerifyFileMessage();
@@ -96,7 +96,7 @@ commandEncrypt.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const filePath = options.filePath;
   try {
@@ -134,7 +134,7 @@ commandDecrypt.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const filePath = options.filePath;
   try {

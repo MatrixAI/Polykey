@@ -3,10 +3,10 @@ import * as agentPB from '../../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../../utils';
+import { getNodePath } from '../../../utils';
 
 const commandNewToken = createCommand('new', { verbose: true });
 commandNewToken.description('create a new bearer token for the api');
@@ -27,7 +27,7 @@ commandNewToken.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const scopes: string[] = options.scopes.split(' ');
   const req = new agentPB.NewOAuthTokenMessage();
@@ -53,7 +53,7 @@ commandRevokeToken.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const req = new agentPB.StringMessage();
   req.setS(options.token);
@@ -72,7 +72,7 @@ commandListTokens.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const res = (await promisifyGrpc(client.listOAuthTokens.bind(client))(
     new agentPB.EmptyMessage(),

@@ -12,11 +12,11 @@ import commandAgent from './agent';
 import commandCA from './ca';
 import commandOAuth from './oauth';
 import { createCommand } from './utils';
-import packageJson from '../../package.json';
 
 async function main(argv = process.argv): Promise<number> {
   const rootCommand = createCommand();
-  rootCommand.version(packageJson.version);
+  // Do this manually as it will break the folder structure when building and importing package.json here
+  rootCommand.version('0.0.33');
   rootCommand.enablePositionalOptions();
   rootCommand.exitOverride();
   rootCommand.addCommand(commandKeys);

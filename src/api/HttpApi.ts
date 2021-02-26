@@ -10,6 +10,14 @@ import session from 'express-session';
 import swaggerUI from 'swagger-ui-express';
 import Logger from '@matrixai/logger';
 import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
+
+/** Internal */
+import {
+  PK_BOOTSTRAP_HOSTS,
+  PK_NODE_PORT_HTTP,
+  PK_NODE_ADDR_HTTP,
+} from '../config';
+
 import { Address } from '../nodes/Node';
 import { BasicStrategy } from 'passport-http';
 import OAuth2 from './AuthorizationServer/OAuth2';
@@ -99,10 +107,7 @@ class HttpApi {
     }
   }
 
-  async start(
-    host = process.env.PK_API_HOST ?? '0.0.0.0',
-    port = parseInt(process.env.PK_API_PORT ?? '0'),
-  ) {
+  async start(host = PK_NODE_ADDR_HTTP, port = parseInt(PK_NODE_PORT_HTTP)) {
     return new Promise<number>((resolve, reject) => {
       try {
         this.tlsCredentials = this.getTlsCredentials();
@@ -273,7 +278,7 @@ class HttpApi {
         this.setupOpenApiRouter();
 
         // Start the server
-        const pkHost = process.env.PK_PEER_HOST ?? 'localhost';
+        const pkHost = PK_BOOTSTRAP_HOSTS ?? 'localhost';
         const httpsOptions: https.ServerOptions = {
           cert: this.tlsCredentials.certificate,
           key: this.tlsCredentials.keypair.private,

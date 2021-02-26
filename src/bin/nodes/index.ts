@@ -4,10 +4,10 @@ import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   getAgentClient,
   promisifyGrpc,
 } from '../utils';
+import { getNodePath } from '../../utils';
 
 const commandAddNode = createCommand('add', { verbose: true });
 commandAddNode.description('add a new node to the store');
@@ -35,7 +35,7 @@ commandAddNode.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const pemFileData = fs.readFileSync(options.pem).toString();
   const request = new agentPB.NodeInfoReadOnlyMessage();
@@ -73,7 +73,7 @@ commandAddAlias.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   if (options.unset) {
     const request = new agentPB.StringMessage();
@@ -109,7 +109,7 @@ commandFindNode.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.ContactNodeMessage();
   request.setPublicKeyOrHandle(options.nodeId);
@@ -140,7 +140,7 @@ commandGetNodeInfo.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   let res: agentPB.NodeInfoMessage;
   if (options.currentNode) {
@@ -201,7 +201,7 @@ commandListNodes.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const res = (await promisifyGrpc(client.listNodes.bind(client))(
     new agentPB.EmptyMessage(),
@@ -237,7 +237,7 @@ commandPingNode.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.ContactNodeMessage();
   request.setPublicKeyOrHandle(options.nodeId);
@@ -260,7 +260,7 @@ commandStealthActive.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.BooleanMessage();
   request.setB(true);
@@ -277,7 +277,7 @@ commandStealthInactive.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.BooleanMessage();
   request.setB(false);
@@ -316,7 +316,7 @@ commandUpdateNodeInfo.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   if (options.currentNode) {
     const nodeInfo = new agentPB.NodeInfoMessage();

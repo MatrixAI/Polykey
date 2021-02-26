@@ -4,10 +4,10 @@ import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../utils';
+import { getNodePath } from '../../utils';
 
 const commandGetRootCertificate = createCommand('root', { verbose: true });
 commandGetRootCertificate.description('retrieve the root certificate');
@@ -19,7 +19,7 @@ commandGetRootCertificate.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const res = (await promisifyGrpc(client.getRootCertificate.bind(client))(
     new agentPB.EmptyMessage(),
@@ -50,7 +50,7 @@ commandNewCert.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.NewClientCertificateMessage();
   request.setDomain(options.clientHost);

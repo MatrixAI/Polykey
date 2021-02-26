@@ -46,7 +46,7 @@ class NodeManager {
   private stealthMode: boolean;
 
   constructor(
-    polykeyPath = `${os.homedir()}/.polykey`,
+    polykeyPath,
     fileSystem: typeof fs,
     keyManager: KeyManager,
     nodeNotification: NodeNotifications,

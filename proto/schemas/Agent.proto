@@ -36,7 +36,6 @@ service Agent {
   rpc InitializeNode (NewKeyPairMessage) returns (EmptyMessage) {};
   rpc ListOAuthTokens (EmptyMessage) returns (StringListMessage) {};
   rpc ListKeys (EmptyMessage) returns (StringListMessage) {};
-  rpc ListNodes (EmptyMessage) returns (StringListMessage) {};
   rpc ListSecrets (StringMessage) returns (StringListMessage) {};
   rpc ListVaults (EmptyMessage) returns (StringListMessage) {};
   rpc LockNode (EmptyMessage) returns (EmptyMessage) {};

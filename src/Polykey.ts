@@ -39,12 +39,7 @@ class Polykey {
     vaultManager?: VaultManager,
     logger?: Logger,
   ) {
-    if (nodePath != null) {
-      this.nodePath = nodePath;
-    } else {
-      this.nodePath = utils.getDefaultNodePath();
-    }
-
+    this.nodePath = utils.getNodePath(nodePath);
     this.logger = logger ?? new Logger();
 
     // Set key manager
@@ -132,6 +127,7 @@ class Polykey {
 
     this.gestaltTrust = new GestaltTrust();
     this.gestaltGraph = new GestaltGraph(
+      this.nodePath,
       this.gestaltTrust,
       this.nodeManager,
       this.providerManager,

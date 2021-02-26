@@ -1,4 +1,5 @@
 import dgram from 'dgram';
+import { PK_BOOTSTRAP_HOSTS, PUBLIC_RELAY_NODE } from '../../config';
 import { promisifyGrpc } from '../../bin/utils';
 import * as agentInterface from '../../../proto/js/Agent_pb';
 import NodeConnection from '../../nodes/node-connection/NodeConnection';
@@ -16,6 +17,7 @@ class NatTraversal {
   private getLocalNodeInfo: () => Node;
   private getPrivateKey: () => pki.rsa.PrivateKey;
   private logger: Logger;
+  private nodeDisconnect: Map<string, NodeJS.Timeout>;
 
   private localSocket: dgram.Socket;
 
@@ -54,6 +56,7 @@ class NatTraversal {
     this.getLocalNodeInfo = getLocalNodeInfo;
     this.getPrivateKey = getPrivateKey;
     this.logger = logger;
+    this.nodeDisconnect = new Map<string, NodeJS.Timeout>();
   }
 
   async start(socket: dgram.Socket): Promise<void> {
@@ -65,7 +68,7 @@ class NatTraversal {
           this.natClientMessageHandler.bind(this),
         );
         // don't need to send keepalive packets if node is a relay node
-        if (!process.env.PUBLIC_RELAY_NODE) {
+        if (!PUBLIC_RELAY_NODE) {
           this.keepAliveInterval = setInterval(async () => {
             for (const nodeId of this.listNodes()) {
               try {
@@ -173,7 +176,7 @@ class NatTraversal {
         // send back okay-keepalive message only if public relay node
         if (
           NatTraversal.KeepaliveRegex.test(message.toString()) &&
-          process.env.PUBLIC_RELAY_NODE
+          PUBLIC_RELAY_NODE
         ) {
           const fromNodeId = message
             .toString()
@@ -186,7 +189,7 @@ class NatTraversal {
             address.port,
             address.host,
           );
-
+          this.nodeDisconnect.get(nodeId)?.refresh();
           // set up a relay for the new node if it doesn't exist yet
           if (!this.nodeRelays.get(fromNodeId)?.relay) {
             const relay = new NodeRelay(
@@ -232,15 +235,22 @@ class NatTraversal {
           this.nodeRelays.delete(nodeId);
         }
         this.logger.info(`creating new UDP Socket for nodeId: ${nodeId}`);
-        const host = process.env.PK_PEER_HOST ?? '0.0.0.0';
+        const host = PK_BOOTSTRAP_HOSTS ?? '0.0.0.0';
         const socket = dgram.createSocket(
           'udp4',
           this.natServerMessageHandler(nodeId).bind(this),
         );
+        this.nodeDisconnect.set(
+          nodeId,
+          setTimeout(() => {
+            socket.close();
+            this.logger.info(`disconnected from nodeID: ${nodeId}`);
+          }, 10000),
+        );
         socket.bind(0, host, () => {
           const address = Address.fromAddressInfo(socket.address());
-          if (process.env.PK_PEER_HOST) {
-            address.updateHost(process.env.PK_PEER_HOST);
+          if (PK_BOOTSTRAP_HOSTS) {
+            address.updateHost(PK_BOOTSTRAP_HOSTS);
           }
           this.nodeRelays.set(nodeId, { socket });
           this.logger.info(
