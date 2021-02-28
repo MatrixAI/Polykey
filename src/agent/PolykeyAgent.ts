@@ -54,7 +54,7 @@ class PolykeyAgent implements IAgentServer {
     //////////////////
     // Config Store //
     //////////////////
-    this.configStore = PolykeyAgent.ConfigStore(this.pk.polykeyPath);
+    this.configStore = PolykeyAgent.ConfigStore(this.pk.nodePath);
 
     /////////////
     // Process //
@@ -76,12 +76,12 @@ class PolykeyAgent implements IAgentServer {
 
   private failOnLocked() {
     if (!this.pk.keyManager.KeypairUnlocked) {
-      throw Error(`polykey is locked at ${this.pk.polykeyPath}`);
+      throw Error(`polykey is locked at ${this.pk.nodePath}`);
     }
   }
 
   private get ServerCredentials() {
-    const paths = PolykeyAgent.AgentSSLPaths(this.pk.polykeyPath);
+    const paths = PolykeyAgent.AgentSSLPaths(this.pk.nodePath);
     // create agent ssl credentials
     // create root credentials
     const rootCredentials = PolykeyAgent.createAgentRootCredentials();
@@ -1026,16 +1026,14 @@ class PolykeyAgent implements IAgentServer {
       const { passphrase, nbits } = call.request!.toObject();
 
       // check node is already initialized
-      if (
-        fs.existsSync(path.join(this.pk.polykeyPath, '.keys', 'private_key'))
-      ) {
+      if (fs.existsSync(path.join(this.pk.nodePath, '.keys', 'private_key'))) {
         throw Error(
-          `polykey keypair already exists at node path: '${this.pk.polykeyPath}'`,
+          `polykey keypair already exists at node path: '${this.pk.nodePath}'`,
         );
       }
 
       const km = new KeyManager(
-        this.pk.polykeyPath,
+        this.pk.nodePath,
         fs,
         this.logger.getChild('KeyManager'),
       );
@@ -1044,7 +1042,7 @@ class PolykeyAgent implements IAgentServer {
 
       // stop old polykey and start new one to avoid conflicts of tcp/udp ports
       await this.pk.stopAllServices();
-      this.pk = new Polykey(this.pk.polykeyPath, fs, km);
+      this.pk = new Polykey(this.pk.nodePath, fs, km);
 
       // re-load all meta data
       await this.pk.keyManager.loadEncryptedMetadata();

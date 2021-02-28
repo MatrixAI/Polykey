@@ -1,87 +1,61 @@
-import commander from 'commander';
+import process from 'process';
 import * as agentPB from '../../../proto/js/Agent_pb';
 import {
-  actionRunner,
-  getPKLogger,
-  PKMessageType,
+  createCommand,
+  verboseToLogLevel,
   resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../utils';
 
-const commandSearch = new commander.Command('search');
+const commandSearch = createCommand('search', { verbose: true });
 commandSearch.description('search a particular provider for a gestalt');
-commandSearch.option('-k, --node-path <nodePath>', 'provide the polykey path');
-commandSearch.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
+commandSearch.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandSearch.requiredOption(
   '-pk, --provider-key <providerKey>',
   '(required) key of the target provider, e.g. github.com',
 );
 commandSearch.arguments('search terms for the search');
-commandSearch.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
-
-    const request = new agentPB.ProviderSearchMessage();
-    request.setProviderKey(options.providerKey);
-    request.setSearchTermList(commandSearch.args);
-    const responseStream = client.getConnectedIdentityInfos(request);
-
-    pkLogger.logV1(
-      `searching for connected identities with search terms: ${commandSearch.args}`,
-      PKMessageType.INFO,
-    );
-    await new Promise<void>((resolve, reject) => {
-      responseStream.on('data', (identityInfo: agentPB.IdentityInfoMessage) => {
-        pkLogger.logV1('found a new identity info: ', PKMessageType.INFO);
-        pkLogger.logV1(`key: '${identityInfo.getKey()}'`, PKMessageType.INFO);
-        pkLogger.logV1(
-          `provider: '${identityInfo.getProvider()}'`,
-          PKMessageType.INFO,
-        );
-        pkLogger.logV1(`name: '${identityInfo.getName()}'`, PKMessageType.INFO);
-        pkLogger.logV1(
-          `email: '${identityInfo.getEmail()}'`,
-          PKMessageType.INFO,
-        );
-        pkLogger.logV1(`url: '${identityInfo.getUrl()}'`, PKMessageType.INFO);
-      });
-      responseStream.on('error', (error) => {
-        reject(error);
-      });
-      responseStream.on('end', () => {
-        resolve();
-      });
+commandSearch.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.ProviderSearchMessage();
+  request.setProviderKey(options.providerKey);
+  request.setSearchTermList(commandSearch.args);
+  const responseStream = client.getConnectedIdentityInfos(request);
+  process.stdout.write(
+    `searching for connected identities with search terms: ${commandSearch.args}\n`,
+  );
+  await new Promise<void>((resolve, reject) => {
+    responseStream.on('data', (identityInfo: agentPB.IdentityInfoMessage) => {
+      process.stdout.write('found a new identity info:\n');
+      process.stdout.write(`key: '${identityInfo.getKey()}'\n`);
+      process.stdout.write(`provider: '${identityInfo.getProvider()}'\n`);
+      process.stdout.write(`name: '${identityInfo.getName()}'\n`);
+      process.stdout.write(`email: '${identityInfo.getEmail()}'\n`);
+      process.stdout.write(`url: '${identityInfo.getUrl()}'\n`);
     });
+    responseStream.on('error', (error) => {
+      reject(error);
+    });
+    responseStream.on('end', () => {
+      resolve();
+    });
+  });
+  process.stdout.write('finished searching for connected identities\n');
+});
 
-    pkLogger.logV1(
-      'finished searching for connected identities',
-      PKMessageType.INFO,
-    );
-  }),
-);
-
-const commandDiscoverIdentity = new commander.Command('discover');
+const commandDiscoverIdentity = createCommand('discover', { verbose: true });
 commandDiscoverIdentity.alias('dis');
 commandDiscoverIdentity.description(
   'search a particular provider for a gestalt',
 );
 commandDiscoverIdentity.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
-);
-commandDiscoverIdentity.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
 );
 commandDiscoverIdentity.requiredOption(
   '-pk, --provider-key <providerKey>',
@@ -91,47 +65,36 @@ commandDiscoverIdentity.requiredOption(
   '-ik, --identity-key, <identityKey>',
   '(required) key of the target identity',
 );
-commandDiscoverIdentity.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
-
-    const request = new agentPB.IdentityMessage();
-    request.setProviderKey(options.providerKey);
-    request.setKey(options.identityKey);
-    const responseStream = client.discoverGestaltIdentity(request);
-    await new Promise<void>((resolve, reject) => {
-      responseStream.on('data', () => {
-        pkLogger.logV1('discovery algorithm cycled once', PKMessageType.INFO);
-      });
-      responseStream.on('error', (error) => {
-        reject(error);
-      });
-      responseStream.on('end', () => {
-        resolve();
-      });
+commandDiscoverIdentity.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.IdentityMessage();
+  request.setProviderKey(options.providerKey);
+  request.setKey(options.identityKey);
+  const responseStream = client.discoverGestaltIdentity(request);
+  await new Promise<void>((resolve, reject) => {
+    responseStream.on('data', () => {
+      process.stdout.write('discovery algorithm cycled once\n');
     });
+    responseStream.on('error', (error) => {
+      reject(error);
+    });
+    responseStream.on('end', () => {
+      resolve();
+    });
+  });
+  process.stdout.write('finished searching for connected identities\n');
+});
 
-    pkLogger.logV1(
-      'finished searching for connected identities',
-      PKMessageType.INFO,
-    );
-  }),
-);
-
-const commandGetByIdentity = new commander.Command('identity');
+const commandGetByIdentity = createCommand('identity', { verbose: true });
 commandGetByIdentity.alias('id');
 commandGetByIdentity.description('retrieve a gestalt via an identity');
 commandGetByIdentity.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
-);
-commandGetByIdentity.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
 );
 commandGetByIdentity.requiredOption(
   '-pk, --provider-key <providerKey>',
@@ -141,168 +104,119 @@ commandGetByIdentity.requiredOption(
   '-ik, --identity-key, <identityKey>',
   '(required) key of the target identity',
 );
-commandGetByIdentity.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandGetByIdentity.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.IdentityMessage();
+  request.setProviderKey(options.providerKey);
+  request.setKey(options.identityKey);
+  const response = (await promisifyGrpc(
+    client.getGestaltByIdentity.bind(client),
+  )(request)) as agentPB.GestaltMessage;
+  process.stdout.write('GestaltMatrix:\n');
+  process.stdout.write(JSON.stringify(response.getGestaltMatrixMap()) + '\n');
+  process.stdout.write('Identities:\n');
+  process.stdout.write(JSON.stringify(response.getIdentitiesMap()) + '\n');
+  process.stdout.write('GestaltNodes:\n');
+  process.stdout.write(JSON.stringify(response.getGestaltNodesMap()) + '\n');
+});
 
-    const request = new agentPB.IdentityMessage();
-    request.setProviderKey(options.providerKey);
-    request.setKey(options.identityKey);
-    const response = (await promisifyGrpc(
-      client.getGestaltByIdentity.bind(client),
-    )(request)) as agentPB.GestaltMessage;
-
-    pkLogger.logV1('GestaltMatrix: ', PKMessageType.INFO);
-    pkLogger.logV1(
-      JSON.stringify(response.getGestaltMatrixMap()),
-      PKMessageType.SUCCESS,
-    );
-    pkLogger.logV1('Identities: ', PKMessageType.INFO);
-    pkLogger.logV1(
-      JSON.stringify(response.getIdentitiesMap()),
-      PKMessageType.SUCCESS,
-    );
-    pkLogger.logV1('GestaltNodes: ', PKMessageType.INFO);
-    pkLogger.logV1(
-      JSON.stringify(response.getGestaltNodesMap()),
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
-
-const commandTrust = new commander.Command('trust');
+const commandTrust = createCommand('trust', { verbose: true });
 commandTrust.description('trust a particular gestalt');
-commandTrust.option('-k, --node-path <nodePath>', 'provide the polykey path');
-commandTrust.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
+commandTrust.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandTrust.requiredOption(
   '-gk, --gestalt-key, <gestaltKey>',
   '(required) key of the gestalt to trust',
 );
-commandTrust.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandTrust.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.StringMessage();
+  request.setS(options.gestaltKey);
+  await promisifyGrpc(client.trustGestalt.bind(client))(request);
+  process.stdout.write('gestalt successfully trusted\n');
+});
 
-    const request = new agentPB.StringMessage();
-    request.setS(options.gestaltKey);
-    await promisifyGrpc(client.trustGestalt.bind(client))(request);
-
-    pkLogger.logV2('gestalt successfully trusted', PKMessageType.INFO);
-  }),
-);
-
-const commandUntrust = new commander.Command('untrust');
+const commandUntrust = createCommand('untrust', { verbose: true });
 commandUntrust.description('untrust a particular gestalt');
-commandUntrust.option('-k, --node-path <nodePath>', 'provide the polykey path');
 commandUntrust.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
+  '-np, --node-path <nodePath>',
+  'provide the polykey path',
 );
 commandUntrust.requiredOption(
   '-gk, --gestalt-key, <gestaltKey>',
   '(required) key of the gestalt to untrust',
 );
-commandUntrust.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandUntrust.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.StringMessage();
+  request.setS(options.gestaltKey);
+  await promisifyGrpc(client.untrustGestalt.bind(client))(request);
+  process.stdout.write('gestalt successfully untrusted\n');
+});
 
-    const request = new agentPB.StringMessage();
-    request.setS(options.gestaltKey);
-    await promisifyGrpc(client.untrustGestalt.bind(client))(request);
-
-    pkLogger.logV2('gestalt successfully untrusted', PKMessageType.INFO);
-  }),
-);
-
-const commandTrusted = new commander.Command('untrust');
+const commandTrusted = createCommand('status', { verbose: true });
 commandTrusted.description('check if a particular gestalt is trusted');
-commandTrusted.option('-k, --node-path <nodePath>', 'provide the polykey path');
 commandTrusted.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
+  '-np, --node-path <nodePath>',
+  'provide the polykey path',
 );
 commandTrusted.requiredOption(
   '-gk, --gestalt-key, <gestaltKey>',
   '(required) key of the gestalt to check trust for',
 );
-commandTrusted.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandTrusted.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.StringMessage();
+  request.setS(options.gestaltKey);
+  const response = (await promisifyGrpc(client.gestaltIsTrusted.bind(client))(
+    request,
+  )) as agentPB.BooleanMessage;
+  process.stdout.write(`gestalt is ${response.getB() ? '' : 'un '}trusted\n`);
+});
 
-    const request = new agentPB.StringMessage();
-    request.setS(options.gestaltKey);
-    const response = (await promisifyGrpc(client.gestaltIsTrusted.bind(client))(
-      request,
-    )) as agentPB.BooleanMessage;
-
-    pkLogger.logV1(
-      `gestalt is ${response.getB() ? '' : 'un '}trusted`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
-
-const commandGetGestalts = new commander.Command('list');
+const commandGetGestalts = createCommand('list', { verbose: true });
 commandGetGestalts.alias('ls');
 commandGetGestalts.description('list all the gestalts in the gestalt graph');
 commandGetGestalts.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandGetGestalts.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
-commandGetGestalts.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandGetGestalts.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const response = (await promisifyGrpc(client.getGestalts.bind(client))(
+    new agentPB.EmptyMessage(),
+  )) as agentPB.GestaltListMessage;
+  const gestaltList = response.getGestaltMessageList();
+  gestaltList.forEach((g) => {
+    process.stdout.write('GestaltMatrix:\n');
+    process.stdout.write(JSON.stringify(g.getGestaltMatrixMap()) + '\n');
+    process.stdout.write('Identities:\n');
+    process.stdout.write(JSON.stringify(g.getIdentitiesMap()) + '\n');
+    process.stdout.write('GestaltNodes:\n');
+    process.stdout.write(JSON.stringify(g.getGestaltNodesMap()) + '\n');
+  });
+});
 
-    const response = (await promisifyGrpc(client.getGestalts.bind(client))(
-      new agentPB.EmptyMessage(),
-    )) as agentPB.GestaltListMessage;
-    const gestaltList = response.getGestaltMessageList();
-
-    gestaltList.forEach((g) => {
-      pkLogger.logV1('GestaltMatrix: ', PKMessageType.INFO);
-      pkLogger.logV1(
-        JSON.stringify(g.getGestaltMatrixMap()),
-        PKMessageType.SUCCESS,
-      );
-      pkLogger.logV1('Identities: ', PKMessageType.INFO);
-      pkLogger.logV1(
-        JSON.stringify(g.getIdentitiesMap()),
-        PKMessageType.SUCCESS,
-      );
-      pkLogger.logV1('GestaltNodes: ', PKMessageType.INFO);
-      pkLogger.logV1(
-        JSON.stringify(g.getGestaltNodesMap()),
-        PKMessageType.SUCCESS,
-      );
-    });
-  }),
-);
-
-const commandGestalts = new commander.Command('gestalts');
+const commandGestalts = createCommand('gestalts');
 commandGestalts.description('gestalt operations');
 commandGestalts.addCommand(commandSearch);
 commandGestalts.addCommand(commandGetByIdentity);

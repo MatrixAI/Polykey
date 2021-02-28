@@ -1,50 +1,43 @@
-import commander from 'commander';
+import process from 'process';
 import * as agentPB from '../../../proto/js/Agent_pb';
 import {
-  actionRunner,
-  getPKLogger,
-  PKMessageType,
+  createCommand,
+  verboseToLogLevel,
   resolveKeynodeStatePath,
   getAgentClient,
   promisifyGrpc,
 } from '../utils';
 
-const commandListVaults = new commander.Command('list');
+const commandListVaults = createCommand('list', { verbose: true });
 commandListVaults.description('list all available vaults');
 commandListVaults.alias('ls');
 commandListVaults.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandListVaults.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
-commandListVaults.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
-    const res = (await promisifyGrpc(client.listVaults.bind(client))(
-      new agentPB.EmptyMessage(),
-    )) as agentPB.StringListMessage;
-    const vaultNames = res.getSList();
-    if (vaultNames === undefined || vaultNames.length == 0) {
-      pkLogger.logV2('no vaults found', PKMessageType.INFO);
-    } else {
-      vaultNames.forEach((vaultName: string, index: number) =>
-        pkLogger.logV1(`${index + 1}: ${vaultName}`, PKMessageType.SUCCESS),
-      );
-    }
-  }),
-);
+commandListVaults.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const res = (await promisifyGrpc(client.listVaults.bind(client))(
+    new agentPB.EmptyMessage(),
+  )) as agentPB.StringListMessage;
+  const vaultNames = res.getSList();
+  if (vaultNames === undefined || vaultNames.length == 0) {
+    process.stdout.write('no vaults found\n');
+  } else {
+    vaultNames.forEach((vaultName: string, index: number) =>
+      process.stdout.write(`${index + 1}: ${vaultName}\n`),
+    );
+  }
+});
 
-const commandScanVaults = new commander.Command('scan');
+const commandScanVaults = createCommand('scan', { verbose: true });
 commandScanVaults.description('scan a known node for accessible vaults');
 commandScanVaults.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandScanVaults.option('-v, --verbose', 'increase verbosity by one level');
@@ -52,62 +45,53 @@ commandScanVaults.requiredOption(
   '-pi, --node-id <nodeId>',
   '(required) id string of the node to be scanned',
 );
-commandScanVaults.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandScanVaults.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.StringMessage();
+  request.setS(options.nodeId);
+  const res = (await promisifyGrpc(client.scanVaultNames.bind(client))(
+    request,
+  )) as agentPB.StringListMessage;
+  const vaultNames = res.getSList();
+  if (!vaultNames || vaultNames.length == 0) {
+    process.stdout.write('no vault names were found\n');
+  }
+  process.stdout.write(`Vault names from node - ${options.nodeId}\n`);
+  for (const vaultName of vaultNames) {
+    process.stdout.write(vaultName + '\n');
+  }
+});
 
-    const request = new agentPB.StringMessage();
-    request.setS(options.nodeId);
-    const res = (await promisifyGrpc(client.scanVaultNames.bind(client))(
-      request,
-    )) as agentPB.StringListMessage;
-    const vaultNames = res.getSList();
-
-    if (!vaultNames || vaultNames.length == 0) {
-      pkLogger.logV1('no vault names were found', PKMessageType.INFO);
-    }
-
-    pkLogger.logV2(
-      `Vault names from node - ${options.nodeId}`,
-      PKMessageType.INFO,
-    );
-    for (const vaultName of vaultNames) {
-      pkLogger.logV1(vaultName, PKMessageType.SUCCESS);
-    }
-  }),
-);
-
-const commandNewVault = new commander.Command('new');
+const commandNewVault = createCommand('new', { verbose: true });
 commandNewVault.description('create a new vault');
 commandNewVault.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandNewVault.requiredOption(
   '-vn, --vault-name <vaultName>',
   '(required) unique name of the new vault',
 );
-commandNewVault.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
-    const request = new agentPB.StringMessage();
-    request.setS(options.vaultName);
-    await promisifyGrpc(client.newVault.bind(client))(request);
-    pkLogger.logV2(
-      `vault created at '${nodePath}/${options.vaultName}'`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
+commandNewVault.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.StringMessage();
+  request.setS(options.vaultName);
+  await promisifyGrpc(client.newVault.bind(client))(request);
+  process.stdout.write(`vault created at '${nodePath}/${options.vaultName}'\n`);
+});
 
-const commandRenameVault = new commander.Command('rename');
+const commandRenameVault = createCommand('rename', { verbose: true });
 commandRenameVault.description('rename an existing vault');
 commandRenameVault.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandRenameVault.requiredOption(
@@ -118,53 +102,50 @@ commandRenameVault.requiredOption(
   '-nn, --new-name <newName>',
   '(required) new name for vault',
 );
-commandRenameVault.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandRenameVault.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.StringMessage();
+  request.setS(options.vaultName);
+  await promisifyGrpc(client.renameVault.bind(client))(request);
+  process.stdout.write(
+    `vault successfully renamed to '${nodePath}/${options.vaultName}'\n`,
+  );
+});
 
-    const request = new agentPB.StringMessage();
-    request.setS(options.vaultName);
-    await promisifyGrpc(client.renameVault.bind(client))(request);
-    pkLogger.logV2(
-      `vault successfully renamed to '${nodePath}/${options.vaultName}'`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
-
-const commandVaultStats = new commander.Command('stats');
+const commandVaultStats = createCommand('stats', { verbose: true });
 commandVaultStats.description('get the stats for a vault');
 commandVaultStats.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandVaultStats.requiredOption(
   '-vn, --vault-name <vaultName>',
   '(required) name of vault',
 );
-commandVaultStats.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandVaultStats.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.StringMessage();
+  request.setS(options.vaultName);
+  const statsResponse = (await promisifyGrpc(client.getVaultStats.bind(client))(
+    request,
+  )) as agentPB.VaultStatsMessage;
+  const date = new Date(statsResponse.getCreatedAt());
+  const stats = { createdAt: date.toISOString() };
+  process.stdout.write(JSON.stringify(stats));
+});
 
-    const request = new agentPB.StringMessage();
-    request.setS(options.vaultName);
-    const statsResponse = (await promisifyGrpc(
-      client.getVaultStats.bind(client),
-    )(request)) as agentPB.VaultStatsMessage;
-    const date = new Date(statsResponse.getCreatedAt());
-    const stats = { createdAt: date.toISOString() };
-    pkLogger.logV1(JSON.stringify(stats), PKMessageType.SUCCESS);
-  }),
-);
-
-const commandPullVault = new commander.Command('pull');
+const commandPullVault = createCommand('pull', { verbose: true });
 commandPullVault.description('pull a vault from a node');
 commandPullVault.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandPullVault.requiredOption(
@@ -175,30 +156,24 @@ commandPullVault.requiredOption(
   '-vn, --vault-name <vaultName>',
   '(required) name of the vault to be cloned',
 );
-commandPullVault.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandPullVault.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const vaultName = options.vaultName;
+  const request = new agentPB.VaultPathMessage();
+  request.setPublicKey(options.nodeId);
+  request.setVaultName(vaultName);
+  await promisifyGrpc(client.pullVault.bind(client))(request);
+  process.stdout.write(`vault '${vaultName}' pulled successfully\n`);
+});
 
-    const vaultName = options.vaultName;
-
-    const request = new agentPB.VaultPathMessage();
-    request.setPublicKey(options.nodeId);
-    request.setVaultName(vaultName);
-    await promisifyGrpc(client.pullVault.bind(client))(request);
-
-    pkLogger.logV2(
-      `vault '${vaultName}' pulled successfully`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
-
-const commandShareVault = new commander.Command('share');
+const commandShareVault = createCommand('share', { verbose: true });
 commandShareVault.description('pull a vault from a node');
 commandShareVault.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandShareVault.requiredOption(
@@ -213,33 +188,29 @@ commandShareVault.option(
   '-ce, --can-edit <canEdit>',
   'node can edit vault (i.e. push as well as pull)',
 );
-commandShareVault.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandShareVault.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const vaultName = options.vaultName;
+  const nodeId = options.vaultName;
+  const canEdit = options.canEdit;
+  const request = new agentPB.ShareVaultMessage();
+  request.setVaultName(vaultName);
+  request.setNodeId(nodeId);
+  request.setCanEdit(canEdit);
+  await promisifyGrpc(client.shareVault.bind(client))(request);
+  process.stdout.write(
+    `vault '${vaultName}' successfully shared with nodeId: '${nodeId}'\n`,
+  );
+});
 
-    const vaultName = options.vaultName;
-    const nodeId = options.vaultName;
-    const canEdit = options.canEdit;
-
-    const request = new agentPB.ShareVaultMessage();
-    request.setVaultName(vaultName);
-    request.setNodeId(nodeId);
-    request.setCanEdit(canEdit);
-    await promisifyGrpc(client.shareVault.bind(client))(request);
-
-    pkLogger.logV2(
-      `vault '${vaultName}' successfully shared with nodeId: '${nodeId}'`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
-
-const commandUnshareVault = new commander.Command('unshare');
-commandUnshareVault.description('unshare a vault from a node');
+const commandUnshareVault = createCommand('unshare', { verbose: true });
+commandUnshareVault.description('pull a vault from a node');
 commandUnshareVault.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
 commandUnshareVault.requiredOption(
@@ -250,51 +221,44 @@ commandUnshareVault.requiredOption(
   '-pi, --node-id <nodeId>',
   '(required) id string of the node which the vault is to be unshared with',
 );
-commandUnshareVault.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
-    const vaultName = options.vaultName;
-    const nodeId = options.vaultName;
-    const request = new agentPB.VaultPathMessage();
-    request.setPublicKey(nodeId);
-    request.setVaultName(vaultName);
-    await promisifyGrpc(client.unshareVault.bind(client))(request);
-    pkLogger.logV2(
-      `vault '${vaultName}' successfully unshared from nodeId: '${nodeId}'`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
+commandUnshareVault.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const vaultName = options.vaultName;
+  const nodeId = options.vaultName;
+  const request = new agentPB.VaultPathMessage();
+  request.setPublicKey(nodeId);
+  request.setVaultName(vaultName);
+  await promisifyGrpc(client.unshareVault.bind(client))(request);
+  process.stdout.write(
+    `vault '${vaultName}' successfully unshared from nodeId: '${nodeId}'\n`,
+  );
+});
 
-const commandDeleteVault = new commander.Command('delete');
+const commandDeleteVault = createCommand('delete', { verbose: true });
 commandDeleteVault.alias('del');
 commandDeleteVault.description('delete an existing vault');
 commandDeleteVault.requiredOption(
   '-vn, --vault-name <vaultName>',
   'name of vault',
 );
-commandDeleteVault.option('-v, --verbose', 'increase verbosity by one level');
-commandDeleteVault.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandDeleteVault.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const vaultName = options.vaultName;
+  const request = new agentPB.StringMessage();
+  request.setS(vaultName);
+  await promisifyGrpc(client.deleteVault.bind(client))(request);
+  process.stdout.write(`vault '${vaultName}' deleted successfully\n`);
+});
 
-    const vaultName = options.vaultName;
-    const request = new agentPB.StringMessage();
-    request.setS(vaultName);
-    await promisifyGrpc(client.deleteVault.bind(client))(request);
-
-    pkLogger.logV2(
-      `vault '${vaultName}' deleted successfully`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
-
-const commandVaults = new commander.Command('vaults');
+const commandVaults = createCommand('vaults');
 commandVaults.description('manipulate vaults');
 commandVaults.addCommand(commandListVaults);
 commandVaults.addCommand(commandScanVaults);

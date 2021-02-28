@@ -1,9 +1,12 @@
+import os from 'os';
 import fs from 'fs';
 import net from 'net';
 import tls from 'tls';
 import http from 'http';
 import https from 'https';
 import path from 'path';
+import process from 'process';
+import { ErrorPolykey } from './errors';
 
 /**
  * Returns a 5 character long random string of lower case letters
@@ -301,6 +304,35 @@ function terminatingHttpServer(
   return terminate;
 }
 
+function getDefaultNodePath(prefix: string = 'polykey'): string {
+  const platform = os.platform();
+  let p;
+  if (platform === 'linux') {
+    const homeDir = os.homedir();
+    const dataDir = process.env.XDG_DATA_HOME;
+    if (dataDir != null) {
+      p = `${dataDir}/${prefix}`;
+    } else {
+      p = `${homeDir}/.local/share/${prefix}`;
+    }
+  } else if (platform === 'darwin') {
+    const homeDir = os.homedir();
+    p = `${homeDir}/Library/Application Support/${prefix}`;
+  } else if (platform === 'win32') {
+    const homeDir = os.homedir();
+    const appDataDir = process.env.LOCALAPPDATA;
+    let p;
+    if (appDataDir != null) {
+      p = `${appDataDir}/${prefix}`;
+    } else {
+      p = `${homeDir}/AppData/Local/${prefix}`;
+    }
+  } else {
+    throw new ErrorPolykey('Unknown platform');
+  }
+  return p;
+}
+
 export {
   randomString,
   parseSecretPath,
@@ -316,4 +348,5 @@ export {
   isUnixHiddenPath,
   readdirRecursively,
   terminatingHttpServer,
+  getDefaultNodePath,
 };

@@ -1,47 +1,37 @@
-import commander from 'commander';
+import process from 'process';
 import * as agentPB from '../../../proto/js/Agent_pb';
 import {
-  actionRunner,
-  PKMessageType,
+  createCommand,
+  verboseToLogLevel,
   resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
-  getPKLogger,
 } from '../utils';
 import commandTokens from './tokens';
 
-const commandClient = new commander.Command('client');
+const commandClient = createCommand('client', { verbose: true });
 commandClient.description(
   'get oauth client details for the http api (useful for client credentials authorization flow on swagger docs)',
 );
-commandClient.option('-k, --node-path <nodePath>', 'provide the polykey path');
-commandClient.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
-commandClient.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandClient.option('-np, --node-path <nodePath>', 'provide the polykey path');
+commandClient.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const req = new agentPB.StringMessage();
+  req.setS(options.id);
+  const res = (await promisifyGrpc(client.getOAuthClient.bind(client))(
+    new agentPB.EmptyMessage(),
+  )) as agentPB.OAuthClientMessage;
+  process.stdout.write('client id:\n');
+  process.stdout.write(res.getId() + '\n');
+  process.stdout.write('client secret:\n');
+  process.stdout.write(res.getSecret() + '\n');
+});
 
-    const req = new agentPB.StringMessage();
-    req.setS(options.id);
-    const res = (await promisifyGrpc(client.getOAuthClient.bind(client))(
-      new agentPB.EmptyMessage(),
-    )) as agentPB.OAuthClientMessage;
-
-    pkLogger.logV2('client id:', PKMessageType.INFO);
-    pkLogger.logV1(res.getId(), PKMessageType.SUCCESS);
-
-    pkLogger.logV2('client secret:', PKMessageType.INFO);
-    pkLogger.logV1(res.getSecret(), PKMessageType.SUCCESS);
-  }),
-);
-
-const commandOAuth = new commander.Command('oauth');
+const commandOAuth = createCommand('oauth');
 commandOAuth.description('http oauth2 operations');
 commandOAuth.addCommand(commandClient);
 commandOAuth.addCommand(commandTokens);

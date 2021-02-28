@@ -1,5 +1,5 @@
-import os from 'os';
 import fs from 'fs';
+import Logger from '@matrixai/logger';
 import HttpApi from './api/HttpApi';
 import KeyManager from './keys/KeyManager';
 import { LinkInfoIdentity } from './links';
@@ -9,16 +9,16 @@ import PolykeyAgent from './agent/PolykeyAgent';
 import VaultManager from './vaults/VaultManager';
 import GestaltGraph from './gestalts/GestaltGraph';
 import GestaltTrust from './gestalts/GestaltTrust';
-import Discovery from './directory/Discovery';
+import Discovery from './discovery/Discovery';
 import { ProviderManager, ProviderTokens } from './social';
 import { GitHubProvider } from './social/providers/github';
 import { NodeInfo, NodeInfoReadOnly, Address } from './nodes/NodeInfo';
-import Logger from '@matrixai/logger';
+import * as utils from './utils';
+
 (JSON as any).canonicalize = require('canonicalize');
 
 class Polykey {
-  polykeyPath: string;
-
+  nodePath: string;
   vaultManager: VaultManager;
   keyManager: KeyManager;
   nodeManager: NodeManager;
@@ -30,14 +30,18 @@ class Polykey {
   logger: Logger;
 
   constructor(
-    polykeyPath = `${os.homedir()}/.polykey`,
-    fileSystem: typeof fs,
+    nodePath?: string,
+    fileSystem: typeof fs = fs,
     keyManager?: KeyManager,
     nodeManager?: NodeManager,
     vaultManager?: VaultManager,
     logger?: Logger,
   ) {
-    this.polykeyPath = polykeyPath;
+    if (nodePath != null) {
+      this.nodePath = nodePath;
+    } else {
+      this.nodePath = utils.getDefaultNodePath();
+    }
 
     this.logger = logger ?? new Logger();
 
@@ -45,7 +49,7 @@ class Polykey {
     this.keyManager =
       keyManager ??
       new KeyManager(
-        this.polykeyPath,
+        this.nodePath,
         fileSystem,
         this.logger.getChild('KeyManager'),
       );
@@ -54,7 +58,7 @@ class Polykey {
     this.nodeManager =
       nodeManager ??
       new NodeManager(
-        this.polykeyPath,
+        this.nodePath,
         fileSystem,
         this.keyManager,
         this.logger.getChild('NodeManager'),
@@ -64,7 +68,7 @@ class Polykey {
     this.vaultManager =
       vaultManager ??
       new VaultManager(
-        this.polykeyPath,
+        this.nodePath,
         fileSystem,
         this.keyManager,
         this.nodeManager.connectToNode.bind(this.nodeManager),
@@ -111,7 +115,7 @@ class Polykey {
     // TODO: this stuff is still just a WIP, so need to fix any hardcoded values after demo
     this.providerManager = new ProviderManager([
       new GitHubProvider(
-        new ProviderTokens(this.polykeyPath, 'github.com'),
+        new ProviderTokens(this.nodePath, 'github.com'),
         'ca5c4c520da868387c52',
         this.logger.getChild('GithubProvider'),
       ),

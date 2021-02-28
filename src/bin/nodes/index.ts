@@ -1,23 +1,19 @@
 import fs from 'fs';
-import commander from 'commander';
+import process from 'process';
 import * as agentPB from '../../../proto/js/Agent_pb';
 import {
-  actionRunner,
-  getPKLogger,
-  PKMessageType,
+  createCommand,
+  verboseToLogLevel,
   resolveKeynodeStatePath,
   getAgentClient,
   promisifyGrpc,
 } from '../utils';
 
-const commandAddNode = new commander.Command('add');
+const commandAddNode = createCommand('add', { verbose: true });
 commandAddNode.description('add a new node to the store');
-commandAddNode.option('-k, --node-path <nodePath>', 'provide the polykey path');
 commandAddNode.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
+  '-np, --node-path <nodePath>',
+  'provide the polykey path',
 );
 commandAddNode.requiredOption(
   '-p, --pem <pem>',
@@ -28,141 +24,107 @@ commandAddNode.option(
   '(optional) a custom unsigned alias for the node',
 );
 commandAddNode.option(
-  '-pa, --node-address <nodeAddress>',
+  '-na, --node-address <nodeAddress>',
   '(optional) address that overwrites the signed node address on which the node is served',
 );
 commandAddNode.option(
   '-aa, --api-address <apiAddress>',
   '(optional) address that overwrites the signed api address on which the nodes HTTP API is served',
 );
-commandAddNode.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandAddNode.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const pemFileData = fs.readFileSync(options.pem).toString();
+  const request = new agentPB.NodeInfoReadOnlyMessage();
+  request.setPem(pemFileData);
+  if (options.alias) {
+    request.setUnsignedAlias(options.alias);
+  }
+  if (options.nodeAddress) {
+    request.setUnsignedNodeAddress(options.nodeAddress);
+  }
+  if (options.apiAddress) {
+    request.setUnsignedApiAddress(options.apiAddress);
+  }
+  const res = (await promisifyGrpc(client.addNode.bind(client))(
+    request,
+  )) as agentPB.StringMessage;
+  process.stdout.write(
+    `node id of '${res.getS()}' successfully added to node store\n`,
+  );
+});
 
-    const pemFileData = fs.readFileSync(options.pem).toString();
-
-    const request = new agentPB.NodeInfoReadOnlyMessage();
-    request.setPem(pemFileData);
-    if (options.alias) {
-      request.setUnsignedAlias(options.alias);
-    }
-    if (options.nodeAddress) {
-      request.setUnsignedNodeAddress(options.nodeAddress);
-    }
-    if (options.apiAddress) {
-      request.setUnsignedApiAddress(options.apiAddress);
-    }
-
-    const res = (await promisifyGrpc(client.addNode.bind(client))(
-      request,
-    )) as agentPB.StringMessage;
-
-    pkLogger.logV2(
-      `node id of '${res.getS()}' successfully added to node store`,
-      PKMessageType.SUCCESS,
-    );
-  }),
-);
-
-const commandAddAlias = new commander.Command('alias');
-commandAddAlias.description('set/unset an alias for an existing node');
+const commandAddAlias = createCommand('alias', { verbose: true });
+commandAddAlias.description('set/unset an alias for an existing peer');
 commandAddAlias.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandAddAlias.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
 commandAddAlias.requiredOption(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   '(required) id of the node for which an alias is to be set',
 );
 commandAddAlias.option('-a, --alias <alias>', 'new alias for the target node');
 commandAddAlias.option('-u, --unset', 'unset the alias for the target node');
-commandAddAlias.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandAddAlias.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  if (options.unset) {
+    const request = new agentPB.StringMessage();
+    request.setS(options.nodeId!);
+    await promisifyGrpc(client.unsetAlias.bind(client))(request);
+    process.stdout.write(`node alias has successfully been unset\n`);
+  } else {
+    const request = new agentPB.NodeAliasMessage();
+    request.setNodeId(options.nodeId!);
+    request.setAlias(options.alias!);
+    await promisifyGrpc(client.setAlias.bind(client))(request);
+    process.stdout.write(`node alias has successfully been set\n`);
+  }
+});
 
-    if (options.unset) {
-      const request = new agentPB.StringMessage();
-      request.setS(options.nodeId!);
-
-      await promisifyGrpc(client.unsetAlias.bind(client))(request);
-
-      pkLogger.logV2(
-        `node alias has successfully been unset`,
-        PKMessageType.SUCCESS,
-      );
-    } else {
-      const request = new agentPB.NodeAliasMessage();
-      request.setNodeId(options.nodeId!);
-      request.setAlias(options.alias!);
-
-      await promisifyGrpc(client.setAlias.bind(client))(request);
-
-      pkLogger.logV2(
-        `node alias has successfully been set`,
-        PKMessageType.SUCCESS,
-      );
-    }
-  }),
-);
-
-const commandFindNode = new commander.Command('find');
+const commandFindNode = createCommand('find', { verbose: true });
 commandFindNode.description('find a node');
 commandFindNode.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandFindNode.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
 commandFindNode.requiredOption(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   '(required) id string of the node to be pinged',
 );
 commandFindNode.option(
   '-t, --timeout <timeout>',
   'timeout of the request in milliseconds',
+  (str) => parseInt(str),
+  15,
 );
-commandFindNode.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandFindNode.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.ContactNodeMessage();
+  request.setPublicKeyOrHandle(options.nodeId);
+  if (options.timeout) {
+    request.setTimeout(options.timeout);
+  }
+  await promisifyGrpc(client.findNode.bind(client))(request);
+  process.stdout.write('node successfully found\n');
+});
 
-    const request = new agentPB.ContactNodeMessage();
-    request.setPublicKeyOrHandle(options.nodeId);
-    if (options.timeout) {
-      request.setTimeout(options.timeout);
-    }
-    await promisifyGrpc(client.findNode.bind(client))(request);
-
-    pkLogger.logV1('node successfully found', PKMessageType.SUCCESS);
-  }),
-);
-
-const commandGetNodeInfo = new commander.Command('get');
+const commandGetNodeInfo = createCommand('get', { verbose: true });
 commandGetNodeInfo.description('get the node info for a particular node');
 commandGetNodeInfo.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
-);
-commandGetNodeInfo.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
 );
 commandGetNodeInfo.option('-p, --pem', 'output node info a pem encoded string');
 commandGetNodeInfo.option(
@@ -170,222 +132,171 @@ commandGetNodeInfo.option(
   'only list the node information for the current node, useful for sharing',
 );
 commandGetNodeInfo.option(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   'unique hash of public key that identifies the node',
 );
 commandGetNodeInfo.option('-a, --alias <alias>', 'alias of target node');
-commandGetNodeInfo.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandGetNodeInfo.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  let res: agentPB.NodeInfoMessage;
+  if (options.currentNode) {
+    res = (await promisifyGrpc(client.getLocalNodeInfo.bind(client))(
+      new agentPB.EmptyMessage(),
+    )) as agentPB.NodeInfoMessage;
+  } else {
+    const request = new agentPB.StringMessage();
+    request.setS(options.nodeId ?? options.alias);
+    res = (await promisifyGrpc(client.getNodeInfo.bind(client))(
+      request,
+    )) as agentPB.NodeInfoMessage;
+  }
+  const nodeInfo = res.toObject();
+  if (options.pem as boolean) {
+    process.stdout.write(nodeInfo.pem + '\n');
+  } else {
+    process.stdout.write('Node Id:\n');
+    process.stdout.write(nodeInfo.nodeId + '\n');
 
-    let res: agentPB.NodeInfoMessage;
-    if (options.currentNode) {
-      res = (await promisifyGrpc(client.getLocalNodeInfo.bind(client))(
-        new agentPB.EmptyMessage(),
-      )) as agentPB.NodeInfoMessage;
-    } else {
-      const request = new agentPB.StringMessage();
-      request.setS(options.nodeId ?? options.alias);
-      res = (await promisifyGrpc(client.getNodeInfo.bind(client))(
-        request,
-      )) as agentPB.NodeInfoMessage;
-    }
-    const nodeInfo = res.toObject();
+    process.stdout.write('Alias:\n');
+    process.stdout.write(nodeInfo.alias + '\n');
 
-    if (options.pem as boolean) {
-      pkLogger.logV1(nodeInfo.pem, PKMessageType.SUCCESS);
-    } else {
-      pkLogger.logV1('Node Id:', PKMessageType.INFO);
-      pkLogger.logV1(nodeInfo.nodeId, PKMessageType.SUCCESS);
+    process.stdout.write('Public Key:\n');
+    process.stdout.write(nodeInfo.publicKey + '\n');
 
-      pkLogger.logV1('Alias:', PKMessageType.INFO);
-      pkLogger.logV1(nodeInfo.alias, PKMessageType.SUCCESS);
+    process.stdout.write('Root Public Key:\n');
+    process.stdout.write(nodeInfo.rootPublicKey + '\n');
 
-      pkLogger.logV1('Public Key:', PKMessageType.INFO);
-      pkLogger.logV1(nodeInfo.publicKey, PKMessageType.SUCCESS);
+    process.stdout.write('Node Address:\n');
+    process.stdout.write(nodeInfo.nodeAddress?.toString() + '\n' ?? '\n');
 
-      pkLogger.logV1('Root Public Key:', PKMessageType.INFO);
-      pkLogger.logV1(nodeInfo.rootPublicKey, PKMessageType.SUCCESS);
+    process.stdout.write('API Address:\n');
+    process.stdout.write(nodeInfo.apiAddress?.toString() + '\n' ?? '');
 
-      pkLogger.logV1('Node Address:', PKMessageType.INFO);
-      pkLogger.logV1(
-        nodeInfo.nodeAddress?.toString() ?? '',
-        PKMessageType.SUCCESS,
-      );
+    process.stdout.write('Link Info List:\n');
+    nodeInfo.linkInfoList.forEach((l) => {
+      process.stdout.write(`Link Info Identity: '${l.identity}'\n`);
+      process.stdout.write(`Node Provider: '${l.provider}'\n`);
+      process.stdout.write(`Key: '${l.key}'\n`);
+      process.stdout.write(`Date Issued: '${new Date(l.dateissued)}'\n`);
+      process.stdout.write(`Node:\n`);
+      process.stdout.write(JSON.parse(l.node) + '\n');
+      process.stdout.write(`Signature:\n`);
+      process.stdout.write(l.signature + '\n');
+    });
+  }
+});
 
-      pkLogger.logV1('API Address:', PKMessageType.INFO);
-      pkLogger.logV1(
-        nodeInfo.apiAddress?.toString() ?? '',
-        PKMessageType.SUCCESS,
-      );
-
-      pkLogger.logV1('Link Info List:', PKMessageType.INFO);
-      nodeInfo.linkInfoList.forEach((l) => {
-        pkLogger.logV1(
-          `Link Info Identity: '${l.identity}'`,
-          PKMessageType.INFO,
-        );
-        pkLogger.logV1(`Node Provider: '${l.provider}'`, PKMessageType.SUCCESS);
-        pkLogger.logV1(`Key: '${l.key}'`, PKMessageType.SUCCESS);
-        pkLogger.logV1(
-          `Date Issued: '${new Date(l.dateissued)}'`,
-          PKMessageType.SUCCESS,
-        );
-        pkLogger.logV1(`Node:`, PKMessageType.SUCCESS);
-        pkLogger.logV1(JSON.parse(l.node), PKMessageType.SUCCESS);
-        pkLogger.logV1(`Signature:`, PKMessageType.SUCCESS);
-        pkLogger.logV1(l.signature, PKMessageType.SUCCESS);
-      });
-    }
-  }),
-);
-
-const commandListNodes = new commander.Command('list');
+const commandListNodes = createCommand('list', { verbose: true });
 commandListNodes.description('list all connected nodes');
 commandListNodes.alias('ls');
 commandListNodes.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandListNodes.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
-commandListNodes.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandListNodes.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const res = (await promisifyGrpc(client.listNodes.bind(client))(
+    new agentPB.EmptyMessage(),
+  )) as agentPB.StringListMessage;
+  const nodeIds = res.getSList();
 
-    const res = (await promisifyGrpc(client.listNodes.bind(client))(
-      new agentPB.EmptyMessage(),
-    )) as agentPB.StringListMessage;
-    const nodeIds = res.getSList();
+  if (nodeIds === undefined || nodeIds.length == 0) {
+    process.stdout.write('no nodes exist\n');
+  } else {
+    nodeIds.forEach((nodeId: string, index: number) => {
+      process.stdout.write(`${index + 1}: ${nodeId}\n`);
+    });
+  }
+});
 
-    if (nodeIds === undefined || nodeIds.length == 0) {
-      pkLogger.logV2('no nodes exist', PKMessageType.INFO);
-    } else {
-      nodeIds.forEach((nodeId: string, index: number) => {
-        pkLogger.logV1(`${index + 1}: ${nodeId}`, PKMessageType.SUCCESS);
-      });
-    }
-  }),
-);
-
-const commandPingNode = new commander.Command('ping');
+const commandPingNode = createCommand('ping', { verbose: true });
 commandPingNode.description('ping a connected node');
 commandPingNode.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandPingNode.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
 commandPingNode.requiredOption(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   '(required) id string of the node to be pinged',
 );
 commandPingNode.option(
   '-t, --timeout <timeout>',
   'timeout of the request in milliseconds',
+  (str) => parseInt(str),
+  15,
 );
-commandPingNode.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandPingNode.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.ContactNodeMessage();
+  request.setPublicKeyOrHandle(options.nodeId);
+  if (options.timeout) {
+    request.setTimeout(options.timeout);
+  }
+  await promisifyGrpc(client.pingNode.bind(client))(request);
+  process.stdout.write('node successfully pinged\n');
+});
 
-    const request = new agentPB.ContactNodeMessage();
-    request.setPublicKeyOrHandle(options.nodeId);
-    if (options.timeout) {
-      request.setTimeout(options.timeout);
-    }
-    await promisifyGrpc(client.pingNode.bind(client))(request);
-    pkLogger.logV1('node successfully pinged', PKMessageType.SUCCESS);
-  }),
-);
-
-const commandStealth = new commander.Command('stealth');
+const commandStealth = createCommand('stealth', { verbose: true });
 commandStealth.description('toggle stealth mode on or off');
-commandStealth.addCommand(
-  new commander.Command('active')
-    .command('active')
-    .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option(
-      '-v, --verbosity, <verbosity>',
-      'set the verbosity level, can choose from levels 1, 2 or 3',
-      (str) => parseInt(str),
-      1,
-    )
-    .action(
-      actionRunner(async (options) => {
-        const nodePath = resolveKeynodeStatePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity);
-        const client = await getAgentClient(nodePath, pkLogger);
 
-        const request = new agentPB.BooleanMessage();
-        request.setB(true);
-        await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
-
-        pkLogger.logV2(
-          `stealth mode toggled to 'active'`,
-          PKMessageType.SUCCESS,
-        );
-      }),
-    ),
-);
-commandStealth.addCommand(
-  new commander.Command('inactive')
-    .option('-k, --node-path <nodePath>', 'provide the polykey path')
-    .option(
-      '-v, --verbosity, <verbosity>',
-      'set the verbosity level, can choose from levels 1, 2 or 3',
-      (str) => parseInt(str),
-      1,
-    )
-    .action(
-      actionRunner(async (options) => {
-        const nodePath = resolveKeynodeStatePath(options.nodePath);
-        const pkLogger = getPKLogger(options.verbosity);
-        const client = await getAgentClient(nodePath, pkLogger);
-
-        const request = new agentPB.BooleanMessage();
-        request.setB(false);
-        await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
-
-        pkLogger.logV2(
-          `stealth mode toggled to 'inactive'`,
-          PKMessageType.SUCCESS,
-        );
-      }),
-    ),
-);
-
-const commandUpdateNodeInfo = new commander.Command('update');
-commandUpdateNodeInfo.description('update the node info for a particular node');
-commandUpdateNodeInfo.option(
-  '-k, --node-path <nodePath>',
+const commandStealthActive = commandStealth.command('active');
+commandStealthActive.option(
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
+commandStealthActive.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.BooleanMessage();
+  request.setB(true);
+  await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
+  process.stdout.write(`stealth mode toggled to 'active'\n`);
+});
+
+const commandStealthInactive = commandStealth.command('inactive');
+commandStealthInactive.option(
+  '-np, --node-path <nodePath>',
+  'provide the polykey path',
+);
+commandStealthInactive.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const request = new agentPB.BooleanMessage();
+  request.setB(false);
+  await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
+  process.stdout.write(`stealth mode toggled to 'inactive'\n`);
+});
+
+const commandUpdateNodeInfo = createCommand('update', { verbose: true });
+commandUpdateNodeInfo.description('update the node info for a particular node');
 commandUpdateNodeInfo.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
+  '-np, --node-path <nodePath>',
+  'provide the polykey path',
 );
 commandUpdateNodeInfo.option(
   '-cn, --current-node',
   'only list the node information for the current node, useful for sharing',
 );
 commandUpdateNodeInfo.option(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   'the id of the node to be updated',
 );
 commandUpdateNodeInfo.option(
@@ -394,59 +305,55 @@ commandUpdateNodeInfo.option(
 );
 commandUpdateNodeInfo.option('-a, --alias <alias>', 'update the node alias');
 commandUpdateNodeInfo.option(
-  '-pa, --node-address <nodeAddress>',
+  '-na, --node-address <nodeAddress>',
   'update the node address',
 );
 commandUpdateNodeInfo.option(
   '-aa, --api-address <apiAddress>',
   'update the api address',
 );
-commandUpdateNodeInfo.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
-
-    if (options.currentNode) {
-      const nodeInfo = new agentPB.NodeInfoMessage();
-      if (options.alias) {
-        nodeInfo.setAlias(options.alias);
-      } else if (options.nodeAddress) {
-        nodeInfo.setNodeAddress(options.nodeAddress);
-      } else if (options.apiAddress) {
-        nodeInfo.setApiAddress(options.apiAddress);
-      } else {
-        throw Error('no changes were provided');
-      }
-      await promisifyGrpc(client.updateLocalNodeInfo.bind(client))(nodeInfo);
-    } else if (options.pem) {
-      const pem = fs.readFileSync(options.pem).toString();
-      const nodeInfo = new agentPB.NodeInfoReadOnlyMessage();
-      nodeInfo.setPem(pem);
-      await promisifyGrpc(client.updateNodeInfo.bind(client))(nodeInfo);
-    } else if (options.nodeId) {
-      const nodeInfo = new agentPB.NodeInfoReadOnlyMessage();
-      if (options.alias) {
-        nodeInfo.setUnsignedAlias(options.alias);
-      } else if (options.nodeAddress || options.nodeAddress == '') {
-        nodeInfo.setUnsignedNodeAddress(options.nodeAddress);
-      } else if (options.apiAddress || options.apiAddress == '') {
-        nodeInfo.setUnsignedApiAddress(options.apiAddress);
-      } else {
-        throw Error('no changes were provided');
-      }
-      await promisifyGrpc(client.updateNodeInfo.bind(client))(nodeInfo);
+commandUpdateNodeInfo.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  if (options.currentNode) {
+    const nodeInfo = new agentPB.NodeInfoMessage();
+    if (options.alias) {
+      nodeInfo.setAlias(options.alias);
+    } else if (options.nodeAddress) {
+      nodeInfo.setNodeAddress(options.nodeAddress);
+    } else if (options.apiAddress) {
+      nodeInfo.setApiAddress(options.apiAddress);
     } else {
-      throw Error(
-        'currentNode, pem or nodeId must be provided to identify node',
-      );
+      throw Error('no changes were provided');
     }
+    await promisifyGrpc(client.updateLocalNodeInfo.bind(client))(nodeInfo);
+  } else if (options.pem) {
+    const pem = fs.readFileSync(options.pem).toString();
+    const nodeInfo = new agentPB.NodeInfoReadOnlyMessage();
+    nodeInfo.setPem(pem);
+    await promisifyGrpc(client.updateNodeInfo.bind(client))(nodeInfo);
+  } else if (options.nodeId) {
+    const nodeInfo = new agentPB.NodeInfoReadOnlyMessage();
+    if (options.alias) {
+      nodeInfo.setUnsignedAlias(options.alias);
+    } else if (options.nodeAddress || options.nodeAddress == '') {
+      nodeInfo.setUnsignedNodeAddress(options.nodeAddress);
+    } else if (options.apiAddress || options.apiAddress == '') {
+      nodeInfo.setUnsignedApiAddress(options.apiAddress);
+    } else {
+      throw Error('no changes were provided');
+    }
+    await promisifyGrpc(client.updateNodeInfo.bind(client))(nodeInfo);
+  } else {
+    throw Error('currentNode, pem or nodeId must be provided to identify node');
+  }
+  process.stdout.write('node info was successfully updated\n');
+});
 
-    pkLogger.logV2('node info was successfully updated', PKMessageType.SUCCESS);
-  }),
-);
-
-const commandNodes = new commander.Command('nodes');
+const commandNodes = createCommand('nodes');
 commandNodes.description('node operations');
 commandNodes.addCommand(commandGetNodeInfo);
 commandNodes.addCommand(commandUpdateNodeInfo);

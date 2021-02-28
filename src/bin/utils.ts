@@ -1,22 +1,51 @@
 import path from 'path';
 import os from 'os';
-import chalk from 'chalk';
+import commander from 'commander';
+import Logger, { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { PolykeyAgent } from '../Polykey';
 import * as agentPB from '../../proto/js/Agent_pb';
 import { AgentClient } from '../../proto/js/Agent_grpc_pb';
 
-function actionRunner(fn: (...args: any) => Promise<void>, processExit = true) {
-  return (...args: any) =>
-    fn(...args)
-      .catch((error: Error) => {
-        console.error(chalk.redBright(error.message));
-      })
-      .finally(() => {
-        if (process.env.NODE_ENV !== 'test' && processExit) {
-          process.exit(0);
-        }
-      });
+const logger = new Logger('polykey');
+
+function verboseToLogLevel(c: number): LogLevel {
+  let logLevel = LogLevel.WARN;
+  if (c === 1) {
+    logLevel = LogLevel.INFO;
+  } else if (c >= 2) {
+    logLevel = LogLevel.DEBUG;
+  }
+  return logLevel;
+}
+
+class PolykeyCommand extends commander.Command {
+  logger: Logger = logger;
+}
+
+function createCommand(
+  name?: string,
+  options: { verbose?: boolean; format?: boolean } = {},
+) {
+  const cmd = new PolykeyCommand(name);
+  if (options.verbose) {
+    cmd.option(
+      '-v, --verbose',
+      'Log Verbose Messages',
+      (_, p) => {
+        return p + 1;
+      },
+      0,
+    );
+  }
+  if (options.format) {
+    cmd.addOption(
+      new commander.Option('-f, --format <format>', 'Output Format')
+        .choices(['human', 'json'])
+        .default('human'),
+    );
+  }
+  return cmd;
 }
 
 function resolveTilde(filePath: string) {
@@ -24,45 +53,6 @@ function resolveTilde(filePath: string) {
     filePath = filePath.replace('~', os.homedir());
   }
   return filePath;
-}
-
-enum PKMessageType {
-  SUCCESS,
-  INFO,
-  WARNING,
-  none,
-}
-
-type PKLogger = {
-  logV1: (message: string, type?: PKMessageType) => void;
-  logV2: (message: string, type?: PKMessageType) => void;
-  logV3: (message: string, type?: PKMessageType) => void;
-};
-
-function getPKLogger(verbosityLevel = 1): PKLogger {
-  const log = (message: string, type?: PKMessageType) => {
-    switch (type) {
-      case PKMessageType.SUCCESS:
-        console.log(chalk.greenBright(message));
-        break;
-      case PKMessageType.INFO:
-        console.info(chalk.blueBright(message));
-        break;
-      case PKMessageType.WARNING:
-        console.warn(chalk.yellowBright(message));
-        break;
-      default:
-        console.debug(message);
-        break;
-    }
-  };
-  return {
-    logV1: (message: string, type?: PKMessageType) => log(message, type),
-    logV2: (message: string, type?: PKMessageType) =>
-      verbosityLevel >= 2 ? log(message, type) : undefined,
-    logV3: (message: string, type?: PKMessageType) =>
-      verbosityLevel >= 3 ? log(message, type) : undefined,
-  };
 }
 
 function resolveKeynodeStatePath(nodePath?: string) {
@@ -105,7 +95,7 @@ function promisifyGrpc<t1, t2>(
 
 async function getAgentClient(
   polykeyPath: string,
-  pkLogger: PKLogger,
+  pkLogger: Logger,
   background = false,
   restartOnStopped = true,
   failOnNotInitialized = true,
@@ -118,10 +108,7 @@ async function getAgentClient(
       failOnNotInitialized,
     );
 
-    pkLogger.logV2(
-      `agent has started with a pid of ${pid}`,
-      PKMessageType.SUCCESS,
-    );
+    pkLogger.info(`agent has started with a pid of ${pid}`);
   }
 
   const client: AgentClient = PolykeyAgent.connectToAgent(polykeyPath);
@@ -140,9 +127,8 @@ async function getAgentClient(
 }
 
 export {
-  getPKLogger,
-  actionRunner,
-  PKMessageType,
+  verboseToLogLevel,
+  createCommand,
   resolveKeynodeStatePath,
   resolveTilde,
   promisifyGrpc,

@@ -1,25 +1,18 @@
-import commander from 'commander';
+import process from 'process';
 import * as agentPB from '../../../../proto/js/Agent_pb';
 import {
-  actionRunner,
-  getPKLogger,
-  PKMessageType,
+  createCommand,
+  verboseToLogLevel,
   resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../../utils';
 
-const commandNewToken = new commander.Command('new');
+const commandNewToken = createCommand('new', { verbose: true });
 commandNewToken.description('create a new bearer token for the api');
 commandNewToken.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
-);
-commandNewToken.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
 );
 commandNewToken.requiredOption(
   '-s, --scopes <scopes>',
@@ -28,82 +21,68 @@ commandNewToken.requiredOption(
 commandNewToken.option(
   '-e, --expiry <expiry>',
   'expiry for the new token in seconds',
+  (str) => parseInt(str),
 );
-commandNewToken.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandNewToken.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const scopes: string[] = options.scopes.split(' ');
+  const req = new agentPB.NewOAuthTokenMessage();
+  req.setScopesList(scopes);
+  req.setExpiry(options.expiry ?? 3600);
+  const res = (await promisifyGrpc(client.newOAuthToken.bind(client))(
+    req,
+  )) as agentPB.StringMessage;
+  process.stdout.write(res.getS() + '\n');
+});
 
-    const scopes: string[] = options.scopes.split(' ');
-    const req = new agentPB.NewOAuthTokenMessage();
-    req.setScopesList(scopes);
-    req.setExpiry(options.expiry ?? 3600);
-    const res = (await promisifyGrpc(client.newOAuthToken.bind(client))(
-      req,
-    )) as agentPB.StringMessage;
-    pkLogger.logV1(res.getS(), PKMessageType.SUCCESS);
-  }),
-);
-
-const commandRevokeToken = new commander.Command('revoke');
+const commandRevokeToken = createCommand('revoke', { verbose: true });
 commandRevokeToken.description('revoke an existing bearer token for the api');
 commandRevokeToken.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
-);
-commandRevokeToken.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
 );
 commandRevokeToken.requiredOption(
   '-t, --token <token>',
   '(required) token to be revoked',
 );
-commandRevokeToken.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandRevokeToken.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const req = new agentPB.StringMessage();
+  req.setS(options.token);
+  await promisifyGrpc(client.revokeOAuthToken.bind(client))(req);
+  process.stdout.write(`token was successfully revoked\n`);
+});
 
-    const req = new agentPB.StringMessage();
-    req.setS(options.token);
-    await promisifyGrpc(client.revokeOAuthToken.bind(client))(req);
-    pkLogger.logV2(`token was successfully revoked`, PKMessageType.SUCCESS);
-  }),
-);
-
-const commandListTokens = new commander.Command('list');
+const commandListTokens = createCommand('list', { verbose: true });
 commandListTokens.alias('ls');
 commandListTokens.description('list all bearer tokens for the api');
 commandListTokens.option(
-  '-k, --node-path <nodePath>',
+  '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandListTokens.option(
-  '-v, --verbosity, <verbosity>',
-  'set the verbosity level, can choose from levels 1, 2 or 3',
-  (str) => parseInt(str),
-  1,
-);
-commandListTokens.action(
-  actionRunner(async (options) => {
-    const nodePath = resolveKeynodeStatePath(options.nodePath);
-    const pkLogger = getPKLogger(options.verbosity);
-    const client = await getAgentClient(nodePath, pkLogger);
+commandListTokens.action(async (options, command) => {
+  const logLevel = verboseToLogLevel(options.verbose);
+  const logger = command.logger;
+  logger.setLevel(logLevel);
+  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const client = await getAgentClient(nodePath, logger);
+  const res = (await promisifyGrpc(client.listOAuthTokens.bind(client))(
+    new agentPB.EmptyMessage(),
+  )) as agentPB.StringListMessage;
+  for (const s of res.getSList()) {
+    process.stdout.write(s + '\n');
+  }
+});
 
-    const res = (await promisifyGrpc(client.listOAuthTokens.bind(client))(
-      new agentPB.EmptyMessage(),
-    )) as agentPB.StringListMessage;
-    for (const s of res.getSList()) {
-      pkLogger.logV1(s, PKMessageType.SUCCESS);
-    }
-  }),
-);
-
-const commandTokens = new commander.Command('tokens');
+const commandTokens = createCommand('tokens');
 commandTokens.description('http api (oauth2) token operations');
 commandTokens.addCommand(commandNewToken);
 commandTokens.addCommand(commandRevokeToken);

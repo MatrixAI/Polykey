@@ -110,16 +110,16 @@ pk agent restart -d
 pk agent status # agent status is 'online'
 
 # create a new polykey node
-pk agent create -k '~/NewPolykeyNode' -n 'John Smith' -e 'john@email.com' -p 'passphrase'
+pk agent create -np '~/NewPolykeyNode' -n 'John Smith' -e 'john@email.com' -p 'passphrase'
 
 # load an existing node
-pk agent load -k '~/NewPolykeyNode' -p 'passphrase'
+pk agent load -np '~/NewPolykeyNode' -p 'passphrase'
 
 # list the nodes managed by agent
 pk agent list # ~/NewPolykeyNode
 </pre>
 
-Note: Polykey also provides the ability to set an environment variable, `PK_PATH`, instead of specifying the node path with `-k '~/NewPolykeyNode'`
+Note: Polykey also provides the ability to set an environment variable, `PK_PATH`, instead of specifying the node path with `-np '~/NewPolykeyNode'`
 
 ## Keys
 This command is used to interact with PolyKey's KeyManager. With this command you can generate new keys, list keys and more.
