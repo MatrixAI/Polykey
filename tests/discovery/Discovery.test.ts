@@ -1,5 +1,5 @@
 // /** To test */
-// import Discovery from '../../../src/directory/Discovery';
+// import Discovery from '@/discovery/Discovery';
 
 // /** Mock dependencies */
 // import fs from 'fs';

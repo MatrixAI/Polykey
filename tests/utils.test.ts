@@ -1,12 +1,25 @@
 import type { AddressInfo } from 'net';
 
+import os from 'os';
+import process from 'process';
 import http from 'http';
-import { terminatingHttpServer } from '@/utils';
+import * as utils from '@/utils';
 
 describe('utils', () => {
-  test('Testing that the termination of http server results in a server that is not listening', async () => {
+  test('getting default node path', () => {
+    const homeDir = os.homedir();
+    const p = utils.getDefaultNodePath();
+    if (process.platform === 'linux') {
+      expect(p).toBe(`${homeDir}/.local/share/polykey`);
+    } else if (process.platform === 'darwin') {
+      expect(p).toBe(`${homeDir}/Library/Application Support/polykey`);
+    } else if (process.platform === 'win32') {
+      expect(p).toBe(`${homeDir}/AppData/Local/polykey`);
+    }
+  });
+  test('termination of http server', async () => {
     const server = http.createServer();
-    const terminate = terminatingHttpServer(server);
+    const terminate = utils.terminatingHttpServer(server);
     server.on('request', (request, response) => {
       response.end('hello');
     });
