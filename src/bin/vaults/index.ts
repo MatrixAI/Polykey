@@ -40,9 +40,8 @@ commandScanVaults.option(
   '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandScanVaults.option('-v, --verbose', 'increase verbosity by one level');
 commandScanVaults.requiredOption(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   '(required) id string of the node to be scanned',
 );
 commandScanVaults.action(async (options, command) => {
@@ -149,7 +148,7 @@ commandPullVault.option(
   'provide the polykey path',
 );
 commandPullVault.requiredOption(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   '(required) id string of the node who has the vault',
 );
 commandPullVault.requiredOption(
@@ -181,7 +180,7 @@ commandShareVault.requiredOption(
   '(required) name of the vault to be shared',
 );
 commandShareVault.requiredOption(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   '(required) id string of the node which the vault is to be shared with',
 );
 commandShareVault.option(
@@ -218,7 +217,7 @@ commandUnshareVault.requiredOption(
   '(required) name of the vault to be unshared',
 );
 commandUnshareVault.requiredOption(
-  '-pi, --node-id <nodeId>',
+  '-ni, --node-id <nodeId>',
   '(required) id string of the node which the vault is to be unshared with',
 );
 commandUnshareVault.action(async (options, command) => {
