@@ -1,3 +1,9 @@
+describe('main', () => {
+  test('test', () => {
+    expect(1).toBe(1);
+  });
+});
+
 // import dgram from 'dgram';
 // import crypto from 'crypto';
 // import Logger from '@matrixai/logger';

@@ -1,3 +1,9 @@
+describe('main', () => {
+  test('test', () => {
+    expect(1).toBe(1);
+  });
+});
+
 // /** To test */
 // import Discovery from '@/discovery/Discovery';
 
@@ -7,17 +13,17 @@
 // import KeyManager from '../../../src/keys/KeyManager';
 // import GestaltTrust from '../../../src/gestalts/GestaltTrust';
 // import GestaltGraph from '../../../src/gestalts/GestaltGraph';
-// import PeerManager from '../../../src/peers/PeerManager';
+// import NodeManager from '../../../src/nodes/NodeManager';
 // import {
 //   IdentityInfo,
 //   ProviderManager,
 //   ProviderTokens,
-// } from '../../../src/social';
-// import { GitHubProvider } from '../../../src/social/providers/github';
+// } from '../../../src/identities';
+// import { GitHubProvider } from '../../../src/identities/providers/github';
 
 // /** Types */
 // import type { LinkInfoIdentity } from '../../../src/links';
-// import { PeerInfoReadOnly } from '../../../src/Polykey';
+// import { NodePeer } from '../../../src/Polykey';
 
 // /** Mock */
 // jest.mock('../../../src/keys/KeyManager', () => {
@@ -43,19 +49,19 @@
 // //   });
 // // });
 
-// jest.mock('../../../src/peers/PeerManager', () => {
+// jest.mock('../../../src/nodes/NodeManager', () => {
 //   return jest.fn().mockImplementation(() => {
 //     return {
 //       verifyLinkClaim(): Promise<boolean> {
 //         return Promise.resolve(true);
 //       },
-//       getPeer(): any {
-//         return 'peerid';
+//       getNode(): any {
+//         return 'nodeid';
 //       },
 //     };
 //   });
 // });
-// // jest.mock('../../../src/social', () => {
+// // jest.mock('../../../src/identities', () => {
 // //   return {
 // //     ProviderManager: jest.fn().mockImplementation(() => {
 // //       return {
@@ -70,7 +76,7 @@
 // //   }
 // // });
 
-// // jest.mock('../../../src/social/providers/github', () => {
+// // jest.mock('../../../src/identities/providers/github', () => {
 // //   return {
 // //     GitHubProvider: jest.fn().mockImplementation(() => {
 // //       return {
@@ -140,11 +146,11 @@
 
 //     const gestaltTrust = new GestaltTrust();
 
-//     const peerManager = new PeerManager(
+//     const nodeManager = new NodeManager(
 //       fakePath,
 //       fs,
 //       keyManager,
-//       logger.getLogger('PeerManager'),
+//       logger.getLogger('NodeManager'),
 //     );
 
 //     const providerManger = new ProviderManager([
@@ -157,18 +163,18 @@
 
 //     const gestaltGraph = new GestaltGraph(
 //       gestaltTrust,
-//       peerManager,
+//       nodeManager,
 //       providerManger,
-//       peerManager.verifyLinkClaim.bind(peerManager),
+//       nodeManager.verifyLinkClaim.bind(nodeManager),
 //       logger.getLogger('KeyManager'),
 //     );
 
 //     /** Intitialize Discovery */
 //     const discovery = new Discovery(
 //       gestaltTrust,
-//       peerManager,
+//       nodeManager,
 //       providerManger,
-//       peerManager.verifyLinkClaim.bind(peerManager),
+//       nodeManager.verifyLinkClaim.bind(nodeManager),
 //       gestaltGraph,
 //     );
 

@@ -133,4 +133,5 @@ export {
   resolveTilde,
   promisifyGrpc,
   getAgentClient,
+  PolykeyCommand,
 };

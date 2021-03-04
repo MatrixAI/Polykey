@@ -11,7 +11,6 @@ export class PingNodeMessage extends jspb.Message {
     getChallenge(): string;
     setChallenge(value: string): PingNodeMessage;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PingNodeMessage.AsObject;
     static toObject(includeInstance: boolean, msg: PingNodeMessage): PingNodeMessage.AsObject;
@@ -32,7 +31,6 @@ export class InfoRequest extends jspb.Message {
     getVaultName(): string;
     setVaultName(value: string): InfoRequest;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InfoRequest.AsObject;
     static toObject(includeInstance: boolean, msg: InfoRequest): InfoRequest.AsObject;
@@ -52,12 +50,10 @@ export namespace InfoRequest {
 export class InfoReply extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): InfoReply;
-
     getBody(): Uint8Array | string;
     getBody_asU8(): Uint8Array;
     getBody_asB64(): string;
     setBody(value: Uint8Array | string): InfoReply;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InfoReply.AsObject;
@@ -79,12 +75,10 @@ export namespace InfoReply {
 export class PackRequest extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): PackRequest;
-
     getBody(): Uint8Array | string;
     getBody_asU8(): Uint8Array;
     getBody_asB64(): string;
     setBody(value: Uint8Array | string): PackRequest;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PackRequest.AsObject;
@@ -106,12 +100,10 @@ export namespace PackRequest {
 export class PackReply extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): PackReply;
-
     getBody(): Uint8Array | string;
     getBody_asU8(): Uint8Array;
     getBody_asB64(): string;
     setBody(value: Uint8Array | string): PackReply;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PackReply.AsObject;
@@ -136,7 +128,6 @@ export class VaultNamesReply extends jspb.Message {
     setVaultNameListList(value: Array<string>): VaultNamesReply;
     addVaultNameList(value: string, index?: number): string;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultNamesReply.AsObject;
     static toObject(includeInstance: boolean, msg: VaultNamesReply): VaultNamesReply.AsObject;
@@ -157,7 +148,6 @@ export class UDPAddressResponse extends jspb.Message {
     getAddress(): string;
     setAddress(value: string): UDPAddressResponse;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UDPAddressResponse.AsObject;
     static toObject(includeInstance: boolean, msg: UDPAddressResponse): UDPAddressResponse.AsObject;
@@ -177,15 +167,12 @@ export namespace UDPAddressResponse {
 export class NatUdpMessage extends jspb.Message { 
     getType(): NatUdpMessageType;
     setType(value: NatUdpMessageType): NatUdpMessage;
-
     getIsResponse(): boolean;
     setIsResponse(value: boolean): NatUdpMessage;
-
     getSubMessage(): Uint8Array | string;
     getSubMessage_asU8(): Uint8Array;
     getSubMessage_asB64(): string;
     setSubMessage(value: Uint8Array | string): NatUdpMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NatUdpMessage.AsObject;
@@ -209,7 +196,6 @@ export class DirectConnectionMessage extends jspb.Message {
     getPeerId(): string;
     setPeerId(value: string): DirectConnectionMessage;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DirectConnectionMessage.AsObject;
     static toObject(includeInstance: boolean, msg: DirectConnectionMessage): DirectConnectionMessage.AsObject;
@@ -229,16 +215,12 @@ export namespace DirectConnectionMessage {
 export class HolePunchConnectionMessage extends jspb.Message { 
     getTargetPeerId(): string;
     setTargetPeerId(value: string): HolePunchConnectionMessage;
-
     getOriginPeerId(): string;
     setOriginPeerId(value: string): HolePunchConnectionMessage;
-
     getIsResponse(): boolean;
     setIsResponse(value: boolean): HolePunchConnectionMessage;
-
     getUdpAddress(): string;
     setUdpAddress(value: string): HolePunchConnectionMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): HolePunchConnectionMessage.AsObject;
@@ -263,7 +245,6 @@ export class NodeDHTFindNodeRequest extends jspb.Message {
     getTargetPeerId(): string;
     setTargetPeerId(value: string): NodeDHTFindNodeRequest;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NodeDHTFindNodeRequest.AsObject;
     static toObject(includeInstance: boolean, msg: NodeDHTFindNodeRequest): NodeDHTFindNodeRequest.AsObject;
@@ -286,7 +267,6 @@ export class NodeDHTFindNodeReply extends jspb.Message {
     setClosestPeersList(value: Array<Agent_pb.NodeInfoReadOnlyMessage>): NodeDHTFindNodeReply;
     addClosestPeers(value?: Agent_pb.NodeInfoReadOnlyMessage, index?: number): Agent_pb.NodeInfoReadOnlyMessage;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NodeDHTFindNodeReply.AsObject;
     static toObject(includeInstance: boolean, msg: NodeDHTFindNodeReply): NodeDHTFindNodeReply.AsObject;
@@ -306,36 +286,26 @@ export namespace NodeDHTFindNodeReply {
 export class MTPPacket extends jspb.Message { 
     getId(): number;
     setId(value: number): MTPPacket;
-
     getPeerid(): string;
     setPeerid(value: string): MTPPacket;
-
     getConnection(): number;
     setConnection(value: number): MTPPacket;
-
     getTimestamp(): number;
     setTimestamp(value: number): MTPPacket;
-
     getTimediff(): number;
     setTimediff(value: number): MTPPacket;
-
     getWindow(): number;
     setWindow(value: number): MTPPacket;
-
     getSeq(): number;
     setSeq(value: number): MTPPacket;
-
     getAck(): number;
     setAck(value: number): MTPPacket;
-
     getData(): Uint8Array | string;
     getData_asU8(): Uint8Array;
     getData_asB64(): string;
     setData(value: Uint8Array | string): MTPPacket;
-
     getSent(): number;
     setSent(value: number): MTPPacket;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): MTPPacket.AsObject;

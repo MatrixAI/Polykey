@@ -1,12 +1,12 @@
 // import net from 'net'
 // import dgram from 'dgram'
-// import { Address } from '../../peers/PeerInfo';
+// import { Address } from '../../nodes/Node';
 // import TCPToMTPSocketPipe from '../socket-pipes/TCPToMTPSocketPipe';
 
 // class HolePunch {
-//   relayedPeerId: string;
+//   relayedNodeId: string;
 
-//   private localPeerId: string;
+//   private localNodeId: string;
 //   private udpSocket: dgram.Socket;
 //   private udpAddress: Address;
 //   private relayedTCPServer: net.Server;
@@ -14,14 +14,14 @@
 //   // pipes
 //   private tcpToMTPSocketPipes: Map<string, TCPToMTPSocketPipe> = new Map
 
-//   constructor(localPeerId: string, udpSocket: dgram.Socket, udpAddress: Address) {
-//     this.localPeerId = localPeerId
+//   constructor(localNodeId: string, udpSocket: dgram.Socket, udpAddress: Address) {
+//     this.localNodeId = localNodeId
 //     this.udpSocket = udpSocket
 //     this.udpAddress = udpAddress
 //     this.relayedTCPServer = net.createServer((socket) => {
 //       // create tcp to mtp pipe
 //       const pipe = new TCPToMTPSocketPipe(
-//         this.localPeerId,
+//         this.localNodeId,
 //         socket,
 //         this.udpAddress,
 //         this.udpSocket

@@ -1,12 +1,12 @@
 // import net from 'net'
 // import dgram from 'dgram'
-// import { Address } from '../../peers/PeerInfo';
+// import { Address } from '../../nodes/Node';
 // import MTPToMTPSocketPipe from '../socket-pipes/MTPToMTPSocketPipe';
 // import { MTPServer } from '../micro-transport-protocol/MTPServer';
 // import Logger from '@matrixai/logger'
 
 // class MTPToMTPRelay {
-//   relayedPeerId: string;
+//   relayedNodeId: string;
 
 //   private mtpServer: MTPServer;
 //   private socket: dgram.Socket;
@@ -21,7 +21,7 @@
 //     this.mtpServer = new MTPServer((socket) => {
 //       // create tcp to mtp pipe
 //       const pipe = new MTPToMTPSocketPipe(
-//         this.localPeerId,
+//         this.localNodeId,
 //         socket,
 //         this.udpAddress,
 //         this.udpSocket

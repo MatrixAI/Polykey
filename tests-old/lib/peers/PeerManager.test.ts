@@ -3,9 +3,9 @@ import os from 'os'
 import {Polykey} from "../../../src/Polykey"
 import { randomString } from '../../../src/utils'
 import KeyManager from '../../../src/keys/KeyManager'
-import { KeybaseIdentityProvider } from '../../../src/peers/identity-provider/default';
+import { KeybaseIdentityProvider } from '../../../src/nodes/identity-provider/default';
 
-describe('PeerManager class', () => {
+describe('NodeManager class', () => {
   type PKNode = {
     tempDir: string
     pk: Polykey
@@ -14,19 +14,19 @@ describe('PeerManager class', () => {
 
     // ======== PEER A ======== //
     // Define temp directory
-    const tempDirPeerA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    const tempDirNodeA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
     // Create keyManager
-    const keyManagerA = new KeyManager(tempDirPeerA, fs)
+    const keyManagerA = new KeyManager(tempDirNodeA, fs)
     await keyManagerA.generateKeyPair('John Smith', 'some passphrase', true)
 
     // Initialize polykey
-    const peerA = new Polykey(
-      tempDirPeerA,
+    const nodeA = new Polykey(
+      tempDirNodeA,
       fs,
       keyManagerA
     )
-    while (!peerA.peerManager.peerServer.started) {
+    while (!nodeA.nodeManager.nodeServer.started) {
       await new Promise((resolve, reject) => {
         setTimeout(() => resolve(null), 500)
       })
@@ -34,159 +34,159 @@ describe('PeerManager class', () => {
 
     // ======== PEER B ======== //
     // Define temp directory
-    const tempDirPeerB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    const tempDirNodeB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
     // Create keyManager
-    const keyManagerB = new KeyManager(tempDirPeerB, fs)
+    const keyManagerB = new KeyManager(tempDirNodeB, fs)
     await keyManagerB.generateKeyPair('Jane Doe', 'some different passphrase', true)
 
     // Initialize polykey
-    const peerB = new Polykey(
-      tempDirPeerB,
+    const nodeB = new Polykey(
+      tempDirNodeB,
       fs,
       keyManagerB
     )
-    while (!peerB.peerManager.peerServer.started) {
+    while (!nodeB.nodeManager.nodeServer.started) {
       await new Promise((resolve, reject) => {
         setTimeout(() => resolve(null), 500)
       })
     }
 
-    peerA.peerManager.addPeer(peerB.peerManager.peerInfo)
-    peerB.peerManager.addPeer(peerA.peerManager.peerInfo)
+    nodeA.nodeManager.addNode(nodeB.nodeManager.nodeInfo)
+    nodeB.nodeManager.addNode(nodeA.nodeManager.nodeInfo)
 
     return {
       nodeA: {
-        tempDir: tempDirPeerA,
-        pk: peerA
+        tempDir: tempDirNodeA,
+        pk: nodeA
       },
       nodeB: {
-        tempDir: tempDirPeerB,
-        pk: peerB
+        tempDir: tempDirNodeB,
+        pk: nodeB
       }
     }
   }
 
-  describe('Peer Connections', () => {
-    let tempDirPeerA: string
-    let peerA: Polykey
+  describe('Node Connections', () => {
+    let tempDirNodeA: string
+    let nodeA: Polykey
 
-    let tempDirPeerB: string
-    let peerB: Polykey
+    let tempDirNodeB: string
+    let nodeB: Polykey
 
     beforeAll(async () => {
       const nodes = await setupTwoConnectedNodes()
-      peerA = nodes.nodeA.pk
-      tempDirPeerA = nodes.nodeA.tempDir
-      peerB = nodes.nodeB.pk
-      tempDirPeerB = nodes.nodeB.tempDir
+      nodeA = nodes.nodeA.pk
+      tempDirNodeA = nodes.nodeA.tempDir
+      nodeB = nodes.nodeB.pk
+      tempDirNodeB = nodes.nodeB.tempDir
     })
 
     afterAll(() => {
-      fs.rmdirSync(tempDirPeerA, { recursive: true })
-      fs.rmdirSync(tempDirPeerB, { recursive: true })
+      fs.rmdirSync(tempDirNodeA, { recursive: true })
+      fs.rmdirSync(tempDirNodeB, { recursive: true })
     })
 
-    test('can ping peer', async done => {
+    test('can ping node', async done => {
       // ==== A to B ==== //
-      const peerBPubKey = peerB.peerManager.peerInfo.publicKey
-      const peerBId = peerB.peerManager.peerInfo.id
+      const nodeBPubKey = nodeB.nodeManager.nodeInfo.publicKey
+      const nodeBId = nodeB.nodeManager.nodeInfo.id
 
-      const pc = peerA.peerManager.connectToPeer(peerBId)
+      const pc = nodeA.nodeManager.connectToNode(nodeBId)
 
-      expect(await pc.pingPeer(5000)).toEqual(true)
+      expect(await pc.pingNode(5000)).toEqual(true)
 
       expect(1+1).toEqual(2);
       done()
     }, 20000)
 
-    test('can connect securely to another peer and send data back and forth', async () => {
+    test('can connect securely to another node and send data back and forth', async () => {
       // ==== A to B ==== //
-      const peerConnectionAB = peerA.peerManager.connectToPeer(peerB.peerManager.peerInfo.id)
-      expect(peerConnectionAB).not.toEqual(undefined)
-      expect(await peerConnectionAB.pingPeer(5000)).toEqual(true)
+      const nodeConnectionAB = nodeA.nodeManager.connectToNode(nodeB.nodeManager.nodeInfo.id)
+      expect(nodeConnectionAB).not.toEqual(undefined)
+      expect(await nodeConnectionAB.pingNode(5000)).toEqual(true)
       // ==== B to A ==== //
-      const peerConnectionBA = peerB.peerManager.connectToPeer(peerA.peerManager.peerInfo.id)
-      expect(peerConnectionBA).not.toEqual(undefined)
-      expect(await peerConnectionBA.pingPeer(5000)).toEqual(true)
+      const nodeConnectionBA = nodeB.nodeManager.connectToNode(nodeA.nodeManager.nodeInfo.id)
+      expect(nodeConnectionBA).not.toEqual(undefined)
+      expect(await nodeConnectionBA.pingNode(5000)).toEqual(true)
     }, 10000)
   })
 
-  describe('NAT Traversal via Peer Relay', () => {
-    let tempDirPeerA: string
-    let peerA: Polykey
+  describe('NAT Traversal via Node Relay', () => {
+    let tempDirNodeA: string
+    let nodeA: Polykey
 
-    let tempDirPeerB: string
-    let peerB: Polykey
+    let tempDirNodeB: string
+    let nodeB: Polykey
 
-    let tempDirPeerC: string
-    let peerC: Polykey
+    let tempDirNodeC: string
+    let nodeC: Polykey
 
     beforeAll(async () => {
       const nodes = await setupTwoConnectedNodes()
-      peerA = nodes.nodeA.pk
-      tempDirPeerA = nodes.nodeA.tempDir
-      peerB = nodes.nodeB.pk
-      tempDirPeerB = nodes.nodeB.tempDir
+      nodeA = nodes.nodeA.pk
+      tempDirNodeA = nodes.nodeA.tempDir
+      nodeB = nodes.nodeB.pk
+      tempDirNodeB = nodes.nodeB.tempDir
 
-      // open relay connection from peerB to peerA
-      peerA.peerManager.updatePeer(peerB.peerManager.peerInfo)
-      peerB.peerManager.updatePeer(peerA.peerManager.peerInfo)
+      // open relay connection from nodeB to nodeA
+      nodeA.nodeManager.updateNode(nodeB.nodeManager.nodeInfo)
+      nodeB.nodeManager.updateNode(nodeA.nodeManager.nodeInfo)
       // ======== PEER C ======== //
       // Define temp directory
-      tempDirPeerC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+      tempDirNodeC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
       // Create keyManager
-      const keyManagerC = new KeyManager(tempDirPeerC, fs)
+      const keyManagerC = new KeyManager(tempDirNodeC, fs)
       await keyManagerC.generateKeyPair('John Smith', 'some passphrase', true)
 
       // Initialize polykey
-      peerC = new Polykey(
-        tempDirPeerC,
+      nodeC = new Polykey(
+        tempDirNodeC,
         fs,
         keyManagerC
       )
 
-      peerA.peerManager.addPeer(peerC.peerManager.peerInfo)
-      peerB.peerManager.addPeer(peerC.peerManager.peerInfo)
+      nodeA.nodeManager.addNode(nodeC.nodeManager.nodeInfo)
+      nodeB.nodeManager.addNode(nodeC.nodeManager.nodeInfo)
 
-      peerC.peerManager.addPeer(peerA.peerManager.peerInfo)
-      // remove connectedAddress from peerC to simulate a blocked connection
-      peerB.peerManager.peerInfo.peerAddress = undefined
-      peerC.peerManager.addPeer(peerB.peerManager.peerInfo)
+      nodeC.nodeManager.addNode(nodeA.nodeManager.nodeInfo)
+      // remove connectedAddress from nodeC to simulate a blocked connection
+      nodeB.nodeManager.nodeInfo.nodeAddress = undefined
+      nodeC.nodeManager.addNode(nodeB.nodeManager.nodeInfo)
     })
 
     afterAll(() => {
-      fs.rmdirSync(tempDirPeerA, { recursive: true })
-      fs.rmdirSync(tempDirPeerB, { recursive: true })
-      fs.rmdirSync(tempDirPeerC, { recursive: true })
+      fs.rmdirSync(tempDirNodeA, { recursive: true })
+      fs.rmdirSync(tempDirNodeB, { recursive: true })
+      fs.rmdirSync(tempDirNodeC, { recursive: true })
     })
 
-    describe('Peer Relay Sharing', () => {
-      test('can clone a vault through a peer relay connection', async done => {
+    describe('Node Relay Sharing', () => {
+      test('can clone a vault through a node relay connection', async done => {
         // ==== Pull Vault B to C ==== //
         const vaultName = `Vault-${randomString()}`
-        const vault = await peerB.vaultManager.newVault(vaultName)
+        const vault = await nodeB.vaultManager.newVault(vaultName)
 
-        const clonedVault = await peerC.vaultManager.cloneVault(vault.name, peerB.peerManager.peerInfo.id)
+        const clonedVault = await nodeC.vaultManager.cloneVault(vault.name, nodeB.nodeManager.nodeInfo.id)
         expect(vault.name).toEqual(clonedVault.name)
 
         done()
       }, 100000)
 
-      test('can clone many vaults through a peer relay connection', async done => {
+      test('can clone many vaults through a node relay connection', async done => {
         // ==== Pull Vaults B to C ==== //
         const vaultNameList = [...Array(10)].map((_) => {
           return `Vault-${randomString()}`
         })
 
         for (const vaultName of vaultNameList) {
-          await peerB.vaultManager.newVault(vaultName)
+          await nodeB.vaultManager.newVault(vaultName)
         }
 
         // clone all vaults from B to C asynchronously
         const clonedVaults = await Promise.all(vaultNameList.map(async (v) => {
-          return peerC.vaultManager.cloneVault(v, peerB.peerManager.peerInfo.publicKey)
+          return nodeC.vaultManager.cloneVault(v, nodeB.nodeManager.nodeInfo.publicKey)
         }))
         const clonedVaultNameList = clonedVaults.map((v) => {
           return v.name
@@ -200,62 +200,62 @@ describe('PeerManager class', () => {
   })
 
   describe('NAT Traversal via UDP Hole Punching', () => {
-    let tempDirPeerA: string
-    let peerA: Polykey
+    let tempDirNodeA: string
+    let nodeA: Polykey
 
-    let tempDirPeerB: string
-    let peerB: Polykey
+    let tempDirNodeB: string
+    let nodeB: Polykey
 
-    let tempDirPeerC: string
-    let peerC: Polykey
+    let tempDirNodeC: string
+    let nodeC: Polykey
 
     beforeAll(async () => {
       const nodes = await setupTwoConnectedNodes()
-      peerA = nodes.nodeA.pk
-      tempDirPeerA = nodes.nodeA.tempDir
-      peerB = nodes.nodeB.pk
-      tempDirPeerB = nodes.nodeB.tempDir
+      nodeA = nodes.nodeA.pk
+      tempDirNodeA = nodes.nodeA.tempDir
+      nodeB = nodes.nodeB.pk
+      tempDirNodeB = nodes.nodeB.tempDir
 
 
-      peerA.peerManager.updatePeer(peerB.peerManager.peerInfo)
-      peerB.peerManager.updatePeer(peerA.peerManager.peerInfo)
+      nodeA.nodeManager.updateNode(nodeB.nodeManager.nodeInfo)
+      nodeB.nodeManager.updateNode(nodeA.nodeManager.nodeInfo)
       // ======== PEER C ======== //
       // Define temp directory
-      tempDirPeerC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+      tempDirNodeC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
       // Create keyManager
-      const keyManagerC = new KeyManager(tempDirPeerC, fs)
+      const keyManagerC = new KeyManager(tempDirNodeC, fs)
       await keyManagerC.generateKeyPair('John Smith', 'some passphrase', true)
 
       // Initialize polykey
-      peerC = new Polykey(
-        tempDirPeerC,
+      nodeC = new Polykey(
+        tempDirNodeC,
         fs,
         keyManagerC
       )
 
-      peerA.peerManager.addPeer(peerC.peerManager.peerInfo)
-      peerB.peerManager.addPeer(peerC.peerManager.peerInfo)
+      nodeA.nodeManager.addNode(nodeC.nodeManager.nodeInfo)
+      nodeB.nodeManager.addNode(nodeC.nodeManager.nodeInfo)
 
-      peerC.peerManager.addPeer(peerA.peerManager.peerInfo)
-      // remove connectedAddress from peerC to simulate a blocked connection
-      peerB.peerManager.peerInfo.peerAddress = undefined
-      peerC.peerManager.addPeer(peerB.peerManager.peerInfo)
+      nodeC.nodeManager.addNode(nodeA.nodeManager.nodeInfo)
+      // remove connectedAddress from nodeC to simulate a blocked connection
+      nodeB.nodeManager.nodeInfo.nodeAddress = undefined
+      nodeC.nodeManager.addNode(nodeB.nodeManager.nodeInfo)
     })
 
     afterAll(() => {
-      fs.rmdirSync(tempDirPeerA, { recursive: true })
-      fs.rmdirSync(tempDirPeerB, { recursive: true })
-      fs.rmdirSync(tempDirPeerC, { recursive: true })
+      fs.rmdirSync(tempDirNodeA, { recursive: true })
+      fs.rmdirSync(tempDirNodeB, { recursive: true })
+      fs.rmdirSync(tempDirNodeC, { recursive: true })
     })
 
     describe('UDP Hole Punched Sharing', () => {
       test('can clone a vault through a hole punched connection', async done => {
         // ==== Pull Vault B to C ==== //
         const vaultName = `Vault-${randomString()}`
-        const vault = await peerB.vaultManager.newVault(vaultName)
+        const vault = await nodeB.vaultManager.newVault(vaultName)
 
-        const clonedVault = await peerC.vaultManager.cloneVault(vault.name, peerB.peerManager.peerInfo.publicKey)
+        const clonedVault = await nodeC.vaultManager.cloneVault(vault.name, nodeB.nodeManager.nodeInfo.publicKey)
         expect(vault.name).toEqual(clonedVault.name)
 
         done()
@@ -268,12 +268,12 @@ describe('PeerManager class', () => {
         })
 
         for (const vaultName of vaultNameList) {
-          const vault = await peerB.vaultManager.newVault(vaultName)
+          const vault = await nodeB.vaultManager.newVault(vaultName)
         }
 
         // clone all vaults from B to C asynchronously
         const clonedVaults = await Promise.all(vaultNameList.map(async (v) => {
-          return peerC.vaultManager.cloneVault(v, peerB.peerManager.peerInfo.publicKey)
+          return nodeC.vaultManager.cloneVault(v, nodeB.nodeManager.nodeInfo.publicKey)
         }))
         const clonedVaultNameList = clonedVaults.map((v) => {
           return v.name
@@ -286,49 +286,49 @@ describe('PeerManager class', () => {
     })
   })
 
-  describe('Peer Discovery', () => {
-    let tempDirPeerA: string
-    let peerA: Polykey
+  describe('Node Discovery', () => {
+    let tempDirNodeA: string
+    let nodeA: Polykey
 
-    let tempDirPeerB: string
-    let peerB: Polykey
+    let tempDirNodeB: string
+    let nodeB: Polykey
 
     beforeAll(async () => {
       const nodes = await setupTwoConnectedNodes()
-      peerA = nodes.nodeA.pk
-      tempDirPeerA = nodes.nodeA.tempDir
-      peerB = nodes.nodeB.pk
-      tempDirPeerB = nodes.nodeB.tempDir
+      nodeA = nodes.nodeA.pk
+      tempDirNodeA = nodes.nodeA.tempDir
+      nodeB = nodes.nodeB.pk
+      tempDirNodeB = nodes.nodeB.tempDir
 
       // need to mock a social discovery service
-      // For peer A
-      // peerA.peerManager.socialDiscoveryServices = [{
-      //   name: 'MockSocialDiscoveryForPeerA',
-      //   findUser: async (handle: string, service: string) => peerB.peerManager.peerInfo.publicKey
+      // For node A
+      // nodeA.nodeManager.socialDiscoveryServices = [{
+      //   name: 'MockSocialDiscoveryForNodeA',
+      //   findUser: async (handle: string, service: string) => nodeB.nodeManager.nodeInfo.publicKey
       // }]
-      peerA.peerManager.identityProviderPlugins.set("MockSocialDiscoveryForPeerA", KeybaseIdentityProvider)
-      // For peer B
-      // peerB.peerManager.socialDiscoveryServices = [{
-      //   name: 'MockSocialDiscoveryForPeerB',
-      //   findUser: async (handle: string, service: string) => peerA.peerManager.peerInfo.publicKey
+      nodeA.nodeManager.identityProviderPlugins.set("MockSocialDiscoveryForNodeA", KeybaseIdentityProvider)
+      // For node B
+      // nodeB.nodeManager.socialDiscoveryServices = [{
+      //   name: 'MockSocialDiscoveryForNodeB',
+      //   findUser: async (handle: string, service: string) => nodeA.nodeManager.nodeInfo.publicKey
       // }]
-      peerB.peerManager.identityProviderPlugins.set("MockSocialDiscoveryForPeerB", KeybaseIdentityProvider)
+      nodeB.nodeManager.identityProviderPlugins.set("MockSocialDiscoveryForNodeB", KeybaseIdentityProvider)
     })
 
     afterAll(() => {
-      fs.rmdirSync(tempDirPeerA, { recursive: true })
-      fs.rmdirSync(tempDirPeerB, { recursive: true })
+      fs.rmdirSync(tempDirNodeA, { recursive: true })
+      fs.rmdirSync(tempDirNodeB, { recursive: true })
     })
 
-    test('find a peer via public key', async () => {
+    test('find a node via public key', async () => {
       // TODO: try to find a way to test this, currently its untestable because keybase login integration hasn't been completed
-      const successful = await peerA.peerManager.findPublicKey(peerB.peerManager.peerInfo.publicKey)
+      const successful = await nodeA.nodeManager.findPublicKey(nodeB.nodeManager.nodeInfo.publicKey)
       expect(successful).toEqual(true)
     }, 100000)
 
     test('find a user via a social discovery service', async () => {
       // TODO: try to find a way to test this, currently its untestable because keybase login integration hasn't been completed
-      const successful = await peerA.peerManager.findSocialUser('mock', 'john-smith', 8e3)
+      const successful = await nodeA.nodeManager.findSocialUser('mock', 'john-smith', 8e3)
       expect(successful).toEqual(true)
     }, 10000)
   })

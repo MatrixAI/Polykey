@@ -1,57 +1,57 @@
 import KBucket from './KBucket';
-import { NodeInfoReadOnly } from '../NodeInfo';
+import { NodePeer } from '../Node';
 import { promisifyGrpc } from '../../bin/utils';
 import * as nodeInterface from '../../../proto/js/Node_pb';
 import * as agentInterface from '../../../proto/js/Agent_pb';
 import NodeConnection from '../node-connection/NodeConnection';
 
-// this implements a very basic map of known peer connections
-// TODO: implement full kademlia algorithm for distributed peer connection table
+// this implements a very basic map of known node connections
+// TODO: implement full kademlia algorithm for distributed node connection table
 class NodeDHT {
-  private getLocalPeerId: () => string;
-  private getPeerInfo: (id: string) => NodeInfoReadOnly | null;
-  private updatePeerStore: (peerInfo: NodeInfoReadOnly) => void;
+  private getLocalNodeId: () => string;
+  private getNodeInfo: (id: string) => NodePeer | null;
+  private updateNodeStore: (nodeInfo: NodePeer) => void;
 
   // state
-  private findingLocalPeer = false;
-  private findingPeer = false;
-  private addingPeers = false;
-  private addingPeer = false;
-  private deletingPeer = false;
+  private findingLocalNode = false;
+  private findingNode = false;
+  private addingNodes = false;
+  private addingNode = false;
+  private deletingNode = false;
 
   kBucket: KBucket;
-  connectToPeer: (id: string) => NodeConnection;
+  connectToNode: (id: string) => NodeConnection;
 
   constructor(
-    getLocalPeerId: () => string,
-    connectToPeer: (id: string) => NodeConnection,
-    getPeerInfo: (id: string) => NodeInfoReadOnly | null,
-    updatePeerStore: (peerInfo: NodeInfoReadOnly) => void,
+    getLocalNodeId: () => string,
+    connectToNode: (id: string) => NodeConnection,
+    getNodeInfo: (id: string) => NodePeer | null,
+    updateNodeStore: (nodeInfo: NodePeer) => void,
   ) {
-    this.getLocalPeerId = getLocalPeerId;
-    this.connectToPeer = connectToPeer;
-    this.getPeerInfo = getPeerInfo;
-    this.updatePeerStore = updatePeerStore;
+    this.getLocalNodeId = getLocalNodeId;
+    this.connectToNode = connectToNode;
+    this.getNodeInfo = getNodeInfo;
+    this.updateNodeStore = updateNodeStore;
 
     this.kBucket = new KBucket(
-      this.getLocalPeerId,
+      this.getLocalNodeId,
       this.pingNodeUpdate.bind(this),
     );
   }
 
   public get Status() {
     return {
-      findingLocalPeer: this.findingLocalPeer,
-      findingPeer: this.findingPeer,
-      addingPeers: this.addingPeers,
-      addingPeer: this.addingPeer,
-      deletingPeer: this.deletingPeer,
+      findingLocalNode: this.findingLocalNode,
+      findingNode: this.findingNode,
+      addingNodes: this.addingNodes,
+      addingNode: this.addingNode,
+      deletingNode: this.deletingNode,
     };
   }
 
-  // This should use the peer communications channel to check if the peer is still alive
-  private async peerIsAlive(peerId: string) {
-    const pc = this.connectToPeer(peerId);
+  // This should use the node communications channel to check if the node is still alive
+  private async nodeIsAlive(nodeId: string) {
+    const pc = this.connectToNode(nodeId);
     return await pc.pingNode();
   }
 
@@ -61,7 +61,7 @@ class NodeDHT {
     // if an old contact does not respond, remove it
     // if there is an opening, add the new contact if it responds
     for (const oldContact of oldContacts) {
-      if (!(await this.peerIsAlive(oldContact))) {
+      if (!(await this.nodeIsAlive(oldContact))) {
         // we can remove this one and add the new contact
         this.kBucket.remove(oldContact);
         this.kBucket.add(newContact);
@@ -70,8 +70,8 @@ class NodeDHT {
     }
   }
 
-  private closestPeer(id: string): string | null {
-    const res = this.closestPeers(id, 1);
+  private closestNode(id: string): string | null {
+    const res = this.closestNodes(id, 1);
     if (res.length > 0) {
       return res[0];
     } else {
@@ -79,118 +79,118 @@ class NodeDHT {
     }
   }
 
-  private closestPeers(id: string, count?: number): string[] {
+  private closestNodes(id: string, count?: number): string[] {
     return this.kBucket.closest(id, count);
   }
 
   async addNode(id: string) {
-    this.addingPeer = true;
+    this.addingNode = true;
     try {
-      if (this.getLocalPeerId() != id) {
+      if (this.getLocalNodeId() != id) {
         await this.kBucket.add(id);
       }
     } finally {
-      this.addingPeer = false;
+      this.addingNode = false;
     }
   }
 
   async addNodes(ids: string[]) {
-    this.addingPeers = true;
+    this.addingNodes = true;
     try {
       for (const id of ids) {
-        if (this.getLocalPeerId() != id) {
+        if (this.getLocalNodeId() != id) {
           await this.kBucket.add(id);
         }
       }
     } finally {
-      this.addingPeers = false;
+      this.addingNodes = false;
     }
   }
 
   async deleteNode(id: string) {
-    this.deletingPeer = true;
+    this.deletingNode = true;
     try {
       this.kBucket.remove(id);
     } finally {
-      this.deletingPeer = false;
+      this.deletingNode = false;
     }
   }
 
   private toNodeInfoReadOnlyMessageList(
-    peerIds: string[],
+    nodeIds: string[],
   ): agentInterface.NodeInfoReadOnlyMessage[] {
-    return peerIds
-      .filter((p) => p != this.getLocalPeerId())
+    return nodeIds
+      .filter((p) => p != this.getLocalNodeId())
       .map((p) => {
-        const peerInfo = this.getPeerInfo(p);
-        return peerInfo ? peerInfo.toNodeInfoReadOnlyMessage() : null;
+        const nodeInfo = this.getNodeInfo(p);
+        return nodeInfo ? nodeInfo.toNodeInfoReadOnlyMessage() : null;
       })
       .filter((p) => p != null) as agentInterface.NodeInfoReadOnlyMessage[];
   }
 
-  async findLocalPeer(peerId: string): Promise<NodeInfoReadOnly | null> {
-    this.findingLocalPeer = true;
-    const closestPeerId = this.closestPeer(peerId);
-    if (closestPeerId && closestPeerId == peerId) {
-      const foundPeerInfo = this.getPeerInfo(peerId);
-      // Found local peer
-      this.findingLocalPeer = false;
-      return foundPeerInfo ?? null;
+  async findLocalNode(nodeId: string): Promise<NodePeer | null> {
+    this.findingLocalNode = true;
+    const closestNodeId = this.closestNode(nodeId);
+    if (closestNodeId && closestNodeId == nodeId) {
+      const foundNodeInfo = this.getNodeInfo(nodeId);
+      // Found local node
+      this.findingLocalNode = false;
+      return foundNodeInfo ?? null;
     } else {
       // Either can't find public key in k bucket or
-      // PeerInfo doesn't exist in store. Either way,
+      // Node doesn't exist in store. Either way,
       // we just return null
-      this.findingLocalPeer = false;
+      this.findingLocalNode = false;
       return null;
     }
   }
 
-  // This function either returns the peer info from
-  // a locally found peer or uses the FIND_NODE protocol
-  // from kademlia to query peers until it finds the one
+  // This function either returns the node info from
+  // a locally found node or uses the FIND_NODE protocol
+  // from kademlia to query nodes until it finds the one
   // its looking for
   async findNode(
-    peerId: string,
+    nodeId: string,
   ): Promise<{
-    adjacentPeerInfo?: NodeInfoReadOnly;
-    targetNodeInfo?: NodeInfoReadOnly;
+    adjacentNodeInfo?: NodePeer;
+    targetNodeInfo?: NodePeer;
   }> {
-    this.findingPeer = true;
-    // // Return local peer if it exists in routing table and has a connected peerAddress
-    // const localPeerInfo = await this.findLocalPeer(peerId);
-    // if (localPeerInfo && localPeerInfo?.peerAddress != undefined) {
-    //   this.findingPeer = false;
+    this.findingNode = true;
+    // // Return local node if it exists in routing table and has a connected nodeAddress
+    // const localNodeInfo = await this.findLocalNode(nodeId);
+    // if (localNodeInfo && localNodeInfo?.nodeAddress != undefined) {
+    //   this.findingNode = false;
     //   return {
-    //     targetPeerInfo: localPeerInfo,
+    //     targetNodeInfo: localNodeInfo,
     //   };
     // }
 
-    // If local peer was not found, get closest peers and
+    // If local node was not found, get closest nodes and
     // start querying the network
     const kBucketSize = this.kBucket.numberOfNodesPerKBucket;
-    // get rid of the target peer id as it is not onsidered a close peer
+    // get rid of the target node id as it is not onsidered a close node
 
-    const closestPeerIds = this.closestPeers(peerId, kBucketSize).filter(
-      (pi) => pi != peerId,
+    const closestNodeIds = this.closestNodes(nodeId, kBucketSize).filter(
+      (pi) => pi != nodeId,
     );
 
-    // If there are no closest peers, we have failed to find that peer
-    if (closestPeerIds.length === 0) {
-      throw Error('peer lookup failed, no close peers found');
+    // If there are no closest nodes, we have failed to find that node
+    if (closestNodeIds.length === 0) {
+      throw Error('node lookup failed, no close nodes found');
     }
 
-    // Query the network until the peer public key is found
-    for (const closePeerId of closestPeerIds) {
-      if (closePeerId == this.getLocalPeerId() || closePeerId == peerId) {
+    // Query the network until the node public key is found
+    for (const closeNodeId of closestNodeIds) {
+      if (closeNodeId == this.getLocalNodeId() || closeNodeId == nodeId) {
         continue;
       }
       try {
-        const pc = this.connectToPeer(closePeerId);
+        const pc = this.connectToNode(closeNodeId);
         const client = await pc.getNodeClient(true);
 
         // encode request
         const request = new nodeInterface.NodeDHTFindNodeRequest();
-        request.setTargetPeerId(peerId);
+        request.setTargetPeerId(nodeId);
 
         // send request
         const response = (await promisifyGrpc(
@@ -199,39 +199,39 @@ class NodeDHT {
 
         // decode response
         const { closestPeersList } = response.toObject();
-        const closestFoundPeerInfoList = closestPeersList
-          .map((p) => NodeInfoReadOnly.fromNodeInfoReadOnlyMessage(p))
-          .filter((p) => p.id != this.getLocalPeerId());
+        const closestFoundNodeInfoList = closestPeersList
+          .map((p) => NodePeer.fromNodeInfoReadOnlyMessage(p))
+          .filter((p) => p.id != this.getLocalNodeId());
 
-        // Add peers to routing table
-        this.addNodes(closestFoundPeerInfoList.map((p) => p.id));
+        // Add nodes to routing table
+        this.addNodes(closestFoundNodeInfoList.map((p) => p.id));
 
-        // add peers to peer store
-        let foundPeerInfo: NodeInfoReadOnly | null = null;
-        for (const peerInfo of closestFoundPeerInfoList) {
-          if (this.getLocalPeerId() != peerInfo.id) {
-            this.updatePeerStore(peerInfo);
+        // add nodes to node store
+        let foundNodeInfo: NodePeer | null = null;
+        for (const nodeInfo of closestFoundNodeInfoList) {
+          if (this.getLocalNodeId() != nodeInfo.id) {
+            this.updateNodeStore(nodeInfo);
           }
-          if (peerInfo.id == peerId) {
-            foundPeerInfo = peerInfo;
+          if (nodeInfo.id == nodeId) {
+            foundNodeInfo = nodeInfo;
           }
         }
 
-        if (foundPeerInfo) {
-          this.findingPeer = false;
+        if (foundNodeInfo) {
+          this.findingNode = false;
           return {
-            adjacentPeerInfo: this.getPeerInfo(closePeerId)!,
-            targetNodeInfo: foundPeerInfo,
+            adjacentNodeInfo: this.getNodeInfo(closeNodeId)!,
+            targetNodeInfo: foundNodeInfo,
           };
         } else {
-          throw Error('peer id was not found');
+          throw Error('node id was not found');
         }
       } catch (error) {
-        // don't want to throw if peer contact failed so just log it
+        // don't want to throw if node contact failed so just log it
         continue;
       }
     }
-    this.findingPeer = false;
+    this.findingNode = false;
     return {};
   }
 
@@ -239,9 +239,9 @@ class NodeDHT {
   // gRPC Handlers //
   ///////////////////
   handleFindNodeMessage(
-    targetPeerId: string,
+    targetNodeId: string,
   ): agentInterface.NodeInfoReadOnlyMessage[] {
-    return this.toNodeInfoReadOnlyMessageList(this.closestPeers(targetPeerId));
+    return this.toNodeInfoReadOnlyMessageList(this.closestNodes(targetNodeId));
   }
 }
 

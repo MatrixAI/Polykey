@@ -3,7 +3,7 @@ import Logger from '@matrixai/logger';
 import NodeManager from '../NodeManager';
 import * as node from '../../../proto/js/Node_pb';
 import * as agent from '../../../proto/js/Agent_pb';
-import { Address, NodeInfoReadOnly } from '../NodeInfo';
+import { Address, NodePeer } from '../Node';
 import { NodeService, INodeServer } from '../../../proto/js/Node_grpc_pb';
 
 class NodeServer implements INodeServer {
@@ -165,7 +165,7 @@ class NodeServer implements INodeServer {
       if (!process.env.PUBLIC_RELAY_NODE) {
         throw Error('node is not a public relay');
       } else {
-        const nodeInfoReadOnly = NodeInfoReadOnly.fromNodeInfoReadOnlyMessage(
+        const nodeInfoReadOnly = NodePeer.fromNodeInfoReadOnlyMessage(
           call.request.toObject(),
         );
         if (!this.nodeManager.hasNode(nodeInfoReadOnly.id)) {

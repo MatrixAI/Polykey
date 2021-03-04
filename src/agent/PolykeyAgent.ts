@@ -9,7 +9,7 @@ import ConfigStore from 'configstore';
 import * as grpc from '@grpc/grpc-js';
 import * as agent from '../../proto/js/Agent_pb';
 import { spawn, SpawnOptions } from 'child_process';
-import { NodeInfoReadOnly } from '../nodes/NodeInfo';
+import { NodePeer } from '../nodes/Node';
 import Polykey, { Address, KeyManager } from '../Polykey';
 import { TLSCredentials } from '../nodes/pki/PublicKeyInfrastructure';
 import {
@@ -205,7 +205,7 @@ class PolykeyAgent implements IAgentServer {
     const bootstrapNodeInfoPath =
       process.env.BOOTSTRAP_NODE_INFO_PATH ??
       path.join(os.homedir(), 'bootstrapNode.pem');
-    const bootstrapNodeInfo = new NodeInfoReadOnly(
+    const bootstrapNodeInfo = new NodePeer(
       fs.readFileSync(bootstrapNodeInfoPath).toString(),
     );
     if (this.pk.nodeManager.hasNode(bootstrapNodeInfo.id)) {
@@ -232,7 +232,7 @@ class PolykeyAgent implements IAgentServer {
         unsignedNodeAddress,
         unsignedApiAddress,
       } = call.request!.toObject();
-      const nodeInfo = new NodeInfoReadOnly(pem);
+      const nodeInfo = new NodePeer(pem);
       if (unsignedAlias) {
         nodeInfo.alias = unsignedAlias;
       }
@@ -1478,11 +1478,11 @@ class PolykeyAgent implements IAgentServer {
         unsignedNodeAddress,
         unsignedApiAddress,
       } = call.request!.toObject();
-      let nodeInfo: NodeInfoReadOnly | null;
+      let nodeInfo: NodePeer | null;
       if (nodeId) {
         nodeInfo = this.pk.nodeManager.getNodeInfo(nodeId);
       } else if (pem) {
-        nodeInfo = new NodeInfoReadOnly(pem);
+        nodeInfo = new NodePeer(pem);
       } else {
         throw Error('nodeId or pem must be specified to  identify node');
       }

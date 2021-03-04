@@ -5,7 +5,7 @@ interface NatTraversalStateSchema {
     initial: {};
     toggleStealthModeActive: {};
     toggleStealthModeInactive: {};
-    connectingToPeer: {};
+    connectingToNode: {};
   };
 }
 

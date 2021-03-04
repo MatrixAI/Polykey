@@ -21,8 +21,8 @@ async function createVaultManagerModel() {
   await pk2.vaultManager.newVault(randomString())
 
   // let each know about the other
-  pk2.peerManager.addPeer(pk1.peerManager.peerInfo)
-  pk1.peerManager.addPeer(pk2.peerManager.peerInfo)
+  pk2.nodeManager.addNode(pk1.nodeManager.nodeInfo)
+  pk1.nodeManager.addNode(pk2.nodeManager.nodeInfo)
 
   const vaultManagerModel = createModel<VaultManager, VaultsStateSchema>(vaultsMachine).withEvents({
     CREATE_VAULT: {
@@ -35,14 +35,14 @@ async function createVaultManagerModel() {
       // Do not await, must interrogate while service is running.
       exec: async (vm: VaultManager) => {
         const vaultNames = pk2.vaultManager.getVaultNames()
-        vm.cloneVault(vaultNames[0], pk2.peerManager.peerInfo.id)
+        vm.cloneVault(vaultNames[0], pk2.nodeManager.nodeInfo.id)
       }
     },
     PULL_VAULT: {
       // Do not await, must interrogate while service is running.
       exec: async (vm: VaultManager) => {
         const vaultNames = pk2.vaultManager.getVaultNames()
-        vm.pullVault(vaultNames[0], pk2.peerManager.peerInfo.id)
+        vm.pullVault(vaultNames[0], pk2.nodeManager.nodeInfo.id)
       }
     },
     DELETE_VAULT: {

@@ -68,10 +68,10 @@ class Address {
   }
 }
 
-// The NodeInfo class is reserved for the local node's information and is modifiable
+// The Node class is reserved for the local node's information and is modifiable
 // as we have the ability to change its information and re-sign it as the owner
 // of the private key it describes.
-class NodeInfo {
+class Node {
   private internalAlias: string;
   public get alias(): string {
     return this.internalAlias;
@@ -154,10 +154,10 @@ class NodeInfo {
     linkInfoList?: LinkInfo[],
   ) {
     this.internalAlias = alias;
-    this.internalPublicKey = NodeInfo.formatPublicKey(publicKey);
-    this.internalId = NodeInfo.publicKeyToId(this.internalPublicKey);
+    this.internalPublicKey = Node.formatPublicKey(publicKey);
+    this.internalId = Node.publicKeyToId(this.internalPublicKey);
     if (rootPublicKey) {
-      this.internalRootPublicKey = NodeInfo.formatPublicKey(rootPublicKey);
+      this.internalRootPublicKey = Node.formatPublicKey(rootPublicKey);
     }
     if (nodeAddress) {
       this.internalNodeAddress = Address.parse(nodeAddress);
@@ -172,7 +172,7 @@ class NodeInfo {
   }
 
   static publicKeyToId(publicKey: string) {
-    const formatedPublicKey = NodeInfo.formatPublicKey(publicKey);
+    const formatedPublicKey = Node.formatPublicKey(publicKey);
     // we are using md5 for hash + hex for encoding on the public key to make a short,
     // human readable/sharable name. example nodeId: 167dcbfa28e9425f3db39e89ab748540
     const id = crypto.createHash('md5').update(formatedPublicKey).digest('hex');
@@ -199,8 +199,8 @@ class NodeInfo {
     );
   }
 
-  deepCopy(): NodeInfo {
-    return new NodeInfo(
+  deepCopy(): Node {
+    return new Node(
       this.alias,
       this.publicKey,
       this.rootPublicKey,
@@ -323,9 +323,9 @@ class NodeInfo {
     };
   }
 
-  static fromX509Pem(pem: string): NodeInfo {
-    const parsedCert = NodeInfo.parseX509Pem(pem);
-    return new NodeInfo(
+  static fromX509Pem(pem: string): Node {
+    const parsedCert = Node.parseX509Pem(pem);
+    return new Node(
       parsedCert.alias,
       parsedCert.publicKey,
       parsedCert.rootPublicKey,
@@ -336,11 +336,11 @@ class NodeInfo {
   }
 }
 
-// This class is meant to be a readonly version of NodeInfo as we
+// This class is meant to be a readonly version of Node as we
 // do not own the private key it describes so we can not resign
 // changes made to it. The nodeAddress and apiAddresses are
 // however changeable to make certain use cases practical.
-class NodeInfoReadOnly extends NodeInfo {
+class NodePeer extends Node {
   private internalPem: string;
   public get pem(): string {
     return this.internalPem;
@@ -426,8 +426,8 @@ class NodeInfoReadOnly extends NodeInfo {
   }
 
   constructor(nodeInfoPem: string) {
-    const pem = NodeInfo.formatPemCertificate(nodeInfoPem);
-    const parsedCert = NodeInfo.parseX509Pem(pem);
+    const pem = Node.formatPemCertificate(nodeInfoPem);
+    const parsedCert = Node.parseX509Pem(pem);
     super(
       parsedCert.alias,
       parsedCert.publicKey,
@@ -440,8 +440,8 @@ class NodeInfoReadOnly extends NodeInfo {
     this.signedAlias = parsedCert.alias;
   }
 
-  deepCopy(): NodeInfoReadOnly {
-    const newNodeInfo = new NodeInfoReadOnly(this.internalPem);
+  deepCopy(): NodePeer {
+    const newNodeInfo = new NodePeer(this.internalPem);
     newNodeInfo.unsignedAlias = this.unsignedAlias;
     newNodeInfo.unsignedApiAddress = this.unsignedApiAddress;
     newNodeInfo.unsignedNodeAddress = this.unsignedNodeAddress;
@@ -466,14 +466,14 @@ class NodeInfoReadOnly extends NodeInfo {
 
   static fromNodeInfoReadOnlyMessage(
     message: agentInterface.NodeInfoReadOnlyMessage.AsObject,
-  ): NodeInfoReadOnly {
+  ): NodePeer {
     const {
       pem,
       unsignedAlias,
       unsignedNodeAddress,
       unsignedApiAddress,
     } = message;
-    const nodeInfo = new NodeInfoReadOnly(pem);
+    const nodeInfo = new NodePeer(pem);
     if (unsignedAlias) {
       nodeInfo.alias = unsignedAlias;
     }
@@ -487,4 +487,4 @@ class NodeInfoReadOnly extends NodeInfo {
   }
 }
 
-export { Address, NodeInfo, NodeInfoReadOnly };
+export { Address, Node, NodePeer };

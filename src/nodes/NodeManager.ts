@@ -9,7 +9,7 @@ import NodeServer from './node-connection/NodeServer';
 import { LinkClaimIdentity, LinkInfo } from '../links';
 import { JSONMapReplacer, JSONMapReviver } from '../utils';
 import NodeConnection from './node-connection/NodeConnection';
-import { NodeInfo, NodeInfoReadOnly } from './NodeInfo';
+import { Node, NodePeer } from './Node';
 import PublicKeyInfrastructure from './pki/PublicKeyInfrastructure';
 import MulticastBroadcaster from '../network/multicast/MulticastBroadcaster';
 
@@ -26,9 +26,9 @@ class NodeManager {
   /////////
   pki: PublicKeyInfrastructure;
 
-  nodeInfo: NodeInfo;
-  // nodeId -> NodeInfoReadOnly
-  private nodeStore: Map<string, NodeInfoReadOnly>;
+  nodeInfo: Node;
+  // nodeId -> NodePeer
+  private nodeStore: Map<string, NodePeer>;
   // nodeId -> nodeAlias
   private nodeAlias: Map<string, string>;
 
@@ -48,7 +48,7 @@ class NodeManager {
     fileSystem: typeof fs,
     keyManager: KeyManager,
     logger: Logger,
-    nodeInfo?: NodeInfo,
+    nodeInfo?: Node,
   ) {
     this.fileSystem = fileSystem;
 
@@ -58,7 +58,7 @@ class NodeManager {
     this.nodeAlias = new Map();
 
     this.fileSystem.mkdirSync(polykeyPath, { recursive: true });
-    this.nodeInfoMetadataPath = path.join(polykeyPath, '.nodes', 'NodeInfo');
+    this.nodeInfoMetadataPath = path.join(polykeyPath, '.nodes', 'Node');
     this.nodeStoreMetadataPath = path.join(polykeyPath, '.nodes', 'NodeStore');
     this.nodeAliasMetadataPath = path.join(polykeyPath, '.nodes', 'NodeAlias');
 
@@ -73,7 +73,7 @@ class NodeManager {
       this.nodeInfo = nodeInfo;
       this.writeMetadata();
     } else if (this.keyManager.getKeyPair().publicKey && !this.nodeInfo) {
-      this.nodeInfo = new NodeInfo('', this.keyManager.getPublicKeyString());
+      this.nodeInfo = new Node('', this.keyManager.getPublicKeyString());
     }
 
     this.multicastBroadcaster = new MulticastBroadcaster(
@@ -97,7 +97,7 @@ class NodeManager {
       () => this.nodeInfo.id,
       this.connectToNode.bind(this),
       this.getNodeInfo.bind(this),
-      ((nodeInfo: NodeInfoReadOnly) => {
+      ((nodeInfo: NodePeer) => {
         if (!this.hasNode(nodeInfo.id)) {
           this.addNode(nodeInfo);
         } else {
@@ -184,7 +184,7 @@ class NodeManager {
    * @param nodeInfo Info of the node to be added
    * @param alias Optional alias for the new node
    */
-  addNode(nodeInfo: NodeInfoReadOnly, alias?: string): string {
+  addNode(nodeInfo: NodePeer, alias?: string): string {
     const nodeId = nodeInfo.id;
     if (this.hasNode(nodeId)) {
       throw Error('node already exists in node store');
@@ -242,7 +242,7 @@ class NodeManager {
    * Update a node's info in the nodeStore
    * @param nodeInfo Info of the node to be updated
    */
-  updateNode(nodeInfo: NodeInfoReadOnly): void {
+  updateNode(nodeInfo: NodePeer): void {
     if (!this.hasNode(nodeInfo.id)) {
       throw Error('node does not exist in node store');
     }
@@ -267,7 +267,7 @@ class NodeManager {
    * Retrieves a node for the given public key
    * @param id ID of the desired node
    */
-  getNodeInfo(id: string): NodeInfoReadOnly | null {
+  getNodeInfo(id: string): NodePeer | null {
     return this.nodeStore.get(id)?.deepCopy() ?? null;
   }
 
@@ -275,7 +275,7 @@ class NodeManager {
    * Retrieves a node for the given public key
    * @param id ID of the desired node
    */
-  async getNodeInfoFromDHT(id: string): Promise<NodeInfoReadOnly | null> {
+  async getNodeInfoFromDHT(id: string): Promise<NodePeer | null> {
     this.logger.info(`searching DHT for node id: '${id}'`);
     const targetNodeInfo = (await this.nodeDHT.findNode(id))?.targetNodeInfo;
     this.logger.info(
@@ -311,8 +311,8 @@ class NodeManager {
       this.multicastBroadcaster.startListening();
       this.multicastBroadcaster.on('found', (foundPublicKey: string) => {
         if (
-          NodeInfo.formatPublicKey(foundPublicKey) ==
-          NodeInfo.formatPublicKey(publicKey)
+          Node.formatPublicKey(foundPublicKey) ==
+          Node.formatPublicKey(publicKey)
         ) {
           resolve(true);
         }
@@ -386,7 +386,7 @@ class NodeManager {
       dateIssued: linkClaimIdentity.dateIssued,
     };
     const signature = linkClaimIdentity.signature;
-    const publicKey = NodeInfo.formatPublicKey(
+    const publicKey = Node.formatPublicKey(
       JSON.stringify(linkClaimIdentity.node),
     );
     return await this.keyManager.verifyData(
@@ -465,7 +465,7 @@ class NodeManager {
       const metadata = this.fileSystem
         .readFileSync(this.nodeInfoMetadataPath)
         .toString();
-      this.nodeInfo = NodeInfo.fromX509Pem(metadata);
+      this.nodeInfo = Node.fromX509Pem(metadata);
     }
     // load node store if path exists
     if (this.fileSystem.existsSync(this.nodeStoreMetadataPath)) {
@@ -473,7 +473,7 @@ class NodeManager {
         .readFileSync(this.nodeStoreMetadataPath)
         .toString();
       for (const nodeInfoPem of JSON.parse(metadata)) {
-        const nodeInfo = new NodeInfoReadOnly(nodeInfoPem);
+        const nodeInfo = new NodePeer(nodeInfoPem);
         this.nodeStore.set(nodeInfo.id, nodeInfo);
       }
     }

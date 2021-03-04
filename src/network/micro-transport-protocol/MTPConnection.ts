@@ -3,7 +3,7 @@ import dgram from 'dgram';
 import Logger from '@matrixai/logger';
 import { Duplex } from 'readable-stream';
 import CyclicalBuffer from './CyclicalBuffer';
-import { Address } from '../../nodes/NodeInfo';
+import { Address } from '../../nodes/Node';
 import MTPPacket, {
   BUFFER_SIZE,
   uint16,

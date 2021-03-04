@@ -6,7 +6,7 @@ import commandSecrets from './secrets';
 import commandVaults from './vaults';
 import commandNodes from './nodes';
 import commandGestalts from './gestalts';
-import commandSocial from './social';
+import commandSocial from './identities';
 import commandCrypto from './crypto';
 import commandAgent from './agent';
 import commandCA from './ca';

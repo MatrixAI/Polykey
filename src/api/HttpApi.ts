@@ -10,7 +10,7 @@ import session from 'express-session';
 import swaggerUI from 'swagger-ui-express';
 import Logger from '@matrixai/logger';
 import { Strategy as ClientPasswordStrategy } from 'passport-oauth2-client-password';
-import { Address } from '../nodes/NodeInfo';
+import { Address } from '../nodes/Node';
 import { BasicStrategy } from 'passport-http';
 import OAuth2 from './AuthorizationServer/OAuth2';
 import express, { RequestHandler } from 'express';

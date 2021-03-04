@@ -1,7 +1,7 @@
 // import dgram from 'dgram'
 // import STUNMessage from '../message/Message'
 // import Transport from '../transport/Transport'
-// import { Address } from '../../../peers/PeerInfo'
+// import { Address } from '../../../nodes/Node'
 // import { EventEmitter } from 'events'
 
 // class Server extends EventEmitter {

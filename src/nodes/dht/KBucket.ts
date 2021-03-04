@@ -18,10 +18,10 @@ type Node = {
 
 /**
  * Implementation of a Kademlia DHT k-bucket used for storing
- * contact (peer node) information.
+ * contact (node node) information.
  */
 class KBucket {
-  private getPeerId: () => string;
+  private getNodeId: () => string;
 
   private pingNode: (oldContacts: string[], newContact: string) => void;
 
@@ -30,10 +30,10 @@ class KBucket {
   private root: Node;
 
   constructor(
-    getPeerId: () => string,
+    getNodeId: () => string,
     pingNode: (oldContacts: string[], newContact: string) => void,
   ) {
-    this.getPeerId = getPeerId;
+    this.getNodeId = getNodeId;
     this.pingNode = pingNode;
 
     // standard configuration
@@ -44,9 +44,9 @@ class KBucket {
     this.root = createNode();
   }
 
-  public get localPeerId(): Uint8Array {
-    const id = this.getPeerId();
-    return this.peerIdToU8(id);
+  public get localNodeId(): Uint8Array {
+    const id = this.getNodeId();
+    return this.nodeIdToU8(id);
   }
 
   /**
@@ -90,8 +90,8 @@ class KBucket {
    *
    * @param contact the contact object to add
    */
-  async add(peerId: string): Promise<void> {
-    const id = this.peerIdToU8(peerId);
+  async add(nodeId: string): Promise<void> {
+    const id = this.nodeIdToU8(nodeId);
     let bitIndex = 0;
     let node = this.root;
 
@@ -128,14 +128,14 @@ class KBucket {
       this.pingNode(
         node.contacts
           .slice(0, this.numberOfNodesToPing)
-          .map((i) => this.u8ToPeerId(i)),
-        this.u8ToPeerId(id),
+          .map((i) => this.u8ToNodeId(i)),
+        this.u8ToNodeId(id),
       );
       return;
     }
 
     this.split(node, bitIndex);
-    return await this.add(this.u8ToPeerId(id));
+    return await this.add(this.u8ToNodeId(id));
   }
 
   /**
@@ -146,8 +146,8 @@ class KBucket {
    * @param num Integer (Default: Infinity) The maximum number of all closest contacts to return
    * @return Array Maximum of n closest public keys to the provided public key
    */
-  closest(peerId: string, num = Infinity): string[] {
-    const idU8 = this.peerIdToU8(peerId);
+  closest(nodeId: string, num = Infinity): string[] {
+    const idU8 = this.nodeIdToU8(nodeId);
     if ((!Number.isInteger(num) && num !== Infinity) || num <= 0) {
       throw new TypeError('n is not positive number');
     }
@@ -181,7 +181,7 @@ class KBucket {
       .map((a) => ({ distance: this.distance(a, idU8), node: a }))
       .sort((a, b) => a.distance - b.distance)
       .slice(0, num)
-      .map((a) => this.u8ToPeerId(a.node));
+      .map((a) => this.u8ToNodeId(a.node));
   }
 
   /**
@@ -263,7 +263,7 @@ class KBucket {
    * which branch of the tree to traverse and repeat.
    *
    * @param  {Uint8Array} id The ID of the contact to fetch.
-   * @return {PeerInfo|Null}   The contact if available, otherwise null
+   * @return {NodeInfo|Null}   The contact if available, otherwise null
    */
   get(id: Uint8Array): Uint8Array | null {
     let bitIndex = 0;
@@ -307,8 +307,8 @@ class KBucket {
    * @param  {Uint8Array} id The ID of the contact to remove.
    * @return {Object}        The k-bucket itself.
    */
-  remove(peerId: string): KBucket {
-    const idU8 = this.peerIdToU8(peerId);
+  remove(nodeId: string): KBucket {
+    const idU8 = this.nodeIdToU8(nodeId);
     let bitIndex = 0;
     let node = this.root;
 
@@ -356,7 +356,7 @@ class KBucket {
     // don't split the "far away" node
     // we check where the local node would end up and mark the other one as
     // "dontSplit" (i.e. "far away")
-    const detNode = this.determineNode(node, this.localPeerId, bitIndex);
+    const detNode = this.determineNode(node, this.localNodeId, bitIndex);
     const otherNode = node.left === detNode ? node.right : node.left;
     otherNode.dontSplit = true;
   }
@@ -383,7 +383,7 @@ class KBucket {
             nodes.push(node.left);
           }
         } else {
-          result = result.concat(node.contacts.map((i) => this.u8ToPeerId(i)));
+          result = result.concat(node.contacts.map((i) => this.u8ToNodeId(i)));
         }
       }
     }
@@ -424,7 +424,7 @@ class KBucket {
   }
 
   // ==== Helper methods ==== //
-  private peerIdToU8(id: string) {
+  private nodeIdToU8(id: string) {
     const b = Buffer.from(id);
     return new Uint8Array(
       b.buffer,
@@ -433,7 +433,7 @@ class KBucket {
     );
   }
 
-  private u8ToPeerId(ui8: Uint8Array) {
+  private u8ToNodeId(ui8: Uint8Array) {
     return Buffer.from(ui8).toString();
   }
 }

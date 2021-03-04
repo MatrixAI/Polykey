@@ -2,7 +2,7 @@ import dgram from 'dgram';
 import { promisifyGrpc } from '../../bin/utils';
 import * as agentInterface from '../../../proto/js/Agent_pb';
 import NodeConnection from '../../nodes/node-connection/NodeConnection';
-import { Address, NodeInfo, NodeInfoReadOnly } from '../../nodes/NodeInfo';
+import { Address, Node, NodePeer } from '../../nodes/Node';
 import NodeRelay from '../relays/NodeRelay';
 import { pki } from 'node-forge';
 import Logger from '@matrixai/logger';
@@ -10,10 +10,10 @@ import { promisify } from 'util';
 
 class NatTraversal {
   private listNodes: () => string[];
-  private getNodeInfo: (nodeId: string) => NodeInfoReadOnly | null;
-  private updateNodeInfo: (nodeInfo: NodeInfoReadOnly) => void;
+  private getNodeInfo: (nodeId: string) => NodePeer | null;
+  private updateNodeInfo: (nodeInfo: NodePeer) => void;
   private connectToNode: (nodeId: string) => NodeConnection;
-  private getLocalNodeInfo: () => NodeInfo;
+  private getLocalNodeInfo: () => Node;
   private getPrivateKey: () => pki.rsa.PrivateKey;
   private logger: Logger;
 
@@ -40,10 +40,10 @@ class NatTraversal {
   // === Node Hole Punches === //
   constructor(
     listNodes: () => string[],
-    getNodeInfo: (nodeId: string) => NodeInfoReadOnly,
-    updateNodeInfo: (nodeInfo: NodeInfoReadOnly) => void,
+    getNodeInfo: (nodeId: string) => NodePeer,
+    updateNodeInfo: (nodeInfo: NodePeer) => void,
     connectToNode: (nodeId: string) => NodeConnection,
-    getLocalNodeInfo: () => NodeInfo,
+    getLocalNodeInfo: () => Node,
     getPrivateKey: () => pki.rsa.PrivateKey,
     logger: Logger,
   ) {
