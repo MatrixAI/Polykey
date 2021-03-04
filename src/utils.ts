@@ -255,10 +255,12 @@ function terminatingHttpServer(
     });
     for (const socket of sockets) {
       // This is the HTTP CONNECT request socket.
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       if (!(socket.server instanceof http.Server)) {
         continue;
       }
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       const serverResponse = socket._httpMessage;
       if (serverResponse) {
@@ -270,6 +272,7 @@ function terminatingHttpServer(
       destroySocket(socket);
     }
     for (const socket of secureSockets) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       const serverResponse = socket._httpMessage;
       if (serverResponse) {

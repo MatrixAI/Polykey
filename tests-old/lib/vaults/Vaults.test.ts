@@ -113,8 +113,8 @@ describe('VaultManager class', () => {
   ////////////////////
   describe('sharing vaults', () => {
     let tempDir2: string
-    let peerPk: Polykey
-    let peerVm: VaultManager
+    let nodePk: Polykey
+    let nodeVm: VaultManager
 
     beforeAll(async done => {
       // Define temp directory
@@ -132,16 +132,16 @@ describe('VaultManager class', () => {
       km2.pki.importCertificate(certString)
 
       // Initialize polykey
-      peerPk = new Polykey(
+      nodePk = new Polykey(
         tempDir2,
         fs,
         km2
       )
-      peerVm = peerPk.vaultManager
+      nodeVm = nodePk.vaultManager
 
-      // add to peer stores
-      peerPk.peerManager.addPeer(pk.peerManager.peerInfo)
-      pk.peerManager.addPeer(peerPk.peerManager.peerInfo)
+      // add to node stores
+      nodePk.nodeManager.addNode(pk.nodeManager.nodeInfo)
+      pk.nodeManager.addNode(nodePk.nodeManager.nodeInfo)
 
       done()
     })
@@ -159,17 +159,17 @@ describe('VaultManager class', () => {
       const initialSecret = 'super confidential information'
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
-      // Pull from pk in peerPk
-      const clonedVault = await peerVm.cloneVault(randomVaultName, pk.peerManager.peerInfo.publicKey)
+      // Pull from pk in nodePk
+      const clonedVault = await nodeVm.cloneVault(randomVaultName, pk.nodeManager.nodeInfo.publicKey)
 
       const pkSecret = vault.getSecret(initialSecretName).toString()
 
-      await clonedVault.pullVault(pk.peerManager.peerInfo.publicKey)
+      await clonedVault.pullVault(pk.nodeManager.nodeInfo.publicKey)
 
-      const peerPkSecret = clonedVault.getSecret(initialSecretName).toString()
+      const nodePkSecret = clonedVault.getSecret(initialSecretName).toString()
 
-      expect(peerPkSecret).toStrictEqual(pkSecret)
-      expect(peerPkSecret).toStrictEqual(initialSecret)
+      expect(nodePkSecret).toStrictEqual(pkSecret)
+      expect(nodePkSecret).toStrictEqual(initialSecret)
 
       done()
     })
@@ -190,7 +190,7 @@ describe('VaultManager class', () => {
 
       // clone all vaults asynchronously
       const clonedVaults = await Promise.all(vaultNameList.map(async (v) => {
-        return peerVm.cloneVault(v, pk.peerManager.peerInfo.publicKey)
+        return nodeVm.cloneVault(v, pk.nodeManager.nodeInfo.publicKey)
       }))
       const clonedVaultNameList = clonedVaults.map((v) => {
         return v.name
@@ -209,23 +209,23 @@ describe('VaultManager class', () => {
       const initialSecret = 'super confidential information'
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
-      // First clone from pk in peerPk
-      const clonedVault = await peerVm.cloneVault(randomVaultName, pk.peerManager.peerInfo.publicKey)
+      // First clone from pk in nodePk
+      const clonedVault = await nodeVm.cloneVault(randomVaultName, pk.nodeManager.nodeInfo.publicKey)
 
       // Add secret to pk
       await vault.addSecret('NewSecret', Buffer.from('some other secret information'))
 
       // Pull from vault
-      await clonedVault.pullVault(pk.peerManager.peerInfo.publicKey)
+      await clonedVault.pullVault(pk.nodeManager.nodeInfo.publicKey)
 
       // Compare new secret
       const pkNewSecret = vault.getSecret(initialSecretName).toString()
-      const peerPkNewSecret = clonedVault.getSecret(initialSecretName).toString()
-      expect(pkNewSecret).toStrictEqual(peerPkNewSecret)
+      const nodePkNewSecret = clonedVault.getSecret(initialSecretName).toString()
+      expect(pkNewSecret).toStrictEqual(nodePkNewSecret)
       done()
     })
 
-    test('removing secret is reflected in peer vault', async done => {
+    test('removing secret is reflected in node vault', async done => {
       // Create vault
       const vault = await vm.newVault(randomVaultName)
       // Add secret
@@ -233,8 +233,8 @@ describe('VaultManager class', () => {
       const initialSecret = 'super confidential information'
       await vault.addSecret(initialSecretName, Buffer.from(initialSecret))
 
-      // First clone from pk in peerPk
-      const clonedVault = await peerVm.cloneVault(randomVaultName, pk.peerManager.peerInfo.publicKey)
+      // First clone from pk in nodePk
+      const clonedVault = await nodeVm.cloneVault(randomVaultName, pk.nodeManager.nodeInfo.publicKey)
 
       // Confirm secrets list only contains InitialSecret
       const secretList = vault.listSecrets()
@@ -246,7 +246,7 @@ describe('VaultManager class', () => {
       await vault.removeSecret(initialSecretName)
 
       // Pull clonedVault
-      await clonedVault.pullVault(pk.peerManager.peerInfo.publicKey)
+      await clonedVault.pullVault(pk.nodeManager.nodeInfo.publicKey)
 
       // Confirm secrets list is now empty
       const removedSecretList = vault.listSecrets()

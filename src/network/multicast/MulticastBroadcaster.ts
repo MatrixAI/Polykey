@@ -1,7 +1,7 @@
 import dgram from 'dgram';
 import { EventEmitter } from 'events';
 import KeyManager from '../../keys/KeyManager';
-import { NodeInfo, NodeInfoReadOnly } from '../../nodes/NodeInfo';
+import { Node, NodePeer } from '../../nodes/Node';
 
 // This module is based heavily on libp2p's mDNS module:
 // https://github.com/libp2p/js-libp2p-mdns
@@ -19,10 +19,10 @@ const UDP_MULTICAST_PORT = parseInt(process.env.UDP_MULTICAST_PORT ?? '5353');
 const UDP_MULTICAST_ADDR = process.env.UDP_MULTICAST_ADDR ?? '224.0.0.251';
 
 class MulticastBroadcaster extends EventEmitter {
-  getNodeInfo: () => NodeInfo;
+  getNodeInfo: () => Node;
   hasNode: (id: string) => boolean;
-  addNode: (nodeInfo: NodeInfoReadOnly) => void;
-  updateNode: (nodeInfo: NodeInfoReadOnly) => void;
+  addNode: (nodeInfo: NodePeer) => void;
+  updateNode: (nodeInfo: NodePeer) => void;
   private keyManager: KeyManager;
 
   private socket: dgram.Socket;
@@ -30,10 +30,10 @@ class MulticastBroadcaster extends EventEmitter {
   private interval = 1e5;
   private broadcastInterval: ReturnType<typeof setInterval> | null = null;
   constructor(
-    getNodeInfo: () => NodeInfo,
+    getNodeInfo: () => Node,
     hasNode: (id: string) => boolean,
-    addNode: (nodeInfo: NodeInfoReadOnly) => void,
-    updateNode: (nodeInfo: NodeInfoReadOnly) => void,
+    addNode: (nodeInfo: NodePeer) => void,
+    updateNode: (nodeInfo: NodePeer) => void,
     keyManager: KeyManager,
   ) {
     super();
@@ -98,7 +98,7 @@ class MulticastBroadcaster extends EventEmitter {
   private async handleBroadcastMessage(request: any, rinfo: any) {
     try {
       // construct a node info object
-      const nodeInfo = new NodeInfoReadOnly(request);
+      const nodeInfo = new NodePeer(request);
 
       // only relevant if node public key exists in store and type is of PING
       if (this.getNodeInfo().id == nodeInfo.id) {

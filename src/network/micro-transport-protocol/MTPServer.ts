@@ -2,7 +2,7 @@
 import net from 'net';
 import dgram from 'dgram';
 import { EventEmitter } from 'events';
-import { Address } from '../../nodes/NodeInfo';
+import { Address } from '../../nodes/Node';
 import MTPConnection from './MTPConnection';
 import { promisify } from 'util';
 import Logger from '@matrixai/logger';

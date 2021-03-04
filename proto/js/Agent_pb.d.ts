@@ -27,7 +27,6 @@ export class StringMessage extends jspb.Message {
     getS(): string;
     setS(value: string): StringMessage;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): StringMessage.AsObject;
     static toObject(includeInstance: boolean, msg: StringMessage): StringMessage.AsObject;
@@ -47,7 +46,6 @@ export namespace StringMessage {
 export class BooleanMessage extends jspb.Message { 
     getB(): boolean;
     setB(value: boolean): BooleanMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): BooleanMessage.AsObject;
@@ -71,7 +69,6 @@ export class StringListMessage extends jspb.Message {
     setSList(value: Array<string>): StringListMessage;
     addS(value: string, index?: number): string;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): StringListMessage.AsObject;
     static toObject(includeInstance: boolean, msg: StringListMessage): StringListMessage.AsObject;
@@ -91,30 +88,22 @@ export namespace StringListMessage {
 export class NodeInfoMessage extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeInfoMessage;
-
     getAlias(): string;
     setAlias(value: string): NodeInfoMessage;
-
     getPublicKey(): string;
     setPublicKey(value: string): NodeInfoMessage;
-
     getRootPublicKey(): string;
     setRootPublicKey(value: string): NodeInfoMessage;
-
     getNodeAddress(): string;
     setNodeAddress(value: string): NodeInfoMessage;
-
     getApiAddress(): string;
     setApiAddress(value: string): NodeInfoMessage;
-
     clearLinkInfoList(): void;
     getLinkInfoList(): Array<LinkInfoIdentityMessage>;
     setLinkInfoList(value: Array<LinkInfoIdentityMessage>): NodeInfoMessage;
     addLinkInfo(value?: LinkInfoIdentityMessage, index?: number): LinkInfoIdentityMessage;
-
     getPem(): string;
     setPem(value: string): NodeInfoMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NodeInfoMessage.AsObject;
@@ -142,19 +131,14 @@ export namespace NodeInfoMessage {
 export class NodeInfoReadOnlyMessage extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeInfoReadOnlyMessage;
-
     getPem(): string;
     setPem(value: string): NodeInfoReadOnlyMessage;
-
     getUnsignedAlias(): string;
     setUnsignedAlias(value: string): NodeInfoReadOnlyMessage;
-
     getUnsignedNodeAddress(): string;
     setUnsignedNodeAddress(value: string): NodeInfoReadOnlyMessage;
-
     getUnsignedApiAddress(): string;
     setUnsignedApiAddress(value: string): NodeInfoReadOnlyMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NodeInfoReadOnlyMessage.AsObject;
@@ -180,7 +164,6 @@ export class AgentStatusMessage extends jspb.Message {
     getStatus(): AgentStatusType;
     setStatus(value: AgentStatusType): AgentStatusMessage;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AgentStatusMessage.AsObject;
     static toObject(includeInstance: boolean, msg: AgentStatusMessage): AgentStatusMessage.AsObject;
@@ -200,10 +183,8 @@ export namespace AgentStatusMessage {
 export class NewKeyPairMessage extends jspb.Message { 
     getPassphrase(): string;
     setPassphrase(value: string): NewKeyPairMessage;
-
     getNbits(): number;
     setNbits(value: number): NewKeyPairMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NewKeyPairMessage.AsObject;
@@ -225,10 +206,8 @@ export namespace NewKeyPairMessage {
 export class DeriveKeyMessage extends jspb.Message { 
     getKeyName(): string;
     setKeyName(value: string): DeriveKeyMessage;
-
     getPassphrase(): string;
     setPassphrase(value: string): DeriveKeyMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DeriveKeyMessage.AsObject;
@@ -253,13 +232,10 @@ export class DeriveKeyPairMessage extends jspb.Message {
     clearKeypairDetails(): void;
     getKeypairDetails(): NewKeyPairMessage | undefined;
     setKeypairDetails(value?: NewKeyPairMessage): DeriveKeyPairMessage;
-
     getPublicKeyPath(): string;
     setPublicKeyPath(value: string): DeriveKeyPairMessage;
-
     getPrivateKeyPath(): string;
     setPrivateKeyPath(value: string): DeriveKeyPairMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DeriveKeyPairMessage.AsObject;
@@ -282,13 +258,10 @@ export namespace DeriveKeyPairMessage {
 export class SignFileMessage extends jspb.Message { 
     getFilePath(): string;
     setFilePath(value: string): SignFileMessage;
-
     getPrivateKeyPath(): string;
     setPrivateKeyPath(value: string): SignFileMessage;
-
     getPassphrase(): string;
     setPassphrase(value: string): SignFileMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SignFileMessage.AsObject;
@@ -311,10 +284,8 @@ export namespace SignFileMessage {
 export class VerifyFileMessage extends jspb.Message { 
     getFilePath(): string;
     setFilePath(value: string): VerifyFileMessage;
-
     getPublicKeyPath(): string;
     setPublicKeyPath(value: string): VerifyFileMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VerifyFileMessage.AsObject;
@@ -336,10 +307,8 @@ export namespace VerifyFileMessage {
 export class SecretPathMessage extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): SecretPathMessage;
-
     getSecretName(): string;
     setSecretName(value: string): SecretPathMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SecretPathMessage.AsObject;
@@ -364,13 +333,10 @@ export class SecretContentMessage extends jspb.Message {
     clearSecretPath(): void;
     getSecretPath(): SecretPathMessage | undefined;
     setSecretPath(value?: SecretPathMessage): SecretContentMessage;
-
     getSecretFilePath(): string;
     setSecretFilePath(value: string): SecretContentMessage;
-
     getSecretContent(): string;
     setSecretContent(value: string): SecretContentMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SecretContentMessage.AsObject;
@@ -393,10 +359,8 @@ export namespace SecretContentMessage {
 export class EncryptFileMessage extends jspb.Message { 
     getFilePath(): string;
     setFilePath(value: string): EncryptFileMessage;
-
     getPublicKeyPath(): string;
     setPublicKeyPath(value: string): EncryptFileMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): EncryptFileMessage.AsObject;
@@ -418,13 +382,10 @@ export namespace EncryptFileMessage {
 export class DecryptFileMessage extends jspb.Message { 
     getFilePath(): string;
     setFilePath(value: string): DecryptFileMessage;
-
     getPrivateKeyPath(): string;
     setPrivateKeyPath(value: string): DecryptFileMessage;
-
     getPassphrase(): string;
     setPassphrase(value: string): DecryptFileMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DecryptFileMessage.AsObject;
@@ -447,10 +408,8 @@ export namespace DecryptFileMessage {
 export class KeyPairMessage extends jspb.Message { 
     getPublicKey(): string;
     setPublicKey(value: string): KeyPairMessage;
-
     getPrivateKey(): string;
     setPrivateKey(value: string): KeyPairMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): KeyPairMessage.AsObject;
@@ -472,10 +431,8 @@ export namespace KeyPairMessage {
 export class VaultPathMessage extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): VaultPathMessage;
-
     getPublicKey(): string;
     setPublicKey(value: string): VaultPathMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultPathMessage.AsObject;
@@ -497,10 +454,8 @@ export namespace VaultPathMessage {
 export class ContactNodeMessage extends jspb.Message { 
     getPublicKeyOrHandle(): string;
     setPublicKeyOrHandle(value: string): ContactNodeMessage;
-
     getTimeout(): number;
     setTimeout(value: number): ContactNodeMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ContactNodeMessage.AsObject;
@@ -522,10 +477,8 @@ export namespace ContactNodeMessage {
 export class UnlockNodeMessage extends jspb.Message { 
     getPassphrase(): string;
     setPassphrase(value: string): UnlockNodeMessage;
-
     getTimeout(): number;
     setTimeout(value: number): UnlockNodeMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UnlockNodeMessage.AsObject;
@@ -547,13 +500,10 @@ export namespace UnlockNodeMessage {
 export class NewClientCertificateMessage extends jspb.Message { 
     getDomain(): string;
     setDomain(value: string): NewClientCertificateMessage;
-
     getCertFile(): string;
     setCertFile(value: string): NewClientCertificateMessage;
-
     getKeyFile(): string;
     setKeyFile(value: string): NewClientCertificateMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NewClientCertificateMessage.AsObject;
@@ -578,10 +528,8 @@ export class NewOAuthTokenMessage extends jspb.Message {
     getScopesList(): Array<string>;
     setScopesList(value: Array<string>): NewOAuthTokenMessage;
     addScopes(value: string, index?: number): string;
-
     getExpiry(): number;
     setExpiry(value: number): NewOAuthTokenMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NewOAuthTokenMessage.AsObject;
@@ -603,10 +551,8 @@ export namespace NewOAuthTokenMessage {
 export class OAuthClientMessage extends jspb.Message { 
     getId(): string;
     setId(value: string): OAuthClientMessage;
-
     getSecret(): string;
     setSecret(value: string): OAuthClientMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): OAuthClientMessage.AsObject;
@@ -628,10 +574,8 @@ export namespace OAuthClientMessage {
 export class NodeAliasMessage extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeAliasMessage;
-
     getAlias(): string;
     setAlias(value: string): NodeAliasMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NodeAliasMessage.AsObject;
@@ -653,10 +597,8 @@ export namespace NodeAliasMessage {
 export class RenameVaultMessage extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): RenameVaultMessage;
-
     getNewName(): string;
     setNewName(value: string): RenameVaultMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RenameVaultMessage.AsObject;
@@ -679,7 +621,6 @@ export class VaultStatsMessage extends jspb.Message {
     getCreatedAt(): number;
     setCreatedAt(value: number): VaultStatsMessage;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultStatsMessage.AsObject;
     static toObject(includeInstance: boolean, msg: VaultStatsMessage): VaultStatsMessage.AsObject;
@@ -699,13 +640,10 @@ export namespace VaultStatsMessage {
 export class ShareVaultMessage extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): ShareVaultMessage;
-
     getVaultName(): string;
     setVaultName(value: string): ShareVaultMessage;
-
     getCanEdit(): boolean;
     setCanEdit(value: boolean): ShareVaultMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ShareVaultMessage.AsObject;
@@ -728,13 +666,10 @@ export namespace ShareVaultMessage {
 export class PolykeyProofMessage extends jspb.Message { 
     getType(): PolykeyProofType;
     setType(value: PolykeyProofType): PolykeyProofMessage;
-
     getInstructions(): string;
     setInstructions(value: string): PolykeyProofMessage;
-
     getProof(): string;
     setProof(value: string): PolykeyProofMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): PolykeyProofMessage.AsObject;
@@ -757,10 +692,8 @@ export namespace PolykeyProofMessage {
 export class GestaltIdentityMessage extends jspb.Message { 
     getIdentityProviderName(): string;
     setIdentityProviderName(value: string): GestaltIdentityMessage;
-
     getIdentifier(): string;
     setIdentifier(value: string): GestaltIdentityMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GestaltIdentityMessage.AsObject;
@@ -782,13 +715,10 @@ export namespace GestaltIdentityMessage {
 export class RecoverKeynodeMessage extends jspb.Message { 
     getMnemonic(): string;
     setMnemonic(value: string): RecoverKeynodeMessage;
-
     getUserId(): string;
     setUserId(value: string): RecoverKeynodeMessage;
-
     getPassphrase(): string;
     setPassphrase(value: string): RecoverKeynodeMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RecoverKeynodeMessage.AsObject;
@@ -812,7 +742,6 @@ export class AuthenticateProviderRequest extends jspb.Message {
     getProviderKey(): string;
     setProviderKey(value: string): AuthenticateProviderRequest;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AuthenticateProviderRequest.AsObject;
     static toObject(includeInstance: boolean, msg: AuthenticateProviderRequest): AuthenticateProviderRequest.AsObject;
@@ -833,7 +762,6 @@ export class AuthenticateProviderReply extends jspb.Message {
     getUserCode(): string;
     setUserCode(value: string): AuthenticateProviderReply;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AuthenticateProviderReply.AsObject;
     static toObject(includeInstance: boolean, msg: AuthenticateProviderReply): AuthenticateProviderReply.AsObject;
@@ -853,10 +781,8 @@ export namespace AuthenticateProviderReply {
 export class AugmentKeynodeRequest extends jspb.Message { 
     getProviderKey(): string;
     setProviderKey(value: string): AugmentKeynodeRequest;
-
     getIdentityKey(): string;
     setIdentityKey(value: string): AugmentKeynodeRequest;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AugmentKeynodeRequest.AsObject;
@@ -879,7 +805,6 @@ export class AugmentKeynodeReply extends jspb.Message {
     getUrl(): string;
     setUrl(value: string): AugmentKeynodeReply;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AugmentKeynodeReply.AsObject;
     static toObject(includeInstance: boolean, msg: AugmentKeynodeReply): AugmentKeynodeReply.AsObject;
@@ -899,28 +824,20 @@ export namespace AugmentKeynodeReply {
 export class LinkInfoIdentityMessage extends jspb.Message { 
     getType(): string;
     setType(value: string): LinkInfoIdentityMessage;
-
     getNode(): string;
     setNode(value: string): LinkInfoIdentityMessage;
-
     getIdentity(): string;
     setIdentity(value: string): LinkInfoIdentityMessage;
-
     getProvider(): string;
     setProvider(value: string): LinkInfoIdentityMessage;
-
     getDateissued(): string;
     setDateissued(value: string): LinkInfoIdentityMessage;
-
     getSignature(): string;
     setSignature(value: string): LinkInfoIdentityMessage;
-
     getKey(): string;
     setKey(value: string): LinkInfoIdentityMessage;
-
     getUrl(): string;
     setUrl(value: string): LinkInfoIdentityMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkInfoIdentityMessage.AsObject;
@@ -948,25 +865,18 @@ export namespace LinkInfoIdentityMessage {
 export class LinkInfoNodeMessage extends jspb.Message { 
     getType(): string;
     setType(value: string): LinkInfoNodeMessage;
-
     getNode1(): string;
     setNode1(value: string): LinkInfoNodeMessage;
-
     getNode2(): string;
     setNode2(value: string): LinkInfoNodeMessage;
-
     getDateissued(): string;
     setDateissued(value: string): LinkInfoNodeMessage;
-
     getSignature(): string;
     setSignature(value: string): LinkInfoNodeMessage;
-
     getKey(): string;
     setKey(value: string): LinkInfoNodeMessage;
-
     getUrl(): string;
     setUrl(value: string): LinkInfoNodeMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkInfoNodeMessage.AsObject;
@@ -997,12 +907,10 @@ export class LinkInfoMessage extends jspb.Message {
     getLinkInfoIdentity(): LinkInfoIdentityMessage | undefined;
     setLinkInfoIdentity(value?: LinkInfoIdentityMessage): LinkInfoMessage;
 
-
     hasLinkInfoNode(): boolean;
     clearLinkInfoNode(): void;
     getLinkInfoNode(): LinkInfoNodeMessage | undefined;
     setLinkInfoNode(value?: LinkInfoNodeMessage): LinkInfoMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): LinkInfoMessage.AsObject;
@@ -1026,7 +934,6 @@ export class GestaltMatrixEdgeMessage extends jspb.Message {
     getPairsMap(): jspb.Map<string, LinkInfoMessage>;
     clearPairsMap(): void;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GestaltMatrixEdgeMessage.AsObject;
     static toObject(includeInstance: boolean, msg: GestaltMatrixEdgeMessage): GestaltMatrixEdgeMessage.AsObject;
@@ -1047,7 +954,6 @@ export namespace GestaltMatrixEdgeMessage {
 export class GestaltNodeMessage extends jspb.Message { 
     getId(): string;
     setId(value: string): GestaltNodeMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GestaltNodeMessage.AsObject;
@@ -1070,14 +976,11 @@ export class GestaltMessage extends jspb.Message {
     getGestaltMatrixMap(): jspb.Map<string, GestaltMatrixEdgeMessage>;
     clearGestaltMatrixMap(): void;
 
-
     getGestaltNodesMap(): jspb.Map<string, GestaltNodeMessage>;
     clearGestaltNodesMap(): void;
 
-
     getIdentitiesMap(): jspb.Map<string, IdentityInfoMessage>;
     clearIdentitiesMap(): void;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GestaltMessage.AsObject;
@@ -1106,7 +1009,6 @@ export class GestaltListMessage extends jspb.Message {
     setGestaltMessageList(value: Array<GestaltMessage>): GestaltListMessage;
     addGestaltMessage(value?: GestaltMessage, index?: number): GestaltMessage;
 
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GestaltListMessage.AsObject;
     static toObject(includeInstance: boolean, msg: GestaltListMessage): GestaltListMessage.AsObject;
@@ -1126,12 +1028,10 @@ export namespace GestaltListMessage {
 export class ProviderSearchMessage extends jspb.Message { 
     getProviderKey(): string;
     setProviderKey(value: string): ProviderSearchMessage;
-
     clearSearchTermList(): void;
     getSearchTermList(): Array<string>;
     setSearchTermList(value: Array<string>): ProviderSearchMessage;
     addSearchTerm(value: string, index?: number): string;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderSearchMessage.AsObject;
@@ -1153,19 +1053,14 @@ export namespace ProviderSearchMessage {
 export class IdentityInfoMessage extends jspb.Message { 
     getKey(): string;
     setKey(value: string): IdentityInfoMessage;
-
     getProvider(): string;
     setProvider(value: string): IdentityInfoMessage;
-
     getName(): string;
     setName(value: string): IdentityInfoMessage;
-
     getEmail(): string;
     setEmail(value: string): IdentityInfoMessage;
-
     getUrl(): string;
     setUrl(value: string): IdentityInfoMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): IdentityInfoMessage.AsObject;
@@ -1190,10 +1085,8 @@ export namespace IdentityInfoMessage {
 export class IdentityMessage extends jspb.Message { 
     getKey(): string;
     setKey(value: string): IdentityMessage;
-
     getProviderKey(): string;
     setProviderKey(value: string): IdentityMessage;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): IdentityMessage.AsObject;
@@ -1215,7 +1108,6 @@ export namespace IdentityMessage {
 export class IdentityInfo extends jspb.Message { 
     getKey(): string;
     setKey(value: string): IdentityInfo;
-
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): IdentityInfo.AsObject;

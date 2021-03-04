@@ -8,8 +8,8 @@ import type {
   LinkInfoIdentity,
   LinkInfoNode,
 } from '../links';
-import type { IdentityInfo } from '../social';
-import { NodeInfo as PeerInfo } from '../nodes/NodeInfo';
+import type { IdentityInfo } from '../identities';
+import { Node } from '../nodes/Node';
 import { NodeInfo } from '../nodes';
 import type {
   GestaltMatrix,
@@ -19,7 +19,7 @@ import type {
   GestaltKey,
 } from './types';
 
-import { ProviderManager } from '../social';
+import { ProviderManager } from '../identities';
 import { gestaltKey } from './utils';
 import NodeManager from '../nodes/NodeManager';
 import GestaltTrust from './GestaltTrust';
@@ -35,7 +35,7 @@ class GestaltGraph {
   protected providerManager: ProviderManager;
   protected verifyLinkInfo: VerifyLinkInfoHandler;
   protected gestaltTrust: GestaltTrust;
-  protected peerManager: NodeManager;
+  protected nodeManager: NodeManager;
 
   private logger: Logger;
   private graphData: string;
@@ -44,13 +44,13 @@ class GestaltGraph {
 
   public constructor(
     gestaltTrust: GestaltTrust,
-    peerManager: NodeManager,
+    nodeManager: NodeManager,
     providerManager: ProviderManager,
     verifyLinkInfo: VerifyLinkInfoHandler,
     logger: Logger,
   ) {
     this.gestaltTrust = gestaltTrust;
-    this.peerManager = peerManager;
+    this.nodeManager = nodeManager;
     this.providerManager = providerManager;
     this.verifyLinkInfo = verifyLinkInfo;
     this.logger = logger;
@@ -97,9 +97,9 @@ class GestaltGraph {
   }
 
   public setNode(nodeInfo: NodeInfo): void {
-    const peerId = gestaltKey(nodeInfo.id);
-    this.nodes[peerId] = nodeInfo;
-    this.graph[peerId] = this.graph[peerId] || {};
+    const nodeId = gestaltKey(nodeInfo.id);
+    this.nodes[nodeId] = nodeInfo;
+    this.graph[nodeId] = this.graph[nodeId] || {};
     this.writeMetadata();
   }
 
@@ -115,12 +115,12 @@ class GestaltGraph {
     nodeInfo: NodeInfo,
     identityInfo: IdentityInfo,
   ): void {
-    const peerId = gestaltKey(nodeInfo.id);
+    const nodeId = gestaltKey(nodeInfo.id);
     const identityKey = gestaltKey(identityInfo.key, identityInfo.provider);
     this.setNode(nodeInfo);
     this.setIdentity(identityInfo);
-    this.graph[peerId][identityKey] = linkInfo;
-    this.graph[identityKey][peerId] = linkInfo;
+    this.graph[nodeId][identityKey] = linkInfo;
+    this.graph[identityKey][nodeId] = linkInfo;
     this.writeMetadata();
   }
 
@@ -129,18 +129,18 @@ class GestaltGraph {
     nodeInfo1: NodeInfo,
     nodeInfo2: NodeInfo,
   ): void {
-    const peerId1 = gestaltKey(nodeInfo1.id);
-    const peerId2 = gestaltKey(nodeInfo2.id);
+    const nodeId1 = gestaltKey(nodeInfo1.id);
+    const nodeId2 = gestaltKey(nodeInfo2.id);
     this.setNode(nodeInfo1);
     this.setNode(nodeInfo2);
-    this.graph[peerId1][peerId2] = linkInfo;
-    this.graph[peerId2][peerId1] = linkInfo;
+    this.graph[nodeId1][nodeId2] = linkInfo;
+    this.graph[nodeId2][nodeId1] = linkInfo;
     this.writeMetadata();
   }
 
   public unsetNode(nodeInfo: NodeInfo): void {
-    const peerId_ = gestaltKey(nodeInfo.id);
-    for (const [key_, linkClaim] of Object.entries(this.graph[peerId_] ?? {})) {
+    const nodeId_ = gestaltKey(nodeInfo.id);
+    for (const [key_, linkClaim] of Object.entries(this.graph[nodeId_] ?? {})) {
       if (linkClaim.type === 'identity') {
         delete this.identities[key_];
       } else if (linkClaim.type === 'node') {
@@ -148,7 +148,7 @@ class GestaltGraph {
       }
       this.unsetLink(linkClaim);
     }
-    delete this.graph[peerId_];
+    delete this.graph[nodeId_];
   }
 
   public unsetIdentity(identityInfo: IdentityInfo): void {
@@ -169,15 +169,15 @@ class GestaltGraph {
 
   public unsetLink(linkClaim: LinkClaim) {
     if (linkClaim.type === 'identity') {
-      const peerId = gestaltKey(linkClaim.node);
+      const nodeId = gestaltKey(linkClaim.node);
       const identityKey = gestaltKey(linkClaim.identity, linkClaim.provider);
-      delete this.graph[peerId][identityKey];
-      delete this.graph[identityKey][peerId];
+      delete this.graph[nodeId][identityKey];
+      delete this.graph[identityKey][nodeId];
     } else if (linkClaim.type === 'node') {
-      const peerId1 = gestaltKey(linkClaim.node1);
-      const peerId2 = gestaltKey(linkClaim.node2);
-      delete this.graph[peerId1]?.[peerId2];
-      delete this.graph[peerId2]?.[peerId1];
+      const nodeId1 = gestaltKey(linkClaim.node1);
+      const nodeId2 = gestaltKey(linkClaim.node2);
+      delete this.graph[nodeId1]?.[nodeId2];
+      delete this.graph[nodeId2]?.[nodeId1];
     }
     this.writeMetadata();
   }
@@ -308,17 +308,17 @@ class GestaltGraph {
 
       if (nodeInfo) {
         // need to query the DHT for the node IP
-        // contact the IP to get the peer info
+        // contact the IP to get the node info
         // then acquire all the link infos here
         // assume that this is asynchronous
-        const linkInfos = await this.peerManager.getLinkInfos(nodeInfo.id);
+        const linkInfos = await this.nodeManager.getLinkInfos(nodeInfo.id);
 
         for (const linkInfo of linkInfos) {
           if (linkInfo.type === 'node') {
             throw new Error('UNIMPLEMENTED');
           } else if (linkInfo.type === 'identity') {
             // this has to use md5 hash?
-            if (PeerInfo.publicKeyToId(linkInfo.node) !== nodeInfo.id) {
+            if (Node.publicKeyToId(linkInfo.node) !== nodeInfo.id) {
               continue;
             }
 
@@ -400,8 +400,8 @@ class GestaltGraph {
             // TODO:
             // get the new NodeInfo
             // this is not actually the node info yet
-            const nodeInfoNew = await this.peerManager.getNodeInfoFromDHT(
-              PeerInfo.publicKeyToId(JSON.parse(linkInfoIdentity.node)),
+            const nodeInfoNew = await this.nodeManager.getNodeInfoFromDHT(
+              Node.publicKeyToId(JSON.parse(linkInfoIdentity.node)),
             );
 
             if (!nodeInfoNew) {
@@ -503,7 +503,7 @@ class GestaltGraph {
 
   //         var links: Array<LinkInfo>;
 
-  //         // if (this.peerManager) links = await this.peerManager.getLinkInfos(nodeMD5)
+  //         // if (this.nodeManager) links = await this.nodeManager.getLinkInfos(nodeMD5)
 
   //         // PLACEHOLDER FOR ACTUAL LINKCLAIMS
   //          links = []

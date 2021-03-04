@@ -1,6 +1,6 @@
 import dgram from 'dgram';
 import { EventEmitter } from 'events';
-import { Address } from '../../nodes/NodeInfo';
+import { Address } from '../../nodes/Node';
 import MTPConnection from '../micro-transport-protocol/MTPConnection';
 import { randomString } from '../../utils';
 import Logger from '@matrixai/logger';

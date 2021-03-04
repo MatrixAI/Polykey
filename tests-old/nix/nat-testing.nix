@@ -70,16 +70,16 @@ in
       publicNode.succeed(create_node_command.format(name="publicNode"))
       privateNode1.succeed(create_node_command.format(name="privateNode1"))
       privateNode2.succeed(create_node_command.format(name="privateNode2"))
-      # can add privateNode peer info to publicNode
-      publicNodePeerInfo = publicNode.succeed("pk peers get -c -b")
-      privateNode1.succeed("pk peers add -b '{}'".format(publicNodePeerInfo))
-      privateNode2.succeed("pk peers add -b '{}'".format(publicNodePeerInfo))
-      # can add publicNode peer info to privateNodes
-      privateNode1PeerInfo = privateNode1.succeed("pk peers get -c -b")
-      privateNode2PeerInfo = privateNode2.succeed("pk peers get -c -b")
-      publicNode.succeed("pk peers add -b '{}'".format(privateNode1PeerInfo))
-      publicNode.succeed("pk peers add -b '{}'".format(privateNode2PeerInfo))
-      # copy public keys over to peer machines
+      # can add privateNode node info to publicNode
+      publicNodeNodeInfo = publicNode.succeed("pk nodes get -c -b")
+      privateNode1.succeed("pk nodes add -b '{}'".format(publicNodeNodeInfo))
+      privateNode2.succeed("pk nodes add -b '{}'".format(publicNodeNodeInfo))
+      # can add publicNode node info to privateNodes
+      privateNode1NodeInfo = privateNode1.succeed("pk nodes get -c -b")
+      privateNode2NodeInfo = privateNode2.succeed("pk nodes get -c -b")
+      publicNode.succeed("pk nodes add -b '{}'".format(privateNode1NodeInfo))
+      publicNode.succeed("pk nodes add -b '{}'".format(privateNode2NodeInfo))
+      # copy public keys over to node machines
       publicNodePublicKey = publicNode.succeed("cat $HOME/.polykey/.keys/public_key")
       privateNode1PublicKey = privateNode1.succeed("cat $HOME/.polykey/.keys/public_key")
       privateNode2PublicKey = privateNode2.succeed("cat $HOME/.polykey/.keys/public_key")
@@ -89,18 +89,18 @@ in
       privateNode2.succeed("echo '{}' > $HOME/privateNode1.pub".format(privateNode1PublicKey))
       publicNode.succeed("echo '{}' > $HOME/privateNode1.pub".format(privateNode1PublicKey))
       publicNode.succeed("echo '{}' > $HOME/privateNode2.pub".format(privateNode2PublicKey))
-      # modify peer info to match peer machines' host address
-      publicNode.succeed("pk peers update -p $HOME/privateNode1.pub -ch privateNode1")
-      publicNode.succeed("pk peers update -p $HOME/privateNode2.pub -ch privateNode2")
+      # modify node info to match node machines' host address
+      publicNode.succeed("pk nodes update -p $HOME/privateNode1.pub -ch privateNode1")
+      publicNode.succeed("pk nodes update -p $HOME/privateNode2.pub -ch privateNode2")
       privateNode1.succeed(
-          "pk peers update -p $HOME/publicNode.pub -ch publicNode -r $HOME/publicNode.pub"
+          "pk nodes update -p $HOME/publicNode.pub -ch publicNode -r $HOME/publicNode.pub"
       )
       privateNode2.succeed(
-          "pk peers update -p $HOME/publicNode.pub -ch publicNode -r $HOME/publicNode.pub"
+          "pk nodes update -p $HOME/publicNode.pub -ch publicNode -r $HOME/publicNode.pub"
       )
       # privateNodes can ping publicNode
-      privateNode1.succeed("pk peers ping -p $HOME/publicNode.pub")
-      privateNode2.succeed("pk peers ping -p $HOME/publicNode.pub")
+      privateNode1.succeed("pk nodes ping -p $HOME/publicNode.pub")
+      privateNode2.succeed("pk nodes ping -p $HOME/publicNode.pub")
       # can create a new vault in publicNode and clone it from both privateNodes
       publicNode.succeed("pk vaults new publicVault")
       publicNode.succeed("echo 'secret content' > $HOME/secret")
@@ -113,15 +113,15 @@ in
       privateNode1.succeed("echo 'secret content' > $HOME/secret")
       privateNode1.succeed("pk secrets new privateVault1:Secret -f $HOME/secret")
       # setup a relay between privateNode1 and publicNode
-      privateNode1.succeed("pk peers relay -p $HOME/publicNode.pub")
-      # add privateNode1 peer info to privateNode2
-      privateNode1PeerInfo = privateNode1.succeed("pk peers get -c -b")
-      privateNode2.succeed("pk peers add -b '{}'".format(privateNode1PeerInfo))
-      # add privateNode2 peer info to privateNode1
-      privateNode2PeerInfo = privateNode2.succeed("pk peers get -c -b")
-      privateNode1.succeed("pk peers add -b '{}'".format(privateNode2PeerInfo))
+      privateNode1.succeed("pk nodes relay -p $HOME/publicNode.pub")
+      # add privateNode1 node info to privateNode2
+      privateNode1NodeInfo = privateNode1.succeed("pk nodes get -c -b")
+      privateNode2.succeed("pk nodes add -b '{}'".format(privateNode1NodeInfo))
+      # add privateNode2 node info to privateNode1
+      privateNode2NodeInfo = privateNode2.succeed("pk nodes get -c -b")
+      privateNode1.succeed("pk nodes add -b '{}'".format(privateNode2NodeInfo))
       # can ping privateNode1 to privateNode2
-      privateNode2.succeed("pk peers ping -p ~/privateNode1.pub")
+      privateNode2.succeed("pk nodes ping -p ~/privateNode1.pub")
       # can pull a vault from privateNode1 to privateNode2
       privateNode2.succeed("pk vaults clone -p ~/privateNode1.pub -n privateVault1")
     '';

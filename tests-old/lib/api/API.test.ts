@@ -6,8 +6,8 @@ import { promisify } from 'util';
 import { pki, md, tls } from 'node-forge';
 import HttpApi from '../../../src/api/HttpApi';
 import { randomString } from '../../../src/utils';
-import { PeerInfo, Address } from '../../../src/Polykey';
-import { TLSCredentials } from '../../../src/keys/pki/PublicKeyInfrastructure';
+import { NodeInfo, Address } from '../../../src/Polykey';
+import { TLSCredentials } from '../../../src/nodes/pki/PublicKeyInfrastructure'
 
 const kbpgp = require('kbpgp')
 
@@ -16,7 +16,7 @@ const kbpgp = require('kbpgp')
 describe('HTTP API', () => {
   let tempDir: string
   let tlsCredentials: TLSCredentials
-  let peerInfo: PeerInfo
+  let nodeInfo: NodeInfo
   let api: HttpApi
   let accessToken: string
 
@@ -26,7 +26,7 @@ describe('HTTP API', () => {
   beforeEach(async () => {
     tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
     tlsCredentials = createTLSCredentials()
-    peerInfo = new PeerInfo(
+    nodeInfo = new NodeInfo(
       await generatePublicKey(),
       'rootCertificate'
     )
@@ -37,7 +37,7 @@ describe('HTTP API', () => {
     secretMap.set('secret1', Buffer.from('secret 1 content'))
 
     api = new HttpApi(
-      (apiAddress: Address) => { peerInfo.apiAddress = apiAddress; },
+      (apiAddress: Address) => { nodeInfo.apiAddress = apiAddress; },
       (csr: string) => csr,
       () => tlsCredentials.rootCertificate,
       () => [tlsCredentials.rootCertificate],
@@ -164,8 +164,8 @@ describe('HTTP API', () => {
         headers['Content-Type'] = 'text/plain'
       }
       const options: http.RequestOptions = {
-        hostname: peerInfo?.apiAddress?.host,
-        port: peerInfo?.apiAddress?.port,
+        hostname: nodeInfo?.apiAddress?.host,
+        port: nodeInfo?.apiAddress?.port,
         path,
         method,
         ca: [tlsCredentials.rootCertificate],

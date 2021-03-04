@@ -1,4 +1,4 @@
-// import { Address } from '../../../peers/PeerInfo'
+// import { Address } from '../../../nodes/Node'
 // import dgram from 'dgram'
 
 // class Transport {

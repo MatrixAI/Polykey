@@ -1,11 +1,11 @@
 /* eslint-disable */
 import { promisify } from 'util'
-import PeerInfo from '../../../src/peers/PeerInfo'
+import NodeInfo from '../../../src/nodes/NodeInfo'
 
 const kbpgp = require('kbpgp')
 
-describe('PeerInfo class', () => {
-  let peerInfoA: PeerInfo
+describe('NodeInfo class', () => {
+  let nodeInfoA: NodeInfo
 
   const generatePublicKey = async () => {
     // Define options
@@ -35,7 +35,7 @@ describe('PeerInfo class', () => {
     // generate a kbpgp keypair
 
     const mockPublicKey = await generatePublicKey()
-    peerInfoA = new PeerInfo(
+    nodeInfoA = new NodeInfo(
       mockPublicKey,
       'rootCertificate',
       '0.0.0.0:3298',
@@ -43,9 +43,9 @@ describe('PeerInfo class', () => {
     )
   })
 
-  test('can stringify and parse peer info', async () => {
-    const str = peerInfoA.toStringB64()
-    const peerInfoParsed = PeerInfo.parseB64(str)
-    expect(peerInfoParsed).toEqual(peerInfoA)
+  test('can stringify and parse node info', async () => {
+    const str = nodeInfoA.toStringB64()
+    const nodeInfoParsed = NodeInfo.parseB64(str)
+    expect(nodeInfoParsed).toEqual(nodeInfoA)
   })
 })

@@ -1,24 +1,24 @@
 import { createModel } from '@xstate/test';
-import PeerInfo from '../../../src/peers/PeerInfo';
-import { peerInterface } from '../../../proto/js/Peer';
-import PeerDHT from '../../../src/peers/peer-dht/PeerDHT';
-import { SubServiceType } from '../../proto/js/Peer_pb';
-import { peerDHTMachine, PeerDHTStateSchema } from '../../../spec/peers/PeerDHT.spec';
+import { Node } from '../../../src/nodes/Node';
+import { nodeInterface } from '../../../proto/js/Node';
+import NodeDHT from '../../../src/nodes/dht/NodeDHT';
+import { SubServiceType } from '../../proto/js/Node_pb';
+import { nodeDHTMachine, NodeDHTStateSchema } from '../../../spec/nodes/NodeDHT.spec';
 
-function toPeerInfoMessageList(peerInfos: PeerInfo[]): peerInterface.IPeerInfoMessage[] {
-  return peerInfos
+function toNodeInfoMessageList(nodeInfos: Node[]): nodeInterface.INodeInfoMessage[] {
+  return nodeInfos
     .map((p) => {
       return {
         publicKey: p.publicKey,
         rootCertificate: p.rootCertificate,
-        peerAddress: p.peerAddress?.toString(),
+        nodeAddress: p.nodeAddress?.toString(),
         apiAddress: p.apiAddress?.toString(),
       };
     });
 }
 
-function createMockPeerStore() {
-  const localPeerInfo = new PeerInfo(
+function createMockNodeStore() {
+  const localNodeInfo = new Node(
     `
     -----BEGIN PGP PUBLIC KEY BLOCK-----
     Version: Keybase OpenPGP v2.0.82
@@ -48,7 +48,7 @@ function createMockPeerStore() {
     '0.0.0.0:0',
     '0.0.0.0:0',
   )
-  const peerInfo1 = new PeerInfo(
+  const nodeInfo1 = new Node(
 
     `
     -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -79,7 +79,7 @@ function createMockPeerStore() {
     '0.0.0.0:0',
     '0.0.0.0:0',
   )
-  const peerInfo2 = new PeerInfo(
+  const nodeInfo2 = new Node(
 
     `
     -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -110,49 +110,49 @@ function createMockPeerStore() {
     '0.0.0.0:0',
     '0.0.0.0:0',
   )
-  const peerStore = new Map<string, PeerInfo>()
-  peerStore.set(peerInfo1.id, peerInfo1)
-  peerStore.set(peerInfo2.id, peerInfo2)
-  return {peerStore, localPeerInfo}
+  const nodeStore = new Map<string, Node>()
+  nodeStore.set(nodeInfo1.id, nodeInfo1)
+  nodeStore.set(nodeInfo2.id, nodeInfo2)
+  return {nodeStore, localNodeInfo}
 }
 
-async function createMockPeerDHT() {
-  const {peerStore, localPeerInfo} = createMockPeerStore()
-  const mockConnectToPeer = (id: string) => {
+async function createMockNodeDHT() {
+  const {nodeStore, localNodeInfo} = createMockNodeStore()
+  const mockConnectToNode = (id: string) => {
     return {
-      pingPeer: async (timeout?: number) => true,
-      sendPeerRequest: async (type: SubServiceType, request: Uint8Array) => {
+      pingNode: async (timeout?: number) => true,
+      sendNodeRequest: async (type: SubServiceType, request: Uint8Array) => {
         // decode response
-        const { subMessage: responseSubMessage } = peerInterface.PeerDHTMessage.decodeDelimited(request);
-        const { peerId: responsePeerId, closestPeers } = peerInterface.PeerDHTFindNodeMessage.decodeDelimited(
+        const { subMessage: responseSubMessage } = nodeInterface.NodeDHTMessage.decodeDelimited(request);
+        const { nodeId: responseNodeId, closestNodes } = nodeInterface.NodeDHTFindNodeMessage.decodeDelimited(
           responseSubMessage,
         );
 
         // encode request
-        const localPeerId=Array.from(peerStore.keys())[0]
-        const subMessage = peerInterface.PeerDHTFindNodeMessage.encodeDelimited({
-          peerId: localPeerId,
-          closestPeers: toPeerInfoMessageList(Array.from(peerStore.values())),
+        const localNodeId=Array.from(nodeStore.keys())[0]
+        const subMessage = nodeInterface.NodeDHTFindNodeMessage.encodeDelimited({
+          nodeId: localNodeId,
+          closestNodes: toNodeInfoMessageList(Array.from(nodeStore.values())),
         }).finish();
 
-        return peerInterface.PeerDHTMessage.encodeDelimited({
-          type: peerInterface.PeerDHTMessageType.FIND_NODE,
+        return nodeInterface.NodeDHTMessage.encodeDelimited({
+          type: nodeInterface.NodeDHTMessageType.FIND_NODE,
           isResponse: false,
           subMessage: subMessage,
         }).finish();
       }
     }
   }
-  const peerDHT = new PeerDHT(
-    () => localPeerInfo.id,
-    mockConnectToPeer,
-    () => localPeerInfo,
-    (peerInfo: PeerInfo) => {peerStore.set(peerInfo.id, peerInfo)}
+  const nodeDHT = new NodeDHT(
+    () => localNodeInfo.id,
+    mockConnectToNode,
+    () => localNodeInfo,
+    (nodeInfo: Node) => {nodeStore.set(nodeInfo.id, nodeInfo)}
   )
-  for (const peerId of peerStore.keys()) {
-    await peerDHT.addPeer(peerId)
+  for (const nodeId of nodeStore.keys()) {
+    await nodeDHT.addNode(nodeId)
   }
-  return peerDHT
+  return nodeDHT
 }
 
 const newPublicKey = `
@@ -186,55 +186,55 @@ tcOY3a7GKjSDEhZUQ88B6dG3fwbgtpwZfohN8vPYe9oncjsBwvNjq4DI53hSwhU=
 =Znu3
 -----END PGP PUBLIC KEY BLOCK-----
 `
-const peerId = PeerInfo.publicKeyToId(PeerInfo.formatPublicKey(newPublicKey))
+const nodeId = Node.publicKeyToId(Node.formatPublicKey(newPublicKey))
 
-const peerDHTModel = createModel<PeerDHT, PeerDHTStateSchema>(peerDHTMachine).withEvents({
+const nodeDHTModel = createModel<NodeDHT, NodeDHTStateSchema>(nodeDHTMachine).withEvents({
   ADD_PEERS: {
-    exec: async (peerDHT: PeerDHT) => {
+    exec: async (nodeDHT: NodeDHT) => {
       // Do not await, must interrogate while service is running.
-      peerDHT.deletePeer(peerId).finally(async () => {
-        await peerDHT.addPeers([peerId])
+      nodeDHT.deleteNode(nodeId).finally(async () => {
+        await nodeDHT.addNodes([nodeId])
       })
       return
     },
   },
   ADD_PEER: {
-    exec: async (peerDHT: PeerDHT) => {
+    exec: async (nodeDHT: NodeDHT) => {
       // Do not await, must interrogate while service is running.
-      peerDHT.deletePeer(peerId).finally(async () => {
-        await peerDHT.addPeer(peerId)
+      nodeDHT.deleteNode(nodeId).finally(async () => {
+        await nodeDHT.addNode(nodeId)
       })
       return
     },
   },
   DELETE_PEER: {
-    exec: async (peerDHT: PeerDHT) => {
+    exec: async (nodeDHT: NodeDHT) => {
       // Do not await, must interrogate while service is running.
-      peerDHT.deletePeer(peerId)
+      nodeDHT.deleteNode(nodeId)
     },
   },
   FIND_LOCAL_PEER: {
-    exec: async (peerDHT: PeerDHT) => {
+    exec: async (nodeDHT: NodeDHT) => {
       // Do not await, must interrogate while service is running.
-      peerDHT.findLocalPeer(peerId)
+      nodeDHT.findLocalNode(nodeId)
     },
   },
   FIND_PEER: {
-    exec: async (peerDHT: PeerDHT) => {
+    exec: async (nodeDHT: NodeDHT) => {
       // Do not await, must interrogate while service is running.
-      peerDHT.findPeer(peerId)
+      nodeDHT.findNode(nodeId)
     },
   },
   SUCCESS: {
-    exec: async (peerDHT: PeerDHT) => {
+    exec: async (nodeDHT: NodeDHT) => {
       return;
     },
   },
   FAILURE: {
-    exec: async (peerDHT: PeerDHT) => {
+    exec: async (nodeDHT: NodeDHT) => {
       return;
     },
   },
 });
 
-export { peerDHTModel, createMockPeerDHT };
+export { nodeDHTModel, createMockNodeDHT };

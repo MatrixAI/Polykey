@@ -10,9 +10,9 @@ import VaultManager from './vaults/VaultManager';
 import GestaltGraph from './gestalts/GestaltGraph';
 import GestaltTrust from './gestalts/GestaltTrust';
 import Discovery from './discovery/Discovery';
-import { ProviderManager, ProviderTokens } from './social';
-import { GitHubProvider } from './social/providers/github';
-import { NodeInfo, NodeInfoReadOnly, Address } from './nodes/NodeInfo';
+import { ProviderManager, ProviderTokens } from './identities';
+import { GitHubProvider } from './identities/providers/github';
+import { Node, NodePeer, Address } from './nodes/Node';
 import * as utils from './utils';
 
 (JSON as any).canonicalize = require('canonicalize');
@@ -188,8 +188,8 @@ export {
   KeyManager,
   VaultManager,
   NodeManager,
-  NodeInfo,
-  NodeInfoReadOnly,
+  Node,
+  NodePeer,
   PolykeyAgent,
   Address,
   promisifyGrpc,

@@ -3,16 +3,16 @@ import Logger from '@matrixai/logger';
 import NatTraversal from './nat-traversal/NatTraversal';
 import MTPToTCPSocketPipe from './socket-pipes/MTPToTCPSocketPipe';
 import NodeConnection from '../nodes/node-connection/NodeConnection';
-import { Address, NodeInfo, NodeInfoReadOnly } from '../nodes/NodeInfo';
+import { Address, Node, NodePeer } from '../nodes/Node';
 import { MTPConnection, MTPServer } from './micro-transport-protocol/MTPServer';
 
 // This class is the orchestrator of nat traversal + micro transport
 class Network {
   private listNodes: () => string[];
-  private getNode: (nodeId: string) => NodeInfoReadOnly | null;
-  private updateNode: (nodeInfo: NodeInfoReadOnly) => void;
+  private getNode: (nodeId: string) => NodePeer | null;
+  private updateNode: (nodeInfo: NodePeer) => void;
   private connectToNode: (nodeId: string) => NodeConnection;
-  private getLocalNodeInfo: () => NodeInfo;
+  private getLocalNodeInfo: () => Node;
   private getPrivateKey: () => pki.rsa.PrivateKey;
   private logger: Logger;
 
@@ -29,10 +29,10 @@ class Network {
 
   constructor(
     listNodes: () => string[],
-    getNode: (nodeId: string) => NodeInfoReadOnly,
-    updateNode: (nodeInfo: NodeInfoReadOnly) => void,
+    getNode: (nodeId: string) => NodePeer,
+    updateNode: (nodeInfo: NodePeer) => void,
     connectToNode: (nodeId: string) => NodeConnection,
-    getLocalNodeInfo: () => NodeInfo,
+    getLocalNodeInfo: () => Node,
     getPrivateKey: () => pki.rsa.PrivateKey,
     logger: Logger,
   ) {

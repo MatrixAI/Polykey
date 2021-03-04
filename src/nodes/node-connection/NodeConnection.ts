@@ -4,19 +4,19 @@ import { promiseAny } from '../../utils';
 import { promisifyGrpc } from '../../bin/utils';
 import * as node from '../../../proto/js/Node_pb';
 import { NodeClient } from '../../../proto/js/Node_grpc_pb';
-import { NodeInfoReadOnly, Address } from '../NodeInfo';
+import { NodePeer, Address } from '../Node';
 import PublicKeyInfrastructure from '../pki/PublicKeyInfrastructure';
 import Logger from '@matrixai/logger';
 
 class NodeConnection {
   private nodeId: string;
   private pki: PublicKeyInfrastructure;
-  private getNodeInfo: (id: string) => NodeInfoReadOnly | null;
+  private getNodeInfo: (id: string) => NodePeer | null;
   private findNodeDHT: (
     nodeId: string,
   ) => Promise<{
-    adjacentNodeInfo?: NodeInfoReadOnly | undefined;
-    targetNodeInfo?: NodeInfoReadOnly | undefined;
+    adjacentNodeInfo?: NodePeer | undefined;
+    targetNodeInfo?: NodePeer | undefined;
   }>;
   private logger: Logger;
   // private requestUDPHolePunchViaNode: (
@@ -44,12 +44,12 @@ class NodeConnection {
   constructor(
     nodeId: string,
     pki: PublicKeyInfrastructure,
-    getNodeInfo: (id: string) => NodeInfoReadOnly | null,
+    getNodeInfo: (id: string) => NodePeer | null,
     findNodeDHT: (
       nodeId: string,
     ) => Promise<{
-      adjacentNodeInfo?: NodeInfoReadOnly | undefined;
-      targetNodeInfo?: NodeInfoReadOnly | undefined;
+      adjacentNodeInfo?: NodePeer | undefined;
+      targetNodeInfo?: NodePeer | undefined;
     }>,
     logger: Logger,
     // requestUDPHolePunchDirectly: (targetNodeId: string, timeout?: number) => Promise<Address>,
@@ -161,7 +161,7 @@ class NodeConnection {
 
   // // 4th connection option: hole punch facilitated by a node adjacent (i.e. connected) to the target node
   // // triggered by 2nd option
-  // private async connectHolePunchViaNode(adjacentNodeInfo: NodeInfoReadOnly): Promise<NodeClient> {
+  // private async connectHolePunchViaNode(adjacentNodeInfo: NodePeer): Promise<NodeClient> {
   //   // try to hole punch to node via relay node
   //   if (adjacentNodeInfo.nodeAddress && !this.connected) {
   //     // connect to relay and ask it to create a relay
@@ -181,7 +181,7 @@ class NodeConnection {
 
   // // 5th connection option: relay connection facilitated by a node adjacent (i.e. connected) to the target node
   // // triggered by 2nd option
-  // private async connectRelay(adjacentNodeInfo: NodeInfoReadOnly): Promise<NodeClient> {
+  // private async connectRelay(adjacentNodeInfo: NodePeer): Promise<NodeClient> {
   //   // try to hole punch to node via relay node
   //   if (adjacentNodeInfo.nodeAddress && !this.connected) {
   //     // connect to relay and ask it to create a relay

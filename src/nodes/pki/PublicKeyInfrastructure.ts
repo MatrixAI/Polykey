@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pki, md } from 'node-forge';
-import { NodeInfo } from '../NodeInfo';
+import { Node } from '../Node';
 
 type TLSCredentials = {
   rootCertificate: string;
@@ -13,7 +13,7 @@ type TLSCredentials = {
 };
 
 /**
- * This class manages X.509 certificates for secure and authenticated communication between peers.
+ * This class manages X.509 certificates for secure and authenticated communication between nodes.
  */
 class PublicKeyInfrastructure {
   private commonName: string;
@@ -22,8 +22,8 @@ class PublicKeyInfrastructure {
   private pkiPath: string;
   private pkiFs: typeof fs;
 
-  // peer info
-  private getLocalPeerInfo: () => NodeInfo;
+  // node info
+  private getLocalNodeInfo: () => Node;
   private getPrivateKey: () => pki.rsa.PrivateKey;
 
   // certificate signed by another
@@ -37,7 +37,7 @@ class PublicKeyInfrastructure {
   }
 
   public get RootCertificatePem(): string {
-    return this.getLocalPeerInfo().toX509Pem(this.getPrivateKey());
+    return this.getLocalNodeInfo().toX509Pem(this.getPrivateKey());
   }
   public get RootCertificate(): pki.Certificate {
     return pki.certificateFromPem(this.RootCertificatePem);
@@ -76,7 +76,7 @@ class PublicKeyInfrastructure {
   constructor(
     polykeyPath: string,
     fileSystem: typeof fs,
-    getLocalPeerInfo: () => NodeInfo,
+    getLocalNodeInfo: () => Node,
     getPrivateKey: () => pki.rsa.PrivateKey,
   ) {
     this.commonName = process.env.PK_PEER_HOST ?? 'localhost';
@@ -85,7 +85,7 @@ class PublicKeyInfrastructure {
     this.CAStore = pki.createCaStore();
     this.pkiFs = fileSystem;
 
-    this.getLocalPeerInfo = getLocalPeerInfo;
+    this.getLocalNodeInfo = getLocalNodeInfo;
     this.getPrivateKey = getPrivateKey;
   }
 
@@ -481,7 +481,7 @@ class PublicKeyInfrastructure {
         ).map((s: string) => pki.certificateFromPem(s));
       } else {
         // create the certificate chain if it doesn't exist
-        if (this.getLocalPeerInfo()) {
+        if (this.getLocalNodeInfo()) {
           this.certificateChain = [this.RootCertificate];
         } else {
           this.certificateChain = [];

@@ -5,9 +5,8 @@ import GestaltTrust from '../gestalts/GestaltTrust';
 import GestaltGraph from '../gestalts/GestaltGraph';
 import { gestaltKey } from '../gestalts/utils';
 import NodeManager from '../nodes/NodeManager';
-import { ProviderManager } from '../social';
-import { NodeInfo } from '../nodes/NodeInfo';
-import { NodeInfo as PeerInfo } from '../nodes/NodeInfo';
+import { ProviderManager } from '../identities';
+import { Node } from '../nodes/Node';
 
 /** Types */
 import type { IdentityKey, NodeId, ProviderKey } from '../types';
@@ -17,7 +16,7 @@ import type { GestaltKey } from '../gestalts/types';
 type VerifyLinkInfoHandler = (linkInfo: LinkInfo) => boolean;
 
 class Discovery {
-  protected peerManager: NodeManager;
+  protected nodeManager: NodeManager;
   protected providerManager: ProviderManager;
   protected verifyLinkInfo: VerifyLinkInfoHandler;
   protected gestaltTrust: GestaltTrust;
@@ -26,14 +25,14 @@ class Discovery {
 
   public constructor(
     gestaltTrust: GestaltTrust,
-    peerManager: NodeManager,
+    nodeManager: NodeManager,
     providerManager: ProviderManager,
     verifyLinkInfo: VerifyLinkInfoHandler,
     gestaltGraph: GestaltGraph,
     logger: Logger,
   ) {
     this.gestaltTrust = gestaltTrust;
-    this.peerManager = peerManager;
+    this.nodeManager = nodeManager;
     this.providerManager = providerManager;
     this.verifyLinkInfo = verifyLinkInfo;
     this.gestaltGraph = gestaltGraph;
@@ -86,17 +85,17 @@ class Discovery {
       if (nodeInfo) {
         this.logger.info(`node info existing`);
         // need to query the DHT for the node IP
-        // contact the IP to get the peer info
+        // contact the IP to get the node info
         // then acquire all the link infos here
         // assume that this is asynchronous
-        const linkInfos = await this.peerManager.getLinkInfos(nodeInfo.id);
+        const linkInfos = await this.nodeManager.getLinkInfos(nodeInfo.id);
 
         for (const linkInfo of linkInfos) {
           if (linkInfo.type === 'node') {
-            const nodeInfoNew = await this.peerManager.getNodeInfoFromDHT(
-              PeerInfo.publicKeyToId(JSON.parse(linkInfo.node2)),
+            const nodeInfoNew = await this.nodeManager.getNodeInfoFromDHT(
+              Node.publicKeyToId(JSON.parse(linkInfo.node2)),
             );
-            /** There is a possibility that there is no NodeInfo */
+            /** There is a possibility that there is no Node */
             if (nodeInfoNew) {
               this.gestaltGraph.setLinkNode(linkInfo, nodeInfo, nodeInfoNew);
 
@@ -113,7 +112,7 @@ class Discovery {
             }
           } else if (linkInfo.type === 'identity') {
             // this has to use md5 hash?
-            if (NodeInfo.publicKeyToId(linkInfo.node) !== nodeInfo.id) {
+            if (Node.publicKeyToId(linkInfo.node) !== nodeInfo.id) {
               continue;
             }
 
@@ -204,10 +203,10 @@ class Discovery {
               continue;
             }
 
-            // 12. Get the NodeInfo
+            // 12. Get the Node
             this.logger.info(`getting link info for ${linkInfoIdentity.node}`);
-            const nodeInfoNew = await this.peerManager.getNodeInfoFromDHT(
-              PeerInfo.publicKeyToId(JSON.parse(linkInfoIdentity.node)),
+            const nodeInfoNew = await this.nodeManager.getNodeInfoFromDHT(
+              Node.publicKeyToId(JSON.parse(linkInfoIdentity.node)),
             );
 
             // 13. skip if there is no nodeInfo

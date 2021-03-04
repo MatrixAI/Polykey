@@ -1,6 +1,6 @@
 import net from 'net';
 import dgram from 'dgram';
-import { Address } from '../../nodes/NodeInfo';
+import { Address } from '../../nodes/Node';
 import TCPToMTPSocketPipe from '../socket-pipes/TCPToMTPSocketPipe';
 import Logger from '@matrixai/logger';
 

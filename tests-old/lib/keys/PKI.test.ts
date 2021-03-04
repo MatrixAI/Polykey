@@ -7,56 +7,56 @@ import forge from 'node-forge';
 import * as grpc from '@grpc/grpc-js';
 import { randomString } from '../../../src/utils';
 import { KeyManager } from '../../../src/Polykey';
-import { PeerMessage, SubServiceType } from '@/proto/js/Peer_pb';
-import { PeerClient, PeerService } from '@/proto/js/Peer_grpc_pb';
-import { TLSCredentials } from '../../../src/keys/pki/PublicKeyInfrastructure';
+import { NodeMessage, SubServiceType } from '@/proto/js/Node_pb';
+import { NodeClient, NodeService } from '@/proto/js/Node_grpc_pb';
+import { TLSCredentials } from '../../../src/nodes/pki/PublicKeyInfrastructure';
 
 // TODO: part of adding PKI functionality to polykey
 describe('PKI testing', () => {
-  let tempDirPeerCA: string
+  let tempDirNodeCA: string
   let kmCA: KeyManager
 
-  let tempDirPeerA: string
+  let tempDirNodeA: string
   let kmA: KeyManager
 
-  let tempDirPeerB: string
+  let tempDirNodeB: string
   let kmB: KeyManager
 
   beforeAll(async () => {
     // ======== CA PEER ======== //
     // Define temp directory
-    tempDirPeerCA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDirNodeCA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
     // Create pki
-    kmCA = new KeyManager(tempDirPeerCA, fs)
+    kmCA = new KeyManager(tempDirNodeCA, fs)
     await kmCA.generateKeyPair('kmCA', 'passphrase')
 
     // ======== PEER A ======== //
     // Define temp directory
-    tempDirPeerA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDirNodeA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
     // Create pki
-    kmA = new KeyManager(tempDirPeerA, fs)
+    kmA = new KeyManager(tempDirNodeA, fs)
     await kmA.generateKeyPair('kmA', 'passphrase')
     kmA.pki.addCA(kmCA.pki.RootCert)
 
     // ======== PEER B ======== //
     // Define temp directory
-    tempDirPeerB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDirNodeB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
 
     // Create pki
-    kmB = new KeyManager(tempDirPeerB, fs)
+    kmB = new KeyManager(tempDirNodeB, fs)
     await kmB.generateKeyPair('kmB', 'passphrase')
     kmB.pki.addCA(kmCA.pki.RootCert)
   })
 
   afterAll(() => {
-    fs.rmdirSync(tempDirPeerCA, { recursive: true })
-    fs.rmdirSync(tempDirPeerA, { recursive: true })
-    fs.rmdirSync(tempDirPeerB, { recursive: true })
+    fs.rmdirSync(tempDirNodeCA, { recursive: true })
+    fs.rmdirSync(tempDirNodeA, { recursive: true })
+    fs.rmdirSync(tempDirNodeB, { recursive: true })
   })
 
-  test('can request a certificate from a ca peer', () => {
+  test('can request a certificate from a ca node', () => {
     const csr = kmA.pki.createCSR('localhost', 'passphrase')
     const certificate = kmCA.pki.handleCSR(csr)
     expect(certificate).not.toEqual(undefined)
@@ -141,11 +141,11 @@ describe('PKI testing', () => {
 
     test('can create a gRPC server and client', done => {
       const server = new grpc.Server();
-      server.addService(PeerService, {
-        messagePeer: async (call, callback) => {
-          const peerRequest: PeerMessage = call.request;
+      server.addService(NodeService, {
+        messageNode: async (call, callback) => {
+          const nodeRequest: NodeMessage = call.request;
           // echo server
-          callback(null, peerRequest);
+          callback(null, nodeRequest);
         },
       });
       const serverCredentials = grpc.ServerCredentials.createSsl(
@@ -169,16 +169,16 @@ describe('PKI testing', () => {
           throw err;
         } else {
           server.start();
-          const peerClient = new PeerClient(`localhost:${boundPort}`, clientCredentials);
-          const peerRequest = new PeerMessage()
-          peerRequest.setPublicKey('some pub key')
-          peerRequest.setSubMessage('sub message')
-          peerRequest.setType(SubServiceType.GIT)
-          peerClient.messagePeer(peerRequest, (err, response) => {
+          const nodeClient = new NodeClient(`localhost:${boundPort}`, clientCredentials);
+          const nodeRequest = new NodeMessage()
+          nodeRequest.setPublicKey('some pub key')
+          nodeRequest.setSubMessage('sub message')
+          nodeRequest.setType(SubServiceType.GIT)
+          nodeClient.messageNode(nodeRequest, (err, response) => {
             if (err) {
               expect(err).toEqual(undefined)
             } else {
-              expect(response).toEqual(peerRequest)
+              expect(response).toEqual(nodeRequest)
             }
             done()
           });

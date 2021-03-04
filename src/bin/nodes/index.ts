@@ -58,7 +58,7 @@ commandAddNode.action(async (options, command) => {
 });
 
 const commandAddAlias = createCommand('alias', { verbose: true });
-commandAddAlias.description('set/unset an alias for an existing peer');
+commandAddAlias.description('set/unset an alias for an existing node');
 commandAddAlias.option(
   '-np, --node-path <nodePath>',
   'provide the polykey path',
