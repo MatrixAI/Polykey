@@ -1125,6 +1125,49 @@ export namespace IdentityInfo {
     }
 }
 
+export class NodeMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeMessage;
+    getMessage(): string;
+    setMessage(value: string): NodeMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeMessage): NodeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeMessage;
+    static deserializeBinaryFromReader(message: NodeMessage, reader: jspb.BinaryReader): NodeMessage;
+}
+
+export namespace NodeMessage {
+    export type AsObject = {
+        nodeId: string,
+        message: string,
+    }
+}
+
+export class NodeNotifMessage extends jspb.Message { 
+    getMessage(): string;
+    setMessage(value: string): NodeNotifMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeNotifMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeNotifMessage): NodeNotifMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeNotifMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeNotifMessage;
+    static deserializeBinaryFromReader(message: NodeNotifMessage, reader: jspb.BinaryReader): NodeNotifMessage;
+}
+
+export namespace NodeNotifMessage {
+    export type AsObject = {
+        message: string,
+    }
+}
+
 export enum AgentStatusType {
     ONLINE = 0,
     OFFLINE = 1,

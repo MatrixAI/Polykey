@@ -8,6 +8,7 @@ import { md, pki } from 'node-forge';
 import ConfigStore from 'configstore';
 import * as grpc from '@grpc/grpc-js';
 import * as agent from '../../proto/js/Agent_pb';
+import * as node from '../../proto/js/Node_pb';
 import { spawn, SpawnOptions } from 'child_process';
 import { NodePeer } from '../nodes/Node';
 import Polykey, { Address, KeyManager } from '../Polykey';
@@ -1170,6 +1171,24 @@ class PolykeyAgent implements IAgentServer {
     }
   }
 
+  async readMessage(
+    call: grpc.ServerWritableStream<agent.EmptyMessage, agent.NodeNotifMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      while (this.pk.nodeNotifications.more()) {
+        const message = this.pk.nodeNotifications.read()!;
+        const notifMessage = new agent.NodeNotifMessage();
+        notifMessage.setMessage(message);
+        call.write(notifMessage);
+      }
+      call.end();
+    } catch (error) {
+      call.end();
+    }
+  }
+
   async recoverKeynode(
     call: grpc.ServerUnaryCall<agent.RecoverKeynodeMessage, agent.EmptyMessage>,
     callback: grpc.sendUnaryData<agent.EmptyMessage>,
@@ -1216,6 +1235,21 @@ class PolykeyAgent implements IAgentServer {
       const response = new agent.StringListMessage();
       response.setSList(vaultNames);
       callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async sendMessage(
+    call: grpc.ServerUnaryCall<agent.NodeMessage, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    this.refreshTimeout();
+    try {
+      this.failOnLocked();
+      const { nodeId, message } = call.request!.toObject();
+      await this.pk.nodeNotifications.send(nodeId, message);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }

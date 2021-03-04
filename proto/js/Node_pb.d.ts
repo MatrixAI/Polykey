@@ -332,6 +332,26 @@ export namespace MTPPacket {
     }
 }
 
+export class MessageRequest extends jspb.Message { 
+    getMessage(): string;
+    setMessage(value: string): MessageRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): MessageRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: MessageRequest): MessageRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: MessageRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): MessageRequest;
+    static deserializeBinaryFromReader(message: MessageRequest, reader: jspb.BinaryReader): MessageRequest;
+}
+
+export namespace MessageRequest {
+    export type AsObject = {
+        message: string,
+    }
+}
+
 export enum NatUdpMessageType {
     DIRECT_CONNECTION = 0,
     HOLE_PUNCH_CONNECTION = 1,

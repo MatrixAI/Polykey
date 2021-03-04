@@ -49,9 +49,11 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     pingNode: IAgentService_IPingNode;
     pullVault: IAgentService_IPullVault;
     renameVault: IAgentService_IRenameVault;
+    readMessage: IAgentService_IReadMessage;
     recoverKeynode: IAgentService_IRecoverKeynode;
     revokeOAuthToken: IAgentService_IRevokeOAuthToken;
     scanVaultNames: IAgentService_IScanVaultNames;
+    sendMessage: IAgentService_ISendMessage;
     setAlias: IAgentService_ISetAlias;
     setIdentity: IAgentService_ISetIdentity;
     shareVault: IAgentService_IShareVault;
@@ -439,6 +441,15 @@ interface IAgentService_IRenameVault extends grpc.MethodDefinition<Agent_pb.Rena
     responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
+interface IAgentService_IReadMessage extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.NodeNotifMessage> {
+    path: "/agentInterface.Agent/ReadMessage";
+    requestStream: false;
+    responseStream: true;
+    requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.NodeNotifMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.NodeNotifMessage>;
+}
 interface IAgentService_IRecoverKeynode extends grpc.MethodDefinition<Agent_pb.RecoverKeynodeMessage, Agent_pb.EmptyMessage> {
     path: "/agentInterface.Agent/RecoverKeynode";
     requestStream: false;
@@ -465,6 +476,15 @@ interface IAgentService_IScanVaultNames extends grpc.MethodDefinition<Agent_pb.S
     requestDeserialize: grpc.deserialize<Agent_pb.StringMessage>;
     responseSerialize: grpc.serialize<Agent_pb.StringListMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringListMessage>;
+}
+interface IAgentService_ISendMessage extends grpc.MethodDefinition<Agent_pb.NodeMessage, Agent_pb.EmptyMessage> {
+    path: "/agentInterface.Agent/SendMessage";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.NodeMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.NodeMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
 interface IAgentService_ISetAlias extends grpc.MethodDefinition<Agent_pb.NodeAliasMessage, Agent_pb.EmptyMessage> {
     path: "/agentInterface.Agent/SetAlias";
@@ -655,9 +675,11 @@ export interface IAgentServer {
     pingNode: grpc.handleUnaryCall<Agent_pb.ContactNodeMessage, Agent_pb.EmptyMessage>;
     pullVault: grpc.handleUnaryCall<Agent_pb.VaultPathMessage, Agent_pb.EmptyMessage>;
     renameVault: grpc.handleUnaryCall<Agent_pb.RenameVaultMessage, Agent_pb.EmptyMessage>;
+    readMessage: grpc.handleServerStreamingCall<Agent_pb.EmptyMessage, Agent_pb.NodeNotifMessage>;
     recoverKeynode: grpc.handleUnaryCall<Agent_pb.RecoverKeynodeMessage, Agent_pb.EmptyMessage>;
     revokeOAuthToken: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.EmptyMessage>;
     scanVaultNames: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.StringListMessage>;
+    sendMessage: grpc.handleUnaryCall<Agent_pb.NodeMessage, Agent_pb.EmptyMessage>;
     setAlias: grpc.handleUnaryCall<Agent_pb.NodeAliasMessage, Agent_pb.EmptyMessage>;
     setIdentity: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.EmptyMessage>;
     shareVault: grpc.handleUnaryCall<Agent_pb.ShareVaultMessage, Agent_pb.EmptyMessage>;
@@ -797,6 +819,8 @@ export interface IAgentClient {
     renameVault(request: Agent_pb.RenameVaultMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     renameVault(request: Agent_pb.RenameVaultMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     renameVault(request: Agent_pb.RenameVaultMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    readMessage(request: Agent_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.NodeNotifMessage>;
+    readMessage(request: Agent_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.NodeNotifMessage>;
     recoverKeynode(request: Agent_pb.RecoverKeynodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     recoverKeynode(request: Agent_pb.RecoverKeynodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     recoverKeynode(request: Agent_pb.RecoverKeynodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -806,6 +830,9 @@ export interface IAgentClient {
     scanVaultNames(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    sendMessage(request: Agent_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    sendMessage(request: Agent_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    sendMessage(request: Agent_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     setAlias(request: Agent_pb.NodeAliasMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     setAlias(request: Agent_pb.NodeAliasMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     setAlias(request: Agent_pb.NodeAliasMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -978,6 +1005,8 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public renameVault(request: Agent_pb.RenameVaultMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public renameVault(request: Agent_pb.RenameVaultMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public renameVault(request: Agent_pb.RenameVaultMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public readMessage(request: Agent_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.NodeNotifMessage>;
+    public readMessage(request: Agent_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.NodeNotifMessage>;
     public recoverKeynode(request: Agent_pb.RecoverKeynodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public recoverKeynode(request: Agent_pb.RecoverKeynodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public recoverKeynode(request: Agent_pb.RecoverKeynodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -987,6 +1016,9 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public scanVaultNames(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public scanVaultNames(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    public sendMessage(request: Agent_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public sendMessage(request: Agent_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public sendMessage(request: Agent_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public setAlias(request: Agent_pb.NodeAliasMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public setAlias(request: Agent_pb.NodeAliasMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public setAlias(request: Agent_pb.NodeAliasMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;

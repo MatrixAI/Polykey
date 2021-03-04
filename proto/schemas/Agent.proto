@@ -47,9 +47,11 @@ service Agent {
   rpc PingNode (ContactNodeMessage) returns (EmptyMessage) {};
   rpc PullVault (VaultPathMessage) returns (EmptyMessage) {};
   rpc RenameVault (RenameVaultMessage) returns (EmptyMessage) {};
+  rpc ReadMessage (EmptyMessage) returns (stream NodeNotifMessage) {}
   rpc RecoverKeynode (RecoverKeynodeMessage) returns (EmptyMessage) {};
   rpc RevokeOAuthToken (StringMessage) returns (EmptyMessage) {};
   rpc ScanVaultNames (StringMessage) returns (StringListMessage) {};
+  rpc SendMessage(NodeMessage) returns (EmptyMessage) {};
   rpc SetAlias (NodeAliasMessage) returns (EmptyMessage) {};
   rpc SetIdentity (StringMessage) returns (EmptyMessage) {};
   rpc ShareVault (ShareVaultMessage) returns (EmptyMessage) {};
@@ -373,4 +375,13 @@ message IdentityMessage {
 
 message IdentityInfo {
   string key = 1;
+}
+
+message NodeMessage {
+  string node_id = 1;
+  string message = 2;
+}
+
+message NodeNotifMessage {
+  string message = 1;
 }

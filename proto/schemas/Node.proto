@@ -16,6 +16,7 @@ service Node {
   rpc GetGitInfo (InfoRequest) returns (InfoReply) {};
   rpc GetGitPack (PackRequest) returns (PackReply) {};
   rpc GetVaultNames (agentInterface.EmptyMessage) returns (VaultNamesReply) {};
+  rpc ReceiveMessage (MessageRequest) returns (agentInterface.EmptyMessage) {};
 
   // // === NAT traversal === //
   // // BindAddress is for a client to request a public relay node to bind its UDP address
@@ -132,3 +133,9 @@ message MTPPacket {
   int64 sent = 10;
 }
 
+//////////////////
+// Notification //
+//////////////////
+message MessageRequest {
+  string message = 1;
+}

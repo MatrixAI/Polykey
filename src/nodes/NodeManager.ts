@@ -6,6 +6,7 @@ import NodeDHT from './dht/NodeDHT';
 import Network from '../network/Network';
 import KeyManager from '../keys/KeyManager';
 import NodeServer from './node-connection/NodeServer';
+import NodeNotifications from './NodeNotifications';
 import { LinkClaimIdentity, LinkInfo } from '../links';
 import { JSONMapReplacer, JSONMapReviver } from '../utils';
 import NodeConnection from './node-connection/NodeConnection';
@@ -37,6 +38,7 @@ class NodeManager {
 
   // Node connections
   nodeServer: NodeServer;
+  nodeNotification: NodeNotifications;
   private nodeConnections: Map<string, NodeConnection>;
   nodeDHT: NodeDHT;
   network: Network;
@@ -47,11 +49,13 @@ class NodeManager {
     polykeyPath = `${os.homedir()}/.polykey`,
     fileSystem: typeof fs,
     keyManager: KeyManager,
+    nodeNotification: NodeNotifications,
     logger: Logger,
     nodeInfo?: Node,
   ) {
     this.fileSystem = fileSystem;
 
+    this.nodeNotification = nodeNotification;
     this.logger = logger;
 
     this.nodeStore = new Map();
@@ -87,7 +91,11 @@ class NodeManager {
     ////////////
     // Server //
     ////////////
-    this.nodeServer = new NodeServer(this, this.logger.getChild('NodeServer'));
+    this.nodeServer = new NodeServer(
+      this,
+      this.nodeNotification,
+      this.logger.getChild('NodeServer'),
+    );
     this.nodeConnections = new Map();
 
     //////////////
