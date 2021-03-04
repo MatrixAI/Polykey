@@ -60,6 +60,17 @@ function deserialize_nodeInterface_InfoRequest(buffer_arg) {
   return Node_pb.InfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_nodeInterface_MessageRequest(arg) {
+  if (!(arg instanceof Node_pb.MessageRequest)) {
+    throw new Error('Expected argument of type nodeInterface.MessageRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_nodeInterface_MessageRequest(buffer_arg) {
+  return Node_pb.MessageRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_nodeInterface_NodeDHTFindNodeReply(arg) {
   if (!(arg instanceof Node_pb.NodeDHTFindNodeReply)) {
     throw new Error('Expected argument of type nodeInterface.NodeDHTFindNodeReply');
@@ -176,6 +187,17 @@ getGitInfo: {
     requestDeserialize: deserialize_agentInterface_EmptyMessage,
     responseSerialize: serialize_nodeInterface_VaultNamesReply,
     responseDeserialize: deserialize_nodeInterface_VaultNamesReply,
+  },
+  receiveMessage: {
+    path: '/nodeInterface.Node/ReceiveMessage',
+    requestStream: false,
+    responseStream: false,
+    requestType: Node_pb.MessageRequest,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_nodeInterface_MessageRequest,
+    requestDeserialize: deserialize_nodeInterface_MessageRequest,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
   // // === NAT traversal === //
 // // BindAddress is for a client to request a public relay node to bind its UDP address

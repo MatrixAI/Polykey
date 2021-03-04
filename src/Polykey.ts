@@ -10,6 +10,7 @@ import VaultManager from './vaults/VaultManager';
 import GestaltGraph from './gestalts/GestaltGraph';
 import GestaltTrust from './gestalts/GestaltTrust';
 import Discovery from './discovery/Discovery';
+import NodeNotifications from './nodes/NodeNotifications';
 import { ProviderManager, ProviderTokens } from './identities';
 import { GitHubProvider } from './identities/providers/github';
 import { Node, NodePeer, Address } from './nodes/Node';
@@ -28,6 +29,7 @@ class Polykey {
   gestaltTrust: GestaltTrust;
   discovery: Discovery;
   logger: Logger;
+  nodeNotifications: NodeNotifications;
 
   constructor(
     nodePath?: string,
@@ -61,8 +63,15 @@ class Polykey {
         this.nodePath,
         fileSystem,
         this.keyManager,
+        this.nodeNotifications,
         this.logger.getChild('NodeManager'),
       );
+
+    // Load notification
+    this.nodeNotifications = new NodeNotifications(
+      this.nodeManager.verifyLinkClaim.bind(this.nodeManager),
+      this.logger.getChild('NodeNotifications'),
+    );
 
     // Set or Initialize vaultManager
     this.vaultManager =

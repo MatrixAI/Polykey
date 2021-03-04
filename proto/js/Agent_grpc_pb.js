@@ -268,6 +268,28 @@ function deserialize_agentInterface_NodeInfoReadOnlyMessage(buffer_arg) {
   return Agent_pb.NodeInfoReadOnlyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_NodeMessage(arg) {
+  if (!(arg instanceof Agent_pb.NodeMessage)) {
+    throw new Error('Expected argument of type agentInterface.NodeMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NodeMessage(buffer_arg) {
+  return Agent_pb.NodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_NodeNotifMessage(arg) {
+  if (!(arg instanceof Agent_pb.NodeNotifMessage)) {
+    throw new Error('Expected argument of type agentInterface.NodeNotifMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NodeNotifMessage(buffer_arg) {
+  return Agent_pb.NodeNotifMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_OAuthClientMessage(arg) {
   if (!(arg instanceof Agent_pb.OAuthClientMessage)) {
     throw new Error('Expected argument of type agentInterface.OAuthClientMessage');
@@ -878,6 +900,17 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
+  readMessage: {
+    path: '/agentInterface.Agent/ReadMessage',
+    requestStream: false,
+    responseStream: true,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.NodeNotifMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_NodeNotifMessage,
+    responseDeserialize: deserialize_agentInterface_NodeNotifMessage,
+  },
   recoverKeynode: {
     path: '/agentInterface.Agent/RecoverKeynode',
     requestStream: false,
@@ -910,6 +943,17 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_StringMessage,
     responseSerialize: serialize_agentInterface_StringListMessage,
     responseDeserialize: deserialize_agentInterface_StringListMessage,
+  },
+  sendMessage: {
+    path: '/agentInterface.Agent/SendMessage',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.NodeMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_NodeMessage,
+    requestDeserialize: deserialize_agentInterface_NodeMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
   setAlias: {
     path: '/agentInterface.Agent/SetAlias',

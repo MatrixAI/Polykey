@@ -3,13 +3,14 @@ import Logger from '@matrixai/logger';
 import NodeManager from '../NodeManager';
 import * as node from '../../../proto/js/Node_pb';
 import * as agent from '../../../proto/js/Agent_pb';
+import NodeNotifications from '../NodeNotifications';
 import { Address, NodePeer } from '../Node';
 import { NodeService, INodeServer } from '../../../proto/js/Node_grpc_pb';
 
 class NodeServer implements INodeServer {
   private nodeManager: NodeManager;
   private logger: Logger;
-
+  private nodeNotification: NodeNotifications;
   private server: grpc.Server;
 
   handleGitInfoRequest: (vaultName: string) => Promise<Uint8Array>;
@@ -19,9 +20,13 @@ class NodeServer implements INodeServer {
   ) => Promise<Uint8Array>;
   handleGetVaultNames: () => Promise<string[]>;
 
-  constructor(nodeManager: NodeManager, logger: Logger) {
+  constructor(
+    nodeManager: NodeManager,
+    nodeNotification: NodeNotifications,
+    logger: Logger,
+  ) {
     this.nodeManager = nodeManager;
-
+    this.nodeNotification = nodeNotification;
     this.logger = logger;
 
     /////////////////
@@ -194,6 +199,19 @@ class NodeServer implements INodeServer {
       const response = new agent.StringMessage();
       response.setS(this.nodeManager.pki.RootCertificatePem);
       callback(null, response);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
+
+  async receiveMessage(
+    call: grpc.ServerUnaryCall<node.MessageRequest, agent.EmptyMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
+  ) {
+    try {
+      const { message } = call.request!.toObject();
+      await this.nodeNotification.receive(message);
+      callback(null, new agent.EmptyMessage());
     } catch (error) {
       callback(error, null);
     }

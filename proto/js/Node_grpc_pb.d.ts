@@ -13,6 +13,7 @@ interface INodeService extends grpc.ServiceDefinition<grpc.UntypedServiceImpleme
     getGitInfo: INodeService_IGetGitInfo;
     getGitPack: INodeService_IGetGitPack;
     getVaultNames: INodeService_IGetVaultNames;
+    receiveMessage: INodeService_IReceiveMessage;
     getUDPAddress: INodeService_IGetUDPAddress;
     getRootCertificate: INodeService_IGetRootCertificate;
     requestCertificateSigning: INodeService_IRequestCertificateSigning;
@@ -54,6 +55,15 @@ interface INodeService_IGetVaultNames extends grpc.MethodDefinition<Agent_pb.Emp
     requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
     responseSerialize: grpc.serialize<Node_pb.VaultNamesReply>;
     responseDeserialize: grpc.deserialize<Node_pb.VaultNamesReply>;
+}
+interface INodeService_IReceiveMessage extends grpc.MethodDefinition<Node_pb.MessageRequest, Agent_pb.EmptyMessage> {
+    path: "/nodeInterface.Node/ReceiveMessage";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Node_pb.MessageRequest>;
+    requestDeserialize: grpc.deserialize<Node_pb.MessageRequest>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
 interface INodeService_IGetUDPAddress extends grpc.MethodDefinition<Agent_pb.NodeInfoReadOnlyMessage, Agent_pb.StringMessage> {
     path: "/nodeInterface.Node/GetUDPAddress";
@@ -99,6 +109,7 @@ export interface INodeServer {
     getGitInfo: grpc.handleUnaryCall<Node_pb.InfoRequest, Node_pb.InfoReply>;
     getGitPack: grpc.handleUnaryCall<Node_pb.PackRequest, Node_pb.PackReply>;
     getVaultNames: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Node_pb.VaultNamesReply>;
+    receiveMessage: grpc.handleUnaryCall<Node_pb.MessageRequest, Agent_pb.EmptyMessage>;
     getUDPAddress: grpc.handleUnaryCall<Agent_pb.NodeInfoReadOnlyMessage, Agent_pb.StringMessage>;
     getRootCertificate: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringMessage>;
     requestCertificateSigning: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.StringMessage>;
@@ -118,6 +129,9 @@ export interface INodeClient {
     getVaultNames(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Node_pb.VaultNamesReply) => void): grpc.ClientUnaryCall;
     getVaultNames(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Node_pb.VaultNamesReply) => void): grpc.ClientUnaryCall;
     getVaultNames(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Node_pb.VaultNamesReply) => void): grpc.ClientUnaryCall;
+    receiveMessage(request: Node_pb.MessageRequest, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    receiveMessage(request: Node_pb.MessageRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    receiveMessage(request: Node_pb.MessageRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     getUDPAddress(request: Agent_pb.NodeInfoReadOnlyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     getUDPAddress(request: Agent_pb.NodeInfoReadOnlyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     getUDPAddress(request: Agent_pb.NodeInfoReadOnlyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
@@ -146,6 +160,9 @@ export class NodeClient extends grpc.Client implements INodeClient {
     public getVaultNames(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Node_pb.VaultNamesReply) => void): grpc.ClientUnaryCall;
     public getVaultNames(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Node_pb.VaultNamesReply) => void): grpc.ClientUnaryCall;
     public getVaultNames(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Node_pb.VaultNamesReply) => void): grpc.ClientUnaryCall;
+    public receiveMessage(request: Node_pb.MessageRequest, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public receiveMessage(request: Node_pb.MessageRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public receiveMessage(request: Node_pb.MessageRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public getUDPAddress(request: Agent_pb.NodeInfoReadOnlyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public getUDPAddress(request: Agent_pb.NodeInfoReadOnlyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public getUDPAddress(request: Agent_pb.NodeInfoReadOnlyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
