@@ -1,5 +1,10 @@
 import * as grpc from '@grpc/grpc-js';
 import Logger from '@matrixai/logger';
+import {
+  PK_BOOTSTRAP_HOSTS,
+  PK_BOOTSTRAP_PORT_TCP,
+  PUBLIC_RELAY_NODE,
+} from '../../config';
 import NodeManager from '../NodeManager';
 import * as node from '../../../proto/js/Node_pb';
 import * as agent from '../../../proto/js/Agent_pb';
@@ -60,11 +65,11 @@ class NodeServer implements INodeServer {
         // );
         // start the server
         const port =
-          process.env.PK_PEER_PORT ??
+          PK_BOOTSTRAP_PORT_TCP ??
           this.nodeManager.nodeInfo?.nodeAddress?.port ??
           0;
         const host =
-          process.env.PK_PEER_HOST ??
+          PK_BOOTSTRAP_HOSTS ??
           this.nodeManager.nodeInfo?.nodeAddress?.host ??
           'localhost';
         this.server.bindAsync(
@@ -167,7 +172,7 @@ class NodeServer implements INodeServer {
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
     try {
-      if (!process.env.PUBLIC_RELAY_NODE) {
+      if (!PUBLIC_RELAY_NODE) {
         throw Error('node is not a public relay');
       } else {
         const nodeInfoReadOnly = NodePeer.fromNodeInfoReadOnlyMessage(
@@ -180,8 +185,8 @@ class NodeServer implements INodeServer {
         const udpAddress = await this.nodeManager.network.handleGetUDPAddress(
           nodeInfoReadOnly.id,
         );
-        if (process.env.PK_PEER_HOST) {
-          udpAddress.updateHost(process.env.PK_PEER_HOST);
+        if (PK_BOOTSTRAP_HOSTS) {
+          udpAddress.updateHost(PK_BOOTSTRAP_HOSTS);
         }
         response.setS(udpAddress.toString());
         callback(null, response);

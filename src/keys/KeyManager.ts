@@ -841,19 +841,29 @@ class KeyManager {
   private async writeEncryptedMetadata(): Promise<void> {
     // Store the keys if identity is loaded
     if (this.KeypairUnlocked) {
-      // write derived keys to file
-      const derivedKeys = JSON.stringify(this.derivedKeys);
-      const encryptedMetadata = await this.encryptData(derivedKeys);
-      await this.fileSystem.promises.writeFile(
-        this.derivedKeysPath,
-        encryptedMetadata,
-      );
-      // write mnemonic to file
+      // // write derived keys to file
+      // const derivedKeys = JSON.stringify(this.derivedKeys);
+      // const encryptedMetadata = await this.encryptData(derivedKeys);
+      // await this.fileSystem.promises.writeFile(
+      //   this.derivedKeysPath,
+      //   encryptedMetadata,
+      // );
+      // // write mnemonic to file
       const encryptedMnemonic = await this.encryptData(this.mnemonic);
       await this.fileSystem.promises.writeFile(
         this.mnemonicFilePath,
         encryptedMnemonic,
       );
+      const derivedKeys = JSON.stringify(this.derivedKeys);
+      await this.writeFileWithMnemonic(
+        this.derivedKeysPath,
+        Buffer.from(derivedKeys),
+      );
+      // const encryptedMnemonic = JSON.stringify(this.mnemonic);
+      // await this.writeFileWithMnemonic(
+      //   this.mnemonicFilePath,
+      //   Buffer.from(encryptedMnemonic),
+      // );
     }
   }
 
@@ -870,21 +880,21 @@ class KeyManager {
 
   async loadEncryptedMetadata(): Promise<void> {
     if (this.KeypairUnlocked) {
-      if (this.fileSystem.existsSync(this.derivedKeysPath)) {
-        const encryptedMetadata = this.fileSystem
-          .readFileSync(this.derivedKeysPath)
-          .toString();
-        const metadata = await this.decryptData(encryptedMetadata);
-        const derivedKeys = JSON.parse(metadata);
-        for (const key of Object.keys(derivedKeys)) {
-          this.derivedKeys[key] = Buffer.from(derivedKeys[key]);
-        }
-      }
       if (this.fileSystem.existsSync(this.mnemonicFilePath)) {
         const encryptedMetadata = this.fileSystem
           .readFileSync(this.mnemonicFilePath)
           .toString();
         this.mnemonic = (await this.decryptData(encryptedMetadata)).toString();
+        // this.mnemonic = (await this.readFileWithMnemonic(this.mnemonicFilePath)).toString();
+      }
+      if (this.fileSystem.existsSync(this.derivedKeysPath)) {
+        const metadata = (
+          await this.readFileWithMnemonic(this.derivedKeysPath)
+        ).toString();
+        const derivedKeys = JSON.parse(metadata);
+        for (const key of Object.keys(derivedKeys)) {
+          this.derivedKeys[key] = Buffer.from(derivedKeys[key]);
+        }
       }
     }
   }

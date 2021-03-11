@@ -1,5 +1,6 @@
 import { pki } from 'node-forge';
 import Logger from '@matrixai/logger';
+import { PK_BOOTSTRAP_HOSTS, PK_BOOTSTRAP_PORT_UDP } from '../config';
 import NatTraversal from './nat-traversal/NatTraversal';
 import MTPToTCPSocketPipe from './socket-pipes/MTPToTCPSocketPipe';
 import NodeConnection from '../nodes/node-connection/NodeConnection';
@@ -63,8 +64,8 @@ class Network {
     return new Promise<Address>(async (resolve, reject) => {
       try {
         // start the MTPServer
-        const port = parseInt(process.env.PK_PEER_PORT ?? '0');
-        const host = process.env.PK_PEER_HOST ?? '0.0.0.0';
+        const port = parseInt(PK_BOOTSTRAP_PORT_UDP ?? '0');
+        const host = PK_BOOTSTRAP_HOSTS ?? '0.0.0.0';
         this.mtpServer.listenPort(port, host, async () => {
           const address = this.mtpServer.address();
           this.logger.info(

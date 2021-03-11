@@ -4,10 +4,10 @@ import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../utils';
+import { getNodePath } from '../../utils';
 
 const commandStartAgent = createCommand('start', { verbose: true });
 commandStartAgent.description('start the agent');
@@ -34,7 +34,7 @@ commandStartAgent.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   try {
     const client = PolykeyAgent.connectToAgent(nodePath);
     const res = (await promisifyGrpc(client.getStatus.bind(client))(
@@ -100,7 +100,7 @@ commandRestartAgent.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   let client = await getAgentClient(
     nodePath,
     logger,
@@ -147,7 +147,7 @@ commandAgentStatus.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   try {
     const client = await getAgentClient(nodePath, logger, undefined, false);
     const res = (await promisifyGrpc(client.getStatus.bind(client))(
@@ -174,7 +174,7 @@ commandStopAgent.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   try {
     const client = await getAgentClient(nodePath, logger, undefined, false);
 
@@ -221,7 +221,7 @@ commandInitNode.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(
     nodePath,
     logger,
@@ -256,7 +256,7 @@ commandUnlockNode.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.UnlockNodeMessage();
   request.setPassphrase(options.privatePassphrase!);
@@ -283,7 +283,7 @@ commandLockNode.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   await promisifyGrpc(client.lockNode.bind(client))(new agentPB.EmptyMessage());
   process.stdout.write(`polykey is now locked at: '${nodePath}'\n`);

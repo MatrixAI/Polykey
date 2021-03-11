@@ -405,12 +405,21 @@ class VaultManager {
 
   private async writeEncryptedMetadata(): Promise<void> {
     const release = await this.metadataMutex.acquire();
+    // const metadata = [...this.vaultKeys];
+    // let encryptedMetadata = '';
+    // metadata.forEach(async (dataEncrypt) => {
+    //   this.logger.debug(JSON.stringify(dataEncrypt));
+    //   const data = await this.keyManager.encryptData(JSON.stringify(dataEncrypt))
+    //   encryptedMetadata = encryptedMetadata + data;
+    // });
+    // this.logger.debug(encryptedMetadata);
     const metadata = JSON.stringify([...this.vaultKeys]);
-    const encryptedMetadata = await this.keyManager.encryptData(metadata);
-    await this.fileSystem.promises.writeFile(
-      this.metadataPath,
-      encryptedMetadata,
-    );
+    // this.logger.debug(metadata);
+    // const encryptedMetadata = await this.keyManager.encryptData(metadata);
+    // await this.fileSystem.promises.writeFile(
+    //   this.metadataPath,
+    //   encryptedMetadata,
+    // );
     // write metadata using mnemonic provided by KeyManager
     await this.keyManager.writeFileWithMnemonic(
       this.metadataBackupPath,
@@ -423,14 +432,17 @@ class VaultManager {
     const release = await this.metadataMutex.acquire();
     // Check if file exists
     if (
-      this.fileSystem.existsSync(this.metadataPath) &&
+      this.fileSystem.existsSync(this.metadataBackupPath) &&
       this.keyManager.KeypairUnlocked
     ) {
-      const encryptedMetadata = this.fileSystem
-        .readFileSync(this.metadataPath)
-        .toString();
-      const metadata = await this.keyManager.decryptData(encryptedMetadata);
-
+      const metadata = (
+        await this.keyManager.readFileWithMnemonic(this.metadataBackupPath)
+      ).toString();
+      // const encryptedMetadata = this.fileSystem
+      //   .readFileSync(this.metadataPath)
+      //   .toString();
+      // const metadata = await this.keyManager.decryptData(encryptedMetadata);
+      // this.logger.debug(metadata);
       for (const [key, value] of new Map<string, any>(JSON.parse(metadata))) {
         this.vaultKeys.set(key, Buffer.from(value));
       }

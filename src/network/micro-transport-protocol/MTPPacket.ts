@@ -5,8 +5,10 @@ const EXTENSION = 0;
 const VERSION = 1;
 const UINT16 = 0xffff;
 const ID_MASK = 0xf << 4;
+
 const MTU = 100;
 // const MTU = 1400;
+// default for MTU is 1500 bytes
 
 const PACKET_DATA = 0 << 4;
 const PACKET_FIN = 1 << 4;

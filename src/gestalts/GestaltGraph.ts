@@ -24,6 +24,7 @@ import { gestaltKey } from './utils';
 import NodeManager from '../nodes/NodeManager';
 import GestaltTrust from './GestaltTrust';
 import Logger from '@matrixai/logger';
+import { getNodePath } from '@/utils';
 
 type VerifyLinkInfoHandler = (linkInfo: LinkInfo) => boolean;
 
@@ -37,18 +38,21 @@ class GestaltGraph {
   protected gestaltTrust: GestaltTrust;
   protected nodeManager: NodeManager;
 
+  private nodePath: string;
   private logger: Logger;
   private graphData: string;
   private nodesData: string;
   private identitiesData: string;
 
   public constructor(
+    nodePath: string,
     gestaltTrust: GestaltTrust,
     nodeManager: NodeManager,
     providerManager: ProviderManager,
     verifyLinkInfo: VerifyLinkInfoHandler,
     logger: Logger,
   ) {
+    this.nodePath = nodePath;
     this.gestaltTrust = gestaltTrust;
     this.nodeManager = nodeManager;
     this.providerManager = providerManager;
@@ -56,7 +60,7 @@ class GestaltGraph {
     this.logger = logger;
 
     /** Get persisted data */
-    const polykeyPath = `${os.homedir()}/.polykey`;
+    const polykeyPath = this.nodePath;
     this.graphData = path.join(polykeyPath, '.gestalt-graph', 'graph');
     this.nodesData = path.join(polykeyPath, '.gestalt-graph', 'nodes');
     this.identitiesData = path.join(

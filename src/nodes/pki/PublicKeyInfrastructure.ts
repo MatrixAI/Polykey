@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pki, md } from 'node-forge';
+import { PK_BOOTSTRAP_HOSTS } from '../../config';
 import { Node } from '../Node';
 
 type TLSCredentials = {
@@ -79,7 +80,7 @@ class PublicKeyInfrastructure {
     getLocalNodeInfo: () => Node,
     getPrivateKey: () => pki.rsa.PrivateKey,
   ) {
-    this.commonName = process.env.PK_PEER_HOST ?? 'localhost';
+    this.commonName = PK_BOOTSTRAP_HOSTS ?? 'localhost';
     this.pkiPath = path.join(polykeyPath, '.pki');
 
     this.CAStore = pki.createCaStore();

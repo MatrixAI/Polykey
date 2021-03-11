@@ -7,11 +7,11 @@ import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   getAgentClient,
   promisifyGrpc,
 } from '../utils';
 import { randomString } from '../../utils';
+import { getNodePath } from '../../utils';
 
 const pathRegex = /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
 
@@ -30,7 +30,7 @@ commandListSecrets.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const vaultNames: string[] = options.vaultNames.split(' ');
   if (!vaultNames.length) {
@@ -82,7 +82,7 @@ commandNewSecret.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const secretPath: string = options.secretPath;
   if (!pathRegex.test(secretPath)) {
@@ -128,7 +128,7 @@ commandNewDirSecret.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   try {
     // Add the secret
@@ -168,7 +168,7 @@ commandUpdateSecret.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const secretPath: string = options.secretPath;
   if (!pathRegex.test(secretPath)) {
@@ -211,7 +211,7 @@ commandEditSecret.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const secretPath: string = options.secretPath;
   if (!pathRegex.test(secretPath)) {
@@ -282,7 +282,7 @@ commandDeleteSecret.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const secretPath: string = options.secretPath;
   if (!pathRegex.test(secretPath)) {
@@ -325,7 +325,7 @@ commandGetSecret.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const isEnv: boolean = options.env ?? false;
   const secretPath: string = options.secretPath;
@@ -380,7 +380,7 @@ commandSecretEnv.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
 
   const secretPathList: string[] = Array.from<string>(command.args.values());

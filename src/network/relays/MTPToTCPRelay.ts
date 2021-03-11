@@ -1,5 +1,6 @@
 import net from 'net';
 import dgram from 'dgram';
+import { PK_BOOTSTRAP_HOSTS } from '../../config';
 import { Address } from '../../nodes/Node';
 import TCPToMTPSocketPipe from '../socket-pipes/TCPToMTPSocketPipe';
 
@@ -37,7 +38,7 @@ class NodeRelay {
   async start() {
     return new Promise<void>((resolve, reject) => {
       try {
-        const host = process.env.PK_PEER_HOST ?? '0.0.0.0';
+        const host = PK_BOOTSTRAP_HOSTS ?? '0.0.0.0';
         this.relayedTCPServer.listen(0, host, () => {
           resolve();
         });
@@ -65,8 +66,8 @@ class NodeRelay {
     const address = Address.fromAddressInfo(
       <net.AddressInfo>this.relayedTCPServer.address(),
     );
-    if (process.env.PK_PEER_HOST) {
-      address.updateHost(process.env.PK_PEER_HOST);
+    if (PK_BOOTSTRAP_HOSTS) {
+      address.updateHost(PK_BOOTSTRAP_HOSTS);
     }
     return address;
   }

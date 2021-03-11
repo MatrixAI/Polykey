@@ -1,0 +1,36 @@
+import dotenv from 'dotenv';
+
+// load .env file
+dotenv.config();
+
+// Get available environments
+const {
+  PK_NODE_PATH,
+  PK_NODE_HOST = 'localhost',
+  PK_NODE_PORT_TCP = 0,
+  PK_NODE_PORT_UDP, // This still needs to be workout
+  PK_NODE_PORT_HTTP = '0',
+  PK_NODE_ADDR_HTTP = '0.0.0.0',
+  PK_NODE_MULTICAST_PORT = 5353,
+  PK_BOOTSTRAP_HOSTS,
+  PK_BOOTSTRAP_PORT_TCP,
+  PK_BOOTSTRAP_PORT_UDP,
+  PUBLIC_RELAY_NODE,
+} = process.env;
+
+const PK_NODE_MULTICAST_HOST = '224.0.0.251';
+
+export {
+  PK_NODE_PATH,
+  PK_NODE_HOST,
+  PK_NODE_PORT_TCP,
+  PK_NODE_PORT_UDP,
+  PK_NODE_PORT_HTTP,
+  PK_NODE_ADDR_HTTP,
+  PK_NODE_MULTICAST_PORT,
+  PK_NODE_MULTICAST_HOST,
+  PK_BOOTSTRAP_HOSTS,
+  PK_BOOTSTRAP_PORT_TCP,
+  PK_BOOTSTRAP_PORT_UDP,
+  PUBLIC_RELAY_NODE,
+};

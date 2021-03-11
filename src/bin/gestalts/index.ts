@@ -3,10 +3,10 @@ import * as agentPB from '../../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,
-  resolveKeynodeStatePath,
   promisifyGrpc,
   getAgentClient,
 } from '../utils';
+import { getNodePath } from '../../utils';
 
 const commandSearch = createCommand('search', { verbose: true });
 commandSearch.description('search a particular provider for a gestalt');
@@ -20,7 +20,7 @@ commandSearch.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.ProviderSearchMessage();
   request.setProviderKey(options.providerKey);
@@ -69,7 +69,7 @@ commandDiscoverIdentity.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.IdentityMessage();
   request.setProviderKey(options.providerKey);
@@ -108,7 +108,7 @@ commandGetByIdentity.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.IdentityMessage();
   request.setProviderKey(options.providerKey);
@@ -135,7 +135,7 @@ commandTrust.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.StringMessage();
   request.setS(options.gestaltKey);
@@ -157,7 +157,7 @@ commandUntrust.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.StringMessage();
   request.setS(options.gestaltKey);
@@ -179,7 +179,7 @@ commandTrusted.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.StringMessage();
   request.setS(options.gestaltKey);
@@ -200,7 +200,7 @@ commandGetGestalts.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
-  const nodePath = resolveKeynodeStatePath(options.nodePath);
+  const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const response = (await promisifyGrpc(client.getGestalts.bind(client))(
     new agentPB.EmptyMessage(),

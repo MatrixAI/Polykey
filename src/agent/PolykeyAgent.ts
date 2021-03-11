@@ -3,24 +3,27 @@ import os from 'os';
 import path from 'path';
 import process from 'process';
 import { promisify } from 'util';
-import { getPort } from '../utils';
 import { md, pki } from 'node-forge';
 import ConfigStore from 'configstore';
 import * as grpc from '@grpc/grpc-js';
-import * as agent from '../../proto/js/Agent_pb';
-import * as node from '../../proto/js/Node_pb';
+import Logger from '@matrixai/logger';
 import { spawn, SpawnOptions } from 'child_process';
+/** Internal Libs */
+import { getPort } from '../utils';
+import { PK_NODE_HOST, PK_NODE_PORT_TCP } from '../config';
+import { LinkInfo, LinkInfoIdentity } from '../links';
+import { gestaltToProtobuf } from '../gestalts';
 import { NodePeer } from '../nodes/Node';
 import Polykey, { Address, KeyManager } from '../Polykey';
 import { TLSCredentials } from '../nodes/pki/PublicKeyInfrastructure';
+
+/** Proto */
+import * as agent from '../../proto/js/Agent_pb';
 import {
   AgentService,
   IAgentServer,
   AgentClient,
 } from '../../proto/js/Agent_grpc_pb';
-import { LinkInfo, LinkInfoIdentity } from '../links';
-import { gestaltToProtobuf } from '../gestalts';
-import Logger from '@matrixai/logger';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;
@@ -142,9 +145,8 @@ class PolykeyAgent implements IAgentServer {
     }
 
     // handle port
-    const portString =
-      this.configStore.get('port') ?? process.env.PK_AGENT_PORT ?? 0;
-    const hostString = process.env.PK_AGENT_HOST ?? 'localhost';
+    const portString = this.configStore.get('port') ?? PK_NODE_PORT_TCP;
+    const hostString = PK_NODE_HOST;
     const port = await getPort(parseInt(portString), hostString);
 
     // bind server to port and start
@@ -1470,12 +1472,12 @@ class PolykeyAgent implements IAgentServer {
       }
       if (nodeAddress) {
         throw Error(
-          'cannot modify nodeAddress, try setting PK_PEER_HOST or PK_PEER_PORT env variables instead',
+          'cannot modify nodeAddress, try setting PK_BOOTSTRAP_HOSTS or PK_BOOTSTRAP_PORT_TCP env variables instead',
         );
       }
       if (apiAddress) {
         throw Error(
-          'cannot modify nodeAddress, try setting PK_API_HOST or PK_API_PORT env variables instead',
+          'cannot modify nodeAddress, try setting PK_NODE_ADDR_HTTP or PK_NODE_PORT_HTTP env variables instead',
         );
       }
       if (linkInfoList) {

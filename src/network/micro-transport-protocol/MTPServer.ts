@@ -2,6 +2,7 @@
 import net from 'net';
 import dgram from 'dgram';
 import { EventEmitter } from 'events';
+import { PK_BOOTSTRAP_HOSTS } from '../../config';
 import { Address } from '../../nodes/Node';
 import MTPConnection from './MTPConnection';
 import { promisify } from 'util';
@@ -38,8 +39,8 @@ class MTPServer extends EventEmitter {
   // this is the udp address for the MTP server
   remoteAddress() {
     const address = this.address();
-    if (process.env.PK_PEER_HOST) {
-      address.updateHost(process.env.PK_PEER_HOST);
+    if (PK_BOOTSTRAP_HOSTS) {
+      address.updateHost(PK_BOOTSTRAP_HOSTS);
     }
     return address;
   }
