@@ -6,6 +6,7 @@ describe('main', () => {
 
 // import dgram from 'dgram';
 // import crypto from 'crypto';
+// import { randomBytes } from 'secure-random-bytes'
 // import Logger from '@matrixai/logger';
 // import {
 //   MTPServer,
@@ -115,7 +116,7 @@ describe('main', () => {
 //   });
 //   test('bulk sequence writing - 256 byte packet length - server client', (done) => {
 //     const buffer: Buffer[] = [...Array(50).keys()].map(() =>
-//       crypto.randomBytes(256),
+//       randomBytes(256),
 //     );
 //     new MTPServer((conn) => {
 //       let serverStep = 0;
@@ -148,7 +149,7 @@ describe('main', () => {
 //   });
 //   test('bulk sequence writing - 1024 byte packet length - server client', (done) => {
 //     const buffer: Buffer[] = [...Array(50).keys()].map(() =>
-//       crypto.randomBytes(1024),
+//       randomBytes(1024),
 //     );
 //     new MTPServer((conn) => {
 //       let serverStep = 0;
@@ -180,7 +181,7 @@ describe('main', () => {
 //     });
 //   });
 //   test('big packets - 16384 byte packet length - server client', (done) => {
-//     const buffer: Buffer = crypto.randomBytes(16384);
+//     const buffer: Buffer = randomBytes(16384);
 //     const MTU = 1400;
 //     let packetsReceived = 0;
 //     new MTPServer((conn) => {

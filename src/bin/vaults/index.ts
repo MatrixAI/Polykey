@@ -5,10 +5,15 @@ import {
   verboseToLogLevel,
   getAgentClient,
   promisifyGrpc,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
+import { VaultNamesReply } from '@/proto/js/Node_pb';
 
-const commandListVaults = createCommand('list', { verbose: true });
+const commandListVaults = createCommand('list', {
+  verbose: true,
+  format: true,
+});
 commandListVaults.description('list all available vaults');
 commandListVaults.alias('ls');
 commandListVaults.option(
@@ -26,15 +31,29 @@ commandListVaults.action(async (options, command) => {
   )) as agentPB.StringListMessage;
   const vaultNames = res.getSList();
   if (vaultNames === undefined || vaultNames.length == 0) {
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`No vaults found`],
+      }),
+    );
     process.stdout.write('no vaults found\n');
   } else {
-    vaultNames.forEach((vaultName: string, index: number) =>
-      process.stdout.write(`${index + 1}: ${vaultName}\n`),
-    );
+    vaultNames.forEach((vaultName: string, index: number) => {
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [`Vault ${index + 1} ${vaultName}`],
+        }),
+      );
+    });
   }
 });
 
-const commandScanVaults = createCommand('scan', { verbose: true });
+const commandScanVaults = createCommand('scan', {
+  verbose: true,
+  format: true,
+});
 commandScanVaults.description('scan a known node for accessible vaults');
 commandScanVaults.option(
   '-np, --node-path <nodePath>',
@@ -57,15 +76,27 @@ commandScanVaults.action(async (options, command) => {
   )) as agentPB.StringListMessage;
   const vaultNames = res.getSList();
   if (!vaultNames || vaultNames.length == 0) {
-    process.stdout.write('no vault names were found\n');
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`No vaults found`],
+      }),
+    );
   }
   process.stdout.write(`Vault names from node - ${options.nodeId}\n`);
-  for (const vaultName of vaultNames) {
-    process.stdout.write(vaultName + '\n');
-  }
+  const output: Array<string> = [];
+  vaultNames.map((vaultName) => {
+    output.push(`${options.nodeId} ${vaultName}`);
+  });
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: output,
+    }),
+  );
 });
 
-const commandNewVault = createCommand('new', { verbose: true });
+const commandNewVault = createCommand('new', { verbose: true, format: true });
 commandNewVault.description('create a new vault');
 commandNewVault.option(
   '-np, --node-path <nodePath>',
@@ -84,10 +115,18 @@ commandNewVault.action(async (options, command) => {
   const request = new agentPB.StringMessage();
   request.setS(options.vaultName);
   await promisifyGrpc(client.newVault.bind(client))(request);
-  process.stdout.write(`vault created at '${nodePath}/${options.vaultName}'\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Created ${options.vaultName}`],
+    }),
+  );
 });
 
-const commandRenameVault = createCommand('rename', { verbose: true });
+const commandRenameVault = createCommand('rename', {
+  verbose: true,
+  format: true,
+});
 commandRenameVault.description('rename an existing vault');
 commandRenameVault.option(
   '-np, --node-path <nodePath>',
@@ -107,15 +146,22 @@ commandRenameVault.action(async (options, command) => {
   logger.setLevel(logLevel);
   const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
-  const request = new agentPB.StringMessage();
-  request.setS(options.vaultName);
+  const request = new agentPB.RenameVaultMessage();
+  request.setVaultName(options.vaultName);
+  request.setNewName(options.newName);
   await promisifyGrpc(client.renameVault.bind(client))(request);
   process.stdout.write(
-    `vault successfully renamed to '${nodePath}/${options.vaultName}'\n`,
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Renamed ${options.newName}`],
+    }),
   );
 });
 
-const commandVaultStats = createCommand('stats', { verbose: true });
+const commandVaultStats = createCommand('stats', {
+  verbose: true,
+  format: true,
+});
 commandVaultStats.description('get the stats for a vault');
 commandVaultStats.option(
   '-np, --node-path <nodePath>',
@@ -137,11 +183,15 @@ commandVaultStats.action(async (options, command) => {
     request,
   )) as agentPB.VaultStatsMessage;
   const date = new Date(statsResponse.getCreatedAt());
-  const stats = { createdAt: date.toISOString() };
-  process.stdout.write(JSON.stringify(stats));
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Created ${date.toISOString()}`],
+    }),
+  );
 });
 
-const commandPullVault = createCommand('pull', { verbose: true });
+const commandPullVault = createCommand('pull', { verbose: true, format: true });
 commandPullVault.description('pull a vault from a node');
 commandPullVault.option(
   '-np, --node-path <nodePath>',
@@ -166,10 +216,18 @@ commandPullVault.action(async (options, command) => {
   request.setPublicKey(options.nodeId);
   request.setVaultName(vaultName);
   await promisifyGrpc(client.pullVault.bind(client))(request);
-  process.stdout.write(`vault '${vaultName}' pulled successfully\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Pulled ${vaultName}`],
+    }),
+  );
 });
 
-const commandShareVault = createCommand('share', { verbose: true });
+const commandShareVault = createCommand('share', {
+  verbose: true,
+  format: true,
+});
 commandShareVault.description('pull a vault from a node');
 commandShareVault.option(
   '-np, --node-path <nodePath>',
@@ -202,11 +260,17 @@ commandShareVault.action(async (options, command) => {
   request.setCanEdit(canEdit);
   await promisifyGrpc(client.shareVault.bind(client))(request);
   process.stdout.write(
-    `vault '${vaultName}' successfully shared with nodeId: '${nodeId}'\n`,
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Shared With ${vaultName} ${nodeId}`],
+    }),
   );
 });
 
-const commandUnshareVault = createCommand('unshare', { verbose: true });
+const commandUnshareVault = createCommand('unshare', {
+  verbose: true,
+  format: true,
+});
 commandUnshareVault.description('pull a vault from a node');
 commandUnshareVault.option(
   '-np, --node-path <nodePath>',
@@ -233,11 +297,17 @@ commandUnshareVault.action(async (options, command) => {
   request.setVaultName(vaultName);
   await promisifyGrpc(client.unshareVault.bind(client))(request);
   process.stdout.write(
-    `vault '${vaultName}' successfully unshared from nodeId: '${nodeId}'\n`,
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Unshared With ${vaultName} ${nodeId}`],
+    }),
   );
 });
 
-const commandDeleteVault = createCommand('delete', { verbose: true });
+const commandDeleteVault = createCommand('delete', {
+  verbose: true,
+  format: true,
+});
 commandDeleteVault.alias('del');
 commandDeleteVault.description('delete an existing vault');
 commandDeleteVault.requiredOption(
@@ -254,7 +324,12 @@ commandDeleteVault.action(async (options, command) => {
   const request = new agentPB.StringMessage();
   request.setS(vaultName);
   await promisifyGrpc(client.deleteVault.bind(client))(request);
-  process.stdout.write(`vault '${vaultName}' deleted successfully\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Deleted ${vaultName}`],
+    }),
+  );
 });
 
 const commandVaults = createCommand('vaults');

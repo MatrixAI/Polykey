@@ -8,6 +8,7 @@ import { pki, md } from 'node-forge';
 import { VirtualFS } from 'virtualfs';
 import { EncryptedFS } from 'encryptedfs';
 import { Pool, ModuleThread } from 'threads';
+import randomBytes from 'secure-random-bytes';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
 import Logger from '@matrixai/logger';
 
@@ -388,7 +389,7 @@ class KeyManager {
     passphrase: string,
     storeKey = true,
   ): Promise<Buffer> {
-    const salt = crypto.randomBytes(32);
+    const salt = randomBytes(32);
     const key = await promisify(crypto.pbkdf2)(
       passphrase,
       salt,
@@ -410,7 +411,7 @@ class KeyManager {
    * @param storeKey Whether to store the key in the key manager
    */
   generateKeySync(name: string, passphrase: string, storeKey = true): Buffer {
-    const salt = crypto.randomBytes(32);
+    const salt = randomBytes(32);
     const key = crypto.pbkdf2Sync(passphrase, salt, 10000, 256 / 8, 'sha256');
     if (storeKey) {
       this.derivedKeys[name] = key;

@@ -5,10 +5,11 @@ import {
   verboseToLogLevel,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 
-const commandSearch = createCommand('search', { verbose: true });
+const commandSearch = createCommand('search', { verbose: true, format: true });
 commandSearch.description('search a particular provider for a gestalt');
 commandSearch.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandSearch.requiredOption(
@@ -27,16 +28,28 @@ commandSearch.action(async (options, command) => {
   request.setSearchTermList(commandSearch.args);
   const responseStream = client.getConnectedIdentityInfos(request);
   process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Searching for${commandSearch.args}`],
+    }),
+  );
+  process.stdout.write(
     `searching for connected identities with search terms: ${commandSearch.args}\n`,
   );
   await new Promise<void>((resolve, reject) => {
     responseStream.on('data', (identityInfo: agentPB.IdentityInfoMessage) => {
-      process.stdout.write('found a new identity info:\n');
-      process.stdout.write(`key: '${identityInfo.getKey()}'\n`);
-      process.stdout.write(`provider: '${identityInfo.getProvider()}'\n`);
-      process.stdout.write(`name: '${identityInfo.getName()}'\n`);
-      process.stdout.write(`email: '${identityInfo.getEmail()}'\n`);
-      process.stdout.write(`url: '${identityInfo.getUrl()}'\n`);
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [
+            `Name: ${identityInfo.getName()}`,
+            `Key: ${identityInfo.getKey()}`,
+            `Provider: ${identityInfo.getProvider()}`,
+            `Email: ${identityInfo.getEmail()}`,
+            `url: ${identityInfo.getUrl()}`,
+          ],
+        }),
+      );
     });
     responseStream.on('error', (error) => {
       reject(error);
@@ -45,10 +58,18 @@ commandSearch.action(async (options, command) => {
       resolve();
     });
   });
-  process.stdout.write('finished searching for connected identities\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Finished searching for ${commandSearch.args}`],
+    }),
+  );
 });
 
-const commandDiscoverIdentity = createCommand('discover', { verbose: true });
+const commandDiscoverIdentity = createCommand('discover', {
+  verbose: true,
+  format: true,
+});
 commandDiscoverIdentity.alias('dis');
 commandDiscoverIdentity.description(
   'search a particular provider for a gestalt',
@@ -77,7 +98,12 @@ commandDiscoverIdentity.action(async (options, command) => {
   const responseStream = client.discoverGestaltIdentity(request);
   await new Promise<void>((resolve, reject) => {
     responseStream.on('data', () => {
-      process.stdout.write('discovery algorithm cycled once\n');
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [`Discovery algorithm cycled once`],
+        }),
+      );
     });
     responseStream.on('error', (error) => {
       reject(error);
@@ -86,10 +112,18 @@ commandDiscoverIdentity.action(async (options, command) => {
       resolve();
     });
   });
-  process.stdout.write('finished searching for connected identities\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Finished searching for connected identities`],
+    }),
+  );
 });
 
-const commandGetByIdentity = createCommand('identity', { verbose: true });
+const commandGetByIdentity = createCommand('identity', {
+  verbose: true,
+  format: true,
+});
 commandGetByIdentity.alias('id');
 commandGetByIdentity.description('retrieve a gestalt via an identity');
 commandGetByIdentity.option(
@@ -116,15 +150,19 @@ commandGetByIdentity.action(async (options, command) => {
   const response = (await promisifyGrpc(
     client.getGestaltByIdentity.bind(client),
   )(request)) as agentPB.GestaltMessage;
-  process.stdout.write('GestaltMatrix:\n');
-  process.stdout.write(JSON.stringify(response.getGestaltMatrixMap()) + '\n');
-  process.stdout.write('Identities:\n');
-  process.stdout.write(JSON.stringify(response.getIdentitiesMap()) + '\n');
-  process.stdout.write('GestaltNodes:\n');
-  process.stdout.write(JSON.stringify(response.getGestaltNodesMap()) + '\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [
+        `Gestalt Matrix: ${response.getGestaltMatrixMap()}`,
+        `Identities: ${response.getIdentitiesMap()}`,
+        `Gestalt Nodes: ${response.getGestaltNodesMap()}`,
+      ],
+    }),
+  );
 });
 
-const commandTrust = createCommand('trust', { verbose: true });
+const commandTrust = createCommand('trust', { verbose: true, format: true });
 commandTrust.description('trust a particular gestalt');
 commandTrust.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandTrust.requiredOption(
@@ -140,10 +178,18 @@ commandTrust.action(async (options, command) => {
   const request = new agentPB.StringMessage();
   request.setS(options.gestaltKey);
   await promisifyGrpc(client.trustGestalt.bind(client))(request);
-  process.stdout.write('gestalt successfully trusted\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Gestalt trusted`],
+    }),
+  );
 });
 
-const commandUntrust = createCommand('untrust', { verbose: true });
+const commandUntrust = createCommand('untrust', {
+  verbose: true,
+  format: true,
+});
 commandUntrust.description('untrust a particular gestalt');
 commandUntrust.option(
   '-np, --node-path <nodePath>',
@@ -162,10 +208,15 @@ commandUntrust.action(async (options, command) => {
   const request = new agentPB.StringMessage();
   request.setS(options.gestaltKey);
   await promisifyGrpc(client.untrustGestalt.bind(client))(request);
-  process.stdout.write('gestalt successfully untrusted\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Gestalt untrusted`],
+    }),
+  );
 });
 
-const commandTrusted = createCommand('status', { verbose: true });
+const commandTrusted = createCommand('status', { verbose: true, format: true });
 commandTrusted.description('check if a particular gestalt is trusted');
 commandTrusted.option(
   '-np, --node-path <nodePath>',
@@ -186,10 +237,18 @@ commandTrusted.action(async (options, command) => {
   const response = (await promisifyGrpc(client.gestaltIsTrusted.bind(client))(
     request,
   )) as agentPB.BooleanMessage;
-  process.stdout.write(`gestalt is ${response.getB() ? '' : 'un '}trusted\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Gestalt ${response.getB() ? '' : 'un '}trusted`],
+    }),
+  );
 });
 
-const commandGetGestalts = createCommand('list', { verbose: true });
+const commandGetGestalts = createCommand('list', {
+  verbose: true,
+  format: true,
+});
 commandGetGestalts.alias('ls');
 commandGetGestalts.description('list all the gestalts in the gestalt graph');
 commandGetGestalts.option(
@@ -207,12 +266,16 @@ commandGetGestalts.action(async (options, command) => {
   )) as agentPB.GestaltListMessage;
   const gestaltList = response.getGestaltMessageList();
   gestaltList.forEach((g) => {
-    process.stdout.write('GestaltMatrix:\n');
-    process.stdout.write(JSON.stringify(g.getGestaltMatrixMap()) + '\n');
-    process.stdout.write('Identities:\n');
-    process.stdout.write(JSON.stringify(g.getIdentitiesMap()) + '\n');
-    process.stdout.write('GestaltNodes:\n');
-    process.stdout.write(JSON.stringify(g.getGestaltNodesMap()) + '\n');
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [
+          `Gestalt Matrix: ${g.getGestaltMatrixMap()}`,
+          `Identities: ${g.getIdentitiesMap()}`,
+          `Gestalt Nodes: ${g.getGestaltNodesMap()}`,
+        ],
+      }),
+    );
   });
 });
 

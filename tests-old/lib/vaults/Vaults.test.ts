@@ -18,14 +18,14 @@ describe('VaultManager class', () => {
 
   beforeAll(async done => {
     // Define CA temp directory
-    caTempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    caTempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create CA keyManager
     caKm = new KeyManager(caTempDir, fs)
     await caKm.generateKeyPair('John Smith', 'passphrase', true)
 
     // Define temp directory
-    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create keyManager
     const km = new KeyManager(tempDir, fs)
@@ -55,7 +55,7 @@ describe('VaultManager class', () => {
 
   beforeEach(() => {
     // Reset the vault name for each test
-    randomVaultName = `Vault-${randomString()}`
+    randomVaultName = `Vault-${randomString(5)}`
   })
 
   test('test', () => {
@@ -118,7 +118,7 @@ describe('VaultManager class', () => {
 
     beforeAll(async done => {
       // Define temp directory
-      tempDir2 = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+      tempDir2 = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
       // Create keyManager
       const km2 = new KeyManager(tempDir2, fs)
 
@@ -177,7 +177,7 @@ describe('VaultManager class', () => {
     test('stress test - can clone many vaults concurrently', async done => {
 
       const vaultNameList = [...Array(10).keys()].map((_) => {
-        return `Vault-${randomString()}`
+        return `Vault-${randomString(5)}`
       })
 
       for (const vaultName of vaultNameList) {

@@ -5,10 +5,11 @@ import {
   verboseToLogLevel,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 
-const commandSign = createCommand('sign', { verbose: true });
+const commandSign = createCommand('sign', { verbose: true, format: true });
 commandSign.description('signing operations [files]');
 commandSign.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandSign.option(
@@ -45,7 +46,10 @@ commandSign.action(async (options, command) => {
         request,
       )) as agentPB.StringMessage;
       process.stdout.write(
-        `file '${filePath}' successfully signed at '${res.getS()}'\n`,
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [`Signed at ${filePath}`],
+        }),
       );
     } catch (err) {
       throw Error(`failed to sign '${filePath}': ${err}`);
@@ -53,7 +57,7 @@ commandSign.action(async (options, command) => {
   }
 });
 
-const commandVerify = createCommand('verify', { verbose: true });
+const commandVerify = createCommand('verify', { verbose: true, format: true });
 commandVerify.description('verification operations');
 commandVerify.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandVerify.option(
@@ -61,7 +65,7 @@ commandVerify.option(
   'path to public key that will be used to verify files, defaults to primary key',
 );
 commandVerify.requiredOption(
-  '-f, --signed-file <signedFile>',
+  '-fp, --signed-file <signedFile>',
   '(required) file to be verified',
 );
 commandVerify.action(async (options, command) => {
@@ -75,10 +79,18 @@ commandVerify.action(async (options, command) => {
   request.setFilePath(filePath);
   request.setPublicKeyPath(options.publicKey);
   await promisifyGrpc(client.verifyFile.bind(client))(request);
-  process.stdout.write(`file '${filePath}' was successfully verified\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Verified at ${filePath}`],
+    }),
+  );
 });
 
-const commandEncrypt = createCommand('encrypt', { verbose: true });
+const commandEncrypt = createCommand('encrypt', {
+  verbose: true,
+  format: true,
+});
 commandEncrypt.description('encryption operations');
 commandEncrypt.option(
   '-np, --node-path <nodePath>',
@@ -89,7 +101,7 @@ commandEncrypt.option(
   'path to public key that will be used to encrypt files, defaults to primary key',
 );
 commandEncrypt.requiredOption(
-  '-f, --file-path <filePath>',
+  '-fp, --file-path <filePath>',
   '(required) file to be encrypted',
 );
 commandEncrypt.action(async (options, command) => {
@@ -106,13 +118,21 @@ commandEncrypt.action(async (options, command) => {
     const res = (await promisifyGrpc(client.encryptFile.bind(client))(
       request,
     )) as agentPB.StringMessage;
-    process.stdout.write(`file successfully encrypted: '${res.getS()}'\n`);
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Encrypted at ${filePath}`],
+      }),
+    );
   } catch (err) {
     throw Error(`failed to encrypt '${filePath}': ${err}`);
   }
 });
 
-const commandDecrypt = createCommand('decrypt', { verbose: true });
+const commandDecrypt = createCommand('decrypt', {
+  verbose: true,
+  format: true,
+});
 commandDecrypt.description('decryption operations');
 commandDecrypt.option(
   '-np, --node-path <nodePath>',
@@ -127,7 +147,7 @@ commandDecrypt.option(
   'passphrase to unlock the provided private key',
 );
 commandDecrypt.requiredOption(
-  '-f, --file-path <filePath>',
+  '-fp, --file-path <filePath>',
   '(required) file to be decrypted',
 );
 commandDecrypt.action(async (options, command) => {
@@ -145,7 +165,12 @@ commandDecrypt.action(async (options, command) => {
     const res = (await promisifyGrpc(client.decryptFile.bind(client))(
       request,
     )) as agentPB.StringMessage;
-    process.stdout.write(`file successfully decrypted: '${res.getS()}'\n`);
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Decrypted at ${filePath}`],
+      }),
+    );
   } catch (err) {
     throw Error(`failed to decrypt '${filePath}': ${err}`);
   }

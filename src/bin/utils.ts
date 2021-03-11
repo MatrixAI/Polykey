@@ -1,3 +1,5 @@
+import type { POJO } from '../types';
+
 import path from 'path';
 import os from 'os';
 import commander from 'commander';
@@ -8,6 +10,24 @@ import * as agentPB from '../proto/js/Agent_pb';
 import { AgentClient } from '../proto/js/Agent_grpc_pb';
 
 const logger = new Logger('polykey');
+
+type OutputObject =
+  | {
+      type: 'list';
+      data: Array<string>;
+    }
+  | {
+      type: 'table';
+      data: Array<POJO>;
+    }
+  | {
+      type: 'dict';
+      data: POJO;
+    }
+  | {
+      type: 'json';
+      data: any;
+    };
 
 function verboseToLogLevel(c: number): LogLevel {
   let logLevel = LogLevel.WARN;
@@ -101,10 +121,39 @@ async function getAgentClient(
   }
 }
 
+function outputFormatter(msg: OutputObject): string {
+  let output = '';
+  if (msg.type === 'list') {
+    for (const elem in msg.data) {
+      output += `${msg.data[elem]}\n`;
+    }
+  } else if (msg.type === 'table') {
+    for (const key in msg.data[0]) {
+      output += `${key}\t`;
+    }
+    output = output.substring(0, output.length - 1) + `\n`;
+    for (const elem in msg.data) {
+      for (const key in msg.data[elem]) {
+        output += `${msg.data[elem][key]}\t`;
+      }
+      output = output.substring(0, output.length - 1) + `\n`;
+    }
+  } else if (msg.type === 'dict') {
+    for (const key in msg.data) {
+      output += `${key}:\t${msg.data[key]}\n`;
+    }
+  } else if (msg.type === 'json') {
+    output = JSON.stringify(msg.data);
+  }
+  return output;
+}
+
 export {
   verboseToLogLevel,
   createCommand,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
+  OutputObject,
   PolykeyCommand,
 };

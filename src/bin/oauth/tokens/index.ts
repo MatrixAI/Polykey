@@ -5,6 +5,7 @@ import {
   verboseToLogLevel,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
 } from '../../utils';
 import { getNodePath } from '../../../utils';
 
@@ -36,10 +37,18 @@ commandNewToken.action(async (options, command) => {
   const res = (await promisifyGrpc(client.newOAuthToken.bind(client))(
     req,
   )) as agentPB.StringMessage;
-  process.stdout.write(res.getS() + '\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Token ${res.getS()}`],
+    }),
+  );
 });
 
-const commandRevokeToken = createCommand('revoke', { verbose: true });
+const commandRevokeToken = createCommand('revoke', {
+  verbose: true,
+  format: true,
+});
 commandRevokeToken.description('revoke an existing bearer token for the api');
 commandRevokeToken.option(
   '-np, --node-path <nodePath>',
@@ -58,7 +67,12 @@ commandRevokeToken.action(async (options, command) => {
   const req = new agentPB.StringMessage();
   req.setS(options.token);
   await promisifyGrpc(client.revokeOAuthToken.bind(client))(req);
-  process.stdout.write(`token was successfully revoked\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Token revoked`],
+    }),
+  );
 });
 
 const commandListTokens = createCommand('list', { verbose: true });
@@ -77,9 +91,16 @@ commandListTokens.action(async (options, command) => {
   const res = (await promisifyGrpc(client.listOAuthTokens.bind(client))(
     new agentPB.EmptyMessage(),
   )) as agentPB.StringListMessage;
-  for (const s of res.getSList()) {
-    process.stdout.write(s + '\n');
-  }
+  const output: Array<string> = [];
+  res.getSList().map((s) => {
+    output.push(`Token ${s}`);
+  });
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: output,
+    }),
+  );
 });
 
 const commandTokens = createCommand('tokens');

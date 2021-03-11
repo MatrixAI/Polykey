@@ -4,6 +4,7 @@ import Logger from '@matrixai/logger';
 import { Duplex } from 'readable-stream';
 import CyclicalBuffer from './CyclicalBuffer';
 import { Address } from '../../nodes/Node';
+import { randomFloat } from '../../utils';
 import MTPPacket, {
   BUFFER_SIZE,
   uint16,
@@ -94,7 +95,7 @@ class MTPConnection extends Duplex {
       this.connecting = false;
       this.recvId = uint16(syn.connection + 1);
       this.sendId = syn.connection;
-      this.seq = (Math.random() * UINT16) | 0;
+      this.seq = (randomFloat() * UINT16) | 0;
       this.ack = syn.seq;
       this.synack = createPacket(this, PACKET_STATE, this.nodeId, null);
 
@@ -105,11 +106,11 @@ class MTPConnection extends Duplex {
         this.connecting = true;
         this.recvId = 0; // tmp value for v8 opt
         this.sendId = 0; // tmp value for v8 opt
-        this.seq = (Math.random() * UINT16) | 0;
+        this.seq = (randomFloat() * UINT16) | 0;
         this.ack = 0;
         this.synack = undefined;
 
-        this.recvId = uint16(Math.floor(Math.random() * 89999) + 10000);
+        this.recvId = uint16(Math.floor(randomFloat() * 89999) + 10000);
         this.sendId = uint16(this.recvId + 1);
 
         const initialPacket = createPacket(this, PACKET_SYN, this.nodeId, null);
@@ -124,12 +125,12 @@ class MTPConnection extends Duplex {
         this.connecting = true;
         this.recvId = 0; // tmp value for v8 opt
         this.sendId = 0; // tmp value for v8 opt
-        this.seq = (Math.random() * UINT16) | 0;
+        this.seq = (randomFloat() * UINT16) | 0;
         this.ack = 0;
         this.synack = undefined;
 
         socket.on('listening', () => {
-          this.recvId = uint16(Math.floor(Math.random() * 89999) + 10000);
+          this.recvId = uint16(Math.floor(randomFloat() * 89999) + 10000);
           this.sendId = uint16(this.recvId + 1);
 
           const initialPacket = createPacket(

@@ -30,7 +30,7 @@ class TCPToMTPSocketPipe extends EventEmitter {
   ) {
     super();
 
-    this.id = randomString();
+    this.id = randomString(5);
 
     this.localNodeId = localNodeId;
     this.tcpSocket = tcpSocket;

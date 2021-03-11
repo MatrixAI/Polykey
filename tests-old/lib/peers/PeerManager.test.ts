@@ -14,7 +14,7 @@ describe('NodeManager class', () => {
 
     // ======== PEER A ======== //
     // Define temp directory
-    const tempDirNodeA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    const tempDirNodeA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create keyManager
     const keyManagerA = new KeyManager(tempDirNodeA, fs)
@@ -34,7 +34,7 @@ describe('NodeManager class', () => {
 
     // ======== PEER B ======== //
     // Define temp directory
-    const tempDirNodeB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    const tempDirNodeB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create keyManager
     const keyManagerB = new KeyManager(tempDirNodeB, fs)
@@ -134,7 +134,7 @@ describe('NodeManager class', () => {
       nodeB.nodeManager.updateNode(nodeA.nodeManager.nodeInfo)
       // ======== PEER C ======== //
       // Define temp directory
-      tempDirNodeC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+      tempDirNodeC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
       // Create keyManager
       const keyManagerC = new KeyManager(tempDirNodeC, fs)
@@ -165,7 +165,7 @@ describe('NodeManager class', () => {
     describe('Node Relay Sharing', () => {
       test('can clone a vault through a node relay connection', async done => {
         // ==== Pull Vault B to C ==== //
-        const vaultName = `Vault-${randomString()}`
+        const vaultName = `Vault-${randomString(5)}`
         const vault = await nodeB.vaultManager.newVault(vaultName)
 
         const clonedVault = await nodeC.vaultManager.cloneVault(vault.name, nodeB.nodeManager.nodeInfo.id)
@@ -177,7 +177,7 @@ describe('NodeManager class', () => {
       test('can clone many vaults through a node relay connection', async done => {
         // ==== Pull Vaults B to C ==== //
         const vaultNameList = [...Array(10)].map((_) => {
-          return `Vault-${randomString()}`
+          return `Vault-${randomString(5)}`
         })
 
         for (const vaultName of vaultNameList) {
@@ -221,7 +221,7 @@ describe('NodeManager class', () => {
       nodeB.nodeManager.updateNode(nodeA.nodeManager.nodeInfo)
       // ======== PEER C ======== //
       // Define temp directory
-      tempDirNodeC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+      tempDirNodeC = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
       // Create keyManager
       const keyManagerC = new KeyManager(tempDirNodeC, fs)
@@ -252,7 +252,7 @@ describe('NodeManager class', () => {
     describe('UDP Hole Punched Sharing', () => {
       test('can clone a vault through a hole punched connection', async done => {
         // ==== Pull Vault B to C ==== //
-        const vaultName = `Vault-${randomString()}`
+        const vaultName = `Vault-${randomString(5)}`
         const vault = await nodeB.vaultManager.newVault(vaultName)
 
         const clonedVault = await nodeC.vaultManager.cloneVault(vault.name, nodeB.nodeManager.nodeInfo.publicKey)
@@ -264,7 +264,7 @@ describe('NodeManager class', () => {
       test('can clone many vaults through a hole punched connection', async done => {
         // ==== Pull Vaults B to C ==== //
         const vaultNameList = [...Array(10).keys()].map((_) => {
-          return `Vault-${randomString()}`
+          return `Vault-${randomString(5)}`
         })
 
         for (const vaultName of vaultNameList) {

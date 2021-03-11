@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'secure-random-bytes';
 import * as grpc from '@grpc/grpc-js';
 import { promiseAny } from '../../utils';
 import { promisifyGrpc } from '../../bin/utils';

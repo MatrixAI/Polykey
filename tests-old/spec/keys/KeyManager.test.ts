@@ -12,7 +12,7 @@ describe('KeyManager spec testing', () => {
     describe(plan.description, () => {
       plan.paths.forEach((path) => {
         test(path.description, async () => {
-          const tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+          const tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
           const km = new KeyManager(tempDir, fs)
           await path.test(km);
         });

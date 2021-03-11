@@ -14,7 +14,7 @@ describe('Agent and Client class', () => {
   let client: AgentClient
 
   beforeAll(async done => {
-    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Start the agent running
     agentPid = <number>(await PolykeyAgent.startAgent(tempDir, undefined, false))
@@ -48,8 +48,8 @@ describe('Agent and Client class', () => {
     let filePath: string
     let fileContent: Buffer
     beforeEach(async () => {
-      filePath = path.join(tempDir, `random-file-${randomString()}`)
-      fileContent = Buffer.from(`file content: ${randomString()}`)
+      filePath = path.join(tempDir, `random-file-${randomString(5)}`)
+      fileContent = Buffer.from(`file content: ${randomString(5)}`)
       fs.writeFileSync(filePath, fileContent)
     })
 
@@ -89,7 +89,7 @@ describe('Agent and Client class', () => {
     let keyName: string
 
     beforeEach(async () => {
-      keyName = `random-key-${randomString()}`
+      keyName = `random-key-${randomString(5)}`
       const req = new pb.DeriveKeyMessage
       req.setKeyName(keyName)
       req.setPassphrase('passphrase')
@@ -138,7 +138,7 @@ describe('Agent and Client class', () => {
   describe('Vault Specific Operations', () => {
     let vaultName: string
     beforeEach(async () => {
-      vaultName = `Vault-${randomString()}`
+      vaultName = `Vault-${randomString(5)}`
 
       const req = new pb.StringMessage
       req.setS(vaultName)
@@ -170,8 +170,8 @@ describe('Agent and Client class', () => {
       let secretContent: Buffer
 
       beforeEach(async () => {
-        secretName = `Secret-${randomString()}`
-        secretContent = Buffer.from(`some random secret: ${randomString()}`)
+        secretName = `Secret-${randomString(5)}`
+        secretContent = Buffer.from(`some random secret: ${randomString(5)}`)
 
         const pathMessage = new pb.SecretPathMessage
         pathMessage.setVaultName(vaultName)
@@ -240,7 +240,7 @@ describe('Agent and Client class', () => {
       })
 
       test('can update secret content', async () => {
-        const newContent = `new secret content: ${randomString()}`
+        const newContent = `new secret content: ${randomString(5)}`
         const pathMessage = new pb.SecretPathMessage
         pathMessage.setVaultName(vaultName)
         pathMessage.setSecretName(secretName)

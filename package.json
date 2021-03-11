@@ -50,6 +50,7 @@
     "commander": "^7.1.0",
     "configstore": "^5.0.1",
     "cross-fetch": "^3.0.6",
+    "crypto-random-string": "^3.3.1",
     "dotenv": "^8.2.0",
     "encryptedfs": "^1.0.2",
     "express": "^4.17.1",
