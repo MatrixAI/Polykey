@@ -1,6 +1,6 @@
 {
   "name": "@matrixai/polykey",
-  "version": "0.0.34",
+  "version": "0.0.35",
   "bin": {
     "polykey": "dist/bin/polykey.js",
     "pk": "dist/bin/polykey.js"
@@ -50,7 +50,7 @@
     "bip39": "^3.0.3",
     "canonicalize": "^1.0.5",
     "cheerio": "^1.0.0-rc.5",
-    "commander": "^7.0.0",
+    "commander": "^7.1.0",
     "configstore": "^5.0.1",
     "cross-fetch": "^3.0.6",
     "dotenv": "^8.2.0",
