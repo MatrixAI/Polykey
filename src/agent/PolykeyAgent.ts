@@ -18,12 +18,12 @@ import Polykey, { Address, KeyManager } from '../Polykey';
 import { TLSCredentials } from '../nodes/pki/PublicKeyInfrastructure';
 
 /** Proto */
-import * as agent from '../../proto/js/Agent_pb';
+import * as agent from '../proto/js/Agent_pb';
 import {
   AgentService,
   IAgentServer,
   AgentClient,
-} from '../../proto/js/Agent_grpc_pb';
+} from '../proto/js/Agent_grpc_pb';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;

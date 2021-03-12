@@ -1,8 +1,8 @@
 import KBucket from './KBucket';
 import { NodePeer } from '../Node';
 import { promisifyGrpc } from '../../bin/utils';
-import * as nodeInterface from '../../../proto/js/Node_pb';
-import * as agentInterface from '../../../proto/js/Agent_pb';
+import * as nodeInterface from '../../proto/js/Node_pb';
+import * as agentInterface from '../../proto/js/Agent_pb';
 import NodeConnection from '../node-connection/NodeConnection';
 
 // this implements a very basic map of known node connections

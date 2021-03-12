@@ -77,14 +77,7 @@ class HttpApi {
     deleteSecret: (vaultName: string, secretName: string) => Promise<void>,
     logger?: Logger,
   ) {
-    // this code is needed as we can't require yaml files
-    const fromSrcFolderPath = path.join(__dirname, '../../openapi.yaml');
-    const fromDistFolderPath = path.join(__dirname, '../openapi.yaml');
-    if (fs.existsSync(fromSrcFolderPath)) {
-      this.openApiPath = fromSrcFolderPath;
-    } else {
-      this.openApiPath = fromDistFolderPath;
-    }
+    this.openApiPath = path.join(__dirname, '../openapi.yaml');
     this.updateApiAddress = updateApiAddress;
     this.handleCSR = handleCSR;
     this.getRootCertificate = getRootCertificate;

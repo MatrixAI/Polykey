@@ -1,5 +1,5 @@
 import type { Gestalt, GestaltKey } from './types';
-import * as agent from '../../proto/js/Agent_pb';
+import * as agent from '../proto/js/Agent_pb';
 import { LinkInfoIdentity, LinkInfoNode, LinkInfo } from '../links';
 import type { IdentityKey, ProviderKey, NodeId } from '../types';
 

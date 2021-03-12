@@ -3,14 +3,14 @@ import Logger from '@matrixai/logger';
 import {
   PK_BOOTSTRAP_HOSTS,
   PK_BOOTSTRAP_PORT_TCP,
-  PUBLIC_RELAY_NODE,
+  PK_NODE_RELAY_PUBLIC,
 } from '../../config';
 import NodeManager from '../NodeManager';
-import * as node from '../../../proto/js/Node_pb';
-import * as agent from '../../../proto/js/Agent_pb';
+import * as node from '../../proto/js/Node_pb';
+import * as agent from '../../proto/js/Agent_pb';
 import NodeNotifications from '../NodeNotifications';
 import { Address, NodePeer } from '../Node';
-import { NodeService, INodeServer } from '../../../proto/js/Node_grpc_pb';
+import { NodeService, INodeServer } from '../../proto/js/Node_grpc_pb';
 
 class NodeServer implements INodeServer {
   private nodeManager: NodeManager;
@@ -172,7 +172,7 @@ class NodeServer implements INodeServer {
     callback: grpc.sendUnaryData<agent.StringMessage>,
   ) {
     try {
-      if (!PUBLIC_RELAY_NODE) {
+      if (!PK_NODE_RELAY_PUBLIC) {
         throw Error('node is not a public relay');
       } else {
         const nodeInfoReadOnly = NodePeer.fromNodeInfoReadOnlyMessage(

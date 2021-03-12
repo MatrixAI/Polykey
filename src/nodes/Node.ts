@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { LinkInfo, LinkInfoIdentity } from '../links';
 import { md, pki } from 'node-forge';
 import { gestaltKey, GestaltKey } from '../gestalts';
-import * as agentInterface from '../../proto/js/Agent_pb';
+import * as agentInterface from '../proto/js/Agent_pb';
 import { JSONMapReplacer, JSONMapReviver } from '../utils';
 
 class Address {

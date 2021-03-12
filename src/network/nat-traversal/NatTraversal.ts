@@ -1,7 +1,7 @@
 import dgram from 'dgram';
-import { PK_BOOTSTRAP_HOSTS, PUBLIC_RELAY_NODE } from '../../config';
+import { PK_BOOTSTRAP_HOSTS, PK_NODE_RELAY_PUBLIC } from '../../config';
 import { promisifyGrpc } from '../../bin/utils';
-import * as agentInterface from '../../../proto/js/Agent_pb';
+import * as agentInterface from '../../proto/js/Agent_pb';
 import NodeConnection from '../../nodes/node-connection/NodeConnection';
 import { Address, Node, NodePeer } from '../../nodes/Node';
 import NodeRelay from '../relays/NodeRelay';
@@ -68,7 +68,7 @@ class NatTraversal {
           this.natClientMessageHandler.bind(this),
         );
         // don't need to send keepalive packets if node is a relay node
-        if (!PUBLIC_RELAY_NODE) {
+        if (!PK_NODE_RELAY_PUBLIC) {
           this.keepAliveInterval = setInterval(async () => {
             for (const nodeId of this.listNodes()) {
               try {
@@ -176,7 +176,7 @@ class NatTraversal {
         // send back okay-keepalive message only if public relay node
         if (
           NatTraversal.KeepaliveRegex.test(message.toString()) &&
-          PUBLIC_RELAY_NODE
+          PK_NODE_RELAY_PUBLIC
         ) {
           const fromNodeId = message
             .toString()
