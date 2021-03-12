@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import process from 'process';
 import { spawn, execSync } from 'child_process';
-import * as agentPB from '../../../proto/js/Agent_pb';
+import * as agentPB from '../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,

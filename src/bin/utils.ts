@@ -4,8 +4,8 @@ import commander from 'commander';
 import Logger, { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { PolykeyAgent } from '../Polykey';
-import * as agentPB from '../../proto/js/Agent_pb';
-import { AgentClient } from '../../proto/js/Agent_grpc_pb';
+import * as agentPB from '../proto/js/Agent_pb';
+import { AgentClient } from '../proto/js/Agent_grpc_pb';
 
 const logger = new Logger('polykey');
 

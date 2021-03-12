@@ -4,6 +4,7 @@ with pkgs;
 pkgs.mkShell {
   nativeBuildInputs = [
     nodejs
+    nodePackages.node2nix
     grpc-tools
     openapi-generator-cli
   ];
@@ -17,10 +18,6 @@ pkgs.mkShell {
     export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
     npm install
     mkdir --parents "$(pwd)/tmp"
-
-    # add aliases for easy development
-    alias polykey='npm run polykey --'
-    alias pk='polykey'
 
     set +v
   '';

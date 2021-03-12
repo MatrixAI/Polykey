@@ -1,16 +1,8 @@
 {
   "name": "@matrixai/polykey",
   "version": "0.0.35",
-  "bin": {
-    "polykey": "dist/bin/polykey.js",
-    "pk": "dist/bin/polykey.js"
-  },
-  "description": "Polykey Core Library",
-  "keywords": [
-    "secret",
-    "secrets",
-    "password"
-  ],
+  "homepage": "https://polykey.io",
+  "author": "Matrix AI",
   "contributors": [
     {
       "name": "Roger Qiu"
@@ -22,20 +14,25 @@
       "name": "Robert Cronin"
     }
   ],
+  "description": "Polykey Core Library",
+  "keywords": [
+    "secrets",
+    "password"
+  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/MatrixAI/js-polykey.git"
   },
+  "bin": {
+    "polykey": "dist/bin/polykey.js",
+    "pk": "dist/bin/polykey.js"
+  },
   "main": "dist/Polykey.js",
   "types": "dist/Polykey.d.ts",
-  "files": [
-    "openapi.yaml",
-    "proto/",
-    "dist/"
-  ],
   "scripts": {
     "build": "tsc",
+    "postbuild": "cp -fR src/schemas src/proto src/openapi.yaml dist",
     "ts-node": "ts-node -r tsconfig-paths/register",
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
@@ -100,7 +97,6 @@
     "@types/uuid": "^8.3.0",
     "@typescript-eslint/eslint-plugin": "^4.12.0",
     "@typescript-eslint/parser": "^4.12.0",
-    "@xstate/test": "^0.4.1",
     "arkit": "^1.6.4",
     "eslint": "^7.17.0",
     "eslint-config-prettier": "^7.1.0",
@@ -112,11 +108,6 @@
     "ts-node": "^9.1.1",
     "tsconfig-paths": "^3.9.0",
     "typedoc": "^0.20.16",
-    "typescript": "^4.1.3",
-    "xstate": "^4.15.1"
-  },
-  "bugs": {
-    "url": "https://github.com/MatrixAI/js-polykey/issues"
-  },
-  "homepage": "https://polykey.io"
+    "typescript": "^4.1.3"
+  }
 }

@@ -1,8 +1,8 @@
 import type { LinkClaimIdentity, LinkClaimNode } from './types';
 
 import Ajv, { JSONSchemaType, ValidateFunction } from 'ajv';
-import LinkClaimIdentitySchema from './schemas/LinkClaimIdentity.json';
-import LinkClaimNodeSchema from './schemas/LinkClaimNode.json';
+import LinkClaimIdentitySchema from '../schemas/LinkClaimIdentity.json';
+import LinkClaimNodeSchema from '../schemas/LinkClaimNode.json';
 
 const ajv = new Ajv();
 

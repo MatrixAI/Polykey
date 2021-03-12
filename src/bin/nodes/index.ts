@@ -1,6 +1,6 @@
 import fs from 'fs';
 import process from 'process';
-import * as agentPB from '../../../proto/js/Agent_pb';
+import * as agentPB from '../../proto/js/Agent_pb';
 import {
   createCommand,
   verboseToLogLevel,

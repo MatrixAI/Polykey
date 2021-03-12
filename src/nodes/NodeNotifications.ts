@@ -2,8 +2,8 @@ import NodeManager from '../nodes/NodeManager';
 import Logger from '@matrixai/logger';
 import { NodeId } from '../types';
 import { promisifyGrpc } from '../bin/utils';
-import * as nodeInterface from '../../proto/js/Node_pb';
-import * as agentInterface from '../../proto/js/Agent_pb';
+import * as nodeInterface from '../proto/js/Node_pb';
+import * as agentInterface from '../proto/js/Agent_pb';
 
 class NodeNotifications {
   protected nodeManager: NodeManager;
