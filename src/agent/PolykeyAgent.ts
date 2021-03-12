@@ -671,7 +671,8 @@ class PolykeyAgent implements IAgentServer {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const client = this.pk.httpApi.getOAuthClient();
+      // const client = this.pk.httpApi.getOAuthClient();
+      const client = { id: '1', Secret: '1' };
       const response = new agent.OAuthClientMessage();
       response.setId(client.id);
       response.setSecret(client.Secret);
@@ -866,9 +867,10 @@ class PolykeyAgent implements IAgentServer {
     this.refreshTimeout();
     try {
       this.failOnLocked();
-      const tokens = this.pk.httpApi.listOAuthTokens();
+      // const tokens = this.pk.httpApi.listOAuthTokens();
       const response = new agent.StringListMessage();
-      response.setSList(tokens);
+      // response.setSList(tokens);
+      response.setSList([]);
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -984,9 +986,10 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { scopesList, expiry } = call.request!.toObject();
-      const token = this.pk.httpApi.newOAuthToken(scopesList, expiry);
+      //  const token = this.pk.httpApi.newOAuthToken(scopesList, expiry);
       const response = new agent.StringMessage();
-      response.setS(token);
+      // response.setS(token);
+      response.setS('1');
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -1216,9 +1219,10 @@ class PolykeyAgent implements IAgentServer {
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
-      const successful = this.pk.httpApi.revokeOAuthToken(s);
+      // const successful = this.pk.httpApi.revokeOAuthToken(s);
       const response = new agent.BooleanMessage();
-      response.setB(successful);
+      // response.setB(successful);
+      response.setB(true);
       callback(null, response);
     } catch (error) {
       callback(error, null);

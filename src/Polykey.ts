@@ -1,6 +1,6 @@
 import fs from 'fs';
 import Logger from '@matrixai/logger';
-import HttpApi from './api/HttpApi';
+// import HttpApi from './api/HttpApi';
 import KeyManager from './keys/KeyManager';
 import { LinkInfoIdentity } from './links';
 import { promisifyGrpc } from './bin/utils';
@@ -23,7 +23,7 @@ class Polykey {
   vaultManager: VaultManager;
   keyManager: KeyManager;
   nodeManager: NodeManager;
-  httpApi: HttpApi;
+  // httpApi: HttpApi;
   providerManager: ProviderManager;
   gestaltGraph: GestaltGraph;
   gestaltTrust: GestaltTrust;
@@ -81,37 +81,37 @@ class Polykey {
       );
 
     // start the api
-    this.httpApi = new HttpApi(
-      ((apiAddress: Address) => {
-        this.nodeManager.nodeInfo.apiAddress = apiAddress;
-      }).bind(this),
-      this.nodeManager.pki.handleCSR.bind(this.nodeManager.pki),
-      (() => this.nodeManager.pki.RootCertificatePem).bind(this),
-      (() => this.nodeManager.pki.CertChain).bind(this),
-      this.nodeManager.pki.createServerCredentials.bind(this.nodeManager.pki),
-      this.vaultManager.getVaultNames.bind(this.vaultManager),
-      ((vaultName: string) => this.vaultManager.newVault(vaultName)).bind(this),
-      ((vaultName: string) => this.vaultManager.deleteVault(vaultName)).bind(
-        this,
-      ),
-      ((vaultName: string) => {
-        const vault = this.vaultManager.getVault(vaultName);
-        return vault.listSecrets();
-      }).bind(this),
-      ((vaultName: string, secretName: string) => {
-        const vault = this.vaultManager.getVault(vaultName);
-        return vault.getSecret.bind(vault)(secretName);
-      }).bind(this),
-      (async (vaultName: string, secretName: string, secretContent: Buffer) => {
-        const vault = this.vaultManager.getVault(vaultName);
-        await vault.addSecret(secretName, secretContent);
-      }).bind(this),
-      (async (vaultName: string, secretName: string) => {
-        const vault = this.vaultManager.getVault(vaultName);
-        await vault.deleteSecret(secretName);
-      }).bind(this),
-      this.logger.getChild('HTTPAPI'),
-    );
+    // this.httpApi = new HttpApi(
+    //   ((apiAddress: Address) => {
+    //     this.nodeManager.nodeInfo.apiAddress = apiAddress;
+    //   }).bind(this),
+    //   this.nodeManager.pki.handleCSR.bind(this.nodeManager.pki),
+    //   (() => this.nodeManager.pki.RootCertificatePem).bind(this),
+    //   (() => this.nodeManager.pki.CertChain).bind(this),
+    //   this.nodeManager.pki.createServerCredentials.bind(this.nodeManager.pki),
+    //   this.vaultManager.getVaultNames.bind(this.vaultManager),
+    //   ((vaultName: string) => this.vaultManager.newVault(vaultName)).bind(this),
+    //   ((vaultName: string) => this.vaultManager.deleteVault(vaultName)).bind(
+    //     this,
+    //   ),
+    //   ((vaultName: string) => {
+    //     const vault = this.vaultManager.getVault(vaultName);
+    //     return vault.listSecrets();
+    //   }).bind(this),
+    //   ((vaultName: string, secretName: string) => {
+    //     const vault = this.vaultManager.getVault(vaultName);
+    //     return vault.getSecret.bind(vault)(secretName);
+    //   }).bind(this),
+    //   (async (vaultName: string, secretName: string, secretContent: Buffer) => {
+    //     const vault = this.vaultManager.getVault(vaultName);
+    //     await vault.addSecret(secretName, secretContent);
+    //   }).bind(this),
+    //   (async (vaultName: string, secretName: string) => {
+    //     const vault = this.vaultManager.getVault(vaultName);
+    //     await vault.deleteSecret(secretName);
+    //   }).bind(this),
+    //   this.logger.getChild('HTTPAPI'),
+    // );
 
     ////////////
     // Social //
@@ -180,11 +180,11 @@ class Polykey {
   async startAllServices() {
     this.loadGestaltGraph();
     await this.nodeManager.start();
-    await this.httpApi.start();
+    // await this.httpApi.start();
   }
   async stopAllServices() {
     await this.nodeManager.stop();
-    await this.httpApi.stop();
+    // await this.httpApi.stop();
   }
 }
 
