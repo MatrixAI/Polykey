@@ -319,3 +319,29 @@ typedoc --media ./media
 ```
 
 Other build instructions above ^.
+
+---
+
+## Deployment
+
+### Deploying to AWS ECS:
+
+First login to AWS ECR:
+
+```sh
+aws --profile=matrix ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 015248367786.dkr.ecr.ap-southeast-2.amazonaws.com
+```
+
+Proceed to build the container image and upload it:
+
+```sh
+repo="015248367786.dkr.ecr.ap-southeast-2.amazonaws.com" && \
+build="$(nix-build ./release.nix --attr docker)" && \
+loaded="$(docker load --input "$build")" && \
+name="$(cut -d':' -f2 <<< "$loaded" | tr -d ' ')" && \
+tag="$(cut -d':' -f3 <<< "$loaded")" && \
+docker tag "${name}:${tag}" "${repo}/polykey:${tag}" && \
+docker tag "${name}:${tag}" "${repo}/polykey:latest" && \
+docker push "${repo}/polykey:${tag}" && \
+docker push "${repo}/polykey:latest"
+```
