@@ -189,7 +189,7 @@ class NatTraversal {
             address.port,
             address.host,
           );
-          this.nodeDisconnect.get(nodeId)?.refresh();
+          // this.nodeDisconnect.get(nodeId)?.refresh();
           // set up a relay for the new node if it doesn't exist yet
           if (!this.nodeRelays.get(fromNodeId)?.relay) {
             const relay = new NodeRelay(
@@ -240,13 +240,13 @@ class NatTraversal {
           'udp4',
           this.natServerMessageHandler(nodeId).bind(this),
         );
-        this.nodeDisconnect.set(
-          nodeId,
-          setTimeout(() => {
-            socket.close();
-            this.logger.info(`disconnected from nodeID: ${nodeId}`);
-          }, 10000),
-        );
+        // this.nodeDisconnect.set(
+        //   nodeId,
+        //   setTimeout(() => {
+        //     socket.close();
+        //     this.logger.info(`disconnected from nodeID: ${nodeId}`);
+        //   }, 10000),
+        // );
         socket.bind(0, host, () => {
           const address = Address.fromAddressInfo(socket.address());
           if (PK_BOOTSTRAP_HOSTS) {
