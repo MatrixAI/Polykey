@@ -209,7 +209,6 @@ class PolykeyAgent implements IAgentServer {
     const bootstrapNodeInfoPath =
       process.env.BOOTSTRAP_NODE_INFO_PATH ??
       path.join(os.homedir(), 'bootstrapNode.pem');
-    console.log(bootstrapNodeInfoPath);
     const bootstrapNodeInfo = new NodePeer(
       fs.readFileSync(bootstrapNodeInfoPath).toString(),
     );
