@@ -6,10 +6,14 @@ import {
   verboseToLogLevel,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 
-const commandStartAgent = createCommand('start', { verbose: true });
+const commandStartAgent = createCommand('start', {
+  verbose: true,
+  format: true,
+});
 commandStartAgent.description('start the agent');
 commandStartAgent.option(
   '-np, --node-path <nodePath>',
@@ -41,7 +45,7 @@ commandStartAgent.action(async (options, command) => {
       new agentPB.EmptyMessage(),
     )) as agentPB.AgentStatusMessage;
     if (res.getStatus() == agentPB.AgentStatusType.ONLINE) {
-      process.stdout.write(`agent is already running\n`);
+      logger.info(`agent is already running\n`);
     } else {
       throw Error(`agent is not running`);
     }
@@ -52,7 +56,7 @@ commandStartAgent.action(async (options, command) => {
       new agentPB.EmptyMessage(),
     )) as agentPB.AgentStatusMessage;
     if (res.getStatus() == agentPB.AgentStatusType.ONLINE) {
-      process.stdout.write(`agent has started with a pid of ${pid}\n`);
+      logger.info(`agent has started with a pid of ${pid}\n`);
     } else {
       throw Error('agent could not be started');
     }
@@ -64,18 +68,29 @@ commandStartAgent.action(async (options, command) => {
       await promisifyGrpc(client.unlockNode.bind(client))(request);
       if (options.timeout == 0) {
         process.stdout.write(
-          `polykey is unlocked indefinitely at: '${nodePath}'\n`,
+          outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: [`Polykey unlocked indefinitely at ${nodePath}`],
+          }),
         );
       } else {
         process.stdout.write(
-          `polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'\n`,
+          outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: [
+              `Polykey unlocked for ${options.timeout} minute(s) at ${nodePath}`,
+            ],
+          }),
         );
       }
     }
   }
 });
 
-const commandRestartAgent = createCommand('restart', { verbose: true });
+const commandRestartAgent = createCommand('restart', {
+  verbose: true,
+  format: true,
+});
 commandRestartAgent.description('restart the agent');
 commandRestartAgent.option(
   '-np, --node-path <nodePath>',
@@ -114,9 +129,9 @@ commandRestartAgent.action(async (options, command) => {
   );
   const pid = await PolykeyAgent.startAgent(nodePath, options.background);
   if (typeof pid == 'boolean') {
-    process.stdout.write(`agent has restarted as a foreground process\n`);
+    logger.info(`agent has restarted as a foreground process\n`);
   } else {
-    process.stdout.write(`agent has restarted with a pid of ${pid}\n`);
+    logger.info(`agent has restarted with a pid of ${pid}\n`);
   }
   // unlock if passphrase was provided
   if (options.privatePassphrase) {
@@ -127,17 +142,28 @@ commandRestartAgent.action(async (options, command) => {
     await promisifyGrpc(client.unlockNode.bind(client))(request);
     if (options.timeout == 0) {
       process.stdout.write(
-        `polykey is unlocked indefinitely at: '${nodePath}'\n`,
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [`Polykey unlocked indefinitely at ${nodePath}`],
+        }),
       );
     } else {
       process.stdout.write(
-        `polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'\n`,
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [
+            `Polykey unlocked for ${options.timeout} minute(s) at ${nodePath}`,
+          ],
+        }),
       );
     }
   }
 });
 
-const commandAgentStatus = createCommand('status', { verbose: true });
+const commandAgentStatus = createCommand('status', {
+  verbose: true,
+  format: true,
+});
 commandAgentStatus.description('retrieve the status of the agent');
 commandAgentStatus.option(
   '-np, --node-path <nodePath>',
@@ -157,13 +183,23 @@ commandAgentStatus.action(async (options, command) => {
     const statusString = Object.keys(agentPB.AgentStatusType).find(
       (k) => agentPB.AgentStatusType[k] === status,
     );
-    process.stdout.write(`agent status is: '${statusString?.toLowerCase()}'\n`);
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Agent ${statusString?.toLowerCase()}`],
+      }),
+    );
   } catch (error) {
-    process.stdout.write(`agent status is: 'offline'\n`);
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Agent offline`],
+      }),
+    );
   }
 });
 
-const commandStopAgent = createCommand('stop', { verbose: true });
+const commandStopAgent = createCommand('stop', { verbose: true, format: true });
 commandStopAgent.description('stop the agent');
 commandStopAgent.option(
   '-np, --node-path <nodePath>',
@@ -187,16 +223,19 @@ commandStopAgent.action(async (options, command) => {
       await promisifyGrpc(client.stopAgent.bind(client))(
         new agentPB.EmptyMessage(),
       );
-      process.stdout.write('agent has successfully stopped\n');
+      logger.info('agent has successfully stopped\n');
     } else {
       throw Error('agent failed to stop');
     }
   } catch (error) {
-    process.stdout.write('agent is already stopped\n');
+    logger.info('agent is already stopped\n');
   }
 });
 
-const commandInitNode = createCommand('bootstrap', { verbose: true });
+const commandInitNode = createCommand('bootstrap', {
+  verbose: true,
+  format: true,
+});
 commandInitNode.description('initialize a new polykey node');
 commandInitNode.option(
   '-np, --node-path <nodePath>',
@@ -233,10 +272,18 @@ commandInitNode.action(async (options, command) => {
   request.setPassphrase(options.privatePassphrase);
   request.setNbits(options.nbits);
   await promisifyGrpc(client.initializeNode.bind(client))(request);
-  process.stdout.write(`node was successfully initialized at: '${nodePath}'\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Polykey initialized at ${nodePath}`],
+    }),
+  );
 });
 
-const commandUnlockNode = createCommand('unlock', { verbose: true });
+const commandUnlockNode = createCommand('unlock', {
+  verbose: true,
+  format: true,
+});
 commandUnlockNode.description('unlock polykey');
 commandUnlockNode.option(
   '-np, --node-path <nodePath>',
@@ -264,16 +311,24 @@ commandUnlockNode.action(async (options, command) => {
   await promisifyGrpc(client.unlockNode.bind(client))(request);
   if (options.timeout == 0) {
     process.stdout.write(
-      `polykey is unlocked indefinitely at: '${nodePath}'\n`,
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Polykey unlocked indefinitely at ${nodePath}`],
+      }),
     );
   } else {
     process.stdout.write(
-      `polykey is unlocked for ${options.timeout} minute(s) at: '${nodePath}'\n`,
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [
+          `Polykey unlocked for ${options.timeout} minute(s) at ${nodePath}`,
+        ],
+      }),
     );
   }
 });
 
-const commandLockNode = createCommand('lock', { verbose: true });
+const commandLockNode = createCommand('lock', { verbose: true, format: true });
 commandLockNode.description('lock polykey');
 commandLockNode.option(
   '-np, --node-path <nodePath>',
@@ -286,7 +341,12 @@ commandLockNode.action(async (options, command) => {
   const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   await promisifyGrpc(client.lockNode.bind(client))(new agentPB.EmptyMessage());
-  process.stdout.write(`polykey is now locked at: '${nodePath}'\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Polykey locked at ${nodePath}`],
+    }),
+  );
 });
 
 const commandAgent = createCommand('agent');

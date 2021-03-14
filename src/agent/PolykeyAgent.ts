@@ -8,6 +8,7 @@ import ConfigStore from 'configstore';
 import * as grpc from '@grpc/grpc-js';
 import Logger from '@matrixai/logger';
 import { spawn, SpawnOptions } from 'child_process';
+
 /** Internal Libs */
 import { getPort } from '../utils';
 import { PK_NODE_HOST, PK_NODE_PORT_TCP } from '../config';
@@ -389,15 +390,14 @@ class PolykeyAgent implements IAgentServer {
 
   async deleteKey(
     call: grpc.ServerUnaryCall<agent.StringMessage, agent.BooleanMessage>,
-    callback: grpc.sendUnaryData<agent.BooleanMessage>,
+    callback: grpc.sendUnaryData<agent.EmptyMessage>,
   ) {
     this.refreshTimeout();
     try {
       this.failOnLocked();
       const { s } = call.request!.toObject();
       const successful = await this.pk.keyManager.deleteKey(s);
-      const response = new agent.BooleanMessage();
-      response.setB(successful);
+      const response = new agent.EmptyMessage();
       callback(null, response);
     } catch (error) {
       callback(error, null);
@@ -1080,9 +1080,9 @@ class PolykeyAgent implements IAgentServer {
         secretContent,
       } = call.request!.toObject();
       // Check to make sure file path is a file and not a directory
-      if (!fs.statSync(secretFilePath).isFile()) {
-        throw Error('secret must be a file, a directory path was provided');
-      }
+      // if (!fs.statSync(secretFilePath).isFile()) {
+      //   throw Error('secret must be a file, a directory path was provided');
+      // }
       const vault = this.pk.vaultManager.getVault(secretPath!.vaultName);
       if (fs.statSync(secretFilePath).isDirectory()) {
         await vault.addSecrets(secretFilePath);
@@ -1168,7 +1168,7 @@ class PolykeyAgent implements IAgentServer {
       this.failOnLocked();
       const { vaultName, newName } = call.request!.toObject();
 
-      this.pk.vaultManager.renameVault(vaultName, newName);
+      await this.pk.vaultManager.renameVault(vaultName, newName);
 
       callback(null, new agent.EmptyMessage());
     } catch (error) {
@@ -1524,7 +1524,7 @@ class PolykeyAgent implements IAgentServer {
       } else if (pem) {
         nodeInfo = new NodePeer(pem);
       } else {
-        throw Error('nodeId or pem must be specified to  identify node');
+        throw Error('nodeId or pem must be specified to identify node');
       }
       if (!nodeInfo || !this.pk.nodeManager.hasNode(nodeInfo.id)) {
         throw 'node does not exist in store';

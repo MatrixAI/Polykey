@@ -22,9 +22,9 @@ describe('GitBackend and GitRequest classes', () => {
 
   beforeEach(async () => {
 
-    sourceDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
-    targetDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
-    repoName = `repo-${randomString()}`
+    sourceDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
+    targetDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
+    repoName = `repo-${randomString(5)}`
     sourceRepoPath = path.join(sourceDir, repoName)
     targetRepoPath = path.join(targetDir, repoName)
     fs.mkdirSync(sourceRepoPath, { recursive: true })
@@ -48,8 +48,8 @@ describe('GitBackend and GitRequest classes', () => {
     fs.writeFileSync(path.join(sourceRepoPath, '.git', 'packed-refs'), '# pack-refs with: peeled fully-peeled sorted');
 
     // create first file
-    fileName = `some-file-${randomString()}`
-    fileContents = Buffer.from(`some-file-contents-${randomString()}`)
+    fileName = `some-file-${randomString(5)}`
+    fileContents = Buffer.from(`some-file-contents-${randomString(5)}`)
     fs.writeFileSync(path.join(sourceRepoPath, fileName), fileContents)
     // commit that file
     await git.add({
@@ -123,7 +123,7 @@ describe('GitBackend and GitRequest classes', () => {
     })
 
     test('file changes are reflected in pulled changes', async () => {
-      const newFileContents = Buffer.from(`some new random change: ${randomString()}`)
+      const newFileContents = Buffer.from(`some new random change: ${randomString(5)}`)
       // change file in source repo
       fs.writeFileSync(path.join(sourceRepoPath, fileName), newFileContents)
 
@@ -174,7 +174,7 @@ describe('GitBackend and GitRequest classes', () => {
       })
 
       // add a new branch to the sourceDir
-      branchName = `random-branch-name-${randomString()}`
+      branchName = `random-branch-name-${randomString(5)}`
       await git.branch({ fs, dir: sourceRepoPath, ref: branchName })
       expect(await git.listBranches({ fs, dir: sourceRepoPath })).toContainEqual(branchName)
     })

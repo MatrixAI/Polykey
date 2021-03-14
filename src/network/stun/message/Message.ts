@@ -2,6 +2,7 @@
 // import crypto from 'crypto'
 // import Data from '../data/Data'
 // import Server from "../server/Server"
+// import { randomBytes } from 'secure-random-bytes'
 // // Format of STUN Message Header:
 // // 0                   1                   2                   3
 // // 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -78,7 +79,7 @@
 //   //   const zeroBuf = Buffer.alloc()
 //   //   // generate a transaction id if non exists
 //   //   if (!this.transactionId) {
-//   //     this.transactionId = crypto.randomBytes(12).toString('hex')
+//   //     this.transactionId = randomBytes(12).toString('hex')
 //   //   }
 
 //   //   return Buffer.concat()

@@ -6,19 +6,32 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 import process from 'process';
+import randomBytes from 'secure-random-bytes';
+import cryptoRandomString from 'crypto-random-string';
 
 /** Internal  */
 import { ErrorPolykey } from './errors';
 import { PK_NODE_PATH } from './config';
 
 /**
- * Returns a 5 character long random string of lower case letters
+ * Returns a random string of ascii characters with a length specified by {length}
  */
-function randomString(): string {
-  return Math.random()
-    .toString(36)
-    .replace(/[^a-z]+/g, '')
-    .substr(0, 5);
+function randomString(length: number): string {
+  return cryptoRandomString({ length: length });
+}
+
+/**
+ * Generates a random int with {length} digits
+ */
+function randomInt(length: number): number {
+  return parseInt(cryptoRandomString({ length: length, type: 'numeric' }));
+}
+
+/**
+ * Generates a random float between 0 and 1.
+ */
+function randomFloat(): number {
+  return parseInt(cryptoRandomString({ length: 5, type: 'numeric' })) / 99999;
 }
 
 type SecretPathComponents = {
@@ -310,9 +323,9 @@ function terminatingHttpServer(
   return terminate;
 }
 
-function getDefaultNodePath(prefix: string = '.polykey'): string {
+function getDefaultNodePath(prefix: string = 'polykey'): string {
   const platform = os.platform();
-  let p;
+  let p: string;
   if (platform === 'linux') {
     const homeDir = os.homedir();
     const dataDir = process.env.XDG_DATA_HOME;
@@ -327,7 +340,6 @@ function getDefaultNodePath(prefix: string = '.polykey'): string {
   } else if (platform === 'win32') {
     const homeDir = os.homedir();
     const appDataDir = process.env.LOCALAPPDATA;
-    let p;
     if (appDataDir != null) {
       p = `${appDataDir}/${prefix}`;
     } else {
@@ -351,6 +363,8 @@ function getNodePath(nodePath?: string) {
 
 export {
   randomString,
+  randomInt,
+  randomFloat,
   parseSecretPath,
   promiseAny,
   promiseAll,

@@ -24,7 +24,7 @@ describe('HTTP API', () => {
   let secretMap: Map<string, Buffer>
 
   beforeEach(async () => {
-    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
     tlsCredentials = createTLSCredentials()
     nodeInfo = new NodeInfo(
       await generatePublicKey(),

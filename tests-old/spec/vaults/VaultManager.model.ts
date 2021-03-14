@@ -9,16 +9,16 @@ import { randomString } from '../../../src/utils';
 async function createVaultManagerModel() {
 
   // pk1
-  const tempDir1 = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+  const tempDir1 = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
   const km1 = new KeyManager(tempDir1, fs)
   await km1.generateKeyPair('km1', 'passphrase', true)
   const pk1 = new Polykey(tempDir1, fs, km1)
   // pk2
-  const tempDir2 = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+  const tempDir2 = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
   const km2 = new KeyManager(tempDir2, fs)
   await km2.generateKeyPair('km2', 'passphrase', true)
   const pk2 = new Polykey(tempDir2, fs, km2)
-  await pk2.vaultManager.newVault(randomString())
+  await pk2.vaultManager.newVault(randomString(5))
 
   // let each know about the other
   pk2.nodeManager.addNode(pk1.nodeManager.nodeInfo)
@@ -28,7 +28,7 @@ async function createVaultManagerModel() {
     CREATE_VAULT: {
       exec: async (vm: VaultManager) => {
         // Do not await, must interrogate while service is running.
-        vm.newVault(randomString())
+        vm.newVault(randomString(5))
       }
     },
     CLONE_VAULT: {

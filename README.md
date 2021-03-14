@@ -34,8 +34,6 @@ PolyKey  uses jest to test:
 jest
 </pre>
 
-Note: sometimes grpc-js can complain about the ssl certificates in `tmp/` with a non-descriptive error of "No connection established". Best way to solve this is to remove the certs, start the CA server and re-issue the certs with `./scripts/generate_ssl_certs.sh`.
-
 # Command Line Interface (CLI)
 Here is a demo of the CLI on [asciinema](https://asciinema.org/a/347434).
 
@@ -51,8 +49,13 @@ Commands:
   keys            manipulate keys
   secrets         manipulate secrets for a given vault
   vaults          manipulate vaults
+  nodes           node operations
+  gestalts        gestalt operations
+  social          social commands
   crypto          crypto operations
   agent           control the polykey agent
+  ca              certificate authority operations
+  oauth           http oauth2 operations
   help [command]  display help for command
 </pre>
 
@@ -91,32 +94,30 @@ Options:
   -h, --help         display help for command
 
 Commands:
-  start [options]    start the agent
-  restart [options]  restart the agent
-  status             retrieve the status of the agent
-  stop [options]     stop the agent
-  list|ls [options]  list all the nodes controlled by the node
-  create [options]   create a new polykey node
-  load [options]     load an existing polykey node
-  help [command]     display help for command
+  status [options]     retrieve the status of the agent
+  start [options]      start the agent
+  restart [options]    restart the agent
+  stop [options]       stop the agent
+  bootstrap [options]  initialize a new polykey node
+  lock [options]       lock polykey
+  unlock [options]     unlock polykey
+  help [command]       display help for command
 </pre>
 Example  usage:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
 # managing the polykey agent
 pk agent stop
 pk agent start
-# restart the agent as a daemon
-pk agent restart -d
+# restart the agent as a background process
+pk agent restart -b
 pk agent status # agent status is 'online'
 
 # create a new polykey node
-pk agent create -np '~/NewPolykeyNode' -n 'John Smith' -e 'john@email.com' -p 'passphrase'
+pk agent bootstrap -np '~/NewPolykeyNode' -n 'John Smith' -pp 'passphrase'
 
 # load an existing node
-pk agent load -np '~/NewPolykeyNode' -p 'passphrase'
+pk agent start -np '~/NewPolykeyNode' -pp 'passphrase'
 
-# list the nodes managed by agent
-pk agent list # ~/NewPolykeyNode
 </pre>
 
 Note: Polykey also provides the ability to set an environment variable, `PK_PATH`, instead of specifying the node path with `-np '~/NewPolykeyNode'`
@@ -133,9 +134,10 @@ Options:
 
 Commands:
   new [options]      derive a new symmetric key
+  keypair [options]  derive a new keypair for use in another keynode
+  get [options]      get the contents of a specific symmetric key
   delete [options]   delete a symmetric key from the key manager
   list|ls [options]  list all symmetric keys in the keynode
-  get [options]      get the contents of a specific symmetric key
   primary [options]  get the contents of the primary keypair
   help [command]     display help for command
 </pre>
@@ -151,7 +153,7 @@ pk keys delete -n 'NewKey'
 pk keys list # 'NewKey'
 
 # list primary key with private key included
-pk keys primary -p
+pk keys primary -pk
 # Public Key:
 # -----BEGIN PGP PUBLIC KEY BLOCK-----
 # ...
@@ -175,7 +177,13 @@ Options:
 
 Commands:
   list|ls [options]     list all available vaults
-  new [options]         create new vault(s)
+  scan [options]        scan a known node for accessible vaults
+  new [options]         create a new vault
+  rename [options]      rename an existing vault
+  stats [options]       get the stats for a vault
+  pull [options]        pull a vault from a node
+  share [options]       pull a vault from a node
+  unshare [options]     pull a vault from a node
   delete|del [options]  delete an existing vault
   help [command]        display help for command
 </pre>
@@ -183,13 +191,13 @@ Commands:
 Example usage:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
 # create a new vault
-pk vaults add 'NewVault'
+pk vaults new -vn 'NewVault'
 
 # list all existing vaults
 pk vaults ls # 'NewVault'
 
 # delete a vault
-pk vaults delete 'NewVault'
+pk vaults delete -vn 'NewVault'
 </pre>
 
 ## Secrets
@@ -204,34 +212,41 @@ Options:
 
 Commands:
   list|ls [options]     list all available secrets for a given vault
-  new [options]         create a secret within a given vault, specify an secret
-                        path with '&lt;vaultName>:&lt;secretName>'
-  update [options]      update a secret within a given vault, specify an secret
-                        path with '&lt;vaultName>:&lt;secretName>'
-  delete|del [options]  delete a secret from a given vault, specify an secret
-                        path with '&lt;vaultName>:&lt;secretName>'
-  get [options]         retrieve a secret from a given vault, specify an secret
-                        path with '&lt;vaultName>:&lt;secretName>'
+  new [options]         create a secret within a given vault, specify a secret
+                        path with '<vaultName>:<secretPath>'
+  dir [options]         create a secret within a given vault, specify a secret
+                        path with '<vaultName>:<secretPath>'
+  update [options]      update a secret within a given vault, specify a secret
+                        path with '<vaultName>:<secretPath>'
+  edit|ed [options]     edit a secret with the default system editor, specify a
+                        secret path with '<vaultName>:<secretPath>'
+  delete|del [options]  delete a secret or sub directory from a given vault,
+                        specify a secret path with
+                        '<vaultName>:<secretPath|subDirectoryPath>'
+  get [options]         retrieve a secret from a given vault, specify a secret
+                        path with '<vaultName>:<secretPath>'
   env [options]         run a modified environment with injected secrets,
-                        specify an secret path with '&lt;vaultName>:&lt;secretName>'
+                        specify a secret path with
+                        '<vaultName>:<secretPath>[=<variableName>]'
   help [command]        display help for command
+
 </pre>
 
 Example usage:
 <pre style="white-space:pre !important; overflow-x:scroll !important">
 # add a new secret
-pk secrets add -f '~/SeretFile' NewVault:NewSecret
+pk secrets new -f '~/SeretFile' -sp NewVault:NewSecret
 
 # list names of all secrets within specific vaults
-pk secrets list NewVault AnotherVault
+pk secrets list -vn NewVault AnotherVault
 # 1. NewVault:NewSecret
 # 2. AnotherVault:AnotherSecret
 
 # delete secrets
-pk secrets delete NewVault:NewSecret AnotherVault:AnotherSecret
+pk secrets delete -sp NewVault:NewSecret AnotherVault:AnotherSecret
 
 # retrieve a secret
-pk secrets get NewVault:NewSecret
+pk secrets get -sp NewVault:NewSecret
 # &lt;NewSecretContent>
 
 # enter a modified environment with injected secrets
@@ -253,8 +268,8 @@ Options:
   -h, --help         display help for command
 
 Commands:
-  verify [options]   verification operations
   sign [options]     signing operations [files]
+  verify [options]   verification operations
   encrypt [options]  encryption operations
   decrypt [options]  decryption operations
   help [command]     display help for command
@@ -266,19 +281,97 @@ Example usage:
 pk crypto sign ./file # creates ./file.sig
 
 # verify a file
-pk crypto verify -f ./file.sig
+pk crypto verify -fp ./file.sig
 
 # encrypt a file
-pk crypto encrypt ./file
+pk crypto encrypt -fp ./file
 
 # decrypt a file
-pk crypto decrypt ./file
+pk crypto decrypt -fp ./file
 </pre>
 
 ## Verbosity
+Polykey uses four different levels of verbosity (Debug, Info, Warn, Error). The verbosity level can be set by using -v in the Polykey CLI. By default, the verbosity level will be set to log Warn messages. The verbosity level can be decreased by accumulating '-v' flags.
+
+<pre style="white-space:pre !important; overflow-x:scroll !important">
+# verbosity is set to Info
+pk agent start -v
+
+# verbosity is set to Debug
+pk agent start -vv
+</pre>
+
+To decrease the verbosity further,
 TODO: explain verbosity levels when it is implemented
 
+# Development
+If `js-polykey` is not installed, for example when developing, it can be run from source from a few methods:
+---
+```
+npm run polykey -- -h
+```
+This will run polykey from source. the `--` in the command separates the subsequent arguments from the `npm run` command, and passes it to the program being run, in this case polykey:
+
+
+```bash
+$ npm run polykey -- -h
+
+> @matrixai/polykey@0.0.37 polykey /home/user/.../js-polykey
+> ts-node -r tsconfig-paths/register src/bin/polykey.ts "-h"
+
+Usage: polykey [options] [command]
+
+Options:
+  -V, --version   output the version number
+  -h, --help      display help for command
+
+Commands:
+  keys            manipulate keys
+  secrets         manipulate secrets for a given vault
+  vaults          manipulate vaults
+  nodes           node operations
+  gestalts        gestalt operations
+  social          social commands
+  crypto          crypto operations
+  agent           control the polykey agent
+  ca              certificate authority operations
+  oauth           http oauth2 operations
+  help [command]  display help for command
+
+```
+---
+```bash
+npm run build
+node dist/bin/polykey.js -h
+```
+This is equivalent to the above, but instead, we run the built file directly using `node`:
+```bash
+$ node dist/bin/polykey.js
+Usage: polykey [options] [command]
+
+Options:
+  -V, --version   output the version number
+  -h, --help      display help for command
+
+Commands:
+  keys            manipulate keys
+  secrets         manipulate secrets for a given vault
+  vaults          manipulate vaults
+  nodes           node operations
+  gestalts        gestalt operations
+  social          social commands
+  crypto          crypto operations
+  agent           control the polykey agent
+  ca              certificate authority operations
+  oauth           http oauth2 operations
+  help [command]  display help for command
+```
+
 # Build
+```bash
+npm run build
+```
+This will create a dist folder.
 ## Proto Files
 All `.proto` files are stored in the the `proto` directory. JavaScript and type definition files are build using the following command:
 

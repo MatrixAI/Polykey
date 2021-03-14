@@ -6,12 +6,12 @@ import { randomString } from '../../../src/utils';
 const keysModel = createModel<KeyManager, KeysStateSchema>(keysMachine).withEvents({
   GENERATE_KEYPAIR: {
     exec: async (km: KeyManager) => {
-      return await km.generateKeyPair(randomString(), 'passphrase', true)
+      return await km.generateKeyPair(randomString(5), 'passphrase', true)
     }
   },
   LOAD_KEYPAIR: {
     exec: async (km: KeyManager) => {
-      const keypair = await km.generateKeyPair(randomString(), 'passphrase')
+      const keypair = await km.generateKeyPair(randomString(5), 'passphrase')
       return km.loadKeyPair(Buffer.from(keypair.public), Buffer.from(keypair.private))
     }
   },

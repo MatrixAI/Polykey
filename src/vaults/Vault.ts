@@ -116,7 +116,10 @@ class Vault {
   async rename(newName: string): Promise<void> {
     const release = await this.mutex.acquire();
     try {
-      this.efs.renameSync(`../${this.name}`, `../${newName}`);
+      this.efs.renameSync(
+        `${this.vaultPath}/../${this.name}`,
+        `${this.vaultPath}/../${newName}`,
+      );
     } finally {
       release();
     }
@@ -128,7 +131,7 @@ class Vault {
   async stats(): Promise<fs.Stats> {
     const release = await this.mutex.acquire();
     try {
-      return this.efs.statSync(`../${this.name}`);
+      return this.efs.statSync(`${this.vaultPath}/../${this.name}`);
     } finally {
       release();
     }

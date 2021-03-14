@@ -5,11 +5,13 @@ import {
   verboseToLogLevel,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 
 const commandAuthenticateProvider = createCommand('authenticate', {
   verbose: true,
+  format: true,
 });
 commandAuthenticateProvider.alias('auth');
 commandAuthenticateProvider.description(
@@ -34,10 +36,18 @@ commandAuthenticateProvider.action(async (options, command) => {
   const res = (await promisifyGrpc(client.authenticateProvider.bind(client))(
     request,
   )) as agentPB.AuthenticateProviderReply;
-  process.stdout.write(`please enter user code: '${res.getUserCode()}'\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`User code ${res.getUserCode()}`],
+    }),
+  );
 });
 
-const commandAugmentKeynode = createCommand('augment', { verbose: true });
+const commandAugmentKeynode = createCommand('augment', {
+  verbose: true,
+  format: true,
+});
 commandAugmentKeynode.alias('aug');
 commandAugmentKeynode.description(
   'augment the keynode on a given provider and identity',
@@ -67,7 +77,12 @@ commandAugmentKeynode.action(async (options, command) => {
     request,
   )) as agentPB.AugmentKeynodeReply;
   const url = response.getUrl();
-  process.stdout.write(`keynode successfully augmented at '${url}'\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Augmented at ${url}`],
+    }),
+  );
 });
 
 const commandSocial = createCommand('social');

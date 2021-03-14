@@ -25,7 +25,7 @@ describe('PKI testing', () => {
   beforeAll(async () => {
     // ======== CA PEER ======== //
     // Define temp directory
-    tempDirNodeCA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDirNodeCA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create pki
     kmCA = new KeyManager(tempDirNodeCA, fs)
@@ -33,7 +33,7 @@ describe('PKI testing', () => {
 
     // ======== PEER A ======== //
     // Define temp directory
-    tempDirNodeA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDirNodeA = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create pki
     kmA = new KeyManager(tempDirNodeA, fs)
@@ -42,7 +42,7 @@ describe('PKI testing', () => {
 
     // ======== PEER B ======== //
     // Define temp directory
-    tempDirNodeB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDirNodeB = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create pki
     kmB = new KeyManager(tempDirNodeB, fs)
@@ -83,7 +83,7 @@ describe('PKI testing', () => {
 
     test('can use certificates to create an mtls connection', done => {
       // set up the mock server
-      const randomSecureMessage = `random-secure-message: ${randomString()}\n`
+      const randomSecureMessage = `random-secure-message: ${randomString(5)}\n`
       const server = http.createServer({
         key: tlsServerCredentials!.keypair.private,
         cert: tlsServerCredentials!.certificate,

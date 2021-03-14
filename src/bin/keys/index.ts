@@ -5,10 +5,11 @@ import {
   verboseToLogLevel,
   getAgentClient,
   promisifyGrpc,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 
-const commandNewKey = createCommand('new', { verbose: true });
+const commandNewKey = createCommand('new', { verbose: true, format: true });
 commandNewKey.description('derive a new symmetric key');
 commandNewKey.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandNewKey.requiredOption(
@@ -30,10 +31,18 @@ commandNewKey.action(async (options, command) => {
   request.setKeyName(keyName);
   request.setPassphrase(options.keyPassphrase);
   await promisifyGrpc(client.deriveKey.bind(client))(request);
-  process.stdout.write(`'${keyName}' was added to the Key Manager\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Added`, `${keyName}`],
+    }),
+  );
 });
 
-const commandNewKeyPair = createCommand('keypair', { verbose: true });
+const commandNewKeyPair = createCommand('keypair', {
+  verbose: true,
+  format: true,
+});
 commandNewKeyPair.description(
   'derive a new keypair for use in another keynode',
 );
@@ -73,10 +82,18 @@ commandNewKeyPair.action(async (options, command) => {
   request.setPublicKeyPath(options.publicPath!);
   request.setPrivateKeyPath(options.privatePath!);
   await promisifyGrpc(client.deriveKeyPair.bind(client))(request);
-  process.stdout.write(`new keypair successfully generated\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Generated Keypair`],
+    }),
+  );
 });
 
-const commandDeleteKey = createCommand('delete', { verbose: true });
+const commandDeleteKey = createCommand('delete', {
+  verbose: true,
+  format: true,
+});
 commandDeleteKey.description('delete a symmetric key from the key manager');
 commandDeleteKey.option(
   '-np, --node-path <nodePath>',
@@ -96,10 +113,15 @@ commandDeleteKey.action(async (options, command) => {
   const request = new agentPB.StringMessage();
   request.setS(keyName);
   await promisifyGrpc(client.deleteKey.bind(client))(request);
-  process.stdout.write(`key '${keyName}' was successfully deleted\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Deleted ${keyName}`],
+    }),
+  );
 });
 
-const commandListKeys = createCommand('list', { verbose: true });
+const commandListKeys = createCommand('list', { verbose: true, format: true });
 commandListKeys.alias('ls');
 commandListKeys.description('list all symmetric keys in the keynode');
 commandListKeys.option(
@@ -117,15 +139,27 @@ commandListKeys.action(async (options, command) => {
   )) as agentPB.StringListMessage;
   const keyNames = res.getSList();
   if (keyNames === undefined || keyNames.length == 0) {
-    process.stdout.write('no keys exist\n');
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`No keys exist`],
+      }),
+    );
   } else {
+    const output: Array<string> = [];
     keyNames.forEach((keyName: string, index: number) => {
-      process.stdout.write(`${index + 1}: ${keyName}\n`);
+      output.push(`Key ${index + 1}: ${keyName}`);
     });
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: output,
+      }),
+    );
   }
 });
 
-const commandGetKey = createCommand('get', { verbose: true });
+const commandGetKey = createCommand('get', { verbose: true, format: true });
 commandGetKey.description('get the contents of a specific symmetric key');
 commandGetKey.option('-np, --node-path <nodePath>', 'provide the polykey path');
 commandGetKey.requiredOption(
@@ -143,10 +177,18 @@ commandGetKey.action(async (options, command) => {
   const res = (await promisifyGrpc(client.getKey.bind(client))(
     request,
   )) as agentPB.StringMessage;
-  process.stdout.write(res.getS() + '\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Key: ${res.getS()}`],
+    }),
+  );
 });
 
-const commandListPrimaryKeyPair = createCommand('primary', { verbose: true });
+const commandListPrimaryKeyPair = createCommand('primary', {
+  verbose: true,
+  format: true,
+});
 commandListPrimaryKeyPair.description(
   'get the contents of the primary keypair',
 );
@@ -155,7 +197,6 @@ commandListPrimaryKeyPair.option(
   'provide the polykey path',
 );
 commandListPrimaryKeyPair.option('-pk, --private-key', 'include private key');
-commandListPrimaryKeyPair.option('-oj, --output-json', 'output in JSON format');
 commandListPrimaryKeyPair.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
@@ -172,17 +213,23 @@ commandListPrimaryKeyPair.action(async (options, command) => {
     publicKey: res.getPublicKey(),
     privateKey: res.getPrivateKey(),
   };
-
-  if (options.outputJson as boolean) {
-    process.stdout.write(JSON.stringify(keypair) + '\n');
-  } else {
-    process.stdout.write('Public Key:\n');
-    process.stdout.write(keypair.publicKey + '\n');
-    if (privateKey) {
-      process.stdout.write('Private Key:\n');
-      process.stdout.write(keypair.privateKey + '\n');
-    }
+  let msg = [`Public`];
+  let value = [`${keypair.publicKey}`];
+  if (privateKey) {
+    msg = [`Public`, `Private`];
+    value = [`${keypair.publicKey}`, `${keypair.privateKey}`];
   }
+  // Convert to OutputObject format
+  const output: Array<string> = [];
+  msg.forEach((m, index) => {
+    output.push(`${m}: ${value[index]}`);
+  });
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: output,
+    }),
+  );
 });
 
 const commandKeys = createCommand('keys');

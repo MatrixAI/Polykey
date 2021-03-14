@@ -5,6 +5,7 @@ import {
   verboseToLogLevel,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 import commandTokens from './tokens';
@@ -25,10 +26,12 @@ commandClient.action(async (options, command) => {
   const res = (await promisifyGrpc(client.getOAuthClient.bind(client))(
     new agentPB.EmptyMessage(),
   )) as agentPB.OAuthClientMessage;
-  process.stdout.write('client id:\n');
-  process.stdout.write(res.getId() + '\n');
-  process.stdout.write('client secret:\n');
-  process.stdout.write(res.getSecret() + '\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Client ID: ${res.getId()}`, `Client Secret: ${res.getSecret()}`],
+    }),
+  );
 });
 
 const commandOAuth = createCommand('oauth');

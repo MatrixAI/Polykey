@@ -10,7 +10,7 @@ describe('KeyManager class', () => {
 
   beforeAll(async () => {
     // Define temp directory
-    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString()}`)
+    tempDir = fs.mkdtempSync(`${os.tmpdir}/pktest${randomString(5)}`)
 
     // Create keyManager
     km = new KeyManager(tempDir, fs)

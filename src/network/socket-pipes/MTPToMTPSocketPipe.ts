@@ -29,7 +29,7 @@ class MTPToTCPSocketPipe extends EventEmitter {
     logger: Logger = new Logger('MTPToTCPSocketPipe'),
   ) {
     super();
-    this.id = randomString();
+    this.id = randomString(5);
 
     this.nodeId = nodeId;
     this.udpAddress = udpAddress;

@@ -6,10 +6,14 @@ import {
   verboseToLogLevel,
   promisifyGrpc,
   getAgentClient,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 
-const commandGetRootCertificate = createCommand('root', { verbose: true });
+const commandGetRootCertificate = createCommand('root', {
+  verbose: true,
+  format: true,
+});
 commandGetRootCertificate.description('retrieve the root certificate');
 commandGetRootCertificate.option(
   '-np, --node-path <nodePath>',
@@ -24,11 +28,15 @@ commandGetRootCertificate.action(async (options, command) => {
   const res = (await promisifyGrpc(client.getRootCertificate.bind(client))(
     new agentPB.EmptyMessage(),
   )) as agentPB.StringMessage;
-  process.stdout.write('Current Node Root Certificate:\n');
-  process.stdout.write(res.getS() + '\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Root Certificate ${res.getS()}`],
+    }),
+  );
 });
 
-const commandNewCert = createCommand('cert', { verbose: true });
+const commandNewCert = createCommand('cert', { verbose: true, format: true });
 commandNewCert.description('create a new certificate signed by the polykey ca');
 commandNewCert.option(
   '-np, --node-path <nodePath>',
@@ -61,10 +69,15 @@ commandNewCert.action(async (options, command) => {
   const res = (await promisifyGrpc(client.newClientCertificate.bind(client))(
     request,
   )) as agentPB.NewClientCertificateMessage;
-  process.stdout.write('Certificate:\n');
-  process.stdout.write(res.getCertFile() + '\n');
-  process.stdout.write('Private Key:\n');
-  process.stdout.write(res.getKeyFile() + '\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [
+        `Certificate: ${res.getCertFile()}`,
+        `Private Key: ${res.getKeyFile()}`,
+      ],
+    }),
+  );
 });
 
 const commandCA = createCommand('ca');

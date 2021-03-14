@@ -9,13 +9,17 @@ import {
   verboseToLogLevel,
   getAgentClient,
   promisifyGrpc,
+  outputFormatter,
 } from '../utils';
 import { randomString } from '../../utils';
 import { getNodePath } from '../../utils';
 
 const pathRegex = /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
 
-const commandListSecrets = createCommand('list', { verbose: true });
+const commandListSecrets = createCommand('list', {
+  verbose: true,
+  format: true,
+});
 commandListSecrets.description('list all available secrets for a given vault');
 commandListSecrets.alias('ls');
 commandListSecrets.option(
@@ -46,19 +50,28 @@ commandListSecrets.action(async (options, command) => {
     const secretNames = res.getSList();
     // List secrets
     if (secretNames.length == 0) {
-      process.stdout.write(`no secrets found for vault '${vaultName}'\n`);
-    } else {
       process.stdout.write(
-        `secrets contained within the ${vaultName} vault:\n`,
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [`No secrets in ${vaultName}`],
+        }),
       );
-      secretNames.forEach((secretName) =>
-        process.stdout.write(`${vaultName}:${secretName}\n`),
+    } else {
+      const output: Array<string> = [];
+      secretNames.forEach((secretName) => {
+        output.push(`${vaultName} ${secretName}`);
+      });
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: output,
+        }),
       );
     }
   }
 });
 
-const commandNewSecret = createCommand('new', { verbose: true });
+const commandNewSecret = createCommand('new', { verbose: true, format: true });
 commandNewSecret.description(
   "create a secret within a given vault, specify a secret path with '<vaultName>:<secretPath>'",
 );
@@ -101,14 +114,20 @@ commandNewSecret.action(async (options, command) => {
     request.setSecretFilePath(options.filePath);
     await promisifyGrpc(client.newSecret.bind(client))(request);
     process.stdout.write(
-      `secret '${secretName}' was successfully added to vault '${vaultName}'\n`,
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Added ${vaultName}:${secretName}`],
+      }),
     );
   } catch (err) {
     throw Error(`Error when adding secret: ${err.message}`);
   }
 });
 
-const commandNewDirSecret = createCommand('dir', { verbose: true });
+const commandNewDirSecret = createCommand('dir', {
+  verbose: true,
+  format: true,
+});
 commandNewDirSecret.description(
   "create a secret within a given vault, specify a secret path with '<vaultName>:<secretPath>'",
 );
@@ -141,14 +160,20 @@ commandNewDirSecret.action(async (options, command) => {
     request.setSecretPath(secretPath);
     await promisifyGrpc(client.newSecret.bind(client))(request);
     process.stdout.write(
-      `secret directory '${dirPath}' was recursively added to vault '${vaultName}'\n`,
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Added ${vaultName}:${dirPath}`],
+      }),
     );
   } catch (err) {
     throw Error(`Error when adding secrets: ${err.message}`);
   }
 });
 
-const commandUpdateSecret = createCommand('update', { verbose: true });
+const commandUpdateSecret = createCommand('update', {
+  verbose: true,
+  format: true,
+});
 commandUpdateSecret.description(
   "update a secret within a given vault, specify a secret path with '<vaultName>:<secretPath>'",
 );
@@ -187,14 +212,20 @@ commandUpdateSecret.action(async (options, command) => {
     request.setSecretFilePath(options.filePath);
     await promisifyGrpc(client.updateSecret.bind(client))(request);
     process.stdout.write(
-      `secret '${secretName}' was successfully updated in vault '${vaultName}'\n`,
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Updated ${vaultName}:${secretName}`],
+      }),
     );
   } catch (err) {
     throw Error(`Error when updating secret: ${err.message}`);
   }
 });
 
-const commandEditSecret = createCommand('edit', { verbose: true });
+const commandEditSecret = createCommand('edit', {
+  verbose: true,
+  format: true,
+});
 commandEditSecret.alias('ed');
 commandEditSecret.description(
   "edit a secret with the default system editor, specify a secret path with '<vaultName>:<secretPath>'",
@@ -233,11 +264,11 @@ commandEditSecret.action(async (options, command) => {
     // Linux
     // make a temp file for editing
     const tmpDir = fs.mkdtempSync(
-      `${os.tmpdir}/pksecret${randomString()}${randomString()}`,
+      `${os.tmpdir}/pksecret${randomString(5)}${randomString(5)}`,
     );
     const tmpFile = path.join(
       tmpDir,
-      `pksecret${randomString()}${randomString()}`,
+      `pksecret${randomString(5)}${randomString(5)}`,
     );
     // write secret to file
     fs.writeFileSync(tmpFile, secret);
@@ -258,14 +289,20 @@ commandEditSecret.action(async (options, command) => {
     // TODO: complete windows impl
 
     process.stdout.write(
-      `secret '${secretName}' was successfully updated in vault '${vaultName}'\n`,
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Edited ${vaultName}:${secretName}`],
+      }),
     );
   } catch (err) {
     throw Error(`error when editing secret: ${err.message}`);
   }
 });
 
-const commandDeleteSecret = createCommand('delete', { verbose: true });
+const commandDeleteSecret = createCommand('delete', {
+  verbose: true,
+  format: true,
+});
 commandDeleteSecret.alias('del');
 commandDeleteSecret.description(
   "delete a secret or sub directory from a given vault, specify a secret path with '<vaultName>:<secretPath|subDirectoryPath>'",
@@ -298,14 +335,17 @@ commandDeleteSecret.action(async (options, command) => {
     request.setSecretName(secretName);
     await promisifyGrpc(client.deleteSecret.bind(client))(request);
     process.stdout.write(
-      `secret '${secretName}' was successfully removed from vault '${vaultName}'\n`,
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Deleted ${vaultName}:${secretName}`],
+      }),
     );
   } catch (err) {
     throw Error(`Error when removing secret: ${err.message}`);
   }
 });
 
-const commandGetSecret = createCommand('get', { verbose: true });
+const commandGetSecret = createCommand('get', { verbose: true, format: true });
 commandGetSecret.description(
   "retrieve a secret from a given vault, specify a secret path with '<vaultName>:<secretPath>'",
 );
@@ -347,17 +387,27 @@ commandGetSecret.action(async (options, command) => {
 
     if (isEnv) {
       process.stdout.write(
-        `export ${secretName.toUpperCase().replace('-', '_')}='${secret}'\n`,
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [
+            `Export ${secretName.toUpperCase().replace('-', '_')}='${secret}`,
+          ],
+        }),
       );
     } else {
-      process.stdout.write(secret.toString() + '\n');
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [`Secret ${secret.toString()}`],
+        }),
+      );
     }
   } catch (err) {
     throw Error(`Error when retrieving secret: ${err.message}`);
   }
 });
 
-const commandSecretEnv = createCommand('env', { verbose: true });
+const commandSecretEnv = createCommand('env', { verbose: true, format: true });
 commandSecretEnv.description(
   "run a modified environment with injected secrets, specify a secret path with '<vaultName>:<secretPath>[=<variableName>]'",
 );
@@ -447,7 +497,10 @@ commandSecretEnv.action(async (options, command) => {
     shell.on('close', (code) => {
       if (code != 0) {
         process.stdout.write(
-          `polykey: environment terminated with code: ${code}\n`,
+          outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: [`Terminated with ${code}`],
+          }),
         );
       }
     });

@@ -6,10 +6,11 @@ import {
   verboseToLogLevel,
   getAgentClient,
   promisifyGrpc,
+  outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
 
-const commandAddNode = createCommand('add', { verbose: true });
+const commandAddNode = createCommand('add', { verbose: true, format: true });
 commandAddNode.description('add a new node to the store');
 commandAddNode.option(
   '-np, --node-path <nodePath>',
@@ -53,11 +54,14 @@ commandAddNode.action(async (options, command) => {
     request,
   )) as agentPB.StringMessage;
   process.stdout.write(
-    `node id of '${res.getS()}' successfully added to node store\n`,
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Added ${res.getS()}`],
+    }),
   );
 });
 
-const commandAddAlias = createCommand('alias', { verbose: true });
+const commandAddAlias = createCommand('alias', { verbose: true, format: true });
 commandAddAlias.description('set/unset an alias for an existing node');
 commandAddAlias.option(
   '-np, --node-path <nodePath>',
@@ -79,17 +83,27 @@ commandAddAlias.action(async (options, command) => {
     const request = new agentPB.StringMessage();
     request.setS(options.nodeId!);
     await promisifyGrpc(client.unsetAlias.bind(client))(request);
-    process.stdout.write(`node alias has successfully been unset\n`);
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Alias unset`],
+      }),
+    );
   } else {
     const request = new agentPB.NodeAliasMessage();
     request.setNodeId(options.nodeId!);
     request.setAlias(options.alias!);
     await promisifyGrpc(client.setAlias.bind(client))(request);
-    process.stdout.write(`node alias has successfully been set\n`);
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Alias set`],
+      }),
+    );
   }
 });
 
-const commandFindNode = createCommand('find', { verbose: true });
+const commandFindNode = createCommand('find', { verbose: true, format: true });
 commandFindNode.description('find a node');
 commandFindNode.option(
   '-np, --node-path <nodePath>',
@@ -117,10 +131,18 @@ commandFindNode.action(async (options, command) => {
     request.setTimeout(options.timeout);
   }
   await promisifyGrpc(client.findNode.bind(client))(request);
-  process.stdout.write('node successfully found\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Node found`],
+    }),
+  );
 });
 
-const commandGetNodeInfo = createCommand('get', { verbose: true });
+const commandGetNodeInfo = createCommand('get', {
+  verbose: true,
+  format: true,
+});
 commandGetNodeInfo.description('get the node info for a particular node');
 commandGetNodeInfo.option(
   '-np, --node-path <nodePath>',
@@ -156,41 +178,45 @@ commandGetNodeInfo.action(async (options, command) => {
   }
   const nodeInfo = res.toObject();
   if (options.pem as boolean) {
-    process.stdout.write(nodeInfo.pem + '\n');
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Pem file ${nodeInfo.pem}`],
+      }),
+    );
   } else {
-    process.stdout.write('Node Id:\n');
-    process.stdout.write(nodeInfo.nodeId + '\n');
-
-    process.stdout.write('Alias:\n');
-    process.stdout.write(nodeInfo.alias + '\n');
-
-    process.stdout.write('Public Key:\n');
-    process.stdout.write(nodeInfo.publicKey + '\n');
-
-    process.stdout.write('Root Public Key:\n');
-    process.stdout.write(nodeInfo.rootPublicKey + '\n');
-
-    process.stdout.write('Node Address:\n');
-    process.stdout.write(nodeInfo.nodeAddress?.toString() + '\n' ?? '\n');
-
-    process.stdout.write('API Address:\n');
-    process.stdout.write(nodeInfo.apiAddress?.toString() + '\n' ?? '');
-
-    process.stdout.write('Link Info List:\n');
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [
+          `Node Id: ${nodeInfo.nodeId}`,
+          `Alias: ${nodeInfo.alias}`,
+          `Public Key: ${nodeInfo.publicKey}`,
+          `Root Public Key: ${nodeInfo.rootPublicKey}`,
+          `Node Address: ${nodeInfo.nodeAddress?.toString()}`,
+          `API Address: ${nodeInfo.apiAddress?.toString()}`,
+        ],
+      }),
+    );
     nodeInfo.linkInfoList.forEach((l) => {
-      process.stdout.write(`Link Info Identity: '${l.identity}'\n`);
-      process.stdout.write(`Node Provider: '${l.provider}'\n`);
-      process.stdout.write(`Key: '${l.key}'\n`);
-      process.stdout.write(`Date Issued: '${new Date(l.dateissued)}'\n`);
-      process.stdout.write(`Node:\n`);
-      process.stdout.write(JSON.parse(l.node) + '\n');
-      process.stdout.write(`Signature:\n`);
-      process.stdout.write(l.signature + '\n');
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [
+            `Link Info: ${l.identity}`,
+            `Node Provide: ${l.provider}`,
+            `Key: ${l.key}`,
+            `Date Issued: ${new Date(l.dateissued)}`,
+            `Node: ${JSON.parse(l.node)}`,
+            `Signature:${l.signature}`,
+          ],
+        }),
+      );
     });
   }
 });
 
-const commandListNodes = createCommand('list', { verbose: true });
+const commandListNodes = createCommand('list', { verbose: true, format: true });
 commandListNodes.description('list all connected nodes');
 commandListNodes.alias('ls');
 commandListNodes.option(
@@ -207,13 +233,25 @@ commandListNodes.action(async (options, command) => {
     new agentPB.EmptyMessage(),
   )) as agentPB.StringListMessage;
   const nodeIds = res.getSList();
-
   if (nodeIds === undefined || nodeIds.length == 0) {
-    process.stdout.write('no nodes exist\n');
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`No nodes exist`],
+      }),
+    );
   } else {
+    const output: Array<string> = [];
+
     nodeIds.forEach((nodeId: string, index: number) => {
-      process.stdout.write(`${index + 1}: ${nodeId}\n`);
+      output.push(`Node ${index + 1}: ${nodeId}`);
     });
+    process.stdout.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: output,
+      }),
+    );
   }
 });
 
@@ -245,13 +283,21 @@ commandPingNode.action(async (options, command) => {
     request.setTimeout(options.timeout);
   }
   await promisifyGrpc(client.pingNode.bind(client))(request);
-  process.stdout.write('node successfully pinged\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Node pinged`],
+    }),
+  );
 });
 
-const commandStealth = createCommand('stealth', { verbose: true });
+const commandStealth = createCommand('stealth', {
+  verbose: true,
+  format: true,
+});
 commandStealth.description('toggle stealth mode on or off');
 
-const commandStealthActive = commandStealth.command('active');
+const commandStealthActive = commandStealth.createCommand('active');
 commandStealthActive.option(
   '-np, --node-path <nodePath>',
   'provide the polykey path',
@@ -265,10 +311,15 @@ commandStealthActive.action(async (options, command) => {
   const request = new agentPB.BooleanMessage();
   request.setB(true);
   await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
-  process.stdout.write(`stealth mode toggled to 'active'\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Stealth active`],
+    }),
+  );
 });
 
-const commandStealthInactive = commandStealth.command('inactive');
+const commandStealthInactive = commandStealth.createCommand('inactive');
 commandStealthInactive.option(
   '-np, --node-path <nodePath>',
   'provide the polykey path',
@@ -282,10 +333,18 @@ commandStealthInactive.action(async (options, command) => {
   const request = new agentPB.BooleanMessage();
   request.setB(false);
   await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
-  process.stdout.write(`stealth mode toggled to 'inactive'\n`);
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Stealth inactive`],
+    }),
+  );
 });
 
-const commandUpdateNodeInfo = createCommand('update', { verbose: true });
+const commandUpdateNodeInfo = createCommand('update', {
+  verbose: true,
+  format: true,
+});
 commandUpdateNodeInfo.description('update the node info for a particular node');
 commandUpdateNodeInfo.option(
   '-np, --node-path <nodePath>',
@@ -337,6 +396,7 @@ commandUpdateNodeInfo.action(async (options, command) => {
     await promisifyGrpc(client.updateNodeInfo.bind(client))(nodeInfo);
   } else if (options.nodeId) {
     const nodeInfo = new agentPB.NodeInfoReadOnlyMessage();
+    nodeInfo.setNodeId(options.nodeId);
     if (options.alias) {
       nodeInfo.setUnsignedAlias(options.alias);
     } else if (options.nodeAddress || options.nodeAddress == '') {
@@ -350,7 +410,12 @@ commandUpdateNodeInfo.action(async (options, command) => {
   } else {
     throw Error('currentNode, pem or nodeId must be provided to identify node');
   }
-  process.stdout.write('node info was successfully updated\n');
+  process.stdout.write(
+    outputFormatter({
+      type: options.format === 'json' ? 'json' : 'list',
+      data: [`Node update`],
+    }),
+  );
 });
 
 const commandNodes = createCommand('nodes');
