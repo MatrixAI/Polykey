@@ -10,6 +10,11 @@ import GitBackend from '../git/GitBackend';
 import KeyManager from '../keys/KeyManager';
 import GitFrontend from '../git/GitFrontend';
 import NodeConnection from '../nodes/node-connection/NodeConnection';
+import {
+  ErrorVaultDefined,
+  ErrorVaultUndefined,
+  ErrorVaultKeyUndefined,
+} from '../errors';
 import Logger from '@matrixai/logger';
 
 class VaultManager {
@@ -68,17 +73,30 @@ class VaultManager {
     this.metadataPath = path.join(polykeyPath, '.vaultKeys');
     this.metadataBackupPath = path.join(polykeyPath, '.vaultKeysBackup');
 
-    // Make polykeyPath if it doesn't exist
-    this.fileSystem.mkdirSync(this.polykeyPath, { recursive: true });
-
     // Initialize stateful variables
     this.vaults = new Map();
     this.vaultKeys = new Map();
 
     this.logger = logger;
+  }
 
+  public get Status() {
+    return {
+      creatingVault: this.creatingVault,
+      cloningVault: this.cloningVault,
+      pullingVault: this.pullingVault,
+      deletingVault: this.deletingVault,
+    };
+  }
+
+  async start() {
+    if (this.fileSystem.existsSync(this.polykeyPath)) {
+      // Make polykeyPath if it doesn't exist
+      this.fileSystem.mkdirSync(this.polykeyPath, { recursive: true });
+      this.logger.info(`Created Polykey path at '${this.polykeyPath}'`);
+    }
     this.gitBackend = new GitBackend(
-      polykeyPath,
+      this.polykeyPath,
       ((repoName: string) => this.getVault(repoName).EncryptedFS).bind(this),
       this.getVaultNames.bind(this),
       // this.logger.getLogger('GitBackend'),
@@ -100,15 +118,6 @@ class VaultManager {
     this.loadEncryptedMetadata();
 
     this.keyManager.addReencryptHandler(this.reencryptMetadata.bind(this));
-  }
-
-  public get Status() {
-    return {
-      creatingVault: this.creatingVault,
-      cloningVault: this.cloningVault,
-      pullingVault: this.pullingVault,
-      deletingVault: this.deletingVault,
-    };
   }
 
   /**
@@ -148,11 +157,14 @@ class VaultManager {
         vaultKey!,
         this.polykeyPath,
         this.gitFrontend,
+        this.logger.getChild(vaultName),
       );
       this.vaults.set(vaultName, vault);
       return vault;
     } else {
-      throw Error(`vault does not exist in memory: '${vaultName}'`);
+      throw new ErrorVaultUndefined(
+        `vault does not exist in memory: '${vaultName}'`,
+      );
     }
   }
 
@@ -165,7 +177,7 @@ class VaultManager {
     this.creatingVault = true;
     if (this.vaultExists(vaultName)) {
       this.creatingVault = false;
-      throw Error('Vault already exists!');
+      throw new ErrorVaultDefined('Vault already exists!');
     }
 
     try {
@@ -173,6 +185,7 @@ class VaultManager {
       // Directory not present, create one
       this.fileSystem.rmdirSync(vaultPath, { recursive: true });
       this.fileSystem.mkdirSync(vaultPath, { recursive: true });
+      this.logger.info(`Created vault directory at '${vaultPath}`);
       // Create key if not provided
       let vaultKey: Buffer;
       if (!key) {
@@ -195,6 +208,7 @@ class VaultManager {
         vaultKey,
         this.polykeyPath,
         this.gitFrontend,
+        this.logger.getChild(vaultName),
       );
       await vault.initializeVault();
 
@@ -217,7 +231,7 @@ class VaultManager {
    */
   async vaultStats(vaultName: string): Promise<fs.Stats> {
     if (!this.vaultExists(vaultName)) {
-      throw Error('vault does not exist');
+      throw new ErrorVaultUndefined('vault does not exist');
     }
 
     const vault = this.vaults.get(vaultName)!;
@@ -231,9 +245,9 @@ class VaultManager {
    */
   async renameVault(vaultName: string, newName: string): Promise<void> {
     if (!this.vaultExists(vaultName)) {
-      throw Error('vault does not exist');
+      throw new ErrorVaultUndefined('vault does not exist');
     } else if (this.vaultExists(newName)) {
-      throw Error('new vault name already exists');
+      throw new ErrorVaultDefined('new vault name already exists');
     }
 
     const vault = this.vaults.get(vaultName)!;
@@ -256,13 +270,17 @@ class VaultManager {
 
     if (this.vaultExists(vaultName)) {
       this.cloningVault = false;
-      throw Error('vault name already exists locally, try pulling instead');
+      throw new ErrorVaultDefined(
+        'vault name already exists locally, try pulling instead',
+      );
     }
 
     const vaultPath = path.join(this.polykeyPath, vaultName);
     // Directory not present, create one
     this.fileSystem.rmdirSync(vaultPath, { recursive: true });
     this.fileSystem.mkdirSync(vaultPath, { recursive: true });
+    this.logger.info(`Creating vault directory at '${vaultPath}'`)
+
 
     const vaultUrl = `http://0.0.0.0/${vaultName}`;
 
@@ -275,7 +293,7 @@ class VaultManager {
 
     if (!info.refs) {
       this.cloningVault = false;
-      throw Error(`Node does not have vault: '${vaultName}'`);
+      throw new ErrorVaultUndefined(`Node does not have vault: '${vaultName}'`);
     }
 
     // Create new efs first
@@ -312,6 +330,7 @@ class VaultManager {
       vaultKey,
       this.polykeyPath,
       this.gitFrontend,
+      this.logger.getChild(vaultName),
     );
     this.vaults.set(vaultName, vault);
     this.vaultKeys.set(vaultName, vaultKey);
@@ -361,7 +380,9 @@ class VaultManager {
    */
   async deleteVault(vaultName: string) {
     if (!this.vaults.has(vaultName) || !this.vaultKeys.has(vaultName)) {
-      throw Error(`vault name does not exist: '${vaultName}'`);
+      throw new ErrorVaultUndefined(
+        `vault name does not exist: '${vaultName}'`,
+      );
     }
 
     this.deletingVault = true;
@@ -373,6 +394,7 @@ class VaultManager {
     // Remove directory on file system
     if (this.fileSystem.existsSync(vaultPath)) {
       this.fileSystem.rmdirSync(vaultPath, { recursive: true });
+      this.logger.info(`Removed vault directory at '${vaultPath}'`)
     }
 
     // Remove from maps
@@ -392,14 +414,20 @@ class VaultManager {
   /* ============ HELPERS =============== */
   private validateVault(vaultName: string): void {
     if (!this.vaults.has(vaultName)) {
-      throw Error(`vault does not exist in memory: '${vaultName}'`);
+      throw new ErrorVaultUndefined(
+        `vault does not exist in memory: '${vaultName}'`,
+      );
     }
     if (!this.vaultKeys.has(vaultName)) {
-      throw Error(`vault key does not exist in memory: '${vaultName}'`);
+      throw new ErrorVaultKeyUndefined(
+        `vault key does not exist in memory: '${vaultName}'`,
+      );
     }
     const vaultPath = path.join(this.polykeyPath, vaultName);
     if (!this.fileSystem.existsSync(vaultPath)) {
-      throw Error(`vault directory does not exist: '${vaultPath}'`);
+      throw new ErrorVaultUndefined(
+        `vault directory does not exist: '${vaultPath}'`,
+      );
     }
   }
 
@@ -425,6 +453,7 @@ class VaultManager {
       this.metadataBackupPath,
       Buffer.from(metadata),
     );
+    this.logger.info(`Writing encrypted vault keys metadata at '${this.metadataBackupPath}'`)
     release();
   }
 
@@ -459,6 +488,7 @@ class VaultManager {
             vaultKey,
             this.polykeyPath,
             this.gitFrontend,
+            this.logger.getChild(vaultName),
           );
           this.vaults.set(vaultName, vault);
         }
@@ -485,6 +515,8 @@ class VaultManager {
 
       // write reencrypted data back to file
       fs.writeFileSync(this.metadataPath, reencryptedData);
+      this.logger.info(`Rewrote encrypted data at '${this.metadataPath}'`)
+
       release();
       // reload new metadata
       await this.loadEncryptedMetadata();

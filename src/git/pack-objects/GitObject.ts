@@ -1,5 +1,5 @@
 import shasum from './shasum';
-
+import { ErrorSHAEncryption, ErrorGitRead } from '../../errors';
 class GitObject {
   static hash({ type, object }) {
     const buffer = Buffer.concat([
@@ -26,7 +26,9 @@ class GitObject {
     if (oid) {
       const sha = shasum(buffer);
       if (sha !== oid) {
-        throw new Error(`SHA check failed! Expected ${oid}, computed ${sha}`);
+        throw new ErrorSHAEncryption(
+          `SHA check failed! Expected ${oid}, computed ${sha}`,
+        );
       }
     }
     const s = buffer.indexOf(32); // first space
@@ -36,7 +38,7 @@ class GitObject {
     const actualLength = buffer.length - (i + 1);
     // verify length
     if (parseInt(length) !== actualLength) {
-      throw new Error(
+      throw new ErrorGitRead(
         `Length mismatch: expected ${length} bytes but got ${actualLength} instead.`,
       );
     }

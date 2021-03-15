@@ -1,3 +1,5 @@
+import { ErrorTypeCommit } from '../../errors';
+
 /* eslint-disable */
 // The amount of work that went into crafting these cases to handle
 // -0 (just so we don't lose that information when parsing and reconstructing)
@@ -78,7 +80,7 @@ class GitCommit {
     } else if (typeof commit === 'object') {
       this._commit = GitCommit.render(commit);
     } else {
-      throw new Error('invalid type passed to GitCommit constructor');
+      throw new ErrorTypeCommit('invalid type passed to GitCommit constructor');
     }
   }
 
@@ -160,7 +162,7 @@ class GitCommit {
     }
     if (obj.parent) {
       if (obj.parent.length === undefined) {
-        throw new Error(`commit 'parent' property should be an array`);
+        throw new ErrorTypeCommit(`commit 'parent' property should be an array`);
       }
       for (const p of obj.parent) {
         headers += `parent ${p}\n`;

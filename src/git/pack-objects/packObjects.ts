@@ -8,6 +8,7 @@ import GitCommit from './GitCommit';
 import { EncryptedFS } from 'encryptedfs';
 import { PassThrough } from 'readable-stream';
 import GitObjectManager from './GitObjectManager';
+import { ErrorGitUnrecognisedType } from '../../errors';
 
 const types = {
   commit: 0b0010000,
@@ -139,7 +140,7 @@ async function pack(
     let length;
     // Object type is encoded in bits 654
     const type = types[stype];
-    if (type === undefined) throw Error('Unrecognized type: ' + stype);
+    if (type === undefined) throw new ErrorGitUnrecognisedType('Unrecognized type: ' + stype);
     // The length encoding get complicated.
     length = object.length;
     // Whether the next byte is part of the variable-length encoded number

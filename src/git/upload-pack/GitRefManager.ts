@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 import GitPackedRefs from './GitPackedRefs';
+import { ErrorReferenceUndefined } from '../../errors';
 
 // @see https://git-scm.com/docs/git-rev-parse.html#_specifying_revisions
 const refpaths = (ref) => [
@@ -136,7 +137,7 @@ class GitRefManager {
       }
     }
     // Do we give up?
-    throw Error('RefNotFound');
+    throw new ErrorReferenceUndefined('RefNotFound');
   }
 }
 

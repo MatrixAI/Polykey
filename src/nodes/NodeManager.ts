@@ -13,6 +13,12 @@ import NodeConnection from './node-connection/NodeConnection';
 import { Node, NodePeer } from './Node';
 import PublicKeyInfrastructure from './pki/PublicKeyInfrastructure';
 import MulticastBroadcaster from '../network/multicast/MulticastBroadcaster';
+import {
+  ErrorNodeDefined,
+  ErrorNodeUndefined,
+  ErrorNodeSelf,
+  ErrorNoAlias,
+} from '../errors';
 
 class NodeManager {
   private fileSystem: typeof fs;
@@ -21,6 +27,7 @@ class NodeManager {
   private nodeInfoMetadataPath: string;
   private nodeStoreMetadataPath: string;
   private nodeAliasMetadataPath: string;
+  private polykeyPath: string;
 
   /////////
   // PKI //
@@ -61,7 +68,7 @@ class NodeManager {
     this.nodeStore = new Map();
     this.nodeAlias = new Map();
 
-    this.fileSystem.mkdirSync(polykeyPath, { recursive: true });
+    this.polykeyPath = polykeyPath;
     this.nodeInfoMetadataPath = path.join(polykeyPath, '.nodes', 'Node');
     this.nodeStoreMetadataPath = path.join(polykeyPath, '.nodes', 'NodeStore');
     this.nodeAliasMetadataPath = path.join(polykeyPath, '.nodes', 'NodeAlias');
@@ -75,7 +82,6 @@ class NodeManager {
     // Load node store and local node info
     if (nodeInfo) {
       this.nodeInfo = nodeInfo;
-      this.writeMetadata();
     } else if (this.keyManager.getKeyPair().publicKey && !this.nodeInfo) {
       this.nodeInfo = new Node('', this.keyManager.getPublicKeyString());
     }
@@ -86,6 +92,7 @@ class NodeManager {
       this.addNode.bind(this),
       this.updateNode.bind(this),
       this.keyManager,
+      this.logger.getChild('MulticastBroadcaster'),
     );
 
     ////////////
@@ -113,8 +120,6 @@ class NodeManager {
         }
       }).bind(this),
     );
-    // add all nodes to nodeDHT from nodeStore
-    this.nodeDHT.addNodes(this.listNodes());
 
     // initialize nat traversal
     this.network = new Network(
@@ -135,6 +140,7 @@ class NodeManager {
       this.fileSystem,
       (() => this.nodeInfo).bind(this),
       this.keyManager.getPrivateKey.bind(this.keyManager),
+      this.logger.getChild('PKI'),
     );
   }
 
@@ -146,6 +152,14 @@ class NodeManager {
   }
 
   async start() {
+    if (!this.fileSystem.existsSync(this.polykeyPath)) {
+      this.fileSystem.mkdirSync(this.polykeyPath, { recursive: true });
+      this.logger.info(`Created Polykey path at '${this.polykeyPath}`);
+    }
+    this.writeMetadata();
+    this.multicastBroadcaster.start();
+    // add all nodes to nodeDHT from nodeStore
+    this.nodeDHT.addNodes(this.listNodes());
     this.pki.loadMetadata();
     this.multicastBroadcaster.startBroadcasting();
     try {
@@ -195,10 +209,10 @@ class NodeManager {
   addNode(nodeInfo: NodePeer, alias?: string): string {
     const nodeId = nodeInfo.id;
     if (this.hasNode(nodeId)) {
-      throw Error('node already exists in node store');
+      throw new ErrorNodeDefined('node already exists in node store');
     }
     if (nodeId == this.nodeInfo.id) {
-      throw Error('cannot add self to store');
+      throw new ErrorNodeSelf('cannot add self to store');
     }
     this.nodeStore.set(nodeInfo.id, nodeInfo.deepCopy());
     if (alias) {
@@ -220,7 +234,7 @@ class NodeManager {
    */
   setNodeAlias(nodeId: string, alias: string): void {
     if (!this.hasNode(nodeId)) {
-      throw Error('node does not exist in node store');
+      throw new ErrorNodeUndefined('node does not exist in node store');
     }
     this.nodeAlias.set(nodeId, alias);
     this.writeMetadata();
@@ -232,7 +246,7 @@ class NodeManager {
    */
   unsetNodeAlias(nodeId: string): void {
     if (!this.nodeAlias.has(nodeId)) {
-      throw Error(`no alias set for nodeId: '${nodeId}'`);
+      throw new ErrorNoAlias(`no alias set for nodeId: '${nodeId}'`);
     }
     this.nodeAlias.delete(nodeId);
     this.writeMetadata();
@@ -252,7 +266,7 @@ class NodeManager {
    */
   updateNode(nodeInfo: NodePeer): void {
     if (!this.hasNode(nodeInfo.id)) {
-      throw Error('node does not exist in node store');
+      throw new ErrorNodeUndefined('node does not exist in node store');
     }
     this.nodeStore.set(nodeInfo.id, nodeInfo.deepCopy());
     this.writeMetadata();
@@ -264,7 +278,7 @@ class NodeManager {
    */
   deleteNodeInfo(id: string): void {
     if (!this.hasNode(id)) {
-      throw Error('node does not exist in node store');
+      throw new ErrorNodeUndefined('node does not exist in node store');
     }
     this.nodeStore.delete(id);
     this.nodeDHT.deleteNode(id);
@@ -345,7 +359,9 @@ class NodeManager {
     } else {
       const nodeInfo = this.getNodeInfo(nodeId);
       if (!nodeInfo) {
-        throw Error(`node does not exist in node store for nodeId: ${nodeId}`);
+        throw new ErrorNodeUndefined(
+          `node does not exist in node store for nodeId: ${nodeId}`,
+        );
       }
       return nodeInfo?.linkInfoList ?? [];
     }
@@ -414,7 +430,7 @@ class NodeManager {
   connectToNode(nodeId: string): NodeConnection {
     // Throw error if trying to connect to self
     if (nodeId == this.nodeInfo.id) {
-      throw Error('Cannot connect to self');
+      throw new ErrorNodeSelf('Cannot connect to self');
     }
 
     // const existingSocket = this.nodeConnections.get(nodeId);
@@ -451,6 +467,9 @@ class NodeManager {
       this.keyManager.getPrivateKey(),
     );
     this.fileSystem.writeFileSync(this.nodeInfoMetadataPath, nodeInfoPem);
+    this.logger.info(
+      `Created and stored node info at '${this.nodeInfoMetadataPath}'`,
+    );
     // write node store
     const nodeInfoList: string[] = [];
     for (const [, nodeInfo] of this.nodeStore) {
@@ -461,10 +480,14 @@ class NodeManager {
       this.nodeStoreMetadataPath,
       JSON.stringify(nodeInfoList),
     );
+    this.logger.info(
+      `Stored peer node info at '${this.nodeStoreMetadataPath}'`,
+    );
     this.fileSystem.writeFileSync(
       this.nodeAliasMetadataPath,
       JSON.stringify(this.nodeAlias, JSONMapReplacer),
     );
+    this.logger.info(`Stored node alias at '${this.nodeAlias}'`);
   }
 
   loadMetadata(): void {

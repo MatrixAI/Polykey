@@ -1,6 +1,12 @@
 import * as utils from './utils';
 import * as config from './Config';
 import OAuth2Store, { AuthorizationCode, Client } from './OAuth2Store';
+import {
+  ErrorClientUndefined,
+  ErrorInvalidCredentials,
+  ErrorInvalidToken,
+  ErrorUserUndefined,
+} from '../../errors';
 
 class Validation {
   store: OAuth2Store;
@@ -11,21 +17,21 @@ class Validation {
   user(user, password) {
     this.userExists(user);
     if (user.password !== password) {
-      throw Error('User password does not match');
+      throw new ErrorInvalidCredentials('User password does not match');
     }
     return user;
   }
 
   userExists(user) {
     if (user == null) {
-      throw Error('User does not exist');
+      throw new ErrorUserUndefined('User does not exist');
     }
     return user;
   }
 
   clientExists(client) {
     if (client == null) {
-      throw Error('Client does not exist');
+      throw new ErrorClientUndefined('Client does not exist');
     }
     return client;
   }
@@ -33,7 +39,9 @@ class Validation {
   refreshToken(token, refreshToken, client) {
     utils.verifyToken(refreshToken, this.store.publicKey);
     if (client.id !== token.clientID) {
-      throw Error('RefreshToken clientID does not match client id given');
+      throw new ErrorInvalidCredentials(
+        'RefreshToken clientID does not match client id given',
+      );
     }
     return token;
   }
@@ -46,10 +54,14 @@ class Validation {
   ) {
     utils.verifyToken(code, this.store.publicKey);
     if (client.id !== authCode.clientId) {
-      throw Error('AuthCode clientID does not match client id given');
+      throw new ErrorInvalidCredentials(
+        'AuthCode clientID does not match client id given',
+      );
     }
     if (redirectURI !== authCode.redirectURI) {
-      throw Error('AuthCode redirectURI does not match redirectURI given');
+      throw new ErrorInvalidCredentials(
+        'AuthCode redirectURI does not match redirectURI given',
+      );
     }
     return authCode;
   }
@@ -104,7 +116,7 @@ class Validation {
     try {
       utils.verifyToken(token, this.store.publicKey);
     } catch (error) {
-      throw Error('invalid_token');
+      throw new ErrorInvalidToken('invalid_token');
     }
     let accessToken;
     accessToken = this.store.getAccessToken(token);
@@ -112,7 +124,7 @@ class Validation {
       accessToken = this.store.getRefreshToken(token);
     }
     if (!accessToken) {
-      throw Error('token not found');
+      throw new ErrorInvalidToken('token not found');
     }
     return accessToken;
   }
@@ -126,7 +138,7 @@ class Validation {
    */
   tokenExistsForHttp(token) {
     if (!token) {
-      throw Error('invalid_token');
+      throw new ErrorInvalidToken('invalid_token');
     }
     return token;
   }
@@ -140,7 +152,7 @@ class Validation {
    */
   clientExistsForHttp(client) {
     if (!client) {
-      throw Error('invalid_token');
+      throw new ErrorInvalidToken('invalid_token');
     }
     return client;
   }

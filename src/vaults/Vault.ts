@@ -5,7 +5,15 @@ import { Mutex } from 'async-mutex';
 import { VirtualFS } from 'virtualfs';
 import { EncryptedFS } from 'encryptedfs';
 import GitFrontend from '../git/GitFrontend';
+import {
+  ErrorSecretDefined,
+  ErrorSecretUndefined,
+  ErrorVaultUnimplemented,
+  ErrorVaultSharing,
+  ErrorVaultDelete,
+} from '../errors';
 import { JSONMapReplacer, JSONMapReviver, readdirRecursively } from '../utils';
+import Logger from '@matrixai/logger';
 
 interface NodeIdPermissions {
   nodeId: string;
@@ -20,6 +28,7 @@ class Vault {
   private secrets: Map<string, any>;
   private sharedNodeIds: Map<string, NodeIdPermissions>;
   private metadataPath: string;
+  private logger: Logger;
 
   private gitFrontend: GitFrontend;
 
@@ -31,6 +40,7 @@ class Vault {
     symKey: Buffer,
     baseDir: string,
     gitFrontend: GitFrontend,
+    logger: Logger,
   ) {
     // how do we create pub/priv key pair?
     // do we use the same gpg pub/priv keypair
@@ -40,10 +50,13 @@ class Vault {
 
     this.efs = new EncryptedFS(this.key, vfsInstance, vfsInstance, fs, process);
 
+    this.logger = logger;
+
     this.name = name;
     this.vaultPath = path.join(baseDir, name);
     // make the vault directory
     this.efs.mkdirSync(this.vaultPath, { recursive: true });
+    this.logger.info(`Created vault directory at '${this.vaultPath}'`);
     this.secrets = new Map();
 
     this.gitFrontend = gitFrontend;
@@ -92,6 +105,8 @@ class Vault {
       path.join(this.vaultPath, '.git', 'packed-refs'),
       '# pack-refs with: peeled fully-peeled sorted',
     );
+    this.logger.info(`Writing initial vault commit at '${path.join(this.vaultPath, '.git', 'packed-refs')}'`);
+
   }
 
   /**
@@ -120,6 +135,8 @@ class Vault {
         `${this.vaultPath}/../${this.name}`,
         `${this.vaultPath}/../${newName}`,
       );
+      this.logger.info(`Renamed vault directory at '${this.vaultPath}' to '${newName}`);
+
     } finally {
       release();
     }
@@ -194,13 +211,17 @@ class Vault {
   private async addSecretHelper(secretName: string, secret: Buffer) {
     // Check if secret already exists
     if (this.secrets.has(secretName)) {
-      throw Error('Secret already exists, try updating it instead.');
+      throw new ErrorSecretDefined(
+        'Secret already exists, try updating it instead.',
+      );
     }
     const writePath = path.join(this.vaultPath, secretName);
     // create the directory if it doesn't exist
     await this.efs.promises.mkdir(path.dirname(writePath), { recursive: true });
     // Write secret
     await this.efs.promises.writeFile(writePath, secret, {});
+    this.logger.info(`Wrote secret to directory at '${writePath}'`);
+
 
     // Update secrets map
     this.secrets.set(secretName, secret);
@@ -216,7 +237,9 @@ class Vault {
     try {
       // Check if secret already exists
       if (!this.secrets.has(secretName)) {
-        throw Error('Secret does not exist, try adding it instead.');
+        throw new ErrorSecretUndefined(
+          'Secret does not exist, try adding it instead.',
+        );
       }
       const writePath = path.join(this.vaultPath, secretName);
       // Write secret
@@ -250,7 +273,7 @@ class Vault {
         return secretBuf;
       }
     }
-    throw Error('Secret: ' + secretName + ' does not exist');
+    throw new ErrorSecretUndefined('Secret: ' + secretName + ' does not exist');
   }
 
   /**
@@ -274,6 +297,8 @@ class Vault {
           (await this.efs.promises.readdir(fsPath)).length == 0
         ) {
           await this.efs.promises.rmdir(fsPath, { recursive: true });
+          this.logger.info(`Deleted directory at '${fsPath}'`);
+
         }
         // Auto commit message
         await this.commitChanges(
@@ -284,16 +309,21 @@ class Vault {
       } else if ((await this.efs.promises.stat(fsPath)).isDirectory()) {
         if (recursive) {
           await this.efs.promises.rmdir(fsPath, { recursive: true });
+          this.logger.info(`Deleted directory at '${fsPath}'`);
           await this.commitChanges(
             [{ secretName, action: 'removed' }],
             `Remove directory: ${secretName}`,
           );
           return;
         } else {
-          throw Error('delete a vault directory must be recursive');
+          throw new ErrorVaultDelete(
+            'delete a vault directory must be recursive',
+          );
         }
       }
-      throw Error('path: ' + secretName + ' does not exist in vault');
+      throw new ErrorSecretUndefined(
+        'path: ' + secretName + ' does not exist in vault',
+      );
     } finally {
       release();
     }
@@ -308,11 +338,11 @@ class Vault {
   }
 
   tagVault() {
-    throw Error('not implemented');
+    throw new ErrorVaultUnimplemented('not implemented');
   }
 
   untagVault() {
-    throw Error('not implemented');
+    throw new ErrorVaultUnimplemented('not implemented');
   }
 
   /////////////
@@ -325,11 +355,13 @@ class Vault {
   shareVault(nodeId: string, canEdit?: boolean) {
     if (this.sharedNodeIds.has(nodeId)) {
       if (canEdit && this.sharedNodeIds.get(nodeId)?.canEdit == canEdit) {
-        throw Error(
+        throw new ErrorVaultSharing(
           'vault is already shared with given node id and has the same permissions',
         );
       } else {
-        throw Error('vault is already shared with given node id');
+        throw new ErrorVaultSharing(
+          'vault is already shared with given node id',
+        );
       }
     }
 
@@ -345,7 +377,7 @@ class Vault {
    */
   unshareVault(nodeId: string) {
     if (!this.sharedNodeIds.has(nodeId)) {
-      throw Error('vault is not shared with given nodeId');
+      throw new ErrorVaultSharing('vault is not shared with given nodeId');
     }
 
     this.sharedNodeIds.delete(nodeId);
@@ -431,6 +463,8 @@ class Vault {
       this.metadataPath,
       JSON.stringify(this.sharedNodeIds, JSONMapReplacer),
     );
+    this.logger.info(`Wrote metadata at '${this.metadataPath}'`);
+
   }
 
   private loadMetadata(): void {

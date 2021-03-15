@@ -11,6 +11,7 @@ import * as agent from '../../proto/js/Agent_pb';
 import NodeNotifications from '../NodeNotifications';
 import { Address, NodePeer } from '../Node';
 import { NodeService, INodeServer } from '../../proto/js/Node_grpc_pb';
+import { ErrorNodeNotRelay } from '../../errors';
 
 class NodeServer implements INodeServer {
   private nodeManager: NodeManager;
@@ -173,7 +174,7 @@ class NodeServer implements INodeServer {
   ) {
     try {
       if (!PK_NODE_RELAY_PUBLIC) {
-        throw Error('node is not a public relay');
+        throw new ErrorNodeNotRelay('node is not a public relay');
       } else {
         const nodeInfoReadOnly = NodePeer.fromNodeInfoReadOnlyMessage(
           call.request.toObject(),

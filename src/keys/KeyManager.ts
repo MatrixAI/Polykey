@@ -10,6 +10,7 @@ import { EncryptedFS } from 'encryptedfs';
 import { Pool, ModuleThread } from 'threads';
 import randomBytes from 'secure-random-bytes';
 import { KeyManagerWorker } from '../keys/KeyManagerWorker';
+import { ErrorKeyUndefined, ErrorNoPassphrase } from '../errors';
 import Logger from '@matrixai/logger';
 
 type KeyManagerMetadata = {
@@ -39,6 +40,7 @@ class KeyManager {
   private useWebWorkers: boolean;
   private workerPool?: Pool<ModuleThread<KeyManagerWorker>>;
   private logger: Logger;
+  started: boolean;
 
   polykeyPath: string;
   private fileSystem: typeof fs;
@@ -90,9 +92,6 @@ class KeyManager {
     // Load key manager metadata
     this.polykeyPath = polykeyPath;
     this.keypairPath = path.join(polykeyPath, '.keys');
-    if (!this.fileSystem.existsSync(this.keypairPath)) {
-      this.fileSystem.mkdirSync(this.keypairPath, { recursive: true });
-    }
     this.metadataPath = path.join(this.keypairPath, 'metadata');
     this.mnemonicFilePath = path.join(this.keypairPath, 'mnemonic');
     this.derivedKeysPath = path.join(this.keypairPath, 'derived-keys');
@@ -117,6 +116,19 @@ class KeyManager {
 
   public get KeypairUnlocked(): boolean {
     return this.primaryKeyPair.privateKey ? true : false;
+  }
+
+  async start() {
+    if (!this.fileSystem.existsSync(this.keypairPath)) {
+      this.fileSystem.mkdirSync(this.keypairPath, { recursive: true });
+      this.logger.info(`Created keypair path at '${this.keypairPath}'`);
+    }
+
+    this.started = true;
+  }
+
+  async stop() {
+    this.started = false;
   }
 
   /**
@@ -157,10 +169,12 @@ class KeyManager {
       const publicKeyPath = path.join(this.keypairPath, 'public_key');
       const privateKeyPath = path.join(this.keypairPath, 'private_key');
       await this.fileSystem.promises.writeFile(publicKeyPath, encodedPublicKey);
+      this.logger.info(`Wrote encoded public key at '${publicKeyPath}`);
       await this.fileSystem.promises.writeFile(
         privateKeyPath,
         encodedPrivateKey,
       );
+      this.logger.info(`Wrote encoded private key at '${privateKeyPath}`);
       // Set metadata
       this.metadata.publicKeyPath = publicKeyPath;
       this.metadata.privateKeyPath = privateKeyPath;
@@ -198,6 +212,7 @@ class KeyManager {
     // reencrypt data with newly generated keypair
     const encryptedVaultKeys = this.encryptData(vaultKeys.toString());
     // write encrypted data to file
+    this.logger.info(`Writing encrypted vault keys at '${vaultKeysPath}`);
     await this.fileSystem.promises.writeFile(vaultKeysPath, encryptedVaultKeys);
   }
 
@@ -221,7 +236,7 @@ class KeyManager {
    */
   getPublicKey(): pki.rsa.PublicKey {
     if (!this.primaryKeyPair.publicKey) {
-      throw Error('public key is not loaded yet');
+      throw new ErrorKeyUndefined('public key is not loaded yet');
     }
     return this.primaryKeyPair.publicKey;
   }
@@ -238,7 +253,7 @@ class KeyManager {
    */
   getPrivateKey(): pki.rsa.PrivateKey {
     if (!this.primaryKeyPair.privateKey) {
-      throw Error('private key is not loaded yet');
+      throw new ErrorKeyUndefined('private key is not loaded yet');
     }
     return this.primaryKeyPair.privateKey;
   }
@@ -314,7 +329,7 @@ class KeyManager {
             this.metadata.privateKeyPath,
           );
         } else {
-          throw Error('keypair path is not defined');
+          throw new ErrorKeyUndefined('keypair path is not defined');
         }
       }
       this.primaryKeyPair.privateKey = pki.decryptRsaPrivateKey(
@@ -364,6 +379,7 @@ class KeyManager {
   exportPrivateKey(path: string): void {
     // WARNING: note this is the unencrypted private key
     this.fileSystem.writeFileSync(path, this.getPrivateKeyString());
+    this.logger.info(`Wrote unencrypted private key to '${path}'`);
     this.metadata.privateKeyPath = path;
     this.writeMetadata();
   }
@@ -374,6 +390,7 @@ class KeyManager {
    */
   exportPublicKey(path: string): void {
     this.fileSystem.writeFileSync(path, this.getPublicKeyString());
+    this.logger.info(`Wrote unencrypted public key to '${path}'`);
     this.metadata.publicKeyPath = path;
     this.writeMetadata();
   }
@@ -471,12 +488,13 @@ class KeyManager {
    */
   exportKeySync(name: string, dest: string, createPath?: boolean): void {
     if (!this.derivedKeys.has(name)) {
-      throw Error(`There is no key loaded for name: ${name}`);
+      throw new ErrorKeyUndefined(`There is no key loaded for name: ${name}`);
     }
     if (createPath) {
       this.fileSystem.mkdirSync(path.dirname(dest), { recursive: true });
     }
     this.fileSystem.writeFileSync(dest, this.derivedKeys[name]);
+    this.logger.info(`Exported ${this.derivedKeys[name]} to '${dest}'`);
   }
 
   /**
@@ -491,7 +509,7 @@ class KeyManager {
     createPath?: boolean,
   ): Promise<void> {
     if (!this.derivedKeys.has(name)) {
-      throw Error(`There is no key loaded for name: ${name}`);
+      throw new ErrorKeyUndefined(`There is no key loaded for name: ${name}`);
     }
     if (createPath) {
       await this.fileSystem.promises.mkdir(path.dirname(dest), {
@@ -499,6 +517,7 @@ class KeyManager {
       });
     }
     await this.fileSystem.promises.writeFile(dest, this.derivedKeys[name]);
+    this.logger.info(`Exported ${this.derivedKeys[name]} to '${dest}'`);
   }
 
   /**
@@ -515,7 +534,9 @@ class KeyManager {
     let resolvedKey: pki.rsa.PrivateKey;
     if (privateKey) {
       if (!passphrase) {
-        throw Error('passphrase for private key was not provided');
+        throw new ErrorNoPassphrase(
+          'passphrase for private key was not provided',
+        );
       }
       resolvedKey = pki.decryptRsaPrivateKey(
         privateKey.toString(),
@@ -524,7 +545,7 @@ class KeyManager {
     } else if (this.primaryKeyPair.privateKey) {
       resolvedKey = this.primaryKeyPair.privateKey;
     } else {
-      throw Error('key pair is not loaded');
+      throw new ErrorKeyUndefined('key pair is not loaded');
     }
 
     if (this.useWebWorkers && this.workerPool) {
@@ -579,6 +600,7 @@ class KeyManager {
     // Write buffer to signed file
     const signedPath = `${filePath}.sig`;
     this.fileSystem.writeFileSync(signedPath, signature);
+    this.logger.info(`Signed file at '${signedPath}'`);
     return signedPath;
   }
 
@@ -599,7 +621,7 @@ class KeyManager {
     } else if (this.primaryKeyPair.publicKey) {
       resolvedKey = this.primaryKeyPair.publicKey;
     } else {
-      throw Error('key pair is not loaded');
+      throw new ErrorKeyUndefined('key pair is not loaded');
     }
 
     if (this.useWebWorkers && this.workerPool) {
@@ -660,7 +682,7 @@ class KeyManager {
       keyBuffer?.toString(),
     );
     this.fileSystem.writeFileSync(filePath, verifiedMessage);
-
+    this.logger.info(`Wrote verification message to '${filePath}'`);
     return true;
   }
 
@@ -676,7 +698,7 @@ class KeyManager {
     } else if (this.primaryKeyPair.publicKey) {
       resolvedKey = this.primaryKeyPair.publicKey;
     } else {
-      throw Error('key pair is not loaded');
+      throw new ErrorKeyUndefined('key pair is not loaded');
     }
 
     if (this.useWebWorkers && this.workerPool) {
@@ -724,6 +746,8 @@ class KeyManager {
     );
     // Write buffer to encrypted file
     this.fileSystem.writeFileSync(filePath, encryptedBuffer);
+    this.logger.info(`Encrypted file at '${filePath}'`);
+
     return filePath;
   }
 
@@ -741,7 +765,7 @@ class KeyManager {
     let resolvedKey: pki.rsa.PrivateKey;
     if (privateKey) {
       if (!passphrase) {
-        throw Error(
+        throw new ErrorNoPassphrase(
           'A key passphrase must be supplied if a privateKey is specified',
         );
       }
@@ -752,7 +776,7 @@ class KeyManager {
     } else if (this.primaryKeyPair.privateKey) {
       resolvedKey = this.primaryKeyPair.privateKey;
     } else {
-      throw Error('no identity available for decrypting');
+      throw new ErrorKeyUndefined('no identity available for decrypting');
     }
 
     if (this.useWebWorkers && this.workerPool) {
@@ -803,6 +827,7 @@ class KeyManager {
     );
     // Write buffer to decrypted file
     this.fileSystem.writeFileSync(filePath, decryptedData);
+    this.logger.info(`Decrypted data at '${filePath}'`);
     return filePath;
   }
 
@@ -836,6 +861,7 @@ class KeyManager {
   private async writeMetadata(): Promise<void> {
     const metadata = JSON.stringify(this.metadata);
     this.fileSystem.writeFileSync(this.metadataPath, metadata);
+    this.logger.info(`Wrote metadata at '${this.metadataPath}`);
     await this.writeEncryptedMetadata();
   }
 
@@ -855,10 +881,14 @@ class KeyManager {
         this.mnemonicFilePath,
         encryptedMnemonic,
       );
+      this.logger.info(`Wrote enrypted mnemonic at '${this.mnemonicFilePath}`);
       const derivedKeys = JSON.stringify(this.derivedKeys);
       await this.writeFileWithMnemonic(
         this.derivedKeysPath,
         Buffer.from(derivedKeys),
+      );
+      this.logger.info(
+        `Wrote enrypted derivded keys at '${this.derivedKeysPath}`,
       );
       // const encryptedMnemonic = JSON.stringify(this.mnemonic);
       // await this.writeFileWithMnemonic(

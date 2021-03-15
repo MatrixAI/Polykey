@@ -5,6 +5,7 @@ import { PassThrough } from 'readable-stream';
 import uploadPack from './upload-pack/uploadPack';
 import GitSideBand from './side-band/GitSideBand';
 import packObjects from './pack-objects/packObjects';
+import { ErrorRepoUndefined, ErrorMessagePrefix } from '../errors';
 import Logger from '@matrixai/logger';
 
 // Here is the protocol git outlines for sending pack files over http:
@@ -45,7 +46,7 @@ class GitBackend {
     const responseBuffers: Buffer[] = [];
 
     if (!fileSystem.existsSync(path.join(this.repoDirectoryPath, repoName))) {
-      throw Error(`repository does not exist: '${repoName}'`);
+      throw new ErrorRepoUndefined(`repository does not exist: '${repoName}'`);
     }
 
     responseBuffers.push(
@@ -73,7 +74,9 @@ class GitBackend {
         const fileSystem = this.getFileSystem(repoName);
         // Check if repo exists
         if (!fs.existsSync(path.join(this.repoDirectoryPath, repoName))) {
-          throw Error(`repository does not exist: '${repoName}'`);
+          throw new ErrorRepoUndefined(
+            `repository does not exist: '${repoName}'`,
+          );
         }
 
         if (body.toString().slice(4, 8) == 'want') {
@@ -112,7 +115,7 @@ class GitBackend {
           progressStream.write(Buffer.from('0014progress is at 50%\n'));
           progressStream.end();
         } else {
-          throw Error(
+          throw new ErrorMessagePrefix(
             "git pack request body message is not prefixed by 'want'",
           );
         }

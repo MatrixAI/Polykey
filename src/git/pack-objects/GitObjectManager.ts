@@ -2,6 +2,7 @@ import fs from 'fs';
 import pako from 'pako';
 import path from 'path';
 import GitObject from './GitObject';
+import { ErrorGitRead } from '../../errors';
 import { EncryptedFS } from 'encryptedfs';
 
 const PackfileCache = new Map();
@@ -52,12 +53,12 @@ class GitObjectManager {
         encoding: 'utf8',
       });
       if (text !== null && text.includes(oid)) {
-        throw new Error(`ReadShallowObjectFail: ${oid}`);
+        throw new ErrorGitRead(`ReadShallowObjectFail: ${oid}`);
       }
     }
     // Finally
     if (!file) {
-      throw new Error(`ReadObjectFail: ${oid}`);
+      throw new ErrorGitRead(`ReadObjectFail: ${oid}`);
     }
     if (format === 'deflated') {
       return { format: 'deflated', object: file, source };

@@ -19,6 +19,7 @@ class MTPServer extends EventEmitter {
   socket: dgram.Socket;
   closed: boolean;
   private logger: Logger;
+  private handleIncomingConnection: (conn: MTPConnection) => void;
 
   // nodeId -> connection
   private incomingConnections: Map<string, MTPConnection>;
@@ -29,11 +30,14 @@ class MTPServer extends EventEmitter {
   ) {
     super();
 
-    this.on('connection', handleIncomingConnection);
-
+    this.handleIncomingConnection = handleIncomingConnection;
     this.incomingConnections = new Map();
 
     this.logger = logger;
+  }
+
+  async start() {
+    this.on('connection', this.handleIncomingConnection);
   }
 
   // this is the udp address for the MTP server

@@ -11,12 +11,33 @@ import { spawn, SpawnOptions } from 'child_process';
 
 /** Internal Libs */
 import { getPort } from '../utils';
-import { PK_NODE_HOST, PK_NODE_PORT_TCP, PK_BOOTSTRAP_CERTS, DEFAULT_BOOTSTRP_CERT} from '../config';
+import {
+  PK_NODE_HOST,
+  PK_NODE_PORT_TCP,
+  PK_BOOTSTRAP_CERTS,
+  DEFAULT_BOOTSTRP_CERT,
+} from '../config';
 import { LinkInfo, LinkInfoIdentity } from '../links';
 import { gestaltToProtobuf } from '../gestalts';
 import { NodePeer } from '../nodes/Node';
 import Polykey, { Address, KeyManager } from '../Polykey';
 import { TLSCredentials } from '../nodes/pki/PublicKeyInfrastructure';
+import {
+  ErrorPolykey,
+  ErrorMnemonic,
+  ErrorPolykeyUndefined,
+  ErrorVerifyFile,
+  ErrorPolykeyDefined,
+  ErrorPortConnect,
+  ErrorLocked,
+  ErrorGestaltUndefined,
+  ErrorNodeInfoSecure,
+  ErrorUserCode,
+  ErrorNodeResponse,
+  ErrorKeyPath,
+  ErrorNodeIdentify,
+  ErrorPolykeyOffline,
+} from '../errors';
 
 /** Proto */
 import * as agent from '../proto/js/Agent_pb';
@@ -68,6 +89,14 @@ class PolykeyAgent implements IAgentServer {
     // set pid for stopAgent command
     this.pid = process.pid;
     this.configStore.set('pid', this.pid);
+    process.on('SIGTERM', () => {
+      this.logger.info('SIGTERM signal received: closing Polykey');
+      this.pk.stop();
+    });
+    process.on('SIGINT', () => {
+      this.logger.info('SIGINT signal received: closing Polykey');
+      this.pk.stop();
+    });
 
     /////////////////
     // GRPC Server //
@@ -81,7 +110,7 @@ class PolykeyAgent implements IAgentServer {
 
   private failOnLocked() {
     if (!this.pk.keyManager.KeypairUnlocked) {
-      throw Error(`polykey is locked at ${this.pk.nodePath}`);
+      throw new ErrorLocked(`polykey is locked at ${this.pk.nodePath}`);
     }
   }
 
@@ -355,7 +384,7 @@ class PolykeyAgent implements IAgentServer {
       // get user code
       const userCode = (await authFlow.next()).value;
       if (typeof userCode != 'string') {
-        throw Error('userCode was not a string');
+        throw new ErrorUserCode('userCode was not a string');
       }
 
       // trigger next as a lazy promise so the code can continue
@@ -481,7 +510,7 @@ class PolykeyAgent implements IAgentServer {
         fs.statSync(publicKeyPath).isDirectory() ||
         !fs.statSync(path.dirname(publicKeyPath)).isDirectory()
       ) {
-        throw Error(
+        throw new ErrorKeyPath(
           'the public key path must be a valid file path and must not exist already',
         );
       }
@@ -489,7 +518,7 @@ class PolykeyAgent implements IAgentServer {
         fs.statSync(privateKeyPath).isDirectory() ||
         !fs.statSync(path.dirname(privateKeyPath)).isDirectory()
       ) {
-        throw Error(
+        throw new ErrorKeyPath(
           'the private key path must be a valid file path and must not exist already',
         );
       }
@@ -646,7 +675,7 @@ class PolykeyAgent implements IAgentServer {
         providerKey,
       );
       if (!gestalt) {
-        throw Error('gestalt was not found');
+        throw new ErrorGestaltUndefined('gestalt was not found');
       }
       const response = gestaltToProtobuf(gestalt);
       callback(null, response);
@@ -764,7 +793,7 @@ class PolykeyAgent implements IAgentServer {
       const { s } = call.request!.toObject();
       const nodeInfo = this.pk.nodeManager.getNodeInfo(s);
       if (!nodeInfo) {
-        throw Error('public key does not exist in node store');
+        throw new ErrorNodeIdentify('public key does not exist in node store');
       }
       const response = new agent.NodeInfoMessage();
       response.setNodeId(nodeInfo.id);
@@ -1042,7 +1071,7 @@ class PolykeyAgent implements IAgentServer {
       const { passphrase, nbits } = call.request!.toObject();
       // check node is already initialized
       if (fs.existsSync(path.join(this.pk.nodePath, '.keys', 'private_key'))) {
-        throw Error(
+        throw new ErrorPolykeyDefined(
           `polykey keypair already exists at node path: '${this.pk.nodePath}'`,
         );
       }
@@ -1052,11 +1081,11 @@ class PolykeyAgent implements IAgentServer {
         fs,
         this.logger.getChild('KeyManager'),
       );
-
+      km.start();
       await km.generateKeyPair(passphrase, nbits, true);
 
       // stop old polykey and start new one to avoid conflicts of tcp/udp ports
-      await this.pk.stopAllServices();
+      await this.pk.stop();
       this.pk = new Polykey(this.pk.nodePath, fs, km);
 
       // re-load all meta data
@@ -1065,7 +1094,7 @@ class PolykeyAgent implements IAgentServer {
       await this.pk.vaultManager.loadEncryptedMetadata();
 
       // finally start all services
-      await this.pk.startAllServices();
+      await this.pk.start();
 
       // add bootstrap nodes
       this.addBootstrapNodeInfo();
@@ -1139,7 +1168,9 @@ class PolykeyAgent implements IAgentServer {
         timeout,
       );
       if (!successful) {
-        throw Error('node did not respond to ping before timeout');
+        throw new ErrorNodeResponse(
+          'node did not respond to ping before timeout',
+        );
       }
       callback(null, new agent.EmptyMessage());
     } catch (error) {
@@ -1328,13 +1359,23 @@ class PolykeyAgent implements IAgentServer {
   ) {
     try {
       clearInterval(this.pidCheckInterval);
-      this.pk.nodeManager.multicastBroadcaster.stopBroadcasting();
+      //this.pk.nodeManager.multicastBroadcaster.stopBroadcasting();
       this.configStore.clear();
       callback(null, new agent.EmptyMessage());
       await promisify(this.server.tryShutdown.bind(this.server))();
     } catch (error) {
       callback(error, null);
     } finally {
+      // this may be the reason for the async leak, the grpc server for the agent is not being closed down properly
+      // this.server.tryShutdown((err) => {
+      //   if (err) {
+      //     this.logger.error(
+      //       `Ran into errors when shutting down grpc server: ${err}`,
+      //     );
+      //   }
+      //   process.kill(this.pid);
+      // });
+      this.pk.stop();
       // finally kill the pid of the agent process
       if (process.env.NODE_ENV !== 'test') {
         process.kill(this.pid);
@@ -1421,7 +1462,7 @@ class PolykeyAgent implements IAgentServer {
       await this.pk.vaultManager.loadEncryptedMetadata();
 
       // finally start all services
-      await this.pk.startAllServices();
+      await this.pk.start();
 
       // add bootstrap nodes
       this.addBootstrapNodeInfo();
@@ -1473,34 +1514,36 @@ class PolykeyAgent implements IAgentServer {
       } = call.request!.toObject();
 
       if (nodeId) {
-        throw Error('cannot modify nodeId');
+        throw new ErrorNodeInfoSecure('cannot modify nodeId');
       }
       if (alias) {
         this.pk.nodeManager.nodeInfo.alias = alias;
       }
       if (publicKey) {
-        throw Error('cannot modify publicKey, try recycling keypair instead');
+        throw new ErrorNodeInfoSecure(
+          'cannot modify publicKey, try recycling keypair instead',
+        );
       }
       if (rootPublicKey) {
-        throw Error('cannot modify rootPublicKey');
+        throw new ErrorNodeInfoSecure('cannot modify rootPublicKey');
       }
       if (nodeAddress) {
-        throw Error(
+        throw new ErrorNodeInfoSecure(
           'cannot modify nodeAddress, try setting PK_BOOTSTRAP_HOSTS or PK_BOOTSTRAP_PORT_TCP env variables instead',
         );
       }
       if (apiAddress) {
-        throw Error(
+        throw new ErrorNodeInfoSecure(
           'cannot modify nodeAddress, try setting PK_NODE_ADDR_HTTP or PK_NODE_PORT_HTTP env variables instead',
         );
       }
       if (linkInfoList) {
-        throw Error(
+        throw new ErrorNodeInfoSecure(
           'cannot modify proofList, try using the social proof API instead',
         );
       }
       if (pem) {
-        throw Error(
+        throw new ErrorNodeInfoSecure(
           'cannot modify nodeInfo pem as it is signed and managed internally',
         );
       }
@@ -1534,10 +1577,12 @@ class PolykeyAgent implements IAgentServer {
       } else if (pem) {
         nodeInfo = new NodePeer(pem);
       } else {
-        throw Error('nodeId or pem must be specified to identify node');
+        throw new ErrorNodeIdentify(
+          'nodeId or pem must be specified to identify node',
+        );
       }
       if (!nodeInfo || !this.pk.nodeManager.hasNode(nodeInfo.id)) {
-        throw 'node does not exist in store';
+        throw new ErrorNodeIdentify('node does not exist in store');
       }
       if (unsignedAlias) {
         nodeInfo.alias = unsignedAlias;
@@ -1598,7 +1643,7 @@ class PolykeyAgent implements IAgentServer {
         publicKeyPath,
       );
       if (!verified) {
-        throw Error('file could not be verified');
+        throw new ErrorVerifyFile('file could not be verified');
       }
       callback(null, new agent.EmptyMessage());
     } catch (error) {
@@ -1616,7 +1661,7 @@ class PolykeyAgent implements IAgentServer {
       const { s } = call.request!.toObject();
       const verified = await this.pk.keyManager.verifyMnemonic(s);
       if (!verified) {
-        throw Error('mnemonic was incorrect');
+        throw new ErrorMnemonic('mnemonic was incorrect');
       }
       callback(null, new agent.EmptyMessage());
     } catch (error) {
@@ -1633,7 +1678,7 @@ class PolykeyAgent implements IAgentServer {
     const port = parseInt(configStore.get('port'));
 
     if (!port) {
-      throw Error(
+      throw new ErrorPortConnect(
         `polykey agent is not started at polykey path: '${polykeyPath}'`,
       );
     } else {
@@ -1653,7 +1698,7 @@ class PolykeyAgent implements IAgentServer {
         );
         return client;
       } catch (error) {
-        throw Error('agent is offline');
+        throw new ErrorPolykeyOffline('agent is offline');
       }
     }
   }
@@ -1990,7 +2035,7 @@ class PolykeyAgent implements IAgentServer {
           failOnNotInitialized &&
           !fs.existsSync(path.join(polykeyPath, '.keys', 'private_key'))
         ) {
-          throw Error(
+          throw new ErrorPolykeyUndefined(
             `polykey node has not been initialized, initialize with 'pk agent init'`,
           );
         }

@@ -23,6 +23,7 @@ import MTPPacket, {
   timestamp,
   bufferToPacket,
 } from './MTPPacket';
+import { ErrorPortNumber, ErrorNoPacket } from '../../errors';
 
 class MTPConnection extends Duplex {
   private nodeId: string;
@@ -64,7 +65,7 @@ class MTPConnection extends Duplex {
     this.remoteAddress = new Address(host, port);
 
     if (isNaN(port)) {
-      throw Error('port cannot be NaN');
+      throw new ErrorPortNumber('port cannot be NaN');
     }
     this.port = port;
     this.host = host;
@@ -282,7 +283,7 @@ class MTPConnection extends Duplex {
     for (let i = 0; i < this.inflightPackets; i++) {
       const packet = this.outgoing.get(offset + i);
       if (!packet) {
-        throw Error('packet does not exist');
+        throw new ErrorNoPacket('packet does not exist');
       }
       if (uint32(packet.sent! - now) >= timeout) {
         this.transmit(packet);

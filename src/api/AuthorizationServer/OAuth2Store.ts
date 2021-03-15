@@ -1,3 +1,11 @@
+import {
+  ErrorAuthCodeUndefined,
+  ErrorInvalidCredentials,
+  ErrorInvalidSecret,
+  ErrorTokenUndefined,
+  ErrorUserUndefined,
+  ErrorClientUndefined,
+} from '../../errors';
 import { createUuid } from './utils';
 
 class AuthorizationCode {
@@ -69,7 +77,7 @@ class Client {
 
   validate(secret: string) {
     if (this.secret != secret) {
-      throw Error('secret does not match');
+      throw new ErrorInvalidSecret('secret does not match');
     }
   }
 }
@@ -104,7 +112,7 @@ class User {
 
   validate(password: string) {
     if (this.password != password) {
-      throw Error('password does not match');
+      throw new ErrorInvalidCredentials('password does not match');
     }
   }
 }
@@ -139,7 +147,7 @@ class OAuth2Store {
 
   getAuthorizationCode(code: string): AuthorizationCode {
     if (!this.accessCodeStore.has(code)) {
-      throw Error('authorization code does not exist');
+      throw new ErrorAuthCodeUndefined('authorization code does not exist');
     }
     return this.accessCodeStore.get(code)!;
   }
@@ -172,7 +180,7 @@ class OAuth2Store {
 
   getAccessToken(token: string): AccessToken {
     if (!this.accessTokenStore.has(token)) {
-      throw Error('access token does not exist');
+      throw new ErrorTokenUndefined('access token does not exist');
     }
     return this.accessTokenStore.get(token)!;
   }
@@ -206,7 +214,7 @@ class OAuth2Store {
 
   getRefreshToken(token: string): AccessToken {
     if (!this.refreshTokenStore.has(token)) {
-      throw Error('refresh token does not exist');
+      throw new ErrorTokenUndefined('refresh token does not exist');
     }
     return this.refreshTokenStore.get(token)!;
   }
@@ -240,7 +248,7 @@ class OAuth2Store {
 
   getClient(id: string): Client {
     if (!this.clientStore.has(id)) {
-      throw Error('client does not exist');
+      throw new ErrorClientUndefined('client does not exist');
     }
     return this.clientStore.get(id)!;
   }
@@ -288,7 +296,7 @@ class OAuth2Store {
 
   getUser(id: string): User {
     if (!this.userStore.has(id)) {
-      throw Error('user does not exist');
+      throw new ErrorUserUndefined('user does not exist');
     }
     return this.userStore.get(id)!;
   }
@@ -296,7 +304,7 @@ class OAuth2Store {
   findUserByUsername(username: string): User {
     const values = Array.from(this.userStore.values());
     if (values.findIndex((v) => v.username == username) == -1) {
-      throw Error('user does not exist');
+      throw new ErrorUserUndefined('user does not exist');
     }
     return values.find((v) => v.username == username)!;
   }

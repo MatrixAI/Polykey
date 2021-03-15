@@ -3,6 +3,8 @@ import path from 'path';
 import { pki, md } from 'node-forge';
 import { PK_BOOTSTRAP_HOSTS } from '../../config';
 import { Node } from '../Node';
+import { ErrorUnverifiedSignature } from '../../errors';
+import Logger from '@matrixai/logger';
 
 type TLSCredentials = {
   rootCertificate: string;
@@ -30,6 +32,8 @@ class PublicKeyInfrastructure {
   // certificate signed by another
   private keypair: pki.rsa.KeyPair;
   private certificate: pki.Certificate;
+
+  private logger: Logger;
 
   public get CACertificates(): string {
     return this.CAStore.listAllCertificates()
@@ -79,9 +83,12 @@ class PublicKeyInfrastructure {
     fileSystem: typeof fs,
     getLocalNodeInfo: () => Node,
     getPrivateKey: () => pki.rsa.PrivateKey,
+    logger: Logger,
   ) {
     this.commonName = PK_BOOTSTRAP_HOSTS ?? 'localhost';
     this.pkiPath = path.join(polykeyPath, '.pki');
+
+    this.logger = logger;
 
     this.CAStore = pki.createCaStore();
     this.pkiFs = fileSystem;
@@ -139,10 +146,10 @@ class PublicKeyInfrastructure {
     // verify certification request
     try {
       if (!csr.verify(csr)) {
-        throw new Error('Signature not verified.');
+        throw new ErrorUnverifiedSignature('Signature not verified.');
       }
     } catch (err) {
-      throw new Error('Signature not verified.');
+      throw new ErrorUnverifiedSignature('Signature not verified.');
     }
 
     // // TODO validate challenge password
@@ -514,17 +521,20 @@ class PublicKeyInfrastructure {
         path.join(this.pkiPath, 'keypair'),
         Buffer.from(this.keyPairToJSON(this.keypair)),
       );
+      this.logger.info(`Wrote keypair at '${path.join(this.pkiPath, 'keypair')}'`);
       if (this.certificate) {
         this.pkiFs.writeFileSync(
           path.join(this.pkiPath, 'certificate'),
           Buffer.from(pki.certificateToPem(this.certificate)),
         );
       }
+      this.logger.info(`Wrote certificate at '${path.join(this.pkiPath, 'certificate')}'`);
       // write certificate chain
       this.pkiFs.writeFileSync(
         path.join(this.pkiPath, 'certificate_chain'),
         Buffer.from(JSON.stringify(this.CertChain)),
       );
+      this.logger.info(`Wrote certificate chain at '${path.join(this.pkiPath, 'certificate_chain')}'`);
 
       // write ca store
       const certsJson = JSON.stringify(
@@ -534,6 +544,8 @@ class PublicKeyInfrastructure {
         path.join(this.pkiPath, 'ca_store_certificates'),
         certsJson,
       );
+      this.logger.info(`Wrote ca store certificates at '${path.join(this.pkiPath, 'ca_store_certificates')}'`);
+
     }
   }
 

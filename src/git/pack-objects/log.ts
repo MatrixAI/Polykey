@@ -3,6 +3,7 @@ import GitCommit from './GitCommit';
 import { EncryptedFS } from 'encryptedfs';
 import GitObjectManager from './GitObjectManager';
 import GitRefManager from '../upload-pack/GitRefManager';
+import { ErrorGitUnrecognisedType } from '../../errors';
 
 async function logCommit(
   fileSystem: EncryptedFS,
@@ -17,7 +18,7 @@ async function logCommit(
       oid,
     );
     if (type !== 'commit') {
-      throw new Error('expected type to be commit');
+      throw new ErrorGitUnrecognisedType('expected type to be commit');
     }
     const commit = GitCommit.from(object);
     const result = Object.assign({ oid }, commit.parse());

@@ -1,3 +1,4 @@
+import { ErrorURLParse, ErrorGitMethod } from '../errors';
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
  */
@@ -27,7 +28,7 @@ class GitRequest {
       // Info request
       const match = u.pathname.match(/\/(.+)\/info\/refs$/);
       if (!match || /\.\./.test(match[1])) {
-        throw new Error('Error');
+        throw new ErrorURLParse('Error');
       }
 
       const vaultName = match![1];
@@ -46,7 +47,7 @@ class GitRequest {
       // Info request
       const match = u.pathname.match(/\/(.+)\/git-(.+)/);
       if (!match || /\.\./.test(match[1])) {
-        throw new Error('Error');
+        throw new ErrorURLParse('Error');
       }
 
       const vaultName = match![1];
@@ -62,7 +63,7 @@ class GitRequest {
         headers: headers,
       };
     } else {
-      throw new Error('Method not supported');
+      throw new ErrorGitMethod('Method not supported');
     }
   }
 

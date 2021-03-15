@@ -9,6 +9,7 @@ import {
   outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
+import { ErrorPolykeyOffline, ErrorPortConnect } from '@/errors';
 
 const commandStartAgent = createCommand('start', {
   verbose: true,

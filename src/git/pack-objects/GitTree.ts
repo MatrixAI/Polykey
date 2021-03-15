@@ -1,3 +1,7 @@
+import {
+  ErrorGitUnrecognisedFile,
+  ErrorGitUnrecognisedType,
+} from '../../errors';
 /*::
 type TreeEntry = {
   mode: string,
@@ -13,13 +17,13 @@ function parseBuffer(buffer) {
   while (cursor < buffer.length) {
     const space = buffer.indexOf(32, cursor);
     if (space === -1) {
-      throw new Error(
+      throw new ErrorGitUnrecognisedType(
         `GitTree: Error parsing buffer at byte location ${cursor}: Could not find the next space character.`,
       );
     }
     const nullchar = buffer.indexOf(0, cursor);
     if (nullchar === -1) {
-      throw new Error(
+      throw new ErrorGitUnrecognisedType(
         `GitTree: Error parsing buffer at byte location ${cursor}: Could not find the next null character.`,
       );
     }
@@ -44,7 +48,7 @@ function limitModeToAllowed(mode) {
   if (mode.match(/^1007.*/)) return '100755'; // Regular executable file
   if (mode.match(/^120.*/)) return '120000'; // Symbolic link
   if (mode.match(/^160.*/)) return '160000'; // Commit (git submodule reference)
-  throw new Error(`Could not understand file mode: ${mode}`);
+  throw new ErrorGitUnrecognisedFile(`Could not understand file mode: ${mode}`);
 }
 
 function nudgeIntoShape(entry) {
@@ -69,7 +73,9 @@ class GitTree {
     } else if (Array.isArray(entries)) {
       this._entries = entries.map(nudgeIntoShape);
     } else {
-      throw new Error('invalid type passed to GitTree constructor');
+      throw new ErrorGitUnrecognisedType(
+        'invalid type passed to GitTree constructor',
+      );
     }
   }
 

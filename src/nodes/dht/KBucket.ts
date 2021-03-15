@@ -1,4 +1,5 @@
 import { arrayEquals } from '../../utils';
+import { ErrorContactsAmount, ErrorUpdateKBucket } from '../../errors';
 
 // this is an adaptation of the awesome k-buckets library but with specific polykey use in mind:
 // https://github.com/tristanls/k-bucket
@@ -149,7 +150,7 @@ class KBucket {
   closest(nodeId: string, num = Infinity): string[] {
     const idU8 = this.nodeIdToU8(nodeId);
     if ((!Number.isInteger(num) && num !== Infinity) || num <= 0) {
-      throw new TypeError('n is not positive number');
+      throw new ErrorContactsAmount('n is not positive number');
     }
 
     let contacts: Uint8Array[] = [];
@@ -409,7 +410,7 @@ class KBucket {
   private update(node: Node, index: number, contact: Uint8Array) {
     // sanity check
     if (node.contacts && !arrayEquals(node.contacts[index], contact)) {
-      throw new Error('wrong index for update');
+      throw new ErrorUpdateKBucket('wrong index for update');
     }
 
     const incumbent = node.contacts![index];

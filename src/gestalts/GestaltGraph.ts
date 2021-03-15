@@ -23,6 +23,7 @@ import { ProviderManager } from '../identities';
 import { gestaltKey } from './utils';
 import NodeManager from '../nodes/NodeManager';
 import GestaltTrust from './GestaltTrust';
+import { ErrorGestaltUnimplemented } from '../errors';
 import Logger from '@matrixai/logger';
 import { getNodePath } from '@/utils';
 
@@ -75,14 +76,17 @@ class GestaltGraph {
     if (this.graph) {
       fs.mkdirSync(path.dirname(this.graphData), { recursive: true });
       fs.writeFileSync(this.graphData, JSON.stringify(this.graph));
+      this.logger.info(`Creating directory and storing graph data at '${this.graphData}'`)
     }
     if (this.nodes) {
       fs.mkdirSync(path.dirname(this.nodesData), { recursive: true });
       fs.writeFileSync(this.nodesData, JSON.stringify(this.nodes));
+      this.logger.info(`Creating directory and storing nodes data at '${this.nodesData}'`)
     }
     if (this.identities) {
       fs.mkdirSync(path.dirname(this.identitiesData), { recursive: true });
       fs.writeFileSync(this.identitiesData, JSON.stringify(this.identities));
+      this.logger.info(`Creating directory and storing identities data at '${this.identitiesData}'`)
     }
   }
 
@@ -319,7 +323,7 @@ class GestaltGraph {
 
         for (const linkInfo of linkInfos) {
           if (linkInfo.type === 'node') {
-            throw new Error('UNIMPLEMENTED');
+            throw new ErrorGestaltUnimplemented('UNIMPLEMENTED');
           } else if (linkInfo.type === 'identity') {
             // this has to use md5 hash?
             if (Node.publicKeyToId(linkInfo.node) !== nodeInfo.id) {

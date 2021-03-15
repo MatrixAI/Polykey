@@ -6,6 +6,11 @@ import { md, pki } from 'node-forge';
 import { gestaltKey, GestaltKey } from '../gestalts';
 import * as agentInterface from '../proto/js/Agent_pb';
 import { JSONMapReplacer, JSONMapReviver } from '../utils';
+import {
+  ErrorAddressParse,
+  ErrorPubKeyChange,
+  ErrorNodePeerInfoChange,
+} from '../errors';
 
 class Address {
   host: string;
@@ -61,7 +66,7 @@ class Address {
     addressString: string,
   ): { host: string; port: number } {
     if (!addressString || addressString == '') {
-      throw Error(`cannot parse empty or undefined string`);
+      throw new ErrorAddressParse(`cannot parse empty or undefined string`);
     }
     const url = new URL('http://' + addressString);
     return { host: url.hostname, port: Number(url.port) };
@@ -92,7 +97,7 @@ class Node {
     return this.internalPublicKey;
   }
   public set publicKey(publicKey: string) {
-    throw Error('cannot change public key once set');
+    throw new ErrorPubKeyChange('cannot change public key once set');
   }
 
   // node root certificate for trusted connections
@@ -313,7 +318,8 @@ class Node {
     const linkInfoListString: string = attributes.get('1.3.1.4.5');
     let linkInfoList: Map<GestaltKey, LinkInfo> = new Map();
     if (linkInfoListString) {
-      linkInfoList = JSON.parse(linkInfoListString, JSONMapReviver) ?? new Map();
+      linkInfoList =
+        JSON.parse(linkInfoListString, JSONMapReviver) ?? new Map();
     }
 
     return {
@@ -349,32 +355,40 @@ class NodePeer extends Node {
     return this.internalPem;
   }
   public set pem(value: string) {
-    throw Error('pem cannot be set');
+    throw new ErrorNodePeerInfoChange('pem cannot be set');
   }
   public get id(): string {
     return super.id;
   }
   public set id(v: string) {
-    throw Error('cannot set nodeId on a readonly node info');
+    throw new ErrorNodePeerInfoChange(
+      'cannot set nodeId on a readonly node info',
+    );
   }
   public get publicKey(): string {
     return super.publicKey;
   }
   public set publicKey(v: string) {
-    throw Error('cannot set publicKey on a readonly node info');
+    throw new ErrorNodePeerInfoChange(
+      'cannot set publicKey on a readonly node info',
+    );
   }
   public get rootPublicKey(): string {
     return super.rootPublicKey;
   }
   public set rootPublicKey(v: string) {
-    throw Error('cannot set rootPublicKey on a readonly node info');
+    throw new ErrorNodePeerInfoChange(
+      'cannot set rootPublicKey on a readonly node info',
+    );
   }
   public get linkInfoList(): LinkInfo[] {
     // underlying array should be immutable
     return [...super.linkInfoList];
   }
   public set linkInfoList(v: LinkInfo[]) {
-    throw Error('cannot set proofList on a readonly node info');
+    throw new ErrorNodePeerInfoChange(
+      'cannot set proofList on a readonly node info',
+    );
   }
 
   // the only 3 things that can change in a read only node info

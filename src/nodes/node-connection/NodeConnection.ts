@@ -6,6 +6,7 @@ import * as node from '../../proto/js/Node_pb';
 import { NodeClient } from '../../proto/js/Node_grpc_pb';
 import { NodePeer, Address } from '../Node';
 import PublicKeyInfrastructure from '../pki/PublicKeyInfrastructure';
+import { ErrorFindNode, ErrorConnectionExists } from '../../errors';
 import Logger from '@matrixai/logger';
 
 class NodeConnection {
@@ -66,7 +67,7 @@ class NodeConnection {
 
     const nodeInfo = this.getNodeInfo(this.nodeId);
     if (!nodeInfo) {
-      throw Error('node info was not found in node store');
+      throw new ErrorFindNode('node info was not found in node store');
     }
     // const nodeInfoPem = Buffer.from(nodeInfo.pem);
     // const tlsClientCredentials = this.pki.createClientCredentials();
@@ -103,7 +104,7 @@ class NodeConnection {
       this.connected = true;
       return nodeClient;
     } else {
-      throw Error('node does not have a connected address');
+      throw new ErrorFindNode('node does not have a connected address');
     }
   }
 
@@ -113,7 +114,7 @@ class NodeConnection {
       // try to find node directly from intermediary nodes
       const nodeId = this.getNodeInfo(this.nodeId)?.id;
       if (!nodeId) {
-        throw Error('connectDHT: node was not found in node store');
+        throw new ErrorFindNode('connectDHT: node was not found in node store');
       }
       const { targetNodeInfo } = await this.findNodeDHT(nodeId);
 
@@ -134,7 +135,7 @@ class NodeConnection {
       const client = await promiseAny(promiseList);
       return client;
     } catch (error) {
-      throw Error(`could not find node via dht: ${error}`);
+      throw new ErrorFindNode(`could not find node via dht: ${error}`);
     }
   }
 
@@ -207,7 +208,7 @@ class NodeConnection {
       }
       return await promiseAny(promiseList);
     }
-    throw Error('node is already connected!');
+    throw new ErrorConnectionExists('node is already connected!');
   }
 
   private async connect(

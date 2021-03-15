@@ -3,7 +3,8 @@ import { EventEmitter } from 'events';
 import { PK_NODE_MULTICAST_PORT, PK_NODE_MULTICAST_HOST } from '../../config';
 import KeyManager from '../../keys/KeyManager';
 import { Node, NodePeer } from '../../nodes/Node';
-
+import { ErrorSelfMessage, ErrorUnknownNodeMessage } from '../../errors';
+import Logger from '@matrixai/logger';
 // This module is based heavily on libp2p's mDNS module:
 // https://github.com/libp2p/js-libp2p-mdns
 // It is supposed to discover nodes on the local network
@@ -22,6 +23,7 @@ class MulticastBroadcaster extends EventEmitter {
   addNode: (nodeInfo: NodePeer) => void;
   updateNode: (nodeInfo: NodePeer) => void;
   private keyManager: KeyManager;
+  private logger: Logger;
 
   private socket: dgram.Socket;
 
@@ -33,6 +35,7 @@ class MulticastBroadcaster extends EventEmitter {
     addNode: (nodeInfo: NodePeer) => void,
     updateNode: (nodeInfo: NodePeer) => void,
     keyManager: KeyManager,
+    logger: Logger,
   ) {
     super();
 
@@ -41,10 +44,16 @@ class MulticastBroadcaster extends EventEmitter {
     this.addNode = addNode;
     this.updateNode = updateNode;
     this.keyManager = keyManager;
+    this.logger = logger;
+  }
 
+  async start() {
     // Create socket
     this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
     this.socket.bind(PK_NODE_MULTICAST_PORT as number);
+    this.logger.info(
+      `Created UDP dgram socket bound to '${PK_NODE_MULTICAST_PORT}'`,
+    );
 
     // Set up listener
     this.socket.on(
@@ -54,6 +63,9 @@ class MulticastBroadcaster extends EventEmitter {
         // Start the broadcasting process
         this.startBroadcasting();
       }).bind(this),
+    );
+    this.logger.info(
+      `UDP dgram socket listening at address '${PK_NODE_MULTICAST_HOST}'`,
     );
   }
 
@@ -100,9 +112,9 @@ class MulticastBroadcaster extends EventEmitter {
 
       // only relevant if node public key exists in store and type is of PING
       if (this.getNodeInfo().id == nodeInfo.id) {
-        throw Error('node message is from self');
+        throw new ErrorSelfMessage('node message is from self');
       } else if (!this.hasNode(nodeInfo.id)) {
-        throw Error('node does not exist in store');
+        throw new ErrorUnknownNodeMessage('node does not exist in store');
       }
 
       // update the node store

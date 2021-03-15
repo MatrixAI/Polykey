@@ -10,7 +10,7 @@ import randomBytes from 'secure-random-bytes';
 import cryptoRandomString from 'crypto-random-string';
 
 /** Internal  */
-import { ErrorPolykey } from './errors';
+import { ErrorPolykey, ErrorSecretPath } from './errors';
 import { PK_NODE_PATH } from './config';
 
 /**
@@ -46,7 +46,7 @@ function parseSecretPath(secretPath: string): SecretPathComponents {
     secretPath.length < 1 ||
     (secretPath.length == 1 && !pathRegex.test(secretPath[0]))
   ) {
-    throw Error('secret path is of the wrong format');
+    throw new ErrorSecretPath('secret path is of the wrong format');
   }
 
   const [, vaultName, secretName, variableName] = secretPath.match(pathRegex)!;

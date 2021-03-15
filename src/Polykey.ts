@@ -119,7 +119,7 @@ class Polykey {
     // TODO: this stuff is still just a WIP, so need to fix any hardcoded values after demo
     this.providerManager = new ProviderManager([
       new GitHubProvider(
-        new ProviderTokens(this.nodePath, 'github.com'),
+        new ProviderTokens(this.nodePath, 'github.com', this.logger.getChild('ProviderTokens')),
         'ca5c4c520da868387c52',
         this.logger.getChild('GithubProvider'),
       ),
@@ -177,13 +177,19 @@ class Polykey {
       this.logger.error(error);
     }
   }
-  async startAllServices() {
+  async start() {
     this.loadGestaltGraph();
+    if (!this.keyManager.started) {
+      await this.keyManager.start();
+    }
     await this.nodeManager.start();
+    await this.vaultManager.start();
     // await this.httpApi.start();
   }
-  async stopAllServices() {
+
+  async stop() {
     await this.nodeManager.stop();
+    this.keyManager.stop();
     // await this.httpApi.stop();
   }
 }

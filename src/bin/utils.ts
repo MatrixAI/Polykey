@@ -27,6 +27,11 @@ type OutputObject =
   | {
       type: 'json';
       data: any;
+    }
+  | {
+      type: 'error';
+      data: Array<string>;
+      code: number;
     };
 
 function verboseToLogLevel(c: number): LogLevel {

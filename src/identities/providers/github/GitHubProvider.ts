@@ -12,7 +12,7 @@ import {
   ErrorProviderCall,
   ErrorProviderAuthentication,
   ErrorProviderUnauthenticated,
-} from '../../errors';
+} from '../../../errors';
 import Logger from '@matrixai/logger';
 
 type Username = string;

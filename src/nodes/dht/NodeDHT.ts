@@ -4,6 +4,7 @@ import { promisifyGrpc } from '../../bin/utils';
 import * as nodeInterface from '../../proto/js/Node_pb';
 import * as agentInterface from '../../proto/js/Agent_pb';
 import NodeConnection from '../node-connection/NodeConnection';
+import { ErrorCloseNodesUndefined, ErrorNodeIDUndefined } from '../../errors';
 
 // this implements a very basic map of known node connections
 // TODO: implement full kademlia algorithm for distributed node connection table
@@ -176,7 +177,9 @@ class NodeDHT {
 
     // If there are no closest nodes, we have failed to find that node
     if (closestNodeIds.length === 0) {
-      throw Error('node lookup failed, no close nodes found');
+      throw new ErrorCloseNodesUndefined(
+        'node lookup failed, no close nodes found',
+      );
     }
 
     // Query the network until the node public key is found
@@ -224,7 +227,7 @@ class NodeDHT {
             targetNodeInfo: foundNodeInfo,
           };
         } else {
-          throw Error('node id was not found');
+          throw new ErrorNodeIDUndefined('node id was not found');
         }
       } catch (error) {
         // don't want to throw if node contact failed so just log it

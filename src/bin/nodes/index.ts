@@ -9,6 +9,7 @@ import {
   outputFormatter,
 } from '../utils';
 import { getNodePath } from '../../utils';
+import commander from 'commander';
 
 const commandAddNode = createCommand('add', { verbose: true, format: true });
 commandAddNode.description('add a new node to the store');
@@ -296,47 +297,33 @@ const commandStealth = createCommand('stealth', {
   format: true,
 });
 commandStealth.description('toggle stealth mode on or off');
-
-const commandStealthActive = commandStealth.createCommand('active');
-commandStealthActive.option(
+commandStealth.option(
   '-np, --node-path <nodePath>',
   'provide the polykey path',
 );
-commandStealthActive.action(async (options, command) => {
+commandStealth.addOption(
+  new commander.Option(
+    '-a, --active <active>',
+    'set the stealth mode',
+  ).choices(['on', 'off']),
+);
+commandStealth.action(async (options, command) => {
   const logLevel = verboseToLogLevel(options.verbose);
   const logger = command.logger;
   logger.setLevel(logLevel);
   const nodePath = getNodePath(options.nodePath);
   const client = await getAgentClient(nodePath, logger);
   const request = new agentPB.BooleanMessage();
-  request.setB(true);
+  if (options.active === 'on') {
+    request.setB(true);
+  } else {
+    request.setB(false);
+  }
   await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
   process.stdout.write(
     outputFormatter({
       type: options.format === 'json' ? 'json' : 'list',
-      data: [`Stealth active`],
-    }),
-  );
-});
-
-const commandStealthInactive = commandStealth.createCommand('inactive');
-commandStealthInactive.option(
-  '-np, --node-path <nodePath>',
-  'provide the polykey path',
-);
-commandStealthInactive.action(async (options, command) => {
-  const logLevel = verboseToLogLevel(options.verbose);
-  const logger = command.logger;
-  logger.setLevel(logLevel);
-  const nodePath = getNodePath(options.nodePath);
-  const client = await getAgentClient(nodePath, logger);
-  const request = new agentPB.BooleanMessage();
-  request.setB(false);
-  await promisifyGrpc(client.toggleStealthMode.bind(client))(request);
-  process.stdout.write(
-    outputFormatter({
-      type: options.format === 'json' ? 'json' : 'list',
-      data: [`Stealth inactive`],
+      data: [`Stealth ${options.active}`],
     }),
   );
 });
