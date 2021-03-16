@@ -16,7 +16,7 @@ import { createCommand } from './utils';
 async function main(argv = process.argv): Promise<number> {
   const rootCommand = createCommand();
   // Do this manually as it will break the folder structure when building and importing package.json here
-  rootCommand.version('0.0.33');
+  rootCommand.version('0.0.41');
   rootCommand.enablePositionalOptions();
   rootCommand.exitOverride();
   rootCommand.addCommand(commandKeys);
