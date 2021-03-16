@@ -17,14 +17,6 @@ pkgs.mkShell {
 
     export PATH="$(pwd)/dist/bin:$(npm bin):$PATH"
 
-    # grpc-tools are installed in package.json
-    # this ensures that in nix-shell we are using the nix packaged versions
-    export PATH="${lib.makeBinPath
-      [
-        grpc-tools
-      ]
-    }:$PATH"
-
     npm install
     mkdir --parents "$(pwd)/tmp"
 
