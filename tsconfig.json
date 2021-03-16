@@ -13,6 +13,7 @@
     "module": "CommonJS",
     "target": "ES2016",
     "baseUrl": "./src",
+    "skipLibCheck": true,
     "paths": {
       "@": ["index"],
       "@/*": ["*"]

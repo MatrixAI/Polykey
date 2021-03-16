@@ -18,17 +18,13 @@ function deserialize_agentInterface_EmptyMessage(buffer_arg) {
 
 function serialize_agentInterface_NodeInfoReadOnlyMessage(arg) {
   if (!(arg instanceof Agent_pb.NodeInfoReadOnlyMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.NodeInfoReadOnlyMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.NodeInfoReadOnlyMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_NodeInfoReadOnlyMessage(buffer_arg) {
-  return Agent_pb.NodeInfoReadOnlyMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.NodeInfoReadOnlyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_StringMessage(arg) {
@@ -77,32 +73,24 @@ function deserialize_nodeInterface_MessageRequest(buffer_arg) {
 
 function serialize_nodeInterface_NodeDHTFindNodeReply(arg) {
   if (!(arg instanceof Node_pb.NodeDHTFindNodeReply)) {
-    throw new Error(
-      'Expected argument of type nodeInterface.NodeDHTFindNodeReply',
-    );
+    throw new Error('Expected argument of type nodeInterface.NodeDHTFindNodeReply');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_nodeInterface_NodeDHTFindNodeReply(buffer_arg) {
-  return Node_pb.NodeDHTFindNodeReply.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Node_pb.NodeDHTFindNodeReply.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_nodeInterface_NodeDHTFindNodeRequest(arg) {
   if (!(arg instanceof Node_pb.NodeDHTFindNodeRequest)) {
-    throw new Error(
-      'Expected argument of type nodeInterface.NodeDHTFindNodeRequest',
-    );
+    throw new Error('Expected argument of type nodeInterface.NodeDHTFindNodeRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_nodeInterface_NodeDHTFindNodeRequest(buffer_arg) {
-  return Node_pb.NodeDHTFindNodeRequest.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Node_pb.NodeDHTFindNodeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_nodeInterface_PackReply(arg) {
@@ -149,12 +137,13 @@ function deserialize_nodeInterface_VaultNamesReply(buffer_arg) {
   return Node_pb.VaultNamesReply.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+
 // ////////////////
 // Node Service //
 // ////////////////
-var NodeService = (exports.NodeService = {
+var NodeService = exports.NodeService = {
   // general p2p stuff
-  pingNode: {
+pingNode: {
     path: '/nodeInterface.Node/PingNode',
     requestStream: false,
     responseStream: false,
@@ -166,7 +155,7 @@ var NodeService = (exports.NodeService = {
     responseDeserialize: deserialize_nodeInterface_PingNodeMessage,
   },
   // git
-  getGitInfo: {
+getGitInfo: {
     path: '/nodeInterface.Node/GetGitInfo',
     requestStream: false,
     responseStream: false,
@@ -211,14 +200,14 @@ var NodeService = (exports.NodeService = {
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
   // // === NAT traversal === //
-  // // BindAddress is for a client to request a public relay node to bind its UDP address
-  // // this method returns the udp address of the public relay nodes' main udp socket
-  // // it will bind the local udp socket to the remote one which creates a NAT table entry
-  // // note: only public relay nodes can respond
-  // rpc BindAddress (agentInterface.NodeInfoReadOnlyMessage) returns (agentInterface.StringMessage) {};
-  // // === Hole Punching
-  //
-  getUDPAddress: {
+// // BindAddress is for a client to request a public relay node to bind its UDP address
+// // this method returns the udp address of the public relay nodes' main udp socket
+// // it will bind the local udp socket to the remote one which creates a NAT table entry
+// // note: only public relay nodes can respond
+// rpc BindAddress (agentInterface.NodeInfoReadOnlyMessage) returns (agentInterface.StringMessage) {};
+// // === Hole Punching
+//
+getUDPAddress: {
     path: '/nodeInterface.Node/GetUDPAddress',
     requestStream: false,
     responseStream: false,
@@ -230,7 +219,7 @@ var NodeService = (exports.NodeService = {
     responseDeserialize: deserialize_agentInterface_StringMessage,
   },
   // CA functionality
-  getRootCertificate: {
+getRootCertificate: {
     path: '/nodeInterface.Node/GetRootCertificate',
     requestStream: false,
     responseStream: false,
@@ -253,7 +242,7 @@ var NodeService = (exports.NodeService = {
     responseDeserialize: deserialize_agentInterface_StringMessage,
   },
   // DHT Functionality
-  nodeDHTFindNode: {
+nodeDHTFindNode: {
     path: '/nodeInterface.Node/NodeDHTFindNode',
     requestStream: false,
     responseStream: false,
@@ -264,6 +253,6 @@ var NodeService = (exports.NodeService = {
     responseSerialize: serialize_nodeInterface_NodeDHTFindNodeReply,
     responseDeserialize: deserialize_nodeInterface_NodeDHTFindNodeReply,
   },
-});
+};
 
 exports.NodeClient = grpc.makeGenericClientConstructor(NodeService);

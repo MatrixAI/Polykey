@@ -45,7 +45,7 @@ class VaultManager {
   private metadataMutex: Mutex = new Mutex();
 
   constructor(
-    polykeyPath = `${os.homedir()}/.polykey`,
+    polykeyPath = `${os.homedir()}/polykey`,
     fileSystem: typeof fs,
     keyManager: KeyManager,
     connectToNode: (nodeId: string) => NodeConnection,

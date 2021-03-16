@@ -11,7 +11,7 @@ import { spawn, SpawnOptions } from 'child_process';
 
 /** Internal Libs */
 import { getPort } from '../utils';
-import { PK_NODE_HOST, PK_NODE_PORT_TCP } from '../config';
+import { PK_NODE_HOST, PK_NODE_PORT_TCP, PK_BOOTSTRAP_CERTS, DEFAULT_BOOTSTRP_CERT} from '../config';
 import { LinkInfo, LinkInfoIdentity } from '../links';
 import { gestaltToProtobuf } from '../gestalts';
 import { NodePeer } from '../nodes/Node';
@@ -206,17 +206,27 @@ class PolykeyAgent implements IAgentServer {
 
   private addBootstrapNodeInfo() {
     this.logger.info('adding bootstrap node info');
-    const bootstrapNodeInfoPath =
-      process.env.BOOTSTRAP_NODE_INFO_PATH ??
-      path.join(os.homedir(), 'bootstrapNode.pem');
-    const bootstrapNodeInfo = new NodePeer(
-      fs.readFileSync(bootstrapNodeInfoPath).toString(),
-    );
-    if (this.pk.nodeManager.hasNode(bootstrapNodeInfo.id)) {
-      this.pk.nodeManager.updateNode(bootstrapNodeInfo);
-    } else {
-      this.pk.nodeManager.addNode(bootstrapNodeInfo);
+
+    let bootstrapCerts: string[] | null = null;
+
+    if (PK_BOOTSTRAP_CERTS) {
+      bootstrapCerts = PK_BOOTSTRAP_CERTS.split(':').map((pkBootstrapPath) => {
+        return fs.readFileSync(pkBootstrapPath).toString();
+      });
     }
+
+    if (!bootstrapCerts) {
+      bootstrapCerts = DEFAULT_BOOTSTRP_CERT;
+    }
+
+    bootstrapCerts!.forEach((bootstrapPem) => {
+      const bootstrapNodeInfo = new NodePeer(bootstrapPem);
+      if (this.pk.nodeManager.hasNode(bootstrapNodeInfo.id)) {
+        this.pk.nodeManager.updateNode(bootstrapNodeInfo);
+      } else {
+        this.pk.nodeManager.addNode(bootstrapNodeInfo);
+      }
+    });
   }
 
   async addNode(
@@ -1030,7 +1040,6 @@ class PolykeyAgent implements IAgentServer {
   ) {
     try {
       const { passphrase, nbits } = call.request!.toObject();
-
       // check node is already initialized
       if (fs.existsSync(path.join(this.pk.nodePath, '.keys', 'private_key'))) {
         throw Error(
@@ -1399,6 +1408,7 @@ class PolykeyAgent implements IAgentServer {
   ) {
     try {
       const { passphrase, timeout } = call.request!.toObject();
+
       if (this.pk.keyManager.KeypairUnlocked) {
         this.pk.keyManager.refreshTimeout(timeout);
       } else {

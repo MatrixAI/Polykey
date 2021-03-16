@@ -454,7 +454,7 @@ class GitHubProvider extends Provider {
     return new Request(url, {
       ...options,
       headers,
-    });
+    }) as Request;
   }
 
   protected matchIdentityInfo(

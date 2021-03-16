@@ -373,38 +373,29 @@ npm run build
 ```
 This will create a dist folder.
 ## Proto Files
-All `.proto` files are stored in the the `proto` directory. JavaScript and type definition files are build using the following command:
+All `.proto` files are stored in the the `src/proto` directory. JavaScript and type definition files are build using the following command:
 
+We use:
 ```
-npm run build:proto
+grpc_tools_node_protoc_ts@5.0.1
 ```
-
----
-
-```
-protoc \
-  --proto_path=src/proto/schemas \
-  --plugin=protoc-gen-grpc="$(which grpc_node_plugin)" \
-  --js_out=import_style=commonjs,binary:src/proto/js \
-  --ts_out="src/proto/js" \
-  --grpc_out=grpc_js:src/proto/js \
-  ./src/proto/schemas/*.proto
+In package.json, this looks like (specifically locked):
+```json
+"grpc_tools_node_protoc_ts": "5.0.1",
 ```
 
-or
+To generate the `proto` files:
 
 ```
 protoc \
   --proto_path=src/proto/schemas \
   --plugin=protoc-gen-grpc="$(which grpc_node_plugin)" \
   --js_out=import_style=commonjs,binary:src/proto/js \
+  --ts_out=grpc_js:src/proto/js \
   --grpc_out=grpc_js:src/proto/js \
   ./src/proto/schemas/*.proto
 ```
 
-Once we have grpc-tools packaged properly.
-
-```
 # builds the dependency graph
 arkit ./src -o ./media/dependencies.png
 
