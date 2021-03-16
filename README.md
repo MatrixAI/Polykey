@@ -396,15 +396,13 @@ protoc \
   ./src/proto/schemas/*.proto
 ```
 
-# builds the dependency graph
+# Builds the dependency graph
+
+```
 arkit ./src -o ./media/dependencies.png
 
 typedoc --media ./media
 ```
-
-Other build instructions above ^.
-
----
 
 ## Deployment
 
