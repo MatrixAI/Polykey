@@ -38,6 +38,7 @@ service Agent {
   rpc ListKeys (EmptyMessage) returns (StringListMessage) {};
   rpc ListSecrets (StringMessage) returns (StringListMessage) {};
   rpc ListVaults (EmptyMessage) returns (StringListMessage) {};
+  rpc ListNodes (EmptyMessage) returns (StringListMessage) {};
   rpc LockNode (EmptyMessage) returns (EmptyMessage) {};
   rpc NewClientCertificate (NewClientCertificateMessage) returns (NewClientCertificateMessage) {};
   rpc NewSecret (SecretContentMessage) returns (EmptyMessage) {};

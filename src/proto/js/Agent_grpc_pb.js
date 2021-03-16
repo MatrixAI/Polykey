@@ -6,77 +6,57 @@ var Agent_pb = require('./Agent_pb.js');
 
 function serialize_agentInterface_AgentStatusMessage(arg) {
   if (!(arg instanceof Agent_pb.AgentStatusMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.AgentStatusMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.AgentStatusMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_AgentStatusMessage(buffer_arg) {
-  return Agent_pb.AgentStatusMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.AgentStatusMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_AugmentKeynodeReply(arg) {
   if (!(arg instanceof Agent_pb.AugmentKeynodeReply)) {
-    throw new Error(
-      'Expected argument of type agentInterface.AugmentKeynodeReply',
-    );
+    throw new Error('Expected argument of type agentInterface.AugmentKeynodeReply');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_AugmentKeynodeReply(buffer_arg) {
-  return Agent_pb.AugmentKeynodeReply.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.AugmentKeynodeReply.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_AugmentKeynodeRequest(arg) {
   if (!(arg instanceof Agent_pb.AugmentKeynodeRequest)) {
-    throw new Error(
-      'Expected argument of type agentInterface.AugmentKeynodeRequest',
-    );
+    throw new Error('Expected argument of type agentInterface.AugmentKeynodeRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_AugmentKeynodeRequest(buffer_arg) {
-  return Agent_pb.AugmentKeynodeRequest.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.AugmentKeynodeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_AuthenticateProviderReply(arg) {
   if (!(arg instanceof Agent_pb.AuthenticateProviderReply)) {
-    throw new Error(
-      'Expected argument of type agentInterface.AuthenticateProviderReply',
-    );
+    throw new Error('Expected argument of type agentInterface.AuthenticateProviderReply');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_AuthenticateProviderReply(buffer_arg) {
-  return Agent_pb.AuthenticateProviderReply.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.AuthenticateProviderReply.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_AuthenticateProviderRequest(arg) {
   if (!(arg instanceof Agent_pb.AuthenticateProviderRequest)) {
-    throw new Error(
-      'Expected argument of type agentInterface.AuthenticateProviderRequest',
-    );
+    throw new Error('Expected argument of type agentInterface.AuthenticateProviderRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_AuthenticateProviderRequest(buffer_arg) {
-  return Agent_pb.AuthenticateProviderRequest.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.AuthenticateProviderRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_BooleanMessage(arg) {
@@ -92,62 +72,46 @@ function deserialize_agentInterface_BooleanMessage(buffer_arg) {
 
 function serialize_agentInterface_ContactNodeMessage(arg) {
   if (!(arg instanceof Agent_pb.ContactNodeMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.ContactNodeMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.ContactNodeMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_ContactNodeMessage(buffer_arg) {
-  return Agent_pb.ContactNodeMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.ContactNodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_DecryptFileMessage(arg) {
   if (!(arg instanceof Agent_pb.DecryptFileMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.DecryptFileMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.DecryptFileMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_DecryptFileMessage(buffer_arg) {
-  return Agent_pb.DecryptFileMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.DecryptFileMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_DeriveKeyMessage(arg) {
   if (!(arg instanceof Agent_pb.DeriveKeyMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.DeriveKeyMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.DeriveKeyMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_DeriveKeyMessage(buffer_arg) {
-  return Agent_pb.DeriveKeyMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.DeriveKeyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_DeriveKeyPairMessage(arg) {
   if (!(arg instanceof Agent_pb.DeriveKeyPairMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.DeriveKeyPairMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.DeriveKeyPairMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_DeriveKeyPairMessage(buffer_arg) {
-  return Agent_pb.DeriveKeyPairMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.DeriveKeyPairMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_EmptyMessage(arg) {
@@ -163,32 +127,24 @@ function deserialize_agentInterface_EmptyMessage(buffer_arg) {
 
 function serialize_agentInterface_EncryptFileMessage(arg) {
   if (!(arg instanceof Agent_pb.EncryptFileMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.EncryptFileMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.EncryptFileMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_EncryptFileMessage(buffer_arg) {
-  return Agent_pb.EncryptFileMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.EncryptFileMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_GestaltListMessage(arg) {
   if (!(arg instanceof Agent_pb.GestaltListMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.GestaltListMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.GestaltListMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_GestaltListMessage(buffer_arg) {
-  return Agent_pb.GestaltListMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.GestaltListMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_GestaltMessage(arg) {
@@ -215,17 +171,13 @@ function deserialize_agentInterface_IdentityInfo(buffer_arg) {
 
 function serialize_agentInterface_IdentityInfoMessage(arg) {
   if (!(arg instanceof Agent_pb.IdentityInfoMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.IdentityInfoMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.IdentityInfoMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_IdentityInfoMessage(buffer_arg) {
-  return Agent_pb.IdentityInfoMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.IdentityInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_IdentityMessage(arg) {
@@ -252,62 +204,46 @@ function deserialize_agentInterface_KeyPairMessage(buffer_arg) {
 
 function serialize_agentInterface_NewClientCertificateMessage(arg) {
   if (!(arg instanceof Agent_pb.NewClientCertificateMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.NewClientCertificateMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.NewClientCertificateMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_NewClientCertificateMessage(buffer_arg) {
-  return Agent_pb.NewClientCertificateMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.NewClientCertificateMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_NewKeyPairMessage(arg) {
   if (!(arg instanceof Agent_pb.NewKeyPairMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.NewKeyPairMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.NewKeyPairMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_NewKeyPairMessage(buffer_arg) {
-  return Agent_pb.NewKeyPairMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.NewKeyPairMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_NewOAuthTokenMessage(arg) {
   if (!(arg instanceof Agent_pb.NewOAuthTokenMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.NewOAuthTokenMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.NewOAuthTokenMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_NewOAuthTokenMessage(buffer_arg) {
-  return Agent_pb.NewOAuthTokenMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.NewOAuthTokenMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_NodeAliasMessage(arg) {
   if (!(arg instanceof Agent_pb.NodeAliasMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.NodeAliasMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.NodeAliasMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_NodeAliasMessage(buffer_arg) {
-  return Agent_pb.NodeAliasMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.NodeAliasMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_NodeInfoMessage(arg) {
@@ -323,17 +259,13 @@ function deserialize_agentInterface_NodeInfoMessage(buffer_arg) {
 
 function serialize_agentInterface_NodeInfoReadOnlyMessage(arg) {
   if (!(arg instanceof Agent_pb.NodeInfoReadOnlyMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.NodeInfoReadOnlyMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.NodeInfoReadOnlyMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_NodeInfoReadOnlyMessage(buffer_arg) {
-  return Agent_pb.NodeInfoReadOnlyMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.NodeInfoReadOnlyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_NodeMessage(arg) {
@@ -349,122 +281,90 @@ function deserialize_agentInterface_NodeMessage(buffer_arg) {
 
 function serialize_agentInterface_NodeNotifMessage(arg) {
   if (!(arg instanceof Agent_pb.NodeNotifMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.NodeNotifMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.NodeNotifMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_NodeNotifMessage(buffer_arg) {
-  return Agent_pb.NodeNotifMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.NodeNotifMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_OAuthClientMessage(arg) {
   if (!(arg instanceof Agent_pb.OAuthClientMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.OAuthClientMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.OAuthClientMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_OAuthClientMessage(buffer_arg) {
-  return Agent_pb.OAuthClientMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.OAuthClientMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_ProviderSearchMessage(arg) {
   if (!(arg instanceof Agent_pb.ProviderSearchMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.ProviderSearchMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.ProviderSearchMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_ProviderSearchMessage(buffer_arg) {
-  return Agent_pb.ProviderSearchMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.ProviderSearchMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_RecoverKeynodeMessage(arg) {
   if (!(arg instanceof Agent_pb.RecoverKeynodeMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.RecoverKeynodeMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.RecoverKeynodeMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_RecoverKeynodeMessage(buffer_arg) {
-  return Agent_pb.RecoverKeynodeMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.RecoverKeynodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_RenameVaultMessage(arg) {
   if (!(arg instanceof Agent_pb.RenameVaultMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.RenameVaultMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.RenameVaultMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_RenameVaultMessage(buffer_arg) {
-  return Agent_pb.RenameVaultMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.RenameVaultMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_SecretContentMessage(arg) {
   if (!(arg instanceof Agent_pb.SecretContentMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.SecretContentMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.SecretContentMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_SecretContentMessage(buffer_arg) {
-  return Agent_pb.SecretContentMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.SecretContentMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_SecretPathMessage(arg) {
   if (!(arg instanceof Agent_pb.SecretPathMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.SecretPathMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.SecretPathMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_SecretPathMessage(buffer_arg) {
-  return Agent_pb.SecretPathMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.SecretPathMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_ShareVaultMessage(arg) {
   if (!(arg instanceof Agent_pb.ShareVaultMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.ShareVaultMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.ShareVaultMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_ShareVaultMessage(buffer_arg) {
-  return Agent_pb.ShareVaultMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.ShareVaultMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_SignFileMessage(arg) {
@@ -480,17 +380,13 @@ function deserialize_agentInterface_SignFileMessage(buffer_arg) {
 
 function serialize_agentInterface_StringListMessage(arg) {
   if (!(arg instanceof Agent_pb.StringListMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.StringListMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.StringListMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_StringListMessage(buffer_arg) {
-  return Agent_pb.StringListMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.StringListMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_StringMessage(arg) {
@@ -506,68 +402,53 @@ function deserialize_agentInterface_StringMessage(buffer_arg) {
 
 function serialize_agentInterface_UnlockNodeMessage(arg) {
   if (!(arg instanceof Agent_pb.UnlockNodeMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.UnlockNodeMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.UnlockNodeMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_UnlockNodeMessage(buffer_arg) {
-  return Agent_pb.UnlockNodeMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.UnlockNodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_VaultPathMessage(arg) {
   if (!(arg instanceof Agent_pb.VaultPathMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.VaultPathMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.VaultPathMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_VaultPathMessage(buffer_arg) {
-  return Agent_pb.VaultPathMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.VaultPathMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_VaultStatsMessage(arg) {
   if (!(arg instanceof Agent_pb.VaultStatsMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.VaultStatsMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.VaultStatsMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_VaultStatsMessage(buffer_arg) {
-  return Agent_pb.VaultStatsMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.VaultStatsMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_VerifyFileMessage(arg) {
   if (!(arg instanceof Agent_pb.VerifyFileMessage)) {
-    throw new Error(
-      'Expected argument of type agentInterface.VerifyFileMessage',
-    );
+    throw new Error('Expected argument of type agentInterface.VerifyFileMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_agentInterface_VerifyFileMessage(buffer_arg) {
-  return Agent_pb.VerifyFileMessage.deserializeBinary(
-    new Uint8Array(buffer_arg),
-  );
+  return Agent_pb.VerifyFileMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
+
 
 // /////////////////
 // Agent Service //
 // /////////////////
-var AgentService = (exports.AgentService = {
+var AgentService = exports.AgentService = {
   addNode: {
     path: '/agentInterface.Agent/AddNode',
     requestStream: false,
@@ -898,17 +779,6 @@ var AgentService = (exports.AgentService = {
     responseSerialize: serialize_agentInterface_StringListMessage,
     responseDeserialize: deserialize_agentInterface_StringListMessage,
   },
-  listNodes: {
-    path: '/agentInterface.Agent/ListNodes',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.EmptyMessage,
-    responseType: Agent_pb.StringListMessage,
-    requestSerialize: serialize_agentInterface_EmptyMessage,
-    requestDeserialize: deserialize_agentInterface_EmptyMessage,
-    responseSerialize: serialize_agentInterface_StringListMessage,
-    responseDeserialize: deserialize_agentInterface_StringListMessage,
-  },
   listSecrets: {
     path: '/agentInterface.Agent/ListSecrets',
     requestStream: false,
@@ -922,6 +792,17 @@ var AgentService = (exports.AgentService = {
   },
   listVaults: {
     path: '/agentInterface.Agent/ListVaults',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.StringListMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_StringListMessage,
+    responseDeserialize: deserialize_agentInterface_StringListMessage,
+  },
+  listNodes: {
+    path: '/agentInterface.Agent/ListNodes',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.EmptyMessage,
@@ -1250,6 +1131,6 @@ var AgentService = (exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
-});
+};
 
 exports.AgentClient = grpc.makeGenericClientConstructor(AgentService);

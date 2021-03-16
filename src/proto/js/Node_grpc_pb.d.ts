@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as grpc from "@grpc/grpc-js";
+import {handleClientStreamingCall} from "@grpc/grpc-js/build/src/server-call";
 import * as Node_pb from "./Node_pb";
 import * as Agent_pb from "./Agent_pb";
 
@@ -147,7 +148,7 @@ export interface INodeClient {
 }
 
 export class NodeClient extends grpc.Client implements INodeClient {
-    constructor(address: string, credentials: grpc.ChannelCredentials, options?: object);
+    constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
     public pingNode(request: Node_pb.PingNodeMessage, callback: (error: grpc.ServiceError | null, response: Node_pb.PingNodeMessage) => void): grpc.ClientUnaryCall;
     public pingNode(request: Node_pb.PingNodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Node_pb.PingNodeMessage) => void): grpc.ClientUnaryCall;
     public pingNode(request: Node_pb.PingNodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Node_pb.PingNodeMessage) => void): grpc.ClientUnaryCall;

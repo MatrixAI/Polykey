@@ -3,6 +3,7 @@
 .env*
 !.env.example
 /result*
+/src/certs/*.key
 
 # Logs
 logs

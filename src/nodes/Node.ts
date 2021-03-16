@@ -301,7 +301,7 @@ class Node {
 
     // create a mapping from type to value
     const attributes: Map<string, any> = new Map();
-    cert.issuer.attributes.forEach((a) => {
+    cert.subject.attributes.forEach((a) => {
       attributes.set(a.type, a.value);
     });
 
@@ -311,8 +311,11 @@ class Node {
     const nodeAddress: string = attributes.get('1.3.1.4.3') ?? '';
     const apiAddress: string = attributes.get('1.3.1.4.4') ?? '';
     const linkInfoListString: string = attributes.get('1.3.1.4.5');
-    const linkInfoList: Map<GestaltKey, LinkInfo> =
-      JSON.parse(linkInfoListString, JSONMapReviver) ?? new Map();
+    let linkInfoList: Map<GestaltKey, LinkInfo> = new Map();
+    if (linkInfoListString) {
+      linkInfoList = JSON.parse(linkInfoListString, JSONMapReviver) ?? new Map();
+    }
+
     return {
       alias,
       publicKey: pki.publicKeyToPem(cert.publicKey),

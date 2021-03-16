@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as grpc from "@grpc/grpc-js";
+import {handleClientStreamingCall} from "@grpc/grpc-js/build/src/server-call";
 import * as Agent_pb from "./Agent_pb";
 
 interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
@@ -38,9 +39,9 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     initializeNode: IAgentService_IInitializeNode;
     listOAuthTokens: IAgentService_IListOAuthTokens;
     listKeys: IAgentService_IListKeys;
-    listNodes: IAgentService_IListNodes;
     listSecrets: IAgentService_IListSecrets;
     listVaults: IAgentService_IListVaults;
+    listNodes: IAgentService_IListNodes;
     lockNode: IAgentService_ILockNode;
     newClientCertificate: IAgentService_INewClientCertificate;
     newSecret: IAgentService_INewSecret;
@@ -342,15 +343,6 @@ interface IAgentService_IListKeys extends grpc.MethodDefinition<Agent_pb.EmptyMe
     responseSerialize: grpc.serialize<Agent_pb.StringListMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.StringListMessage>;
 }
-interface IAgentService_IListNodes extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringListMessage> {
-    path: "/agentInterface.Agent/ListNodes";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
-    requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.StringListMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.StringListMessage>;
-}
 interface IAgentService_IListSecrets extends grpc.MethodDefinition<Agent_pb.StringMessage, Agent_pb.StringListMessage> {
     path: "/agentInterface.Agent/ListSecrets";
     requestStream: false;
@@ -362,6 +354,15 @@ interface IAgentService_IListSecrets extends grpc.MethodDefinition<Agent_pb.Stri
 }
 interface IAgentService_IListVaults extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringListMessage> {
     path: "/agentInterface.Agent/ListVaults";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.StringListMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.StringListMessage>;
+}
+interface IAgentService_IListNodes extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.StringListMessage> {
+    path: "/agentInterface.Agent/ListNodes";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
@@ -664,9 +665,9 @@ export interface IAgentServer {
     initializeNode: grpc.handleUnaryCall<Agent_pb.NewKeyPairMessage, Agent_pb.EmptyMessage>;
     listOAuthTokens: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
     listKeys: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
-    listNodes: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
     listSecrets: grpc.handleUnaryCall<Agent_pb.StringMessage, Agent_pb.StringListMessage>;
     listVaults: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
+    listNodes: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.StringListMessage>;
     lockNode: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.EmptyMessage>;
     newClientCertificate: grpc.handleUnaryCall<Agent_pb.NewClientCertificateMessage, Agent_pb.NewClientCertificateMessage>;
     newSecret: grpc.handleUnaryCall<Agent_pb.SecretContentMessage, Agent_pb.EmptyMessage>;
@@ -786,15 +787,15 @@ export interface IAgentClient {
     listKeys(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    listNodes(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listSecrets(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listSecrets(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listSecrets(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listVaults(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listVaults(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     listVaults(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    listNodes(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     lockNode(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     lockNode(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     lockNode(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -884,7 +885,7 @@ export interface IAgentClient {
 }
 
 export class AgentClient extends grpc.Client implements IAgentClient {
-    constructor(address: string, credentials: grpc.ChannelCredentials, options?: object);
+    constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
     public addNode(request: Agent_pb.NodeInfoReadOnlyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public addNode(request: Agent_pb.NodeInfoReadOnlyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
     public addNode(request: Agent_pb.NodeInfoReadOnlyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringMessage) => void): grpc.ClientUnaryCall;
@@ -972,15 +973,15 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public listKeys(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listKeys(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    public listNodes(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    public listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
-    public listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listSecrets(request: Agent_pb.StringMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listSecrets(request: Agent_pb.StringMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listSecrets(request: Agent_pb.StringMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listVaults(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listVaults(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public listVaults(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    public listNodes(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    public listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
+    public listNodes(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.StringListMessage) => void): grpc.ClientUnaryCall;
     public lockNode(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public lockNode(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public lockNode(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;

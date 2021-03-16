@@ -12,6 +12,12 @@
     },
     {
       "name": "Robert Cronin"
+    },
+    {
+      "name": "Lucas Lin"
+    },
+    {
+      "name": "Gideon Rosales"
     }
   ],
   "description": "Polykey Core Library",
@@ -32,12 +38,13 @@
   "types": "dist/Polykey.d.ts",
   "scripts": {
     "build": "tsc",
-    "postbuild": "cp -fR src/schemas src/proto src/openapi.yaml dist",
+    "postbuild": "cp -fR src/schemas src/proto src/openapi.yaml dist && mkdir -p dist/certs && cp -f src/certs/*.crt src/certs/*.pub dist/certs",
     "ts-node": "ts-node -r tsconfig-paths/register",
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
-    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts"
+    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts",
+    "bootstrap-certs": "scripts/bootstrap-certs.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.2.4",
@@ -51,7 +58,6 @@
     "configstore": "^5.0.1",
     "cross-fetch": "^3.0.6",
     "crypto-random-string": "^3.3.1",
-    "dotenv": "^8.2.0",
     "encryptedfs": "^1.0.2",
     "express": "^4.17.1",
     "express-openapi-validator": "^4.0.4",
@@ -102,6 +108,8 @@
     "eslint": "^7.17.0",
     "eslint-config-prettier": "^7.1.0",
     "eslint-plugin-prettier": "^3.3.1",
+    "grpc-tools": "1.10.0",
+    "grpc_tools_node_protoc_ts": "5.0.1",
     "jest": "^26.6.3",
     "prettier": "^2.2.1",
     "swagger-node-codegen": "^1.6.3",

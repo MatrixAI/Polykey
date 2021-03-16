@@ -75,7 +75,7 @@ class KeyManager {
   }
 
   constructor(
-    polykeyPath = `${os.homedir()}/.polykey`,
+    polykeyPath = `${os.homedir()}/polykey`,
     fileSystem: typeof fs,
     logger: Logger,
     useWebWorkers = false,
