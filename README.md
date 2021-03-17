@@ -2,7 +2,7 @@
 
 ## Overview
 
-PolyKey is decentralised distributed peer to peer secret sharing & secret
+PolyKey is decentralised distributed peer to peer (P2P) secret sharing & secret
 management system. It is intended to be used by both humans and machines.
 It synthesise a unified workflow between interctive password management and
 infrastructure key management.
@@ -20,11 +20,6 @@ For an in-depth specification of PolKey's behaviour see the
 [wiki](https://github.com/MatrixAI/js-polykey/wiki).
 
 ---
-
-## Class Dependencies
-
-In order to better understand how the pieces of PolyKey fit together, use this dependency DAG as reference:
-<img src="./media/dependencies.png">
 
 ## KeyManager
 This class is responsible for managing the public and private keys as well as any crypto operations using those keys. The symmetric vault keys are also managed by this instance.
