@@ -1,11 +1,28 @@
-# Polykey (library)
+# PolyKey (library)
+
 ## Overview
 
-js-polykey is the library used in the distributed secret sharing `PolyKey` app. You can find the actual application [here](https://github.com/matrixai/polykey).  A polykey node is comprised of one or many Vaults to store Secrets. These vaults are encrypted with keys derived from the master private key. Secrets always remain encrypted on disk and are only decrypted in memory. All you need to connect with and share secrets with another keynode on the same local area network is it's public key, poykey takes care of discovery. Once connected, you can securely share vaults with each other and polykey will ensure those vaults are synced.
+PolyKey is decentralised distributed peer to peer secret sharing & secret
+management system. It is intended to be used by both humans and machines.
+It synthesise a unified workflow between interctive password management and
+infrastructure key management.
 
-PolyKey requires a public/private keypair for all crypto operations, this can be provided to a pre-initialized KeyManager instance before polykey is initialized or it can be generated (this is the default).
+This project PolyKey (library) is the core library for running PolyKey. It
+provides a CLI `polykey` or `pk` for interacting with the PolyKey system. The
+main desktop GUI is located at https://github.com/MatrixAI/PolyKey.
+
+PolyKey involves running distributed keynodes, which we will refer to as "nodes".
+A host system can run multiple nodes. Each node manages one or more vaults which
+are encrypted filesystems with automatic version history. You can share these
+vaults with other users of PolyKey who are running their own keynodes.
+
+For an in-depth specification of PolKey's behaviour see the
+[wiki](https://github.com/MatrixAI/js-polykey/wiki).
+
+---
 
 ## Class Dependencies
+
 In order to better understand how the pieces of PolyKey fit together, use this dependency DAG as reference:
 <img src="./media/dependencies.png">
 
