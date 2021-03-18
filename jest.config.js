@@ -10,7 +10,8 @@ module.exports = {
     "**/?(*.)+(spec|test|unit.test).+(ts|tsx|js)"
   ],
   "transform": {
-    "^.+\\.tsx?$": "ts-jest"
+    "^.+\\.tsx?$": "ts-jest",
+    "^.+\\.jsx?$": "babel-jest"
   },
   setupFiles: [
     "<rootDir>/tests/setup.ts"
