@@ -2,26 +2,34 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import process from 'process';
-import { promisify } from 'util';
-import { md, pki } from 'node-forge';
-import ConfigStore from 'configstore';
-import * as grpc from '@grpc/grpc-js';
-import Logger from '@matrixai/logger';
 import { spawn, SpawnOptions } from 'child_process';
+import { promisify } from 'util';
+import Conf from 'conf';
+import * as grpc from '@grpc/grpc-js';
+import { pki, md } from 'node-forge';
+import Logger from '@matrixai/logger';
 
-/** Internal Libs */
-import { getPort } from '../utils';
-import {
-  PK_NODE_HOST,
-  PK_NODE_PORT_TCP,
-  PK_BOOTSTRAP_CERTS,
-  DEFAULT_BOOTSTRP_CERT,
-} from '../config';
+// this wraps Polykey
+// and pulls up the grpc server
+// this is a race condition
+// import { getPort } from '../utils';
+// import {
+//   PK_NODE_HOST,
+//   PK_NODE_PORT_TCP,
+//   PK_BOOTSTRAP_CERTS,
+//   DEFAULT_BOOTSTRP_CERT,
+// } from '../config';
+// the config thing is wrong
+// we don't want to use env variables anymore
+// PolykeyAgent is a top level thing
+
+import Polykey, { Address, KeyManager } from '../Polykey';
 import { LinkInfo, LinkInfoIdentity } from '../links';
 import { gestaltToProtobuf } from '../gestalts';
 import { NodePeer } from '../nodes/Node';
-import Polykey, { Address, KeyManager } from '../Polykey';
 import { TLSCredentials } from '../nodes/pki/PublicKeyInfrastructure';
+import * as agent from '../proto/js/Agent_pb';
+import { AgentService, IAgentServer, AgentClient, } from '../proto/js/Agent_grpc_pb';
 import {
   ErrorPolykey,
   ErrorMnemonic,
@@ -37,15 +45,7 @@ import {
   ErrorKeyPath,
   ErrorNodeIdentify,
   ErrorPolykeyOffline,
-} from '../errors';
-
-/** Proto */
-import * as agent from '../proto/js/Agent_pb';
-import {
-  AgentService,
-  IAgentServer,
-  AgentClient,
-} from '../proto/js/Agent_grpc_pb';
+} from '../errors2';
 
 class PolykeyAgent implements IAgentServer {
   private pid: number;

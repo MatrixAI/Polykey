@@ -3,6 +3,9 @@
 /default.nix
 /shell.nix
 /release.nix
+/babel.config.js
+/CONTRIBUTING.md
+/jest.config.js
 /tsconfig.json
 /src
 /tests

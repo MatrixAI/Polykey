@@ -1,5 +1,5 @@
 async function setup() {
-  console.log('GLOBAL SETUP');
+  console.log('\nGLOBAL SETUP');
 }
 
 export default setup;

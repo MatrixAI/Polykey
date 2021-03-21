@@ -1,7 +1,5 @@
-import type { NodeId } from '../types';
+import { PublicKeyFingerprint } from '../keys/types';
 
-type NodeInfo = {
-  id: NodeId;
-};
+type NodeId = PublicKeyFingerprint;
 
-export { NodeInfo };
+export { NodeId };
