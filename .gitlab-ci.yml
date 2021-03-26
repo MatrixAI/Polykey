@@ -15,6 +15,7 @@ lint:
         npm install;
         npm run lint;
         '
+  interruptible: true
 
 test:
   stage: check
@@ -24,12 +25,14 @@ test:
         npm install;
         npm run test;
         '
+  interruptible: true
 
 nix-dry:
   stage: check
   script:
     - nix-build -v -v --dry-run ./release.nix --attr application
     - nix-build -v -v --dry-run ./release.nix --attr docker
+  interruptible: true
 
 nix:
   stage: build
@@ -40,3 +43,4 @@ nix:
         --attr docker
   only:
     - master
+  interruptible: true
