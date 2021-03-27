@@ -1,905 +1,629 @@
-import os from 'os';
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
-import * as bip39 from 'bip39';
-import { promisify } from 'util';
-import { pki, md } from 'node-forge';
-import { VirtualFS } from 'virtualfs';
-import { EncryptedFS } from 'encryptedfs';
-import { Pool, ModuleThread } from 'threads';
-import randomBytes from 'secure-random-bytes';
-import { KeyManagerWorker } from '../keys/KeyManagerWorker';
+import type {
+  KeyPair,
+  Certificate,
+  KeyPairPem,
+  CertificatePem,
+  CertificatePemChain,
+} from './types';
+import type { FileSystem } from '../types';
+import type { WorkerManager } from '../workers';
+
 import Logger from '@matrixai/logger';
+import * as keysUtils from './utils';
+import * as keysErrors from './errors';
+import * as utils from '../utils';
 
-type KeyManagerMetadata = {
-  privateKeyPath: string | null;
-  publicKeyPath: string | null;
-};
-
-type KeyPair = {
-  publicKey?: pki.rsa.PublicKey;
-  privateKey?: pki.rsa.PrivateKey;
-  // This encryptedPrivateKey is used as an intermediary step
-  // so the keypair can be loaded and unlocked at different intervals
-  encryptedPrivateKey?: string;
-};
-
-type ReencryptHandler = (
-  decryptOld: (data: Buffer) => Promise<Buffer>,
-  encryptNew: (data: Buffer) => Promise<Buffer>,
-) => Promise<void>;
-
+/**
+ * Manage Root Keys and Root Certificates
+ */
 class KeyManager {
-  private primaryKeyPair: KeyPair = {};
-  // eslint-disable-next-line no-undef
-  private unlockedTimeout?: NodeJS.Timeout;
-  private derivedKeys: Map<string, Buffer>;
-  private derivedKeysPath: string;
-  private useWebWorkers: boolean;
-  private workerPool?: Pool<ModuleThread<KeyManagerWorker>>;
-  private logger: Logger;
+  public readonly keysPath: string;
+  public readonly rootPubPath: string;
+  public readonly rootKeyPath: string;
+  public readonly rootCertPath: string;
+  public readonly rootCertsPath: string;
 
-  polykeyPath: string;
-  private fileSystem: typeof fs;
+  protected fs: FileSystem;
+  protected logger: Logger;
+  protected rootKeyPair?: KeyPair;
+  protected rootCert?: Certificate;
+  protected workerManager?: WorkerManager;
 
-  // mnemonic data
-  private mnemonicStore: string;
-  private get mnemonic(): string {
-    return this.mnemonicStore;
-  }
-  private set mnemonic(mnemonic: string) {
-    this.mnemonicStore = mnemonic;
-    const vfsInstance = new VirtualFS();
-    this.mnemonicEfs = new EncryptedFS(
-      mnemonic,
-      vfsInstance,
-      vfsInstance,
-      fs,
-      process,
-    );
-  }
-  private mnemonicFilePath: string;
-  private mnemonicEfs: EncryptedFS;
-
-  private keypairPath: string;
-  private metadataPath: string;
-  private metadata: KeyManagerMetadata = {
-    privateKeyPath: null,
-    publicKeyPath: null,
-  };
-
-  private reencryptHandlers: ReencryptHandler[] = [];
-  addReencryptHandler(handler: ReencryptHandler) {
-    this.reencryptHandlers.push(handler);
+  constructor({
+    keysPath,
+    fs,
+    logger,
+  }: {
+    keysPath: string;
+    fs?: FileSystem;
+    logger?: Logger;
+  }) {
+    this.logger = logger ?? new Logger('KeyManager');
+    this.keysPath = keysPath;
+    this.fs = fs ?? require('fs/promises');
+    this.rootPubPath = `${keysPath}/root.pub`;
+    this.rootKeyPath = `${keysPath}/root.key`;
+    this.rootCertPath = `${keysPath}/root.crt`;
+    this.rootCertsPath = `${keysPath}/root_certs`;
   }
 
-  constructor(
-    polykeyPath = `${os.homedir()}/polykey`,
-    fileSystem: typeof fs,
-    logger: Logger,
-    useWebWorkers = false,
-    workerPool?: Pool<ModuleThread<KeyManagerWorker>>,
-  ) {
-    this.useWebWorkers = useWebWorkers;
-    this.workerPool = workerPool;
-    this.derivedKeys = new Map();
-    this.fileSystem = fileSystem;
-    this.logger = logger;
-
-    // Load key manager metadata
-    this.polykeyPath = polykeyPath;
-    this.keypairPath = path.join(polykeyPath, '.keys');
-    if (!this.fileSystem.existsSync(this.keypairPath)) {
-      this.fileSystem.mkdirSync(this.keypairPath, { recursive: true });
-    }
-    this.metadataPath = path.join(this.keypairPath, 'metadata');
-    this.mnemonicFilePath = path.join(this.keypairPath, 'mnemonic');
-    this.derivedKeysPath = path.join(this.keypairPath, 'derived-keys');
-    this.loadMetadata();
-
-    // Load keys if they were provided
-    if (this.metadata.privateKeyPath && this.metadata.publicKeyPath) {
-      // Load files into memory
-      this.loadKeyPair(
-        this.metadata.publicKeyPath,
-        this.metadata.privateKeyPath,
-      );
-    }
+  public setWorkerManager(workerManager: WorkerManager) {
+    this.workerManager = workerManager;
   }
 
-  public get Status() {
-    return {
-      keypairUnlocked: this.KeypairUnlocked,
-      keypairLoaded: this.KeypairUnlocked,
-    };
+  public unsetWorkerManager() {
+    delete this.workerManager;
   }
 
-  public get KeypairUnlocked(): boolean {
-    return this.primaryKeyPair.privateKey ? true : false;
-  }
-
-  /**
-   * Generates a new assymetric key pair (publicKey and privateKey).
-   * @param name Name of keypair owner
-   * @param email Email of keypair owner
-   * @param passphrase Passphrase to lock the keypair
-   * @param nbits Size of the new keypair
-   * @param replacePrimary If true, the generated keypair becomes the new primary identity of the key manager
-   * @param progressCallback A progress hook for keypair generation
-   */
-  async generateKeyPair(
-    passphrase: string,
-    nbits: number = 4096,
-    replacePrimary = false,
-  ): Promise<{ publicKey: string; privateKey: string }> {
-    const keypair = await promisify(pki.rsa.generateKeyPair)({ bits: nbits });
-
-    // encrypt private key using sensible defaults
-    const encodedPublicKey = pki.publicKeyToPem(keypair.publicKey);
-    const encodedPrivateKey = pki.encryptRsaPrivateKey(
-      keypair.privateKey,
-      passphrase,
-    );
-
-    // Resolve to parent promise
-    if (replacePrimary) {
-      // reencrypt data
-      for (const handler of this.reencryptHandlers) {
-        await handler(this.decryptData.bind(this), this.encryptData.bind(this));
-      }
-      // Set the new keypair
-      this.primaryKeyPair = {
-        publicKey: keypair.publicKey,
-        privateKey: keypair.privateKey,
-      };
-      // Overwrite in memory
-      const publicKeyPath = path.join(this.keypairPath, 'public_key');
-      const privateKeyPath = path.join(this.keypairPath, 'private_key');
-      await this.fileSystem.promises.writeFile(publicKeyPath, encodedPublicKey);
-      await this.fileSystem.promises.writeFile(
-        privateKeyPath,
-        encodedPrivateKey,
-      );
-      // Set metadata
-      this.metadata.publicKeyPath = publicKeyPath;
-      this.metadata.privateKeyPath = privateKeyPath;
-      // create a new mnemonic as a backup
-      this.mnemonic = bip39.generateMnemonic();
-
-      // write metadata
-      await this.writeMetadata();
-    }
-    return {
-      publicKey: encodedPublicKey,
-      privateKey: encodedPrivateKey,
-    };
-  }
-
-  /**
-   * This method allows the user to recover the contents of the keynode in the case of a forgotten passphrase
-   * It will also create a new keypair protected with the newPassphrase
-   * @param mnemonic The backup word sequence
-   * @param userId The user id of the newly created keypair
-   * @param passphrase The new passphrase with which to protect the new
-   */
-  async recoverKeynode(
-    mnemonic: string,
-    userId: string,
-    passphrase: string,
-  ): Promise<void> {
-    // set mnemonic
-    this.mnemonic = mnemonic;
-    // decrypt the data with mnemonic
-    const vaultKeysPath = path.join(this.polykeyPath, '.vaultKeysBackup');
-    const vaultKeys = await this.readFileWithMnemonic(vaultKeysPath);
-    // replace primary keypair
-    await this.generateKeyPair(passphrase, undefined, true);
-    // reencrypt data with newly generated keypair
-    const encryptedVaultKeys = this.encryptData(vaultKeys.toString());
-    // write encrypted data to file
-    await this.fileSystem.promises.writeFile(vaultKeysPath, encryptedVaultKeys);
-  }
-
-  /**
-   * Allows the user to verify the mnemonic they created along with the primary keypair
-   * @param mnemonic The mnemonic to be verified
-   */
-  async verifyMnemonic(mnemonic: string): Promise<boolean> {
-    return mnemonic == this.mnemonic;
-  }
-
-  /**
-   * Get the primary keypair
-   */
-  getKeyPair(): KeyPair {
-    return this.primaryKeyPair;
-  }
-
-  /**
-   * Get the public key of the primary keypair
-   */
-  getPublicKey(): pki.rsa.PublicKey {
-    if (!this.primaryKeyPair.publicKey) {
-      throw Error('public key is not loaded yet');
-    }
-    return this.primaryKeyPair.publicKey;
-  }
-
-  /**
-   * Get the public key of the primary keypair
-   */
-  getPublicKeyString(): string {
-    return pki.publicKeyToPem(this.getPublicKey());
-  }
-
-  /**
-   * Get the private key of the primary keypair
-   */
-  getPrivateKey(): pki.rsa.PrivateKey {
-    if (!this.primaryKeyPair.privateKey) {
-      throw Error('private key is not loaded yet');
-    }
-    return this.primaryKeyPair.privateKey;
-  }
-
-  /**
-   * Get the private key of the primary keypair
-   */
-  getPrivateKeyString(): string {
-    // this is used for symmetric key derivation and is the unlocked keypair string
-    // i.e. not protected by any passphrase so it is secure to use as a seed for pbkdf2
-    return pki.privateKeyToPem(this.getPrivateKey());
-  }
-
-  /**
-   * Loads the keypair into the key manager as the primary identity
-   * @param publicKey Public Key. A string is treated as a system file path and a buffer is treated as containing the key.
-   * @param privateKey Private Key. A string is treated as a system file path and a buffer is treated as containing the key.
-   */
-  loadKeyPair(publicKey: string | Buffer, privateKey: string | Buffer): void {
-    this.loadPrivateKey(privateKey);
-    this.loadPublicKey(publicKey);
-  }
-
-  /**
-   * Loads the private key into the primary keypair
-   * @param privateKey Private Key. A string is treated as a system file path and a buffer is treated as containing the key.
-   */
-  loadPrivateKey(privateKey: string | Buffer): void {
-    let keyBuffer: Buffer;
-    if (typeof privateKey === 'string') {
-      keyBuffer = this.fileSystem.readFileSync(privateKey);
-      this.metadata.privateKeyPath = privateKey;
-      this.writeMetadata();
-    } else {
-      keyBuffer = privateKey;
-    }
-    this.primaryKeyPair.encryptedPrivateKey = keyBuffer.toString();
-  }
-
-  /**
-   * Loads the public key into the primary keypair
-   * @param publicKey Public Key. A string is treated as a system file path and a buffer is treated as containing the key.
-   */
-  loadPublicKey(publicKey: string | Buffer): void {
-    let keyBuffer: Buffer;
-    if (typeof publicKey === 'string') {
-      keyBuffer = this.fileSystem.readFileSync(publicKey);
-      this.metadata.publicKeyPath = publicKey;
-      this.writeMetadata();
-    } else {
-      keyBuffer = publicKey;
-    }
-    this.primaryKeyPair.publicKey = pki.publicKeyFromPem(keyBuffer.toString());
-  }
-
-  /**
-   * Loads the primary identity into the key manager from the existing keypair
-   * @param passphrase Passphrase to unlock the private key
-   * @param timeout Minutes of inactivity after which identity is locked again
-   */
-  async unlockKeypair(passphrase: string, timeout = 15): Promise<void> {
-    // check if already unlocked
-    if (this.unlockedTimeout && this.primaryKeyPair.privateKey) {
-      clearTimeout(this.unlockedTimeout);
-    } else {
-      const encryptedPrivateKey = this.primaryKeyPair.encryptedPrivateKey;
-      if (!encryptedPrivateKey) {
-        // Load keys if they were provided
-        if (this.metadata.privateKeyPath && this.metadata.publicKeyPath) {
-          // Load files into memory
-          this.loadKeyPair(
-            this.metadata.publicKeyPath,
-            this.metadata.privateKeyPath,
-          );
-        } else {
-          throw Error('keypair path is not defined');
-        }
-      }
-      this.primaryKeyPair.privateKey = pki.decryptRsaPrivateKey(
-        encryptedPrivateKey!,
-        passphrase,
-      ) as pki.rsa.PrivateKey;
-    }
-
-    // set a new timeout
-    if (timeout !== 0) {
-      // set new timeout
-      this.unlockedTimeout = setTimeout(() => {
-        this.lockIdentity();
-      }, timeout * 60 * 1000);
-    }
-  }
-
-  refreshTimeout(timeout = 15) {
-    if (!this.unlockedTimeout) {
-      if (!this.primaryKeyPair.privateKey) {
-        return;
-      }
-    } else {
-      clearTimeout(this.unlockedTimeout);
-    }
-    if (this.unlockedTimeout) {
-      this.unlockedTimeout = this.unlockedTimeout.refresh();
-    } else {
-      // set new timeout
-      this.unlockedTimeout = setTimeout(() => {
-        this.lockIdentity();
-      }, timeout * 60 * 1000);
-    }
-  }
-
-  /**
-   * Locks the primary identity
-   */
-  lockIdentity(): void {
-    this.primaryKeyPair.privateKey = undefined;
-  }
-
-  /**
-   * [WARNING] Export the un-encrypted primary private key to a specified location
-   * @param path Destination path
-   */
-  exportPrivateKey(path: string): void {
-    // WARNING: note this is the unencrypted private key
-    this.fileSystem.writeFileSync(path, this.getPrivateKeyString());
-    this.metadata.privateKeyPath = path;
-    this.writeMetadata();
-  }
-
-  /**
-   * Export the primary public key to a specified location
-   * @param path Destination path
-   */
-  exportPublicKey(path: string): void {
-    this.fileSystem.writeFileSync(path, this.getPublicKeyString());
-    this.metadata.publicKeyPath = path;
-    this.writeMetadata();
-  }
-
-  /**
-   * Asynchronously Generates a new symmetric key and stores it in the key manager
-   * @param name Unique name of the generated key
-   * @param passphrase Passphrase to derive the key from
-   * @param storeKey Whether to store the key in the key manager
-   */
-  async generateKey(
-    name: string,
-    passphrase: string,
-    storeKey = true,
-  ): Promise<Buffer> {
-    const salt = randomBytes(32);
-    const key = await promisify(crypto.pbkdf2)(
-      passphrase,
-      salt,
-      10000,
-      256 / 8,
-      'sha256',
-    );
-    if (storeKey) {
-      this.derivedKeys[name] = key;
-      await this.writeMetadata();
-    }
-    return key;
-  }
-
-  /**
-   * Synchronously Generates a new symmetric key and stores it in the key manager
-   * @param name Unique name of the generated key
-   * @param passphrase Passphrase to derive the key from
-   * @param storeKey Whether to store the key in the key manager
-   */
-  generateKeySync(name: string, passphrase: string, storeKey = true): Buffer {
-    const salt = randomBytes(32);
-    const key = crypto.pbkdf2Sync(passphrase, salt, 10000, 256 / 8, 'sha256');
-    if (storeKey) {
-      this.derivedKeys[name] = key;
-      this.writeMetadata();
-    }
-    return key;
-  }
-
-  /**
-   * Deletes a derived symmetric key from the key manager
-   * @param name Name of the key to be deleted
-   */
-  async deleteKey(name: string): Promise<boolean> {
-    const successful = delete this.derivedKeys[name];
-    await this.writeMetadata();
-    return successful;
-  }
-
-  /**
-   * List all keys in the current keymanager
-   */
-  listKeys(): string[] {
-    return Object.keys(this.derivedKeys);
-  }
-
-  /**
-   * Synchronously imports an existing key from file or Buffer
-   * @param name Unique name of the imported key
-   * @param key Key to be imported
-   */
-  importKeySync(name: string, key: string | Buffer): void {
-    if (typeof key === 'string') {
-      this.derivedKeys[name] = this.fileSystem.readFileSync(key);
-    } else {
-      this.derivedKeys[name] = key;
-    }
-  }
-
-  /**
-   * Asynchronously imports an existing key from file or Buffer
-   * @param name Unique name of the imported key
-   * @param key Key to be imported
-   */
-  async importKey(name: string, key: string | Buffer): Promise<void> {
-    if (typeof key === 'string') {
-      this.derivedKeys[name] = await this.fileSystem.promises.readFile(key);
-    } else {
-      this.derivedKeys[name] = key;
-    }
-  }
-
-  /**
-   * Synchronously exports an existing key from file or Buffer
-   * @param name Name of the key to be exported
-   * @param dest Destination path
-   * @param createPath If set to true, the path is recursively created
-   */
-  exportKeySync(name: string, dest: string, createPath?: boolean): void {
-    if (!this.derivedKeys.has(name)) {
-      throw Error(`There is no key loaded for name: ${name}`);
-    }
-    if (createPath) {
-      this.fileSystem.mkdirSync(path.dirname(dest), { recursive: true });
-    }
-    this.fileSystem.writeFileSync(dest, this.derivedKeys[name]);
-  }
-
-  /**
-   * Asynchronously exports an existing key from file or Buffer
-   * @param name Name of the key to be exported
-   * @param dest Destination path
-   * @param createPath If set to true, the path is recursively created
-   */
-  async exportKey(
-    name: string,
-    dest: string,
-    createPath?: boolean,
-  ): Promise<void> {
-    if (!this.derivedKeys.has(name)) {
-      throw Error(`There is no key loaded for name: ${name}`);
-    }
-    if (createPath) {
-      await this.fileSystem.promises.mkdir(path.dirname(dest), {
+  public async start({
+    password,
+    bits = 4096,
+    duration = 31536000,
+    fresh = false,
+  }: {
+    password: string;
+    bits?: number;
+    duration?: number;
+    fresh?: boolean;
+  }) {
+    this.logger.info('Starting Key Manager');
+    this.logger.info(`Setting keys path to ${this.keysPath}`);
+    if (fresh) {
+      await this.fs.rm(this.keysPath, {
+        force: true,
         recursive: true,
       });
     }
-    await this.fileSystem.promises.writeFile(dest, this.derivedKeys[name]);
+    await utils.mkdirExists(this.fs, this.keysPath);
+    await utils.mkdirExists(this.fs, this.rootCertsPath);
+    const rootKeyPair = await this.setupRootKeyPair(password, bits);
+    const rootCert = await this.setupRootCert(rootKeyPair, duration);
+    this.rootKeyPair = rootKeyPair;
+    this.rootCert = rootCert;
+    this.logger.info('Started Key Manager');
   }
 
-  /**
-   * Signs the given data with the provided key or the primary key if none is specified
-   * @param data the data to be signed
-   * @param privateKey the key to sign with. Defaults to primary private key if no key is given.
-   * @param passphrase Required if privateKey is provided.
-   */
-  async signData(
-    data: string,
-    privateKey?: string,
-    passphrase?: string,
-  ): Promise<string> {
-    let resolvedKey: pki.rsa.PrivateKey;
-    if (privateKey) {
-      if (!passphrase) {
-        throw Error('passphrase for private key was not provided');
-      }
-      resolvedKey = pki.decryptRsaPrivateKey(
-        privateKey.toString(),
-        passphrase,
-      ) as pki.rsa.PrivateKey;
-    } else if (this.primaryKeyPair.privateKey) {
-      resolvedKey = this.primaryKeyPair.privateKey;
+  public async stop() {
+    this.logger.info('Stopping Key Manager');
+    this.logger.info('Stopped Key Manager');
+  }
+
+  public getRootKeyPair(): KeyPair | undefined {
+    return this.rootKeyPair
+      ? keysUtils.keyPairCopy(this.rootKeyPair)
+      : undefined;
+  }
+
+  public getRootKeyPairPem(): KeyPairPem | undefined {
+    return this.rootKeyPair
+      ? keysUtils.keyPairToPem(this.rootKeyPair)
+      : undefined;
+  }
+
+  public getRootCert(): Certificate | undefined {
+    return this.rootCert ? keysUtils.certCopy(this.rootCert) : undefined;
+  }
+
+  public getRootCertPem(): CertificatePem | undefined {
+    return this.rootCert ? keysUtils.certToPem(this.rootCert) : undefined;
+  }
+
+  public async getRootCertChain(): Promise<Array<Certificate>> {
+    if (!this.rootCert) {
+      return [];
+    }
+    const rootCertsNames = await this.getRootCertsNames();
+    const rootCertsPems = await this.getRootCertsPems(rootCertsNames);
+    const rootCerts = rootCertsPems.map((p) => {
+      return keysUtils.certFromPem(p);
+    });
+    return [keysUtils.certCopy(this.rootCert), ...rootCerts];
+  }
+
+  public async getRootCertChainPems(): Promise<Array<CertificatePem>> {
+    if (!this.rootCert) {
+      return [];
+    }
+    const rootCertsNames = await this.getRootCertsNames();
+    const rootCertsPems = await this.getRootCertsPems(rootCertsNames);
+    const rootCertPems = [keysUtils.certToPem(this.rootCert), ...rootCertsPems];
+    return rootCertPems;
+  }
+
+  public async getRootCertChainPem(): Promise<CertificatePemChain | undefined> {
+    const rootCertPems = await this.getRootCertChainPems();
+    if (!rootCertPems.length) {
+      return undefined;
+    }
+    return rootCertPems.join('\n');
+  }
+
+  public async encryptWithRootKeyPair(plainText: Buffer): Promise<Buffer> {
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
+    }
+    const publicKey = this.rootKeyPair.publicKey;
+    let cipherText;
+    if (this.workerManager) {
+      cipherText = await this.workerManager.call(async (w) => {
+        const publicKeyAsn1 = keysUtils.publicKeyToAsn1(publicKey);
+        return Buffer.from(
+          await w.encryptWithPublicKeyAsn1(
+            publicKeyAsn1,
+            plainText.toString('binary'),
+          ),
+          'binary',
+        );
+      });
     } else {
-      throw Error('key pair is not loaded');
+      cipherText = keysUtils.encryptWithPublicKey(publicKey, plainText);
     }
+    return cipherText;
+  }
 
-    if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(
-        async (workerCrypto) => {
-          return await workerCrypto.signData(
-            data,
-            pki.privateKeyToPem(resolvedKey),
-          );
-        },
-      );
-      return workerResponse;
+  public async decryptWithRootKeyPair(cipherText: Buffer): Promise<Buffer> {
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
+    }
+    const privateKey = this.rootKeyPair.privateKey;
+    let plainText;
+    if (this.workerManager) {
+      plainText = await this.workerManager.call(async (w) => {
+        const privateKeyAsn1 = keysUtils.privateKeyToAsn1(privateKey);
+        return Buffer.from(
+          await w.decryptWithPrivateKeyAsn1(
+            privateKeyAsn1,
+            cipherText.toString('binary'),
+          ),
+          'binary',
+        );
+      });
     } else {
-      const digest = md.sha512.create();
-      digest.update(data.toString(), 'raw');
-      const signature = resolvedKey.sign(digest);
-      return signature;
+      plainText = keysUtils.decryptWithPrivateKey(privateKey, cipherText);
     }
+    return plainText;
   }
 
-  /**
-   * Signs the given file with the provided key or the primary key if none is specified
-   * @param filePath Path to file containing the data to be signed
-   * @param privateKey The key to sign with. Defaults to primary public key if no key is given.
-   * @param passphrase Required if privateKey is provided.
-   */
-  async signFile(
-    filePath: string,
-    privateKey?: string | Buffer,
-    passphrase?: string,
-  ): Promise<string> {
-    // Get key if provided
-    let keyBuffer: Buffer | undefined;
-    if (privateKey) {
-      if (typeof privateKey === 'string') {
-        // Path
-        // Read in from fs
-        keyBuffer = this.fileSystem.readFileSync(privateKey);
-      } else {
-        // Buffer
-        keyBuffer = privateKey;
-      }
+  public async signWithRootKeyPair(data: Buffer): Promise<Buffer> {
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
     }
-    // Read file into buffer
-    const buffer = this.fileSystem.readFileSync(filePath);
-    // Sign the buffer
-    const signature = await this.signData(
-      buffer.toString(),
-      keyBuffer?.toString() ?? undefined,
-      passphrase,
-    );
-    // Write buffer to signed file
-    const signedPath = `${filePath}.sig`;
-    this.fileSystem.writeFileSync(signedPath, signature);
-    return signedPath;
+    const privateKey = this.rootKeyPair.privateKey;
+    let signature;
+    if (this.workerManager) {
+      signature = await this.workerManager.call(async (w) => {
+        const privateKeyAsn1 = keysUtils.privateKeyToAsn1(privateKey);
+        return Buffer.from(
+          await w.signWithPrivateKeyAsn1(
+            privateKeyAsn1,
+            data.toString('binary'),
+          ),
+          'binary',
+        );
+      });
+    } else {
+      signature = keysUtils.signWithPrivateKey(privateKey, data);
+    }
+    return signature;
   }
 
-  /**
-   * Verifies the given data with the provided key or the primary key if none is specified
-   * @param data the data to be verified
-   * @param signature the signature
-   * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
-   */
-  async verifyData(
-    data: string,
-    signature: string,
-    publicKey?: string,
+  public async verifyWithRootKeyPair(
+    data: Buffer,
+    signature: Buffer,
   ): Promise<boolean> {
-    let resolvedKey: pki.rsa.PublicKey;
-    if (publicKey) {
-      resolvedKey = pki.publicKeyFromPem(publicKey);
-    } else if (this.primaryKeyPair.publicKey) {
-      resolvedKey = this.primaryKeyPair.publicKey;
-    } else {
-      throw Error('key pair is not loaded');
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
     }
+    const publicKey = this.rootKeyPair.publicKey;
+    let signed;
+    if (this.workerManager) {
+      signed = await this.workerManager.call(async (w) => {
+        const publicKeyAsn1 = keysUtils.publicKeyToAsn1(publicKey);
+        return w.verifyWithPublicKeyAsn1(
+          publicKeyAsn1,
+          data.toString('binary'),
+          signature.toString('binary'),
+        );
+      });
+    } else {
+      signed = keysUtils.verifyWithPublicKey(publicKey, data, signature);
+    }
+    return signed;
+  }
 
-    if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(
-        async (workerCrypto) => {
-          return await workerCrypto.verifyData(
-            data,
-            signature,
-            pki.publicKeyToPem(resolvedKey),
-          );
-        },
-      );
-      return workerResponse;
-    } else {
-      const digest = md.sha512.create();
-      digest.update(data.toString(), 'raw');
-      const verified = resolvedKey.verify(digest.digest().bytes(), signature);
-      return verified;
+  public async changeRootKeyPassword(password: string): Promise<void> {
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
     }
+    this.logger.info('Changing root key pair password');
+    await this.writeRootKeyPair(this.rootKeyPair, password);
   }
 
   /**
-   * Verifies the given file with the provided key or the primary key if none is specified
-   * @param filePath Path to file containing the data to be verified
-   * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
+   * Generates a new root key pair
+   * Forces a generation of a leaf certificate as the new root certificate
+   * The new root certificate is signed by the previous certificate
+   * This maintains a certificate chain that provides zero-downtime migration
    */
-  async verifyFile(
-    filePath: string,
-    signature: string | Buffer,
-    publicKey?: string | Buffer,
-  ): Promise<boolean> {
-    // Get key if provided
-    let keyBuffer: Buffer | undefined;
-    if (publicKey) {
-      if (typeof publicKey === 'string') {
-        // Read in from fs
-        keyBuffer = this.fileSystem.readFileSync(publicKey);
-      } else {
-        // Buffer
-        keyBuffer = publicKey;
-      }
+  public async renewRootKeyPair(
+    password: string,
+    bits: number = 4096,
+    duration: number = 31536000,
+    subjectAttrsExtra: Array<{ name: string; value: string }> = [],
+    issuerAttrsExtra: Array<{ name: string; value: string }> = [],
+  ): Promise<void> {
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
     }
-    // get signature
-    let signatureBuffer: Buffer;
-    if (typeof signature === 'string') {
-      // Path
-      // Read in from fs
-      signatureBuffer = this.fileSystem.readFileSync(signature);
-    } else {
-      // Buffer
-      signatureBuffer = signature;
+    if (!this.rootCert) {
+      throw new keysErrors.ErrorRootCertUndefined();
     }
-    // Read in file buffer and signature
-    const fileData = this.fileSystem.readFileSync(filePath);
-    const verifiedMessage = await this.verifyData(
-      fileData.toString(),
-      signatureBuffer.toString(),
-      keyBuffer?.toString(),
+    this.logger.info('Renewing root key pair');
+    const rootKeyPair = await this.generateKeyPair(bits);
+    const now = new Date();
+    const rootCert = keysUtils.generateCertificate(
+      rootKeyPair.publicKey,
+      this.rootKeyPair.privateKey,
+      duration,
+      subjectAttrsExtra,
+      issuerAttrsExtra,
     );
-    this.fileSystem.writeFileSync(filePath, verifiedMessage);
+    this.logger.info(
+      `Copying old root key pair to ${
+        this.rootCertsPath
+      }/root.crt.${utils.getUnixtime(now)}`,
+    );
+    try {
+      await this.fs.copyFile(
+        this.rootCertPath,
+        `${this.rootCertsPath}/root.crt.${utils.getUnixtime(now)}`,
+      );
+    } catch (e) {
+      throw new keysErrors.ErrorRootCertRenew(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    await this.garbageCollectRootCerts();
+    await Promise.all([
+      this.writeRootKeyPair(rootKeyPair, password),
+      this.writeRootCert(rootCert),
+    ]);
+    this.rootKeyPair = rootKeyPair;
+    this.rootCert = rootCert;
+  }
 
+  /**
+   * Generates a new root key pair
+   * Forces a reset of a new root certificate
+   * The new root certificate is self-signed
+   */
+  public async resetRootKeyPair(
+    password: string,
+    bits: number = 4096,
+    duration: number = 31536000,
+    subjectAttrsExtra: Array<{ name: string; value: string }> = [],
+    issuerAttrsExtra: Array<{ name: string; value: string }> = [],
+  ): Promise<void> {
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
+    }
+    if (!this.rootCert) {
+      throw new keysErrors.ErrorRootCertUndefined();
+    }
+    this.logger.info('Resetting root key pair');
+    const rootKeyPair = await this.generateKeyPair(bits);
+    const rootCert = keysUtils.generateCertificate(
+      rootKeyPair.publicKey,
+      rootKeyPair.privateKey,
+      duration,
+      subjectAttrsExtra,
+      issuerAttrsExtra,
+    );
+    await Promise.all([
+      this.writeRootKeyPair(rootKeyPair, password),
+      this.writeRootCert(rootCert),
+    ]);
+    this.rootKeyPair = rootKeyPair;
+    this.rootCert = rootCert;
+  }
+
+  /**
+   * Generates a new root certificate
+   * The new root certificate is self-signed
+   */
+  public async resetRootCert(
+    duration: number = 31536000,
+    subjectAttrsExtra: Array<{ name: string; value: string }> = [],
+    issuerAttrsExtra: Array<{ name: string; value: string }> = [],
+  ): Promise<void> {
+    if (!this.rootKeyPair) {
+      throw new keysErrors.ErrorRootKeysUndefined();
+    }
+    if (!this.rootCert) {
+      throw new keysErrors.ErrorRootCertUndefined();
+    }
+    this.logger.info('Resetting root certificate');
+    const rootCert = keysUtils.generateCertificate(
+      this.rootKeyPair.publicKey,
+      this.rootKeyPair.privateKey,
+      duration,
+      subjectAttrsExtra,
+      issuerAttrsExtra,
+    );
+    await this.writeRootCert(rootCert);
+    this.rootCert = rootCert;
+  }
+
+  public async garbageCollectRootCerts(): Promise<void> {
+    this.logger.info('Performing garbage collection of root certificates');
+    const now = new Date();
+    const rootCertsNames = await this.getRootCertsNames();
+    const rootCertsPems = await this.getRootCertsPems(rootCertsNames);
+    const rootCerts = rootCertsPems.map((p) => {
+      return keysUtils.certFromPem(p);
+    });
+    try {
+      for (const [i, rootCert] of rootCerts.entries()) {
+        if (rootCert.validity.notAfter < now) {
+          this.logger.info(
+            `Deleting ${this.rootCertsPath}/${rootCertsNames[i]}`,
+          );
+          await this.fs.rm(`${this.rootCertsPath}/${rootCertsNames[i]}`);
+        }
+      }
+    } catch (e) {
+      throw new keysErrors.ErrorRootCertsGC(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+  }
+
+  protected async setupRootKeyPair(
+    password: string,
+    bits: number = 4096,
+  ): Promise<KeyPair> {
+    let rootKeyPair;
+    if (await this.existsRootKeyPair()) {
+      rootKeyPair = await this.readRootKeyPair(password);
+    } else {
+      this.logger.info('Generating root key pair');
+      rootKeyPair = await this.generateKeyPair(bits);
+      await this.writeRootKeyPair(rootKeyPair, password);
+    }
+    return rootKeyPair;
+  }
+
+  protected async existsRootKeyPair(): Promise<boolean> {
+    this.logger.info(`Checking ${this.rootPubPath} and ${this.rootKeyPath}`);
+    try {
+      await Promise.all([
+        this.fs.stat(this.rootPubPath),
+        this.fs.stat(this.rootKeyPath),
+      ]);
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        return false;
+      }
+      throw new keysErrors.ErrorRootKeysRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
     return true;
   }
 
-  /**
-   * Encrypts the given data for a specific public key
-   * @param data The data to be encrypted
-   * @param publicKey The key to encrypt for (optional)
-   */
-  async encryptData(data: string, publicKey?: string): Promise<string> {
-    let resolvedKey: pki.rsa.PublicKey;
-    if (publicKey) {
-      resolvedKey = pki.publicKeyFromPem(publicKey);
-    } else if (this.primaryKeyPair.publicKey) {
-      resolvedKey = this.primaryKeyPair.publicKey;
-    } else {
-      throw Error('key pair is not loaded');
+  protected async readRootKeyPair(password: string): Promise<KeyPair> {
+    let publicKeyPem, privateKeyPem;
+    this.logger.info(`Reading ${this.rootPubPath} and ${this.rootKeyPath}`);
+    try {
+      [publicKeyPem, privateKeyPem] = await Promise.all([
+        this.fs.readFile(this.rootPubPath, { encoding: 'utf8' }),
+        this.fs.readFile(this.rootKeyPath, { encoding: 'utf8' }),
+      ]);
+    } catch (e) {
+      throw new keysErrors.ErrorRootKeysRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
     }
-
-    if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(
-        async (workerCrypto) => {
-          return await workerCrypto.encryptData(
-            data,
-            pki.publicKeyToPem(resolvedKey),
-          );
+    let keyPair;
+    try {
+      keyPair = keysUtils.keyPairFromPemEncrypted(
+        {
+          publicKey: publicKeyPem,
+          privateKey: privateKeyPem,
         },
+        password,
       );
-      return workerResponse;
+    } catch (e) {
+      throw new keysErrors.ErrorRootKeysParse(e.message);
+    }
+    return keyPair;
+  }
+
+  protected async writeRootKeyPair(
+    keyPair: KeyPair,
+    password: string,
+  ): Promise<void> {
+    const keyPairPem = keysUtils.keyPairToPemEncrypted(keyPair, password);
+    this.logger.info(`Writing ${this.rootPubPath} and ${this.rootKeyPath}`);
+    try {
+      await Promise.all([
+        this.fs.writeFile(`${this.rootPubPath}.tmp`, keyPairPem.publicKey),
+        this.fs.writeFile(`${this.rootKeyPath}.tmp`, keyPairPem.privateKey),
+      ]);
+      await Promise.all([
+        this.fs.rename(`${this.rootPubPath}.tmp`, this.rootPubPath),
+        this.fs.rename(`${this.rootKeyPath}.tmp`, this.rootKeyPath),
+      ]);
+    } catch (e) {
+      throw new keysErrors.ErrorRootKeysWrite(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+  }
+
+  /**
+   * Generates a key pair
+   * Uses the worker manager if available
+   */
+  protected async generateKeyPair(bits: number): Promise<KeyPair> {
+    let keyPair;
+    if (this.workerManager) {
+      keyPair = await this.workerManager.call(async (w) => {
+        const keyPair = await w.generateKeyPairAsn1(bits);
+        return keysUtils.keyPairFromAsn1(keyPair);
+      });
     } else {
-      const encryptedData = resolvedKey.encrypt(data);
-      return encryptedData;
+      keyPair = await keysUtils.generateKeyPair(bits);
     }
+    return keyPair;
   }
 
-  /**
-   * Encrypts the given file for a specific public key
-   * @param filePath Path to file containing the data to be encrypted
-   * @param publicKey Buffer containing the key to verify with. Defaults to primary public key if no key is given.
-   */
-  async encryptFile(
-    filePath: string,
-    publicKey?: string | Buffer,
-  ): Promise<string> {
-    // Get key if provided
-    let keyBuffer: Buffer | undefined;
-    if (publicKey) {
-      if (typeof publicKey === 'string') {
-        // Read in from fs
-        keyBuffer = this.fileSystem.readFileSync(publicKey);
-      } else {
-        // Buffer
-        keyBuffer = publicKey;
-      }
-    }
-    // Read file into buffer
-    const fileData = this.fileSystem.readFileSync(filePath);
-    // Encrypt the buffer
-    const encryptedBuffer = await this.encryptData(
-      fileData.toString(),
-      keyBuffer?.toString(),
-    );
-    // Write buffer to encrypted file
-    this.fileSystem.writeFileSync(filePath, encryptedBuffer);
-    return filePath;
-  }
-
-  /**
-   * Decrypts the given data with the provided key or the primary key if none is given
-   * @param data The data to be decrypted
-   * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
-   * @param passphrase Required if privateKey is provided.
-   */
-  async decryptData(
-    data: string,
-    privateKey?: string,
-    passphrase?: string,
-  ): Promise<string> {
-    let resolvedKey: pki.rsa.PrivateKey;
-    if (privateKey) {
-      if (!passphrase) {
-        throw Error(
-          'A key passphrase must be supplied if a privateKey is specified',
-        );
-      }
-      resolvedKey = pki.decryptRsaPrivateKey(
-        privateKey,
-        passphrase,
-      ) as pki.rsa.PrivateKey;
-    } else if (this.primaryKeyPair.privateKey) {
-      resolvedKey = this.primaryKeyPair.privateKey;
+  protected async setupRootCert(
+    keyPair: KeyPair,
+    duration: number = 31536000,
+    subjectAttrsExtra: Array<{ name: string; value: string }> = [],
+    issuerAttrsExtra: Array<{ name: string; value: string }> = [],
+  ): Promise<Certificate> {
+    let rootCert;
+    if (await this.existsRootCert()) {
+      rootCert = await this.readRootCert();
     } else {
-      throw Error('no identity available for decrypting');
-    }
-
-    if (this.useWebWorkers && this.workerPool) {
-      const workerResponse = await this.workerPool.queue(
-        async (workerCrypto) => {
-          return await workerCrypto.decryptData(
-            data,
-            pki.privateKeyToPem(resolvedKey),
-          );
-        },
+      this.logger.info('Generating root certificate');
+      rootCert = keysUtils.generateCertificate(
+        keyPair.publicKey,
+        keyPair.privateKey,
+        duration,
+        subjectAttrsExtra,
+        issuerAttrsExtra,
       );
-      return workerResponse;
-    } else {
-      const decryptedData = resolvedKey.decrypt(data);
-      return decryptedData;
+      await this.writeRootCert(rootCert);
+    }
+    return rootCert;
+  }
+
+  protected async existsRootCert(): Promise<boolean> {
+    this.logger.info(`Checking ${this.rootCertPath}`);
+    try {
+      await this.fs.stat(this.rootCertPath);
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        return false;
+      }
+      throw new keysErrors.ErrorRootCertRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    return true;
+  }
+
+  protected async readRootCert(): Promise<Certificate> {
+    let rootCertPem;
+    this.logger.info(`Reading ${this.rootCertPath}`);
+    try {
+      rootCertPem = await this.fs.readFile(this.rootCertPath, {
+        encoding: 'utf8',
+      });
+    } catch (e) {
+      throw new keysErrors.ErrorRootCertRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    const rootCert = keysUtils.certFromPem(rootCertPem);
+    return rootCert;
+  }
+
+  protected async writeRootCert(rootCert: Certificate): Promise<void> {
+    const rootCertPem = keysUtils.certToPem(rootCert);
+    this.logger.info(`Writing ${this.rootCertPath}`);
+    try {
+      await this.fs.writeFile(`${this.rootCertPath}.tmp`, rootCertPem);
+      await this.fs.rename(`${this.rootCertPath}.tmp`, this.rootCertPath);
+    } catch (e) {
+      throw new keysErrors.ErrorRootCertWrite(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
     }
   }
 
   /**
-   * Decrypts the given file with the provided key or the primary key if none is given
-   * @param filePath Path to file containing the data to be decrypted
-   * @param privateKey The key to decrypt with. Defaults to primary private key if no key is given.
-   * @param passphrase Required if privateKey is provided.
+   * Gets a sorted array of all the prior root certs names
+   * This does not include the current root cert
    */
-  async decryptFile(
-    filePath: string,
-    privateKey?: string | Buffer,
-    passphrase?: string,
-  ): Promise<string> {
-    // Get key if provided
-    let keyBuffer: Buffer | undefined;
-    if (privateKey) {
-      if (typeof privateKey === 'string') {
-        // Read in from fs
-        keyBuffer = this.fileSystem.readFileSync(privateKey);
-      } else {
-        // Buffer
-        keyBuffer = privateKey;
-      }
+  protected async getRootCertsNames(): Promise<Array<string>> {
+    let rootCertsNames;
+    try {
+      rootCertsNames = await this.fs.readdir(this.rootCertsPath);
+    } catch (e) {
+      throw new keysErrors.ErrorRootCertRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
     }
-    // Read in file buffer
-    const fileData = this.fileSystem.readFileSync(filePath);
-    // Decrypt file buffer
-    const decryptedData = await this.decryptData(
-      fileData.toString(),
-      keyBuffer?.toString(),
-      passphrase,
-    );
-    // Write buffer to decrypted file
-    this.fileSystem.writeFileSync(filePath, decryptedData);
-    return filePath;
-  }
-
-  /* ============ HELPERS =============== */
-  async writeFileWithMnemonic(path: string, data: Buffer): Promise<void> {
-    return await this.mnemonicEfs.promises.writeFile(path, data, {});
-  }
-  async readFileWithMnemonic(path: string): Promise<Buffer> {
-    return Buffer.from(await this.mnemonicEfs.promises.readFile(path));
+    rootCertsNames.sort((a, b) => {
+      const a_ = parseInt(a.split('.').pop()!);
+      const b_ = parseInt(b.split('.').pop()!);
+      if (a_ < b_) {
+        return -1;
+      } else if (a_ > b_) {
+        return 1;
+      }
+      return 0;
+    });
+    return rootCertsNames;
   }
 
   /**
-   * Get the key for a given name
-   * @param name The unique name of the desired key
+   * Gets a sorted array of all the prior root certs pems
+   * This does not include the current root cert
    */
-  getKey(name: string): Buffer {
-    return this.derivedKeys[name];
-  }
-
-  /**
-   * Determines if the Key Manager has a certain key
-   * @param name The unique name of the desired key
-   */
-  hasKey(name: string): boolean {
-    if (this.derivedKeys[name]) {
-      return true;
-    }
-    return false;
-  }
-
-  private async writeMetadata(): Promise<void> {
-    const metadata = JSON.stringify(this.metadata);
-    this.fileSystem.writeFileSync(this.metadataPath, metadata);
-    await this.writeEncryptedMetadata();
-  }
-
-  private async writeEncryptedMetadata(): Promise<void> {
-    // Store the keys if identity is loaded
-    if (this.KeypairUnlocked) {
-      // // write derived keys to file
-      // const derivedKeys = JSON.stringify(this.derivedKeys);
-      // const encryptedMetadata = await this.encryptData(derivedKeys);
-      // await this.fileSystem.promises.writeFile(
-      //   this.derivedKeysPath,
-      //   encryptedMetadata,
-      // );
-      // // write mnemonic to file
-      const encryptedMnemonic = await this.encryptData(this.mnemonic);
-      await this.fileSystem.promises.writeFile(
-        this.mnemonicFilePath,
-        encryptedMnemonic,
+  protected async getRootCertsPems(
+    rootCertsNames: Array<string>,
+  ): Promise<Array<CertificatePem>> {
+    let rootCertsPems: Array<CertificatePem>;
+    try {
+      rootCertsPems = await Promise.all(
+        rootCertsNames.map(async (n) => {
+          return await this.fs.readFile(`${this.rootCertsPath}/${n}`, {
+            encoding: 'utf8',
+          });
+        }),
       );
-      const derivedKeys = JSON.stringify(this.derivedKeys);
-      await this.writeFileWithMnemonic(
-        this.derivedKeysPath,
-        Buffer.from(derivedKeys),
-      );
-      // const encryptedMnemonic = JSON.stringify(this.mnemonic);
-      // await this.writeFileWithMnemonic(
-      //   this.mnemonicFilePath,
-      //   Buffer.from(encryptedMnemonic),
-      // );
+    } catch (e) {
+      throw new keysErrors.ErrorRootCertRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
     }
-  }
-
-  async loadMetadata(): Promise<void> {
-    // Check if file exists
-    if (this.fileSystem.existsSync(this.metadataPath)) {
-      const metadata = this.fileSystem
-        .readFileSync(this.metadataPath)
-        .toString();
-      this.metadata = JSON.parse(metadata);
-      await this.loadEncryptedMetadata();
-    }
-  }
-
-  async loadEncryptedMetadata(): Promise<void> {
-    if (this.KeypairUnlocked) {
-      if (this.fileSystem.existsSync(this.mnemonicFilePath)) {
-        const encryptedMetadata = this.fileSystem
-          .readFileSync(this.mnemonicFilePath)
-          .toString();
-        this.mnemonic = (await this.decryptData(encryptedMetadata)).toString();
-        // this.mnemonic = (await this.readFileWithMnemonic(this.mnemonicFilePath)).toString();
-      }
-      if (this.fileSystem.existsSync(this.derivedKeysPath)) {
-        const metadata = (
-          await this.readFileWithMnemonic(this.derivedKeysPath)
-        ).toString();
-        const derivedKeys = JSON.parse(metadata);
-        for (const key of Object.keys(derivedKeys)) {
-          this.derivedKeys[key] = Buffer.from(derivedKeys[key]);
-        }
-      }
-    }
+    return rootCertsPems;
   }
 }
 
 export default KeyManager;
-export { KeyPair };

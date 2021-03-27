@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "module": "CommonJS",
-    "target": "ES2016",
+    "target": "ES2020",
     "baseUrl": "./src",
     "skipLibCheck": true,
     "paths": {
@@ -20,6 +20,7 @@
     }
   },
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+    "./tests/**/*"
   ]
 }
