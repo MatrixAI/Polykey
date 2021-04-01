@@ -16,8 +16,10 @@ interface FileSystem {
   readFile: typeof fs.readFile;
   writeFile: typeof fs.writeFile;
   copyFile: typeof fs.copyFile;
+  mkdir: typeof fs.mkdir;
   readdir: typeof fs.readdir;
   rename: typeof fs.rename;
+  open: typeof fs.open;
 }
 
 /**
