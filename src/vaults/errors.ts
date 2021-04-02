@@ -2,4 +2,35 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorVaults extends ErrorPolykey {}
 
-export { ErrorVaults };
+class ErrorSecrets extends ErrorPolykey {}
+
+class ErrorVaultUndefined extends ErrorVaults {}
+
+class ErrorVaultDefined extends ErrorVaults {}
+
+class ErrorRemoteVaultUndefined extends ErrorVaults {}
+
+class ErrorVaultUninitialised extends ErrorVaults {}
+
+class ErrorRecursive extends ErrorVaults {}
+
+class ErrorSecretUndefined extends ErrorSecrets {}
+
+class ErrorSecretDefined extends ErrorSecrets {}
+
+class ErrorReadingSecret extends ErrorSecrets {}
+
+class ErrorGitFile extends ErrorSecrets {}
+
+export {
+  ErrorVaults,
+  ErrorVaultUndefined,
+  ErrorVaultDefined,
+  ErrorRemoteVaultUndefined,
+  ErrorVaultUninitialised,
+  ErrorRecursive,
+  ErrorSecretUndefined,
+  ErrorSecretDefined,
+  ErrorReadingSecret,
+  ErrorGitFile,
+};

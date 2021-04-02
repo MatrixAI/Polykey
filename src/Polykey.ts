@@ -51,7 +51,8 @@ class Polykey {
     this.vaults =
       vaultManager ??
       new VaultManager({
-        vaultsPath,
+        baseDir: vaultsPath,
+        keyManager: this.keys,
         fs: this.fs,
         logger: this.logger.getChild('VaultManager'),
       });
@@ -86,7 +87,7 @@ class Polykey {
     );
     process.umask(umaskNew);
     this.logger.info(`Setting node path to ${this.nodePath}`);
-    await utils.mkdirExists(this.fs, this.nodePath);
+    await utils.mkdirExists(this.fs, this.nodePath, { recursive: true });
     await this.workers.start();
     this.keys.setWorkerManager(this.workers);
     await this.keys.start({
