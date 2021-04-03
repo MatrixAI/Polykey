@@ -6,6 +6,7 @@ type PublicKeyAsn1 = asn1.Asn1;
 type PrivateKeyAsn1 = asn1.Asn1;
 type PublicKeyPem = string;
 type PrivateKeyPem = string;
+type PublicKeyFingerprintBytes = string;
 type PublicKeyFingerprint = string;
 type KeyPair = pki.rsa.KeyPair;
 type KeyPairAsn1 = {
@@ -28,6 +29,7 @@ export type {
   PrivateKeyAsn1,
   PublicKeyPem,
   PrivateKeyPem,
+  PublicKeyFingerprintBytes,
   PublicKeyFingerprint,
   KeyPair,
   KeyPairAsn1,

@@ -10,6 +10,7 @@ pkgs.mkShell {
     grpc-tools
     openapi-generator-cli
     grpcurl
+    tinyproxy
   ];
   shellHook = ''
     echo 'Entering js-polykey'

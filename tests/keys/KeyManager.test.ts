@@ -151,12 +151,12 @@ describe('KeyManager', () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
-    const rootCert1 = keyManager.getRootCert()!;
+    const rootCert1 = keyManager.getRootCert();
     // we use seconds for sequence numbers
     // in the future we should be using monotonic time
     await sleep(2000);
     await keyManager.resetRootCert();
-    const rootCert2 = keyManager.getRootCert()!;
+    const rootCert2 = keyManager.getRootCert();
     expect(keysUtils.publicKeyToPem(rootCert1.publicKey as PublicKey)).toBe(
       keysUtils.publicKeyToPem(rootCert2.publicKey as PublicKey),
     );
@@ -173,13 +173,13 @@ describe('KeyManager', () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
-    const rootKeyPair1 = keyManager.getRootKeyPair()!;
-    const rootCert1 = keyManager.getRootCert()!;
+    const rootKeyPair1 = keyManager.getRootKeyPair();
+    const rootCert1 = keyManager.getRootCert();
     await sleep(2000); // let's just make sure there is time diff
     // reset root key pair takes time
     await keyManager.resetRootKeyPair('password');
-    const rootKeyPair2 = keyManager.getRootKeyPair()!;
-    const rootCert2 = keyManager.getRootCert()!;
+    const rootKeyPair2 = keyManager.getRootKeyPair();
+    const rootCert2 = keyManager.getRootCert();
     expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
     expect(rootCert1.validity.notBefore < rootCert2.validity.notBefore).toBe(
       true,
@@ -202,13 +202,13 @@ describe('KeyManager', () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
-    const rootKeyPair1 = keyManager.getRootKeyPair()!;
-    const rootCert1 = keyManager.getRootCert()!;
+    const rootKeyPair1 = keyManager.getRootKeyPair();
+    const rootCert1 = keyManager.getRootCert();
     await sleep(2000); // let's just make sure there is time diff
     // renew root key pair takes time
     await keyManager.renewRootKeyPair('newpassword');
-    const rootKeyPair2 = keyManager.getRootKeyPair()!;
-    const rootCert2 = keyManager.getRootCert()!;
+    const rootKeyPair2 = keyManager.getRootKeyPair();
+    const rootCert2 = keyManager.getRootCert();
     expect(rootCert1.serialNumber).not.toBe(rootCert2.serialNumber);
     expect(rootCert1.validity.notBefore < rootCert2.validity.notBefore).toBe(
       true,
@@ -225,6 +225,10 @@ describe('KeyManager', () => {
     expect(keysUtils.publicKeyToPem(rootCert2.publicKey as PublicKey)).toBe(
       keysUtils.publicKeyToPem(rootKeyPair2.publicKey as PublicKey),
     );
+    // all certificates are self-signed via an extension
+    expect(keysUtils.certVerifiedNode(rootCert1)).toBe(true);
+    expect(keysUtils.certVerifiedNode(rootCert2)).toBe(true);
+    // cert chain is ensured
     expect(keysUtils.certIssued(rootCert1, rootCert2)).toBe(true);
     expect(keysUtils.certVerified(rootCert1, rootCert2)).toBe(true);
     await keyManager.stop();
@@ -268,6 +272,41 @@ describe('KeyManager', () => {
     await keyManager.start({ password: 'newpassword' });
     const firstKey__ = await keyManager.getKey('firstkey');
     expect(firstKey).toStrictEqual(firstKey__);
+    await keyManager.stop();
+  });
+  test('order of certificate chain should be leaf to root', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyManager = new KeyManager({ keysPath, logger });
+    await keyManager.start({ password: 'password' });
+    const rootCertPem1 = keyManager.getRootCertPem();
+    await sleep(2000); // let's just make sure there is time diff
+    // renew root key pair takes time
+    await keyManager.renewRootKeyPair('newpassword');
+    const rootCertPem2 = keyManager.getRootCertPem();
+    await sleep(2000); // let's just make sure there is time diff
+    // renew root key pair takes time
+    await keyManager.renewRootKeyPair('newnewpassword');
+    const rootCertPem3 = keyManager.getRootCertPem();
+    const rootCertChainPems = await keyManager.getRootCertChainPems();
+    const rootCertChainPem = await keyManager.getRootCertChainPem();
+    const rootCertChain = await keyManager.getRootCertChain();
+    // the order should be from leaf to root
+    expect(rootCertChainPems).toStrictEqual([
+      rootCertPem3,
+      rootCertPem2,
+      rootCertPem1,
+    ]);
+    expect(rootCertChainPem).toBe(
+      [rootCertPem3, rootCertPem2, rootCertPem1].join(''),
+    );
+    const rootCertChainPems_ = rootCertChain.map((c) => {
+      return keysUtils.certToPem(c);
+    });
+    expect(rootCertChainPems_).toStrictEqual([
+      rootCertPem3,
+      rootCertPem2,
+      rootCertPem1,
+    ]);
     await keyManager.stop();
   });
 });

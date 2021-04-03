@@ -11,7 +11,7 @@ describe('utils', () => {
     client = await utils.openTestClient(port);
   });
   afterAll(async () => {
-    await utils.closeTestClient(client);
+    utils.closeTestClient(client);
     await utils.closeTestServer(server);
   });
   test('promisify client unary call', async () => {

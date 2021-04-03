@@ -1,17 +1,10 @@
-import * as grpc from '@grpc/grpc-js';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import type { NodeId } from '@/nodes/types';
 
+import * as grpc from '@grpc/grpc-js';
 import { TestService, ITestServer, TestClient } from '@/proto/js/Test_grpc_pb';
-import { createAgentService, GRPCClientAgent, AgentService } from '@/agent';
-import { ClientService, IClientServer } from '@/proto/js/Client_grpc_pb';
-import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
-import { createClientService } from '@/client';
 import * as testPB from '@/proto/js/Test_pb';
-import PolykeyClient from '@/PolykeyClient';
-import { VaultManager } from '@/vaults';
-import { NodeManager } from '@/nodes';
+import { utils as grpcUtils } from '@/grpc';
 import { promisify } from '@/utils';
-import { KeyManager } from '@/keys';
 
 const testService: ITestServer = {
   unary: async (
@@ -61,7 +54,7 @@ const testService: ITestServer = {
   },
 };
 
-const openTestServer = async () => {
+async function openTestServer(): Promise<[grpc.Server, number]> {
   const server = new grpc.Server();
   server.addService(TestService, testService);
   const bindAsync = promisify(server.bindAsync).bind(server);
@@ -71,14 +64,14 @@ const openTestServer = async () => {
   );
   server.start();
   return [server, port];
-};
+}
 
-const closeTestServer = async (server) => {
+async function closeTestServer(server: grpc.Server): Promise<void> {
   const tryShutdown = promisify(server.tryShutdown).bind(server);
   await tryShutdown();
-};
+}
 
-const openTestClient = async (port: number): Promise<TestClient> => {
+async function openTestClient(port: number): Promise<TestClient> {
   const client = new TestClient(
     `127.0.0.1:${port}`,
     grpc.ChannelCredentials.createInsecure(),
@@ -86,131 +79,70 @@ const openTestClient = async (port: number): Promise<TestClient> => {
   const waitForReady = promisify(client.waitForReady).bind(client);
   await waitForReady(Infinity);
   return client;
-};
+}
 
-const closeTestClient = async (client) => {
+function closeTestClient(client: TestClient): void {
   client.close();
-};
+}
 
-async function openTestClientServer({
-  keyManager,
-  vaultManager,
-  nodeManager,
-}: {
-  keyManager: KeyManager;
-  vaultManager: VaultManager;
-  nodeManager: NodeManager;
-}) {
-  const clientService: IClientServer = createClientService({
-    keyManager,
-    vaultManager,
-    nodeManager,
-  });
-
-  const server = new grpc.Server();
-  server.addService(ClientService, clientService);
-  const bindAsync = promisify(server.bindAsync).bind(server);
-  const port = await bindAsync(
-    `127.0.0.1:0`,
-    grpc.ServerCredentials.createInsecure(),
+async function openTestClientSecure(
+  nodeId: NodeId,
+  port: number,
+  keyPrivatePem,
+  certChainPem,
+): Promise<TestClient> {
+  const clientOptions = {
+    // prevents complaints with having an ip address as the server name
+    'grpc.ssl_target_name_override': nodeId,
+  };
+  const clientCredentials = grpcUtils.clientCredentials(
+    keyPrivatePem,
+    certChainPem,
   );
+  const client = new TestClient(
+    `127.0.0.1:${port}`,
+    clientCredentials,
+    clientOptions,
+  );
+  const waitForReady = promisify(client.waitForReady).bind(client);
+  await waitForReady(Infinity);
+  return client;
+}
+
+function closeTestClientSecure(client: TestClient) {
+  client.close();
+}
+
+async function openTestServerSecure(
+  keyPrivatePem,
+  certChainPem,
+): Promise<[grpc.Server, number]> {
+  const server = new grpc.Server();
+  server.addService(TestService, testService);
+  const bindAsync = promisify(server.bindAsync).bind(server);
+  const serverCredentials = grpcUtils.serverCredentials(
+    keyPrivatePem,
+    certChainPem,
+  );
+  const port = await bindAsync(`127.0.0.1:0`, serverCredentials);
   server.start();
   return [server, port];
 }
 
-const closeTestClientServer = async (server) => {
+async function closeTestServerSecure(server: grpc.Server): Promise<void> {
   const tryShutdown = promisify(server.tryShutdown).bind(server);
   await tryShutdown();
-};
-
-async function openTestClientClient(nodePath) {
-  const logger = new Logger('ClientClientTest', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
-  const fs = require('fs/promises');
-  // const nodePath = path.resolve(utils.getDefaultNodePath());
-
-  const pkc: PolykeyClient = new PolykeyClient({
-    nodePath,
-    fs,
-    logger,
-  });
-  await pkc.start({
-    credentials: grpc.ChannelCredentials.createInsecure(),
-    timeout: 30000,
-  });
-
-  return pkc;
-}
-
-async function closeTestClientClient(client: PolykeyClient) {
-  await client.stop();
-}
-
-async function openTestAgentServer({
-  keyManager,
-  vaultManager,
-  nodeManager,
-}: {
-  keyManager: KeyManager;
-  vaultManager: VaultManager;
-  nodeManager: NodeManager;
-}) {
-  const agentService: IAgentServer = createAgentService({
-    keyManager,
-    vaultManager,
-    nodeManager,
-  });
-
-  const server = new grpc.Server();
-  server.addService(AgentService, agentService);
-  const bindAsync = promisify(server.bindAsync).bind(server);
-  const port = await bindAsync(
-    `127.0.0.1:0`,
-    grpc.ServerCredentials.createInsecure(),
-  );
-  server.start();
-  return [server, port];
-}
-
-async function closeTestAgentServer(server) {
-  const tryShutdown = promisify(server.tryShutdown).bind(server);
-  await tryShutdown();
-}
-
-async function openTestAgentClient(port: number): Promise<GRPCClientAgent> {
-  const logger = new Logger('AgentClientTest', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
-  const agentClient = new GRPCClientAgent({
-    host: '127.0.0.1',
-    port: port,
-    logger: logger,
-  });
-
-  await agentClient.start({
-    credentials: grpc.ChannelCredentials.createInsecure(),
-    timeout: 30000,
-  });
-
-  return agentClient;
-}
-
-async function closeTestAgentClient(client: GRPCClientAgent) {
-  await client.stop();
 }
 
 export {
+  TestService,
+  testService,
   openTestServer,
   closeTestServer,
   openTestClient,
   closeTestClient,
-  openTestClientServer,
-  closeTestClientServer,
-  openTestClientClient,
-  closeTestClientClient,
-  openTestAgentServer,
-  closeTestAgentServer,
-  openTestAgentClient,
-  closeTestAgentClient,
+  openTestServerSecure,
+  closeTestServerSecure,
+  openTestClientSecure,
+  closeTestClientSecure,
 };

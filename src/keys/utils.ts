@@ -6,6 +6,7 @@ import type {
   PrivateKey,
   PrivateKeyPem,
   Certificate,
+  PublicKeyFingerprintBytes,
   PublicKeyFingerprint,
   CertificateAsn1,
   CertificatePem,
@@ -23,9 +24,26 @@ import {
   cipher,
   mgf,
   util as forgeUtil,
+  asn1,
 } from 'node-forge';
+import config from '../config';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
+
+/**
+ * Polykey OIDs start at 1.3.6.1.4.1.57167.2
+ */
+const oids = {
+  // 1.3.6.1.4.1.57167.2.1
+  attributes: {
+    cryptoLinks: '1.3.6.1.4.1.57167.2.1.1',
+  },
+  // 1.3.6.1.4.1.57167.2.2
+  extensions: {
+    polykeyVersion: '1.3.6.1.4.1.57167.2.2.1',
+    nodeSignature: '1.3.6.1.4.1.57167.2.2.2',
+  },
+};
 
 async function generateKeyPair(bits: number): Promise<KeyPair> {
   return await pki.rsa.generateKeyPair({ bits });
@@ -112,12 +130,19 @@ function keyPairCopy(keyPair: KeyPair): KeyPair {
   return keyPairFromAsn1(keyPairToAsn1(keyPair));
 }
 
-function publicKeyToFingerprint(publicKey: PublicKey): PublicKeyFingerprint {
+function publicKeyToFingerprintBytes(
+  publicKey: PublicKey,
+): PublicKeyFingerprintBytes {
   const fString = pki.getPublicKeyFingerprint(publicKey, {
     type: 'SubjectPublicKeyInfo',
     md: md.sha256.create(),
     encoding: 'binary',
   });
+  return fString;
+}
+
+function publicKeyToFingerprint(publicKey: PublicKey): PublicKeyFingerprint {
+  const fString = publicKeyToFingerprintBytes(publicKey);
   const fTypedArray = forgeUtil.binary.raw.decode(fString);
   const f = forgeUtil.binary.base64.encode(fTypedArray);
   return f;
@@ -160,6 +185,7 @@ function publicKeyFromPrivateKey(privateKey: PrivateKey): PublicKey {
 
 function generateCertificate(
   subjectPublicKey: PublicKey,
+  subjectPrivateKey: PrivateKey,
   issuerPrivateKey: PrivateKey,
   duration: number,
   subjectAttrsExtra: Array<{ name: string; value: string }> = [],
@@ -190,7 +216,7 @@ function generateCertificate(
   ];
   cert.setSubject(subjectAttrs);
   cert.setIssuer(issuerAttrs);
-  cert.setExtensions([
+  const extensions: Array<any> = [
     {
       name: 'basicConstraints',
       cA: true,
@@ -222,11 +248,66 @@ function generateCertificate(
       objCA: true,
     },
     {
+      name: 'subjectAltName',
+      altNames: [
+        {
+          type: 2,
+          value: publicKeyToFingerprint(subjectPublicKey),
+        },
+        {
+          type: 7,
+          ip: '127.0.0.1',
+        },
+        {
+          type: 7,
+          ip: '::1',
+        },
+      ],
+    },
+    {
       name: 'subjectKeyIdentifier',
     },
-  ]);
+    {
+      name: 'polykeyVersion',
+      id: oids.extensions.polykeyVersion,
+      critical: true,
+      value: asn1.create(
+        asn1.Class.APPLICATION,
+        asn1.Type.IA5STRING,
+        false,
+        config.version,
+      ),
+    },
+  ];
+  cert.setExtensions(extensions);
+  cert.sign(subjectPrivateKey, md.sha256.create());
+  const nodeSignature = cert.signature;
+  extensions.push({
+    name: 'nodeSignature',
+    id: oids.extensions.nodeSignature,
+    critical: true,
+    value: asn1.create(
+      asn1.Class.APPLICATION,
+      asn1.Type.OCTETSTRING,
+      false,
+      nodeSignature,
+    ),
+  });
+  cert.setExtensions(extensions);
   cert.sign(issuerPrivateKey, md.sha256.create());
   return cert;
+}
+
+function certParseExtensions(exts: Array<any>): void {
+  for (const ext of exts) {
+    if (ext.id === oids.extensions.polykeyVersion) {
+      const parsed = asn1.fromDer(ext.value);
+      ext.polykeyVersion = parsed.value;
+    } else if (ext.id === oids.extensions.nodeSignature) {
+      const parsed = asn1.fromDer(ext.value);
+      ext.nodeSignature = parsed.value;
+    }
+  }
 }
 
 function certToPem(cert: Certificate): CertificatePem {
@@ -234,7 +315,9 @@ function certToPem(cert: Certificate): CertificatePem {
 }
 
 function certFromPem(certPem: CertificatePem): Certificate {
-  return pki.certificateFromPem(certPem);
+  const cert = pki.certificateFromPem(certPem);
+  certParseExtensions(cert.extensions);
+  return cert;
 }
 
 function certToAsn1(cert: Certificate): CertificateAsn1 {
@@ -242,7 +325,19 @@ function certToAsn1(cert: Certificate): CertificateAsn1 {
 }
 
 function certFromAsn1(certAsn1: CertificateAsn1): Certificate {
-  return pki.certificateFromAsn1(certAsn1);
+  const cert = pki.certificateFromAsn1(certAsn1);
+  certParseExtensions(cert.extensions);
+  return cert;
+}
+
+function certToDer(cert: Certificate): string {
+  const certAsn1 = certToAsn1(cert);
+  return asn1.toDer(certAsn1).getBytes();
+}
+
+function certFromDer(certDer: string): Certificate {
+  const certAsn1 = asn1.fromDer(certDer);
+  return certFromAsn1(certAsn1);
 }
 
 function certCopy(cert: Certificate): Certificate {
@@ -258,7 +353,53 @@ function certIssued(cert1: Certificate, cert2: Certificate): boolean {
 }
 
 function certVerified(cert1: Certificate, cert2: Certificate): boolean {
-  return cert1.verify(cert2);
+  try {
+    return cert1.verify(cert2);
+  } catch (e) {
+    return false;
+  }
+}
+
+function certVerifiedNode(cert: Certificate): boolean {
+  const certNodeSignatureExt = cert.getExtension({
+    // @ts-ignore
+    id: oids.extensions.nodeSignature,
+  }) as any;
+  if (certNodeSignatureExt == null) {
+    return false;
+  }
+  const certNodeSignature = certNodeSignatureExt.nodeSignature;
+  const extensionsOrig = cert.extensions;
+  const extensionsFiltered = extensionsOrig.filter((ext) => {
+    if (ext.id === oids.extensions.nodeSignature) {
+      return false;
+    }
+    return true;
+  });
+  // calculate the certificate digest
+  const certDigest = md.sha256.create();
+
+  let verified;
+  try {
+    cert.setExtensions(extensionsFiltered);
+    // @ts-ignore
+    const certTBS = pki.getTBSCertificate(cert);
+    const certTBSDer = asn1.toDer(certTBS);
+    certDigest.update(certTBSDer.getBytes());
+    const publicKey = cert.publicKey as PublicKey;
+    try {
+      verified = publicKey.verify(
+        certDigest.digest().getBytes(),
+        certNodeSignature,
+      );
+    } catch (e) {
+      return false;
+    }
+  } finally {
+    // roll back the mutations to the child certificate
+    cert.setExtensions(extensionsOrig);
+  }
+  return verified;
 }
 
 function encryptWithPublicKey(publicKey: PublicKey, plainText: Buffer): Buffer {
@@ -381,6 +522,7 @@ function decryptWithKey(key: Buffer, cipherText: Buffer): Buffer | undefined {
 }
 
 export {
+  oids,
   publicKeyToPem,
   publicKeyFromPem,
   publicKeyToAsn1,
@@ -397,6 +539,7 @@ export {
   keyPairToPemEncrypted,
   keyPairFromPemEncrypted,
   keyPairCopy,
+  publicKeyToFingerprintBytes,
   publicKeyToFingerprint,
   encryptPrivateKey,
   decryptPrivateKey,
@@ -405,9 +548,12 @@ export {
   certFromAsn1,
   certToPem,
   certFromPem,
+  certToDer,
+  certFromDer,
   certCopy,
   certIssued,
   certVerified,
+  certVerifiedNode,
   encryptWithPublicKey,
   decryptWithPrivateKey,
   signWithPrivateKey,

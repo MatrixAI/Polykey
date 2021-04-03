@@ -115,29 +115,40 @@ class KeyManager {
     this.logger.info('Stopped Key Manager');
   }
 
-  public getRootKeyPair(): KeyPair | undefined {
-    return this.rootKeyPair
-      ? keysUtils.keyPairCopy(this.rootKeyPair)
-      : undefined;
+  public getRootKeyPair(): KeyPair {
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
+    }
+    return keysUtils.keyPairCopy(this.rootKeyPair);
   }
 
-  public getRootKeyPairPem(): KeyPairPem | undefined {
-    return this.rootKeyPair
-      ? keysUtils.keyPairToPem(this.rootKeyPair)
-      : undefined;
+  public getRootKeyPairPem(): KeyPairPem {
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
+    }
+    return keysUtils.keyPairToPem(this.rootKeyPair);
   }
 
-  public getRootCert(): Certificate | undefined {
-    return this.rootCert ? keysUtils.certCopy(this.rootCert) : undefined;
+  public getRootCert(): Certificate {
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
+    }
+    return keysUtils.certCopy(this.rootCert);
   }
 
-  public getRootCertPem(): CertificatePem | undefined {
-    return this.rootCert ? keysUtils.certToPem(this.rootCert) : undefined;
+  public getRootCertPem(): CertificatePem {
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
+    }
+    return keysUtils.certToPem(this.rootCert);
   }
 
+  /**
+   * Gets an array of certificates in order of leaf to root
+   */
   public async getRootCertChain(): Promise<Array<Certificate>> {
-    if (!this.rootCert) {
-      return [];
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
     }
     const rootCertsNames = await this.getRootCertsNames();
     const rootCertsPems = await this.getRootCertsPems(rootCertsNames);
@@ -147,9 +158,12 @@ class KeyManager {
     return [keysUtils.certCopy(this.rootCert), ...rootCerts];
   }
 
+  /**
+   * Gets an array of certificate pems in order of leaf to root
+   */
   public async getRootCertChainPems(): Promise<Array<CertificatePem>> {
-    if (!this.rootCert) {
-      return [];
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
     }
     const rootCertsNames = await this.getRootCertsNames();
     const rootCertsPems = await this.getRootCertsPems(rootCertsNames);
@@ -157,12 +171,15 @@ class KeyManager {
     return rootCertPems;
   }
 
-  public async getRootCertChainPem(): Promise<CertificatePemChain | undefined> {
-    const rootCertPems = await this.getRootCertChainPems();
-    if (!rootCertPems.length) {
-      return undefined;
+  /**
+   * Gets a concatenated certificate pem ordered from leaf to root
+   */
+  public async getRootCertChainPem(): Promise<CertificatePemChain> {
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
     }
-    return rootCertPems.join('\n');
+    const rootCertPems = await this.getRootCertChainPems();
+    return rootCertPems.join('');
   }
 
   public async encryptWithRootKeyPair(plainText: Buffer): Promise<Buffer> {
@@ -269,7 +286,8 @@ class KeyManager {
   /**
    * Generates a new root key pair
    * Forces a generation of a leaf certificate as the new root certificate
-   * The new root certificate is signed by the previous certificate
+   * The new root certificate is self-signed and also signed by the previous certificate
+   * The parent signature is encoded with a custom Polykey extension
    * This maintains a certificate chain that provides zero-downtime migration
    */
   public async renewRootKeyPair(
@@ -287,6 +305,7 @@ class KeyManager {
     const now = new Date();
     const rootCert = keysUtils.generateCertificate(
       rootKeyPair.publicKey,
+      rootKeyPair.privateKey,
       this.rootKeyPair.privateKey,
       duration,
       subjectAttrsExtra,
@@ -340,10 +359,13 @@ class KeyManager {
     const rootCert = keysUtils.generateCertificate(
       rootKeyPair.publicKey,
       rootKeyPair.privateKey,
+      rootKeyPair.privateKey,
       duration,
       subjectAttrsExtra,
       issuerAttrsExtra,
     );
+    // removes the cert chain
+    await this.garbageCollectRootCerts(true);
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
@@ -369,15 +391,18 @@ class KeyManager {
     const rootCert = keysUtils.generateCertificate(
       this.rootKeyPair.publicKey,
       this.rootKeyPair.privateKey,
+      this.rootKeyPair.privateKey,
       duration,
       subjectAttrsExtra,
       issuerAttrsExtra,
     );
+    // removes the cert chain
+    await this.garbageCollectRootCerts(true);
     await this.writeRootCert(rootCert);
     this.rootCert = rootCert;
   }
 
-  public async garbageCollectRootCerts(): Promise<void> {
+  public async garbageCollectRootCerts(force: boolean = false): Promise<void> {
     this.logger.info('Performing garbage collection of root certificates');
     const now = new Date();
     const rootCertsNames = await this.getRootCertsNames();
@@ -387,7 +412,7 @@ class KeyManager {
     });
     try {
       for (const [i, rootCert] of rootCerts.entries()) {
-        if (rootCert.validity.notAfter < now) {
+        if (force || rootCert.validity.notAfter < now) {
           this.logger.info(
             `Deleting ${this.rootCertsPath}/${rootCertsNames[i]}`,
           );
@@ -562,6 +587,7 @@ class KeyManager {
       rootCert = keysUtils.generateCertificate(
         keyPair.publicKey,
         keyPair.privateKey,
+        keyPair.privateKey,
         duration,
         subjectAttrsExtra,
         issuerAttrsExtra,
@@ -706,6 +732,7 @@ class KeyManager {
 
   /**
    * Gets a sorted array of all the prior root certs names
+   * The sort order is from most recent to oldest
    * This does not include the current root cert
    */
   protected async getRootCertsNames(): Promise<Array<string>> {
@@ -724,9 +751,9 @@ class KeyManager {
       const a_ = parseInt(a.split('.').pop()!);
       const b_ = parseInt(b.split('.').pop()!);
       if (a_ < b_) {
-        return -1;
-      } else if (a_ > b_) {
         return 1;
+      } else if (a_ > b_) {
+        return -1;
       }
       return 0;
     });

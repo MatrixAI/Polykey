@@ -9,6 +9,19 @@ describe('utils', () => {
     const keyPairPem2 = keysUtils.keyPairToPem(keyPair2);
     expect(keyPairPem).toStrictEqual(keyPairPem2);
   });
+  test('to and from der encoding', async () => {
+    const keyPair = await keysUtils.generateKeyPair(4096);
+    const cert = keysUtils.generateCertificate(
+      keyPair.publicKey,
+      keyPair.privateKey,
+      1000,
+    );
+    const certPem = keysUtils.certToPem(cert);
+    const certDer = keysUtils.certToDer(cert);
+    const cert_ = keysUtils.certFromDer(certDer);
+    const certPem_ = keysUtils.certToPem(cert_);
+    expect(certPem).toBe(certPem_);
+  });
   test('certificate copy', async () => {
     const keyPair = await keysUtils.generateKeyPair(4096);
     const cert = keysUtils.generateCertificate(

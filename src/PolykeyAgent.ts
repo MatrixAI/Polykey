@@ -15,6 +15,7 @@ import { createAgentService, AgentService } from './agent';
 import { ErrorPolykey } from './errors';
 import { IClientServer } from './proto/js/Client_grpc_pb';
 import { IAgentServer } from './proto/js/Agent_grpc_pb';
+import { ForwardProxy, ReverseProxy } from './network';
 import * as utils from './utils';
 
 class Polykey {
@@ -31,6 +32,10 @@ class Polykey {
   public readonly grpcHost: string;
   public readonly grpcPort: number;
 
+  // Proxies
+  public readonly fwdProxy: ForwardProxy;
+  public readonly revProxy: ReverseProxy;
+
   protected fs: FileSystem;
   protected logger: Logger;
 
@@ -44,6 +49,9 @@ class Polykey {
     workerManager,
     grpcHost,
     grpcPort,
+    fwdProxy,
+    revProxy,
+    authToken,
     fs,
     logger,
   }: {
@@ -56,6 +64,9 @@ class Polykey {
     workerManager?: WorkerManager;
     grpcHost?: string;
     grpcPort?: number;
+    fwdProxy?: ForwardProxy;
+    revProxy?: ReverseProxy;
+    authToken?: string;
     fs?: FileSystem;
     logger?: Logger;
   } = {}) {
@@ -132,6 +143,19 @@ class Polykey {
       ],
       logger: this.logger,
     });
+
+    this.fwdProxy =
+      fwdProxy ??
+      new ForwardProxy({
+        authToken: authToken ?? '',
+        logger: this.logger,
+      });
+
+    this.revProxy =
+      revProxy ??
+      new ReverseProxy({
+        logger: this.logger,
+      });
   }
 
   /**
@@ -205,6 +229,12 @@ class Polykey {
       host: this.grpcHost,
       port: this.grpcPort,
       credentials: grpcUtils.serverCredentials(),
+    });
+
+    await this.fwdProxy.start();
+    await this.revProxy.start({
+      grpcHost: this.grpcHost,
+      grpcPort: this.grpcPort,
     });
 
     this.logger.info('Started Polykey');
