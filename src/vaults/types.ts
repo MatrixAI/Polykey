@@ -2,9 +2,12 @@ import type Vault from './Vault';
 
 type VaultKey = Buffer;
 
-type VaultKeys = { [key: string]: VaultKey };
-
-type Vaults = { [key: string]: Vault };
+/**
+ * map vaultId -> Vault, VaultKey, VaultName
+ */
+type Vaults = {
+  [key: string]: { vault: Vault; vaultKey: VaultKey; vaultName: string };
+};
 
 type NodePermissions = {
   canPull: boolean;
@@ -21,12 +24,4 @@ type FileChange = {
 
 type FileChanges = Array<FileChange>;
 
-export type {
-  VaultKey,
-  VaultKeys,
-  Vaults,
-  NodePermissions,
-  ACL,
-  FileChange,
-  FileChanges,
-};
+export type { VaultKey, Vaults, NodePermissions, ACL, FileChange, FileChanges };

@@ -61,7 +61,7 @@ class Polykey {
     this.vaults =
       vaultManager ??
       new VaultManager({
-        baseDir: vaultsPath,
+        vaultsPath: vaultsPath,
         keyManager: this.keys,
         fs: this.fs,
         logger: this.logger.getChild('VaultManager'),

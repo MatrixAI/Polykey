@@ -22,12 +22,17 @@ class GitBackend {
   private getVaultNames: (nodeId: string) => string[];
   private logger: Logger;
 
-  constructor(
-    baseDir: string,
-    getFileSystem: (repoName: string) => any,
-    getVaultNames: (nodeId: string) => string[],
-    logger?: Logger,
-  ) {
+  constructor({
+    baseDir,
+    getFileSystem,
+    getVaultNames,
+    logger,
+  }: {
+    baseDir: string;
+    getFileSystem: (repoName: string) => any;
+    getVaultNames: (nodeId: string) => string[];
+    logger?: Logger;
+  }) {
     this.baseDir = baseDir;
     this.getFileSystem = getFileSystem;
     this.getVaultNames = getVaultNames;

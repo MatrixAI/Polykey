@@ -1,4 +1,3 @@
-import type { NodePermissions } from '@/vaults/types';
 import os from 'os';
 import path from 'path';
 import fsPromises from 'fs/promises';
@@ -7,7 +6,7 @@ import { VirtualFS } from 'virtualfs';
 import git from 'isomorphic-git';
 import Vault from '@/vaults/Vault';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { generateVaultKey } from '@/vaults/utils';
+import { generateVaultId, generateVaultKey } from '@/vaults/utils';
 import { getRandomBytes } from '@/keys/utils';
 import * as errors from '@/vaults/errors';
 
@@ -15,13 +14,16 @@ describe('Vault is', () => {
   let dataDir: string;
   let vault: Vault;
   let key: Buffer;
+  let id: string;
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
   const name = 'vault-1';
 
   beforeEach(async () => {
     dataDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
     key = await generateVaultKey();
+    id = await generateVaultId();
     vault = new Vault({
+      vaultId: id,
       vaultName: name,
       key: key,
       baseDir: dataDir,
@@ -39,21 +41,15 @@ describe('Vault is', () => {
   test('type correct', async () => {
     expect(vault).toBeInstanceOf(Vault);
   });
-  test('starting and stopping', async () => {
-    try {
-      await vault.create();
-    } finally {
-      await vault.destroy();
-    }
-  });
   test('creating the vault directory', async () => {
-    try {
-      await vault.create();
-
-      expect(fs.existsSync(path.join(dataDir, 'vault-1'))).toBe(true);
-    } finally {
-      await vault.destroy();
-    }
+    await vault.create();
+    expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(true);
+  });
+  test('able to destroy an empty vault', async () => {
+    await vault.create();
+    expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(true);
+    await vault.destroy();
+    expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(false);
   });
   test('adding a secret', async () => {
     try {
@@ -61,7 +57,7 @@ describe('Vault is', () => {
       await vault.initializeVault();
       await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
-      expect(fs.existsSync(path.join(dataDir, 'vault-1', 'secret-1'))).toBe(
+      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'secret-1'))).toBe(
         true,
       );
     } finally {
@@ -75,7 +71,9 @@ describe('Vault is', () => {
       await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
       expect(
-        vault.EncryptedFS.existsSync(path.join(dataDir, 'vault-1', 'secret-1')),
+        vault.EncryptedFS.existsSync(
+          path.join(dataDir, vault.vaultId, 'secret-1'),
+        ),
       ).toBe(true);
     } finally {
       await vault.destroy();
@@ -87,7 +85,7 @@ describe('Vault is', () => {
       await vault.initializeVault();
       await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
-      expect(fs.existsSync(path.join(dataDir, 'vault-1', 'secret-1'))).toBe(
+      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'secret-1'))).toBe(
         true,
       );
       const secret = (await vault.getSecret('secret-1')).toString();
@@ -111,14 +109,18 @@ describe('Vault is', () => {
         Buffer.from('secret-content'),
       );
 
-      expect(fs.existsSync(path.join(dataDir, 'vault-1', 'dir-1'))).toBe(true);
-      expect(fs.existsSync(path.join(dataDir, 'vault-1', 'dir-2'))).toBe(true);
+      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'dir-1'))).toBe(
+        true,
+      );
+      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'dir-2'))).toBe(
+        true,
+      );
       expect(
-        fs.existsSync(path.join(dataDir, 'vault-1', 'dir-3', 'dir-4')),
+        fs.existsSync(path.join(dataDir, vault.vaultId, 'dir-3', 'dir-4')),
       ).toBe(true);
       expect(
         fs.existsSync(
-          path.join(dataDir, 'vault-1', 'dir-3', 'dir-4', 'secret-1'),
+          path.join(dataDir, vault.vaultId, 'dir-3', 'dir-4', 'secret-1'),
         ),
       );
     } finally {
@@ -133,7 +135,7 @@ describe('Vault is', () => {
       for (let i = 0; i < 100; i++) {
         const name = 'secret ' + i.toString();
         const content = await getRandomBytes(5);
-        const writePath = path.join(dataDir, vault.vaultName, name);
+        const writePath = path.join(dataDir, vault.vaultId, name);
         await efs.promises.mkdir(path.dirname(writePath), {
           recursive: true,
         });
@@ -141,7 +143,7 @@ describe('Vault is', () => {
         await expect(vault.getSecret(name)).resolves.toStrictEqual(content);
 
         expect(
-          vault.EncryptedFS.existsSync(path.join(dataDir, 'vault-1', name)),
+          vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId, name)),
         ).toBe(true);
       }
     } finally {
@@ -173,7 +175,7 @@ describe('Vault is', () => {
         await expect(vault.getSecret(name)).resolves.toStrictEqual(content);
 
         expect(
-          vault.EncryptedFS.existsSync(path.join(dataDir, 'vault-1', name)),
+          vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId, name)),
         ).toBe(true);
       }
     } finally {
@@ -256,7 +258,7 @@ describe('Vault is', () => {
       await vault.addSecret('secret-1', Buffer.from('secret-content'));
       await vault.deleteSecret('secret-1', false);
 
-      expect(fs.existsSync(path.join(dataDir, 'vault-1', 'secret-1'))).toBe(
+      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'secret-1'))).toBe(
         false,
       );
     } finally {
@@ -271,7 +273,9 @@ describe('Vault is', () => {
       await vault.deleteSecret('secret-1', false);
 
       expect(
-        vault.EncryptedFS.existsSync(path.join(dataDir, 'vault-1', 'secret-1')),
+        vault.EncryptedFS.existsSync(
+          path.join(dataDir, vault.vaultId, 'secret-1'),
+        ),
       ).toBe(false);
     } finally {
       await vault.destroy();
@@ -290,7 +294,7 @@ describe('Vault is', () => {
 
       expect(
         vault.EncryptedFS.existsSync(
-          path.join(dataDir, 'vault-1', 'dir-1', 'dir-2', 'secret-1'),
+          path.join(dataDir, vault.vaultId, 'dir-1', 'dir-2', 'secret-1'),
         ),
       ).toBe(false);
     } finally {
@@ -310,7 +314,7 @@ describe('Vault is', () => {
         await vault.deleteSecret(name, true);
 
         expect(
-          vault.EncryptedFS.existsSync(path.join(dataDir, 'vault-1', name)),
+          vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId, name)),
         ).toBe(false);
       }
     } finally {
@@ -323,7 +327,7 @@ describe('Vault is', () => {
       await vault.initializeVault();
       await vault.renameVault('vault-change');
 
-      expect(fs.existsSync(path.join(dataDir, 'vault-change'))).toBe(true);
+      expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(true);
     } finally {
       await vault.destroy();
     }
@@ -335,7 +339,7 @@ describe('Vault is', () => {
       await vault.renameVault('vault-change');
 
       expect(
-        vault.EncryptedFS.existsSync(path.join(dataDir, 'vault-change')),
+        vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId)),
       ).toBe(true);
     } finally {
       await vault.destroy();
@@ -349,7 +353,7 @@ describe('Vault is', () => {
       await vault.renameSecret('secret-1', 'secret-change');
 
       expect(
-        fs.existsSync(path.join(dataDir, 'vault-1', 'secret-change')),
+        fs.existsSync(path.join(dataDir, vault.vaultId, 'secret-change')),
       ).toBe(true);
     } finally {
       await vault.destroy();
@@ -364,7 +368,7 @@ describe('Vault is', () => {
 
       expect(
         vault.EncryptedFS.existsSync(
-          path.join(dataDir, 'vault-1', 'secret-change'),
+          path.join(dataDir, vault.vaultId, 'secret-change'),
         ),
       ).toBe(true);
     } finally {
@@ -382,12 +386,12 @@ describe('Vault is', () => {
       );
       await vault.renameSecret(
         path.join('dir-1', 'dir-2', 'secret-1'),
-        'secret-change',
+        path.join('dir-1', 'dir-2', 'secret-change'),
       );
 
       expect(
         vault.EncryptedFS.readdirSync(
-          path.join(dataDir, vault.vaultName, 'dir-1', 'dir-2'),
+          path.join(dataDir, vault.vaultId, 'dir-1', 'dir-2'),
         ),
       ).toEqual([`secret-change`]);
     } finally {
@@ -451,7 +455,7 @@ describe('Vault is', () => {
       if (!fileSystem) {
         throw Error();
       }
-      const vaultName = 'vault-1';
+      const vaultName = vault.vaultId;
       vfs.mkdirpSync(path.join(dataDir, vaultName), {
         recursive: true,
       });
@@ -509,7 +513,9 @@ describe('Vault is', () => {
       await vault.addSecretDirectory(path.join(secretDir));
 
       expect(
-        vault.EncryptedFS.existsSync(path.join(dataDir, 'vault-1', 'secret')),
+        vault.EncryptedFS.existsSync(
+          path.join(dataDir, vault.vaultId, 'secret'),
+        ),
       ).toBe(true);
     } finally {
       await fsPromises.rm(secretDir, {
@@ -536,7 +542,7 @@ describe('Vault is', () => {
       for (let j = 0; j < 10; j++) {
         expect(
           vault.EncryptedFS.existsSync(
-            path.join(dataDir, 'vault-1', 'secret ' + j.toString()),
+            path.join(dataDir, vault.vaultId, 'secret ' + j.toString()),
           ),
         ).toBe(true);
       }
@@ -567,19 +573,19 @@ describe('Vault is', () => {
       for (let j = 0; j < 8; j++) {
         expect(
           vault.EncryptedFS.existsSync(
-            path.join(dataDir, 'vault-1', 'secret ' + j.toString()),
+            path.join(dataDir, vault.vaultId, 'secret ' + j.toString()),
           ),
         ).toBe(true);
       }
 
       expect(
         vault.EncryptedFS.readFileSync(
-          path.join(dataDir, 'vault-1', 'secret 8'),
+          path.join(dataDir, vault.vaultId, 'secret 8'),
         ),
       ).toStrictEqual(Buffer.from('this is secret 8'));
       expect(
         vault.EncryptedFS.readFileSync(
-          path.join(dataDir, 'vault-1', 'secret 9'),
+          path.join(dataDir, vault.vaultId, 'secret 9'),
         ),
       ).toStrictEqual(Buffer.from('this is secret 9'));
     } finally {
@@ -590,88 +596,29 @@ describe('Vault is', () => {
       await vault.destroy();
     }
   });
-  test('able to read and load existing nodepermissions', async () => {
-    const nodePermissionPull: NodePermissions = { canPull: true };
-    const nodePermissionNoPull: NodePermissions = { canPull: false };
-    try {
-      await vault.create();
-      vault.changePermissions('node-id-one', nodePermissionNoPull);
-      vault.changePermissions('node-id-two', nodePermissionPull);
-      vault.changePermissions('node-id-three', nodePermissionNoPull);
+  test('able to persist data across multiple vault objects', async () => {
+    await vault.create();
+    await vault.initializeVault();
+    await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
-      expect(vault.checkPermissions('node-id-one')).toBe(nodePermissionNoPull);
-      expect(vault.checkPermissions('node-id-two')).toBe(nodePermissionPull);
-      expect(vault.checkPermissions('node-id-three')).toBe(
-        nodePermissionNoPull,
-      );
-    } finally {
-      await vault.destroy();
-    }
+    expect(
+      vault.EncryptedFS.existsSync(
+        path.join(dataDir, vault.vaultId, 'secret-1'),
+      ),
+    ).toBe(true);
+
     const vault2 = new Vault({
+      vaultId: id,
       vaultName: name,
       key: key,
       baseDir: dataDir,
       logger: logger,
     });
-    try {
-      await vault2.create();
 
-      expect(vault2.checkPermissions('node-id-one')).toStrictEqual(
-        nodePermissionNoPull,
-      );
-      expect(vault2.checkPermissions('node-id-two')).toStrictEqual(
-        nodePermissionPull,
-      );
-      expect(vault2.checkPermissions('node-id-three')).toStrictEqual(
-        nodePermissionNoPull,
-      );
-    } finally {
-      await vault2.destroy();
-    }
-  });
-  test('able to read and load existing nodepermissions after complex operations', async () => {
-    const nodePermissionPull: NodePermissions = { canPull: true };
-    const nodePermissionNoPull: NodePermissions = { canPull: false };
-    try {
-      await vault.create();
-      await vault.initializeVault();
-      await vault.addSecret('secret', Buffer.from('secretcontent'));
-      vault.changePermissions('node-id-one', nodePermissionNoPull);
-      vault.changePermissions('node-id-two', nodePermissionPull);
-      vault.changePermissions('node-id-three', nodePermissionNoPull);
-      await vault.renameSecret('secret', 'secretchange');
+    const content = await vault2.getSecret('secret-1');
+    expect(content.toString()).toBe('secret-content');
 
-      expect(vault.checkPermissions('node-id-one')).toBe(nodePermissionNoPull);
-      expect(vault.checkPermissions('node-id-two')).toBe(nodePermissionPull);
-      expect(vault.checkPermissions('node-id-three')).toBe(
-        nodePermissionNoPull,
-      );
-    } finally {
-      await vault.destroy();
-    }
-    const vault2 = new Vault({
-      vaultName: name,
-      key: key,
-      baseDir: dataDir,
-      logger: logger,
-    });
-    try {
-      await vault2.create();
-      await vault.initializeVault();
-      await vault.addSecret('secretnew', Buffer.from('secretcontentnew'));
-      await vault.renameSecret('secretchange', 'secretfirst');
-
-      expect(vault2.checkPermissions('node-id-one')).toStrictEqual(
-        nodePermissionNoPull,
-      );
-      expect(vault2.checkPermissions('node-id-two')).toStrictEqual(
-        nodePermissionPull,
-      );
-      expect(vault2.checkPermissions('node-id-three')).toStrictEqual(
-        nodePermissionNoPull,
-      );
-    } finally {
-      await vault2.destroy();
-    }
+    vault.destroy();
+    vault2.destroy();
   });
 });

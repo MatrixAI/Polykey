@@ -4,6 +4,7 @@ import { EncryptedFS } from 'encryptedfs';
 import { getRandomBytes, getRandomBytesSync } from '../keys/utils';
 
 const KEY_LEN = 64;
+const ID_LEN = 42;
 
 async function generateVaultKey() {
   const key = await getRandomBytes(KEY_LEN);
@@ -13,6 +14,16 @@ async function generateVaultKey() {
 function generateVaultKeySync() {
   const key = getRandomBytesSync(KEY_LEN);
   return Buffer.from(key);
+}
+
+async function generateVaultId() {
+  const id = await getRandomBytes(ID_LEN);
+  return id.toString('base64');
+}
+
+function generateVaultIdSync() {
+  const id = getRandomBytesSync(ID_LEN);
+  return id.toString('base64');
 }
 
 async function fileExists(fs, path): Promise<boolean> {
@@ -61,6 +72,8 @@ async function* readdirRecursivelyEFS(fs: EncryptedFS, dir: string) {
 export {
   generateVaultKey,
   generateVaultKeySync,
+  generateVaultId,
+  generateVaultIdSync,
   fileExists,
   readdirRecursively,
   readdirRecursivelyEFS,
