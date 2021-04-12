@@ -107,6 +107,7 @@ class VaultManager {
       vaultName: vaultName,
       key: key,
       baseDir: this.baseDir,
+      logger: this.logger,
     });
     vault.create();
     this.vaults[vaultName] = vault;
@@ -361,6 +362,7 @@ class VaultManager {
             vaultName: data.key,
             key: vaultKey,
             baseDir: this.baseDir,
+            logger: this.logger,
           });
         })
         .on('end', async () => {

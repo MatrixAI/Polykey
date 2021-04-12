@@ -38,7 +38,7 @@ class Vault {
     logger?: Logger;
   }) {
     this.vaultName = vaultName;
-    this.logger = logger ?? new Logger('VaultManager');
+    this.logger = logger ?? new Logger('Vault');
     this.baseDir = baseDir;
     const vfsinstance = new VirtualFS();
     this.efs = new EncryptedFS(key, vfsinstance, vfsinstance, fs, process);

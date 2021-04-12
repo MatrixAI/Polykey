@@ -2,21 +2,27 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import level from 'level';
-import Logger, { LogLevel } from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
 import Vault from '@/vaults/Vault';
 import * as errors from '@/vaults/errors';
 
 describe('VaultManager is', () => {
-  const logger = new Logger('VaultManager Test', LogLevel.WARN);
+  const logger = new Logger('VaultManager Test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let dataDir: string;
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
 
   beforeEach(async () => {
     dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
-    keyManager = new KeyManager({ keysPath: `${dataDir}/keys` });
+    keyManager = new KeyManager({
+      keysPath: `${dataDir}/keys`,
+      fs: fs,
+      logger: logger,
+    });
     vaultManager = new VaultManager({
       baseDir: dataDir,
       keyManager: keyManager,

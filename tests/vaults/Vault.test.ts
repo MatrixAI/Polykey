@@ -6,7 +6,7 @@ import fs from 'fs';
 import { VirtualFS } from 'virtualfs';
 import git from 'isomorphic-git';
 import Vault from '@/vaults/Vault';
-import Logger from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { generateVaultKey } from '@/vaults/utils';
 import { getRandomBytes } from '@/keys/utils';
 import * as errors from '@/vaults/errors';
@@ -15,7 +15,7 @@ describe('Vault is', () => {
   let dataDir: string;
   let vault: Vault;
   let key: Buffer;
-  const logger = new Logger();
+  const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
   const name = 'vault-1';
 
   beforeEach(async () => {
@@ -27,7 +27,6 @@ describe('Vault is', () => {
       baseDir: dataDir,
       logger: logger,
     });
-    jest.clearAllMocks();
   });
 
   afterEach(async () => {
@@ -612,6 +611,7 @@ describe('Vault is', () => {
       vaultName: name,
       key: key,
       baseDir: dataDir,
+      logger: logger,
     });
     try {
       await vault2.create();
@@ -653,6 +653,7 @@ describe('Vault is', () => {
       vaultName: name,
       key: key,
       baseDir: dataDir,
+      logger: logger,
     });
     try {
       await vault2.create();

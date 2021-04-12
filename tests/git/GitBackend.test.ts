@@ -3,7 +3,7 @@ import path from 'path';
 import fsPromises from 'fs/promises';
 import fs from 'fs';
 import git from 'isomorphic-git';
-import Logger from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
 import { GitBackend } from '@/git';
@@ -15,12 +15,15 @@ let keyManager: KeyManager;
 let vaultManager: VaultManager;
 let gitBackend: GitBackend;
 let gitRequest: GitRequest;
-const logger = new Logger();
+const logger = new Logger('GitBackend', LogLevel.WARN, [new StreamHandler()]);
 
 beforeEach(async () => {
   dataDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
   destDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
-  keyManager = new KeyManager({ keysPath: `${dataDir}/keys` });
+  keyManager = new KeyManager({
+    keysPath: `${dataDir}/keys`,
+    logger: logger,
+  });
   vaultManager = new VaultManager({
     baseDir: dataDir,
     keyManager: keyManager,
@@ -87,7 +90,6 @@ describe('GitBackend is', () => {
       const response = await gitBackend.handleInfoRequest('MyTestVault');
       // response should be similar to 001e# service=git-upload-pack\n0000007dec36c2af9201e3ba466b73086ac6e09dff3c6f99 HEADside-band-64k symref=HEAD:refs/heads/master agent=git/isomorphic-git@1.4.0\n003fec36c2af9201e3ba466b73086ac6e09dff3c6f99 refs/heads/master\n0000
       expect(response.toString().length).toBe(226);
-      console.log(response.toString());
     } finally {
       await vaultManager.stop();
       await keyManager.stop();
