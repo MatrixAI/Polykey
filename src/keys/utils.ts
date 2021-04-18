@@ -15,7 +15,15 @@ import type {
 } from './types';
 
 import { Buffer } from 'buffer';
-import { pki, md, pss, random, util as forgeUtil, mgf } from 'node-forge';
+import {
+  pki,
+  md,
+  pss,
+  random,
+  cipher,
+  mgf,
+  util as forgeUtil,
+} from 'node-forge';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
 
@@ -334,6 +342,44 @@ function getRandomBytesSync(size: number): Buffer {
   return Buffer.from(random.getBytesSync(size), 'binary');
 }
 
+async function generateKey(bits: number = 256): Promise<Buffer> {
+  const len = Math.floor(bits / 8);
+  const key = await getRandomBytes(len);
+  return key;
+}
+
+function encryptWithKey(key: Buffer, plainText: Buffer): Buffer {
+  const iv = getRandomBytesSync(16);
+  const c = cipher.createCipher('AES-GCM', key.toString('binary'));
+  c.start({ iv: iv.toString('binary'), tagLength: 128 });
+  c.update(forgeUtil.createBuffer(plainText));
+  c.finish();
+  const cipherText = Buffer.from(c.output.getBytes(), 'binary');
+  const authTag = Buffer.from(c.mode.tag.getBytes(), 'binary');
+  const data = Buffer.concat([iv, authTag, cipherText]);
+  return data;
+}
+
+function decryptWithKey(key: Buffer, cipherText: Buffer): Buffer | undefined {
+  if (cipherText.length <= 32) {
+    return;
+  }
+  const iv = cipherText.subarray(0, 16);
+  const authTag = cipherText.subarray(16, 32);
+  const cipherText_ = cipherText.subarray(32);
+  const d = cipher.createDecipher('AES-GCM', key.toString('binary'));
+  d.start({
+    iv: iv.toString('binary'),
+    tagLength: 128,
+    tag: forgeUtil.createBuffer(authTag),
+  });
+  d.update(forgeUtil.createBuffer(cipherText_));
+  if (!d.finish()) {
+    return;
+  }
+  return Buffer.from(d.output.getBytes(), 'binary');
+}
+
 export {
   publicKeyToPem,
   publicKeyFromPem,
@@ -370,4 +416,7 @@ export {
   publicKeyBitSize,
   getRandomBytes,
   getRandomBytesSync,
+  generateKey,
+  encryptWithKey,
+  decryptWithKey,
 };

@@ -7,6 +7,8 @@ import { KeyManager } from './keys';
 import { VaultManager } from './vaults';
 import { NodeManager } from './nodes';
 import { WorkerManager } from './workers';
+import { GestaltGraph } from './gestalts';
+import { IdentitiesManager } from './identities';
 import * as utils from './utils';
 
 class Polykey {
@@ -14,6 +16,8 @@ class Polykey {
   public readonly keys: KeyManager;
   public readonly vaults: VaultManager;
   public readonly nodes: NodeManager;
+  public readonly gestalts: GestaltGraph;
+  public readonly identities: IdentitiesManager;
   public readonly workers: WorkerManager;
 
   protected fs: FileSystem;
@@ -24,6 +28,8 @@ class Polykey {
     keyManager,
     vaultManager,
     nodeManager,
+    gestaltGraph,
+    identitiesManager,
     workerManager,
     fs,
     logger,
@@ -32,6 +38,8 @@ class Polykey {
     keyManager?: KeyManager;
     vaultManager?: VaultManager;
     nodeManager?: NodeManager;
+    gestaltGraph?: GestaltGraph;
+    identitiesManager?: IdentitiesManager;
     workerManager?: WorkerManager;
     fs?: FileSystem;
     logger?: Logger;
@@ -39,8 +47,10 @@ class Polykey {
     this.logger = logger ?? new Logger('Polykey');
     this.fs = fs ?? require('fs/promises');
     this.nodePath = path.resolve(nodePath ?? utils.getDefaultNodePath());
-    const keysPath = `${this.nodePath}/keys`;
-    const vaultsPath = `${this.nodePath}/vaults`;
+    const keysPath = path.join(this.nodePath, 'keys');
+    const vaultsPath = path.join(this.nodePath, 'vaults');
+    const gestaltsPath = path.join(this.nodePath, 'gestalts');
+    const identitiesPath = path.join(this.nodePath, 'identities');
     this.keys =
       keyManager ??
       new KeyManager({
@@ -62,6 +72,22 @@ class Polykey {
         fs: this.fs,
         logger: this.logger.getChild('NodeManager'),
       });
+    this.gestalts =
+      gestaltGraph ??
+      new GestaltGraph({
+        gestaltsPath,
+        keyManager: this.keys,
+        fs: this.fs,
+        logger: this.logger.getChild('GestaltGraph'),
+      });
+    this.identities =
+      identitiesManager ??
+      new IdentitiesManager({
+        identitiesPath,
+        keyManager: this.keys,
+        fs: this.fs,
+        logger: this.logger.getChild('IdentitiesManager'),
+      });
     this.workers =
       workerManager ??
       new WorkerManager({
@@ -71,13 +97,15 @@ class Polykey {
 
   public async start({
     password,
-    bits,
-    duration,
+    rootKeyPairBits,
+    rootCertDuration,
+    keysDbBits,
     fresh = false,
   }: {
     password: string;
-    bits?: number;
-    duration?: number;
+    rootKeyPairBits?: number;
+    rootCertDuration?: number;
+    keysDbBits?: number;
     fresh?: boolean;
   }) {
     this.logger.info('Starting Polykey');
@@ -92,17 +120,22 @@ class Polykey {
     this.keys.setWorkerManager(this.workers);
     await this.keys.start({
       password,
-      bits,
-      duration,
+      rootKeyPairBits,
+      rootCertDuration,
+      keysDbBits,
       fresh,
     });
     await this.nodes.start();
     await this.vaults.start({ fresh });
+    await this.gestalts.start({ fresh });
+    await this.identities.start({ fresh });
     this.logger.info('Started Polykey');
   }
 
   public async stop() {
     this.logger.info('Stopping Polykey');
+    await this.identities.stop();
+    await this.gestalts.stop();
     await this.vaults.stop();
     await this.nodes.stop();
     await this.keys.stop();

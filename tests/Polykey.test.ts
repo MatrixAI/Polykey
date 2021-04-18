@@ -35,6 +35,9 @@ describe('Polykey', () => {
     await pk.start({ password: 'password' });
     const nodePathContents = await fs.readdir(nodePath);
     expect(nodePathContents).toContain('keys');
+    expect(nodePathContents).toContain('vaults');
+    expect(nodePathContents).toContain('gestalts');
+    expect(nodePathContents).toContain('identities');
     await pk.stop();
   });
   test('async stop leaves the node path', async () => {
@@ -44,6 +47,9 @@ describe('Polykey', () => {
     await pk.stop();
     const nodePathContents = await fs.readdir(nodePath);
     expect(nodePathContents).toContain('keys');
+    expect(nodePathContents).toContain('vaults');
+    expect(nodePathContents).toContain('gestalts');
+    expect(nodePathContents).toContain('identities');
     await fs.rm(dataDir, { force: true, recursive: true });
   });
 });

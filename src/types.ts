@@ -34,4 +34,6 @@ type ProviderKey = string;
  */
 type IdentityKey = string;
 
-export { POJO, FileSystem, ProviderKey, IdentityKey };
+type Opaque<K, T> = T & { __TYPE__: K };
+
+export { Opaque, POJO, FileSystem, ProviderKey, IdentityKey };

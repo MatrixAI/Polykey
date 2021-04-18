@@ -229,4 +229,45 @@ describe('KeyManager', () => {
     expect(keysUtils.certVerified(rootCert1, rootCert2)).toBe(true);
     await keyManager.stop();
   });
+  test('can get, set and delete symmetric keys', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyManager = new KeyManager({ keysPath, logger });
+    await keyManager.start({ password: 'password' });
+    const firstKey = await keysUtils.generateKey();
+    await keyManager.putKey('firstkey', firstKey);
+    const firstKey_ = await keyManager.getKey('firstkey');
+    expect(firstKey).toStrictEqual(firstKey_);
+    await keyManager.delKey('firstkey');
+    await keyManager.delKey('firstkey');
+    const firstKey__ = await keyManager.getKey('firstkey');
+    expect(firstKey__).toBeUndefined();
+    await keyManager.stop();
+  });
+  test('start and stop preserves symmetric keys', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyManager = new KeyManager({ keysPath, logger });
+    await keyManager.start({ password: 'password' });
+    const firstKey = await keysUtils.generateKey();
+    await keyManager.putKey('firstkey', firstKey);
+    await keyManager.stop();
+    await keyManager.start({ password: 'password' });
+    const firstKey_ = await keyManager.getKey('firstkey');
+    expect(firstKey).toStrictEqual(firstKey_);
+    await keyManager.stop();
+  });
+  test('regenerating the root keypair preserves symmetric keys', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyManager = new KeyManager({ keysPath, logger });
+    await keyManager.start({ password: 'password' });
+    const firstKey = await keysUtils.generateKey();
+    await keyManager.putKey('firstkey', firstKey);
+    await keyManager.renewRootKeyPair('newpassword');
+    const firstKey_ = await keyManager.getKey('firstkey');
+    expect(firstKey).toStrictEqual(firstKey_);
+    await keyManager.stop();
+    await keyManager.start({ password: 'newpassword' });
+    const firstKey__ = await keyManager.getKey('firstkey');
+    expect(firstKey).toStrictEqual(firstKey__);
+    await keyManager.stop();
+  });
 });
