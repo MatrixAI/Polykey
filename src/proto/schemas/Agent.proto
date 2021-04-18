@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package agentInterface;
+
+service Agent {
+
+  rpc Echo(EchoMessage) returns (EchoMessage) {};
+
+  rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {}
+  rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {}
+
+  rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
+
+  rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {}
+
+  rpc RelayHolePunchMessage (ConnectionMessage) returns (EmptyMessage) {}
+}
+
+message EmptyMessage {}
+
+message EchoMessage {
+  string challenge = 1;
+}
+
+message ConnectionMessage {
+  string aId = 1;
+  string bId = 2;
+  string aIp = 3;
+  string bIp = 4;
+}
+
+message CertificateMessage {
+  string cert = 1;
+}
+
+message NodeIdMessage {
+  string nodeId = 1;
+}
+
+message NodeAddressMessage {
+  string ip = 1;
+  int32 port = 2;
+}
+
+message NodeTableMessage {
+  map<string, NodeAddressMessage> nodeTable = 1;
+}
