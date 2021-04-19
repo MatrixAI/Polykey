@@ -21,7 +21,7 @@ beforeEach(async () => {
     logger: logger,
   });
   vaultManager = new VaultManager({
-    baseDir: dataDir,
+    vaultsPath: dataDir,
     keyManager: keyManager,
     fs: fsPromises,
     logger: logger,

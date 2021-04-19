@@ -1,4 +1,4 @@
-import type { Config, Refs, RefsAdResponse, Ack, Packfile } from './types';
+import type { Refs, RefsAdResponse, Ack, Packfile } from './types';
 
 import { EncryptedFS } from 'encryptedfs';
 import path from 'path';

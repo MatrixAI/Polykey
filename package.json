@@ -52,6 +52,7 @@
     "ajv": "^7.0.4",
     "async-mutex": "^0.2.4",
     "bip39": "^3.0.3",
+    "bs58": "^4.0.1",
     "canonicalize": "^1.0.5",
     "cheerio": "^1.0.0-rc.5",
     "commander": "^7.1.0",
@@ -91,6 +92,7 @@
   },
   "devDependencies": {
     "@babel/preset-env": "^7.13.10",
+    "@types/bs58": "^4.0.1",
     "@types/configstore": "^4.0.0",
     "@types/express-session": "^1.17.0",
     "@types/google-protobuf": "^3.7.4",
