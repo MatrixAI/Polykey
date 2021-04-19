@@ -3,7 +3,6 @@ import type { FileSystem } from './types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
-import * as utils from './utils';
 import { KeyManager } from './keys';
 import { VaultManager } from './vaults';
 import { NodeManager } from './nodes';
@@ -16,6 +15,7 @@ import { createAgentService, AgentService } from './agent';
 import { ErrorPolykey } from './errors';
 import { IClientServer } from './proto/js/Client_grpc_pb';
 import { IAgentServer } from './proto/js/Agent_grpc_pb';
+import * as utils from './utils';
 
 class Polykey {
   public readonly nodePath: string;

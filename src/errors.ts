@@ -20,35 +20,14 @@ class ErrorPolykey extends CustomError {
 
 class ErrorUndefinedBehaviour extends ErrorPolykey {}
 
-/**
- * Git errors
- */
-class ErrorGit extends ErrorPolykey {}
-
-/**
- * Discovery errors
- */
-class ErrorDiscovery extends ErrorPolykey {}
-
-/**
- * Identities errors
- */
-class ErrorIdentities extends ErrorPolykey {}
-
-/**
- * CLI errors
- */
-class ErrorCLI extends ErrorPolykey {}
-
-export {
-  ErrorPolykey,
-  ErrorUndefinedBehaviour,
-  ErrorGit,
-  ErrorDiscovery,
-  ErrorIdentities,
-  ErrorCLI,
-};
+export { ErrorPolykey, ErrorUndefinedBehaviour };
 
 export * from './keys/errors';
-export * from './grpc/errors';
+export * from './vaults/errors';
+export * from './git/errors';
+export * from './gestalts/errors';
+export * from './identities/errors';
+export * from './agent/errors';
 export * from './client/errors';
+export * from './grpc/errors';
+export * from './workers/errors';

@@ -150,7 +150,7 @@ function generatorWritable<TWrite>(
 function generatorWritable<TWrite>(
   stream: ServerWritableStream<any, TWrite>,
 ): AsyncGeneratorWritableStream<TWrite, ServerWritableStream<any, TWrite>>;
-function generatorWritable<TWrite>(stream: any) {
+function generatorWritable(stream: any) {
   const streamWrite = promisify(stream.write).bind(stream);
   const streamEnd = promisify(stream.end).bind(stream);
   const gf = async function* () {
@@ -189,7 +189,7 @@ function generatorDuplex<TRead, TWrite>(
 function generatorDuplex<TRead, TWrite>(
   stream: ServerDuplexStream<TRead, TWrite>,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ServerDuplexStream<TRead, TWrite>>;
-function generatorDuplex<TRead, TWrite>(stream: any) {
+function generatorDuplex(stream: any) {
   const gR = generatorReadable(stream);
   const gW = generatorWritable(stream);
   const gf = async function* () {
