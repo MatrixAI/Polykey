@@ -2,11 +2,11 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import Polykey from '@/PolykeyAgent';
+import PolykeyAgent from '@/PolykeyAgent';
 import * as utils from '@/utils';
 
 describe('Polykey', () => {
-  const logger = new Logger('Polykey Test', LogLevel.WARN, [
+  const logger = new Logger('PolykeyAgent Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
@@ -20,18 +20,18 @@ describe('Polykey', () => {
     });
   });
   test('construction', () => {
-    const pk = new Polykey({ logger });
-    expect(pk).toBeInstanceOf(Polykey);
+    const pk = new PolykeyAgent({ logger });
+    expect(pk).toBeInstanceOf(PolykeyAgent);
     expect(pk.nodePath).toBe(utils.getDefaultNodePath());
   });
   test('construction has no side effects', async () => {
     const nodePath = `${dataDir}/polykey`;
-    new Polykey({ nodePath, logger });
+    new PolykeyAgent({ nodePath, logger });
     await expect(fs.stat(nodePath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs node path', async () => {
     const nodePath = `${dataDir}/polykey`;
-    const pk = new Polykey({ nodePath, logger });
+    const pk = new PolykeyAgent({ nodePath, logger });
     await pk.start({ password: 'password' });
     const nodePathContents = await fs.readdir(nodePath);
     expect(nodePathContents).toContain('keys');
@@ -42,7 +42,7 @@ describe('Polykey', () => {
   });
   test('async stop leaves the node path', async () => {
     const nodePath = `${dataDir}/polykey`;
-    const pk = new Polykey({ nodePath, logger });
+    const pk = new PolykeyAgent({ nodePath, logger });
     await pk.start({ password: 'password' });
     await pk.stop();
     const nodePathContents = await fs.readdir(nodePath);
