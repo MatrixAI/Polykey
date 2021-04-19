@@ -2,6 +2,7 @@ import os from 'os';
 import process from 'process';
 import { Buffer } from 'buffer';
 import * as errors from './errors';
+import { FileSystem } from './types';
 
 function getDefaultNodePath(): string {
   const prefix = 'polykey';
@@ -54,4 +55,79 @@ function byteSize(bytes: string) {
   return Buffer.byteLength(bytes, 'binary');
 }
 
-export { getDefaultNodePath, mkdirExists, sleep, getUnixtime, byteSize };
+function promisify<T>(f): (...args: any[]) => Promise<T> {
+  return function <T>(...args): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const callback = (error, ...values) => {
+        if (error) {
+          return reject(error);
+        }
+        return resolve(values.length === 1 ? values[0] : values);
+      };
+      args.push(callback);
+      f.apply(this, args);
+    });
+  };
+}
+
+async function writeLock(
+  fs: FileSystem,
+  lockPath: string,
+  grpcHost: string,
+  grpcPort: number,
+) {
+  await fs.writeFile(
+    lockPath,
+    JSON.stringify({
+      pid: process.pid,
+      grpcHost: grpcHost,
+      grpcPort: grpcPort,
+    }),
+  );
+}
+
+async function deleteLock(fs: FileSystem, lockPath: string) {
+  try {
+    const fh = await fs.open(lockPath, 'r');
+    fh.close();
+  } catch (err) {
+    return;
+  }
+  await fs.rm(lockPath);
+}
+
+async function parseLock(
+  fs: FileSystem,
+  lockPath: string,
+): Promise<{ pid: number; grpcHost: string; grpcPort: number } | false> {
+  try {
+    const fh = await fs.open(lockPath, 'r');
+    const data = await fh.readFile();
+    fh.close();
+    return JSON.parse(data.toString());
+  } catch (err) {
+    return false;
+  }
+}
+
+function pidIsRunning(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+export {
+  getDefaultNodePath,
+  mkdirExists,
+  sleep,
+  getUnixtime,
+  byteSize,
+  promisify,
+  writeLock,
+  deleteLock,
+  parseLock,
+  pidIsRunning,
+};

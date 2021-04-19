@@ -18,10 +18,7 @@ class ErrorPolykey extends CustomError {
   }
 }
 
-/**
- * Agent errors
- */
-class ErrorAgent extends ErrorPolykey {}
+class ErrorUndefinedBehaviour extends ErrorPolykey {}
 
 /**
  * Git errors
@@ -39,21 +36,19 @@ class ErrorDiscovery extends ErrorPolykey {}
 class ErrorIdentities extends ErrorPolykey {}
 
 /**
- * Network errors
- */
-class ErrorNetwork extends ErrorPolykey {}
-
-/**
  * CLI errors
  */
 class ErrorCLI extends ErrorPolykey {}
 
 export {
   ErrorPolykey,
-  ErrorAgent,
+  ErrorUndefinedBehaviour,
   ErrorGit,
   ErrorDiscovery,
   ErrorIdentities,
-  ErrorNetwork,
   ErrorCLI,
 };
+
+export * from './keys/errors';
+export * from './grpc/errors';
+export * from './client/errors';

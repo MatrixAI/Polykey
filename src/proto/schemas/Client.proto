@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package clientInterface;
+
+service Client {
+  rpc Echo(EchoMessage) returns (EchoMessage) {};
+  rpc NodesList(EmptyMessage) returns (stream NodeMessage) {};
+  rpc VaultsList(EmptyMessage) returns (stream VaultMessage) {};
+  rpc VaultsCreate(VaultMessage) returns (StatusMessage) {};
+  rpc VaultsDelete(VaultMessage) returns (StatusMessage) {};
+  rpc VaultsListSecrets(VaultMessage) returns (stream SecretMessage) {};
+  rpc VaultsMkdir(VaultSpecificMessage) returns (EmptyMessage) {};
+  rpc CommitSync(stream CommitMessage) returns (CommitMessage) {};
+  rpc GestaltSync(stream GestaltMessage) returns (stream GestaltMessage) {};
+}
+
+message EmptyMessage {}
+
+message StatusMessage {
+  bool success = 1;
+}
+
+message EchoMessage {
+  string challenge = 1;
+}
+
+message VaultMessage {
+  string name = 1;
+  string id = 2;
+}
+
+message VaultSpecificMessage {
+  VaultMessage vault = 1;
+  string name = 2;
+}
+
+message SecretMessage {
+  string name = 1;
+}
+
+message NodeMessage {
+  string name = 1;
+}
+
+message CommitMessage {
+  string name = 1;
+}
+
+message GestaltMessage {
+  string name = 1;
+}

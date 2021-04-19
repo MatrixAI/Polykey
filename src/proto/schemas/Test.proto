@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package testInterface;
+
+service Test {
+  rpc Unary(EchoMessage) returns (EchoMessage) {};
+  rpc ServerStream(EchoMessage) returns (stream EchoMessage) {};
+  rpc ClientStream(stream EchoMessage) returns (EchoMessage) {};
+  rpc DuplexStream(stream EchoMessage) returns (stream EchoMessage) {};
+}
+
+message EchoMessage {
+  string challenge = 1;
+}

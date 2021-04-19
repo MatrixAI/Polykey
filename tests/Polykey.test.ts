@@ -2,7 +2,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import Polykey from '@/Polykey';
+import Polykey from '@/PolykeyAgent';
 import * as utils from '@/utils';
 
 describe('Polykey', () => {
