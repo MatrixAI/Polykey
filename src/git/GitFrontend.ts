@@ -1,19 +1,18 @@
-import type { NodeConnection } from '../nodes/types';
 import GitRequest from './GitRequest';
 import Logger from '@matrixai/logger';
+
+import { AgentClient } from '../../src/proto/js/Agent_grpc_pb';
+
+import * as grpcUtils from '../../src/grpc/utils';
+import * as agentPB from '../../src/proto/js/Agent_pb';
 
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
  */
 class GitFrontend {
-  private connectToNode: (nodeId: string) => NodeConnection;
   private logger: Logger;
 
-  constructor(
-    connectToNode: (nodeId: string) => NodeConnection,
-    logger?: Logger,
-  ) {
-    this.connectToNode = connectToNode;
+  constructor(logger?: Logger) {
     this.logger = logger ?? new Logger('GitFrontend');
   }
 
@@ -24,9 +23,23 @@ class GitFrontend {
    */
   private async requestInfo(
     vaultName: string,
-    nodeConnection: NodeConnection,
-  ): Promise<Uint8Array> {
-    return new Uint8Array(1);
+    client: AgentClient,
+  ): Promise<Buffer> {
+    const serverStream = grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+      client,
+      client.getGitInfo,
+    );
+    const request = new agentPB.InfoRequest();
+    request.setVaultName(vaultName);
+    const response = serverStream(request);
+
+    const data: Buffer[] = [];
+    for await (const resp of response) {
+      const chunk = resp.getChunk_asU8();
+      data.push(Buffer.from(chunk));
+    }
+
+    return Buffer.concat(data);
   }
 
   /**
@@ -37,10 +50,25 @@ class GitFrontend {
    */
   private async requestPack(
     vaultName: string,
-    body: Uint8Array,
-    nodeConnection: NodeConnection,
+    body: any,
+    client: AgentClient,
   ): Promise<Uint8Array> {
-    return new Uint8Array(1);
+    const serverStream = grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+      client,
+      client.getGitPackStream,
+    );
+    const request = new agentPB.PackRequest();
+    request.setVaultName(vaultName);
+    request.setBody(body);
+    const response = serverStream(request);
+
+    const data: Buffer[] = [];
+    for await (const resp of response) {
+      const chunk = resp.getChunk_asU8();
+      data.push(Buffer.from(chunk));
+    }
+
+    return Buffer.concat(data);
   }
 
   /**
@@ -49,21 +77,33 @@ class GitFrontend {
    * @param body Contains the pack request
    * @param nodeConnection A connection object to the node
    */
-  private async requestVaultNames(
-    nodeConnection: NodeConnection,
-  ): Promise<string[]> {
-    return [''];
+  private async requestVaultNames(client: AgentClient): Promise<string[]> {
+    const serverStream = grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+      client,
+      client.scanVaults,
+    );
+    const request = new agentPB.EmptyMessage();
+    const response = serverStream(request);
+
+    const data: string[] = [];
+    for await (const resp of response) {
+      const chunk = resp.getChunk_asU8();
+      data.push(Buffer.from(chunk).toString());
+    }
+
+    return data;
   }
 
-  connectToNodeGit(nodeId: string): GitRequest {
-    const nodeConnection = this.connectToNode(nodeId);
+  /**
+   * Creates a GitRequest object from the desired node connection.
+   * @param client GRPC connection to desired node
+   */
+  connectToNodeGit(client: AgentClient): GitRequest {
     const gitRequest = new GitRequest(
-      ((vaultName: string) => this.requestInfo(vaultName, nodeConnection)).bind(
-        this,
-      ),
-      ((vaultName: string, body: Buffer) =>
-        this.requestPack(vaultName, body, nodeConnection)).bind(this),
-      (() => this.requestVaultNames(nodeConnection)).bind(this),
+      ((vaultName: string) => this.requestInfo(vaultName, client)).bind(this),
+      ((vaultName: string, body: any) =>
+        this.requestPack(vaultName, body, client)).bind(this),
+      (() => this.requestVaultNames(client)).bind(this),
     );
     return gitRequest;
   }

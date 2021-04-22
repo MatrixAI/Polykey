@@ -9,6 +9,7 @@ import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
 import { KeyManager } from '@/keys';
 import * as testUtils from './utils';
+import { GitBackend } from '../../src/git';
 
 describe('GRPC agent', () => {
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
@@ -25,6 +26,7 @@ describe('GRPC agent', () => {
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeManager: NodeManager;
+  let gitBackend: GitBackend;
 
   beforeAll(async () => {
     dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
@@ -49,6 +51,13 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
+    gitBackend = new GitBackend({
+      getVault: vaultManager.getVault.bind(vaultManager),
+      getVaultID: vaultManager.getVaultIds.bind(vaultManager),
+      getVaultNames: vaultManager.listVaults.bind(vaultManager),
+      logger: logger,
+    });
+
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     await nodeManager.start();
@@ -57,6 +66,7 @@ describe('GRPC agent', () => {
       keyManager,
       vaultManager,
       nodeManager,
+      gitBackend,
     });
 
     client = await testUtils.openTestAgentClient(port);

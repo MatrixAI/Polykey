@@ -2,14 +2,15 @@ import type { ModuleThread } from 'threads';
 import type { QueuedTask } from 'threads/dist/master/pool-types';
 import type { PolykeyWorker } from './polykeyWorker';
 
+import { WorkerManagerInterface } from 'encryptedfs/dist/workers';
 import os from 'os';
 import { spawn, Pool, Worker } from 'threads';
 import Logger from '@matrixai/logger';
 import * as workersErrors from './errors';
 
-class WorkerManager {
-  protected pool?: Pool<ModuleThread<PolykeyWorker>>;
-  protected logger: Logger;
+class WorkerManager implements WorkerManagerInterface<PolykeyWorker> {
+  pool?: Pool<ModuleThread<PolykeyWorker>>;
+  logger: Logger;
 
   constructor({
     logger,
@@ -32,18 +33,18 @@ class WorkerManager {
     }
   }
 
-  public async call<T>(
-    f: (worker: ModuleThread<PolykeyWorker>) => Promise<T>,
-  ): Promise<T> {
+  public async call<R>(
+    f: (worker: ModuleThread<PolykeyWorker>) => Promise<R>,
+  ): Promise<R> {
     if (!this.pool) {
       throw new workersErrors.ErrorNotRunning();
     }
     return await this.pool.queue(f);
   }
 
-  public queue<T>(
-    f: (worker: ModuleThread<PolykeyWorker>) => Promise<T>,
-  ): QueuedTask<ModuleThread<PolykeyWorker>, T> {
+  public queue<R>(
+    f: (worker: ModuleThread<PolykeyWorker>) => Promise<R>,
+  ): QueuedTask<ModuleThread<PolykeyWorker>, R> {
     if (!this.pool) {
       throw new workersErrors.ErrorNotRunning();
     }

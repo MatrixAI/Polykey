@@ -7,20 +7,24 @@ import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
 import { promisify } from '@/utils';
 import { KeyManager } from '@/keys';
+import { GitBackend } from '@/git';
 
 async function openTestAgentServer({
   keyManager,
   vaultManager,
   nodeManager,
+  gitBackend,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
+  gitBackend: GitBackend;
 }) {
   const agentService: IAgentServer = createAgentService({
     keyManager,
     vaultManager,
     nodeManager,
+    git: gitBackend,
   });
 
   const server = new grpc.Server();

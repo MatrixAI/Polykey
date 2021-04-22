@@ -3,6 +3,7 @@ import type { FileSystem } from './types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
+import { GitBackend } from './git';
 import { KeyManager } from './keys';
 import { VaultManager } from './vaults';
 import { NodeManager } from './nodes';
@@ -32,6 +33,9 @@ class Polykey {
   public readonly grpcHost: string;
   public readonly grpcPort: number;
 
+  // Git
+  public readonly gitBackend: GitBackend;
+
   // Proxies
   public readonly fwdProxy: ForwardProxy;
   public readonly revProxy: ReverseProxy;
@@ -47,6 +51,7 @@ class Polykey {
     gestaltGraph,
     identitiesManager,
     workerManager,
+    gitBackend,
     grpcHost,
     grpcPort,
     fwdProxy,
@@ -62,6 +67,7 @@ class Polykey {
     gestaltGraph?: GestaltGraph;
     identitiesManager?: IdentitiesManager;
     workerManager?: WorkerManager;
+    gitBackend?: GitBackend;
     grpcHost?: string;
     grpcPort?: number;
     fwdProxy?: ForwardProxy;
@@ -121,6 +127,14 @@ class Polykey {
       new WorkerManager({
         logger: this.logger.getChild('WorkerManager'),
       });
+    this.gitBackend =
+      gitBackend ??
+      new GitBackend({
+        getVault: this.vaults.getVault.bind(this.vaults),
+        getVaultID: this.vaults.getVaultIds.bind(this.vaults),
+        getVaultNames: this.vaults.listVaults.bind(this.vaults),
+        logger: logger,
+      });
 
     // Get GRPC Services
     const clientService: IClientServer = createClientService({
@@ -133,6 +147,7 @@ class Polykey {
       keyManager: this.keys,
       vaultManager: this.vaults,
       nodeManager: this.nodes,
+      git: this.gitBackend,
     });
 
     // Create GRPC Server with the services just created.

@@ -6,20 +6,51 @@ service Agent {
 
   rpc Echo(EchoMessage) returns (EchoMessage) {};
 
-  rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {}
-  rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {}
+  rpc GetGitInfo (InfoRequest) returns (stream PackChunk) {};
+  rpc GetGitPackStream (PackRequest) returns (stream PackChunk) {};
+  rpc ScanVaults (EmptyMessage) returns (stream PackChunk) {};
 
-  rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
+  rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {};
+  rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {};
 
-  rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {}
+  rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {};
 
-  rpc RelayHolePunchMessage (ConnectionMessage) returns (EmptyMessage) {}
+  rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {};
+
+  rpc RelayHolePunchMessage (ConnectionMessage) returns (EmptyMessage) {};
 }
 
 message EmptyMessage {}
 
 message EchoMessage {
   string challenge = 1;
+}
+
+// Info Request
+
+message InfoRequest {
+  string vault_name = 1;
+}
+
+message InfoResponse {
+  string vault_name = 1;
+  bytes body = 2;
+}
+
+// Pack Request
+
+message PackRequest {
+  string vault_name = 1;
+  bytes body = 2;
+}
+
+message PackResponse {
+  string vault_name = 1;
+  bytes body = 2;
+}
+
+message PackChunk {
+  bytes chunk = 1;
 }
 
 message ConnectionMessage {

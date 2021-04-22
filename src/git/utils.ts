@@ -1,4 +1,10 @@
-import type { Refs, RefsAdResponse, Ack, Packfile } from './types';
+import type {
+  Refs,
+  RefsAdResponse,
+  Ack,
+  Packfile,
+  BufferEncoding,
+} from './types';
 
 import { EncryptedFS } from 'encryptedfs';
 import path from 'path';
@@ -58,18 +64,22 @@ async function writeRefsAdResponse(
   const stream: Buffer[] = [];
   // Compose capabilities string
   let syms = '';
+  let a;
   for (const [key, value] of Object.entries(info.symrefs)) {
     syms += `symref=${key}:${value} `;
+    a = value;
   }
   let caps = `\x00${[...info.capabilities].join(
     ' ',
-  )} ${syms}agent=git/isomorphic-git@1.4.0`;
+  )} ${syms}agent=git/isomorphic-git@1.8.1`;
   // stream.write(GitPktLine.encode(`# service=${service}\n`))
   // stream.write(GitPktLine.flush())
   // Note: In the edge case of a brand new repo, zero refs (and zero capabilities)
   // are returned.
   for (const [key, value] of Object.entries(info.refs)) {
     stream.push(encode(`${value} ${key}${caps}\n`));
+    // This is dodgy, need to find out why this has to be included
+    stream.push(encode(`${value} ${a}\n`));
     caps = '';
   }
   stream.push(Buffer.from('0000', 'utf8'));
@@ -94,30 +104,26 @@ async function recursiveDirectoryWalk(
   dir: string,
   fileSystem: EncryptedFS,
 ): Promise<string[]> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     let results: string[] = [];
-    fileSystem.promises
-      .readdir(dir)
-      .then(async (list) => {
-        let pending = list.length;
-        if (!pending) return resolve(results);
-        list.forEach(async function (file) {
-          file = path.resolve(dir, file);
-          fileSystem.promises.stat(file).then(async (stat) => {
-            if (stat && stat.isDirectory()) {
-              const res = await recursiveDirectoryWalk(file, fileSystem);
-              results = results.concat(res);
-              if (!--pending) resolve(results);
-            } else {
-              results.push(file);
-              if (!--pending) resolve(results);
-            }
-          });
+    fileSystem.readdir(dir, { encoding: 'utf8' }, async (e, list) => {
+      if (list == null) return resolve(results);
+      let pending = list.length;
+      if (!pending) return resolve(results);
+      list.forEach(async function (file) {
+        file = path.resolve(dir, file);
+        fileSystem.stat(file, async (e, stat) => {
+          if (stat && stat.isDirectory()) {
+            const res = await recursiveDirectoryWalk(file, fileSystem);
+            results = results.concat(res);
+            if (!--pending) resolve(results);
+          } else {
+            results.push(file);
+            if (!--pending) resolve(results);
+          }
         });
-      })
-      .catch((err) => {
-        if (err) return reject(err);
       });
+    });
   });
 }
 

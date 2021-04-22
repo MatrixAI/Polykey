@@ -1,7 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
-import * as grpcUtils from '@/grpc/utils';
-import { TestClient } from '@/proto/js/Test_grpc_pb';
-import * as testPB from '@/proto/js/Test_pb';
+import * as grpcUtils from '../../src/grpc/utils';
+import { TestClient } from '../../src/proto/js/Test_grpc_pb';
+import * as testPB from '../../src/proto/js/Test_pb';
 import * as utils from './utils';
 
 describe('utils', () => {
@@ -34,9 +34,12 @@ describe('utils', () => {
     const m = new testPB.EchoMessage();
     m.setChallenge('987ds8f7');
     const stream = serverStream(m);
+    const data: Array<string> = [];
     for await (const m_ of stream) {
       expect(m_.getChallenge()).toBe(m.getChallenge());
+      data.push(m_.getChallenge());
     }
+    expect(data.length).toBe(m.getChallenge().length);
     expect(stream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
   });
   test('promisify writing client stream', async () => {
@@ -44,27 +47,31 @@ describe('utils', () => {
       testPB.EchoMessage,
       testPB.EchoMessage
     >(client, client.clientStream);
-    const [stream, response] = clientStream();
+    const [genStream, response] = clientStream();
     const m = new testPB.EchoMessage();
     m.setChallenge('d89f7u983e4d');
-    await stream.next(m);
-    await stream.next(m);
-    await stream.next(null); // closed stream
+    for (let i = 0; i < 5; i++) {
+      await genStream.next(m);
+    }
+    await genStream.next(null); // closed stream
     const m_ = await response;
-    expect(m_.getChallenge()).toBe(m.getChallenge());
-    expect(stream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
+    expect(m_.getChallenge().length).toBe(m.getChallenge().length * 5);
+    expect(genStream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
   });
   test('promisify reading and writing duplex stream', async () => {
     const duplexStream = grpcUtils.promisifyDuplexStreamCall<
       testPB.EchoMessage,
       testPB.EchoMessage
     >(client, client.duplexStream);
-    const stream = duplexStream();
+    const genDuplex = duplexStream();
     const m = new testPB.EchoMessage();
     m.setChallenge('d89f7u983e4d');
-    const m_ = await stream.next(m);
-    expect(m_.value!.getChallenge()).toBe(m.getChallenge());
-    await stream.next(null);
-    expect(stream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
+    await genDuplex.write(m);
+    const response = await genDuplex.read();
+    if (response === null) return;
+    const incoming = response.value.getChallenge();
+    expect(incoming).toBe(m.getChallenge());
+    expect(genDuplex.stream.getPeer()).toBe(`127.0.0.1:${port}`);
+    await genDuplex.write(null);
   });
 });
