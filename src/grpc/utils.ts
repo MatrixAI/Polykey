@@ -1,3 +1,4 @@
+import type { Http2Session } from 'http2';
 import type {
   ClientUnaryCall,
   ClientReadableStream,
@@ -14,20 +15,76 @@ import type {
   ObjectReadable,
   ObjectWritable,
 } from '@grpc/grpc-js/build/src/object-stream';
+import type { ChannelCredentials, ClientOptions, Client } from '@grpc/grpc-js';
+import type { CertificatePemChain, PrivateKeyPem } from '../keys/types';
 
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from './errors';
 import * as errors from '../errors';
 import { promisify } from '../utils';
 
-function clientCredentials(): grpc.ChannelCredentials {
-  // static call to create insecure client creds
-  return grpc.ChannelCredentials.createInsecure();
+function clientCredentials(
+  keyPrivatePem: PrivateKeyPem,
+  certChainPem: CertificatePemChain,
+): grpc.ChannelCredentials {
+  const credentials = grpc.ChannelCredentials.createSsl(
+    null,
+    Buffer.from(keyPrivatePem, 'ascii'),
+    Buffer.from(certChainPem, 'ascii'),
+  );
+  // @ts-ignore hack for undocumented property
+  const connectionOptions = credentials.connectionOptions;
+  // disable default certificate path validation logic
+  // polykey has custom certificate path validation logic
+  connectionOptions['rejectUnauthorized'] = false;
+  return credentials;
 }
 
-function serverCredentials(): grpc.ServerCredentials {
-  // static call to create insecure server creds
-  return grpc.ServerCredentials.createInsecure();
+function serverCredentials(
+  keyPrivatePem: PrivateKeyPem,
+  certChainPem: CertificatePemChain,
+): grpc.ServerCredentials {
+  // this ensures that we get the client certificate
+  const checkClientCertificate = true;
+  const credentials = grpc.ServerCredentials.createSsl(
+    null,
+    [
+      {
+        private_key: Buffer.from(keyPrivatePem, 'ascii'),
+        cert_chain: Buffer.from(certChainPem, 'ascii'),
+      },
+    ],
+    checkClientCertificate,
+  );
+  // @ts-ignore hack for undocumented property
+  const options = credentials.options;
+  // disable default certificate path validation logic
+  // polykey has custom certificate path validation logic
+  options['rejectUnauthorized'] = false;
+  return credentials;
+}
+
+function getClientSession(
+  client: Client,
+  clientOptions: ClientOptions,
+  clientCredentials: ChannelCredentials,
+  host: string,
+  port: number,
+): Http2Session {
+  const channel = client.getChannel();
+  // @ts-ignore
+  const channelTarget = channel.target;
+  const subchannelTarget = { host, port };
+  // @ts-ignore
+  const subchannelPool = channel.subchannelPool;
+  const subchannel = subchannelPool.getOrCreateSubchannel(
+    channelTarget,
+    subchannelTarget,
+    clientOptions,
+    clientCredentials,
+  );
+  const session: Http2Session = subchannel.session;
+  return session;
 }
 
 function toError(e): errors.ErrorPolykey {
@@ -313,6 +370,7 @@ function promisifyDuplexStreamCall<TRead, TWrite>(
 export {
   clientCredentials,
   serverCredentials,
+  getClientSession,
   generatorReadable,
   generatorWritable,
   generatorDuplex,

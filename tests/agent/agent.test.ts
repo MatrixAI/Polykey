@@ -4,18 +4,17 @@ import fs from 'fs/promises';
 import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import PolykeyClient from '@/PolykeyClient';
+import { agentPB, GRPCClientAgent } from '@/agent';
 import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
-import * as testUtils from './utils';
 import { KeyManager } from '@/keys';
-import { clientPB } from '@/client';
+import * as testUtils from './utils';
 
-describe('GRPC client', () => {
-  const logger = new Logger('ClientServerTest', LogLevel.WARN, [
+describe('GRPC agent', () => {
+  const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let client: PolykeyClient;
+  let client: GRPCClientAgent;
   let server: grpc.Server;
   let port: number;
 
@@ -54,26 +53,17 @@ describe('GRPC client', () => {
     await vaultManager.start({});
     await nodeManager.start();
 
-    [server, port] = await testUtils.openTestClientServer({
+    [server, port] = await testUtils.openTestAgentServer({
       keyManager,
       vaultManager,
       nodeManager,
     });
 
-    // MOCK A LOCKFILE FOR POLYKEYCLIENT
-    await fs.writeFile(
-      path.join(dataDir, 'agent-lock.json'),
-      JSON.stringify({
-        grpcHost: '127.0.0.1',
-        grpcPort: port,
-      }),
-    );
-
-    client = await testUtils.openTestClientClient(dataDir);
+    client = await testUtils.openTestAgentClient(port);
   });
   afterAll(async () => {
-    await testUtils.closeTestClientClient(client);
-    await testUtils.closeTestClientServer(server);
+    await testUtils.closeTestAgentClient(client);
+    await testUtils.closeTestAgentServer(server);
 
     await nodeManager.stop();
     await vaultManager.stop();
@@ -85,16 +75,10 @@ describe('GRPC client', () => {
     });
   });
   test('echo', async () => {
-    const echoMessage = new clientPB.EchoMessage();
+    const echoMessage = new agentPB.EchoMessage();
     echoMessage.setChallenge('yes');
-    await client.grpcClient.echo(echoMessage);
-    const response = await client.grpcClient.echo(echoMessage);
+    await client.echo(echoMessage);
+    const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
-  });
-  test('vault create', async () => {
-    const vaultMessage = new clientPB.VaultMessage();
-    vaultMessage.setName('TestVault');
-    const response = await client.grpcClient.vaultsCreate(vaultMessage);
-    expect(response.getSuccess()).toBe(true);
   });
 });

@@ -86,6 +86,8 @@
     "swagger-ui-express": "^4.1.4",
     "threads": "^1.6.0",
     "ts-custom-error": "^3.2.0",
+    "utp-native": "^2.4.0",
+    "utp-punch": "^1.0.1",
     "uuid": "^8.3.0",
     "virtualfs": "^2.2.0",
     "zxcvbn": "^4.4.2"

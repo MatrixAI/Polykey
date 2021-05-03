@@ -119,6 +119,11 @@ function pidIsRunning(pid) {
   }
 }
 
+function isEmptyObject(o) {
+  for (const k in o) return false;
+  return true;
+}
+
 export {
   getDefaultNodePath,
   mkdirExists,
@@ -130,4 +135,5 @@ export {
   deleteLock,
   parseLock,
   pidIsRunning,
+  isEmptyObject,
 };

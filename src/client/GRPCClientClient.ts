@@ -1,43 +1,47 @@
-import { ChannelCredentials, ClientOptions } from '@grpc/grpc-js';
+import type { NodeId } from '@/nodes/types';
+import type { CertificatePemChain, PrivateKeyPem } from '../keys/types';
+
 import Logger from '@matrixai/logger';
-import { ClientClient } from '../proto/js/Client_grpc_pb';
-import * as clientPB from '../proto/js/Client_pb';
-import { utils as grpcUtils } from '../grpc';
 import * as clientErrors from './errors';
+import { utils as grpcUtils } from '../grpc';
 import GRPCClient from '../grpc/GRPCClient';
+import * as clientPB from '../proto/js/Client_pb';
+import { ClientClient } from '../proto/js/Client_grpc_pb';
 
 class GRPCClientClient extends GRPCClient<ClientClient> {
   constructor({
+    nodeId,
     host,
     port,
     logger,
   }: {
+    nodeId: NodeId;
     host: string;
     port: number;
     logger?: Logger;
   }) {
-    super({ host, port, logger });
+    super({ nodeId, host, port, logger });
   }
 
   public async start({
-    credentials,
-    options,
+    keyPrivatePem,
+    certChainPem,
     timeout = Infinity,
   }: {
-    credentials: ChannelCredentials;
-    options?: Partial<ClientOptions>;
+    keyPrivatePem: PrivateKeyPem;
+    certChainPem: CertificatePemChain;
     timeout?: number;
   }): Promise<void> {
     await super.start({
       clientConstructor: ClientClient,
-      credentials,
-      options,
+      keyPrivatePem,
+      certChainPem,
       timeout,
     });
   }
 
   public echo(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
       this.client,
       this.client.echo,
@@ -45,7 +49,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
   }
 
   public vaultsList(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.VaultMessage>(
       this.client,
       this.client.vaultsList,
@@ -53,7 +57,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
   }
 
   public vaultsCreate(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsCreate,
@@ -61,7 +65,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
   }
 
   public vaultsDelete(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsDelete,
@@ -69,7 +73,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
   }
 
   public vaultsListSecrets(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
       this.client,
       this.client.vaultsListSecrets,
@@ -77,7 +81,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
   }
 
   public vaultsMkdir(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.vaultsMkdir,
@@ -85,7 +89,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
   }
 
   public commitSync(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyWritableStreamCall<
       clientPB.CommitMessage,
       clientPB.CommitMessage
