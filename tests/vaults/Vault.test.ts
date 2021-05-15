@@ -8,7 +8,9 @@ import Vault from '@/vaults/Vault';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { generateVaultId, generateVaultKey } from '@/vaults/utils';
 import { getRandomBytes } from '@/keys/utils';
+import { WorkerManager } from '@/workers';
 import * as errors from '@/vaults/errors';
+import * as utils from '@/utils';
 
 describe('Vault is', () => {
   let dataDir: string;
@@ -43,13 +45,13 @@ describe('Vault is', () => {
   });
   test('creating the vault directory', async () => {
     await vault.create();
-    expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(true);
+    expect(vault.EncryptedFS.existsSync(vault.vaultId)).toBe(true);
   });
   test('able to destroy an empty vault', async () => {
     await vault.create();
-    expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(true);
+    expect(vault.EncryptedFS.existsSync(vault.vaultId)).toBe(true);
     await vault.destroy();
-    expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(false);
+    expect(vault.EncryptedFS.existsSync(vault.vaultId)).toBe(false);
   });
   test('adding a secret', async () => {
     try {
@@ -57,9 +59,9 @@ describe('Vault is', () => {
       await vault.initializeVault();
       await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
-      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'secret-1'))).toBe(
-        true,
-      );
+      expect(
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret-1')),
+      ).toBe(true);
     } finally {
       await vault.destroy();
     }
@@ -71,9 +73,7 @@ describe('Vault is', () => {
       await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
       expect(
-        vault.EncryptedFS.existsSync(
-          path.join(dataDir, vault.vaultId, 'secret-1'),
-        ),
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret-1')),
       ).toBe(true);
     } finally {
       await vault.destroy();
@@ -85,9 +85,9 @@ describe('Vault is', () => {
       await vault.initializeVault();
       await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
-      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'secret-1'))).toBe(
-        true,
-      );
+      expect(
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret-1')),
+      ).toBe(true);
       const secret = (await vault.getSecret('secret-1')).toString();
       expect(secret).toBe('secret-content');
       await expect(vault.getSecret('doesnotexist')).rejects.toThrow(
@@ -109,18 +109,20 @@ describe('Vault is', () => {
         Buffer.from('secret-content'),
       );
 
-      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'dir-1'))).toBe(
-        true,
-      );
-      expect(fs.existsSync(path.join(dataDir, vault.vaultId, 'dir-2'))).toBe(
-        true,
-      );
       expect(
-        fs.existsSync(path.join(dataDir, vault.vaultId, 'dir-3', 'dir-4')),
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'dir-1')),
       ).toBe(true);
       expect(
-        fs.existsSync(
-          path.join(dataDir, vault.vaultId, 'dir-3', 'dir-4', 'secret-1'),
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'dir-2')),
+      ).toBe(true);
+      expect(
+        vault.EncryptedFS.existsSync(
+          path.join(vault.vaultId, 'dir-3', 'dir-4'),
+        ),
+      ).toBe(true);
+      expect(
+        vault.EncryptedFS.existsSync(
+          path.join(vault.vaultId, 'dir-3', 'dir-4', 'secret-1'),
         ),
       );
     } finally {
@@ -135,15 +137,15 @@ describe('Vault is', () => {
       for (let i = 0; i < 100; i++) {
         const name = 'secret ' + i.toString();
         const content = await getRandomBytes(5);
-        const writePath = path.join(dataDir, vault.vaultId, name);
-        await efs.promises.mkdir(path.dirname(writePath), {
+        const writePath = path.join(vault.vaultId, name);
+        efs.mkdirSync(path.dirname(writePath), {
           recursive: true,
         });
-        await efs.promises.writeFile(writePath, content, {});
+        efs.writeFileSync(writePath, content, {});
         await expect(vault.getSecret(name)).resolves.toStrictEqual(content);
 
         expect(
-          vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId, name)),
+          vault.EncryptedFS.existsSync(path.join(vault.vaultId, name)),
         ).toBe(true);
       }
     } finally {
@@ -175,7 +177,7 @@ describe('Vault is', () => {
         await expect(vault.getSecret(name)).resolves.toStrictEqual(content);
 
         expect(
-          vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId, name)),
+          vault.EncryptedFS.existsSync(path.join(vault.vaultId, name)),
         ).toBe(true);
       }
     } finally {
@@ -273,9 +275,7 @@ describe('Vault is', () => {
       await vault.deleteSecret('secret-1', false);
 
       expect(
-        vault.EncryptedFS.existsSync(
-          path.join(dataDir, vault.vaultId, 'secret-1'),
-        ),
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret-1')),
       ).toBe(false);
     } finally {
       await vault.destroy();
@@ -294,7 +294,7 @@ describe('Vault is', () => {
 
       expect(
         vault.EncryptedFS.existsSync(
-          path.join(dataDir, vault.vaultId, 'dir-1', 'dir-2', 'secret-1'),
+          path.join(vault.vaultId, 'dir-1', 'dir-2', 'secret-1'),
         ),
       ).toBe(false);
     } finally {
@@ -314,7 +314,7 @@ describe('Vault is', () => {
         await vault.deleteSecret(name, true);
 
         expect(
-          vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId, name)),
+          vault.EncryptedFS.existsSync(path.join(vault.vaultId, name)),
         ).toBe(false);
       }
     } finally {
@@ -327,20 +327,7 @@ describe('Vault is', () => {
       await vault.initializeVault();
       await vault.renameVault('vault-change');
 
-      expect(fs.existsSync(path.join(dataDir, vault.vaultId))).toBe(true);
-    } finally {
-      await vault.destroy();
-    }
-  });
-  test('renaming a vault efs', async () => {
-    try {
-      await vault.create();
-      await vault.initializeVault();
-      await vault.renameVault('vault-change');
-
-      expect(
-        vault.EncryptedFS.existsSync(path.join(dataDir, vault.vaultId)),
-      ).toBe(true);
+      expect(vault.EncryptedFS.existsSync(path.join(vault.vaultId))).toBe(true);
     } finally {
       await vault.destroy();
     }
@@ -353,23 +340,7 @@ describe('Vault is', () => {
       await vault.renameSecret('secret-1', 'secret-change');
 
       expect(
-        fs.existsSync(path.join(dataDir, vault.vaultId, 'secret-change')),
-      ).toBe(true);
-    } finally {
-      await vault.destroy();
-    }
-  });
-  test('renaming a secret efs', async () => {
-    try {
-      await vault.create();
-      await vault.initializeVault();
-      await vault.addSecret('secret-1', Buffer.from('secret-content'));
-      await vault.renameSecret('secret-1', 'secret-change');
-
-      expect(
-        vault.EncryptedFS.existsSync(
-          path.join(dataDir, vault.vaultId, 'secret-change'),
-        ),
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret-change')),
       ).toBe(true);
     } finally {
       await vault.destroy();
@@ -391,7 +362,7 @@ describe('Vault is', () => {
 
       expect(
         vault.EncryptedFS.readdirSync(
-          path.join(dataDir, vault.vaultId, 'dir-1', 'dir-2'),
+          path.join(vault.vaultId, 'dir-1', 'dir-2'),
         ),
       ).toEqual([`secret-change`]);
     } finally {
@@ -450,6 +421,7 @@ describe('Vault is', () => {
   test('adding and committing a secret 300 times on vfs', async () => {
     jest.setTimeout(300000);
     try {
+      await vault.create();
       const vfs = new VirtualFS();
       const fileSystem = { promises: vfs.promises };
       if (!fileSystem) {
@@ -500,6 +472,60 @@ describe('Vault is', () => {
       await vault.destroy();
     }
   });
+  test('adding and committing a secret 300 times on efs', async () => {
+    jest.setTimeout(300000);
+    try {
+      await vault.create();
+      const efs = vault.EncryptedFS;
+      const fileSystem = efs;
+      if (!fileSystem) {
+        throw Error();
+      }
+      const vaultId = vault.vaultId;
+      efs.mkdirSync(path.join(dataDir, vaultId), {
+        recursive: true,
+      });
+      await git.init({
+        fs: efs,
+        dir: path.join(dataDir, vaultId),
+      });
+      await git.commit({
+        fs: efs,
+        dir: path.join(dataDir, vaultId),
+        author: {
+          name: vaultId,
+        },
+        message: 'Initial Commit',
+      });
+      efs.writeFileSync(
+        path.join(path.join(dataDir, vaultId), '.git', 'packed-refs'),
+        '# pack-refs with: peeled fully-peeled sorted',
+      );
+      for (let i = 0; i < 300; i++) {
+        const name = 'secret ' + i.toString();
+        const content = await getRandomBytes(5);
+        const writePath = path.join(dataDir, vaultId, name);
+        efs.writeFileSync(writePath, content, {});
+        await git.add({
+          fs: efs,
+          dir: path.join(dataDir, vaultId),
+          filepath: name,
+        });
+        await git.commit({
+          fs: efs,
+          dir: path.join(dataDir, vaultId),
+          author: {
+            name: vaultId,
+          },
+          message: `Add secret: ${name}`,
+        });
+
+        expect(efs.existsSync(path.join(dataDir, vaultId, name))).toBe(true);
+      }
+    } finally {
+      await vault.destroy();
+    }
+  });
   test('adding a directory of 1 secret', async () => {
     const secretDir = await fsPromises.mkdtemp(
       path.join(os.tmpdir(), 'secret-directory-'),
@@ -513,9 +539,7 @@ describe('Vault is', () => {
       await vault.addSecretDirectory(path.join(secretDir));
 
       expect(
-        vault.EncryptedFS.existsSync(
-          path.join(dataDir, vault.vaultId, 'secret'),
-        ),
+        vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret')),
       ).toBe(true);
     } finally {
       await fsPromises.rm(secretDir, {
@@ -525,41 +549,34 @@ describe('Vault is', () => {
       await vault.destroy();
     }
   });
-  test('adding a directory of 10 secrets', async () => {
-    const secretDir = await fsPromises.mkdtemp(
-      path.join(os.tmpdir(), 'secret-directory-'),
-    );
+  test('a directory of 100 secrets', async () => {
+    jest.setTimeout(300000);
     try {
-      for (let i = 0; i < 10; i++) {
-        const name = 'secret ' + i.toString();
-        const content = await getRandomBytes(5);
-        fs.writeFileSync(path.join(secretDir, name), content);
-      }
       await vault.create();
       await vault.initializeVault();
-      await vault.addSecretDirectory(path.join(secretDir));
-
-      for (let j = 0; j < 10; j++) {
+      await vault.addSecret('secret', Buffer.from('content'));
+      for (let i = 0; i < 100; i++) {
+        await vault.updateSecret(
+          'secret',
+          Buffer.from('this is secret ' + i.toString()),
+        );
         expect(
-          vault.EncryptedFS.existsSync(
-            path.join(dataDir, vault.vaultId, 'secret ' + j.toString()),
-          ),
-        ).toBe(true);
+          vault.EncryptedFS.readFileSync(path.join(vault.vaultId, 'secret'), {
+            encoding: 'utf8',
+          }),
+        ).toBe('this is secret ' + i.toString());
       }
     } finally {
-      await fsPromises.rm(secretDir, {
-        force: true,
-        recursive: true,
-      });
-      await vault.destroy();
+      vault.destroy();
     }
   });
-  test('adding a directory of 10 secrets with some secrets already existing', async () => {
+  test('adding a directory of 100 secrets with some secrets already existing', async () => {
+    jest.setTimeout(300000);
     const secretDir = await fsPromises.mkdtemp(
       path.join(os.tmpdir(), 'secret-directory-'),
     );
     try {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 100; i++) {
         const name = 'secret ' + i.toString();
         const content = 'this is secret ' + i.toString();
         fs.writeFileSync(path.join(secretDir, name), Buffer.from(content));
@@ -573,20 +590,16 @@ describe('Vault is', () => {
       for (let j = 0; j < 8; j++) {
         expect(
           vault.EncryptedFS.existsSync(
-            path.join(dataDir, vault.vaultId, 'secret ' + j.toString()),
+            path.join(vault.vaultId, 'secret ' + j.toString()),
           ),
         ).toBe(true);
       }
 
       expect(
-        vault.EncryptedFS.readFileSync(
-          path.join(dataDir, vault.vaultId, 'secret 8'),
-        ),
+        vault.EncryptedFS.readFileSync(path.join(vault.vaultId, 'secret 8')),
       ).toStrictEqual(Buffer.from('this is secret 8'));
       expect(
-        vault.EncryptedFS.readFileSync(
-          path.join(dataDir, vault.vaultId, 'secret 9'),
-        ),
+        vault.EncryptedFS.readFileSync(path.join(vault.vaultId, 'secret 9')),
       ).toStrictEqual(Buffer.from('this is secret 9'));
     } finally {
       await fsPromises.rm(secretDir, {
@@ -602,9 +615,7 @@ describe('Vault is', () => {
     await vault.addSecret('secret-1', Buffer.from('secret-content'));
 
     expect(
-      vault.EncryptedFS.existsSync(
-        path.join(dataDir, vault.vaultId, 'secret-1'),
-      ),
+      vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret-1')),
     ).toBe(true);
 
     const vault2 = new Vault({
@@ -618,7 +629,95 @@ describe('Vault is', () => {
     const content = await vault2.getSecret('secret-1');
     expect(content.toString()).toBe('secret-content');
 
-    vault.destroy();
-    vault2.destroy();
+    await vault.destroy();
+  });
+  test('able to encrypt and decrypt using workers - read/write', async () => {
+    await vault.create();
+    await vault.initializeVault();
+    const workerManager = new WorkerManager({ logger });
+    await workerManager.start();
+    const plainBuf = Buffer.from('very important secret');
+    const deciphered = Buffer.from(plainBuf).fill(0);
+    const fd = vault.EncryptedFS.openSync('test', 'w+');
+    vault.EncryptedFS.setWorkerManager(workerManager);
+    await utils.promisify(vault.EncryptedFS.write.bind(vault.EncryptedFS))(
+      fd,
+      plainBuf,
+      0,
+      plainBuf.length,
+      0,
+    );
+    await utils.promisify(vault.EncryptedFS.read.bind(vault.EncryptedFS))(
+      fd,
+      deciphered,
+      0,
+      deciphered.length,
+      0,
+    );
+    expect(deciphered).toStrictEqual(plainBuf);
+    vault.EncryptedFS.unsetWorkerManager();
+    await workerManager.stop();
+    await vault.destroy();
+  });
+  test('able to encrypt and decrypt using workers', async () => {
+    await vault.create();
+    await vault.initializeVault();
+    const workerManager = new WorkerManager({ logger });
+    await workerManager.start();
+    const plainBuf = Buffer.from('very important secret');
+    vault.EncryptedFS.setWorkerManager(workerManager);
+    await utils.promisify(vault.EncryptedFS.writeFile.bind(vault.EncryptedFS))(
+      `test`,
+      plainBuf,
+      {},
+    );
+    const deciphered = await utils.promisify(
+      vault.EncryptedFS.readFile.bind(vault.EncryptedFS),
+    )(`test`, {});
+    expect(deciphered).toStrictEqual(plainBuf);
+    vault.EncryptedFS.unsetWorkerManager();
+    await workerManager.stop();
+    await vault.destroy();
+  });
+  test('able to encrypt and decrypt using workers for encryption but not decryption', async () => {
+    await vault.create();
+    await vault.initializeVault();
+    const workerManager = new WorkerManager({ logger });
+    await workerManager.start();
+    const plainBuf = Buffer.from('very important secret');
+    vault.EncryptedFS.setWorkerManager(workerManager);
+    await utils.promisify(vault.EncryptedFS.writeFile.bind(vault.EncryptedFS))(
+      'test',
+      plainBuf,
+      {},
+    );
+    vault.EncryptedFS.unsetWorkerManager();
+    await workerManager.stop();
+    const deciphered = await utils.promisify(
+      vault.EncryptedFS.readFile.bind(vault.EncryptedFS),
+    )(`test`, {});
+    expect(deciphered).toStrictEqual(plainBuf);
+    await vault.destroy();
+  });
+
+  test('able to encrypt and decrypt using workers for decryption but not encryption', async () => {
+    await vault.create();
+    await vault.initializeVault();
+    const workerManager = new WorkerManager({ logger });
+    await workerManager.start();
+    const plainBuf = Buffer.from('very important secret');
+    await utils.promisify(vault.EncryptedFS.writeFile.bind(vault.EncryptedFS))(
+      'test',
+      plainBuf,
+      {},
+    );
+    vault.EncryptedFS.setWorkerManager(workerManager);
+    const deciphered = await utils.promisify(
+      vault.EncryptedFS.readFile.bind(vault.EncryptedFS),
+    )(`test`, {});
+    expect(deciphered).toStrictEqual(plainBuf);
+    vault.EncryptedFS.unsetWorkerManager();
+    await workerManager.stop();
+    await vault.destroy();
   });
 });

@@ -48,6 +48,17 @@ function deserialize_agentInterface_EmptyMessage(buffer_arg) {
   return Agent_pb.EmptyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_InfoRequest(arg) {
+  if (!(arg instanceof Agent_pb.InfoRequest)) {
+    throw new Error('Expected argument of type agentInterface.InfoRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_InfoRequest(buffer_arg) {
+  return Agent_pb.InfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_NodeIdMessage(arg) {
   if (!(arg instanceof Agent_pb.NodeIdMessage)) {
     throw new Error('Expected argument of type agentInterface.NodeIdMessage');
@@ -70,6 +81,28 @@ function deserialize_agentInterface_NodeTableMessage(buffer_arg) {
   return Agent_pb.NodeTableMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_PackChunk(arg) {
+  if (!(arg instanceof Agent_pb.PackChunk)) {
+    throw new Error('Expected argument of type agentInterface.PackChunk');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_PackChunk(buffer_arg) {
+  return Agent_pb.PackChunk.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_PackRequest(arg) {
+  if (!(arg instanceof Agent_pb.PackRequest)) {
+    throw new Error('Expected argument of type agentInterface.PackRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_PackRequest(buffer_arg) {
+  return Agent_pb.PackRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 var AgentService = exports.AgentService = {
   echo: {
@@ -82,6 +115,39 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_EchoMessage,
     responseSerialize: serialize_agentInterface_EchoMessage,
     responseDeserialize: deserialize_agentInterface_EchoMessage,
+  },
+  getGitInfo: {
+    path: '/agentInterface.Agent/GetGitInfo',
+    requestStream: false,
+    responseStream: true,
+    requestType: Agent_pb.InfoRequest,
+    responseType: Agent_pb.PackChunk,
+    requestSerialize: serialize_agentInterface_InfoRequest,
+    requestDeserialize: deserialize_agentInterface_InfoRequest,
+    responseSerialize: serialize_agentInterface_PackChunk,
+    responseDeserialize: deserialize_agentInterface_PackChunk,
+  },
+  getGitPackStream: {
+    path: '/agentInterface.Agent/GetGitPackStream',
+    requestStream: false,
+    responseStream: true,
+    requestType: Agent_pb.PackRequest,
+    responseType: Agent_pb.PackChunk,
+    requestSerialize: serialize_agentInterface_PackRequest,
+    requestDeserialize: deserialize_agentInterface_PackRequest,
+    responseSerialize: serialize_agentInterface_PackChunk,
+    responseDeserialize: deserialize_agentInterface_PackChunk,
+  },
+  scanVaults: {
+    path: '/agentInterface.Agent/ScanVaults',
+    requestStream: false,
+    responseStream: true,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.PackChunk,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_PackChunk,
+    responseDeserialize: deserialize_agentInterface_PackChunk,
   },
   getRootCertificate: {
     path: '/agentInterface.Agent/GetRootCertificate',

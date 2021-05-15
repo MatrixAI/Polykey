@@ -5,7 +5,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
 import { GitFrontend } from '@/git';
-import { NodeConnection } from '@/nodes/types';
 
 let dataDir: string;
 let destDir: string;
@@ -44,8 +43,7 @@ describe('GitFrontend', () => {
     try {
       await keyManager.start({ password: 'password' });
       await vaultManager.start({});
-      const nodeConnection: NodeConnection = { placeholder: true };
-      const gitFrontend = new GitFrontend(() => nodeConnection);
+      const gitFrontend = new GitFrontend(logger);
       expect(gitFrontend).toBeInstanceOf(GitFrontend);
     } finally {
       await vaultManager.stop();

@@ -1,10 +1,15 @@
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '../../src/nodes/types';
 
 import * as grpc from '@grpc/grpc-js';
-import { TestService, ITestServer, TestClient } from '@/proto/js/Test_grpc_pb';
-import * as testPB from '@/proto/js/Test_pb';
-import { utils as grpcUtils } from '@/grpc';
-import { promisify } from '@/utils';
+import * as testPB from '../../src/proto/js/Test_pb';
+
+import {
+  TestService,
+  ITestServer,
+  TestClient,
+} from '../../src/proto/js/Test_grpc_pb';
+import { utils as grpcUtils } from '../../src/grpc';
+import { promisify } from '../../src/utils';
 
 const testService: ITestServer = {
   unary: async (
@@ -18,39 +23,50 @@ const testService: ITestServer = {
   serverStream: async (
     call: grpc.ServerWritableStream<testPB.EchoMessage, testPB.EchoMessage>,
   ): Promise<void> => {
+    const genWritable = grpcUtils.generatorWritable(call);
+
+    const req = call.request;
     const m = new testPB.EchoMessage();
-    m.setChallenge(call.request.getChallenge());
-    const write = promisify(call.write).bind(call);
-    await write(m);
-    await write(m);
-    call.end();
+
+    for (let i = 0; i < req.getChallenge().length; i++) {
+      m.setChallenge(req.getChallenge());
+      await genWritable.next(m);
+    }
+    await genWritable.next(null);
+    // genWritable.stream.end();
   },
   clientStream: async (
     call: grpc.ServerReadableStream<testPB.EchoMessage, testPB.EchoMessage>,
     callback: grpc.sendUnaryData<testPB.EchoMessage>,
   ): Promise<void> => {
-    let m;
-    call.on('data', (d) => {
-      m = d;
-    });
-    call.on('end', () => {
-      const m_ = new testPB.EchoMessage();
-      m_.setChallenge(m.getChallenge());
-      callback(null, m_);
-    });
+    const genReadable = grpcUtils.generatorReadable(call);
+
+    let data = '';
+    try {
+      for await (const m of genReadable) {
+        const d = m.getChallenge();
+        data += d;
+      }
+    } catch (err) {
+      console.log('Error:', err.message);
+      callback(err, null);
+    }
+    const response = new testPB.EchoMessage();
+    response.setChallenge(data);
+    callback(null, response);
   },
   duplexStream: async (
     call: grpc.ServerDuplexStream<testPB.EchoMessage, testPB.EchoMessage>,
   ) => {
-    const write = promisify(call.write).bind(call);
-    call.on('data', async (m) => {
-      const m_ = new testPB.EchoMessage();
-      m_.setChallenge(m.getChallenge());
-      await write(m_);
-    });
-    call.on('end', () => {
-      call.end();
-    });
+    const genDuplex = grpcUtils.generatorDuplex(call);
+
+    const m = new testPB.EchoMessage();
+    const response = await genDuplex.read();
+    if (response === null) return;
+    const incoming = response.value.getChallenge();
+    m.setChallenge(incoming);
+    await genDuplex.write(m);
+    await genDuplex.next(null);
   },
 };
 

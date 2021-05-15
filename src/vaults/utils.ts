@@ -3,7 +3,7 @@ import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 import { getRandomBytes, getRandomBytesSync } from '../keys/utils';
 
-const KEY_LEN = 64;
+const KEY_LEN = 32;
 const ID_LEN = 42;
 
 async function generateVaultKey() {
@@ -55,16 +55,16 @@ async function* readdirRecursively(dir: string) {
 }
 
 async function* readdirRecursivelyEFS(fs: EncryptedFS, dir: string) {
-  const dirents = await fs.promises.readdir(dir);
+  const dirents = fs.readdirSync(dir);
   for (const dirent of dirents) {
-    const res = path.resolve(dir, dirent);
+    const res = dirent;
     if (
-      (await fs.promises.stat(res)).isDirectory() &&
+      fs.statSync(path.join(dir, res)).isDirectory() &&
       !isUnixHiddenPath(dirent)
     ) {
-      yield* readdirRecursively(res);
-    } else if ((await fs.promises.stat(res)).isFile()) {
-      yield res;
+      yield* readdirRecursivelyEFS(fs, path.join(dir, res));
+    } else if (fs.statSync(path.join(dir, res)).isFile()) {
+      yield path.resolve(dir, res);
     }
   }
 }

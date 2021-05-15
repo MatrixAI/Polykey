@@ -28,4 +28,16 @@ type Packfile = {
   [key: string]: any;
 };
 
-export type { Config, Refs, RefsAdResponse, Ack, Packfile };
+type BufferEncoding =
+  | 'utf8'
+  | 'hex'
+  | 'ascii'
+  | 'utf-8'
+  | 'utf16le'
+  | 'ucs2'
+  | 'ucs-2'
+  | 'base64'
+  | 'latin1'
+  | 'binary';
+
+export type { Config, Refs, RefsAdResponse, Ack, Packfile, BufferEncoding };

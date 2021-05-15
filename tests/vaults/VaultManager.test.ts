@@ -12,27 +12,12 @@ describe('VaultManager is', () => {
     new StreamHandler(),
   ]);
   let dataDir: string;
-  let keyManager: KeyManager;
-  let vaultManager: VaultManager;
 
   beforeEach(async () => {
     dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
-    keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
-    vaultManager = new VaultManager({
-      vaultsPath: path.join(dataDir, 'vaults'),
-      keyManager: keyManager,
-      fs: fs,
-      logger: logger,
-    });
-    await keyManager.start({ password: 'password' });
   });
 
   afterEach(async () => {
-    await keyManager.stop();
     await fs.rm(dataDir, {
       force: true,
       recursive: true,
@@ -40,27 +25,89 @@ describe('VaultManager is', () => {
   });
 
   test('type correct', () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
     expect(vaultManager).toBeInstanceOf(VaultManager);
   });
   test('starting and stopping', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
 
     expect(await vaultManager.started()).toBe(true);
     await vaultManager.stop();
+    await keyManager.stop();
   });
   test('creating the directory', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
 
     expect(await fs.stat(dataDir)).toBeTruthy();
     await vaultManager.stop();
+    await keyManager.stop();
   });
   test('able to create a vault', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     const vault = await vaultManager.createVault('MyTestVault');
     expect(vault).toBeTruthy();
     await vaultManager.stop();
+    await keyManager.stop();
   });
   test('able to create and get a vault', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     const newVault = await vaultManager.createVault('MyTestVault');
     const theVault = vaultManager.getVault(newVault.vaultId);
@@ -71,8 +118,21 @@ describe('VaultManager is', () => {
     );
 
     await vaultManager.stop();
+    await keyManager.stop();
   });
   test('able to rename a vault', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     const newVault = await vaultManager.createVault('MyTestVault');
     const result = await vaultManager.renameVault(
@@ -87,8 +147,21 @@ describe('VaultManager is', () => {
     );
 
     await vaultManager.stop();
+    await keyManager.stop();
   });
   test('able to delete a vault', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     const firstVault = await vaultManager.createVault('MyFirstVault');
     const secondVault = await vaultManager.createVault('MySecondVault');
@@ -103,8 +176,21 @@ describe('VaultManager is', () => {
     expect(vaultManager.getVault(thirdVault.vaultId)).toBe(thirdVault);
 
     await vaultManager.stop();
+    await keyManager.stop();
   });
   test('able to list vaults', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     await vaultManager.createVault('MyTestVault');
     await vaultManager.createVault('MyOtherTestVault');
@@ -116,6 +202,18 @@ describe('VaultManager is', () => {
     await vaultManager.stop();
   });
   test('able to create many vaults', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     const vaultNames = [
       'Vault1',
       'Vault2',
@@ -147,12 +245,26 @@ describe('VaultManager is', () => {
     expect(vaultManager.listVaults().length).toEqual(vaultNames.length);
 
     await vaultManager.stop();
+    await keyManager.stop();
   });
   test('able to write metadata', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     await vaultManager.createVault('MyVault');
 
     await vaultManager.stop();
+    await keyManager.stop();
 
     const leveldb = await level(vaultManager.metadataPath);
     await leveldb.open();
@@ -162,6 +274,18 @@ describe('VaultManager is', () => {
     await leveldb.close();
   });
   test('able to read and load existing metadata', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     const vaultNames = [
       'Vault1',
       'Vault2',
@@ -220,6 +344,7 @@ describe('VaultManager is', () => {
     expect(vn.sort()).toEqual(vaultNames.sort());
 
     await vaultManager2.stop();
+    await keyManager.stop();
   });
   test('able to recover metadata after complex operations', async () => {
     const vaultNames = [
@@ -246,7 +371,18 @@ describe('VaultManager is', () => {
       'ThirdImpact',
       'Cake',
     ];
-
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     for (const vaultName of vaultNames) {
       await vaultManager.createVault(vaultName);
@@ -295,5 +431,6 @@ describe('VaultManager is', () => {
     expect(vaultManager2.listVaults().length).toEqual(alteredVaultNames.length);
 
     await vaultManager2.stop();
+    await keyManager.stop();
   });
 });

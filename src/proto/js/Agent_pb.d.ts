@@ -43,6 +43,123 @@ export namespace EchoMessage {
     }
 }
 
+export class InfoRequest extends jspb.Message { 
+    getVaultName(): string;
+    setVaultName(value: string): InfoRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): InfoRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: InfoRequest): InfoRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: InfoRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): InfoRequest;
+    static deserializeBinaryFromReader(message: InfoRequest, reader: jspb.BinaryReader): InfoRequest;
+}
+
+export namespace InfoRequest {
+    export type AsObject = {
+        vaultName: string,
+    }
+}
+
+export class InfoResponse extends jspb.Message { 
+    getVaultName(): string;
+    setVaultName(value: string): InfoResponse;
+    getBody(): Uint8Array | string;
+    getBody_asU8(): Uint8Array;
+    getBody_asB64(): string;
+    setBody(value: Uint8Array | string): InfoResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): InfoResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: InfoResponse): InfoResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: InfoResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): InfoResponse;
+    static deserializeBinaryFromReader(message: InfoResponse, reader: jspb.BinaryReader): InfoResponse;
+}
+
+export namespace InfoResponse {
+    export type AsObject = {
+        vaultName: string,
+        body: Uint8Array | string,
+    }
+}
+
+export class PackRequest extends jspb.Message { 
+    getVaultName(): string;
+    setVaultName(value: string): PackRequest;
+    getBody(): Uint8Array | string;
+    getBody_asU8(): Uint8Array;
+    getBody_asB64(): string;
+    setBody(value: Uint8Array | string): PackRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: PackRequest): PackRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackRequest;
+    static deserializeBinaryFromReader(message: PackRequest, reader: jspb.BinaryReader): PackRequest;
+}
+
+export namespace PackRequest {
+    export type AsObject = {
+        vaultName: string,
+        body: Uint8Array | string,
+    }
+}
+
+export class PackResponse extends jspb.Message { 
+    getVaultName(): string;
+    setVaultName(value: string): PackResponse;
+    getBody(): Uint8Array | string;
+    getBody_asU8(): Uint8Array;
+    getBody_asB64(): string;
+    setBody(value: Uint8Array | string): PackResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: PackResponse): PackResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackResponse;
+    static deserializeBinaryFromReader(message: PackResponse, reader: jspb.BinaryReader): PackResponse;
+}
+
+export namespace PackResponse {
+    export type AsObject = {
+        vaultName: string,
+        body: Uint8Array | string,
+    }
+}
+
+export class PackChunk extends jspb.Message { 
+    getChunk(): Uint8Array | string;
+    getChunk_asU8(): Uint8Array;
+    getChunk_asB64(): string;
+    setChunk(value: Uint8Array | string): PackChunk;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackChunk.AsObject;
+    static toObject(includeInstance: boolean, msg: PackChunk): PackChunk.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackChunk, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackChunk;
+    static deserializeBinaryFromReader(message: PackChunk, reader: jspb.BinaryReader): PackChunk;
+}
+
+export namespace PackChunk {
+    export type AsObject = {
+        chunk: Uint8Array | string,
+    }
+}
+
 export class ConnectionMessage extends jspb.Message { 
     getAid(): string;
     setAid(value: string): ConnectionMessage;

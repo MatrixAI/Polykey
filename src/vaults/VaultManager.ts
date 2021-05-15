@@ -1,6 +1,6 @@
 import type { Vaults } from './types';
 import type { FileSystem } from '../types';
-import type { NodeConnection } from '../nodes/types';
+import type { WorkerManager } from '../workers';
 
 import path from 'path';
 import level from 'level';
@@ -10,7 +10,7 @@ import { Mutex } from 'async-mutex';
 import Vault from './Vault';
 import { generateVaultKey, fileExists, generateVaultId } from './utils';
 import { KeyManager, errors as keysErrors } from '../keys';
-import { GitFrontend } from '../git';
+import { GitFrontend, GitRequest } from '../git';
 import * as utils from '../utils';
 import * as errors from './errors';
 
@@ -22,6 +22,7 @@ class VaultManager {
   protected keyManager: KeyManager;
   protected logger: Logger;
   protected gitFrontend: GitFrontend;
+  protected workerManager?: WorkerManager;
   private vaults: Vaults;
   private _started: boolean;
 
@@ -55,8 +56,21 @@ class VaultManager {
     this._started = false;
 
     // Git frontend
-    const nodeConnection: NodeConnection = { placeholder: true };
-    this.gitFrontend = new GitFrontend(() => nodeConnection);
+    this.gitFrontend = new GitFrontend();
+  }
+
+  public setWorkerManager(workerManager: WorkerManager) {
+    this.workerManager = workerManager;
+    for (const id in this.vaults) {
+      this.vaults[id].vault.EncryptedFS.setWorkerManager(workerManager);
+    }
+  }
+
+  public unsetWorkerManager() {
+    delete this.workerManager;
+    for (const id in this.vaults) {
+      this.vaults[id].vault.EncryptedFS.unsetWorkerManager();
+    }
   }
 
   public async start({ fresh = false }: { fresh?: boolean }) {
@@ -244,10 +258,11 @@ class VaultManager {
    * @param nodeId identifier of node to scan vaults from
    * @returns a list of vault names from the connected node
    */
-  public async scanNodeVaults(nodeId: string): Promise<Array<string>> {
-    const gitRequest = this.gitFrontend.connectToNodeGit(nodeId);
-    const vaultNameList = await gitRequest.scanVaults();
-    return vaultNameList;
+  public async scanNodeVaults(): Promise<Array<string>> {
+    throw new Error('Not implemented');
+    // const gitRequest = this.gitFrontend.connectToNodeGit(nodeId);
+    // const vaultNameList = await gitRequest.scanVaults();
+    // return vaultNameList;
   }
 
   /**
@@ -260,11 +275,15 @@ class VaultManager {
    * @param nodeId identifier of node to pull/clone from
    */
   public async pullVault(vaultId: string, nodeId: string): Promise<void> {
+    const gitRequest = new GitRequest(
+      async () => Buffer.from(''),
+      async () => Buffer.from(''),
+      async () => [''],
+    );
     if (this.vaults[vaultId]) {
-      await this.vaults[vaultId].vault.pullVault(nodeId);
+      await this.vaults[vaultId].vault.pullVault(gitRequest);
     } else {
       const vault = await this.createVault(vaultId);
-      const gitRequest = this.gitFrontend.connectToNodeGit(nodeId);
       const vaultUrl = `http://0.0.0.0/${vaultId}`;
       const info = await git.getRemoteInfo({
         http: gitRequest,
@@ -279,7 +298,7 @@ class VaultManager {
       }
 
       await git.clone({
-        fs: { promises: vault.EncryptedFS.promises },
+        fs: vault.EncryptedFS,
         http: gitRequest,
         dir: path.join(this.vaultsPath, vaultId),
         url: vaultUrl,

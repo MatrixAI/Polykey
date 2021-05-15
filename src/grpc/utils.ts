@@ -87,6 +87,9 @@ function getClientSession(
   return session;
 }
 
+/**
+ * Takes a serialized GRPC error, and converts it to an ErrorPolykey
+ */
 function toError(e): errors.ErrorPolykey {
   const errorName = e.metadata.get('name')[0];
   const errorMessage = e.metadata.get('message')[0];
@@ -132,7 +135,7 @@ interface AsyncGeneratorReadableStream<
   TStream extends ObjectReadable<TRead>
 > extends AsyncGenerator<TRead, null, null | void> {
   stream: TStream;
-  read(v?: null): Promise<TRead | null>;
+  read(v?: null): Promise<IteratorResult<TRead | null>>;
 }
 
 interface AsyncGeneratorWritableStream<
@@ -149,7 +152,7 @@ interface AsyncGeneratorDuplexStream<
   TStream extends ObjectReadable<TRead> & ObjectWritable<TWrite>
 > extends AsyncGenerator<TRead, null, TWrite | null> {
   stream: TStream;
-  read(v?: null): Promise<TRead | null>;
+  read(v?: null): Promise<IteratorResult<TRead | null>>;
   write(v: TWrite | null): Promise<void>;
 }
 
@@ -159,38 +162,19 @@ function generatorReadable<TRead>(
 function generatorReadable<TRead>(
   stream: ServerReadableStream<TRead, any>,
 ): AsyncGeneratorReadableStream<TRead, ServerReadableStream<TRead, any>>;
-function generatorReadable<TRead>(stream: any) {
+function generatorReadable(stream: any) {
   const gf = async function* () {
-    let close;
-    let vR;
-    while (true) {
-      vR = await new Promise<TRead | null>((resolve, reject) => {
-        const onData = (d) => {
-          stream.off('error', onError);
-          stream.off('end', onEnd);
-          resolve(d);
-        };
-        const onEnd = () => {
-          stream.off('data', onData);
-          stream.off('error', onError);
-          resolve(null);
-        };
-        const onError = (e) => {
-          stream.off('data', onData);
-          stream.off('end', onEnd);
-          reject(toError(e));
-        };
-        stream.once('data', onData);
-        stream.once('error', onError);
-        stream.once('end', onEnd);
-      });
-      if (vR === null) {
-        // closed from other side
-        return null;
-      }
-      close = yield vR;
-      if (close === null) {
-        // close the reading
+    stream.on('end', () => {
+      return null;
+    });
+
+    stream.on('error', () => {
+      return null;
+    });
+
+    for await (const data of stream) {
+      const d = yield data;
+      if (d === null) {
         return null;
       }
     }
@@ -209,7 +193,6 @@ function generatorWritable<TWrite>(
 ): AsyncGeneratorWritableStream<TWrite, ServerWritableStream<any, TWrite>>;
 function generatorWritable(stream: any) {
   const streamWrite = promisify(stream.write).bind(stream);
-  const streamEnd = promisify(stream.end).bind(stream);
   const gf = async function* () {
     let errored;
     let vW;
@@ -223,8 +206,10 @@ function generatorWritable(stream: any) {
       }
       if (!errored) {
         if (vW === null) {
-          await streamEnd();
-          // close the writing
+          // Close the writing
+          // End has no callback when called without a value,
+          // hence is not promisified.
+          stream.end();
           return null;
         } else {
           await streamWrite(vW);
@@ -250,8 +235,8 @@ function generatorDuplex(stream: any) {
   const gR = generatorReadable(stream);
   const gW = generatorWritable(stream);
   const gf = async function* () {
-    let errored;
-    let vR, vW;
+    let errored: boolean;
+    let vR: any, vW: any;
     while (true) {
       errored = false;
       try {

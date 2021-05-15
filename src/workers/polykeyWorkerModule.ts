@@ -2,6 +2,7 @@ import type { PublicKeyAsn1, PrivateKeyAsn1, KeyPairAsn1 } from '../keys/types';
 
 import { utils as keysUtils } from '../keys';
 import { isWorkerRuntime } from 'threads/worker';
+import efsWorker from 'encryptedfs/dist/workers/efsWorkerModule';
 
 /**
  * Worker object that contains all functions that will be executed in parallel
@@ -11,6 +12,7 @@ import { isWorkerRuntime } from 'threads/worker';
  * The caller must always await because the fucntions will run on the pool
  */
 const polykeyWorker = {
+  ...efsWorker,
   /**
    * Check if we are running in the worker.
    * Only used for testing

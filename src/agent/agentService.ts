@@ -1,9 +1,13 @@
 import * as grpc from '@grpc/grpc-js';
-import * as agentPB from '../proto/js/Agent_pb';
-import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
+
+import { GitBackend } from '../git';
 import { KeyManager } from '../keys';
-import { VaultManager } from '../vaults';
 import { NodeManager } from '../nodes';
+import { VaultManager } from '../vaults';
+import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
+
+import * as agentPB from '../proto/js/Agent_pb';
+import * as grpcUtils from '../../src/grpc/utils';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -14,10 +18,12 @@ function createAgentService({
   keyManager,
   vaultManager,
   nodeManager,
+  git,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
+  git: GitBackend;
 }) {
   const agentService: IAgentServer = {
     echo: async (
@@ -27,6 +33,98 @@ function createAgentService({
       const response = new agentPB.EchoMessage();
       response.setChallenge(call.request.getChallenge());
       callback(null, response);
+    },
+    getGitInfo: async (
+      call: grpc.ServerWritableStream<agentPB.InfoRequest, agentPB.PackChunk>,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+
+      const request = call.request;
+      const vaultName = request.getVaultName();
+
+      const response = new agentPB.PackChunk();
+      const responseGen = git.handleInfoRequest(vaultName);
+
+      for await (const byte of responseGen) {
+        if (byte !== null) {
+          response.setChunk(byte);
+          await genWritable.next(response);
+        } else {
+          await genWritable.next(null);
+        }
+      }
+      await genWritable.next(null);
+    },
+    getGitPackStream: async (
+      call: grpc.ServerWritableStream<agentPB.PackRequest, agentPB.PackChunk>,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+
+      const request = call.request;
+      const vaultName = request.getVaultName();
+      const body = request.getBody_asU8();
+
+      const response = new agentPB.PackChunk();
+      const [sideBand, progressStream] = await git.handlePackRequest(
+        vaultName,
+        Buffer.from(body),
+      );
+
+      await git.handlePackRequest(vaultName, Buffer.from(body));
+
+      response.setChunk(Buffer.from('0008NAK\n'));
+      await genWritable.next(response);
+
+      const responseBuffers: Buffer[] = [];
+
+      await new Promise<void>((resolve, reject) => {
+        sideBand.on('data', async (data: Buffer) => {
+          // response.setChunk(Buffer.from(data));
+
+          // Because the following line does not work...
+          // await genWritable.next(response);
+
+          // This one can be used instead... But...
+          // genWritable.stream.write(response);
+
+          // Alternatively we could push the data into a buffer
+          responseBuffers.push(data);
+        });
+        sideBand.on('end', async () => {
+          // And at the end concatenate them and call the 'next'
+          // method on the entire chunk
+          response.setChunk(Buffer.concat(responseBuffers));
+          await genWritable.next(response);
+          resolve();
+        });
+        sideBand.on('error', (err) => {
+          reject(err);
+        });
+        progressStream.write(Buffer.from('0014progress is at 50%\n'));
+        progressStream.end();
+      });
+
+      await genWritable.next(null);
+      // this should be used if we use the genWritable.stream.write style
+      // genWritable.stream.end();
+    },
+    scanVaults: async (
+      call: grpc.ServerWritableStream<agentPB.EmptyMessage, agentPB.PackChunk>,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+      const response = new agentPB.PackChunk();
+
+      const listResponse = git.handleVaultNamesRequest();
+
+      for await (const byte of listResponse) {
+        if (byte !== null) {
+          response.setChunk(byte);
+          await genWritable.next(response);
+        } else {
+          await genWritable.next(null);
+        }
+      }
+      await genWritable.next(null);
     },
     getRootCertificate: async (
       call: grpc.ServerUnaryCall<
