@@ -1,10 +1,12 @@
-import GitRequest from './GitRequest';
+import * as grpc from '@grpc/grpc-js';
 import Logger from '@matrixai/logger';
 
-import { AgentClient } from '../../src/proto/js/Agent_grpc_pb';
+import { GitRequest } from '.';
+import { promisify } from '../utils';
+import { AgentClient } from '../proto/js/Agent_grpc_pb';
 
-import * as grpcUtils from '../../src/grpc/utils';
-import * as agentPB from '../../src/proto/js/Agent_pb';
+import * as grpcUtils from '../grpc/utils';
+import * as agentPB from '../proto/js/Agent_pb';
 
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
@@ -20,11 +22,12 @@ class GitFrontend {
    * Requests remote info from the connected node for the named vault.
    * @param vaultName Name of the desired vault
    * @param nodeConnection A connection object to the node
+   * @returns Async Generator of Uint8Arrays representing the Info Response
    */
-  private async requestInfo(
+  private async *requestInfo(
     vaultName: string,
     client: AgentClient,
-  ): Promise<Buffer> {
+  ): AsyncGenerator<Uint8Array> {
     const serverStream = grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
       client,
       client.getGitInfo,
@@ -33,42 +36,45 @@ class GitFrontend {
     request.setVaultName(vaultName);
     const response = serverStream(request);
 
-    const data: Buffer[] = [];
     for await (const resp of response) {
-      const chunk = resp.getChunk_asU8();
-      data.push(Buffer.from(chunk));
+      yield resp.getChunk_asU8();
     }
-
-    return Buffer.concat(data);
   }
 
   /**
-   * Requests a pack from the connected node for the named vault.
-   * @param vaultName Name of the desired vault
-   * @param body Contains the pack request
-   * @param nodeConnection A connection object to the node
+   * Requests a pack from the connected node for the named vault
+   * @param vaultName name of vault
+   * @param body contains the pack request
+   * @param client AgentClient
+   * @returns AsyncGenerator of Uint8Arrays representing the Pack Response
    */
-  private async requestPack(
+  private async *requestPack(
     vaultName: string,
     body: any,
     client: AgentClient,
-  ): Promise<Uint8Array> {
-    const serverStream = grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
-      client,
-      client.getGitPackStream,
-    );
-    const request = new agentPB.PackRequest();
-    request.setVaultName(vaultName);
-    request.setBody(body);
-    const response = serverStream(request);
+  ): AsyncGenerator<Uint8Array> {
+    const responseBuffers: Array<Buffer> = [];
 
-    const data: Buffer[] = [];
-    for await (const resp of response) {
-      const chunk = resp.getChunk_asU8();
-      data.push(Buffer.from(chunk));
-    }
+    const meta = new grpc.Metadata();
+    meta.set('vault-name', vaultName);
 
-    return Buffer.concat(data);
+    const stream = client.getGitPack(meta);
+    const write = promisify(stream.write).bind(stream);
+
+    stream.on('data', (d) => {
+      responseBuffers.push(d.getChunk_asU8());
+    });
+
+    const chunk = new agentPB.PackChunk();
+    chunk.setChunk(body);
+    write(chunk);
+    stream.end();
+
+    yield await new Promise<Uint8Array>((resolve) => {
+      stream.once('end', () => {
+        resolve(Buffer.concat(responseBuffers));
+      });
+    });
   }
 
   /**

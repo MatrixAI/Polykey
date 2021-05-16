@@ -92,17 +92,6 @@ function deserialize_agentInterface_PackChunk(buffer_arg) {
   return Agent_pb.PackChunk.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_PackRequest(arg) {
-  if (!(arg instanceof Agent_pb.PackRequest)) {
-    throw new Error('Expected argument of type agentInterface.PackRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_PackRequest(buffer_arg) {
-  return Agent_pb.PackRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 
 var AgentService = exports.AgentService = {
   echo: {
@@ -127,14 +116,14 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_PackChunk,
     responseDeserialize: deserialize_agentInterface_PackChunk,
   },
-  getGitPackStream: {
-    path: '/agentInterface.Agent/GetGitPackStream',
-    requestStream: false,
+  getGitPack: {
+    path: '/agentInterface.Agent/GetGitPack',
+    requestStream: true,
     responseStream: true,
-    requestType: Agent_pb.PackRequest,
+    requestType: Agent_pb.PackChunk,
     responseType: Agent_pb.PackChunk,
-    requestSerialize: serialize_agentInterface_PackRequest,
-    requestDeserialize: deserialize_agentInterface_PackRequest,
+    requestSerialize: serialize_agentInterface_PackChunk,
+    requestDeserialize: deserialize_agentInterface_PackChunk,
     responseSerialize: serialize_agentInterface_PackChunk,
     responseDeserialize: deserialize_agentInterface_PackChunk,
   },

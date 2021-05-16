@@ -1,9 +1,11 @@
 import * as grpc from '@grpc/grpc-js';
 
 import { GitBackend } from '../git';
+import { promisify } from '../utils';
 import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
+import { ErrorGRPC } from '../grpc/errors';
 import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
 
 import * as agentPB from '../proto/js/Agent_pb';
@@ -55,58 +57,51 @@ function createAgentService({
       }
       await genWritable.next(null);
     },
-    getGitPackStream: async (
-      call: grpc.ServerWritableStream<agentPB.PackRequest, agentPB.PackChunk>,
-    ): Promise<void> => {
-      const genWritable = grpcUtils.generatorWritable(call);
-
-      const request = call.request;
-      const vaultName = request.getVaultName();
-      const body = request.getBody_asU8();
-
-      const response = new agentPB.PackChunk();
-      const [sideBand, progressStream] = await git.handlePackRequest(
-        vaultName,
-        Buffer.from(body),
-      );
-
-      await git.handlePackRequest(vaultName, Buffer.from(body));
-
-      response.setChunk(Buffer.from('0008NAK\n'));
-      await genWritable.next(response);
-
-      const responseBuffers: Buffer[] = [];
-
-      await new Promise<void>((resolve, reject) => {
-        sideBand.on('data', async (data: Buffer) => {
-          // response.setChunk(Buffer.from(data));
-
-          // Because the following line does not work...
-          // await genWritable.next(response);
-
-          // This one can be used instead... But...
-          // genWritable.stream.write(response);
-
-          // Alternatively we could push the data into a buffer
-          responseBuffers.push(data);
-        });
-        sideBand.on('end', async () => {
-          // And at the end concatenate them and call the 'next'
-          // method on the entire chunk
-          response.setChunk(Buffer.concat(responseBuffers));
-          await genWritable.next(response);
-          resolve();
-        });
-        sideBand.on('error', (err) => {
-          reject(err);
-        });
-        progressStream.write(Buffer.from('0014progress is at 50%\n'));
-        progressStream.end();
+    getGitPack: async (
+      call: grpc.ServerDuplexStream<agentPB.PackChunk, agentPB.PackChunk>,
+    ) => {
+      const write = promisify(call.write).bind(call);
+      const clientBodyBuffers: Buffer[] = [];
+      call.on('data', (d) => {
+        clientBodyBuffers.push(d.getChunk_asU8());
       });
 
-      await genWritable.next(null);
-      // this should be used if we use the genWritable.stream.write style
-      // genWritable.stream.end();
+      call.on('end', async () => {
+        const body = Buffer.concat(clientBodyBuffers);
+
+        const meta = call.metadata;
+        const vaultName = meta.get('vault-name').pop();
+        if (!vaultName) throw new ErrorGRPC('vault-name not in metadata.');
+
+        const response = new agentPB.PackChunk();
+        const [sideBand, progressStream] = await git.handlePackRequest(
+          vaultName.toString(),
+          Buffer.from(body),
+        );
+
+        response.setChunk(Buffer.from('0008NAK\n'));
+        await write(response);
+
+        const responseBuffers: Buffer[] = [];
+
+        await new Promise<void>((resolve, reject) => {
+          sideBand.on('data', async (data: Buffer) => {
+            responseBuffers.push(data);
+          });
+          sideBand.on('end', async () => {
+            response.setChunk(Buffer.concat(responseBuffers));
+            await write(response);
+            resolve();
+          });
+          sideBand.on('error', (err) => {
+            reject(err);
+          });
+          progressStream.write(Buffer.from('0014progress is at 50%\n'));
+          progressStream.end();
+        });
+
+        call.end();
+      });
     },
     scanVaults: async (
       call: grpc.ServerWritableStream<agentPB.EmptyMessage, agentPB.PackChunk>,
