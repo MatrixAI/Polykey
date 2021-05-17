@@ -1,6 +1,8 @@
-import Vault from '../vaults/Vault';
-import { PassThrough } from 'readable-stream';
 import Logger from '@matrixai/logger';
+import { PassThrough } from 'readable-stream';
+
+import Vault from '../vaults/Vault';
+
 import * as gitUtils from './utils';
 
 // Here is the protocol git outlines for sending pack files over http:
@@ -11,7 +13,8 @@ import * as gitUtils from './utils';
 // This git backend (as well as HttpDuplex class) is heavily inspired by node-git-server:
 // https://github.com/gabrielcsapo/node-git-server
 
-// We need someway to notify other agents about what vaults we have based on some type of authorisation because they don't explicitly know about them
+// We need someway to notify other agents about what vaults we have based on
+// some type of authorisation because they don't explicitly know about them
 
 class GitBackend {
   private getVault: (vaultID: string) => Vault;
@@ -37,6 +40,10 @@ class GitBackend {
     this.logger = logger ?? new Logger('GitBackend');
   }
 
+  /**
+   * Returns an async generator that yields buffers representing the git info response
+   * @param vaultName Name of vault
+   */
   public async *handleInfoRequest(
     vaultName: string,
   ): AsyncGenerator<Buffer | null> {
@@ -68,6 +75,13 @@ class GitBackend {
     }
   }
 
+  /**
+   * Takes vaultName and a pack request and returns two streams used to handle the pack
+   * response
+   * @param vaultName name of the vault
+   * @param body body of pack request
+   * @returns Two streams used to send the pack response
+   */
   public async handlePackRequest(vaultName: string, body: Buffer) {
     const vaultId = this.getVaultID(vaultName)[0];
 
@@ -95,6 +109,9 @@ class GitBackend {
     }
   }
 
+  /**
+   * Returns a generator that yields the names of the vaults
+   */
   public async *handleVaultNamesRequest(): AsyncGenerator<Uint8Array> {
     const vaults = this.getVaultNames();
     for (const vault in vaults) {

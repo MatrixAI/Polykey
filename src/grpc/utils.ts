@@ -164,20 +164,18 @@ function generatorReadable<TRead>(
 ): AsyncGeneratorReadableStream<TRead, ServerReadableStream<TRead, any>>;
 function generatorReadable(stream: any) {
   const gf = async function* () {
-    stream.on('end', () => {
-      return null;
-    });
-
-    stream.on('error', () => {
-      return null;
-    });
-
-    for await (const data of stream) {
-      const d = yield data;
-      if (d === null) {
-        return null;
+    try {
+      for await (const data of stream) {
+        const d = yield data;
+        if (d === null) {
+          stream.destroy();
+          return null;
+        }
       }
+    } catch (e) {
+      throw toError(e);
     }
+    return null;
   };
   const g: any = gf();
   g.stream = stream;

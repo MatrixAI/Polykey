@@ -7,7 +7,7 @@ service Agent {
   rpc Echo(EchoMessage) returns (EchoMessage) {};
 
   rpc GetGitInfo (InfoRequest) returns (stream PackChunk) {};
-  rpc GetGitPackStream (PackRequest) returns (stream PackChunk) {};
+  rpc GetGitPack(stream PackChunk) returns (stream PackChunk) {};
   rpc ScanVaults (EmptyMessage) returns (stream PackChunk) {};
 
   rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {};

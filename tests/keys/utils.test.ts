@@ -1,5 +1,5 @@
 import { pki } from 'node-forge';
-import * as keysUtils from '@/keys/utils';
+import * as keysUtils from '../../src/keys/utils';
 
 describe('utils', () => {
   test('key pair copy', async () => {
@@ -14,6 +14,7 @@ describe('utils', () => {
     const cert = keysUtils.generateCertificate(
       keyPair.publicKey,
       keyPair.privateKey,
+      keyPair.privateKey,
       1000,
     );
     const certPem = keysUtils.certToPem(cert);
@@ -26,6 +27,7 @@ describe('utils', () => {
     const keyPair = await keysUtils.generateKeyPair(4096);
     const cert = keysUtils.generateCertificate(
       keyPair.publicKey,
+      keyPair.privateKey,
       keyPair.privateKey,
       1000,
     );
