@@ -275,39 +275,39 @@ class VaultManager {
    * @param nodeId identifier of node to pull/clone from
    */
   public async pullVault(vaultId: string, nodeId: string): Promise<void> {
-    const gitRequest = new GitRequest(
-      async () => Buffer.from(''),
-      async () => Buffer.from(''),
-      async () => [''],
-    );
-    if (this.vaults[vaultId]) {
-      await this.vaults[vaultId].vault.pullVault(gitRequest);
-    } else {
-      const vault = await this.createVault(vaultId);
-      const vaultUrl = `http://0.0.0.0/${vaultId}`;
-      const info = await git.getRemoteInfo({
-        http: gitRequest,
-        url: vaultUrl,
-      });
+    // const gitRequest = new GitRequest(
+    //   async () => Buffer.from(''),
+    //   async () => Buffer.from(''),
+    //   async () => [''],
+    // );
+    // if (this.vaults[vaultId]) {
+    //   await this.vaults[vaultId].vault.pullVault(gitRequest);
+    // } else {
+    //   const vault = await this.createVault(vaultId);
+    //   const vaultUrl = `http://0.0.0.0/${vaultId}`;
+    //   const info = await git.getRemoteInfo({
+    //     http: gitRequest,
+    //     url: vaultUrl,
+    //   });
 
-      if (!info.refs) {
-        // node does not have vault
-        throw new errors.ErrorRemoteVaultUndefined(
-          `${vaultId} does not exist on connected node ${nodeId}`,
-        );
-      }
+    //   if (!info.refs) {
+    //     // node does not have vault
+    //     throw new errors.ErrorRemoteVaultUndefined(
+    //       `${vaultId} does not exist on connected node ${nodeId}`,
+    //     );
+    //   }
 
-      await git.clone({
-        fs: vault.EncryptedFS,
-        http: gitRequest,
-        dir: path.join(this.vaultsPath, vaultId),
-        url: vaultUrl,
-        ref: 'master',
-        singleBranch: true,
-      });
+    //   await git.clone({
+    //     fs: vault.EncryptedFS,
+    //     http: gitRequest,
+    //     dir: path.join(this.vaultsPath, vaultId),
+    //     url: vaultUrl,
+    //     ref: 'master',
+    //     singleBranch: true,
+    //   });
 
-      await this.writeVaultData();
-    }
+    //   await this.writeVaultData();
+    // }
   }
 
   /**
