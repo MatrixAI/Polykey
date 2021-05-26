@@ -1,44 +1,24 @@
-import type { NodeId } from '../nodes/types';
-import type { CertificatePemChain, PrivateKeyPem } from '../keys/types';
+import type { TLSConfig } from '../network/types';
 
-import Logger from '@matrixai/logger';
-import { AgentClient } from '../proto/js/Agent_grpc_pb';
-import * as agentPB from '../proto/js/Agent_pb';
-import GRPCClient from '../grpc/GRPCClient';
 import * as agentErrors from './errors';
-import { utils as grpcUtils } from '../grpc';
+import { GRPCClient, utils as grpcUtils } from '../grpc';
+import * as agentPB from '../proto/js/Agent_pb';
+import { AgentClient } from '../proto/js/Agent_grpc_pb';
 
 /**
  * GRPC Agent Endpoints.
  */
 class GRPCClientAgent extends GRPCClient<AgentClient> {
-  constructor({
-    nodeId,
-    host,
-    port,
-    logger,
-  }: {
-    nodeId: NodeId;
-    host: string;
-    port: number;
-    logger?: Logger;
-  }) {
-    super({ nodeId, host, port, logger });
-  }
-
   public async start({
-    keyPrivatePem,
-    certChainPem,
+    tlsConfig,
     timeout = Infinity,
   }: {
-    keyPrivatePem: PrivateKeyPem;
-    certChainPem: CertificatePemChain;
+    tlsConfig?: TLSConfig;
     timeout?: number;
-  }): Promise<void> {
+  } = {}): Promise<void> {
     await super.start({
       clientConstructor: AgentClient,
-      keyPrivatePem,
-      certChainPem,
+      tlsConfig,
       timeout,
     });
   }
@@ -83,11 +63,11 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
-  public relayHolePunchMessage(...args) {
+  public sendHolePunchMessage(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<agentPB.NodeTableMessage>(
+    return grpcUtils.promisifyUnaryCall<agentPB.EmptyMessage>(
       this.client,
-      this.client.relayHolePunchMessage,
+      this.client.sendHolePunchMessage,
     )(...args);
   }
 }

@@ -43,7 +43,7 @@ class IdentitiesManager {
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
-    this.fs = fs ?? require('fs/promises');
+    this.fs = fs ?? require('fs');
     this.identitiesPath = identitiesPath;
     this.keyManager = keyManager;
     this.tokenDbPath = path.join(identitiesPath, 'token_db');
@@ -66,7 +66,7 @@ class IdentitiesManager {
     }
     this.logger.info(`Setting identities path to ${this.identitiesPath}`);
     if (fresh) {
-      await this.fs.rm(this.identitiesPath, {
+      await this.fs.promises.rm(this.identitiesPath, {
         force: true,
         recursive: true,
       });

@@ -4,6 +4,8 @@ class ErrorGRPC extends ErrorPolykey {}
 
 class ErrorGRPCClientNotStarted extends ErrorGRPC {}
 
+class ErrorGRPCClientNotSecured extends ErrorGRPC {}
+
 /**
  * Client connection timed out
  */
@@ -17,6 +19,8 @@ class ErrorGRPCServerShutdown extends ErrorGRPC {}
 
 class ErrorGRPCServerNotStarted extends ErrorGRPC {}
 
+class ErrorGRPCServerNotSecured extends ErrorGRPC {}
+
 class ErrorGRPCServerVerification extends ErrorGRPC {}
 
 /**
@@ -27,11 +31,13 @@ class ErrorGRPCConnection extends ErrorGRPC {}
 export {
   ErrorGRPC,
   ErrorGRPCClientNotStarted,
+  ErrorGRPCClientNotSecured,
   ErrorGRPCClientTimeout,
   ErrorGRPCClientVerification,
   ErrorGRPCServerBind,
   ErrorGRPCServerShutdown,
   ErrorGRPCServerNotStarted,
+  ErrorGRPCServerNotSecured,
   ErrorGRPCServerVerification,
   ErrorGRPCConnection,
 };

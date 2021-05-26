@@ -15,17 +15,6 @@ function deserialize_agentInterface_CertificateMessage(buffer_arg) {
   return Agent_pb.CertificateMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_ConnectionMessage(arg) {
-  if (!(arg instanceof Agent_pb.ConnectionMessage)) {
-    throw new Error('Expected argument of type agentInterface.ConnectionMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_ConnectionMessage(buffer_arg) {
-  return Agent_pb.ConnectionMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_agentInterface_EchoMessage(arg) {
   if (!(arg instanceof Agent_pb.EchoMessage)) {
     throw new Error('Expected argument of type agentInterface.EchoMessage');
@@ -90,6 +79,17 @@ function serialize_agentInterface_PackChunk(arg) {
 
 function deserialize_agentInterface_PackChunk(buffer_arg) {
   return Agent_pb.PackChunk.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_RelayMessage(arg) {
+  if (!(arg instanceof Agent_pb.RelayMessage)) {
+    throw new Error('Expected argument of type agentInterface.RelayMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_RelayMessage(buffer_arg) {
+  return Agent_pb.RelayMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -182,14 +182,14 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_NodeTableMessage,
     responseDeserialize: deserialize_agentInterface_NodeTableMessage,
   },
-  relayHolePunchMessage: {
-    path: '/agentInterface.Agent/RelayHolePunchMessage',
+  sendHolePunchMessage: {
+    path: '/agentInterface.Agent/SendHolePunchMessage',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.ConnectionMessage,
+    requestType: Agent_pb.RelayMessage,
     responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_ConnectionMessage,
-    requestDeserialize: deserialize_agentInterface_ConnectionMessage,
+    requestSerialize: serialize_agentInterface_RelayMessage,
+    requestDeserialize: deserialize_agentInterface_RelayMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },

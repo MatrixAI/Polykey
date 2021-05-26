@@ -1,6 +1,5 @@
 import os from 'os';
 import path from 'path';
-import fsPromises from 'fs/promises';
 import fs from 'fs';
 import { VirtualFS } from 'virtualfs';
 import git from 'isomorphic-git';

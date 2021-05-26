@@ -209,6 +209,35 @@ export namespace CertificateMessage {
     }
 }
 
+export class RelayMessage extends jspb.Message { 
+    getSrcid(): string;
+    setSrcid(value: string): RelayMessage;
+    getTargetid(): string;
+    setTargetid(value: string): RelayMessage;
+    getEgressaddress(): string;
+    setEgressaddress(value: string): RelayMessage;
+    getSignature(): string;
+    setSignature(value: string): RelayMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RelayMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: RelayMessage): RelayMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RelayMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RelayMessage;
+    static deserializeBinaryFromReader(message: RelayMessage, reader: jspb.BinaryReader): RelayMessage;
+}
+
+export namespace RelayMessage {
+    export type AsObject = {
+        srcid: string,
+        targetid: string,
+        egressaddress: string,
+        signature: string,
+    }
+}
+
 export class NodeIdMessage extends jspb.Message { 
     getNodeid(): string;
     setNodeid(value: string): NodeIdMessage;

@@ -1,41 +1,21 @@
-import type { NodeId } from '@/nodes/types';
-import type { CertificatePemChain, PrivateKeyPem } from '../keys/types';
+import type { TLSConfig } from '../network/types';
 
-import Logger from '@matrixai/logger';
 import * as clientErrors from './errors';
-import { utils as grpcUtils } from '../grpc';
-import GRPCClient from '../grpc/GRPCClient';
+import { GRPCClient, utils as grpcUtils } from '../grpc';
 import * as clientPB from '../proto/js/Client_pb';
 import { ClientClient } from '../proto/js/Client_grpc_pb';
 
 class GRPCClientClient extends GRPCClient<ClientClient> {
-  constructor({
-    nodeId,
-    host,
-    port,
-    logger,
-  }: {
-    nodeId: NodeId;
-    host: string;
-    port: number;
-    logger?: Logger;
-  }) {
-    super({ nodeId, host, port, logger });
-  }
-
   public async start({
-    keyPrivatePem,
-    certChainPem,
+    tlsConfig,
     timeout = Infinity,
   }: {
-    keyPrivatePem: PrivateKeyPem;
-    certChainPem: CertificatePemChain;
+    tlsConfig?: TLSConfig;
     timeout?: number;
-  }): Promise<void> {
+  } = {}): Promise<void> {
     await super.start({
       clientConstructor: ClientClient,
-      keyPrivatePem,
-      certChainPem,
+      tlsConfig,
       timeout,
     });
   }

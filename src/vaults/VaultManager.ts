@@ -50,7 +50,7 @@ class VaultManager {
     this.vaultsPath = vaultsPath;
     this.metadataPath = path.join(this.vaultsPath, 'vaultMeta');
     this.keyManager = keyManager;
-    this.fs = fs ?? require('fs/promises');
+    this.fs = fs ?? require('fs');
     this.logger = logger ?? new Logger('VaultManager');
     this.vaults = {};
     this._started = false;
@@ -78,7 +78,7 @@ class VaultManager {
       throw new keysErrors.ErrorKeyManagerNotStarted();
     }
     if (fresh) {
-      await this.fs.rm(this.vaultsPath, {
+      await this.fs.promises.rm(this.vaultsPath, {
         force: true,
         recursive: true,
       });
@@ -205,7 +205,7 @@ class VaultManager {
     const vaultPath = path.join(this.vaultsPath, vaultId);
     // Remove directory on file system
     if (await fileExists(this.fs, vaultPath)) {
-      await this.fs.rm(vaultPath, { recursive: true });
+      await this.fs.promises.rm(vaultPath, { recursive: true });
       this.logger.info(`Removed vault directory at '${vaultPath}'`);
     }
 

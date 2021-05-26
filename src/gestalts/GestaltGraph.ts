@@ -48,7 +48,7 @@ class GestaltGraph {
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
-    this.fs = fs ?? require('fs/promises');
+    this.fs = fs ?? require('fs');
     this.gestaltsPath = gestaltsPath;
     this.keyManager = keyManager;
     this.graphDbPath = path.join(gestaltsPath, 'graph_db');
@@ -71,7 +71,7 @@ class GestaltGraph {
     }
     this.logger.info(`Setting gestalts path to ${this.gestaltsPath}`);
     if (fresh) {
-      await this.fs.rm(this.gestaltsPath, {
+      await this.fs.promises.rm(this.gestaltsPath, {
         force: true,
         recursive: true,
       });

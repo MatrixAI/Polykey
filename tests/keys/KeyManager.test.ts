@@ -3,7 +3,7 @@ import type { PublicKey } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import { Buffer } from 'buffer';
-import fs from 'fs/promises';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import KeyManager from '@/keys/KeyManager';
 import WorkerManager from '@/workers/WorkerManager';
@@ -17,10 +17,12 @@ describe('KeyManager', () => {
   ]);
   let dataDir: string;
   beforeEach(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
   });
   afterEach(async () => {
-    await fs.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
@@ -28,13 +30,13 @@ describe('KeyManager', () => {
   test('construction has no side effects', async () => {
     const keysPath = `${dataDir}/keys`;
     new KeyManager({ keysPath, logger });
-    await expect(fs.stat(keysPath)).rejects.toThrow(/ENOENT/);
+    await expect(fs.promises.stat(keysPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs root key pair and root cert and root certs', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
-    const keysPathContents = await fs.readdir(keysPath);
+    const keysPathContents = await fs.promises.readdir(keysPath);
     expect(keysPathContents).toContain('root.pub');
     expect(keysPathContents).toContain('root.key');
     expect(keysPathContents).toContain('root.crt');
@@ -62,7 +64,7 @@ describe('KeyManager', () => {
     const keyManager = new KeyManager({ keysPath, logger });
     keyManager.setWorkerManager(workerManager);
     await keyManager.start({ password: 'password' });
-    const keysPathContents = await fs.readdir(keysPath);
+    const keysPathContents = await fs.promises.readdir(keysPath);
     expect(keysPathContents).toContain('root.pub');
     expect(keysPathContents).toContain('root.key');
     await keyManager.stop();

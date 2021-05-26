@@ -9,7 +9,7 @@ import type { LinkClaimIdentity, LinkInfoIdentity } from '@/links/types';
 
 import os from 'os';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { IdentitiesManager, providers } from '@/identities';
@@ -23,14 +23,16 @@ describe('IdentitiesManager', () => {
   let dataDir: string;
   let keyManager: KeyManager;
   beforeEach(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     const keysPath = `${dataDir}/keys`;
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
   });
   afterEach(async () => {
     await keyManager.stop();
-    await fs.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
@@ -38,7 +40,7 @@ describe('IdentitiesManager', () => {
   test('construction has no side effects', async () => {
     const identitiesPath = `${dataDir}/identities`;
     new IdentitiesManager({ identitiesPath, keyManager, logger });
-    await expect(fs.stat(identitiesPath)).rejects.toThrow(/ENOENT/);
+    await expect(fs.promises.stat(identitiesPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs the token leveldb', async () => {
     const identitiesPath = `${dataDir}/identities`;
@@ -48,7 +50,7 @@ describe('IdentitiesManager', () => {
       logger,
     });
     await identitiesManager.start();
-    const identitiesPathContents = await fs.readdir(identitiesPath);
+    const identitiesPathContents = await fs.promises.readdir(identitiesPath);
     expect(identitiesPathContents).toContain('token_db');
     await identitiesManager.stop();
   });

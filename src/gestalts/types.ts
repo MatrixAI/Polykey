@@ -2,7 +2,7 @@ import type { Opaque } from '../types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { IdentityId, ProviderId, IdentityInfo } from '../identities/types';
 
-type GestaltGraphKey = Opaque<string, 'GestaltGraphKey'>;
+type GestaltGraphKey = Opaque<'GestaltGraphKey', string>;
 type GestaltGraphValue = GestaltKeySet | NodeInfo | IdentityInfo;
 type GestaltGraphDomain = 'matrix' | 'nodes' | 'identities';
 
@@ -18,7 +18,7 @@ type GestaltId =
       identityId: IdentityId;
       providerId: ProviderId;
     };
-type GestaltKey = Opaque<string, 'GestaltKey'>;
+type GestaltKey = Opaque<'GestaltKey', string>;
 
 type GestaltKeySet = Record<GestaltKey, null>;
 type GestaltMatrix = Record<GestaltKey, GestaltKeySet>;

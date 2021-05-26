@@ -1,65 +1,10 @@
-import type { PrivateKeyPem, CertificatePemChain } from '@/keys/types';
+import type { Host, Port } from '@/network/types';
 
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { GRPCClient, utils as grpcUtils } from '@/grpc';
 import { utils as keysUtils } from '@/keys';
 import { utils as networkUtils } from '@/network';
-import { TestClient } from '@/proto/js/Test_grpc_pb';
 import * as testPB from '@/proto/js/Test_pb';
 import * as utils from './utils';
-
-class GRPCClientTest extends GRPCClient<TestClient> {
-  public async start({
-    keyPrivatePem,
-    certChainPem,
-    timeout = Infinity,
-  }: {
-    keyPrivatePem: PrivateKeyPem;
-    certChainPem: CertificatePemChain;
-    timeout?: number;
-  }): Promise<void> {
-    await super.start({
-      clientConstructor: TestClient,
-      keyPrivatePem,
-      certChainPem,
-      timeout,
-    });
-  }
-
-  public unary(...args) {
-    return grpcUtils.promisifyUnaryCall<testPB.EchoMessage>(
-      this.client,
-      this.client.unary,
-    )(...args);
-  }
-
-  public serverStream(...args) {
-    return grpcUtils.promisifyReadableStreamCall<testPB.EchoMessage>(
-      this.client,
-      this.client.serverStream,
-    )(...args);
-  }
-
-  public clientStream(...args) {
-    return grpcUtils.promisifyWritableStreamCall<
-      testPB.EchoMessage,
-      testPB.EchoMessage
-    >(
-      this.client,
-      this.client.clientStream,
-    )(...args);
-  }
-
-  public duplexStream(...args) {
-    return grpcUtils.promisifyDuplexStreamCall<
-      testPB.EchoMessage,
-      testPB.EchoMessage
-    >(
-      this.client,
-      this.client.duplexStream,
-    )(...args);
-  }
-}
 
 describe('GRPCClient', () => {
   const logger = new Logger('GRPCClient Test', LogLevel.WARN, [
@@ -78,10 +23,10 @@ describe('GRPCClient', () => {
       keysUtils.privateKeyToPem(serverKeyPair.privateKey),
       keysUtils.certToPem(serverCert),
     );
-    const client = new GRPCClientTest({
+    const client = new utils.GRPCClientTest({
       nodeId: nodeIdServer,
-      host: '127.0.0.1',
-      port: port,
+      host: '127.0.0.1' as Host,
+      port: port as Port,
       logger,
     });
     const clientKeyPair = await keysUtils.generateKeyPair(4096);
@@ -92,8 +37,10 @@ describe('GRPCClient', () => {
       31536000,
     );
     await client.start({
-      keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-      certChainPem: keysUtils.certToPem(clientCert),
+      tlsConfig: {
+        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPem(clientCert),
+      },
       timeout: 1000,
     });
     await client.stop();
@@ -112,10 +59,10 @@ describe('GRPCClient', () => {
       keysUtils.privateKeyToPem(serverKeyPair.privateKey),
       keysUtils.certToPem(serverCert),
     );
-    const client = new GRPCClientTest({
+    const client = new utils.GRPCClientTest({
       nodeId: nodeIdServer,
-      host: '127.0.0.1',
-      port: port,
+      host: '127.0.0.1' as Host,
+      port: port as Port,
       logger,
     });
     const clientKeyPair = await keysUtils.generateKeyPair(4096);
@@ -126,8 +73,10 @@ describe('GRPCClient', () => {
       31536000,
     );
     await client.start({
-      keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
-      certChainPem: keysUtils.certToPem(clientCert),
+      tlsConfig: {
+        keyPrivatePem: keysUtils.privateKeyToPem(clientKeyPair.privateKey),
+        certChainPem: keysUtils.certToPem(clientCert),
+      },
       timeout: 1000,
     });
     const m = new testPB.EchoMessage();

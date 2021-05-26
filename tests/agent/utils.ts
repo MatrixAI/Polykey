@@ -1,3 +1,5 @@
+import type { Host, Port } from '@/network/types';
+import type { NodeId } from '@/nodes/types';
 import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
@@ -48,13 +50,13 @@ async function openTestAgentClient(port: number): Promise<GRPCClientAgent> {
     new StreamHandler(),
   ]);
   const agentClient = new GRPCClientAgent({
-    host: '127.0.0.1',
-    port: port,
+    nodeId: 'NODEID' as NodeId,
+    host: '127.0.0.1' as Host,
+    port: port as Port,
     logger: logger,
   });
 
   await agentClient.start({
-    credentials: grpc.ChannelCredentials.createInsecure(),
     timeout: 30000,
   });
 

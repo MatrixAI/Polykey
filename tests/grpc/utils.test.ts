@@ -68,7 +68,6 @@ describe('utils', () => {
     m.setChallenge('d89f7u983e4d');
     await genDuplex.write(m);
     const response = await genDuplex.read();
-    if (response === null) return;
     const incoming = response.value.getChallenge();
     expect(incoming).toBe(m.getChallenge());
     expect(genDuplex.stream.getPeer()).toBe(`127.0.0.1:${port}`);

@@ -4,7 +4,8 @@
     "commonjs": true,
     "es6": true,
     "node": true,
-    "jest": true
+    "jest": true,
+    "jasmine": true
   },
   "parser": "@typescript-eslint/parser",
   "extends": [
@@ -34,6 +35,7 @@
     "@typescript-eslint/no-this-alias": 0,
     "@typescript-eslint/no-var-requires": 0,
     "@typescript-eslint/ban-ts-comment": 0,
+    "@typescript-eslint/no-empty-function": 0,
     "no-useless-escape" : 0
   }
 }

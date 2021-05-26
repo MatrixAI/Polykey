@@ -2,18 +2,46 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorNetwork extends ErrorPolykey {}
 
-class ErrorProxy extends ErrorNetwork {}
+class ErrorForwardProxyNotStarted extends ErrorNetwork {}
 
-class ErrorPeerConnectionExists extends ErrorNetwork {}
+class ErrorForwardProxyInvalidUrl extends ErrorNetwork {}
 
-class ErrorPeerConnectionNotExists extends ErrorNetwork {}
+class ErrorForwardProxyMissingNodeId extends ErrorNetwork {}
 
-class ErrorCannotConnectToPeer extends ErrorNetwork {}
+class ErrorForwardProxyAuth extends ErrorNetwork {}
 
-class ErrorRelayConnectionExists extends ErrorNetwork {}
+class ErrorReverseProxyNotStarted extends ErrorNetwork {}
 
-class ErrorRelayConnectionNotExists extends ErrorNetwork {}
+class ErrorConnection extends ErrorNetwork {}
 
+class ErrorConnectionMessageParse extends ErrorConnection {}
+
+class ErrorConnectionNotStarted extends ErrorConnection {}
+
+// during start error
+class ErrorConnectionStart extends ErrorConnection {}
+
+// start timeout error
+class ErrorConnectionStartTimeout extends ErrorConnectionStart {}
+
+// during compose error
+class ErrorConnectionCompose extends ErrorConnection {}
+
+// compose timeout error
+class ErrorConnectionComposeTimeout extends ErrorConnectionCompose {}
+
+// connection is already composed
+class ErrorConnectionComposed extends ErrorConnection {}
+
+// not yet composed, cannot answer certain things
+class ErrorConnectionNotComposed extends ErrorConnection {}
+
+// was not able to keep alive
+class ErrorConnectionTimeout extends ErrorConnection {}
+
+/**
+ * Certificate verification errors
+ */
 class ErrorCertChain extends ErrorNetwork {}
 
 /**
@@ -53,12 +81,21 @@ class ErrorCertChainSignatureInvalid extends ErrorCertChain {}
 
 export {
   ErrorNetwork,
-  ErrorProxy,
-  ErrorPeerConnectionExists,
-  ErrorPeerConnectionNotExists,
-  ErrorCannotConnectToPeer,
-  ErrorRelayConnectionExists,
-  ErrorRelayConnectionNotExists,
+  ErrorForwardProxyNotStarted,
+  ErrorForwardProxyInvalidUrl,
+  ErrorForwardProxyMissingNodeId,
+  ErrorForwardProxyAuth,
+  ErrorReverseProxyNotStarted,
+  ErrorConnection,
+  ErrorConnectionMessageParse,
+  ErrorConnectionNotStarted,
+  ErrorConnectionStart,
+  ErrorConnectionStartTimeout,
+  ErrorConnectionCompose,
+  ErrorConnectionComposeTimeout,
+  ErrorConnectionComposed,
+  ErrorConnectionNotComposed,
+  ErrorConnectionTimeout,
   ErrorCertChain,
   ErrorCertChainEmpty,
   ErrorCertChainUnclaimed,

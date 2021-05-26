@@ -50,7 +50,7 @@ class KeyManager {
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.keysPath = keysPath;
-    this.fs = fs ?? require('fs/promises');
+    this.fs = fs ?? require('fs');
     this.rootPubPath = path.join(keysPath, 'root.pub');
     this.rootKeyPath = path.join(keysPath, 'root.key');
     this.rootCertPath = path.join(keysPath, 'root.crt');
@@ -87,7 +87,7 @@ class KeyManager {
     this.logger.info('Starting Key Manager');
     this.logger.info(`Setting keys path to ${this.keysPath}`);
     if (fresh) {
-      await this.fs.rm(this.keysPath, {
+      await this.fs.promises.rm(this.keysPath, {
         force: true,
         recursive: true,
       });
@@ -317,7 +317,7 @@ class KeyManager {
       }/root.crt.${utils.getUnixtime(now)}`,
     );
     try {
-      await this.fs.copyFile(
+      await this.fs.promises.copyFile(
         this.rootCertPath,
         `${this.rootCertsPath}/root.crt.${utils.getUnixtime(now)}`,
       );
@@ -416,7 +416,9 @@ class KeyManager {
           this.logger.info(
             `Deleting ${this.rootCertsPath}/${rootCertsNames[i]}`,
           );
-          await this.fs.rm(`${this.rootCertsPath}/${rootCertsNames[i]}`);
+          await this.fs.promises.rm(
+            `${this.rootCertsPath}/${rootCertsNames[i]}`,
+          );
         }
       }
     } catch (e) {
@@ -483,8 +485,8 @@ class KeyManager {
     this.logger.info(`Checking ${this.rootPubPath} and ${this.rootKeyPath}`);
     try {
       await Promise.all([
-        this.fs.stat(this.rootPubPath),
-        this.fs.stat(this.rootKeyPath),
+        this.fs.promises.stat(this.rootPubPath),
+        this.fs.promises.stat(this.rootKeyPath),
       ]);
     } catch (e) {
       if (e.code === 'ENOENT') {
@@ -505,8 +507,8 @@ class KeyManager {
     this.logger.info(`Reading ${this.rootPubPath} and ${this.rootKeyPath}`);
     try {
       [publicKeyPem, privateKeyPem] = await Promise.all([
-        this.fs.readFile(this.rootPubPath, { encoding: 'utf8' }),
-        this.fs.readFile(this.rootKeyPath, { encoding: 'utf8' }),
+        this.fs.promises.readFile(this.rootPubPath, { encoding: 'utf8' }),
+        this.fs.promises.readFile(this.rootKeyPath, { encoding: 'utf8' }),
       ]);
     } catch (e) {
       throw new keysErrors.ErrorRootKeysRead(e.message, {
@@ -539,12 +541,18 @@ class KeyManager {
     this.logger.info(`Writing ${this.rootPubPath} and ${this.rootKeyPath}`);
     try {
       await Promise.all([
-        this.fs.writeFile(`${this.rootPubPath}.tmp`, keyPairPem.publicKey),
-        this.fs.writeFile(`${this.rootKeyPath}.tmp`, keyPairPem.privateKey),
+        this.fs.promises.writeFile(
+          `${this.rootPubPath}.tmp`,
+          keyPairPem.publicKey,
+        ),
+        this.fs.promises.writeFile(
+          `${this.rootKeyPath}.tmp`,
+          keyPairPem.privateKey,
+        ),
       ]);
       await Promise.all([
-        this.fs.rename(`${this.rootPubPath}.tmp`, this.rootPubPath),
-        this.fs.rename(`${this.rootKeyPath}.tmp`, this.rootKeyPath),
+        this.fs.promises.rename(`${this.rootPubPath}.tmp`, this.rootPubPath),
+        this.fs.promises.rename(`${this.rootKeyPath}.tmp`, this.rootKeyPath),
       ]);
     } catch (e) {
       throw new keysErrors.ErrorRootKeysWrite(e.message, {
@@ -600,7 +608,7 @@ class KeyManager {
   protected async existsRootCert(): Promise<boolean> {
     this.logger.info(`Checking ${this.rootCertPath}`);
     try {
-      await this.fs.stat(this.rootCertPath);
+      await this.fs.promises.stat(this.rootCertPath);
     } catch (e) {
       if (e.code === 'ENOENT') {
         return false;
@@ -619,7 +627,7 @@ class KeyManager {
     let rootCertPem;
     this.logger.info(`Reading ${this.rootCertPath}`);
     try {
-      rootCertPem = await this.fs.readFile(this.rootCertPath, {
+      rootCertPem = await this.fs.promises.readFile(this.rootCertPath, {
         encoding: 'utf8',
       });
     } catch (e) {
@@ -638,8 +646,11 @@ class KeyManager {
     const rootCertPem = keysUtils.certToPem(rootCert);
     this.logger.info(`Writing ${this.rootCertPath}`);
     try {
-      await this.fs.writeFile(`${this.rootCertPath}.tmp`, rootCertPem);
-      await this.fs.rename(`${this.rootCertPath}.tmp`, this.rootCertPath);
+      await this.fs.promises.writeFile(`${this.rootCertPath}.tmp`, rootCertPem);
+      await this.fs.promises.rename(
+        `${this.rootCertPath}.tmp`,
+        this.rootCertPath,
+      );
     } catch (e) {
       throw new keysErrors.ErrorRootCertWrite(e.message, {
         errno: e.errno,
@@ -668,7 +679,7 @@ class KeyManager {
   protected async existsKeysDbKey(): Promise<boolean> {
     this.logger.info(`Checking ${this.keysDbKeyPath}`);
     try {
-      await this.fs.stat(this.keysDbKeyPath);
+      await this.fs.promises.stat(this.keysDbKeyPath);
     } catch (e) {
       if (e.code === 'ENOENT') {
         return false;
@@ -687,7 +698,7 @@ class KeyManager {
     let keysDbKeyCipher;
     this.logger.info(`Reading ${this.keysDbKeyPath}`);
     try {
-      keysDbKeyCipher = await this.fs.readFile(this.keysDbKeyPath);
+      keysDbKeyCipher = await this.fs.promises.readFile(this.keysDbKeyPath);
     } catch (e) {
       throw new keysErrors.ErrorKeysDbKeyRead(e.message, {
         errno: e.errno,
@@ -718,8 +729,14 @@ class KeyManager {
     );
     this.logger.info(`Writing ${this.keysDbKeyPath}`);
     try {
-      await this.fs.writeFile(`${this.keysDbKeyPath}.tmp`, keysDbKeyCipher);
-      await this.fs.rename(`${this.keysDbKeyPath}.tmp`, this.keysDbKeyPath);
+      await this.fs.promises.writeFile(
+        `${this.keysDbKeyPath}.tmp`,
+        keysDbKeyCipher,
+      );
+      await this.fs.promises.rename(
+        `${this.keysDbKeyPath}.tmp`,
+        this.keysDbKeyPath,
+      );
     } catch (e) {
       throw new keysErrors.ErrorKeysDbKeyWrite(e.message, {
         errno: e.errno,
@@ -738,7 +755,7 @@ class KeyManager {
   protected async getRootCertsNames(): Promise<Array<string>> {
     let rootCertsNames;
     try {
-      rootCertsNames = await this.fs.readdir(this.rootCertsPath);
+      rootCertsNames = await this.fs.promises.readdir(this.rootCertsPath);
     } catch (e) {
       throw new keysErrors.ErrorRootCertRead(e.message, {
         errno: e.errno,
@@ -771,7 +788,7 @@ class KeyManager {
     try {
       rootCertsPems = await Promise.all(
         rootCertsNames.map(async (n) => {
-          return await this.fs.readFile(`${this.rootCertsPath}/${n}`, {
+          return await this.fs.promises.readFile(`${this.rootCertsPath}/${n}`, {
             encoding: 'utf8',
           });
         }),
