@@ -3,7 +3,7 @@ import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 
 import os from 'os';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GestaltGraph, utils as gestaltsUtils } from '@/gestalts';
 import { KeyManager } from '@/keys';
@@ -15,14 +15,16 @@ describe('GestaltGraph', () => {
   let dataDir: string;
   let keyManager: KeyManager;
   beforeEach(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     const keysPath = `${dataDir}/keys`;
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
   });
   afterEach(async () => {
     await keyManager.stop();
-    await fs.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
@@ -30,13 +32,13 @@ describe('GestaltGraph', () => {
   test('construction has no side effects', async () => {
     const gestaltsPath = `${dataDir}/gestalts`;
     new GestaltGraph({ gestaltsPath, keyManager, logger });
-    await expect(fs.stat(gestaltsPath)).rejects.toThrow(/ENOENT/);
+    await expect(fs.promises.stat(gestaltsPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs the graph leveldb', async () => {
     const gestaltsPath = `${dataDir}/gestalts`;
     const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
     await gestaltGraph.start();
-    const gestaltsPathContents = await fs.readdir(gestaltsPath);
+    const gestaltsPathContents = await fs.promises.readdir(gestaltsPath);
     expect(gestaltsPathContents).toContain('graph_db');
     await gestaltGraph.stop();
   });

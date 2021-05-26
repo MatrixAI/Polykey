@@ -1,6 +1,6 @@
 import os from 'os';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as utils from '@/utils';
@@ -11,10 +11,12 @@ describe('Polykey', () => {
   ]);
   let dataDir: string;
   beforeEach(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
   });
   afterEach(async () => {
-    await fs.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
@@ -27,13 +29,13 @@ describe('Polykey', () => {
   test('construction has no side effects', async () => {
     const nodePath = `${dataDir}/polykey`;
     new PolykeyAgent({ nodePath, logger });
-    await expect(fs.stat(nodePath)).rejects.toThrow(/ENOENT/);
+    await expect(fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs node path', async () => {
     const nodePath = `${dataDir}/polykey`;
     const pk = new PolykeyAgent({ nodePath, logger });
     await pk.start({ password: 'password' });
-    const nodePathContents = await fs.readdir(nodePath);
+    const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain('keys');
     expect(nodePathContents).toContain('vaults');
     expect(nodePathContents).toContain('gestalts');
@@ -45,11 +47,11 @@ describe('Polykey', () => {
     const pk = new PolykeyAgent({ nodePath, logger });
     await pk.start({ password: 'password' });
     await pk.stop();
-    const nodePathContents = await fs.readdir(nodePath);
+    const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain('keys');
     expect(nodePathContents).toContain('vaults');
     expect(nodePathContents).toContain('gestalts');
     expect(nodePathContents).toContain('identities');
-    await fs.rm(dataDir, { force: true, recursive: true });
+    await fs.promises.rm(dataDir, { force: true, recursive: true });
   });
 });

@@ -1,6 +1,7 @@
+import type { NodeId } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
 import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
@@ -10,6 +11,7 @@ import { NodeManager } from '@/nodes';
 import { KeyManager } from '@/keys';
 import { clientPB } from '@/client';
 import * as testUtils from './utils';
+import { ForwardProxy, ReverseProxy } from '@/network';
 
 describe('GRPC client', () => {
   const logger = new Logger('ClientServerTest', LogLevel.WARN, [
@@ -22,15 +24,31 @@ describe('GRPC client', () => {
   let dataDir: string;
   let keysPath: string;
   let vaultsPath: string;
+  let nodesPath: string;
 
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeManager: NodeManager;
 
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
+
   beforeAll(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     keysPath = path.join(dataDir, 'keys');
     vaultsPath = path.join(dataDir, 'vaults');
+    nodesPath = path.join(dataDir, 'nodes');
+
+    fwdProxy = new ForwardProxy({
+      authToken: 'abc',
+      logger: logger,
+    });
+
+    revProxy = new ReverseProxy({
+      logger: logger,
+    });
 
     keyManager = new KeyManager({
       keysPath,
@@ -46,13 +64,17 @@ describe('GRPC client', () => {
     });
 
     nodeManager = new NodeManager({
+      nodesPath: nodesPath,
+      keyManager: keyManager,
+      fwdProxy: fwdProxy,
+      revProxy: revProxy,
       fs: fs,
       logger: logger,
     });
 
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
-    await nodeManager.start();
+    await nodeManager.start({ nodeId: 'NODEID' as NodeId });
 
     [server, port] = await testUtils.openTestClientServer({
       keyManager,
@@ -61,7 +83,7 @@ describe('GRPC client', () => {
     });
 
     // MOCK A LOCKFILE FOR POLYKEYCLIENT
-    await fs.writeFile(
+    await fs.promises.writeFile(
       path.join(dataDir, 'agent-lock.json'),
       JSON.stringify({
         grpcHost: '127.0.0.1',
@@ -79,7 +101,7 @@ describe('GRPC client', () => {
     await vaultManager.stop();
     await keyManager.stop();
 
-    await fs.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });

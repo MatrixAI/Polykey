@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 import { getRandomBytes, getRandomBytesSync } from '../keys/utils';
+import { FileSystem } from '@/types';
 
 const KEY_LEN = 32;
 const ID_LEN = 42;
@@ -26,9 +27,9 @@ function generateVaultIdSync() {
   return id.toString('base64');
 }
 
-async function fileExists(fs, path): Promise<boolean> {
+async function fileExists(fs: FileSystem, path): Promise<boolean> {
   try {
-    const fh = await fs.open(path, 'r');
+    const fh = await fs.promises.open(path, 'r');
     fh.close();
   } catch (err) {
     if (err.code === 'ENOENT') {

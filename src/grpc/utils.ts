@@ -18,12 +18,21 @@ import type {
 import type { ChannelCredentials, ClientOptions, Client } from '@grpc/grpc-js';
 import type { CertificatePemChain, PrivateKeyPem } from '../keys/types';
 
+import { Buffer } from 'buffer';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from './errors';
 import * as errors from '../errors';
 import { promisify } from '../utils';
 
-function clientCredentials(
+function clientInsecureCredentials(): grpc.ChannelCredentials {
+  return grpc.ChannelCredentials.createInsecure();
+}
+
+function serverInsecureCredentials(): grpc.ServerCredentials {
+  return grpc.ServerCredentials.createInsecure();
+}
+
+function clientSecureCredentials(
   keyPrivatePem: PrivateKeyPem,
   certChainPem: CertificatePemChain,
 ): grpc.ChannelCredentials {
@@ -40,7 +49,7 @@ function clientCredentials(
   return credentials;
 }
 
-function serverCredentials(
+function serverSecureCredentials(
   keyPrivatePem: PrivateKeyPem,
   certChainPem: CertificatePemChain,
 ): grpc.ServerCredentials {
@@ -64,6 +73,9 @@ function serverCredentials(
   return credentials;
 }
 
+/**
+ * This only works during a secure GRPC connection
+ */
 function getClientSession(
   client: Client,
   clientOptions: ClientOptions,
@@ -164,18 +176,20 @@ function generatorReadable<TRead>(
 ): AsyncGeneratorReadableStream<TRead, ServerReadableStream<TRead, any>>;
 function generatorReadable(stream: any) {
   const gf = async function* () {
-    try {
-      for await (const data of stream) {
-        const d = yield data;
-        if (d === null) {
-          stream.destroy();
-          return null;
-        }
+    stream.on('end', () => {
+      return null;
+    });
+
+    stream.on('error', () => {
+      return null;
+    });
+
+    for await (const data of stream) {
+      const d = yield data;
+      if (d === null) {
+        return null;
       }
-    } catch (e) {
-      throw toError(e);
     }
-    return null;
   };
   const g: any = gf();
   g.stream = stream;
@@ -351,8 +365,10 @@ function promisifyDuplexStreamCall<TRead, TWrite>(
 }
 
 export {
-  clientCredentials,
-  serverCredentials,
+  clientInsecureCredentials,
+  serverInsecureCredentials,
+  clientSecureCredentials,
+  serverSecureCredentials,
   getClientSession,
   generatorReadable,
   generatorWritable,

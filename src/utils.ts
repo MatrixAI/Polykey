@@ -2,7 +2,7 @@ import os from 'os';
 import process from 'process';
 import { Buffer } from 'buffer';
 import * as errors from './errors';
-import { FileSystem } from './types';
+import { FileSystem, Timer } from './types';
 
 function getDefaultNodePath(): string {
   const prefix = 'polykey';
@@ -33,9 +33,9 @@ function getDefaultNodePath(): string {
   return p;
 }
 
-async function mkdirExists(fs, path, ...args) {
+async function mkdirExists(fs: FileSystem, path, ...args) {
   try {
-    return await fs.mkdir(path, ...args);
+    return await fs.promises.mkdir(path, ...args);
   } catch (e) {
     if (e.code !== 'EEXIST') {
       throw e;
@@ -70,58 +70,46 @@ function promisify<T>(f): (...args: any[]) => Promise<T> {
   };
 }
 
-async function writeLock(
-  fs: FileSystem,
-  lockPath: string,
-  grpcHost: string,
-  grpcPort: number,
-) {
-  await fs.writeFile(
-    lockPath,
-    JSON.stringify({
-      pid: process.pid,
-      grpcHost: grpcHost,
-      grpcPort: grpcPort,
-    }),
-  );
-}
-
-async function deleteLock(fs: FileSystem, lockPath: string) {
-  try {
-    const fh = await fs.open(lockPath, 'r');
-    fh.close();
-  } catch (err) {
-    return;
-  }
-  await fs.rm(lockPath);
-}
-
-async function parseLock(
-  fs: FileSystem,
-  lockPath: string,
-): Promise<{ pid: number; grpcHost: string; grpcPort: number } | false> {
-  try {
-    const fh = await fs.open(lockPath, 'r');
-    const data = await fh.readFile();
-    fh.close();
-    return JSON.parse(data.toString());
-  } catch (err) {
-    return false;
-  }
-}
-
-function pidIsRunning(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return false;
-  }
+function promise<T>(): {
+  p: Promise<T>;
+  resolveP: (value: T | PromiseLike<T>) => void;
+  rejectP: (reason?: any) => void;
+} {
+  let resolveP, rejectP;
+  const p = new Promise<T>((resolve, reject) => {
+    resolveP = resolve;
+    rejectP = reject;
+  });
+  return {
+    p,
+    resolveP,
+    rejectP,
+  };
 }
 
 function isEmptyObject(o) {
   for (const k in o) return false;
   return true;
+}
+
+function getRandomInt(max = Number.MAX_SAFE_INTEGER) {
+  return Math.floor(Math.random() * max);
+}
+
+function timerStart(timeout: number): Timer {
+  const timer = {} as Timer;
+  timer.timedOut = false;
+  timer.timerP = new Promise<void>((resolve) => {
+    timer.timer = setTimeout(() => {
+      timer.timedOut = true;
+      resolve();
+    }, timeout);
+  });
+  return timer;
+}
+
+function timerStop(timer: Timer): void {
+  clearTimeout(timer.timer);
 }
 
 export {
@@ -131,9 +119,9 @@ export {
   getUnixtime,
   byteSize,
   promisify,
-  writeLock,
-  deleteLock,
-  parseLock,
-  pidIsRunning,
   isEmptyObject,
+  getRandomInt,
+  timerStart,
+  timerStop,
+  promise,
 };

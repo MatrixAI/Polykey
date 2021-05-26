@@ -17,7 +17,7 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     requestCertificateSigning: IAgentService_IRequestCertificateSigning;
     getClosestLocalNodes: IAgentService_IGetClosestLocalNodes;
     synchronizeDHT: IAgentService_ISynchronizeDHT;
-    relayHolePunchMessage: IAgentService_IRelayHolePunchMessage;
+    sendHolePunchMessage: IAgentService_ISendHolePunchMessage;
 }
 
 interface IAgentService_IEcho extends grpc.MethodDefinition<Agent_pb.EchoMessage, Agent_pb.EchoMessage> {
@@ -92,12 +92,12 @@ interface IAgentService_ISynchronizeDHT extends grpc.MethodDefinition<Agent_pb.E
     responseSerialize: grpc.serialize<Agent_pb.NodeTableMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.NodeTableMessage>;
 }
-interface IAgentService_IRelayHolePunchMessage extends grpc.MethodDefinition<Agent_pb.ConnectionMessage, Agent_pb.EmptyMessage> {
-    path: "/agentInterface.Agent/RelayHolePunchMessage";
+interface IAgentService_ISendHolePunchMessage extends grpc.MethodDefinition<Agent_pb.RelayMessage, Agent_pb.EmptyMessage> {
+    path: "/agentInterface.Agent/SendHolePunchMessage";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<Agent_pb.ConnectionMessage>;
-    requestDeserialize: grpc.deserialize<Agent_pb.ConnectionMessage>;
+    requestSerialize: grpc.serialize<Agent_pb.RelayMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.RelayMessage>;
     responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
@@ -113,7 +113,7 @@ export interface IAgentServer extends grpc.UntypedServiceImplementation {
     requestCertificateSigning: grpc.handleUnaryCall<Agent_pb.CertificateMessage, Agent_pb.CertificateMessage>;
     getClosestLocalNodes: grpc.handleUnaryCall<Agent_pb.NodeIdMessage, Agent_pb.NodeTableMessage>;
     synchronizeDHT: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.NodeTableMessage>;
-    relayHolePunchMessage: grpc.handleUnaryCall<Agent_pb.ConnectionMessage, Agent_pb.EmptyMessage>;
+    sendHolePunchMessage: grpc.handleUnaryCall<Agent_pb.RelayMessage, Agent_pb.EmptyMessage>;
 }
 
 export interface IAgentClient {
@@ -139,9 +139,9 @@ export interface IAgentClient {
     synchronizeDHT(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
-    relayHolePunchMessage(request: Agent_pb.ConnectionMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    relayHolePunchMessage(request: Agent_pb.ConnectionMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    relayHolePunchMessage(request: Agent_pb.ConnectionMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    sendHolePunchMessage(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }
 
 export class AgentClient extends grpc.Client implements IAgentClient {
@@ -167,7 +167,7 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public synchronizeDHT(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
-    public relayHolePunchMessage(request: Agent_pb.ConnectionMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public relayHolePunchMessage(request: Agent_pb.ConnectionMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public relayHolePunchMessage(request: Agent_pb.ConnectionMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public sendHolePunchMessage(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }

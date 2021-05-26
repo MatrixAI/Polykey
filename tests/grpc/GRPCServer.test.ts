@@ -1,3 +1,5 @@
+import type { Host, Port } from '@/network/types';
+
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GRPCServer, utils as grpcUtils } from '@/grpc';
 import { utils as keysUtils } from '@/keys';
@@ -22,10 +24,12 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
-      host: '127.0.0.1',
-      port: 0,
-      keyPrivatePem: keysUtils.privateKeyToPem(keyPair.privateKey),
-      certChainPem: keysUtils.certToPem(cert),
+      host: '127.0.0.1' as Host,
+      port: 0 as Port,
+      tlsConfig: {
+        keyPrivatePem: keysUtils.privateKeyToPem(keyPair.privateKey),
+        certChainPem: keysUtils.certToPem(cert),
+      },
     });
     expect(typeof server.getPort()).toBe('number');
     expect(server.getPort()).toBeGreaterThan(0);
@@ -44,10 +48,12 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
-      host: '127.0.0.1',
-      port: 0,
-      keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair.privateKey),
-      certChainPem: keysUtils.certToPem(serverCert),
+      host: '127.0.0.1' as Host,
+      port: 0 as Port,
+      tlsConfig: {
+        keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair.privateKey),
+        certChainPem: keysUtils.certToPem(serverCert),
+      },
     });
     const nodeIdServer = networkUtils.certNodeId(serverCert);
     const clientKeyPair = await keysUtils.generateKeyPair(4096);
@@ -89,10 +95,12 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
-      host: '127.0.0.1',
-      port: 0,
-      keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair1.privateKey),
-      certChainPem: keysUtils.certToPem(serverCert1),
+      host: '127.0.0.1' as Host,
+      port: 0 as Port,
+      tlsConfig: {
+        keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair1.privateKey),
+        certChainPem: keysUtils.certToPem(serverCert1),
+      },
     });
     const clientKeyPair = await keysUtils.generateKeyPair(4096);
     const clientCert = keysUtils.generateCertificate(
@@ -127,10 +135,10 @@ describe('GRPCServer', () => {
       serverKeyPair2.privateKey,
       31536000,
     );
-    server.setCredentials(
-      keysUtils.privateKeyToPem(serverKeyPair2.privateKey),
-      keysUtils.certToPem(serverCert2),
-    );
+    server.setTLSConfig({
+      keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair2.privateKey),
+      certChainPem: keysUtils.certToPem(serverCert2),
+    });
     // still using first connection
     const m2 = new testPB.EchoMessage();
     m2.setChallenge('12308947239847');

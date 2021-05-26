@@ -1,7 +1,8 @@
+import type { NodeId } from '../nodes/types';
 import * as grpc from '@grpc/grpc-js';
-
 import { GitBackend } from '../git';
 import { promisify } from '../utils';
+import * as networkUtils from '../network/utils';
 import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
@@ -26,7 +27,7 @@ function createAgentService({
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   git: GitBackend;
-}) {
+}): IAgentServer {
   const agentService: IAgentServer = {
     echo: async (
       call: grpc.ServerUnaryCall<agentPB.EchoMessage, agentPB.EchoMessage>,
@@ -145,6 +146,12 @@ function createAgentService({
       response.setCert(requestCert);
       callback(null, response);
     },
+    /**
+     * Retrieves the local nodes (i.e. from the current node) that are closest
+     * to some provided node ID.
+     * @param call call that encodes a nodeId representing the target search node.
+     * @param callback
+     */
     getClosestLocalNodes: async (
       call: grpc.ServerUnaryCall<
         agentPB.NodeIdMessage,
@@ -152,23 +159,17 @@ function createAgentService({
       >,
       callback: grpc.sendUnaryData<agentPB.NodeTableMessage>,
     ): Promise<void> => {
-      const nodeId = call.request.getNodeid();
-
+      const targetNodeId = call.request.getNodeid() as NodeId;
       const response = new agentPB.NodeTableMessage();
 
-      // Get all local nodes somehow
-      const addresses = [
-        { ip: '5.5.5.5', port: 1234 },
-        { ip: '6.6.6.6', port: 5678 },
-      ];
-
-      for (const address of addresses) {
+      // Get all local nodes that are closest to the target node from the request
+      const closestNodes = await nodeManager.getClosestLocalNodes(targetNodeId);
+      for (const node of closestNodes) {
         const addressMessage = new agentPB.NodeAddressMessage();
-        addressMessage.setIp(address.ip);
-        addressMessage.setPort(address.port);
-        response
-          .getNodetableMap()
-          .set(`placeholder:${nodeId}${address.ip}`, addressMessage);
+        addressMessage.setIp(node.address.ip);
+        addressMessage.setPort(node.address.port);
+        // Add the node to the response's map (mapping of node ID -> node address)
+        response.getNodetableMap().set(node.id, addressMessage);
       }
 
       callback(null, response);
@@ -199,21 +200,24 @@ function createAgentService({
 
       callback(null, response);
     },
-    relayHolePunchMessage: async (
-      call: grpc.ServerUnaryCall<
-        agentPB.ConnectionMessage,
-        agentPB.EmptyMessage
-      >,
+    sendHolePunchMessage: async (
+      call: grpc.ServerUnaryCall<agentPB.RelayMessage, agentPB.EmptyMessage>,
       callback: grpc.sendUnaryData<agentPB.EmptyMessage>,
     ): Promise<void> => {
       const response = new agentPB.EmptyMessage();
-
-      const request = call.request;
-
-      const bId = request.getBid();
-
-      // If this.nodes has bId, do something
-      // otherwise, drop
+      // Firstly, check if this node is the desired node
+      // If so, then we want to make this node start sending hole punching packets
+      // back to the source node.
+      if (nodeManager.getNodeId() == (call.request.getTargetid() as NodeId)) {
+        const [host, port] = networkUtils.parseAddress(
+          call.request.getEgressaddress(),
+        );
+        await nodeManager.openConnection(host, port);
+        // Otherwise, find if node in table
+        // If so, ask the nodemanager to relay to the node
+      } else if (nodeManager.knowsNode(call.request.getSrcid() as NodeId)) {
+        nodeManager.relayHolePunchMessage(call.request);
+      }
 
       callback(null, response);
     },

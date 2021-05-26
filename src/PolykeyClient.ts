@@ -1,12 +1,16 @@
+import type { NodeId } from './nodes/types';
+
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { ChannelCredentials } from '@grpc/grpc-js';
 
 import { ErrorClientClientNotStarted } from './client/errors';
-import { utils as grpcUtls } from './grpc';
 import { GRPCClientClient } from './client';
-import { FileSystem } from './types';
+import { utils as grpcUtls } from './grpc';
+import { Lockfile } from './lockfile';
+import { FileSystem, LockConfig } from './types';
 import * as utils from './utils';
+import { ErrorPolykey } from './errors';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -41,8 +45,8 @@ class PolykeyClient {
     this.logger = logger ?? new Logger('CLI Logger');
     this.nodePath =
       nodePath ?? path.resolve(nodePath ?? utils.getDefaultNodePath());
-    this.fs = fs ?? require('fs/promises');
-    this.lockPath = path.join(this.nodePath, 'agent-lock.json');
+    this.fs = fs ?? require('fs');
+    this.lockPath = path.join(this.nodePath, Lockfile.LOCKFILE_NAME);
   }
 
   async start({
@@ -50,24 +54,46 @@ class PolykeyClient {
     timeout,
     host,
     port,
+    fwdProxyHost,
+    fwdProxyPort,
+    authToken,
   }: {
     credentials?: ChannelCredentials;
     timeout?: number;
     host?: string;
     port?: number;
+    fwdProxyHost?: string;
+    fwdProxyPort?: number;
+    authToken?: string;
   }) {
-    const lockfile = await utils.parseLock(this.fs, this.lockPath);
-
-    // If Lockfile could not be found, throw error
-    if (!lockfile) {
+    const status = await Lockfile.checkLock(this.fs, this.lockPath);
+    if (status === 'UNLOCKED') {
       throw new ErrorClientClientNotStarted(
-        'Could not find PolykeyAgent lockfile. Is the PolykeyAgent started?',
+        'Polykey Lockfile not locked. Is the PolykeyAgent started?',
+      );
+    } else if (status === 'DOESNOTEXIST') {
+      throw new ErrorClientClientNotStarted(
+        'Polykey Lockfile not found. Is the PolykeyAgent started?',
       );
     }
+
+    let lock: LockConfig;
+    try {
+      lock = await Lockfile.parseLock(this.fs, this.lockPath);
+    } catch (err) {
+      throw new ErrorPolykey('Could not parse Polykey Lockfile.');
+    }
+
     // create a new GRPCClientClient
     this._grpcClient = new GRPCClientClient({
-      host: host ?? lockfile.grpcHost,
-      port: port ?? lockfile.grpcPort,
+      nodeId: lock.nodeId as NodeId,
+      host: host ?? lock.host ?? 'localhost',
+      port: port ?? lock.port ?? 0,
+      proxyConfig: {
+        host: fwdProxyHost ?? lock.fwdProxyHost ?? 'localhost',
+        port: fwdProxyPort ?? lock.fwdProxyPort ?? 0,
+        authToken: authToken ?? '',
+      },
       logger: this.logger,
     });
 
@@ -75,6 +101,24 @@ class PolykeyClient {
       credentials: credentials ?? grpcUtls.clientCredentials(),
       timeout: timeout ?? 30000,
     });
+
+    if (!host && !lock.host) {
+      this.logger.warn('PolykeyClient started with default host: localhost');
+    }
+    if (!port && !lock.port) {
+      this.logger.warn('PolykeyClient started with default port: 0');
+    }
+    if (!fwdProxyHost && !lock.fwdProxyHost) {
+      this.logger.warn(
+        'PolykeyClient started with default fwdProxyHost: localhost',
+      );
+    }
+    if (!fwdProxyPort && !lock.fwdProxyPort) {
+      this.logger.warn('PolykeyClient started with default fwdProxyPort: 0');
+    }
+    if (!authToken) {
+      this.logger.warn('PolykeyClient started with no authToken');
+    }
   }
   async stop() {
     if (this.grpcClient) {

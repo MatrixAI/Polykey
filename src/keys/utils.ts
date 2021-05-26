@@ -23,12 +23,14 @@ import {
   random,
   cipher,
   mgf,
-  util as forgeUtil,
   asn1,
+  pkcs5,
+  util as forgeUtil,
 } from 'node-forge';
 import config from '../config';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
+import { promisify } from 'encryptedfs/dist/util';
 
 /**
  * Polykey OIDs start at 1.3.6.1.4.1.57167.2
@@ -46,7 +48,22 @@ const oids = {
 };
 
 async function generateKeyPair(bits: number): Promise<KeyPair> {
-  return await pki.rsa.generateKeyPair({ bits });
+  const generateKeyPair = promisify(pki.rsa.generateKeyPair).bind(pki.rsa);
+  return await generateKeyPair({ bits });
+}
+
+async function generateDeterministicKeyPair(
+  bits: number,
+  seed: string,
+): Promise<KeyPair> {
+  const prng = random.createInstance();
+  prng.seedFileSync = (needed: number) => {
+    // using bip39 seed generation parameters
+    // no passphrase is considered here
+    return pkcs5.pbkdf2(seed, 'mnemonic', 2048, needed, md.sha512.create());
+  };
+  const generateKeyPair = promisify(pki.rsa.generateKeyPair).bind(pki.rsa);
+  return await generateKeyPair({ bits, prng });
 }
 
 function publicKeyToPem(publicKey: PublicKey): PublicKeyPem {
@@ -532,6 +549,7 @@ export {
   privateKeyToAsn1,
   privateKeyFromAsn1,
   generateKeyPair,
+  generateDeterministicKeyPair,
   keyPairToAsn1,
   keyPairFromAsn1,
   keyPairToPem,

@@ -1,5 +1,4 @@
 import type {
-  ServerCredentials,
   ServiceDefinition,
   UntypedServiceImplementation,
 } from '@grpc/grpc-js';
@@ -11,4 +10,4 @@ type Services = Array<
   ]
 >;
 
-export type { Services, ServerCredentials };
+export type { Services };

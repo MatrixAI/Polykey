@@ -44,7 +44,7 @@ async function openTestClientClient(nodePath) {
   const logger = new Logger('ClientClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const fs = require('fs/promises');
+  const fs = require('fs');
   // const nodePath = path.resolve(utils.getDefaultNodePath());
 
   const pkc: PolykeyClient = new PolykeyClient({

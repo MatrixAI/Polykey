@@ -5,14 +5,14 @@ import type { GestaltKey } from '../gestalts/types';
 /**
  * Provider Id should be the domain of the identity provider
  */
-type ProviderId = Opaque<string, 'ProviderId'>;
+type ProviderId = Opaque<'ProviderId', string>;
 
 /**
  * Identity Id must uniquely identify the identity on the identity provider.
  * It must be the key that is used to look up the identity.
  * If the provider uses a non-string type, make the necessary conversions.
  */
-type IdentityId = Opaque<string, 'IdentityId'>;
+type IdentityId = Opaque<'IdentityId', string>;
 
 type IdentityData = {
   providerId: ProviderId;

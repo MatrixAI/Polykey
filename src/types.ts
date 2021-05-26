@@ -1,9 +1,21 @@
-import type fs from 'fs/promises';
+import type fs from 'fs';
 
 /**
  * Plain data dictionary
  */
 type POJO = { [key: string]: any };
+
+type Opaque<K, T> = T & { __TYPE__: K };
+
+type AbstractConstructorParameters<T> = ConstructorParameters<
+  (new (...args: any) => any) & T
+>;
+
+type Timer = {
+  timer: ReturnType<typeof setTimeout>;
+  timedOut: boolean;
+  timerP: Promise<void>;
+};
 
 /**
  * Minimal filesystem type
@@ -11,29 +23,31 @@ type POJO = { [key: string]: any };
  * Implement this with platform-specific filesystem
  */
 interface FileSystem {
-  rm: typeof fs.rm;
-  stat: typeof fs.stat;
-  readFile: typeof fs.readFile;
-  writeFile: typeof fs.writeFile;
-  copyFile: typeof fs.copyFile;
-  mkdir: typeof fs.mkdir;
-  readdir: typeof fs.readdir;
-  rename: typeof fs.rename;
-  open: typeof fs.open;
+  promises: {
+    rm: typeof fs.promises.rm;
+    stat: typeof fs.promises.stat;
+    readFile: typeof fs.promises.readFile;
+    writeFile: typeof fs.promises.writeFile;
+    copyFile: typeof fs.promises.copyFile;
+    mkdir: typeof fs.promises.mkdir;
+    readdir: typeof fs.promises.readdir;
+    rename: typeof fs.promises.rename;
+    open: typeof fs.promises.open;
+  };
 }
 
-/**
- * Provider key should be the domain of the identity provider
- */
-type ProviderKey = string;
+type LockConfig = {
+  pid: number;
+  nodeId: string;
+  clientHost?: string;
+  clientPort?: number | undefined;
+} & POJO;
 
-/**
- * Identity key must uniquely identify the identity on the identity provider.
- * It must be the key that is used to look up the identity.
- * If the provider uses a non-string type, make the necessary conversions.
- */
-type IdentityKey = string;
-
-type Opaque<K, T> = T & { __TYPE__: K };
-
-export { Opaque, POJO, FileSystem, ProviderKey, IdentityKey };
+export {
+  Opaque,
+  POJO,
+  AbstractConstructorParameters,
+  Timer,
+  FileSystem,
+  LockConfig,
+};

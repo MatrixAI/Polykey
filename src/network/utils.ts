@@ -1,136 +1,94 @@
 import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
+import type { Host, Port, Address, NetworkMessage } from './types';
 import type { Certificate, PublicKey } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 
-import net from 'net';
 import { Buffer } from 'buffer';
+import { IPv4, IPv6, Validator } from 'ip-num';
 import * as networkErrors from './errors';
-import { sleep, isEmptyObject } from '../utils';
+import { isEmptyObject } from '../utils';
 import { utils as keysUtils } from '../keys';
 
-/**
- * Given Host and Port, create an address string.
- * @param host
- * @param port
- */
-function buildAddress(host: string, port: number = 0): string {
-  let address: string;
-  if (net.isIPv4(host)) {
-    address = `${host}:${port}`;
-  } else if (net.isIPv6(host)) {
-    address = `[${host}]:${port}`;
-  } else {
-    address = `${host}:${port}`;
-  }
-  return address;
-}
+const pingBuffer = serializeNetworkMessage({
+  type: 'ping',
+});
 
-function getPort(address: string): number {
-  const [, dstPort] = address.split(':', 2);
-  return parseInt(dstPort);
-}
-
-/**
- * IPv4 ONLY, may not work for IPv6.
- * @param address
- */
-function getHost(address: string): string {
-  const [dstHost] = address.split(':', 2);
-  return dstHost.replace(/^\[+|\]+$/g, '');
-}
-
-/**
- * Payload Templates.
- */
-function httpPayloadAuthenticationRequired(): string {
-  return (
-    'HTTP/1.1 407 Proxy Authentication Required\r\n' +
-    'Proxy-Authenticate: Basic\r\n' +
-    '\r\n'
-  );
-}
-
-function httpPayloadConnectionEstablished(): string {
-  return 'HTTP/1.1 200 Connection Established\r\n' + '\r\n';
-}
+const pongBuffer = serializeNetworkMessage({
+  type: 'pong',
+});
 
 /**
  * Given a bearer token, return a authentication token string.
- * @param token
  */
 function toAuthToken(token: string) {
   return `Basic ${Buffer.from(token).toString('base64')}`;
 }
 
 /**
- * Hole Punch for traversing NAT.
- *
- * @param socket is a utp-native socket. I think other UDP socket implementation are also fine.
- * @param attempts is the number of attempts to hole punch.
- * @param port
- * @param host
+ * Given host and port, create an address string.
  */
-async function holePunch(
-  socket: any,
-  attempts: number = 50,
-  port: number,
-  host: string,
-): Promise<boolean> {
-  let punchCount: number = 0;
-  let ackSent: boolean = false;
-  let ackReceived: boolean = false;
-  const done: boolean = false;
-  let result: boolean = false;
-  const synBuffer: Buffer = Buffer.from('GROUND_CONTROL');
-  const synBufferSize: number = 14;
-  const ackBuffer: Buffer = Buffer.from('MAJOR_TOM');
-  const ackBufferSize: number = 9;
-
-  // Monitoring hole punch state.
-  const onMessage = (data: Buffer, rinfo) => {
-    if (rinfo.address !== host || rinfo.port !== port) {
-      return;
-    }
-
-    if (data.equals(synBuffer)) {
-      socket.send(ackBuffer, 0, ackBufferSize, port, host, () => {
-        ackSent = true;
-        socket.send(ackBuffer, 0, ackBufferSize, port, host);
-      });
-    } else if (data.equals(ackBuffer)) {
-      ackReceived = true;
-    }
-  };
-
-  socket.on('message', onMessage);
-
-  // Sending hole punch packets.
-  while (punchCount <= attempts) {
-    if (done) {
-      result = true;
-      break;
-    }
-    if (ackSent && ackReceived) {
-      socket.removeListener('message', onMessage);
-      result = true;
-      break;
-    }
-    await new Promise<void>((resolve) => {
-      socket.send(synBuffer, 0, synBufferSize, port, host, () => {
-        resolve();
-      });
-    });
-    punchCount += 1;
-    await sleep(500);
+function buildAddress(host: Host, port: Port = 0 as Port): Address {
+  let address: string;
+  const [isIPv4] = Validator.isValidIPv4String(host);
+  const [isIPv6] = Validator.isValidIPv6String(host);
+  if (isIPv4) {
+    address = `${host}:${port}`;
+  } else if (isIPv6) {
+    address = `[${host}]:${port}`;
+  } else {
+    address = `${host}:${port}`;
   }
+  return address as Address;
+}
 
-  if (punchCount > attempts) {
-    socket.removeListener('message', onMessage);
-    result = false;
+/**
+ * Parse an address string into host and port
+ */
+function parseAddress(address: string): [Host, Port] {
+  const url = new URL(`pk://${address}`);
+  const dstHostMatch = url.hostname.match(/\[(.+)\]|(.+)/)!;
+  const dstHost = dstHostMatch[1] ?? dstHostMatch[2];
+  const dstPort = url.port === '' ? 80 : parseInt(url.port);
+  return [dstHost as Host, dstPort as Port];
+}
+
+/**
+ * Zero IPs should be resolved to localhost when used as the target
+ * This is usually done automatically, but utp-native doesn't do this
+ */
+function resolvesZeroIP(ip: Host): Host {
+  const [isIPv4] = Validator.isValidIPv4String(ip);
+  const [isIPv6] = Validator.isValidIPv6String(ip);
+  const zeroIPv4 = new IPv4('0.0.0.0');
+  const zeroIPv6 = new IPv6('::');
+  if (isIPv4 && new IPv4(ip).isEquals(zeroIPv4)) {
+    return '127.0.0.1' as Host;
+  } else if (isIPv6 && new IPv6(ip).isEquals(zeroIPv6)) {
+    return '::1' as Host;
+  } else {
+    return ip;
   }
+}
 
-  return result;
+function serializeNetworkMessage(msg: NetworkMessage): Buffer {
+  const buf = Buffer.allocUnsafe(4);
+  if (msg.type === 'ping') {
+    buf.writeUInt32BE(0);
+  } else if (msg.type === 'pong') {
+    buf.writeUInt32BE(1);
+  }
+  return buf;
+}
+
+function unserializeNetworkMessage(data: Buffer): NetworkMessage {
+  const type = data.readUInt32BE();
+  if (type === 0) {
+    return { type: 'ping' };
+  } else if (type === 1) {
+    return { type: 'pong' };
+  }
+  throw new networkErrors.ErrorConnectionMessageParse();
 }
 
 function getCertificateChain(socket: TLSSocket): Array<Certificate> {
@@ -354,13 +312,14 @@ function verifyClientCertificateChain(certChain: Array<Certificate>): void {
 }
 
 export {
-  buildAddress,
-  httpPayloadAuthenticationRequired,
-  httpPayloadConnectionEstablished,
+  pingBuffer,
+  pongBuffer,
   toAuthToken,
-  holePunch,
-  getPort,
-  getHost,
+  buildAddress,
+  parseAddress,
+  resolvesZeroIP,
+  serializeNetworkMessage,
+  unserializeNetworkMessage,
   isTLSSocket,
   certNodeId,
   getCertificateChain,

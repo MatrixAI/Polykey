@@ -9,15 +9,14 @@ service Agent {
   rpc GetGitInfo (InfoRequest) returns (stream PackChunk) {};
   rpc GetGitPack(stream PackChunk) returns (stream PackChunk) {};
   rpc ScanVaults (EmptyMessage) returns (stream PackChunk) {};
+  rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {}
+  rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {}
 
-  rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {};
-  rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {};
+  rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
 
-  rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {};
+  rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {}
 
-  rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {};
-
-  rpc RelayHolePunchMessage (ConnectionMessage) returns (EmptyMessage) {};
+  rpc SendHolePunchMessage (RelayMessage) returns (EmptyMessage) {}
 }
 
 message EmptyMessage {}
@@ -62,6 +61,13 @@ message ConnectionMessage {
 
 message CertificateMessage {
   string cert = 1;
+}
+
+message RelayMessage {
+  string srcId = 1;
+  string targetId = 2;
+  string egressAddress = 3;
+  string signature = 4;
 }
 
 message NodeIdMessage {
