@@ -6,7 +6,6 @@ import { ChannelCredentials } from '@grpc/grpc-js';
 
 import { ErrorClientClientNotStarted } from './client/errors';
 import { GRPCClientClient } from './client';
-import { utils as grpcUtls } from './grpc';
 import { Lockfile } from './lockfile';
 import { FileSystem, LockConfig } from './types';
 import * as utils from './utils';
@@ -50,20 +49,15 @@ class PolykeyClient {
   }
 
   async start({
-    credentials,
     timeout,
     host,
     port,
-    fwdProxyHost,
-    fwdProxyPort,
     authToken,
   }: {
     credentials?: ChannelCredentials;
     timeout?: number;
     host?: string;
     port?: number;
-    fwdProxyHost?: string;
-    fwdProxyPort?: number;
     authToken?: string;
   }) {
     const status = await Lockfile.checkLock(this.fs, this.lockPath);
@@ -89,16 +83,10 @@ class PolykeyClient {
       nodeId: lock.nodeId as NodeId,
       host: host ?? lock.host ?? 'localhost',
       port: port ?? lock.port ?? 0,
-      proxyConfig: {
-        host: fwdProxyHost ?? lock.fwdProxyHost ?? 'localhost',
-        port: fwdProxyPort ?? lock.fwdProxyPort ?? 0,
-        authToken: authToken ?? '',
-      },
       logger: this.logger,
     });
 
     await this.grpcClient.start({
-      credentials: credentials ?? grpcUtls.clientCredentials(),
       timeout: timeout ?? 30000,
     });
 
@@ -107,14 +95,6 @@ class PolykeyClient {
     }
     if (!port && !lock.port) {
       this.logger.warn('PolykeyClient started with default port: 0');
-    }
-    if (!fwdProxyHost && !lock.fwdProxyHost) {
-      this.logger.warn(
-        'PolykeyClient started with default fwdProxyHost: localhost',
-      );
-    }
-    if (!fwdProxyPort && !lock.fwdProxyPort) {
-      this.logger.warn('PolykeyClient started with default fwdProxyPort: 0');
     }
     if (!authToken) {
       this.logger.warn('PolykeyClient started with no authToken');

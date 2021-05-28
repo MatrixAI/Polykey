@@ -6,6 +6,7 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import { GitBackend } from './git';
 import * as utils from './utils';
+import * as errors from './errors';
 import { KeyManager } from './keys';
 import { GRPCServer } from './grpc';
 import { Lockfile } from './lockfile';
@@ -80,7 +81,7 @@ class Polykey {
     logger?: Logger;
   } = {}) {
     this.grpcHost = grpcHost ?? '127.0.0.1';
-    this.grpcPort = grpcPort ?? 55557;
+    this.grpcPort = grpcPort ?? 0;
     this.logger = logger ?? new Logger('Polykey');
     this.fs = fs ?? require('fs');
     this.nodePath = path.resolve(nodePath ?? utils.getDefaultNodePath());
@@ -128,6 +129,7 @@ class Polykey {
         nodesPath: nodesPath,
         keyManager: this.keys,
         fwdProxy: this.fwdProxy,
+        revProxy: this.revProxy,
         fs: this.fs,
         logger: this.logger.getChild('NodeManager'),
       });
@@ -166,13 +168,15 @@ class Polykey {
       keyManager: this.keys,
       vaultManager: this.vaults,
       nodeManager: this.nodes,
+      identitiesManager: this.identities,
+      gestaltGraph: this.gestalts,
     });
 
     const agentService: IAgentServer = createAgentService({
       keyManager: this.keys,
       vaultManager: this.vaults,
       nodeManager: this.nodes,
-      git: this.gitBackend,
+      gitBackend: this.gitBackend,
     });
 
     // Create GRPC Server with the services just created.
@@ -213,9 +217,25 @@ class Polykey {
     this.logger.info(`Setting node path to ${this.nodePath}`);
     await utils.mkdirExists(this.fs, this.nodePath, { recursive: true });
 
-    // Getting NodeId
-    const cert = this.keys.getRootCert();
-    const nodeId = certNodeId(cert);
+    if (
+      (await Lockfile.checkLock(
+        this.fs,
+        path.join(this.nodePath, 'agent-lock.json'),
+      )) !== 'DOESNOTEXIST'
+    ) {
+      // Interrogate Lock File
+      const lock = await Lockfile.parseLock(
+        this.fs,
+        path.join(this.nodePath, 'agent-lock.json'),
+      );
+
+      if (utils.pidIsRunning(lock.pid)) {
+        this.logger.error(`PolykeyAgent already started at pid: ${lock.pid}`);
+        throw new errors.ErrorPolykey(
+          `PolykeyAgent already started at pid: ${lock.pid}`,
+        );
+      }
+    }
 
     await this.workers.start();
     this.keys.setWorkerManager(this.workers);
@@ -226,6 +246,11 @@ class Polykey {
       keysDbBits,
       fresh,
     });
+
+    // Getting NodeId
+    const cert = this.keys.getRootCert();
+    const nodeId = certNodeId(cert);
+
     await this.nodes.start({ nodeId, fresh });
     await this.vaults.start({ fresh });
     await this.gestalts.start({ fresh });
@@ -238,25 +263,35 @@ class Polykey {
     await this.grpcServer.start({
       host: this.grpcHost as Host,
       port: this.grpcPort as Port,
-      keyPrivatePem: keyPrivatePem,
-      certChainPem: certChainPem,
     });
 
     await this.fwdProxy.start({
-      keyPrivatePem: keyPrivatePem,
-      certChainPem: certChainPem,
+      tlsConfig: {
+        keyPrivatePem: keyPrivatePem,
+        certChainPem: certChainPem,
+      },
     });
 
     await this.revProxy.start({
-      grpcHost: this.grpcHost as Host,
-      grpcPort: this.grpcPort as Port,
+      serverHost: this.grpcHost as Host,
+      serverPort: this.grpcPort as Port,
+      tlsConfig: {
+        keyPrivatePem: keyPrivatePem,
+        certChainPem: certChainPem,
+      },
     });
 
     await this.lockfile.start({ nodeId });
     await this.lockfile.updateLockfile('host', this.grpcHost);
     await this.lockfile.updateLockfile('port', this.grpcServer.getPort());
-    await this.lockfile.updateLockfile('fwdProxyHost', this.fwdProxy.getHost());
-    await this.lockfile.updateLockfile('fwdProxyPort', this.fwdProxy.getPort());
+    await this.lockfile.updateLockfile(
+      'fwdProxyHost',
+      this.fwdProxy.getProxyHost(),
+    );
+    await this.lockfile.updateLockfile(
+      'fwdProxyPort',
+      this.fwdProxy.getProxyPort(),
+    );
 
     this.logger.info('Started Polykey');
   }
