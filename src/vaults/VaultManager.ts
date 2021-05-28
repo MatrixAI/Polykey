@@ -5,13 +5,13 @@ import type { WorkerManager } from '../workers';
 import fs from 'fs';
 import path from 'path';
 import level from 'level';
-import git from 'isomorphic-git';
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
 import Vault from './Vault';
 import { generateVaultKey, fileExists, generateVaultId } from './utils';
 import { KeyManager, errors as keysErrors } from '../keys';
-import { GitFrontend, GitRequest } from '../git';
+import { NodeManager } from '../nodes';
+import { GitFrontend } from '../git';
 import * as utils from '../utils';
 import * as errors from './errors';
 
@@ -21,6 +21,7 @@ class VaultManager {
   protected fs: FileSystem;
   protected leveldb;
   protected keyManager: KeyManager;
+  protected nodeManager: NodeManager;
   protected logger: Logger;
   protected gitFrontend: GitFrontend;
   protected workerManager?: WorkerManager;
@@ -40,11 +41,13 @@ class VaultManager {
   constructor({
     vaultsPath,
     keyManager,
+    // nodeManager,
     fs,
     logger,
   }: {
     vaultsPath: string;
     keyManager: KeyManager;
+    // nodeManager: NodeManager;
     fs?: FileSystem;
     logger?: Logger;
   }) {
@@ -55,6 +58,8 @@ class VaultManager {
     this.logger = logger ?? new Logger('VaultManager');
     this.vaults = {};
     this._started = false;
+
+    // this.nodeManager = nodeManager;
 
     // Git frontend
     this.gitFrontend = new GitFrontend();
@@ -264,61 +269,6 @@ class VaultManager {
   }
 
   /**
-   * Retrieve all the vaults for a peers node
-   *
-   * @param nodeId identifier of node to scan vaults from
-   * @returns a list of vault names from the connected node
-   */
-  public async scanNodeVaults(): Promise<Array<string>> {
-    throw new Error('Not implemented');
-    // const gitRequest = this.gitFrontend.connectToNodeGit(nodeId);
-    // const vaultNameList = await gitRequest.scanVaults();
-    // return vaultNameList;
-  }
-
-  /**
-   * Pull a vault from another node, clones it if the vault does not already
-   * exist locally
-   *
-   * @throws ErrorRemoteVaultUndefined if vaultName does not exist on
-   * connected node
-   * @param vaultName name of vault
-   * @param nodeId identifier of node to pull/clone from
-   */
-  public async pullVault(vaultId: string, nodeId: string): Promise<void> {
-    // const gitRequest = new GitRequest(
-    //   async () => Buffer.from(''),
-    //   async () => Buffer.from(''),
-    //   async () => [''],
-    // );
-    // if (this.vaults[vaultId]) {
-    //   await this.vaults[vaultId].vault.pullVault(gitRequest);
-    // } else {
-    //   const vault = await this.createVault(vaultId);
-    //   const vaultUrl = `http://0.0.0.0/${vaultId}`;
-    //   const info = await git.getRemoteInfo({
-    //     http: gitRequest,
-    //     url: vaultUrl,
-    //   });
-    //   if (!info.refs) {
-    //     // node does not have vault
-    //     throw new errors.ErrorRemoteVaultUndefined(
-    //       `${vaultId} does not exist on connected node ${nodeId}`,
-    //     );
-    //   }
-    //   await git.clone({
-    //     fs: vault.EncryptedFS,
-    //     http: gitRequest,
-    //     dir: path.join(this.vaultsPath, vaultId),
-    //     url: vaultUrl,
-    //     ref: 'master',
-    //     singleBranch: true,
-    //   });
-    //   await this.writeVaultData();
-    // }
-  }
-
-  /**
    * Retreieves the Vault instance
    *
    * @throws ErrorVaultUndefined if vaultName does not exist
@@ -334,38 +284,6 @@ class VaultManager {
   }
 
   /* === Helpers === */
-
-  /**
-   * Writes encrypted vault data to disk. This includes encrypted
-   * vault keys and names. The encryption is done using the root key
-   */
-  private async writeVaultData(): Promise<void> {
-    const release = await this.metadataMutex.acquire();
-    try {
-      await this.leveldb.clear();
-
-      for (const id in this.vaults) {
-        const encryptedVaultKey = await this.keyManager.encryptWithRootKeyPair(
-          this.vaults[id].vaultKey,
-        );
-        const stringifiedEncryptedKey = JSON.stringify(encryptedVaultKey);
-        const vaultName = this.vaults[id].vaultName;
-        await new Promise<void>((resolve) => {
-          this.leveldb.put(id, {
-            vaultName: vaultName,
-            vaultKey: stringifiedEncryptedKey,
-          });
-          resolve();
-        });
-      }
-
-      this.logger.info(`Wrote metadata at ${this.metadataPath}`);
-    } catch (err) {
-      release();
-      throw err;
-    }
-    release();
-  }
 
   /**
    * Puts a vaultname, and encrypted vault key into the leveldb

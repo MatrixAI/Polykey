@@ -17,6 +17,7 @@ class Lockfile {
   protected fs: FileSystem;
   protected logger: Logger;
 
+  private _started: boolean;
   private release: () => Promise<void>;
 
   constructor({
@@ -53,6 +54,7 @@ class Lockfile {
 
     await this.writeLockfile();
     this.release = await lockfile.lock(this.lockPath);
+    this._started = true;
   }
 
   /**
@@ -67,7 +69,10 @@ class Lockfile {
   }
 
   public async stop() {
-    await this.deleteLock();
+    if (this._started) {
+      await this.deleteLock();
+    }
+    this._started = false;
   }
 
   /**

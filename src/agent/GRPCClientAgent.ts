@@ -31,6 +31,27 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
+  public getGitInfo(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+      this.client,
+      this.client.getGitInfo,
+    )(...args);
+  }
+
+  public getGitPack(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return this.client.getGitPack(...args);
+  }
+
+  public scanVaults(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+      this.client,
+      this.client.scanVaults,
+    )(...args);
+  }
+
   public getRootCertificate(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.CertificateMessage>(

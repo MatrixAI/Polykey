@@ -5,11 +5,12 @@ import type { NodeId } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import git from 'isomorphic-git';
 import Logger, { StreamHandler, LogLevel } from '@matrixai/logger';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NodeConnection, NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
-import { GitBackend } from '@/git';
+import { GitBackend, GitFrontend } from '@/git';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { utils as networkUtils } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
@@ -399,5 +400,106 @@ describe('NodeConnection', () => {
       fwdProxy.getEgressHost(),
       fwdProxy.getEgressPort(),
     );
+  });
+  test('scanning the vaults of another agent over a node connection', async () => {
+    const conn = new NodeConnection({
+      sourceNodeId: sourceNodeId,
+      targetNodeId: targetNodeId,
+      targetHost: targetHost,
+      targetPort: targetPort,
+      forwardProxy: fwdProxy,
+      keyManager: clientKeyManager,
+      logger: logger,
+    });
+    await conn.start({});
+    await revProxy.openConnection(sourceHost, sourcePort);
+
+    const dataDir2 = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const clientVaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir2, 'vaults'),
+      keyManager: clientKeyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await clientVaultManager.start({});
+    const newVault = await serverVaultManager.createVault('vault1');
+    await newVault.initializeVault();
+    await newVault.addSecret('secret-1', Buffer.from('secret-content'));
+    await clientVaultManager.createVault('vault2');
+    const gitFront = new GitFrontend();
+    const client = conn.getClient();
+    client.start();
+    const gitRequest = gitFront.connectToNodeGit(client);
+    const list = await gitRequest.scanVaults();
+    expect(list).toStrictEqual(['vault1']);
+
+    await conn.stop();
+    await revProxy.closeConnection(
+      fwdProxy.getEgressHost(),
+      fwdProxy.getEgressPort(),
+    );
+    await clientVaultManager.stop();
+    await fs.promises.rmdir(dataDir2, { recursive: true });
+  });
+  test('cloning and pulling the vaults of another agent over a node connection', async () => {
+    const conn = new NodeConnection({
+      sourceNodeId: sourceNodeId,
+      targetNodeId: targetNodeId,
+      targetHost: targetHost,
+      targetPort: targetPort,
+      forwardProxy: fwdProxy,
+      keyManager: clientKeyManager,
+      logger: logger,
+    });
+    await conn.start({});
+    await revProxy.openConnection(sourceHost, sourcePort);
+
+    const dataDir2 = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    const clientVaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir2, 'vaults'),
+      keyManager: clientKeyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await clientVaultManager.start({});
+    const newVault = await serverVaultManager.createVault('vault1');
+    await newVault.initializeVault();
+    await newVault.addSecret('secret-1', Buffer.from('secret-content'));
+    const newVault2 = await clientVaultManager.createVault('vault2');
+    const gitFront = new GitFrontend();
+    const client = conn.getClient();
+    client.start();
+    const gitRequest = gitFront.connectToNodeGit(client);
+    const vaultUrl = `http://0.0.0.0/vault1`;
+    await git.clone({
+      fs: newVault2.EncryptedFS,
+      http: gitRequest,
+      dir: newVault2.vaultId,
+      url: vaultUrl,
+      ref: 'master',
+      singleBranch: true,
+    });
+    await git.setConfig({
+      fs: newVault2.EncryptedFS,
+      dir: newVault2.vaultId,
+      path: 'user.name',
+      value: newVault2.vaultName,
+    });
+    expect(await newVault2.listSecrets()).toStrictEqual(['secret-1']);
+    expect(await newVault2.getSecret('secret-1')).toStrictEqual(
+      Buffer.from('secret-content'),
+    );
+
+    await conn.stop();
+    await revProxy.closeConnection(
+      fwdProxy.getEgressHost(),
+      fwdProxy.getEgressPort(),
+    );
+    await clientVaultManager.stop();
+    await fs.promises.rmdir(dataDir2, { recursive: true });
   });
 });

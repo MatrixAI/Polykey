@@ -6,7 +6,6 @@ import git from 'isomorphic-git';
 import { Mutex } from 'async-mutex';
 import { EncryptedFS } from 'encryptedfs';
 import Logger from '@matrixai/logger';
-import { GitFrontend, GitRequest } from '../git';
 import * as vaultsUtils from './utils';
 import * as errors from './errors';
 
@@ -16,7 +15,6 @@ class Vault {
   public vaultName: string;
   private efs: EncryptedFS;
   private mutex: Mutex;
-  protected gitFrontend: GitFrontend;
   protected logger: Logger;
   /**
    * Construct a vault object
@@ -44,10 +42,6 @@ class Vault {
     this.baseDir = baseDir;
     this.efs = new EncryptedFS(key, fs, this.baseDir);
     this.mutex = new Mutex();
-
-    // Git frontend
-    // const nodeConnection: NodeConnection = { placeholder: true };
-    this.gitFrontend = new GitFrontend();
   }
 
   public async create() {
@@ -79,7 +73,6 @@ class Vault {
   public async initializeVault(): Promise<void> {
     // Initialize repository for vault
     const efs = this.efs;
-    // const fileSystem = { promises: efs.promises };
 
     // Init repository
     await git.init({
@@ -111,40 +104,6 @@ class Vault {
         'packed-refs',
       )}'`,
     );
-  }
-
-  /**
-   * Pulls this vault from a nodeId
-   *
-   * @param nodeId identifier of node to pull from
-   */
-  public async pullVault(client: GitRequest): Promise<void> {
-    const release = await this.mutex.acquire();
-    try {
-      const branch = await git.currentBranch({
-        fs: this.efs,
-        dir: this.vaultId,
-      });
-      if (branch !== 'master') {
-        throw new errors.ErrorVaultModified(
-          'Modified repository can no longer pull changes',
-        );
-      }
-      await git.pull({
-        fs: this.efs,
-        http: client,
-        dir: this.vaultId,
-        url: 'http://' + '0.0.0.0:0' + '/' + this.vaultId,
-        ref: 'HEAD',
-        singleBranch: true,
-        author: {
-          name: this.vaultName,
-        },
-      });
-    } finally {
-      release();
-    }
-    return;
   }
 
   /**

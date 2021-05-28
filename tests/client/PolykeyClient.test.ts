@@ -148,14 +148,8 @@ describe('GRPCClientClient', () => {
     await lockfile.start({ nodeId });
     await lockfile.updateLockfile('host', '127.0.0.1');
     await lockfile.updateLockfile('port', port);
-    await lockfile.updateLockfile(
-      'fwdProxyHost',
-      '::',
-    );
-    await lockfile.updateLockfile(
-      'fwdProxyPort',
-      0,
-    );
+    await lockfile.updateLockfile('fwdProxyHost', '::');
+    await lockfile.updateLockfile('fwdProxyPort', 0);
 
     pkClient = new PolykeyClient({
       nodePath: dataDir,
@@ -172,6 +166,8 @@ describe('GRPCClientClient', () => {
     await client.stop();
     await pkClient.stop();
     await testUtils.closeTestClientServer(server);
+
+    await lockfile.stop();
 
     await nodeManager.stop();
     await vaultManager.stop();

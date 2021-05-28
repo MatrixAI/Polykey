@@ -1,15 +1,16 @@
 import type { PublicKey } from '@/keys/types';
 
+import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { Buffer } from 'buffer';
-import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
 import KeyManager from '@/keys/KeyManager';
 import WorkerManager from '@/workers/WorkerManager';
+import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
-import { sleep } from '@/utils';
 
 describe('KeyManager', () => {
   const logger = new Logger('KeyManager Test', LogLevel.WARN, [
