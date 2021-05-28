@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import base58 from 'bs58';
 import { EncryptedFS } from 'encryptedfs';
 import { getRandomBytes, getRandomBytesSync } from '../keys/utils';
 import { FileSystem } from '@/types';
@@ -19,12 +20,12 @@ function generateVaultKeySync() {
 
 async function generateVaultId() {
   const id = await getRandomBytes(ID_LEN);
-  return id.toString('base64');
+  return base58.encode(id);
 }
 
 function generateVaultIdSync() {
   const id = getRandomBytesSync(ID_LEN);
-  return id.toString('base64');
+  return base58.encode(id);
 }
 
 async function fileExists(fs: FileSystem, path): Promise<boolean> {

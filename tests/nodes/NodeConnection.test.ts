@@ -135,7 +135,7 @@ describe('NodeConnection', () => {
       keyManager: serverKeyManager,
       vaultManager: serverVaultManager,
       nodeManager: serverNodeManager,
-      git: serverGitBackend,
+      gitBackend: serverGitBackend,
     });
     server = new GRPCServer({
       services: [[AgentService, agentService]],

@@ -258,10 +258,8 @@ describe('ForwardProxy', () => {
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
-    const {
-      p: remoteClosedP,
-      resolveP: resolveRemoteClosedP,
-    } = promise<void>();
+    const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
+      promise<void>();
     // this UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
@@ -345,10 +343,8 @@ describe('ForwardProxy', () => {
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
-    const {
-      p: remoteClosedP,
-      resolveP: resolveRemoteClosedP,
-    } = promise<void>();
+    const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
+      promise<void>();
     // this UTP server will hold the connection
     let secured = false;
     const utpSocket = UTP.createServer(
@@ -443,14 +439,10 @@ describe('ForwardProxy', () => {
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
-    const {
-      p: remoteSecureP,
-      resolveP: resolveRemoteSecureP,
-    } = promise<void>();
-    const {
-      p: remoteClosedP,
-      resolveP: resolveRemoteClosedP,
-    } = promise<void>();
+    const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
+      promise<void>();
+    const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
+      promise<void>();
     // this UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
@@ -552,14 +544,10 @@ describe('ForwardProxy', () => {
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
-    const {
-      p: remoteSecureP,
-      resolveP: resolveRemoteSecureP,
-    } = promise<void>();
-    const {
-      p: remoteClosedP,
-      resolveP: resolveRemoteClosedP,
-    } = promise<void>();
+    const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
+      promise<void>();
+    const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
+      promise<void>();
     // this UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
@@ -669,14 +657,10 @@ describe('ForwardProxy', () => {
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
-    const {
-      p: remoteSecureP,
-      resolveP: resolveRemoteSecureP,
-    } = promise<void>();
-    const {
-      p: remoteClosedP,
-      resolveP: resolveRemoteClosedP,
-    } = promise<void>();
+    const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
+      promise<void>();
+    const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
+      promise<void>();
     // this UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
@@ -780,14 +764,10 @@ describe('ForwardProxy', () => {
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
-    const {
-      p: remoteSecureP,
-      resolveP: resolveRemoteSecureP,
-    } = promise<void>();
-    const {
-      p: remoteClosedP,
-      resolveP: resolveRemoteClosedP,
-    } = promise<void>();
+    const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
+      promise<void>();
+    const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
+      promise<void>();
     const utpSocket = UTP.createServer(
       async (utpConn) => {
         const tlsSocket = new tls.TLSSocket(utpConn, {
@@ -889,23 +869,15 @@ describe('ForwardProxy', () => {
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
     // first signals
-    const {
-      p: remoteReadyP1,
-      resolveP: resolveRemoteReadyP1,
-    } = promise<void>();
-    const {
-      p: remoteClosedP1,
-      resolveP: resolveRemoteClosedP1,
-    } = promise<void>();
+    const { p: remoteReadyP1, resolveP: resolveRemoteReadyP1 } =
+      promise<void>();
+    const { p: remoteClosedP1, resolveP: resolveRemoteClosedP1 } =
+      promise<void>();
     // second signals
-    const {
-      p: remoteReadyP2,
-      resolveP: resolveRemoteReadyP2,
-    } = promise<void>();
-    const {
-      p: remoteClosedP2,
-      resolveP: resolveRemoteClosedP2,
-    } = promise<void>();
+    const { p: remoteReadyP2, resolveP: resolveRemoteReadyP2 } =
+      promise<void>();
+    const { p: remoteClosedP2, resolveP: resolveRemoteClosedP2 } =
+      promise<void>();
     const utpSocket1 = UTP.createServer(
       async (utpConn) => {
         const tlsSocket = new tls.TLSSocket(utpConn, {

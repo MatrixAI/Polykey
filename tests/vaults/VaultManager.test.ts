@@ -1,6 +1,6 @@
 import os from 'os';
 import path from 'path';
-import fs from 'fs/promises';
+import fs from 'fs';
 import level from 'level';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
@@ -14,11 +14,13 @@ describe('VaultManager is', () => {
   let dataDir: string;
 
   beforeEach(async () => {
-    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
   });
 
   afterEach(async () => {
-    await fs.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
@@ -72,7 +74,7 @@ describe('VaultManager is', () => {
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
 
-    expect(await fs.stat(dataDir)).toBeTruthy();
+    expect(await fs.promises.stat(dataDir)).toBeTruthy();
     await vaultManager.stop();
     await keyManager.stop();
   });
@@ -199,6 +201,29 @@ describe('VaultManager is', () => {
     vaultManager.listVaults().forEach((a) => vn.push(a.name));
     expect(vn.sort()).toEqual(['MyTestVault', 'MyOtherTestVault'].sort());
 
+    await vaultManager.stop();
+  });
+  test('able to get vault stats', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+    await keyManager.start({ password: 'password' });
+    await vaultManager.start({});
+    const vault1 = await vaultManager.createVault('MyTestVault');
+    const vault2 = await vaultManager.createVault('MyOtherTestVault');
+
+    const stat1 = await vaultManager.vaultStats(vault1.vaultId);
+    const stat2 = await vaultManager.vaultStats(vault2.vaultId);
+
+    expect(stat1.ctime < stat2.ctime).toBeTruthy();
     await vaultManager.stop();
   });
   test('able to create many vaults', async () => {

@@ -84,7 +84,7 @@ class IdentitiesManager {
   async stop() {
     this.logger.info('Stopping Identities Manager');
     if (this._started) {
-      this.tokenDb.close();
+      await this.tokenDb.close();
     }
     this._started = false;
     this.logger.info('Stopped Identities Manager');

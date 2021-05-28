@@ -19,10 +19,8 @@ class GRPCServer {
   protected host: Host;
   protected port: Port;
   protected server: grpc.Server;
-  protected clientCertChains: WeakMap<
-    Http2Session,
-    Array<Certificate>
-  > = new WeakMap();
+  protected clientCertChains: WeakMap<Http2Session, Array<Certificate>> =
+    new WeakMap();
   protected _secured: boolean = false;
   protected _started: boolean = false;
 

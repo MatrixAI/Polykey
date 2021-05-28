@@ -26,7 +26,7 @@ async function openTestAgentServer({
     keyManager,
     vaultManager,
     nodeManager,
-    git: gitBackend,
+    gitBackend: gitBackend,
   });
 
   const server = new grpc.Server();

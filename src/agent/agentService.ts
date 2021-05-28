@@ -21,12 +21,12 @@ function createAgentService({
   keyManager,
   vaultManager,
   nodeManager,
-  git,
+  gitBackend,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
-  git: GitBackend;
+  gitBackend: GitBackend;
 }): IAgentServer {
   const agentService: IAgentServer = {
     echo: async (
@@ -46,7 +46,7 @@ function createAgentService({
       const vaultName = request.getVaultName();
 
       const response = new agentPB.PackChunk();
-      const responseGen = git.handleInfoRequest(vaultName);
+      const responseGen = gitBackend.handleInfoRequest(vaultName);
 
       for await (const byte of responseGen) {
         if (byte !== null) {
@@ -75,7 +75,7 @@ function createAgentService({
         if (!vaultName) throw new ErrorGRPC('vault-name not in metadata.');
 
         const response = new agentPB.PackChunk();
-        const [sideBand, progressStream] = await git.handlePackRequest(
+        const [sideBand, progressStream] = await gitBackend.handlePackRequest(
           vaultName.toString(),
           Buffer.from(body),
         );
@@ -110,7 +110,7 @@ function createAgentService({
       const genWritable = grpcUtils.generatorWritable(call);
       const response = new agentPB.PackChunk();
 
-      const listResponse = git.handleVaultNamesRequest();
+      const listResponse = gitBackend.handleVaultNamesRequest();
 
       for await (const byte of listResponse) {
         if (byte !== null) {
@@ -215,7 +215,9 @@ function createAgentService({
         await nodeManager.openConnection(host, port);
         // Otherwise, find if node in table
         // If so, ask the nodemanager to relay to the node
-      } else if (nodeManager.knowsNode(call.request.getSrcid() as NodeId)) {
+      } else if (
+        await nodeManager.knowsNode(call.request.getSrcid() as NodeId)
+      ) {
         nodeManager.relayHolePunchMessage(call.request);
       }
 

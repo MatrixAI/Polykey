@@ -2,45 +2,71 @@ import type { NodeId } from '@/nodes/types';
 import type { TLSConfig } from '@/network/types';
 
 import * as grpc from '@grpc/grpc-js';
-import { GRPCClient, utils as grpcUtils } from '@/grpc';
+import { GRPCClient, utils as grpcUtils, errors as grpcErrors } from '@/grpc';
 import * as testPB from '@/proto/js/Test_pb';
 import { TestService, ITestServer, TestClient } from '@/proto/js/Test_grpc_pb';
 import { promisify } from '@/utils';
 
+/**
+ * Test GRPC service
+ */
 const testService: ITestServer = {
   unary: async (
     call: grpc.ServerUnaryCall<testPB.EchoMessage, testPB.EchoMessage>,
     callback: grpc.sendUnaryData<testPB.EchoMessage>,
   ): Promise<void> => {
-    const m = new testPB.EchoMessage();
-    m.setChallenge(call.request.getChallenge());
-    callback(null, m);
+    const challenge = call.request.getChallenge();
+    if (challenge === 'error') {
+      // if the challenge was error
+      // we'll send back an error
+      callback(
+        grpcUtils.fromError(
+          new grpcErrors.ErrorGRPC('test error', { grpc: true }),
+        ),
+      );
+    } else {
+      // otherwise we will echo the challenge
+      const message = new testPB.EchoMessage();
+      message.setChallenge(challenge);
+      callback(null, message);
+    }
   },
   serverStream: async (
     call: grpc.ServerWritableStream<testPB.EchoMessage, testPB.EchoMessage>,
   ): Promise<void> => {
     const genWritable = grpcUtils.generatorWritable(call);
-    const req = call.request;
-    const m = new testPB.EchoMessage();
-    for (let i = 0; i < req.getChallenge().length; i++) {
-      m.setChallenge(req.getChallenge());
-      await genWritable.next(m);
+    const messageFrom = call.request;
+    const messageTo = new testPB.EchoMessage();
+    const challenge = messageFrom.getChallenge();
+    if (challenge === 'error') {
+      await genWritable.throw(
+        new grpcErrors.ErrorGRPC('test error', { grpc: true }),
+      );
+    } else {
+      // will send back a number of messsage
+      // equal to the character length of the challenge string
+      for (let i = 0; i < messageFrom.getChallenge().length; i++) {
+        messageTo.setChallenge(messageFrom.getChallenge());
+        await genWritable.next(messageTo);
+      }
+      // finish the writing
+      await genWritable.next(null);
     }
-    await genWritable.next(null);
   },
   clientStream: async (
     call: grpc.ServerReadableStream<testPB.EchoMessage, testPB.EchoMessage>,
     callback: grpc.sendUnaryData<testPB.EchoMessage>,
   ): Promise<void> => {
-    const genReadable = grpcUtils.generatorReadable(call);
+    const genReadable = grpcUtils.generatorReadable<testPB.EchoMessage>(call);
     let data = '';
     try {
       for await (const m of genReadable) {
         const d = m.getChallenge();
         data += d;
       }
-    } catch (err) {
-      callback(err, null);
+    } catch (e) {
+      // reflect the error back
+      callback(e, null);
     }
     const response = new testPB.EchoMessage();
     response.setChallenge(data);
@@ -50,16 +76,28 @@ const testService: ITestServer = {
     call: grpc.ServerDuplexStream<testPB.EchoMessage, testPB.EchoMessage>,
   ) => {
     const genDuplex = grpcUtils.generatorDuplex(call);
-    const m = new testPB.EchoMessage();
-    const response = await genDuplex.read();
-    if (response === null) {
+    const readStatus = await genDuplex.read();
+    // if nothing to read, end and destroy
+    if (readStatus.done) {
+      // it is not possible to write once read is done
+      // in fact the stream is destroyed
       await genDuplex.next(null);
       return;
     }
-    const incoming = response.value.getChallenge();
-    m.setChallenge(incoming);
-    await genDuplex.write(m);
-    await genDuplex.next(null);
+    const incomingMessage = readStatus.value;
+    if (incomingMessage.getChallenge() === 'error') {
+      await genDuplex.throw(
+        new grpcErrors.ErrorGRPC('test error', { grpc: true }),
+      );
+    } else {
+      const outgoingMessage = new testPB.EchoMessage();
+      outgoingMessage.setChallenge(incomingMessage.getChallenge());
+      // write 2 messages
+      await genDuplex.write(outgoingMessage);
+      await genDuplex.write(outgoingMessage);
+      // end and destroy
+      await genDuplex.next(null);
+    }
   },
 };
 
@@ -130,6 +168,10 @@ async function closeTestServer(server: grpc.Server): Promise<void> {
   await tryShutdown();
 }
 
+function closeTestServerForce(server: grpc.Server): void {
+  server.forceShutdown();
+}
+
 async function openTestClient(port: number): Promise<TestClient> {
   const client = new TestClient(
     `127.0.0.1:${port}`,
@@ -193,16 +235,22 @@ async function closeTestServerSecure(server: grpc.Server): Promise<void> {
   await tryShutdown();
 }
 
+function closeTestServerSecureForce(server: grpc.Server): void {
+  server.forceShutdown();
+}
+
 export {
   TestService,
   testService,
   GRPCClientTest,
   openTestServer,
   closeTestServer,
+  closeTestServerForce,
   openTestClient,
   closeTestClient,
   openTestServerSecure,
   closeTestServerSecure,
+  closeTestServerSecureForce,
   openTestClientSecure,
   closeTestClientSecure,
 };

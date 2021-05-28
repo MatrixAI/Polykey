@@ -20,7 +20,9 @@ describe('Vault is', () => {
   const name = 'vault-1';
 
   beforeEach(async () => {
-    dataDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     key = await generateVaultKey();
     id = await generateVaultId();
     vault = new Vault({
@@ -33,7 +35,7 @@ describe('Vault is', () => {
   });
 
   afterEach(async () => {
-    await fsPromises.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
@@ -388,7 +390,7 @@ describe('Vault is', () => {
     }
   });
   test('listing secret directories', async () => {
-    const secretDir = await fsPromises.mkdtemp(
+    const secretDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'secret-directory-'),
     );
     try {
@@ -526,7 +528,7 @@ describe('Vault is', () => {
     }
   });
   test('adding a directory of 1 secret', async () => {
-    const secretDir = await fsPromises.mkdtemp(
+    const secretDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'secret-directory-'),
     );
     try {
@@ -541,7 +543,7 @@ describe('Vault is', () => {
         vault.EncryptedFS.existsSync(path.join(vault.vaultId, 'secret')),
       ).toBe(true);
     } finally {
-      await fsPromises.rm(secretDir, {
+      await fs.promises.rm(secretDir, {
         force: true,
         recursive: true,
       });
@@ -571,7 +573,7 @@ describe('Vault is', () => {
   });
   test('adding a directory of 100 secrets with some secrets already existing', async () => {
     jest.setTimeout(300000);
-    const secretDir = await fsPromises.mkdtemp(
+    const secretDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'secret-directory-'),
     );
     try {
@@ -601,7 +603,7 @@ describe('Vault is', () => {
         vault.EncryptedFS.readFileSync(path.join(vault.vaultId, 'secret 9')),
       ).toStrictEqual(Buffer.from('this is secret 9'));
     } finally {
-      await fsPromises.rm(secretDir, {
+      await fs.promises.rm(secretDir, {
         force: true,
         recursive: true,
       });

@@ -28,10 +28,11 @@ class GitFrontend {
     vaultName: string,
     client: AgentClient,
   ): AsyncGenerator<Uint8Array> {
-    const serverStream = grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
-      client,
-      client.getGitInfo,
-    );
+    const serverStream =
+      grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+        client,
+        client.getGitInfo,
+      );
     const request = new agentPB.InfoRequest();
     request.setVaultName(vaultName);
     const response = serverStream(request);
@@ -84,10 +85,11 @@ class GitFrontend {
    * @param nodeConnection A connection object to the node
    */
   private async requestVaultNames(client: AgentClient): Promise<string[]> {
-    const serverStream = grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
-      client,
-      client.scanVaults,
-    );
+    const serverStream =
+      grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+        client,
+        client.scanVaults,
+      );
     const request = new agentPB.EmptyMessage();
     const response = serverStream(request);
 

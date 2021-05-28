@@ -112,6 +112,15 @@ function timerStop(timer: Timer): void {
   clearTimeout(timer.timer);
 }
 
+function pidIsRunning(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 export {
   getDefaultNodePath,
   mkdirExists,
@@ -124,4 +133,5 @@ export {
   timerStart,
   timerStop,
   promise,
+  pidIsRunning,
 };

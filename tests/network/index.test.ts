@@ -97,7 +97,10 @@ describe('index', () => {
     await duplexStream.write(m);
     await duplexStream.write(null);
     const duplexStreamResponse = await duplexStream.read();
-    expect(duplexStreamResponse.value.getChallenge()).toBe(m.getChallenge());
+    expect(duplexStreamResponse.done).toBe(false);
+    if (!duplexStreamResponse.done) {
+      expect(duplexStreamResponse.value.getChallenge()).toBe(m.getChallenge());
+    }
     // ensure that the connection count is the same
     expect(fwdProxy.getConnectionCount()).toBe(1);
     expect(revProxy.getConnectionCount()).toBe(1);
