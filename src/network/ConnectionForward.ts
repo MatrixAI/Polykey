@@ -64,10 +64,8 @@ class ConnectionForward extends Connection {
       // promise for start errors
       const { p: errorP, rejectP: rejectErrorP } = promise<void>();
       // promise for secure connection
-      const {
-        p: secureConnectP,
-        resolveP: resolveSecureConnectP,
-      } = promise<void>();
+      const { p: secureConnectP, resolveP: resolveSecureConnectP } =
+        promise<void>();
       this.resolveReadyP = resolveReadyP;
       this.utpSocket.on('message', this.handleMessage);
       const handleStartError = (e) => {

@@ -1,7 +1,7 @@
 import os from 'os';
 import path from 'path';
 import git from 'isomorphic-git';
-import fsPromises from 'fs/promises';
+import fs from 'fs';
 import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
@@ -12,32 +12,16 @@ import * as agentPB from '@/proto/js/Agent_pb';
 
 import { NodeManager } from '@/nodes';
 import { AgentService, createAgentService } from '@/agent';
-import { GitRequest, GitFrontend, GitBackend } from '@/git';
+import { GitFrontend, GitBackend } from '@/git';
 import { IAgentServer, AgentClient } from '@/proto/js/Agent_grpc_pb';
 
 import KeyManager from '@/keys/KeyManager';
 import VaultManager from '@/vaults/VaultManager';
+import { ForwardProxy, ReverseProxy } from '@/network';
 
 const logger = new Logger('GitRequest Test', LogLevel.WARN, [
   new StreamHandler(),
 ]);
-
-describe('GitRequest is', () => {
-  test('TypeCorrect', () => {
-    const request = new GitRequest(
-      async (vaultName) => {
-        return Buffer.from(vaultName);
-      },
-      async (vaultName, body) => {
-        return Buffer.from(`${vaultName}:${body}`);
-      },
-      async () => {
-        return ['Names'];
-      },
-    );
-    expect(request).toBeInstanceOf(GitRequest);
-  });
-});
 
 describe('GRPC can use GitRequest and', () => {
   let client: AgentClient;
@@ -49,22 +33,38 @@ describe('GRPC can use GitRequest and', () => {
   let keyManager: KeyManager;
   let nodeManager: NodeManager;
   let gitB: GitBackend;
+
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
+
   const name = 'vault-1';
   beforeAll(async () => {
-    dataDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
-    dataDir2 = await fsPromises.mkdtemp(
+    dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    await fsPromises.mkdir(path.join(dataDir, 'cloneVault'));
+    dataDir2 = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    await fs.promises.mkdir(path.join(dataDir, 'cloneVault'));
+
+    fwdProxy = new ForwardProxy({
+      authToken: 'abc',
+      logger: logger,
+    });
+
+    revProxy = new ReverseProxy({
+      logger: logger,
+    });
+
     keyManager = new KeyManager({
       keysPath: path.join(dataDir, 'keys'),
-      fs: fsPromises,
+      fs: fs,
       logger: logger,
     });
     vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
-      fs: fsPromises,
+      fs: fs,
       logger: logger,
     });
     gitB = new GitBackend({
@@ -74,13 +74,18 @@ describe('GRPC can use GitRequest and', () => {
       logger: logger,
     });
     nodeManager = new NodeManager({
+      nodesPath: path.join(dataDir, 'nodes'),
+      keyManager: keyManager,
+      fwdProxy: fwdProxy,
+      revProxy: revProxy,
+      fs: fs,
       logger: logger,
     });
     const agentService: IAgentServer = createAgentService({
       keyManager: keyManager,
       vaultManager: vaultManager,
       nodeManager: nodeManager,
-      git: gitB,
+      gitBackend: gitB,
     });
     [server, port] = await utils.openGrpcServer(AgentService, agentService);
     client = await utils.openGrpcClient(port);
@@ -88,11 +93,11 @@ describe('GRPC can use GitRequest and', () => {
   afterAll(async () => {
     utils.closeGrpcClient(client);
     await utils.closeGrpcServer(server);
-    await fsPromises.rm(dataDir, {
+    await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    await fsPromises.rm(dataDir2, {
+    await fs.promises.rm(dataDir2, {
       force: true,
       recursive: true,
     });
@@ -114,13 +119,13 @@ describe('GRPC can use GitRequest and', () => {
     jest.setTimeout(1000000);
     const keyManager2 = new KeyManager({
       keysPath: path.join(dataDir2, 'keys'),
-      fs: fsPromises,
+      fs: fs,
       logger: logger,
     });
     const vaultManager2 = new VaultManager({
       vaultsPath: path.join(dataDir2, 'vaults'),
       keyManager: keyManager,
-      fs: fsPromises,
+      fs: fs,
       logger: logger,
     });
     await keyManager.start({ password: 'password' });

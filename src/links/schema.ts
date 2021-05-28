@@ -7,14 +7,14 @@ import LinkClaimNodeSchema from './LinkClaimNode.json';
 
 const ajv = new Ajv();
 
-const linkClaimIdentitySchema = LinkClaimIdentitySchema as JSONSchemaType<LinkClaimIdentity>;
-const linkClaimIdentityValidate: ValidateFunction<LinkClaimIdentity> = ajv.compile(
-  linkClaimIdentitySchema,
-);
+const linkClaimIdentitySchema =
+  LinkClaimIdentitySchema as JSONSchemaType<LinkClaimIdentity>;
+const linkClaimIdentityValidate: ValidateFunction<LinkClaimIdentity> =
+  ajv.compile(linkClaimIdentitySchema);
 
-const linkClaimNodeSchema = LinkClaimNodeSchema as JSONSchemaType<LinkClaimNode>;
-const linkClaimNodeValidate: ValidateFunction<LinkClaimNode> = ajv.compile(
-  linkClaimNodeSchema,
-);
+const linkClaimNodeSchema =
+  LinkClaimNodeSchema as JSONSchemaType<LinkClaimNode>;
+const linkClaimNodeValidate: ValidateFunction<LinkClaimNode> =
+  ajv.compile(linkClaimNodeSchema);
 
 export { linkClaimIdentityValidate, linkClaimNodeValidate };

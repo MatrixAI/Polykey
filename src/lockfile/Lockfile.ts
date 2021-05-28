@@ -61,9 +61,9 @@ class Lockfile {
    * @param key
    * @param value
    */
-  public async updateLockfile(key: string, value: any) {
+  public async updateLockfile(key: string, value: any): Promise<void> {
     this.config[key] = value;
-    this.writeLockfile();
+    await this.writeLockfile();
   }
 
   public async stop() {
@@ -107,7 +107,7 @@ class Lockfile {
   ): Promise<LockConfig> {
     const fh = await fs.promises.open(lockPath, 'r');
     const data = await fh.readFile();
-    fh.close();
+    await fh.close();
     return JSON.parse(data.toString());
   }
 

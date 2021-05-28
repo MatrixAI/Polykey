@@ -88,7 +88,7 @@ class GestaltGraph {
   async stop() {
     this.logger.info('Stopping Gestalt Graph');
     if (this._started) {
-      this.graphDb.close();
+      await this.graphDb.close();
     }
     this._started = false;
     this.logger.info('Stopped Gestalt Graph');
@@ -134,9 +134,9 @@ class GestaltGraph {
             gestalt.identities[vertex] = identityInfo!;
           }
           unvisited.delete(vertex);
-          const neighbours: Array<GestaltKey> = Object.keys(
-            vertexKeys,
-          ).filter((k: GestaltKey) => unvisited.has(k)) as Array<GestaltKey>;
+          const neighbours: Array<GestaltKey> = Object.keys(vertexKeys).filter(
+            (k: GestaltKey) => unvisited.has(k),
+          ) as Array<GestaltKey>;
           queue.push(...neighbours);
         }
       }

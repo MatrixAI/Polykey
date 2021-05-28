@@ -414,9 +414,8 @@ class NodeGraph {
       throw new nodeErrors.ErrorNodeGraphSelfConnect();
     }
     // Attempt to get an existing connection
-    const existingConnection: NodeConnection | undefined = this.connections.get(
-      targetNodeId,
-    );
+    const existingConnection: NodeConnection | undefined =
+      this.connections.get(targetNodeId);
     if (existingConnection) {
       return existingConnection;
     }

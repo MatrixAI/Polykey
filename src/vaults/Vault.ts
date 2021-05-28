@@ -114,20 +114,6 @@ class Vault {
   }
 
   /**
-   * Retreives stats for a vault
-   *
-   * @returns the stats of the vault directory
-   */
-  public async vaultStats(): Promise<fs.Stats> {
-    const release = await this.mutex.acquire();
-    try {
-      return this.efs.statSync(this.vaultId);
-    } finally {
-      release();
-    }
-  }
-
-  /**
    * Pulls this vault from a nodeId
    *
    * @param nodeId identifier of node to pull from
@@ -280,7 +266,7 @@ class Vault {
       release();
     }
 
-    if (fs.existsSync(secretPath)) {
+    if (this.efs.existsSync(secretPath)) {
       return true;
     }
     return false;
@@ -512,8 +498,8 @@ class Vault {
       release();
     }
     if (
-      fs.existsSync(path.join(this.vaultId, currSecretName)) ||
-      !fs.existsSync(path.join(this.vaultId, newSecretName))
+      this.efs.existsSync(path.join(this.vaultId, currSecretName)) ||
+      !this.efs.existsSync(path.join(this.vaultId, newSecretName))
     ) {
       return false;
     }

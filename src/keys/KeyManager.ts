@@ -109,7 +109,7 @@ class KeyManager {
   public async stop() {
     this.logger.info('Stopping Key Manager');
     if (this._started) {
-      this.keysDb.close();
+      await this.keysDb.close();
     }
     this._started = false;
     this.logger.info('Stopped Key Manager');

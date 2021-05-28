@@ -1,5 +1,5 @@
 import { pki } from 'node-forge';
-import * as keysUtils from '../../src/keys/utils';
+import * as keysUtils from '@/keys/utils';
 
 describe('utils', () => {
   test('key pair copy', async () => {

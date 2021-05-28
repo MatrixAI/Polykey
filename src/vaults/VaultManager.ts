@@ -2,6 +2,7 @@ import type { Vaults } from './types';
 import type { FileSystem } from '../types';
 import type { WorkerManager } from '../workers';
 
+import fs from 'fs';
 import path from 'path';
 import level from 'level';
 import git from 'isomorphic-git';
@@ -184,6 +185,16 @@ class VaultManager {
   }
 
   /**
+   * Retreives stats for a vault
+   *
+   * @returns the stats of the vault directory
+   */
+  public async vaultStats(vaultId: string): Promise<fs.Stats> {
+    const vault = this.vaults[vaultId].vault;
+    return vault.EncryptedFS.statSync(vault.vaultId);
+  }
+
+  /**
    * Delete an existing vault. Deletes file from filesystem and
    * updates mappings to vaults and vaultKeys. If it fails to delete
    * from the filesystem, it will not modify any mappings and reutrn false
@@ -289,14 +300,12 @@ class VaultManager {
     //     http: gitRequest,
     //     url: vaultUrl,
     //   });
-
     //   if (!info.refs) {
     //     // node does not have vault
     //     throw new errors.ErrorRemoteVaultUndefined(
     //       `${vaultId} does not exist on connected node ${nodeId}`,
     //     );
     //   }
-
     //   await git.clone({
     //     fs: vault.EncryptedFS,
     //     http: gitRequest,
@@ -305,7 +314,6 @@ class VaultManager {
     //     ref: 'master',
     //     singleBranch: true,
     //   });
-
     //   await this.writeVaultData();
     // }
   }

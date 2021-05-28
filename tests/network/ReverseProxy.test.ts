@@ -16,10 +16,8 @@ import { promisify, promise, timerStart, timerStop, sleep } from '@/utils';
 
 function server(end: boolean = false) {
   const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
-  const {
-    p: serverConnClosedP,
-    resolveP: resolveServerConnClosedP,
-  } = promise<void>();
+  const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
+    promise<void>();
   const server = net.createServer((conn) => {
     resolveServerConnP();
     conn.once('close', () => {
@@ -401,10 +399,8 @@ describe('ReverseProxy', () => {
     utpConn.setTimeout(2000, () => {
       utpConn.emit('error', new Error('TIMED OUT'));
     });
-    const {
-      p: utpConnClosedP,
-      resolveP: resolveUtpConnClosedP,
-    } = promise<void>();
+    const { p: utpConnClosedP, resolveP: resolveUtpConnClosedP } =
+      promise<void>();
     const { p: utpConnErrorP, rejectP: rejectUtpConnErrorP } = promise<void>();
     utpConn.on('error', (e) => {
       rejectUtpConnErrorP(e);
@@ -474,10 +470,8 @@ describe('ReverseProxy', () => {
     const utpSocketPort = utpSocket.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
     expect(revProxy.getConnectionCount()).toBe(1);
-    const {
-      p: tlsSocketClosedP,
-      resolveP: resolveTlsSocketClosedP,
-    } = promise<void>();
+    const { p: tlsSocketClosedP, resolveP: resolveTlsSocketClosedP } =
+      promise<void>();
     const utpConn = utpSocket.connect(ingressPort, ingressHost);
     // this will propagate the error to tlsSocket
     utpConn.setTimeout(2000, () => {
@@ -561,10 +555,8 @@ describe('ReverseProxy', () => {
     const ingressHost = revProxy.getIngressHost();
     const ingressPort = revProxy.getIngressPort();
     const { p: clientReadyP, resolveP: resolveClientReadyP } = promise<void>();
-    const {
-      p: clientSecureConnectP,
-      resolveP: resolveClientSecureConnectP,
-    } = promise<void>();
+    const { p: clientSecureConnectP, resolveP: resolveClientSecureConnectP } =
+      promise<void>();
     const { p: clientCloseP, resolveP: resolveClientCloseP } = promise<void>();
     const utpSocket = UTP({ allowHalfOpen: false });
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);

@@ -1,6 +1,6 @@
 import os from 'os';
 import path from 'path';
-import fsPromises from 'fs/promises';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '../../src/keys';
 import { VaultManager } from '../../src/vaults';
@@ -15,8 +15,8 @@ let vaultManager: VaultManager;
 const logger = new Logger('GitBackend', LogLevel.WARN, [new StreamHandler()]);
 
 beforeEach(async () => {
-  dataDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
-  destDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+  dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+  destDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
   keyManager = new KeyManager({
     keysPath: `${dataDir}/keys`,
     logger: logger,
@@ -24,7 +24,7 @@ beforeEach(async () => {
   vaultManager = new VaultManager({
     vaultsPath: dataDir,
     keyManager: keyManager,
-    fs: fsPromises,
+    fs: fs,
     logger: logger,
   });
   // gitBackend = new GitBackend({
@@ -41,11 +41,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fsPromises.rm(dataDir, {
+  await fs.promises.rm(dataDir, {
     force: true,
     recursive: true,
   });
-  await fsPromises.rm(destDir, {
+  await fs.promises.rm(destDir, {
     force: true,
     recursive: true,
   });
