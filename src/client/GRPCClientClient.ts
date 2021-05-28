@@ -44,6 +44,14 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
+  public vaultsRename(...args) {
+    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.vaultsRename,
+    )(...args);
+  }
+
   public vaultsDelete(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
@@ -68,14 +76,219 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
-  public commitSync(...args) {
+  public vaultsStat(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyWritableStreamCall<
-      clientPB.CommitMessage,
-      clientPB.CommitMessage
-    >(
+    return grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
       this.client,
-      this.client.commitSync,
+      this.client.vaultsStat,
+    )(...args);
+  }
+
+  public vaultsDeleteSecret(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.vaultsDeleteSecret,
+    )(...args);
+  }
+
+  public vaultsEditSecret(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.vaultsEditSecret,
+    )(...args);
+  }
+
+  public vaultsGetSecret(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
+      this.client,
+      this.client.vaultsGetSecret,
+    )(...args);
+  }
+
+  public vaultsRenameSecret(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.vaultsRenameSecret,
+    )(...args);
+  }
+
+  public vaultsNewSecret(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.vaultsNewSecret,
+    )(...args);
+  }
+
+  public vaultsNewDirSecret(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.vaultsNewDirSecret,
+    )(...args);
+  }
+
+  public keysDelete(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.keysDelete,
+    )(...args);
+  }
+
+  public keysGet(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.KeyMessage>(
+      this.client,
+      this.client.keysGet,
+    )(...args);
+  }
+
+  public keysPut(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.keysPut,
+    )(...args);
+  }
+
+  public keysRootKeyPair(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
+      this.client,
+      this.client.keysRootKeyPair,
+    )(...args);
+  }
+
+  public keysResetKeyPair(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.keysResetKeyPair,
+    )(...args);
+  }
+
+  public keysRenewKeyPair(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.keysRenewKeyPair,
+    )(...args);
+  }
+
+  public keysEncrypt(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+      this.client,
+      this.client.keysEncrypt,
+    )(...args);
+  }
+
+  public keysDecrypt(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+      this.client,
+      this.client.keysDecrypt,
+    )(...args);
+  }
+
+  public keysSign(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+      this.client,
+      this.client.keysSign,
+    )(...args);
+  }
+
+  public keysVerify(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.keysVerify,
+    )(...args);
+  }
+
+  public keysChangePassword(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.keysChangePassword,
+    )(...args);
+  }
+
+  public certsGet(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
+      this.client,
+      this.client.certsGet,
+    )(...args);
+  }
+
+  public certsChainGet(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyReadableStreamCall<clientPB.CertificateMessage>(
+      this.client,
+      this.client.certsChainGet,
+    )(...args);
+  }
+
+  public gestaltsList(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
+      this.client,
+      this.client.gestaltsList,
+    )(...args);
+  }
+
+  public gestaltsGetIdentitiy(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
+      this.client,
+      this.client.gestaltsGetIdentity,
+    )(...args);
+  }
+
+  public gestaltsGetNode(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
+      this.client,
+      this.client.gestaltsGetNode,
+    )(...args);
+  }
+
+  public tokensPut(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.tokensPut,
+    )(...args);
+  }
+
+  public tokensGet(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.TokenMessage>(
+      this.client,
+      this.client.tokensGet,
+    )(...args);
+  }
+
+  public tokensDelete(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.tokensDelete,
+    )(...args);
+  }
+
+  public providersGet(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
+      this.client,
+      this.client.providersGet,
     )(...args);
   }
 }

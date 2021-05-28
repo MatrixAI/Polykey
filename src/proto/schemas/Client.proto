@@ -4,13 +4,54 @@ package clientInterface;
 
 service Client {
   rpc Echo(EchoMessage) returns (EchoMessage) {};
+
+  // Nodes
   rpc NodesList(EmptyMessage) returns (stream NodeMessage) {};
+
+  // Keys
+  rpc KeysDelete(KeyMessage) returns (EmptyMessage) {};
+  rpc KeysGet(KeyMessage) returns (KeyMessage) {};
+  rpc KeysRootKeyPair (EmptyMessage) returns (KeyPairMessage) {};
+  rpc KeysPut (KeyMessage) returns (EmptyMessage) {};
+  rpc KeysResetKeyPair (KeyMessage) returns (EmptyMessage) {};
+  rpc KeysRenewKeyPair (KeyMessage) returns (EmptyMessage) {};
+  rpc KeysEncrypt (CryptoMessage) returns (CryptoMessage) {};
+  rpc KeysDecrypt (CryptoMessage) returns (CryptoMessage) {};
+  rpc KeysSign (CryptoMessage) returns (CryptoMessage) {};
+  rpc KeysVerify (CryptoMessage) returns (StatusMessage) {};
+  rpc KeysChangePassword (PasswordMessage) returns (EmptyMessage) {};
+  rpc CertsGet (EmptyMessage) returns (CertificateMessage) {};
+  rpc CertsChainGet (EmptyMessage) returns (stream CertificateMessage) {};
+
+  // Vaults
   rpc VaultsList(EmptyMessage) returns (stream VaultMessage) {};
   rpc VaultsCreate(VaultMessage) returns (StatusMessage) {};
+  rpc VaultsRename(VaultMessage) returns (StatusMessage) {};
   rpc VaultsDelete(VaultMessage) returns (StatusMessage) {};
   rpc VaultsListSecrets(VaultMessage) returns (stream SecretMessage) {};
   rpc VaultsMkdir(VaultSpecificMessage) returns (EmptyMessage) {};
-  rpc CommitSync(stream CommitMessage) returns (CommitMessage) {};
+  rpc VaultsStat(VaultMessage) returns (StatMessage) {};
+  rpc VaultsDeleteSecret(VaultSpecificMessage) returns (StatusMessage) {};
+  rpc VaultsEditSecret(SecretSpecificMessage) returns (EmptyMessage) {};
+  rpc VaultsGetSecret(VaultSpecificMessage) returns (SecretMessage) {};
+  rpc VaultsRenameSecret(VaultSpecificMessage) returns (StatusMessage) {};
+  rpc VaultsNewSecret(VaultSpecificMessage) returns (StatusMessage) {};
+  rpc VaultsNewDirSecret(VaultMessage) returns (EmptyMessage) {};
+
+  // Identities
+  rpc IdentitiesAuthenticate(ProviderMessage) returns (ProviderMessage) {};
+  rpc TokensPut(TokenSpecificMessage) returns (EmptyMessage) {};
+  rpc TokensGet(ProviderMessage) returns (TokenMessage) {};
+  rpc TokensDelete(ProviderMessage) returns (EmptyMessage) {};
+  rpc ProvidersGet(EmptyMessage) returns (ProviderMessage) {};
+
+  // Gestalts
+  rpc GestaltsGetNode(GestaltMessage) returns (GestaltMessage) {};
+  rpc GestaltsGetIdentity(ProviderMessage) returns (GestaltMessage) {};
+  rpc GestaltsList(EmptyMessage) returns (stream GestaltMessage) {};
+  rpc GestaltsSetNode(GestaltTrustMessage) returns (EmptyMessage) {};
+  rpc GestaltsSetIdentity(GestaltTrustMessage) returns (EmptyMessage) {};
+
   rpc GestaltSync(stream GestaltMessage) returns (stream GestaltMessage) {};
 }
 
@@ -24,6 +65,8 @@ message EchoMessage {
   string challenge = 1;
 }
 
+// Vaults
+
 message VaultMessage {
   string name = 1;
   string id = 2;
@@ -34,18 +77,74 @@ message VaultSpecificMessage {
   string name = 2;
 }
 
+message SecretSpecificMessage {
+  VaultSpecificMessage vault = 1;
+  string content = 2;
+}
+
 message SecretMessage {
   string name = 1;
 }
+
+message StatMessage {
+  string stats = 1;
+}
+
+// Nodes
 
 message NodeMessage {
   string name = 1;
 }
 
-message CommitMessage {
-  string name = 1;
+// Keys
+
+message CryptoMessage {
+  string data = 1;
+  string signature = 2;
 }
+
+message KeyMessage {
+  string name = 1;
+  string key = 2;
+}
+
+message KeyPairMessage {
+  string public = 1;
+  string private = 2;
+}
+
+message CertificateMessage {
+  string cert = 1;
+}
+
+message PasswordMessage {
+  string password = 1;
+}
+
+// Identities
+
+message ProviderMessage {
+  string id = 1;
+  string message = 2;
+}
+
+message TokenSpecificMessage {
+  ProviderMessage provider = 1;
+  string token = 2;
+}
+
+message TokenMessage {
+  string token = 1;
+}
+
+// Gestalts
 
 message GestaltMessage {
   string name = 1;
+}
+
+message GestaltTrustMessage {
+  string provider = 1;
+  string name = 2;
+  bool set = 3;
 }
