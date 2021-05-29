@@ -59,7 +59,7 @@ function createCommand(
     nodePath?: boolean;
     verbose?: boolean;
     format?: boolean;
-    passwordFile?: string;
+    passwordFile?: boolean;
   } = {},
 ) {
   const cmd = new PolykeyCommand(name);
