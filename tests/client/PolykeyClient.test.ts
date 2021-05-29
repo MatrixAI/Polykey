@@ -34,7 +34,7 @@ describe('GRPCClientClient', () => {
   let keysPath: string;
   let nodesPath: string;
   let vaultsPath: string;
-  let gestaltsPath: string;
+  let gestaltGraphPath: string;
   let identitiesPath: string;
 
   let keyManager: KeyManager;
@@ -68,7 +68,7 @@ describe('GRPCClientClient', () => {
     keysPath = path.join(dataDir, 'keys');
     nodesPath = path.join(dataDir, 'nodes');
     vaultsPath = path.join(dataDir, 'vaults');
-    gestaltsPath = path.join(dataDir, 'gestalts');
+    gestaltGraphPath = path.join(dataDir, 'gestalts');
     identitiesPath = path.join(dataDir, 'identities');
 
     lockfile = new Lockfile({
@@ -116,7 +116,7 @@ describe('GRPCClientClient', () => {
     });
 
     gestaltGraph = new GestaltGraph({
-      gestaltsPath: gestaltsPath,
+      gestaltGraphPath: gestaltGraphPath,
       keyManager: keyManager,
       fs: fs,
       logger: logger,
@@ -125,6 +125,11 @@ describe('GRPCClientClient', () => {
     gitManager = new GitManager({
       vaultManager,
       nodeManager,
+    });
+
+    sessionManager = new SessionManager({
+      keyManager: keyManager,
+      logger: logger,
     });
 
     sessionManager = new SessionManager({

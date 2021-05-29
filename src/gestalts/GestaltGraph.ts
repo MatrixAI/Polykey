@@ -25,7 +25,7 @@ import { utils as keysUtils, errors as keysErrors } from '../keys';
 import * as utils from '../utils';
 
 class GestaltGraph {
-  public readonly gestaltsPath: string;
+  public readonly gestaltGraphPath: string;
   public readonly graphDbPath: string;
 
   protected logger: Logger;
@@ -37,21 +37,21 @@ class GestaltGraph {
   protected _started: boolean = false;
 
   constructor({
-    gestaltsPath,
+    gestaltGraphPath,
     keyManager,
     fs,
     logger,
   }: {
-    gestaltsPath: string;
+    gestaltGraphPath: string;
     keyManager: KeyManager;
     fs?: FileSystem;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.fs = fs ?? require('fs');
-    this.gestaltsPath = gestaltsPath;
+    this.gestaltGraphPath = gestaltGraphPath;
     this.keyManager = keyManager;
-    this.graphDbPath = path.join(gestaltsPath, 'graph_db');
+    this.graphDbPath = path.join(gestaltGraphPath, 'graph_db');
   }
 
   get started(): boolean {
@@ -69,14 +69,16 @@ class GestaltGraph {
     if (!this.keyManager.started) {
       throw new keysErrors.ErrorKeyManagerNotStarted();
     }
-    this.logger.info(`Setting gestalts path to ${this.gestaltsPath}`);
+    this.logger.info(`Setting gestalt graph path to ${this.gestaltGraphPath}`);
     if (fresh) {
-      await this.fs.promises.rm(this.gestaltsPath, {
+      await this.fs.promises.rm(this.gestaltGraphPath, {
         force: true,
         recursive: true,
       });
     }
-    await utils.mkdirExists(this.fs, this.gestaltsPath);
+    await utils.mkdirExists(this.fs, this.gestaltGraphPath, {
+      recursive: true,
+    });
     const graphDbKey = await this.setupGraphDbKey(bits);
     const graphDb = await level(this.graphDbPath, { valueEncoding: 'binary' });
     this.graphDb = graphDb;
@@ -105,7 +107,10 @@ class GestaltGraph {
         const ggK = (o as any).key;
         const data = (o as any).value;
         const [, gK] = gestaltsUtils.ungestaltGraphKey(ggK as GestaltGraphKey);
-        const ggV = gestaltsUtils.unserializeGraphValue(this.graphDbKey, data);
+        const ggV = gestaltsUtils.unserializeDecrypt<GestaltGraphValue>(
+          this.graphDbKey,
+          data,
+        );
         unvisited.set(gK, ggV);
       }
       const gestalts: Array<Gestalt> = [];
@@ -664,7 +669,10 @@ class GestaltGraph {
       }
       throw e;
     }
-    return gestaltsUtils.unserializeGraphValue(this.graphDbKey, data);
+    return gestaltsUtils.unserializeDecrypt<GestaltGraphValue>(
+      this.graphDbKey,
+      data,
+    );
   }
 
   protected async putGraphDb(
@@ -691,7 +699,10 @@ class GestaltGraph {
       throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
     }
     const ggK = gestaltsUtils.gestaltGraphKey(d, gK);
-    const data = gestaltsUtils.serializeGraphValue(this.graphDbKey, ggV);
+    const data = gestaltsUtils.serializeEncrypt<GestaltGraphValue>(
+      this.graphDbKey,
+      ggV,
+    );
     await this.graphDb.put(ggK, data);
   }
 
@@ -719,7 +730,7 @@ class GestaltGraph {
         });
       } else if (op.type === 'put') {
         const ggK = gestaltsUtils.gestaltGraphKey(op.domain, op.key);
-        const data = gestaltsUtils.serializeGraphValue(
+        const data = gestaltsUtils.serializeEncrypt<GestaltGraphValue>(
           this.graphDbKey,
           op.value,
         );

@@ -30,32 +30,48 @@ describe('GestaltGraph', () => {
     });
   });
   test('construction has no side effects', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    new GestaltGraph({ gestaltsPath, keyManager, logger });
-    await expect(fs.promises.stat(gestaltsPath)).rejects.toThrow(/ENOENT/);
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    new GestaltGraph({ gestaltGraphPath, keyManager, logger });
+    await expect(fs.promises.stat(gestaltGraphPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs the graph leveldb', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
-    const gestaltsPathContents = await fs.promises.readdir(gestaltsPath);
-    expect(gestaltsPathContents).toContain('graph_db');
+    const gestaltGraphPathContents = await fs.promises.readdir(
+      gestaltGraphPath,
+    );
+    expect(gestaltGraphPathContents).toContain('graph_db');
     await gestaltGraph.stop();
   });
   test('start and stop preserves the graph key', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const graphDbKey = await keyManager.getKey('GestaltGraph');
+    expect(graphDbKey).not.toBeUndefined();
     await gestaltGraph.stop();
     await gestaltGraph.start();
     const graphDbKey_ = await keyManager.getKey('GestaltGraph');
     await gestaltGraph.stop();
     expect(graphDbKey).toEqual(graphDbKey_);
+    expect(graphDbKey_).not.toBeUndefined();
   });
   test('get, set and unset node', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
@@ -80,8 +96,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.stop();
   });
   test('get, set and unset identity', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
@@ -121,8 +141,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.stop();
   });
   test('setting independent node and identity gestalts', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
@@ -163,8 +187,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.stop();
   });
   test('start and stop preserves state', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
@@ -207,8 +235,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.stop();
   });
   test('link node to node', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
@@ -266,8 +298,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.stop();
   });
   test('link node to identity', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
@@ -338,8 +374,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.stop();
   });
   test('link node to node and identity', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
@@ -442,8 +482,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.stop();
   });
   test('getting all gestalts', async () => {
-    const gestaltsPath = `${dataDir}/gestalts`;
-    const gestaltGraph = new GestaltGraph({ gestaltsPath, keyManager, logger });
+    const gestaltGraphPath = `${dataDir}/gestalts/graph`;
+    const gestaltGraph = new GestaltGraph({
+      gestaltGraphPath,
+      keyManager,
+      logger,
+    });
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,

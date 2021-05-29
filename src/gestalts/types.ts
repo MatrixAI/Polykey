@@ -2,10 +2,6 @@ import type { Opaque } from '../types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { IdentityId, ProviderId, IdentityInfo } from '../identities/types';
 
-type GestaltGraphKey = Opaque<'GestaltGraphKey', string>;
-type GestaltGraphValue = GestaltKeySet | NodeInfo | IdentityInfo;
-type GestaltGraphDomain = 'matrix' | 'nodes' | 'identities';
-
 // the GestaltId is the actual underlying data
 // when we want to differentiate the GestaltKey
 type GestaltId =
@@ -37,6 +33,10 @@ type Gestalt = {
 // it doesn't actually have to be synced by the DHT
 // the DHT doesn't really matter all that much
 
+type GestaltGraphKey = Opaque<'GestaltGraphKey', string>;
+type GestaltGraphValue = GestaltKeySet | NodeInfo | IdentityInfo;
+type GestaltGraphDomain = 'matrix' | 'nodes' | 'identities';
+
 type GestaltGraphOp_ =
   | {
       domain: 'matrix';
@@ -62,7 +62,7 @@ type GestaltGraphOp =
       type: 'del';
     } & Omit<GestaltGraphOp_, 'value'>);
 
-export {
+export type {
   GestaltKey,
   GestaltKeySet,
   GestaltId,

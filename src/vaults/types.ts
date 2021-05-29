@@ -6,6 +6,11 @@ import type { Opaque } from '../types';
  */
 type VaultId = Opaque<'VaultId', string>;
 
+/**
+ * Actions relating to what is possible with vaults
+ */
+type VaultAction = 'clone' | 'pull';
+
 type VaultKey = Buffer;
 
 /**
@@ -61,12 +66,13 @@ type VaultMapOp =
     } & Omit<VaultMapOp_, 'value'>);
 
 export type {
+  VaultId,
+  VaultAction,
   VaultKey,
   Vaults,
   NodePermissions,
   ACL,
   FileChange,
   FileChanges,
-  VaultId,
   VaultMapOp,
 };
