@@ -55,12 +55,12 @@ describe('NodeManager', () => {
     });
   });
   afterEach(async () => {
+    await keyManager.stop();
+    await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    await keyManager.stop();
-    await fwdProxy.stop();
   });
 
   test('construction has no side effects', async () => {

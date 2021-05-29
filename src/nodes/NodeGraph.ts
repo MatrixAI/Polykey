@@ -131,6 +131,9 @@ class NodeGraph {
     this.logger.info('Stopping Node Graph');
     if (this._started) {
       await this.bucketsDb.close();
+      for (const [, conn] of this.connections) {
+        await conn.stop();
+      }
     }
     this._started = false;
     this.logger.info('Stopped Node Graph');

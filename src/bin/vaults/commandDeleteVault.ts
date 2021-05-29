@@ -1,26 +1,27 @@
-import { errors } from '../../grpc';
+import * as grpcErrors from '../../grpc/errors';
+import * as clientErrors from '../../client/errors';
+import PolykeyClient from '../../PolykeyClient';
 import { clientPB } from '../../client';
 import { createCommand, outputFormatter } from '../utils';
+import { getDefaultNodePath } from '../../utils';
+import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import PolykeyClient from '../../PolykeyClient';
 
 const commandDeleteVault = createCommand('delete', {
-  description: {
-    description: 'Deletes an existing vault',
-    args: {
-      vaultID: 'ID of the vault to be deleted. List vaults with "ls" or "list"',
-    },
-  },
+  description: 'Deletes an existing vault',
   aliases: ['rm'],
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandDeleteVault.requiredOption(
-  '-vi, -vault-id <vaultName>',
-  '(required) Id of the vault to be deleted',
+  '-vn, --vault-name <vaultName>',
+  '(required) Name of the vault to be deleted',
 );
 commandDeleteVault.action(async (options) => {
+  const meta = new grpc.Metadata();
+
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -28,20 +29,20 @@ commandDeleteVault.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath ? options.nodePath : getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
+  vaultMessage.setName(options.vaultName);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setId(options.vaultId);
-
-    const pCall = grpcClient.vaultsDelete(vaultMessage);
+    const pCall = grpcClient.vaultsDelete(vaultMessage, meta);
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {
@@ -60,10 +61,11 @@ commandDeleteVault.action(async (options) => {
       );
     }
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof clientErrors.ErrorClientPasswordNotProvided) {
+      process.stderr.write(`${err.message}\nUse --password-file <file>\n`);
+    } else if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
-    }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
       process.stdout.write(
@@ -75,7 +77,10 @@ commandDeleteVault.action(async (options) => {
     }
   } finally {
     client.stop();
-  }
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;  }
 });
 
 export default commandDeleteVault;

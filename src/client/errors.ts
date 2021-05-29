@@ -4,4 +4,10 @@ class ErrorClient extends ErrorPolykey {}
 
 class ErrorClientClientNotStarted extends ErrorClient {}
 
-export { ErrorClient, ErrorClientClientNotStarted };
+class ErrorClientPasswordNotProvided extends ErrorClient {}
+
+export {
+  ErrorClient,
+  ErrorClientClientNotStarted,
+  ErrorClientPasswordNotProvided,
+};

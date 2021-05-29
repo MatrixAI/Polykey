@@ -176,7 +176,7 @@ class VaultManager {
     newVaultName: string,
   ): Promise<boolean> {
     if (!this.vaults[vaultId]) {
-      throw new errors.ErrorVaultUndefined('vault does not exist');
+      throw new errors.ErrorVaultUndefined();
     }
 
     const vault = this.vaults[vaultId].vault;

@@ -7,6 +7,7 @@ import { VaultManager } from '../vaults';
 import { GestaltGraph } from '../gestalts';
 import { SessionManager } from '../session';
 import { IdentitiesManager } from '../identities';
+import { GitManager } from '../git';
 
 import { ClientService, IClientServer } from '../proto/js/Client_grpc_pb';
 
@@ -29,6 +30,7 @@ function createClientService({
   nodeManager,
   identitiesManager,
   gestaltGraph,
+  gitManager,
   sessionManager,
 }: {
   keyManager: KeyManager;
@@ -36,12 +38,14 @@ function createClientService({
   nodeManager: NodeManager;
   identitiesManager: IdentitiesManager;
   gestaltGraph: GestaltGraph;
+  gitManager: GitManager;
   sessionManager: SessionManager;
 }) {
   const clientService: IClientServer = {
     ...createEchoRPC(),
     ...createVaultRPC({
       vaultManager: vaultManager,
+      gitManager: gitManager,
       sessionManager: sessionManager,
     }),
     ...createKeysRPC({ keyManager: keyManager }),

@@ -4,7 +4,7 @@ import type { Host, Port } from './network/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
-import { GitBackend } from './git';
+import { GitBackend, GitManager } from './git';
 import * as utils from './utils';
 import * as errors from './errors';
 import { KeyManager } from './keys';
@@ -40,6 +40,7 @@ class Polykey {
   public readonly grpcPort: number;
 
   // Git
+  public readonly gitManager: GitManager;
   public readonly gitBackend: GitBackend;
 
   // Proxies
@@ -57,6 +58,7 @@ class Polykey {
     gestaltGraph,
     identitiesManager,
     workerManager,
+    gitManager,
     gitBackend,
     grpcHost,
     grpcPort,
@@ -73,6 +75,7 @@ class Polykey {
     gestaltGraph?: GestaltGraph;
     identitiesManager?: IdentitiesManager;
     workerManager?: WorkerManager;
+    gitManager?: GitManager;
     gitBackend?: GitBackend;
     grpcHost?: string;
     grpcPort?: number;
@@ -92,11 +95,10 @@ class Polykey {
     const vaultsPath = path.join(this.nodePath, 'vaults');
     const gestaltsPath = path.join(this.nodePath, 'gestalts');
     const identitiesPath = path.join(this.nodePath, 'identities');
-
     this.fwdProxy =
       fwdProxy ??
       new ForwardProxy({
-        authToken: authToken ?? '',
+        authToken: authToken ?? ' ',
         logger: this.logger,
       });
     this.revProxy =
@@ -156,6 +158,12 @@ class Polykey {
       new WorkerManager({
         logger: this.logger.getChild('WorkerManager'),
       });
+    this.gitManager =
+      gitManager ??
+      new GitManager({
+        vaultManager: this.vaults,
+        nodeManager: this.nodes,
+      });
     this.gitBackend =
       gitBackend ??
       new GitBackend({
@@ -177,6 +185,7 @@ class Polykey {
       nodeManager: this.nodes,
       identitiesManager: this.identities,
       gestaltGraph: this.gestalts,
+      gitManager: this.gitManager,
       sessionManager: this.sessionManager,
     });
 
@@ -269,6 +278,8 @@ class Polykey {
     const keyPrivatePem = this.keys.getRootKeyPairPem().privateKey;
     const certChainPem = await this.keys.getRootCertChainPem();
 
+    await this.gitManager.start();
+
     // GRPC Server
     await this.grpcServer.start({
       host: this.grpcHost as Host,
@@ -284,7 +295,7 @@ class Polykey {
 
     await this.revProxy.start({
       serverHost: this.grpcHost as Host,
-      serverPort: this.grpcPort as Port,
+      serverPort: this.grpcServer.getPort() as Port,
       tlsConfig: {
         keyPrivatePem: keyPrivatePem,
         certChainPem: certChainPem,
@@ -327,6 +338,8 @@ class Polykey {
     await this.fwdProxy.stop();
 
     await this.grpcServer.stop();
+
+    await this.gitManager.stop();
 
     await this.identities.stop();
     await this.gestalts.stop();

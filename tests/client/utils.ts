@@ -12,6 +12,7 @@ import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
 import { KeyManager } from '@/keys';
 import { promisify } from '@/utils';
+import { GitManager } from '@/git';
 
 async function openTestClientServer({
   keyManager,
@@ -19,6 +20,7 @@ async function openTestClientServer({
   nodeManager,
   identitiesManager,
   gestaltGraph,
+  gitManager,
   sessionManager,
 }: {
   keyManager: KeyManager;
@@ -26,6 +28,7 @@ async function openTestClientServer({
   nodeManager: NodeManager;
   identitiesManager: IdentitiesManager;
   gestaltGraph: GestaltGraph;
+  gitManager: GitManager;
   sessionManager: SessionManager;
 }) {
   const clientService: IClientServer = createClientService({
@@ -34,6 +37,7 @@ async function openTestClientServer({
     nodeManager,
     identitiesManager,
     gestaltGraph,
+    gitManager,
     sessionManager,
   });
 

@@ -5,7 +5,6 @@ import commandListVaults from './commandListVaults';
 import commandPullVault from './commandPullVault';
 import commandRenameVault from './commandRenameVault';
 import commandScanVault from './commandScanVault';
-import commandVaultShare from './commandVaultShare';
 import commandVaultStats from './commandVaultStats';
 
 const commandVaults = createCommand('vaults');
@@ -16,7 +15,6 @@ commandVaults.addCommand(commandListVaults);
 commandVaults.addCommand(commandPullVault);
 commandVaults.addCommand(commandRenameVault);
 commandVaults.addCommand(commandScanVault);
-commandVaults.addCommand(commandVaultShare);
 commandVaults.addCommand(commandVaultStats);
 
 export default commandVaults;
