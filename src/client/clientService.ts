@@ -4,8 +4,9 @@ import * as grpc from '@grpc/grpc-js';
 import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
-import { IdentitiesManager } from '../identities';
 import { GestaltGraph } from '../gestalts';
+import { SessionManager } from '../session';
+import { IdentitiesManager } from '../identities';
 
 import { ClientService, IClientServer } from '../proto/js/Client_grpc_pb';
 
@@ -28,16 +29,21 @@ function createClientService({
   nodeManager,
   identitiesManager,
   gestaltGraph,
+  sessionManager,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   identitiesManager: IdentitiesManager;
   gestaltGraph: GestaltGraph;
+  sessionManager: SessionManager;
 }) {
   const clientService: IClientServer = {
     ...createEchoRPC(),
-    ...createVaultRPC({ vaultManager: vaultManager }),
+    ...createVaultRPC({
+      vaultManager: vaultManager,
+      sessionManager: sessionManager,
+    }),
     ...createKeysRPC({ keyManager: keyManager }),
     ...createIdentitiesRPC({ identitiesManager: identitiesManager }),
     ...createGestaltRPC({ gestaltGraph: gestaltGraph }),

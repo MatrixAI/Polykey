@@ -1,5 +1,4 @@
 import type { NodeId } from '@/nodes/types';
-import type { Host, Port } from '@/network/types';
 
 import os from 'os';
 import path from 'path';
@@ -8,9 +7,11 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import * as grpc from '@grpc/grpc-js';
 
+import { PolykeyClient } from '@';
 import { NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
 import { GestaltGraph } from '@/gestalts';
+import { SessionManager } from '@/session';
 import { IdentitiesManager } from '@/identities';
 import { clientPB, GRPCClientClient } from '@/client';
 import { KeyManager, utils as keyUtils } from '@/keys';
@@ -18,7 +19,6 @@ import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import { Lockfile } from '@/lockfile';
 
 import * as testUtils from './utils';
-import { PolykeyClient } from '@';
 
 describe('GRPCClientClient', () => {
   const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
@@ -41,6 +41,7 @@ describe('GRPCClientClient', () => {
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
+  let sessionManager: SessionManager;
 
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
@@ -131,11 +132,17 @@ describe('GRPCClientClient', () => {
       logger: logger,
     });
 
+    sessionManager = new SessionManager({
+      keyManager: keyManager,
+      logger: logger,
+    });
+
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     await nodeManager.start({ nodeId: nodeId });
     await identitiesManager.start();
     await gestaltGraph.start();
+    await sessionManager.start({ sessionDuration: 3000 });
 
     [server, port] = await testUtils.openTestClientServer({
       keyManager,
@@ -143,6 +150,7 @@ describe('GRPCClientClient', () => {
       nodeManager,
       identitiesManager,
       gestaltGraph,
+      sessionManager,
     });
 
     await lockfile.start({ nodeId });

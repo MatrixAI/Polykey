@@ -6,6 +6,7 @@ import { ClientClient } from '@/proto/js/Client_grpc_pb';
 import { IdentitiesManager } from '@/identities';
 import { createClientService } from '@/client';
 import PolykeyClient from '@/PolykeyClient';
+import { SessionManager } from '@/session';
 import { GestaltGraph } from '@/gestalts';
 import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
@@ -18,12 +19,14 @@ async function openTestClientServer({
   nodeManager,
   identitiesManager,
   gestaltGraph,
+  sessionManager,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   identitiesManager: IdentitiesManager;
   gestaltGraph: GestaltGraph;
+  sessionManager: SessionManager;
 }) {
   const clientService: IClientServer = createClientService({
     keyManager,
@@ -31,6 +34,7 @@ async function openTestClientServer({
     nodeManager,
     identitiesManager,
     gestaltGraph,
+    sessionManager,
   });
 
   const server = new grpc.Server();

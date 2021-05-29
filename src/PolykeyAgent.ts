@@ -14,6 +14,7 @@ import { NodeManager } from './nodes';
 import { VaultManager } from './vaults';
 import { GestaltGraph } from './gestalts';
 import { WorkerManager } from './workers';
+import { SessionManager } from './session';
 import { certNodeId } from './network/utils';
 import { IdentitiesManager } from './identities';
 import { ForwardProxy, ReverseProxy } from './network';
@@ -25,6 +26,7 @@ import { createClientService, ClientService } from './client';
 class Polykey {
   public readonly nodePath: string;
   public readonly lockfile: Lockfile;
+  public readonly sessionManager: SessionManager;
   public readonly keys: KeyManager;
   public readonly vaults: VaultManager;
   public readonly nodes: NodeManager;
@@ -163,6 +165,11 @@ class Polykey {
         logger: logger,
       });
 
+    this.sessionManager = new SessionManager({
+      keyManager: this.keys,
+      logger: logger,
+    });
+
     // Get GRPC Services
     const clientService: IClientServer = createClientService({
       keyManager: this.keys,
@@ -170,6 +177,7 @@ class Polykey {
       nodeManager: this.nodes,
       identitiesManager: this.identities,
       gestaltGraph: this.gestalts,
+      sessionManager: this.sessionManager,
     });
 
     const agentService: IAgentServer = createAgentService({
@@ -198,12 +206,14 @@ class Polykey {
     rootKeyPairBits,
     rootCertDuration,
     keysDbBits,
+    sessionDuration,
     fresh = false,
   }: {
     password: string;
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     keysDbBits?: number;
+    sessionDuration?: number;
     fresh?: boolean;
   }) {
     this.logger.info('Starting Polykey');
@@ -293,6 +303,10 @@ class Polykey {
       this.fwdProxy.getProxyPort(),
     );
 
+    await this.sessionManager.start({
+      sessionDuration: sessionDuration,
+    });
+
     this.logger.info('Started Polykey');
   }
 
@@ -302,6 +316,11 @@ class Polykey {
   public async stop() {
     this.logger.info('Stopping Polykey');
 
+    await this.sessionManager.stop();
+
+    this.logger.info(
+      `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
+    );
     await this.lockfile.stop();
 
     await this.revProxy.stop();
@@ -311,10 +330,6 @@ class Polykey {
 
     await this.identities.stop();
     await this.gestalts.stop();
-
-    this.logger.info(
-      `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
-    );
 
     await this.vaults.stop();
     await this.nodes.stop();

@@ -11,6 +11,7 @@ import * as grpc from '@grpc/grpc-js';
 import { NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
 import { GestaltGraph } from '@/gestalts';
+import { SessionManager } from '@/session';
 import { IdentitiesManager } from '@/identities';
 import { clientPB, GRPCClientClient } from '@/client';
 import { KeyManager, utils as keyUtils } from '@/keys';
@@ -38,6 +39,7 @@ describe('GRPCClientClient', () => {
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
+  let sessionManager: SessionManager;
 
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
@@ -121,11 +123,18 @@ describe('GRPCClientClient', () => {
       logger: logger,
     });
 
+    sessionManager = new SessionManager({
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     await nodeManager.start({ nodeId: nodeId });
     await identitiesManager.start();
     await gestaltGraph.start();
+    await sessionManager.start({ sessionDuration: 3000 });
 
     [server, port] = await testUtils.openTestClientServer({
       keyManager,
@@ -133,6 +142,7 @@ describe('GRPCClientClient', () => {
       nodeManager,
       identitiesManager,
       gestaltGraph,
+      sessionManager,
     });
 
     client = new GRPCClientClient({
