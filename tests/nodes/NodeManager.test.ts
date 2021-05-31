@@ -4,9 +4,10 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
+import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
-import { KeyManager } from '@/keys';
 import * as keysUtils from '@/keys/utils';
 
 describe('NodeManager', () => {

@@ -81,6 +81,19 @@ class NodeManager {
     this.logger.info('Started Node Manager');
   }
 
+  /**
+   * Checks to see whether or not the current NodeManager instance has been started.
+   *
+   * Checks for: _started, nodeGraph and revProxy
+   * @returns true if all nodeManager components have been constructed
+   */
+  public async started(): Promise<boolean> {
+    if (this._started && this.nodeGraph && this.revProxy) {
+      return true;
+    }
+    return false;
+  }
+
   public async stop() {
     this.logger.info('Stopping Node Manager');
     this._started = false;
@@ -180,6 +193,15 @@ class NodeManager {
    */
   public getClient(targetNodeId: NodeId): GRPCClientAgent {
     return this.nodeGraph.getClient(targetNodeId);
+  }
+
+  /**
+   * Retrieves the node Address
+   * @param targetNodeId node ID of the target node
+   * @returns Node Address of the target node
+   */
+  public async getNode(targetNodeId: NodeId): Promise<NodeAddress | undefined> {
+    return await this.nodeGraph.getNode(targetNodeId);
   }
 }
 

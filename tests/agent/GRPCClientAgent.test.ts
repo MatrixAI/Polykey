@@ -1,17 +1,18 @@
 import type { NodeId } from '@/nodes/types';
+
+import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import fs from 'fs';
-import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 
-import { agentPB, GRPCClientAgent } from '@/agent';
-import { VaultManager } from '@/vaults';
-import { NodeManager } from '@/nodes';
+import { GitBackend } from '@/git';
 import { KeyManager } from '@/keys';
-import * as testUtils from './utils';
-import { GitBackend } from '../../src/git';
+import { NodeManager } from '@/nodes';
+import { VaultManager } from '@/vaults';
+import { agentPB, GRPCClientAgent } from '@/agent';
 import { ForwardProxy, ReverseProxy } from '@/network';
+import * as testUtils from './utils';
 
 describe('GRPC agent', () => {
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [

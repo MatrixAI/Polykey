@@ -3,10 +3,9 @@ import Logger from '@matrixai/logger';
 
 import { GitRequest } from '.';
 import { promisify } from '../utils';
-import { AgentClient } from '../proto/js/Agent_grpc_pb';
 
-import * as grpcUtils from '../grpc/utils';
 import * as agentPB from '../proto/js/Agent_pb';
+import { GRPCClientAgent } from '../agent';
 
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
@@ -21,21 +20,16 @@ class GitFrontend {
   /**
    * Requests remote info from the connected node for the named vault.
    * @param vaultName Name of the desired vault
-   * @param nodeConnection A connection object to the node
+   * @param client A connection object to the node
    * @returns Async Generator of Uint8Arrays representing the Info Response
    */
   private async *requestInfo(
     vaultName: string,
-    client: AgentClient,
+    client: GRPCClientAgent,
   ): AsyncGenerator<Uint8Array> {
-    const serverStream =
-      grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
-        client,
-        client.getGitInfo,
-      );
     const request = new agentPB.InfoRequest();
     request.setVaultName(vaultName);
-    const response = serverStream(request);
+    const response = client.getGitInfo(request);
 
     for await (const resp of response) {
       yield resp.getChunk_asU8();
@@ -46,13 +40,13 @@ class GitFrontend {
    * Requests a pack from the connected node for the named vault
    * @param vaultName name of vault
    * @param body contains the pack request
-   * @param client AgentClient
+   * @param client A connection object to the node
    * @returns AsyncGenerator of Uint8Arrays representing the Pack Response
    */
   private async *requestPack(
     vaultName: string,
     body: any,
-    client: AgentClient,
+    client: GRPCClientAgent,
   ): AsyncGenerator<Uint8Array> {
     const responseBuffers: Array<Buffer> = [];
 
@@ -79,19 +73,12 @@ class GitFrontend {
   }
 
   /**
-   * Requests a pack from the connected node for the named vault.
-   * @param vaultName Name of the desired vault
-   * @param body Contains the pack request
-   * @param nodeConnection A connection object to the node
+   * Requests the vault names from the connected node.
+   * @param client A connection object to the node
    */
-  private async requestVaultNames(client: AgentClient): Promise<string[]> {
-    const serverStream =
-      grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
-        client,
-        client.scanVaults,
-      );
+  private async requestVaultNames(client: GRPCClientAgent): Promise<string[]> {
     const request = new agentPB.EmptyMessage();
-    const response = serverStream(request);
+    const response = client.scanVaults(request);
 
     const data: string[] = [];
     for await (const resp of response) {
@@ -106,7 +93,7 @@ class GitFrontend {
    * Creates a GitRequest object from the desired node connection.
    * @param client GRPC connection to desired node
    */
-  connectToNodeGit(client: AgentClient): GitRequest {
+  connectToNodeGit(client: GRPCClientAgent): GitRequest {
     const gitRequest = new GitRequest(
       ((vaultName: string) => this.requestInfo(vaultName, client)).bind(this),
       ((vaultName: string, body: any) =>

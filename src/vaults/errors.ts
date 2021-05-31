@@ -20,6 +20,8 @@ class ErrorVaultModified extends ErrorVaults {}
 
 class ErrorMalformedVaultDBValue extends ErrorVaults {}
 
+class ErrorVaultUnlinked extends ErrorVaults {}
+
 class ErrorCreateVaultId extends ErrorVaults {}
 
 class ErrorSecretUndefined extends ErrorSecrets {}
@@ -40,6 +42,7 @@ export {
   ErrorRecursive,
   ErrorVaultModified,
   ErrorMalformedVaultDBValue,
+  ErrorVaultUnlinked,
   ErrorCreateVaultId,
   ErrorSecretUndefined,
   ErrorSecretDefined,

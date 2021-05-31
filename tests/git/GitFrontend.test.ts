@@ -2,9 +2,10 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
 import { KeyManager } from '@/keys';
-import { VaultManager } from '@/vaults';
 import { GitFrontend } from '@/git';
+import { VaultManager } from '@/vaults';
 
 let dataDir: string;
 let destDir: string;
