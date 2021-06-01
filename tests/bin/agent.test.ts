@@ -1,19 +1,24 @@
+import type { Claim } from '@/sigchain/types';
+
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { Lockfile } from '@/lockfile';
-import PolykeyAgent from '@/PolykeyAgent';
-
 import * as utils from '@/utils';
 import * as testUtils from './utils';
 import * as agentUtils from '@/agent/utils';
+import * as sessionErrors from '@/session/errors';
+
+import PolykeyAgent from '@/PolykeyAgent';
+
+import { Lockfile } from '@/lockfile';
 
 let dataDir: string;
 let nodePath: string;
 let passwordFile: string;
-const password = 'passsword';
+const passwordFileExitCode = 64;
+const password = 'password';
 const logger = new Logger('AgentServerTest', LogLevel.WARN, [
   new StreamHandler(),
 ]);
@@ -221,7 +226,7 @@ describe('CLI agent', () => {
 
       // Stopping the agent.
       const result = await testUtils.pk(['agent', 'stop', '-np', nodePath]);
-      expect(result).toBe(1);
+      expect(result).toBe(64);
       await utils.sleep(1500);
 
       await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
@@ -244,6 +249,199 @@ describe('CLI agent', () => {
 
       files = await fs.promises.readdir(nodePath);
       expect(files.includes('agent-lock.json')).toBeFalsy();
+    });
+  });
+
+  describe('Agent unlock', () => {
+    let dataDir: string;
+    let passwordFile: string;
+    let agent: PolykeyAgent;
+
+    beforeEach(async () => {
+      dataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      passwordFile = path.join(dataDir, 'passwordFile');
+      await fs.promises.writeFile(passwordFile, password);
+
+      agent = new PolykeyAgent({
+        nodePath: dataDir,
+        logger: logger,
+      });
+    });
+
+    afterEach(async () => {
+      await fs.promises.rm(dataDir, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    test('should fail if agent not running.', async () => {
+      const result = await testUtils.pk([
+        'agent',
+        'unlock',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+      ]);
+      expect(result).toBe(64);
+    });
+    test('should provide the token to the client and store the token', async () => {
+      await agent.start({ password });
+
+      const result = await testUtils.pk([
+        'agent',
+        'unlock',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+      ]);
+      expect(result).toBe(0);
+
+      const content = await fs.promises.readFile(
+        path.join(dataDir, 'client', 'token'),
+        { encoding: 'utf-8' },
+      );
+
+      const verify = await agent.sessions.verifyJWTToken(content as Claim);
+      expect(verify).toBeTruthy();
+
+      await agent.stop();
+    });
+    // test('should fail if password file is not provided', async () => {
+    //   const result = await testUtils.pk(['agent', 'unlock', '-np', dataDir]);
+    //   expect(result).toBe(passwordFileExitCode);
+    // });
+  });
+
+  describe('Agent lock', () => {
+    let dataDir: string;
+    let passwordFile: string;
+    let agent: PolykeyAgent;
+
+    beforeEach(async () => {
+      dataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      passwordFile = path.join(dataDir, 'passwordFile');
+      await fs.promises.writeFile(passwordFile, password);
+
+      agent = new PolykeyAgent({
+        nodePath: dataDir,
+        logger: logger,
+      });
+    });
+
+    afterEach(async () => {
+      await fs.promises.rm(dataDir, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    test('should fail if agent not running.', async () => {
+      const result = await testUtils.pk(['agent', 'lock', '-np', dataDir]);
+      expect(result).toBe(64);
+    });
+    test('should remove the token from the client and delete the token', async () => {
+      await agent.start({ password });
+
+      const result = await testUtils.pk(['agent', 'lock', '-np', dataDir]);
+      expect(result).toBe(0);
+
+      const content = await fs.promises.readFile(
+        path.join(dataDir, 'client', 'token'),
+        { encoding: 'utf-8' },
+      );
+
+      await expect(
+        agent.sessions.verifyJWTToken(content as Claim),
+      ).rejects.toThrow(sessionErrors.ErrorSessionJWTTokenInvalid);
+
+      await agent.stop();
+    });
+    test('should fail if password file is not provided', async () => {
+      const result = await testUtils.pk(['agent', 'lock', '-np', dataDir]);
+      expect(result).toBe(passwordFileExitCode);
+    });
+  });
+
+  describe('Agent lockall', () => {
+    let dataDir: string;
+    let passwordFile: string;
+    let agent: PolykeyAgent;
+
+    beforeEach(async () => {
+      dataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      passwordFile = path.join(dataDir, 'passwordFile');
+      await fs.promises.writeFile(passwordFile, password);
+
+      agent = new PolykeyAgent({
+        nodePath: dataDir,
+        logger: logger,
+      });
+    });
+
+    afterEach(async () => {
+      await fs.promises.rm(dataDir, {
+        force: true,
+        recursive: true,
+      });
+    });
+
+    test('should fail if agent not running.', async () => {
+      const result = await testUtils.pk(['agent', 'lockall', '-np', dataDir]);
+      expect(result).toBe(64);
+    });
+    test('should fail without a token', async () => {
+      await agent.start({ password });
+
+      const result = await testUtils.pk([
+        'agent',
+        'lockall',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+      ]);
+      expect(result).toBe(77);
+
+      await agent.stop();
+    });
+    test('should cause old tokens to fail verification', async () => {
+      await agent.start({ password });
+
+      const token = await agent.sessions.generateJWTToken();
+
+      await testUtils.pk([
+        'agent',
+        'unlock',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+      ]);
+
+      const result = await testUtils.pk([
+        'agent',
+        'lockall',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+      ]);
+      expect(result).toBe(0);
+
+      await expect(agent.sessions.verifyJWTToken(token)).rejects.toThrow(
+        sessionErrors.ErrorSessionJWTTokenInvalid,
+      );
+
+      await agent.stop();
     });
   });
 });

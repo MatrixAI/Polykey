@@ -83,7 +83,11 @@ commandSecretEnv.action(async (options, command) => {
       vaultMessage.setName(obj.vaultName);
       vaultSpecificMessage.setVault(vaultMessage);
       vaultSpecificMessage.setName(obj.secretName);
-      const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
+      const res = await grpcClient.vaultsGetSecret(
+        vaultSpecificMessage,
+        meta,
+        await client.session.createJWTCallCredentials(),
+      );
       const secret = res.getName();
       secretEnv[obj.variableName] = secret;
     }

@@ -37,7 +37,11 @@ commandCertChain.action(async (options) => {
     const grpcClient = client.grpcClient;
 
     const data: Array<string> = [];
-    const certGenerator = grpcClient.certsChainGet(emptyMessage, meta);
+    const certGenerator = grpcClient.certsChainGet(
+      emptyMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
     for await (const cert of certGenerator) {
       data.push(`Certificate:\t\t${cert.getCert()}`);
     }

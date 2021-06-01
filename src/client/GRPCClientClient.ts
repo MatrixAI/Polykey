@@ -36,6 +36,22 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
+  public sessionRequestJWT(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.JWTTokenMessage>(
+      this.client,
+      this.client.sessionRequestJWT,
+    )(...args);
+  }
+
+  public sessionChangeKey(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.sessionChangeKey,
+    )(...args);
+  }
+
   public vaultsList(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.VaultMessage>(

@@ -52,7 +52,11 @@ commandVaultShare.action(async (options, command) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.vaultsShare(shareMessage, meta);
+    await grpcClient.vaultsShare(
+      shareMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const msg = options.unset ? 'Unshared' : 'Shared';
 

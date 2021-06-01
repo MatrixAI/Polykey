@@ -39,7 +39,11 @@ commandListVaults.action(async (options) => {
     const grpcClient = client.grpcClient;
 
     const data: Array<string> = [];
-    const vaultListGenerator = grpcClient.vaultsList(emptyMessage, meta);
+    const vaultListGenerator = grpcClient.vaultsList(
+      emptyMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
     for await (const vault of vaultListGenerator) {
       data.push(`${vault.getName()}:\t\t${vault.getId()}`);
     }

@@ -27,6 +27,7 @@ describe('GRPCClientClient', () => {
   let dataDir: string;
 
   let polykeyAgent: PolykeyAgent;
+  let callCredentials: Partial<grpc.CallOptions>;
 
   let nodeId: NodeId;
 
@@ -49,15 +50,11 @@ describe('GRPCClientClient', () => {
       logger: logger,
     });
 
+    await polykeyAgent.start({ password: 'password' });
+
     [server, port] = await testUtils.openTestClientServer({
       polykeyAgent,
     });
-
-    await polykeyAgent.lockfile.start({ nodeId });
-    await polykeyAgent.lockfile.updateLockfile('host', '127.0.0.1');
-    await polykeyAgent.lockfile.updateLockfile('port', port);
-    await polykeyAgent.lockfile.updateLockfile('fwdProxyHost', '::');
-    await polykeyAgent.lockfile.updateLockfile('fwdProxyPort', 0);
 
     pkClient = new PolykeyClient({
       nodePath: dataDir,
@@ -69,13 +66,24 @@ describe('GRPCClientClient', () => {
 
     client = pkClient.grpcClient;
     await client.start({});
+
+    const token = await polykeyAgent.sessions.generateJWTToken();
+    callCredentials = {
+      credentials: grpc.CallCredentials.createFromMetadataGenerator(
+        (_params, callback) => {
+          const meta = new grpc.Metadata();
+          meta.add('Authorization', `Bearer: ${token}`);
+          callback(null, meta);
+        },
+      ),
+    };
   });
   afterEach(async () => {
     await client.stop();
     await pkClient.stop();
     await testUtils.closeTestClientServer(server);
 
-    await polykeyAgent.lockfile.stop();
+    await polykeyAgent.stop();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -85,8 +93,7 @@ describe('GRPCClientClient', () => {
   test('echo', async () => {
     const echoMessage = new clientPB.EchoMessage();
     echoMessage.setChallenge('yes');
-    await client.echo(echoMessage);
-    const response = await client.echo(echoMessage);
+    const response = await client.echo(echoMessage, callCredentials);
     expect(response.getChallenge()).toBe('yes');
   });
 });

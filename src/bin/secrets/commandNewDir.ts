@@ -54,7 +54,11 @@ commandNewDir.action(async (options) => {
     vaultSpecificMessage.setVault(vaultMessage);
     vaultSpecificMessage.setName(secretName);
 
-    await grpcClient.vaultsMkdir(vaultSpecificMessage, meta);
+    await grpcClient.vaultsMkdir(
+      vaultSpecificMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

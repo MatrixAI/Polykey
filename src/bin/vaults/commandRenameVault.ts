@@ -51,7 +51,11 @@ commandRenameVault.action(async (options) => {
     vaultMessage.setId(options.vaultName);
     vaultMessage.setName(options.newName);
 
-    const pCall = grpcClient.vaultsRename(vaultMessage, meta);
+    const pCall = grpcClient.vaultsRename(
+      vaultMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {

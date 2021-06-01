@@ -1,9 +1,9 @@
 import * as grpc from '@grpc/grpc-js';
 import * as clientPB from '../proto/js/Client_pb';
 
-import { KeyManager } from '../keys';
 import * as utils from './utils';
 import * as grpcUtils from '../grpc/utils';
+import { KeyManager } from '../keys';
 import { SessionManager } from '../session';
 
 const createKeysRPC = ({
@@ -23,7 +23,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.KeyPairMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const keyPair = keyManager.getRootKeyPairPem();
         response.setPublic(keyPair.publicKey);
         response.setPrivate(keyPair.privateKey);
@@ -38,7 +38,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         await keyManager.resetRootKeyPair(call.request.getName());
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -51,7 +51,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         await keyManager.renewRootKeyPair(call.request.getName());
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -67,7 +67,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.CryptoMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const data = await keyManager.encryptWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
         );
@@ -86,7 +86,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.CryptoMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const data = await keyManager.decryptWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
         );
@@ -105,7 +105,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.CryptoMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const signature = await keyManager.signWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
         );
@@ -124,7 +124,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const status = await keyManager.verifyWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
           Buffer.from(call.request.getSignature(), 'binary'),
@@ -144,7 +144,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         await keyManager.changeRootKeyPassword(call.request.getPassword());
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -160,7 +160,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.CertificateMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const cert = keyManager.getRootCertPem();
         response.setCert(cert);
       } catch (err) {
@@ -176,7 +176,7 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const certs: Array<string> = await keyManager.getRootCertChainPems();
         let certMessage: clientPB.CertificateMessage;
         for (const cert of certs) {

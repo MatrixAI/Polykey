@@ -1,8 +1,13 @@
 import type { POJO } from '../types';
 
+import prompts from 'prompts';
 import commander from 'commander';
 import Logger, { LogLevel } from '@matrixai/logger';
+
 import * as grpc from '@grpc/grpc-js';
+
+import { KeyManager } from '../keys';
+import { utils as clientUtils, errors as clientErrors } from '../client';
 
 const pathRegex = /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
 
@@ -97,7 +102,7 @@ function createCommand(
   if (passwordFile) {
     cmd.addOption(
       new commander.Option(
-        '--password-file <passwordFile>',
+        '-pf --password-file <passwordFile>',
         'Password File Path',
       ),
     );
@@ -124,66 +129,6 @@ function promisifyGrpc<t1, t2>(
     });
   };
 }
-
-// async function getAgentClient(
-//   // polykeyPath: string,
-//   // pkLogger: Logger,
-//   // background = false,
-//   // restartOnStopped = true,
-//   // failOnNotInitialized = true,
-//   host: string = 'localhost',
-//   port: number = 55557,
-// ) {
-//   // if (restartOnStopped) {
-//   //   // make sure agent is running
-//   //   const pid = await PolykeyAgent.startAgent(
-//   //     polykeyPath,
-//   //     background,
-//   //     failOnNotInitialized,
-//   //   );
-
-//   //   pkLogger.info(`agent has started with a pid of ${pid}`);
-//   // }
-
-//   // const client: AgentClient = PolykeyAgent.connectToAgent(polykeyPath);
-//   // try {
-//   //   const res = (await promisifyGrpc(client.getStatus.bind(client))(
-//   //     new agentPB.EmptyMessage(),
-//   //   )) as agentPB.AgentStatusMessage;
-//   //   if (res.getStatus() != agentPB.AgentStatusType.ONLINE) {
-//   //     throw Error('agent is offline');
-//   //   } else {
-//   //     return client;
-//   //   }
-//   // } catch (error) {
-//   //   throw Error('agent is offline');
-//   // }
-//   const client = new GRPCClientClient({ host, port });
-//   try {
-//     await client.start({
-//       credentials: grpcUtils.clientCredentials(),
-//     });
-//   } catch (err) {
-//     throw new errors.ErrorGRPCNotStarted();
-//   }
-
-//   return client;
-// }
-
-// function createAsyncAction(fn: (...args: any[]) => Promise<void>, client: GRPCClientClient): (options, command) => Promise<void> {
-//   return async (options, command) => {
-//     const client = await getAgentClient();
-//     await fn(options, command, client);
-//     client.stop();
-//   }
-// }
-
-// function createSyncAction(fn: (...args: any[]) => void, client: GRPCClientClient): (options, command) => void {
-//   return (options, command) => {
-//     fn(options, command);
-//     client.stop();
-//   }
-// }
 
 function outputFormatter(msg: OutputObject): string {
   let output = '';
@@ -218,15 +163,49 @@ function outputFormatter(msg: OutputObject): string {
   return output;
 }
 
+async function requestPassword(): Promise<string> {
+  const response = await prompts({
+    type: 'text',
+    name: 'password',
+    message: 'Please enter your password',
+  });
+  return response.password;
+}
+
+// async function requestPassword(keyManager: KeyManager, attempts: number = 3) {
+//   let i = 0;
+//   let correct = false;
+//   while (i < attempts) {
+//     const response = await prompts({
+//       type: 'text',
+//       name: 'password',
+//       message: 'Please enter your password',
+//     });
+//     try {
+//       clientUtils.checkPassword(response.password, keyManager);
+//       correct = true;
+//     } catch (err) {
+//       if (err instanceof clientErrors.ErrorPassword) {
+//         if (attempts == 2) {
+//           throw new clientErrors.ErrorPassword();
+//         }
+//         i++;
+//       }
+//     }
+//     if (correct) {
+//       break;
+//     }
+//   }
+//   return;
+// }
+
 export {
   pathRegex,
   verboseToLogLevel,
   createCommand,
   promisifyGrpc,
-  // getAgentClient,
-  // createAsyncAction,
-  // createSyncAction,
   outputFormatter,
   OutputObject,
   PolykeyCommand,
+  requestPassword,
 };

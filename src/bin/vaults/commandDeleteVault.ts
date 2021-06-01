@@ -43,7 +43,11 @@ commandDeleteVault.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.vaultsDelete(vaultMessage, meta);
+    const pCall = grpcClient.vaultsDelete(
+      vaultMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {

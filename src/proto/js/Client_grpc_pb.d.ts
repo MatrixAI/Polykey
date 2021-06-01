@@ -11,6 +11,8 @@ import * as Client_pb from "./Client_pb";
 interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     echo: IClientService_IEcho;
     agentStop: IClientService_IAgentStop;
+    sessionRequestJWT: IClientService_ISessionRequestJWT;
+    sessionChangeKey: IClientService_ISessionChangeKey;
     nodesList: IClientService_INodesList;
     keysRootKeyPair: IClientService_IKeysRootKeyPair;
     keysResetKeyPair: IClientService_IKeysResetKeyPair;
@@ -69,6 +71,24 @@ interface IClientService_IAgentStop extends grpc.MethodDefinition<Client_pb.Empt
     requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
     responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+}
+interface IClientService_ISessionRequestJWT extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.JWTTokenMessage> {
+    path: "/clientInterface.Client/SessionRequestJWT";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+    responseSerialize: grpc.serialize<Client_pb.JWTTokenMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.JWTTokenMessage>;
+}
+interface IClientService_ISessionChangeKey extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.StatusMessage> {
+    path: "/clientInterface.Client/SessionChangeKey";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+    responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
 }
 interface IClientService_INodesList extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.NodeMessage> {
     path: "/clientInterface.Client/NodesList";
@@ -427,6 +447,8 @@ export const ClientService: IClientService;
 export interface IClientServer extends grpc.UntypedServiceImplementation {
     echo: grpc.handleUnaryCall<Client_pb.EchoMessage, Client_pb.EchoMessage>;
     agentStop: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.EmptyMessage>;
+    sessionRequestJWT: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.JWTTokenMessage>;
+    sessionChangeKey: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.StatusMessage>;
     nodesList: grpc.handleServerStreamingCall<Client_pb.EmptyMessage, Client_pb.NodeMessage>;
     keysRootKeyPair: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.KeyPairMessage>;
     keysResetKeyPair: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.EmptyMessage>;
@@ -475,6 +497,12 @@ export interface IClientClient {
     agentStop(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    sessionRequestJWT(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionChangeKey(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     nodesList(request: Client_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
     nodesList(request: Client_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
     keysRootKeyPair(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
@@ -595,6 +623,12 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public agentStop(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public sessionRequestJWT(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionChangeKey(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public nodesList(request: Client_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
     public nodesList(request: Client_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
     public keysRootKeyPair(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;

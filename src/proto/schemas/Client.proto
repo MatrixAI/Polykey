@@ -8,6 +8,10 @@ service Client {
   // Agent
   rpc AgentStop(EmptyMessage) returns (EmptyMessage) {};
 
+  // Session
+  rpc SessionRequestJWT (EmptyMessage) returns (JWTTokenMessage) {};
+  rpc SessionChangeKey (EmptyMessage) returns (StatusMessage) {};
+
   // Nodes
   rpc NodesList(EmptyMessage) returns (stream NodeMessage) {};
 
@@ -67,6 +71,12 @@ message StatusMessage {
 
 message EchoMessage {
   string challenge = 1;
+}
+
+// Session
+
+message JWTTokenMessage {
+  string token = 1;
 }
 
 // Vaults

@@ -31,9 +31,10 @@ commandCreateVault.action(async (options) => {
   if (options.passwordFile) {
     meta.set('passwordFile', options.passwordFile);
   }
-  clientConfig['nodePath'] = options.nodePath
+  const nodePath = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
+  clientConfig['nodePath'] = nodePath;
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
@@ -43,7 +44,11 @@ commandCreateVault.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.vaultsCreate(vaultMessage, meta);
+    const pCall = grpcClient.vaultsCreate(
+      vaultMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {

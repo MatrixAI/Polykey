@@ -53,7 +53,11 @@ commandDeleteSecret.action(async (options) => {
     vaultSpecificMessage.setVault(vaultMessage);
     vaultSpecificMessage.setName(secretName);
 
-    const pCall = grpcClient.vaultsDeleteSecret(vaultSpecificMessage, meta);
+    const pCall = grpcClient.vaultsDeleteSecret(
+      vaultSpecificMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {

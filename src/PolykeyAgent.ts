@@ -28,7 +28,7 @@ import { createClientService, ClientService } from './client';
 class Polykey {
   public readonly nodePath: string;
   public readonly lockfile: Lockfile;
-  public readonly sessionManager: SessionManager;
+  public readonly sessions: SessionManager;
   public readonly keys: KeyManager;
   public readonly vaults: VaultManager;
   public readonly nodes: NodeManager;
@@ -198,8 +198,8 @@ class Polykey {
         logger: logger,
       });
 
-    this.sessionManager = new SessionManager({
-      keyManager: this.keys,
+    this.sessions = new SessionManager({
+      db: this.db,
       logger: logger,
     });
 
@@ -233,14 +233,12 @@ class Polykey {
     rootKeyPairBits,
     rootCertDuration,
     keysDbBits,
-    sessionDuration,
     fresh = false,
   }: {
     password: string;
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     keysDbBits?: number;
-    sessionDuration?: number;
     fresh?: boolean;
   }) {
     this.logger.info('Starting Polykey');
@@ -294,7 +292,7 @@ class Polykey {
 
     await this.nodes.start({ nodeId, fresh });
     await this.vaults.start({ fresh });
-    await this.gestalts.start({ fresh });
+    // await this.gestalts.start({ fresh });
     await this.identities.start({ fresh });
 
     const keyPrivatePem = this.keys.getRootKeyPairPem().privateKey;
@@ -336,8 +334,8 @@ class Polykey {
       this.fwdProxy.getProxyPort(),
     );
 
-    await this.sessionManager.start({
-      sessionDuration: sessionDuration,
+    await this.sessions.start({
+      bits: rootKeyPairBits ?? 4096,
     });
 
     this.logger.info('Started Polykey');
@@ -349,7 +347,7 @@ class Polykey {
   public async stop() {
     this.logger.info('Stopping Polykey');
 
-    await this.sessionManager.stop();
+    await this.sessions.stop();
 
     this.logger.info(
       `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
@@ -361,7 +359,7 @@ class Polykey {
     await this.gitManager.stop();
 
     await this.identities.stop();
-    await this.gestalts.stop();
+    // await this.gestalts.stop();
 
     await this.vaults.stop();
     await this.nodes.stop();

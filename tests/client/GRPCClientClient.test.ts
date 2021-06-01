@@ -25,6 +25,7 @@ describe('GRPCClientClient', () => {
 
   let polykeyAgent: PolykeyAgent;
   let dataDir: string;
+  let callCredentials: Partial<grpc.CallOptions>;
 
   let nodeId: NodeId;
 
@@ -47,6 +48,8 @@ describe('GRPCClientClient', () => {
       logger: logger,
     });
 
+    await polykeyAgent.start({ password: 'password ' });
+
     [server, port] = await testUtils.openTestClientServer({
       polykeyAgent,
     });
@@ -59,10 +62,23 @@ describe('GRPCClientClient', () => {
     });
 
     await client.start({});
+
+    const token = await polykeyAgent.sessions.generateJWTToken();
+    callCredentials = {
+      credentials: grpc.CallCredentials.createFromMetadataGenerator(
+        (_params, callback) => {
+          const meta = new grpc.Metadata();
+          meta.add('Authorization', `Bearer: ${token}`);
+          callback(null, meta);
+        },
+      ),
+    };
   });
   afterEach(async () => {
     await client.stop();
     await testUtils.closeTestClientServer(server);
+
+    await polykeyAgent.stop();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -72,8 +88,7 @@ describe('GRPCClientClient', () => {
   test('echo', async () => {
     const echoMessage = new clientPB.EchoMessage();
     echoMessage.setChallenge('yes');
-    await client.echo(echoMessage);
-    const response = await client.echo(echoMessage);
+    const response = await client.echo(echoMessage, callCredentials);
     expect(response.getChallenge()).toBe('yes');
   });
 });

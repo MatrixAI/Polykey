@@ -55,7 +55,11 @@ commandVerify.action(async (options) => {
     cryptoMessage.setData(data);
     cryptoMessage.setSignature(signature);
 
-    const response = await grpcClient.keysVerify(cryptoMessage, meta);
+    const response = await grpcClient.keysVerify(
+      cryptoMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

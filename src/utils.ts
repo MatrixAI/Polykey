@@ -1,8 +1,11 @@
 import os from 'os';
+import base58 from 'bs58';
 import process from 'process';
 import { Buffer } from 'buffer';
 import { FileSystem, Timer } from './types';
 
+import * as keysUtils from './keys/utils';
+import * as networkUtils from './network/utils';
 import * as errors from './errors';
 
 function getDefaultNodePath(): string {
@@ -135,6 +138,11 @@ function arrayUnset<T>(items: Array<T>, item: T) {
   }
 }
 
+async function generateUserToken() {
+  const bytes = await keysUtils.getRandomBytes(32);
+  return base58.encode(bytes);
+}
+
 export {
   getDefaultNodePath,
   mkdirExists,
@@ -150,4 +158,5 @@ export {
   pidIsRunning,
   arraySet,
   arrayUnset,
+  generateUserToken,
 };

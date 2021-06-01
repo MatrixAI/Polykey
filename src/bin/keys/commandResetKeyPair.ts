@@ -46,7 +46,11 @@ commandResetKeyPair.action(async (options) => {
     });
     keyMessage.setName(password);
 
-    await grpcClient.keysResetKeyPair(keyMessage, meta);
+    await grpcClient.keysResetKeyPair(
+      keyMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

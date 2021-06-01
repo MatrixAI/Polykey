@@ -40,7 +40,6 @@ async function openTestClientClient(nodePath) {
     logger,
   });
   await pkc.start({
-    credentials: grpc.ChannelCredentials.createInsecure(),
     timeout: 30000,
   });
 

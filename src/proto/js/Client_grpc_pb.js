@@ -70,6 +70,17 @@ function deserialize_clientInterface_GestaltTrustMessage(buffer_arg) {
   return Client_pb.GestaltTrustMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_JWTTokenMessage(arg) {
+  if (!(arg instanceof Client_pb.JWTTokenMessage)) {
+    throw new Error('Expected argument of type clientInterface.JWTTokenMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_JWTTokenMessage(buffer_arg) {
+  return Client_pb.JWTTokenMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_KeyMessage(arg) {
   if (!(arg instanceof Client_pb.KeyMessage)) {
     throw new Error('Expected argument of type clientInterface.KeyMessage');
@@ -281,6 +292,29 @@ agentStop: {
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
+  },
+  // Session
+sessionRequestJWT: {
+    path: '/clientInterface.Client/SessionRequestJWT',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.EmptyMessage,
+    responseType: Client_pb.JWTTokenMessage,
+    requestSerialize: serialize_clientInterface_EmptyMessage,
+    requestDeserialize: deserialize_clientInterface_EmptyMessage,
+    responseSerialize: serialize_clientInterface_JWTTokenMessage,
+    responseDeserialize: deserialize_clientInterface_JWTTokenMessage,
+  },
+  sessionChangeKey: {
+    path: '/clientInterface.Client/SessionChangeKey',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.EmptyMessage,
+    responseType: Client_pb.StatusMessage,
+    requestSerialize: serialize_clientInterface_EmptyMessage,
+    requestDeserialize: deserialize_clientInterface_EmptyMessage,
+    responseSerialize: serialize_clientInterface_StatusMessage,
+    responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
   // Nodes
 nodesList: {

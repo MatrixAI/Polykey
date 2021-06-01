@@ -1,6 +1,7 @@
+import type { Vault } from '@/vaults';
+import type { Claim } from '@/sigchain/types';
 import type { NodeId, NodeInfo } from '@/nodes/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
-import type { Vault } from '@/vaults';
 
 import os from 'os';
 import path from 'path';
@@ -22,6 +23,7 @@ import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import { DB } from '@/db';
 import { PolykeyAgent } from '@';
 
+import * as utils from '@/utils';
 import * as testUtils from './utils';
 import * as grpcUtils from '@/grpc/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
@@ -59,6 +61,8 @@ describe('Client service', () => {
   let revProxy: ReverseProxy;
 
   let nodeId: NodeId;
+
+  let callCredentials: Partial<grpc.CallOptions>;
 
   beforeAll(async () => {
     const keyPair = await keyUtils.generateKeyPair(4096);
@@ -172,20 +176,31 @@ describe('Client service', () => {
     await polykeyAgent.identities.start();
     await polykeyAgent.gestalts.start();
     await polykeyAgent.gitManager.start();
-    await polykeyAgent.sessionManager.start({ sessionDuration: 3000 });
+    await polykeyAgent.sessions.start({ bits: 4069 });
 
     [server, port] = await testUtils.openTestClientServer({
       polykeyAgent,
     });
 
     client = await testUtils.openSimpleClientClient(port);
+
+    const token = await polykeyAgent.sessions.generateJWTToken();
+    callCredentials = {
+      credentials: grpc.CallCredentials.createFromMetadataGenerator(
+        (_params, callback) => {
+          const meta = new grpc.Metadata();
+          meta.add('Authorization', `Bearer: ${token}`);
+          callback(null, meta);
+        },
+      ),
+    };
   });
 
   afterEach(async () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await polykeyAgent.sessionManager.stop();
+    await polykeyAgent.sessions.stop();
     await polykeyAgent.gitManager.stop();
     await polykeyAgent.gestalts.stop();
     await polykeyAgent.identities.stop();
@@ -212,12 +227,30 @@ describe('Client service', () => {
     );
     const m = new clientPB.EchoMessage();
     m.setChallenge('Hello');
-    const res: clientPB.EchoMessage = await echo(m);
+    const res: clientPB.EchoMessage = await echo(m, callCredentials);
     expect(res.getChallenge()).toBe('Hello');
 
     // Hard Coded error
     m.setChallenge('ThrowAnError');
     await expect(echo(m)).rejects.toThrow(polykeyErrors.ErrorPolykey);
+  });
+  test('can request JWT', async () => {
+    const requestJWT = grpcUtils.promisifyUnaryCall<clientPB.JWTTokenMessage>(
+      client,
+      client.sessionRequestJWT,
+    );
+
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
+    const m = new clientPB.EmptyMessage();
+
+    const res = await requestJWT(m, meta);
+    expect(typeof res.getToken()).toBe('string');
+    const result = await polykeyAgent.sessions.verifyJWTToken(
+      res.getToken() as Claim,
+    );
+    expect(result).toBeTruthy();
   });
   test('can get vaults', async () => {
     const listVaults =
@@ -236,7 +269,7 @@ describe('Client service', () => {
     meta.set('passwordFile', passwordFile);
 
     const m = new clientPB.EmptyMessage();
-    const res = listVaults(m, meta);
+    const res = listVaults(m, meta, callCredentials);
     const names: Array<string> = [];
     for await (const val of res) {
       names.push(val.getName());
@@ -256,7 +289,7 @@ describe('Client service', () => {
     const m = new clientPB.VaultMessage();
     m.setName('NewVault');
 
-    const res = await createVault(m, meta);
+    const res = await createVault(m, meta, callCredentials);
     expect(res.getSuccess()).toBe(true);
     const name = vaultManager.listVaults().pop()?.name;
     expect(name).toBe('NewVault');
@@ -282,7 +315,7 @@ describe('Client service', () => {
     const m = new clientPB.VaultMessage();
     m.setName(vaults[0].vaultId);
 
-    const res = await deleteVault(m, meta);
+    const res = await deleteVault(m, meta, callCredentials);
     expect(res.getSuccess()).toBe(true);
 
     const list: Array<string> = [];
@@ -292,7 +325,7 @@ describe('Client service', () => {
     }
     expect(list).toStrictEqual(vaultList2.sort());
 
-    await expect(deleteVault(m, meta)).rejects.toThrow(
+    await expect(deleteVault(m, meta, callCredentials)).rejects.toThrow(
       vaultErrors.ErrorVaultUndefined,
     );
   });
@@ -311,7 +344,7 @@ describe('Client service', () => {
     m.setId(vault.vaultId);
     m.setName('MyRenamedVault');
 
-    const res = await renameVault(m, meta);
+    const res = await renameVault(m, meta, callCredentials);
     expect(res.getSuccess()).toBe(true);
 
     const name = vaultManager.listVaults().pop()?.name;
@@ -332,11 +365,11 @@ describe('Client service', () => {
     const m = new clientPB.VaultMessage();
     m.setName(vault.vaultId);
 
-    const res = await statsVault(m, meta);
+    const res = await statsVault(m, meta, callCredentials);
     const stats1 = res.getStats();
 
     m.setName(vault2.vaultId);
-    const res2 = await statsVault(m, meta);
+    const res2 = await statsVault(m, meta, callCredentials);
     const stats2 = res2.getStats();
 
     expect(stats1).toBe(
@@ -364,7 +397,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    await mkdirVault(m, meta);
+    await mkdirVault(m, meta, callCredentials);
 
     expect(
       vault.EncryptedFS.existsSync(`${vault.vaultId}/${dirPath}`),
@@ -391,7 +424,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    const res = listSecretsVault(m, meta);
+    const res = listSecretsVault(m, meta, callCredentials);
 
     const names: Array<string> = [];
     for await (const val of res) {
@@ -425,7 +458,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    const res = await deleteSecretVault(m, meta);
+    const res = await deleteSecretVault(m, meta, callCredentials);
     expect(res.getSuccess()).toBeTruthy();
 
     expect((await vault.listSecrets()).sort()).toStrictEqual(
@@ -458,7 +491,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    await editSecretVault(m, meta);
+    await editSecretVault(m, meta, callCredentials);
 
     expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
       'content-change',
@@ -487,7 +520,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    const response = await getSecretVault(m, meta);
+    const response = await getSecretVault(m, meta, callCredentials);
 
     expect(response.getName().toString()).toStrictEqual('Secret1');
   });
@@ -522,7 +555,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    const response = await renameSecretVault(m, meta);
+    const response = await renameSecretVault(m, meta, callCredentials);
 
     expect(response.getSuccess()).toBeTruthy();
     expect((await vault.listSecrets()).sort()).toStrictEqual(
@@ -547,7 +580,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    const response = await newSecretVault(m, meta);
+    const response = await newSecretVault(m, meta, callCredentials);
 
     expect(response.getSuccess()).toBeTruthy();
     expect((await vault.listSecrets()).sort()).toStrictEqual(['Secret1']);
@@ -587,7 +620,7 @@ describe('Client service', () => {
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
-    await newDirSecretVault(m, meta);
+    await newDirSecretVault(m, meta, callCredentials);
 
     expect((await vault.listSecrets()).sort()).toStrictEqual(secrets.sort());
 
@@ -608,7 +641,7 @@ describe('Client service', () => {
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
 
-    const key = await getRootKeyPair(m, meta);
+    const key = await getRootKeyPair(m, meta, callCredentials);
 
     expect(key.getPrivate()).toBe(keyPair.privateKey);
     expect(key.getPublic()).toBe(keyPair.publicKey);
@@ -633,13 +666,13 @@ describe('Client service', () => {
     const m = new clientPB.KeyMessage();
     m.setName('somepassphrase');
 
-    await resetKeyPair(m, meta);
+    await resetKeyPair(m, meta, callCredentials);
 
     const mv = new clientPB.EmptyMessage();
 
     await fs.promises.writeFile(passwordFile, 'somepassphrase');
 
-    const key = await getRootKeyPair(mv, meta);
+    const key = await getRootKeyPair(mv, meta, callCredentials);
 
     expect(key.getPrivate()).not.toBe(keyPair.privateKey);
     expect(key.getPublic()).not.toBe(keyPair.publicKey);
@@ -658,7 +691,7 @@ describe('Client service', () => {
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
 
-    await renewKeyPair(m, meta);
+    await renewKeyPair(m, meta, callCredentials);
 
     const rootKeyPair2 = keyManager.getRootKeyPairPem();
 
@@ -685,10 +718,18 @@ describe('Client service', () => {
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
 
-    const cipherText = await encryptWithKeyPair(cryptoMessage, meta);
+    const cipherText = await encryptWithKeyPair(
+      cryptoMessage,
+      meta,
+      callCredentials,
+    );
 
     cryptoMessage.setData(cipherText.getData());
-    const plainText_ = await decryptWithKeyPair(cryptoMessage, meta);
+    const plainText_ = await decryptWithKeyPair(
+      cryptoMessage,
+      meta,
+      callCredentials,
+    );
 
     expect(plainText_.getData()).toBe(plainText.toString());
   });
@@ -712,11 +753,19 @@ describe('Client service', () => {
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
 
-    const signature = await signWithKeyPair(cryptoMessage, meta);
+    const signature = await signWithKeyPair(
+      cryptoMessage,
+      meta,
+      callCredentials,
+    );
 
     cryptoMessage.setSignature(signature.getSignature());
 
-    const signed = await verifyWithKeyPair(cryptoMessage, meta);
+    const signed = await verifyWithKeyPair(
+      cryptoMessage,
+      meta,
+      callCredentials,
+    );
 
     expect(signed.getSuccess()).toBe(true);
   });
@@ -733,7 +782,7 @@ describe('Client service', () => {
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
 
-    await changePasswordKeys(m, meta);
+    await changePasswordKeys(m, meta, callCredentials);
 
     await nodeManager.stop();
     await vaultManager.stop();
@@ -758,7 +807,7 @@ describe('Client service', () => {
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
 
-    const res = getChainCerts(m, meta);
+    const res = getChainCerts(m, meta, callCredentials);
     const certs: Array<string> = [];
     for await (const val of res) {
       certs.push(val.getCert());
@@ -768,7 +817,7 @@ describe('Client service', () => {
       (await keyManager.getRootCertChainPems()).sort(),
     );
 
-    const response = await getCerts(m, meta);
+    const response = await getCerts(m, meta, callCredentials);
 
     expect(response.getCert()).toBe(keyManager.getRootCertPem());
   });

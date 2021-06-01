@@ -46,6 +46,7 @@ commandListSecrets.action(async (options) => {
     const secretListGenerator = grpcClient.vaultsListSecrets(
       vaultMessage,
       meta,
+      await client.session.createJWTCallCredentials(),
     );
 
     const data: Array<string> = [];

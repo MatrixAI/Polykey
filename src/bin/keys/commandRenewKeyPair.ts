@@ -47,7 +47,11 @@ commandRenewKeyPair.action(async (options) => {
     });
     keyMessage.setName(password);
 
-    await grpcClient.keysRenewKeyPair(keyMessage, meta);
+    await grpcClient.keysRenewKeyPair(
+      keyMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({
