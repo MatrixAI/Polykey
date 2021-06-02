@@ -11,6 +11,7 @@ import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '@/client';
 import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
+import { SessionManager } from '@/session';
 import { VaultManager, Vault } from '@/vaults';
 import { IdentitiesManager } from '@/identities';
 import { KeyManager, utils as keyUtils } from '@/keys';
@@ -42,6 +43,7 @@ describe('Client service', () => {
   let nodeManager: NodeManager;
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
+  let sessionManager: SessionManager;
   let identitiesManager: IdentitiesManager;
 
   let fwdProxy: ForwardProxy;
@@ -124,11 +126,18 @@ describe('Client service', () => {
       logger: logger,
     });
 
+    sessionManager = new SessionManager({
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
     await nodeManager.start({ nodeId: nodeId });
     await identitiesManager.start();
     await gestaltGraph.start();
+    await sessionManager.start({ sessionDuration: 3000 });
 
     [server, port] = await testUtils.openTestClientServer({
       keyManager,
@@ -136,6 +145,7 @@ describe('Client service', () => {
       nodeManager,
       identitiesManager,
       gestaltGraph,
+      sessionManager,
     });
 
     client = await testUtils.openSimpleClientClient(port);
@@ -618,7 +628,6 @@ describe('Client service', () => {
     );
 
     const rootKeyPair1 = await keyManager.getRootKeyPairPem();
-    const rootCert1 = await keyManager.getRootCert();
 
     const m = new clientPB.KeyMessage();
     m.setName('somepassphrase');
@@ -765,12 +774,6 @@ describe('Client service', () => {
     expect(gestalts).toHaveLength(2);
   });
   test('setting independent node and identity gestalts', async () => {
-    const setNodeGestalts =
-      grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
-        client,
-        client.gestaltsSetNode,
-      );
-
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       links: {

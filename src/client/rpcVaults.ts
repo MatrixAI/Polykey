@@ -4,8 +4,15 @@ import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
 
 import { VaultManager, Vault } from '../vaults';
+import { SessionManager, errors as sessionErrors } from '../session';
 
-const createVaultRPC = ({ vaultManager }: { vaultManager: VaultManager }) => {
+const createVaultRPC = ({
+  vaultManager,
+  sessionManager,
+}: {
+  vaultManager: VaultManager;
+  sessionManager: SessionManager;
+}) => {
   return {
     vaultsList: async (
       call: grpc.ServerWritableStream<
