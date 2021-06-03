@@ -261,29 +261,7 @@ nodesList: {
     responseDeserialize: deserialize_clientInterface_NodeMessage,
   },
   // Keys
-keysDelete: {
-    path: '/clientInterface.Client/KeysDelete',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.KeyMessage,
-    responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_clientInterface_KeyMessage,
-    requestDeserialize: deserialize_clientInterface_KeyMessage,
-    responseSerialize: serialize_clientInterface_EmptyMessage,
-    responseDeserialize: deserialize_clientInterface_EmptyMessage,
-  },
-  keysGet: {
-    path: '/clientInterface.Client/KeysGet',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.KeyMessage,
-    responseType: Client_pb.KeyMessage,
-    requestSerialize: serialize_clientInterface_KeyMessage,
-    requestDeserialize: deserialize_clientInterface_KeyMessage,
-    responseSerialize: serialize_clientInterface_KeyMessage,
-    responseDeserialize: deserialize_clientInterface_KeyMessage,
-  },
-  keysRootKeyPair: {
+keysRootKeyPair: {
     path: '/clientInterface.Client/KeysRootKeyPair',
     requestStream: false,
     responseStream: false,
@@ -293,17 +271,6 @@ keysDelete: {
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
     responseSerialize: serialize_clientInterface_KeyPairMessage,
     responseDeserialize: deserialize_clientInterface_KeyPairMessage,
-  },
-  keysPut: {
-    path: '/clientInterface.Client/KeysPut',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.KeyMessage,
-    responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_clientInterface_KeyMessage,
-    requestDeserialize: deserialize_clientInterface_KeyMessage,
-    responseSerialize: serialize_clientInterface_EmptyMessage,
-    responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
   keysResetKeyPair: {
     path: '/clientInterface.Client/KeysResetKeyPair',

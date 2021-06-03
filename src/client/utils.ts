@@ -10,7 +10,6 @@ async function checkPassword(
   sessionManager: SessionManager,
 ): Promise<void> {
   const passwordFile = meta.get('passwordFile').pop();
-  meta.remove('passwordFile');
   let password;
   if (passwordFile) {
     password = await fs.promises.readFile(passwordFile, { encoding: 'utf-8' });

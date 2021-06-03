@@ -79,6 +79,9 @@ describe('Client service', () => {
     gestaltGraphPath = path.join(dataDir, 'gestalts');
     identitiesPath = path.join(dataDir, 'identities');
 
+    passwordFile = path.join(dataDir, 'password');
+    await fs.promises.writeFile(passwordFile, 'password');
+
     fwdProxy = new ForwardProxy({
       authToken: 'abc',
       logger: logger,
@@ -575,36 +578,6 @@ describe('Client service', () => {
     // remove temp directory
     await fs.promises.rmdir(tmpDir, { recursive: true });
   });
-  test('can delete a key', async () => {
-    const deleteKey = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.keysDelete,
-    );
-
-    await keyManager.putKey('keyOne', Buffer.from('firstkey'));
-
-    const m = new clientPB.KeyMessage();
-    m.setName('keyOne');
-
-    await deleteKey(m);
-
-    expect(await keyManager.getKey('keyOne')).not.toBeTruthy();
-  });
-  test('can get a key', async () => {
-    const getKey = grpcUtils.promisifyUnaryCall<clientPB.KeyMessage>(
-      client,
-      client.keysGet,
-    );
-
-    await keyManager.putKey('keyOne', Buffer.from('firstkey'));
-
-    const m = new clientPB.KeyMessage();
-    m.setName('keyOne');
-
-    const key = await getKey(m);
-
-    expect(key.getName()).toBe('firstkey');
-  });
   test('can get root keypair', async () => {
     const getRootKeyPair =
       grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
@@ -616,26 +589,13 @@ describe('Client service', () => {
 
     const m = new clientPB.EmptyMessage();
 
-    const key = await getRootKeyPair(m);
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
+    const key = await getRootKeyPair(m, meta);
 
     expect(key.getPrivate()).toBe(keyPair.privateKey);
     expect(key.getPublic()).toBe(keyPair.publicKey);
-  });
-  test('can put a key', async () => {
-    const putKey = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.keysPut,
-    );
-
-    const m = new clientPB.KeyMessage();
-    m.setName('keyOne');
-    m.setKey('firstkey');
-
-    await putKey(m);
-
-    const key = await keyManager.getKey('keyOne');
-
-    expect(key).toStrictEqual(Buffer.from('firstkey'));
   });
   test('can reset root keypair', async () => {
     const getRootKeyPair =
@@ -651,10 +611,13 @@ describe('Client service', () => {
 
     const keyPair = await keyManager.getRootKeyPairPem();
 
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
     const m = new clientPB.KeyMessage();
     m.setName('somepassphrase');
 
-    await resetKeyPair(m);
+    await resetKeyPair(m, meta);
 
     const mv = new clientPB.EmptyMessage();
 
@@ -674,7 +637,10 @@ describe('Client service', () => {
     const m = new clientPB.KeyMessage();
     m.setName('somepassphrase');
 
-    await renewKeyPair(m);
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
+    await renewKeyPair(m, meta);
 
     const rootKeyPair2 = keyManager.getRootKeyPairPem();
 
@@ -698,10 +664,13 @@ describe('Client service', () => {
     const cryptoMessage = new clientPB.CryptoMessage();
     cryptoMessage.setData(plainText.toString('binary'));
 
-    const cipherText = await encryptWithKeyPair(cryptoMessage);
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
+    const cipherText = await encryptWithKeyPair(cryptoMessage, meta);
 
     cryptoMessage.setData(cipherText.getData());
-    const plainText_ = await decryptWithKeyPair(cryptoMessage);
+    const plainText_ = await decryptWithKeyPair(cryptoMessage, meta);
 
     expect(plainText_.getData()).toBe(plainText.toString());
   });
@@ -722,10 +691,14 @@ describe('Client service', () => {
     const cryptoMessage = new clientPB.CryptoMessage();
     cryptoMessage.setData(data.toString('binary'));
 
-    const signature = await signWithKeyPair(cryptoMessage);
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
+    const signature = await signWithKeyPair(cryptoMessage, meta);
+
     cryptoMessage.setSignature(signature.getSignature());
 
-    const signed = await verifyWithKeyPair(cryptoMessage);
+    const signed = await verifyWithKeyPair(cryptoMessage, meta);
 
     expect(signed.getSuccess()).toBe(true);
   });
@@ -739,7 +712,10 @@ describe('Client service', () => {
     const m = new clientPB.PasswordMessage();
     m.setPassword('newpassword');
 
-    await changePasswordKeys(m);
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
+    await changePasswordKeys(m, meta);
 
     await nodeManager.stop();
     await vaultManager.stop();
@@ -760,7 +736,11 @@ describe('Client service', () => {
       );
 
     const m = new clientPB.EmptyMessage();
-    const res = getChainCerts(m);
+
+    const meta = new grpc.Metadata();
+    meta.set('passwordFile', passwordFile);
+
+    const res = getChainCerts(m, meta);
     const certs: Array<string> = [];
     for await (const val of res) {
       certs.push(val.getCert());
@@ -770,7 +750,7 @@ describe('Client service', () => {
       (await keyManager.getRootCertChainPems()).sort(),
     );
 
-    const response = await getCerts(m);
+    const response = await getCerts(m, meta);
 
     expect(response.getCert()).toBe(keyManager.getRootCertPem());
   });

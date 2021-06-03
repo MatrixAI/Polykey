@@ -11,10 +11,7 @@ import * as Client_pb from "./Client_pb";
 interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     echo: IClientService_IEcho;
     nodesList: IClientService_INodesList;
-    keysDelete: IClientService_IKeysDelete;
-    keysGet: IClientService_IKeysGet;
     keysRootKeyPair: IClientService_IKeysRootKeyPair;
-    keysPut: IClientService_IKeysPut;
     keysResetKeyPair: IClientService_IKeysResetKeyPair;
     keysRenewKeyPair: IClientService_IKeysRenewKeyPair;
     keysEncrypt: IClientService_IKeysEncrypt;
@@ -70,24 +67,6 @@ interface IClientService_INodesList extends grpc.MethodDefinition<Client_pb.Empt
     responseSerialize: grpc.serialize<Client_pb.NodeMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.NodeMessage>;
 }
-interface IClientService_IKeysDelete extends grpc.MethodDefinition<Client_pb.KeyMessage, Client_pb.EmptyMessage> {
-    path: "/clientInterface.Client/KeysDelete";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<Client_pb.KeyMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.KeyMessage>;
-    responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
-    responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
-}
-interface IClientService_IKeysGet extends grpc.MethodDefinition<Client_pb.KeyMessage, Client_pb.KeyMessage> {
-    path: "/clientInterface.Client/KeysGet";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<Client_pb.KeyMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.KeyMessage>;
-    responseSerialize: grpc.serialize<Client_pb.KeyMessage>;
-    responseDeserialize: grpc.deserialize<Client_pb.KeyMessage>;
-}
 interface IClientService_IKeysRootKeyPair extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.KeyPairMessage> {
     path: "/clientInterface.Client/KeysRootKeyPair";
     requestStream: false;
@@ -96,15 +75,6 @@ interface IClientService_IKeysRootKeyPair extends grpc.MethodDefinition<Client_p
     requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
     responseSerialize: grpc.serialize<Client_pb.KeyPairMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.KeyPairMessage>;
-}
-interface IClientService_IKeysPut extends grpc.MethodDefinition<Client_pb.KeyMessage, Client_pb.EmptyMessage> {
-    path: "/clientInterface.Client/KeysPut";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<Client_pb.KeyMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.KeyMessage>;
-    responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
-    responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
 }
 interface IClientService_IKeysResetKeyPair extends grpc.MethodDefinition<Client_pb.KeyMessage, Client_pb.EmptyMessage> {
     path: "/clientInterface.Client/KeysResetKeyPair";
@@ -427,10 +397,7 @@ export const ClientService: IClientService;
 export interface IClientServer extends grpc.UntypedServiceImplementation {
     echo: grpc.handleUnaryCall<Client_pb.EchoMessage, Client_pb.EchoMessage>;
     nodesList: grpc.handleServerStreamingCall<Client_pb.EmptyMessage, Client_pb.NodeMessage>;
-    keysDelete: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.EmptyMessage>;
-    keysGet: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.KeyMessage>;
     keysRootKeyPair: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.KeyPairMessage>;
-    keysPut: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.EmptyMessage>;
     keysResetKeyPair: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.EmptyMessage>;
     keysRenewKeyPair: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.EmptyMessage>;
     keysEncrypt: grpc.handleUnaryCall<Client_pb.CryptoMessage, Client_pb.CryptoMessage>;
@@ -474,18 +441,9 @@ export interface IClientClient {
     echo(request: Client_pb.EchoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EchoMessage) => void): grpc.ClientUnaryCall;
     nodesList(request: Client_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
     nodesList(request: Client_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
-    keysDelete(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    keysDelete(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    keysDelete(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    keysGet(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyMessage) => void): grpc.ClientUnaryCall;
-    keysGet(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyMessage) => void): grpc.ClientUnaryCall;
-    keysGet(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyMessage) => void): grpc.ClientUnaryCall;
     keysRootKeyPair(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
-    keysPut(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    keysPut(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    keysPut(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     keysResetKeyPair(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     keysResetKeyPair(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     keysResetKeyPair(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -595,18 +553,9 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public echo(request: Client_pb.EchoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EchoMessage) => void): grpc.ClientUnaryCall;
     public nodesList(request: Client_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
     public nodesList(request: Client_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
-    public keysDelete(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public keysDelete(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public keysDelete(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public keysGet(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyMessage) => void): grpc.ClientUnaryCall;
-    public keysGet(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyMessage) => void): grpc.ClientUnaryCall;
-    public keysGet(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyMessage) => void): grpc.ClientUnaryCall;
     public keysRootKeyPair(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     public keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     public keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
-    public keysPut(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public keysPut(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public keysPut(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public keysResetKeyPair(request: Client_pb.KeyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public keysResetKeyPair(request: Client_pb.KeyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public keysResetKeyPair(request: Client_pb.KeyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
