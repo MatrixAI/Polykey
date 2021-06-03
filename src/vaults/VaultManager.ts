@@ -144,6 +144,10 @@ class VaultManager {
       id = await generateVaultId();
     }
     const key = await generateVaultKey();
+
+    // write vault data
+    await this.vaultMap.setVault(vaultName, id as VaultId, key);
+
     const vault = new Vault({
       vaultId: id,
       vaultName: vaultName,
@@ -153,9 +157,6 @@ class VaultManager {
     });
     vault.create();
     this.vaults[id] = { vault: vault, vaultKey: key, vaultName: vaultName };
-
-    // write vault data
-    await this.vaultMap.setVault(vaultName, id as VaultId, key);
 
     return vault;
   }
@@ -256,18 +257,16 @@ class VaultManager {
   }
 
   /**
-   * Gives vault ids given the vault name
+   * Gives vault id given the vault name
    * @param vaultName The Vault name
-   * @returns A list of all ids that match the given vault name. List is empty if nothing is found
+   * @returns the id that matches the given vault name. undefined if nothing is found
    */
-  public getVaultIds(vaultName: string): Array<string> {
-    const result: Array<string> = [];
+  public getVaultId(vaultName: string): string | undefined {
     for (const id in this.vaults) {
       if (vaultName === this.vaults[id].vaultName) {
-        result.push(id);
+        return id;
       }
     }
-    return result;
   }
 
   /**

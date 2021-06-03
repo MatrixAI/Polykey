@@ -1,26 +1,25 @@
-import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandListSecrets = createCommand('list', {
-  description: {
-    description: 'Lists all available secrets for a given vault',
-    args: {
-      vaultId: 'Id of the vault which will have secrets listed',
-    },
-  },
-  aliases: ['ls'],
+const commandListSecrets = binUtils.createCommand('list', {
+  description: 'Lists all available secrets for a given vault',
+  aliases: ['ls', 'l'],
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandListSecrets.requiredOption(
-  '-vi, --vault-id <vaultId>',
-  '(required) Id of the vault to list the secret(s) from',
+  '-vn, --vault-name <vaultName>',
+  '(required) Name of the vault to list the secret(s) from',
 );
 commandListSecrets.action(async (options) => {
+  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -28,9 +27,12 @@ commandListSecrets.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
@@ -39,9 +41,12 @@ commandListSecrets.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setId(options.vaultId);
+    vaultMessage.setName(options.vaultName);
 
-    const secretListGenerator = grpcClient.vaultsListSecrets(vaultMessage);
+    const secretListGenerator = grpcClient.vaultsListSecrets(
+      vaultMessage,
+      meta,
+    );
 
     const data: Array<string> = [];
     for await (const secret of secretListGenerator) {
@@ -49,27 +54,33 @@ commandListSecrets.action(async (options) => {
     }
 
     process.stdout.write(
-      outputFormatter({
+      binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: data,
       }),
     );
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

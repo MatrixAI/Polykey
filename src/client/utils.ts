@@ -2,7 +2,6 @@ import fs from 'fs';
 import * as grpc from '@grpc/grpc-js';
 
 import * as clientErrors from '@/errors';
-import * as CLIErrors from '@/bin/errors';
 import { SessionManager } from '@/session';
 import { VaultManager } from '@/vaults';
 
@@ -22,15 +21,11 @@ async function checkPassword(
 }
 
 function parseVaultInput(input: string, vaultManager: VaultManager): string {
-  const ids = vaultManager.getVaultIds(input);
-  if (ids.length == 0) {
-    return input;
-  } else if (ids.length == 1) {
-    return ids[0];
+  const id = vaultManager.getVaultId(input);
+  if (id) {
+    return id;
   } else {
-    throw new CLIErrors.ErrorVaultNameAmbiguous(
-      'There is more than 1 vault with this name. Please use the Vault ID',
-    );
+    return input;
   }
 }
 

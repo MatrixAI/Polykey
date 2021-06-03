@@ -99,24 +99,67 @@ class VaultMap {
           recursive: true,
         });
       }
+
       await utils.mkdirExists(this.fs, this.vaultMapPath, { recursive: true });
-      const vaultMapDb = await level(this.vaultMapDbPath, {
-        valueEncoding: 'binary',
-      });
+
+      const {
+        p: vaultMapDbP,
+        resolveP: resolveVaultMapDbP,
+        rejectP: rejectVaultMapDbP,
+      } = utils.promise<void>();
+      const { p: vaultMapVaultsDbP, resolveP: resolveVaultMapVaultsDbP } =
+        utils.promise<void>();
+      const { p: vaultMapNamesDbP, resolveP: resolveVaultMapNamesDbP } =
+        utils.promise<void>();
+      const { p: vaultMapLinksDbP, resolveP: resolveVaultMapLinksDbP } =
+        utils.promise<void>();
+
+      const vaultMapDb = await level(
+        this.vaultMapDbPath,
+        { valueEncoding: 'binary' },
+        (e) => {
+          if (e) {
+            rejectVaultMapDbP(e);
+          } else {
+            resolveVaultMapDbP();
+          }
+        },
+      );
+      const vaultMapDbKey = await this.setupVaultMapDbKey(bits);
       const vaultMapDbPrefixer = await sublevelprefixer('!');
+
       // vaults stores VaultId -> VaultKey
       const mapVaultsDb = subleveldown<VaultId, Buffer>(vaultMapDb, 'vaults', {
         valueEncoding: 'binary',
+        open: (cb) => {
+          cb(undefined);
+          resolveVaultMapVaultsDbP();
+        },
       });
       // names stores VaultName -> VaultId
       const mapNamesDb = subleveldown<string, Buffer>(vaultMapDb, 'names', {
         valueEncoding: 'binary',
+        open: (cb) => {
+          cb(undefined);
+          resolveVaultMapNamesDbP();
+        },
       });
       // links stores VaultId -> VaultLink
       const mapLinksDb = subleveldown<VaultId, Buffer>(vaultMapDb, 'links', {
         valueEncoding: 'binary',
+        open: (cb) => {
+          cb(undefined);
+          resolveVaultMapLinksDbP();
+        },
       });
-      const vaultMapDbKey = await this.setupVaultMapDbKey(bits);
+
+      await Promise.all([
+        vaultMapDbP,
+        vaultMapVaultsDbP,
+        vaultMapNamesDbP,
+        vaultMapLinksDbP,
+      ]);
+
       this.vaultMapDb = vaultMapDb;
       this.vaultMapDbKey = vaultMapDbKey;
       this.vaultMapDbPrefixer = vaultMapDbPrefixer;
@@ -244,6 +287,12 @@ class VaultMap {
     vaultKey: Buffer,
   ): Promise<void> {
     await this._transaction(async () => {
+      const existingId = await this.getVaultMapDb('names', vaultName);
+      if (existingId) {
+        throw new vaultErrors.ErrorVaultDefined(
+          'Vault Name already exists in Polykey, specify a new Vault Name',
+        );
+      }
       const ops: Array<VaultMapOp> = [
         {
           type: 'put',

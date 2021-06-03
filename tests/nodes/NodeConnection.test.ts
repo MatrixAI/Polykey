@@ -124,7 +124,6 @@ describe('NodeConnection', () => {
     });
     serverGitBackend = new GitBackend({
       getVault: serverVaultManager.getVault.bind(serverVaultManager),
-      getVaultID: serverVaultManager.getVaultIds.bind(serverVaultManager),
       getVaultNames: serverVaultManager.listVaults.bind(serverVaultManager),
       logger: logger,
     });
@@ -427,13 +426,16 @@ describe('NodeConnection', () => {
     const newVault = await serverVaultManager.createVault('vault1');
     await newVault.initializeVault();
     await newVault.addSecret('secret-1', Buffer.from('secret-content'));
-    await clientVaultManager.createVault('vault2');
+    const newClientVault = await clientVaultManager.createVault('vault2');
     const gitFront = new GitFrontend();
     const client = conn.getClient();
     client.start();
     const gitRequest = gitFront.connectToNodeGit(client);
     const list = await gitRequest.scanVaults();
     expect(list).toStrictEqual([`${newVault.vaultId}\tvault1`]);
+
+    await serverVaultManager.deleteVault(newVault.vaultId);
+    await clientVaultManager.createVault(newClientVault.vaultId);
 
     await conn.stop();
     await revProxy.closeConnection(
@@ -493,6 +495,9 @@ describe('NodeConnection', () => {
     expect(await newVault2.getSecret('secret-1')).toStrictEqual(
       Buffer.from('secret-content'),
     );
+
+    await serverVaultManager.deleteVault(newVault.vaultId);
+    await clientVaultManager.createVault(newVault2.vaultId);
 
     await conn.stop();
     await revProxy.closeConnection(

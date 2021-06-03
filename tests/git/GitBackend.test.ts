@@ -59,7 +59,6 @@ describe('GitBackend is', () => {
       await vaultManager.start({});
       const gitBackend = new GitBackend({
         getVault: vaultManager.getVault.bind(vaultManager),
-        getVaultID: vaultManager.getVaultIds.bind(vaultManager),
         getVaultNames: vaultManager.listVaults.bind(vaultManager),
         logger: logger,
       });
@@ -75,13 +74,12 @@ describe('GitBackend is', () => {
       await vaultManager.start({});
       const gitBackend = new GitBackend({
         getVault: vaultManager.getVault.bind(vaultManager),
-        getVaultID: vaultManager.getVaultIds.bind(vaultManager),
         getVaultNames: vaultManager.listVaults.bind(vaultManager),
         logger: logger,
       });
       const vault = await vaultManager.createVault('MyTestVault');
       await vault.initializeVault();
-      const vId = vaultManager.getVaultIds('MyTestVault').pop();
+      const vId = vaultManager.getVaultId('MyTestVault');
       expect(vId).toBeTruthy();
       const response = gitBackend.handleInfoRequest(vault.vaultId);
       const data: Array<Buffer> = [];

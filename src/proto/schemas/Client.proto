@@ -32,13 +32,13 @@ service Client {
   rpc VaultsMkdir(VaultSpecificMessage) returns (EmptyMessage) {};
   rpc VaultsStat(VaultMessage) returns (StatMessage) {};
   rpc VaultsPull(VaultMessage) returns (EmptyMessage) {};
-  rpc VaultsScan(VaultMessage) returns (stream VaultMessage) {};
+  rpc VaultsScan(NodeMessage) returns (stream VaultMessage) {};
   rpc VaultsDeleteSecret(VaultSpecificMessage) returns (StatusMessage) {};
   rpc VaultsEditSecret(SecretSpecificMessage) returns (EmptyMessage) {};
   rpc VaultsGetSecret(VaultSpecificMessage) returns (SecretMessage) {};
-  rpc VaultsRenameSecret(VaultSpecificMessage) returns (StatusMessage) {};
-  rpc VaultsNewSecret(VaultSpecificMessage) returns (StatusMessage) {};
-  rpc VaultsNewDirSecret(VaultMessage) returns (EmptyMessage) {};
+  rpc VaultsRenameSecret(SecretRenameMessage) returns (StatusMessage) {};
+  rpc VaultsNewSecret(SecretNewMessage) returns (StatusMessage) {};
+  rpc VaultsNewDirSecret(SecretNewMessage) returns (EmptyMessage) {};
 
   // Identities
   rpc IdentitiesAuthenticate(ProviderMessage) returns (ProviderMessage) {};
@@ -82,6 +82,18 @@ message VaultSpecificMessage {
 message SecretSpecificMessage {
   VaultSpecificMessage vault = 1;
   string content = 2;
+}
+
+message SecretRenameMessage {
+  VaultMessage vault = 1;
+  SecretMessage oldName = 2;
+  SecretMessage newName = 3;
+}
+
+message SecretNewMessage {
+  VaultMessage vault = 1;
+  string name = 2;
+  string content = 3;
 }
 
 message SecretMessage {

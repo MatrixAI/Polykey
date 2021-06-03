@@ -1,37 +1,31 @@
 import fs from 'fs';
-import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as CLIErrors from '../errors';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandCreateSecret = createCommand('create', {
-  description: {
-    description: 'create a secret within a given vault',
-    args: {
-      vaultId: 'Id of the vault to add the secret to',
-      secretPath: 'Path to add the secret to',
-      filePath: 'File path containing the secret to be added',
-    },
-  },
+const commandCreateSecret = binUtils.createCommand('create', {
+  description: 'Creates a secret within a given vault',
   aliases: ['touch', 'new'],
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandCreateSecret.requiredOption(
-  '-vi, --vault-id <vaultId>',
-  '(required) Id of the vault that the secret will be added to',
-);
-commandCreateSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
-  '(required) Path inside the vault that the secret will be added to',
+  '(required) Path to the secret to be added, specified as <vaultName>:<secretPath>',
 );
 commandCreateSecret.requiredOption(
   '-fp, --file-path <filePath>',
   '(required) File path containing the secret to be added',
 );
 commandCreateSecret.action(async (options) => {
+  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -39,63 +33,78 @@ commandCreateSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
+  const secretNewMessage = new clientPB.SecretNewMessage();
   const vaultMessage = new clientPB.VaultMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
+    const secretPath: string = options.secretPath;
+    if (!binUtils.pathRegex.test(secretPath)) {
+      throw new CLIErrors.ErrorSecretPathFormat();
+    }
+    const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
+
     const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
 
-    vaultMessage.setId(options.vaultId);
-    vaultMessage.setName(options.secretPath);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(content);
+    vaultMessage.setName(vaultName);
+    secretNewMessage.setVault(vaultMessage);
+    secretNewMessage.setName(secretName);
+    secretNewMessage.setContent(content);
 
-    const pCall = grpcClient.vaultsNewSecret(vaultSpecificMessage);
+    const pCall = grpcClient.vaultsNewSecret(secretNewMessage, meta);
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {
       process.stdout.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${vaultMessage.getName()} successfully created in vault: ${vaultMessage.getId()}`,
+            `Secret: ${secretNewMessage.getName()} successfully created in vault: ${vaultMessage.getName()}`,
           ],
         }),
       );
     } else {
       process.stdout.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to create secret: ${vaultMessage.getName()} in vault: ${vaultMessage.getId()}`,
+            `Failed to create secret: ${secretNewMessage.getName()} in vault: ${vaultMessage.getName()}`,
           ],
         }),
       );
     }
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

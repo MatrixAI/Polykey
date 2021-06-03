@@ -169,7 +169,6 @@ class Polykey {
       gitBackend ??
       new GitBackend({
         getVault: this.vaults.getVault.bind(this.vaults),
-        getVaultID: this.vaults.getVaultIds.bind(this.vaults),
         getVaultNames: this.vaults.listVaults.bind(this.vaults),
         logger: logger,
       });

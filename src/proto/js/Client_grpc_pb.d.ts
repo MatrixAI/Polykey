@@ -259,12 +259,12 @@ interface IClientService_IVaultsPull extends grpc.MethodDefinition<Client_pb.Vau
     responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
 }
-interface IClientService_IVaultsScan extends grpc.MethodDefinition<Client_pb.VaultMessage, Client_pb.VaultMessage> {
+interface IClientService_IVaultsScan extends grpc.MethodDefinition<Client_pb.NodeMessage, Client_pb.VaultMessage> {
     path: "/clientInterface.Client/VaultsScan";
     requestStream: false;
     responseStream: true;
-    requestSerialize: grpc.serialize<Client_pb.VaultMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.VaultMessage>;
+    requestSerialize: grpc.serialize<Client_pb.NodeMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NodeMessage>;
     responseSerialize: grpc.serialize<Client_pb.VaultMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.VaultMessage>;
 }
@@ -295,30 +295,30 @@ interface IClientService_IVaultsGetSecret extends grpc.MethodDefinition<Client_p
     responseSerialize: grpc.serialize<Client_pb.SecretMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.SecretMessage>;
 }
-interface IClientService_IVaultsRenameSecret extends grpc.MethodDefinition<Client_pb.VaultSpecificMessage, Client_pb.StatusMessage> {
+interface IClientService_IVaultsRenameSecret extends grpc.MethodDefinition<Client_pb.SecretRenameMessage, Client_pb.StatusMessage> {
     path: "/clientInterface.Client/VaultsRenameSecret";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<Client_pb.VaultSpecificMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.VaultSpecificMessage>;
+    requestSerialize: grpc.serialize<Client_pb.SecretRenameMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.SecretRenameMessage>;
     responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
 }
-interface IClientService_IVaultsNewSecret extends grpc.MethodDefinition<Client_pb.VaultSpecificMessage, Client_pb.StatusMessage> {
+interface IClientService_IVaultsNewSecret extends grpc.MethodDefinition<Client_pb.SecretNewMessage, Client_pb.StatusMessage> {
     path: "/clientInterface.Client/VaultsNewSecret";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<Client_pb.VaultSpecificMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.VaultSpecificMessage>;
+    requestSerialize: grpc.serialize<Client_pb.SecretNewMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.SecretNewMessage>;
     responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
 }
-interface IClientService_IVaultsNewDirSecret extends grpc.MethodDefinition<Client_pb.VaultMessage, Client_pb.EmptyMessage> {
+interface IClientService_IVaultsNewDirSecret extends grpc.MethodDefinition<Client_pb.SecretNewMessage, Client_pb.EmptyMessage> {
     path: "/clientInterface.Client/VaultsNewDirSecret";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<Client_pb.VaultMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.VaultMessage>;
+    requestSerialize: grpc.serialize<Client_pb.SecretNewMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.SecretNewMessage>;
     responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
 }
@@ -448,13 +448,13 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     vaultsMkdir: grpc.handleUnaryCall<Client_pb.VaultSpecificMessage, Client_pb.EmptyMessage>;
     vaultsStat: grpc.handleUnaryCall<Client_pb.VaultMessage, Client_pb.StatMessage>;
     vaultsPull: grpc.handleUnaryCall<Client_pb.VaultMessage, Client_pb.EmptyMessage>;
-    vaultsScan: grpc.handleServerStreamingCall<Client_pb.VaultMessage, Client_pb.VaultMessage>;
+    vaultsScan: grpc.handleServerStreamingCall<Client_pb.NodeMessage, Client_pb.VaultMessage>;
     vaultsDeleteSecret: grpc.handleUnaryCall<Client_pb.VaultSpecificMessage, Client_pb.StatusMessage>;
     vaultsEditSecret: grpc.handleUnaryCall<Client_pb.SecretSpecificMessage, Client_pb.EmptyMessage>;
     vaultsGetSecret: grpc.handleUnaryCall<Client_pb.VaultSpecificMessage, Client_pb.SecretMessage>;
-    vaultsRenameSecret: grpc.handleUnaryCall<Client_pb.VaultSpecificMessage, Client_pb.StatusMessage>;
-    vaultsNewSecret: grpc.handleUnaryCall<Client_pb.VaultSpecificMessage, Client_pb.StatusMessage>;
-    vaultsNewDirSecret: grpc.handleUnaryCall<Client_pb.VaultMessage, Client_pb.EmptyMessage>;
+    vaultsRenameSecret: grpc.handleUnaryCall<Client_pb.SecretRenameMessage, Client_pb.StatusMessage>;
+    vaultsNewSecret: grpc.handleUnaryCall<Client_pb.SecretNewMessage, Client_pb.StatusMessage>;
+    vaultsNewDirSecret: grpc.handleUnaryCall<Client_pb.SecretNewMessage, Client_pb.EmptyMessage>;
     identitiesAuthenticate: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.ProviderMessage>;
     tokensPut: grpc.handleUnaryCall<Client_pb.TokenSpecificMessage, Client_pb.EmptyMessage>;
     tokensGet: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.TokenMessage>;
@@ -534,8 +534,8 @@ export interface IClientClient {
     vaultsPull(request: Client_pb.VaultMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     vaultsPull(request: Client_pb.VaultMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     vaultsPull(request: Client_pb.VaultMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    vaultsScan(request: Client_pb.VaultMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
-    vaultsScan(request: Client_pb.VaultMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
+    vaultsScan(request: Client_pb.NodeMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
+    vaultsScan(request: Client_pb.NodeMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
     vaultsDeleteSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsDeleteSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsDeleteSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
@@ -545,15 +545,15 @@ export interface IClientClient {
     vaultsGetSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     vaultsGetSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     vaultsGetSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
-    vaultsRenameSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsRenameSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsRenameSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsNewSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsNewSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsNewSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsNewDirSecret(request: Client_pb.VaultMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    vaultsNewDirSecret(request: Client_pb.VaultMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    vaultsNewDirSecret(request: Client_pb.VaultMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    vaultsRenameSecret(request: Client_pb.SecretRenameMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsRenameSecret(request: Client_pb.SecretRenameMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsRenameSecret(request: Client_pb.SecretRenameMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsNewSecret(request: Client_pb.SecretNewMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsNewSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsNewSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsNewDirSecret(request: Client_pb.SecretNewMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    vaultsNewDirSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    vaultsNewDirSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
@@ -655,8 +655,8 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public vaultsPull(request: Client_pb.VaultMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public vaultsPull(request: Client_pb.VaultMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public vaultsPull(request: Client_pb.VaultMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public vaultsScan(request: Client_pb.VaultMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
-    public vaultsScan(request: Client_pb.VaultMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
+    public vaultsScan(request: Client_pb.NodeMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
+    public vaultsScan(request: Client_pb.NodeMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultMessage>;
     public vaultsDeleteSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsDeleteSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsDeleteSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
@@ -666,15 +666,15 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public vaultsGetSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     public vaultsGetSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     public vaultsGetSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
-    public vaultsRenameSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsRenameSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsRenameSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsNewSecret(request: Client_pb.VaultSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsNewSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsNewSecret(request: Client_pb.VaultSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsNewDirSecret(request: Client_pb.VaultMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public vaultsNewDirSecret(request: Client_pb.VaultMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public vaultsNewDirSecret(request: Client_pb.VaultMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public vaultsRenameSecret(request: Client_pb.SecretRenameMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsRenameSecret(request: Client_pb.SecretRenameMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsRenameSecret(request: Client_pb.SecretRenameMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsNewSecret(request: Client_pb.SecretNewMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsNewSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsNewSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsNewDirSecret(request: Client_pb.SecretNewMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public vaultsNewDirSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public vaultsNewDirSecret(request: Client_pb.SecretNewMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;

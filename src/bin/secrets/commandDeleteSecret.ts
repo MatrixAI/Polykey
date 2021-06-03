@@ -1,31 +1,26 @@
-import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as CLIErrors from '../errors';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandDeleteSecret = createCommand('delete', {
-  description: {
-    description: 'Deletes a secret from a specified vault',
-    args: {
-      vaultId: 'ID of the vault that the secret is in',
-      secretPath: 'Path to secret to be deleted',
-    },
-  },
+const commandDeleteSecret = binUtils.createCommand('delete', {
+  description: 'Deletes a secret from a specified vault',
   aliases: ['rm'],
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandDeleteSecret.requiredOption(
-  '-vi --vault-id <vaultId>',
-  '(required) Id of the vault that the secret is in',
-);
-commandDeleteSecret.requiredOption(
   '-sp --secret-path <secretPath>',
-  '(required) Path to the secret to be deleted',
+  '(required) Path to the secret to be deleted, specified as <vaultName>:<secretPath>',
 );
 commandDeleteSecret.action(async (options) => {
+  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -33,9 +28,12 @@ commandDeleteSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
@@ -45,25 +43,31 @@ commandDeleteSecret.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setId(options.vaultId);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(options.secretPath);
+    const secretPath: string = options.secretPath;
+    if (!binUtils.pathRegex.test(secretPath)) {
+      throw new CLIErrors.ErrorSecretPathFormat();
+    }
+    const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    const pCall = grpcClient.vaultsDeleteSecret(vaultSpecificMessage);
+    vaultMessage.setName(vaultName);
+    vaultSpecificMessage.setVault(vaultMessage);
+    vaultSpecificMessage.setName(secretName);
+
+    const pCall = grpcClient.vaultsDeleteSecret(vaultSpecificMessage, meta);
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {
       process.stdout.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getId()} successfully deleted`,
+            `Secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getName()} successfully deleted`,
           ],
         }),
       );
     } else {
       process.stdout.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
             `Failed to delete secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getId()}`,
@@ -72,21 +76,27 @@ commandDeleteSecret.action(async (options) => {
       );
     }
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

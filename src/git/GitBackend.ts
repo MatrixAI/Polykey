@@ -18,24 +18,19 @@ import * as gitUtils from './utils';
 
 class GitBackend {
   private getVault: (vaultID: string) => Vault;
-  private getVaultID: (vaultName: string) => string[];
   private getVaultNames: () => Array<{ name: string; id: string }>;
   private logger: Logger;
 
   constructor({
     getVault,
-    getVaultID,
     getVaultNames,
     logger,
   }: {
     getVault: (vaultID: string) => Vault;
-    getVaultID: (vaultName: string) => string[];
     getVaultNames: () => Array<{ name: string; id: string }>;
     logger?: Logger;
   }) {
     this.getVault = getVault;
-    this.getVaultID = getVaultID;
-
     this.getVaultNames = getVaultNames;
     this.logger = logger ?? new Logger('GitBackend');
   }

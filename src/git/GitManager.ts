@@ -110,9 +110,9 @@ class GitManager {
       throw new vaultsErrors.ErrorRemoteVaultUndefined(
         `${vaultId} does not exist on connected node ${nodeId}`,
       );
-    } else if (this.vaultManager.getVaultIds(vaultName).length != 0) {
+    } else if (this.vaultManager.getVaultId(vaultName)) {
       this.logger.warn(
-        `Vault name '${vaultName}' already exists, cloned into '${vaultName} copy' instead`,
+        `Vault Name '${vaultName}' already exists, cloned into '${vaultName} copy' instead`,
       );
       vaultName += ' copy';
     }

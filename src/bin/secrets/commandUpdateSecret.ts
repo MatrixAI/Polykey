@@ -1,37 +1,30 @@
 import fs from 'fs';
-import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as CLIErrors from '../errors';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandUpdateSecret = createCommand('update', {
-  description: {
-    description: `Updates a secret within a given vault`,
-    args: {
-      vaultId: 'ID of the vault that the secret is in',
-      secretPath: 'path to secret to be updated',
-      newSecretPath: 'path to updated secret content',
-    },
-  },
+const commandUpdateSecret = binUtils.createCommand('update', {
+  description: 'Updates a secret within a given vault',
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandUpdateSecret.requiredOption(
-  '-vi, --vault-id <vaultId>',
-  '(required) Id of the vault which contains the secret',
-);
-commandUpdateSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
-  '(required) Path to the secret to update',
+  '(required) Path to the secret to update, specified as <vaultName>:<secretPath>',
 );
 commandUpdateSecret.requiredOption(
   '-fp, --file-path <filePath>',
   '(required) Path to the file containing the updated secret content',
 );
-commandUpdateSecret.arguments('<vaultId> <secretPath> <filePath>');
 commandUpdateSecret.action(async (options) => {
+  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -39,9 +32,12 @@ commandUpdateSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const secretMessage = new clientPB.SecretSpecificMessage();
@@ -52,41 +48,53 @@ commandUpdateSecret.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setId(options.vaultId);
+    const secretPath: string = options.secretPath;
+    if (!binUtils.pathRegex.test(secretPath)) {
+      throw new CLIErrors.ErrorSecretPathFormat();
+    }
+    const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
+
+    vaultMessage.setName(vaultName);
     vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(options.secretPath);
+    vaultSpecificMessage.setName(secretName);
 
     const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
 
     secretMessage.setVault(vaultSpecificMessage);
     secretMessage.setContent(content);
 
-    await grpcClient.vaultsEditSecret(secretMessage);
+    await grpcClient.vaultsEditSecret(secretMessage, meta);
 
     process.stdout.write(
-      outputFormatter({
+      binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Updated secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getId()}`,
+          `Updated secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getName()}`,
         ],
       }),
     );
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 
