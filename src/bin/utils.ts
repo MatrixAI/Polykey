@@ -26,8 +26,8 @@ type OutputObject =
     }
   | {
       type: 'error';
-      data: Array<string>;
-      code: number;
+      description: string;
+      message: string;
     };
 
 function verboseToLogLevel(c: number): LogLevel {
@@ -237,6 +237,11 @@ function outputFormatter(msg: OutputObject): string {
     }
   } else if (msg.type === 'json') {
     output = JSON.stringify(msg.data);
+  } else if (msg.type === 'error') {
+    output += msg.description;
+    if (msg.message) {
+      output += ` - ${msg.message}`;
+    }
   }
   return output;
 }
