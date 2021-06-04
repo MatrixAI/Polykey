@@ -53,6 +53,10 @@ class SessionManager {
    * Stop the SessionManager object
    */
   public async stop() {
+    if (this._timeout) {
+      clearTimeout(this._timeout);
+    }
+    await this.stopSession();
     this._started = false;
   }
 

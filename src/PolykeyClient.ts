@@ -52,13 +52,11 @@ class PolykeyClient {
     timeout,
     host,
     port,
-    authToken,
   }: {
     credentials?: ChannelCredentials;
     timeout?: number;
     host?: string;
     port?: number;
-    authToken?: string;
   }) {
     const status = await Lockfile.checkLock(this.fs, this.lockPath);
     if (status === 'UNLOCKED') {
@@ -95,9 +93,6 @@ class PolykeyClient {
     }
     if (!port && !lock.port) {
       this.logger.warn('PolykeyClient started with default port: 0');
-    }
-    if (!authToken) {
-      this.logger.warn('PolykeyClient started with no authToken');
     }
   }
   async stop() {
