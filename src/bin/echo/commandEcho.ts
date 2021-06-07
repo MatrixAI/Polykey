@@ -46,12 +46,16 @@ commandEcho.action(async (text, options) => {
       }),
     );
   } catch (e) {
-    process.stdout.write(
+    process.stderr.write(
       outputFormatter({
-        type: options.format === 'json' ? 'json' : 'list',
-        data: ['Error:', e.message],
+        // If set as --format json, we would expect output to be in JSON. But,
+        // for stderr output, we should override this with 'error'
+        type: 'error',
+        description: e.description,
+        message: e.message,
       }),
     );
+    throw e;
   } finally {
     client.stop();
   }

@@ -36,8 +36,10 @@ async function main(argv = process.argv): Promise<number> {
     ) {
       process.exitCode = 0;
     } else {
-      console.log(e);
-      process.exitCode = 1;
+      process.exitCode = e.exitCode;
+    }
+    if (process.exitCode == null) {
+      process.exitCode = -1;
     }
     return process.exitCode;
   }
