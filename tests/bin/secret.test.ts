@@ -35,7 +35,10 @@ describe('CLI secrets', () => {
       setTimeout(() => resolve(), duration);
     });
     await polykeyAgent.stop();
-    await fs.promises.rmdir(dataDir, { recursive: true });
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   test('should create secrets', async () => {
@@ -360,6 +363,6 @@ describe('CLI secrets', () => {
     expect(result2).toBe(0);
 
     list = await vault.listSecrets();
-    expect(list.sort()).toStrictEqual(['secret-1', 'secret-2', 'secret-3']);
+    expect(list.sort()).toStrictEqual(['secrets/secret-1', 'secrets/secret-2', 'secrets/secret-3']);
   });
 });

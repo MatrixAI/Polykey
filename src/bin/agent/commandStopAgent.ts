@@ -1,14 +1,12 @@
-import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandStopAgent = createCommand('stop', {
-  description: {
-    description: 'Stops the polykey agent',
-    args: {},
-  },
+const commandStopAgent = binUtils.createCommand('stop', {
+  description: 'Stops the polykey agent',
   nodePath: true,
   verbose: true,
   format: true,
@@ -24,28 +22,47 @@ commandStopAgent.action(async (options) => {
   if (options.nodePath) {
     clientConfig['nodePath'] = options.nodePath;
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
+  const emptyMessage = new clientPB.EmptyMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
+
+    await grpcClient.agentStop(emptyMessage);
+
+    process.stdout.write(
+      binUtils.outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: ['PolyKey Agent stoppped'],
+      }),
+    );
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

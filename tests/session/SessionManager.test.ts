@@ -41,6 +41,10 @@ describe('Session Manager', () => {
 
   afterEach(async () => {
     await keyManager.stop();
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   test('is type correct', async () => {

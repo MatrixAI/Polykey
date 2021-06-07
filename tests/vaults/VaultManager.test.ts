@@ -384,7 +384,7 @@ describe('VaultManager is', () => {
 
     await vaultManager.stop();
 
-    const leveldb = await level(vaultManager.metadataPath);
+    const leveldb = await level(vaultManager.vaultsPath);
     await leveldb.open();
     leveldb.createReadStream().on('data', (data) => {
       expect(data).toBeTruthy();

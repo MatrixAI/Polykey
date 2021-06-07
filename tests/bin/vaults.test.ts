@@ -47,7 +47,10 @@ describe('CLI vaults', () => {
 
   afterEach(async () => {
     await polykeyAgent.stop();
-    await fs.promises.rmdir(dataDir, { recursive: true });
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   test('should list vaults', async () => {
@@ -358,7 +361,10 @@ describe('CLI vaults', () => {
     expect(result).toBe(0);
 
     await targetPolykeyAgent.stop();
-    await fs.promises.rmdir(dataDir2, { recursive: true });
+    await fs.promises.rm(dataDir2, {
+      force: true,
+      recursive: true,
+    });
 
     const list = polykeyAgent.vaults.listVaults();
     expect(list.length).toBe(1);
@@ -474,7 +480,10 @@ describe('CLI vaults', () => {
     );
 
     await targetPolykeyAgent.stop();
-    await fs.promises.rmdir(dataDir2, { recursive: true });
+    await fs.promises.rm(dataDir2, {
+      force: true,
+      recursive: true,
+    });
   });
   test('should scan a node for vaults', async () => {
     const dataDir2 = await fs.promises.mkdtemp(
@@ -540,6 +549,9 @@ describe('CLI vaults', () => {
     expect(result2).toBe(passwordExitCode);
 
     await targetPolykeyAgent.stop();
-    await fs.promises.rmdir(dataDir2, { recursive: true });
+    await fs.promises.rm(dataDir2, {
+      force: true,
+      recursive: true,
+    });
   });
 });

@@ -23,7 +23,6 @@ async function openTestAgentServer({
   gitBackend: GitBackend;
 }) {
   const agentService: IAgentServer = createAgentService({
-    keyManager,
     vaultManager,
     nodeManager,
     gitBackend: gitBackend,

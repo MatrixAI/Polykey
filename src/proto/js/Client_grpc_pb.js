@@ -270,6 +270,18 @@ var ClientService = exports.ClientService = {
     responseSerialize: serialize_clientInterface_EchoMessage,
     responseDeserialize: deserialize_clientInterface_EchoMessage,
   },
+  // Agent
+agentStop: {
+    path: '/clientInterface.Client/AgentStop',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.EmptyMessage,
+    responseType: Client_pb.EmptyMessage,
+    requestSerialize: serialize_clientInterface_EmptyMessage,
+    requestDeserialize: deserialize_clientInterface_EmptyMessage,
+    responseSerialize: serialize_clientInterface_EmptyMessage,
+    responseDeserialize: deserialize_clientInterface_EmptyMessage,
+  },
   // Nodes
 nodesList: {
     path: '/clientInterface.Client/NodesList',

@@ -12,7 +12,6 @@ import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '@/client';
 import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
-import { SessionManager } from '@/session';
 import { VaultManager } from '@/vaults';
 import { IdentitiesManager } from '@/identities';
 import { ACL } from '@/acl';
@@ -21,6 +20,7 @@ import { KeyManager, utils as keyUtils } from '@/keys';
 import { ClientClient } from '@/proto/js/Client_grpc_pb';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import { DB } from '@/db';
+import { PolykeyAgent } from '@';
 
 import * as testUtils from './utils';
 import * as grpcUtils from '@/grpc/utils';
@@ -43,13 +43,13 @@ describe('Client service', () => {
   let identitiesPath: string;
   let dbPath: string;
 
+  let polykeyAgent: PolykeyAgent;
   let keyManager: KeyManager;
   let gitManager: GitManager;
   let nodeManager: NodeManager;
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
-  let sessionManager: SessionManager;
   let acl: ACL;
   let db: DB;
 
@@ -83,15 +83,6 @@ describe('Client service', () => {
 
     passwordFile = path.join(dataDir, 'password');
     await fs.promises.writeFile(passwordFile, 'password');
-
-    fwdProxy = new ForwardProxy({
-      authToken: 'abc',
-      logger: logger,
-    });
-
-    revProxy = new ReverseProxy({
-      logger: logger,
-    });
 
     fwdProxy = new ForwardProxy({
       authToken: 'abc',
@@ -152,41 +143,39 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    sessionManager = new SessionManager({
-      keyManager: keyManager,
-      fs: fs,
-      logger: logger,
-    });
-
     gitManager = new GitManager({
       vaultManager: vaultManager,
       nodeManager: nodeManager,
     });
 
-    sessionManager = new SessionManager({
+    polykeyAgent = new PolykeyAgent({
+      nodePath: dataDir,
       keyManager: keyManager,
+      vaultManager: vaultManager,
+      nodeManager: nodeManager,
+      gestaltGraph: gestaltGraph,
+      identitiesManager: identitiesManager,
+      acl: acl,
+      db: db,
+      gitManager: gitManager,
+      fwdProxy: fwdProxy,
+      revProxy: revProxy,
       fs: fs,
       logger: logger,
     });
 
-    await keyManager.start({ password: 'password' });
-    await db.start();
-    await acl.start();
-    await vaultManager.start({});
-    await nodeManager.start({ nodeId: nodeId });
-    await identitiesManager.start();
-    await gestaltGraph.start();
-    await gitManager.start();
-    await sessionManager.start({ sessionDuration: 3000 });
+    await polykeyAgent.keys.start({ password: 'password' });
+    await polykeyAgent.db.start();
+    await polykeyAgent.acl.start();
+    await polykeyAgent.vaults.start({});
+    await polykeyAgent.nodes.start({ nodeId: nodeId });
+    await polykeyAgent.identities.start();
+    await polykeyAgent.gestalts.start();
+    await polykeyAgent.gitManager.start();
+    await polykeyAgent.sessionManager.start({ sessionDuration: 3000 });
 
     [server, port] = await testUtils.openTestClientServer({
-      keyManager,
-      vaultManager,
-      nodeManager,
-      identitiesManager,
-      gestaltGraph,
-      gitManager,
-      sessionManager,
+      polykeyAgent,
     });
 
     client = await testUtils.openSimpleClientClient(port);
@@ -196,14 +185,20 @@ describe('Client service', () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await gitManager.stop();
-    await gestaltGraph.stop();
-    await identitiesManager.stop();
-    await nodeManager.stop();
-    await vaultManager.stop();
-    await db.stop();
-    await keyManager.stop();
-    await fs.promises.rmdir(dataDir, { recursive: true });
+    await polykeyAgent.sessionManager.stop();
+    await polykeyAgent.gitManager.stop();
+    await polykeyAgent.gestalts.stop();
+    await polykeyAgent.identities.stop();
+    await polykeyAgent.nodes.stop();
+    await polykeyAgent.vaults.stop();
+    await polykeyAgent.acl.stop();
+    await polykeyAgent.db.stop();
+    await polykeyAgent.keys.stop();
+
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   afterAll(async () => {
@@ -574,7 +569,7 @@ describe('Client service', () => {
     const secrets: Array<string> = [];
     for (let i = 0; i < 10; i++) {
       const tmpFile = `${tmpDir}/pkSecretFile${i.toString()}`;
-      secrets.push(`pkSecretFile${i.toString()}`);
+      secrets.push(path.join(`${path.basename(tmpDir)}`, `pkSecretFile${i.toString()}`));
       // write secret to file
       await fs.promises.writeFile(tmpFile, tmpFile);
     }

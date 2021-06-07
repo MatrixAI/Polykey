@@ -18,12 +18,10 @@ import * as grpcUtils from '../grpc/utils';
  * @returns an IAgentServer object
  */
 function createAgentService({
-  keyManager,
   vaultManager,
   nodeManager,
   gitBackend,
 }: {
-  keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   gitBackend: GitBackend;

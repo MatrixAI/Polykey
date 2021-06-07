@@ -2,6 +2,7 @@ import type { KeynodeState } from './types';
 
 import path from 'path';
 import fs from 'fs';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import PolykeyAgent from '../PolykeyAgent';
 
@@ -15,8 +16,13 @@ async function bootstrapPolykeyState(
   nodePath: string,
   password: string,
 ): Promise<void> {
+  const logger = new Logger('AgentServerTest', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
+
   const polykeyAgent = new PolykeyAgent({
     nodePath: nodePath,
+    logger: logger,
   });
 
   // Checks

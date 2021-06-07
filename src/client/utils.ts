@@ -1,9 +1,9 @@
 import fs from 'fs';
 import * as grpc from '@grpc/grpc-js';
 
-import * as clientErrors from '@/errors';
-import { SessionManager } from '@/session';
-import { VaultManager } from '@/vaults';
+import * as clientErrors from './errors';
+import { SessionManager } from '../session';
+import { VaultManager } from '../vaults';
 
 async function checkPassword(
   meta: grpc.Metadata,

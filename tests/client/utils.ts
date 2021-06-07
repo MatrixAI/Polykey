@@ -3,42 +3,13 @@ import * as grpc from '@grpc/grpc-js';
 import { ClientService, IClientServer } from '@/proto/js/Client_grpc_pb';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { ClientClient } from '@/proto/js/Client_grpc_pb';
-import { IdentitiesManager } from '@/identities';
 import { createClientService } from '@/client';
 import PolykeyClient from '@/PolykeyClient';
-import { SessionManager } from '@/session';
-import { GestaltGraph } from '@/gestalts';
-import { VaultManager } from '@/vaults';
-import { NodeManager } from '@/nodes';
-import { KeyManager } from '@/keys';
 import { promisify } from '@/utils';
-import { GitManager } from '@/git';
 
-async function openTestClientServer({
-  keyManager,
-  vaultManager,
-  nodeManager,
-  identitiesManager,
-  gestaltGraph,
-  gitManager,
-  sessionManager,
-}: {
-  keyManager: KeyManager;
-  vaultManager: VaultManager;
-  nodeManager: NodeManager;
-  identitiesManager: IdentitiesManager;
-  gestaltGraph: GestaltGraph;
-  gitManager: GitManager;
-  sessionManager: SessionManager;
-}) {
+async function openTestClientServer({ polykeyAgent }: { polykeyAgent }) {
   const clientService: IClientServer = createClientService({
-    keyManager,
-    vaultManager,
-    nodeManager,
-    identitiesManager,
-    gestaltGraph,
-    gitManager,
-    sessionManager,
+    polykeyAgent,
   });
 
   const server = new grpc.Server();
@@ -62,7 +33,6 @@ async function openTestClientClient(nodePath) {
     new StreamHandler(),
   ]);
   const fs = require('fs/promises');
-  // const nodePath = path.resolve(utils.getDefaultNodePath());
 
   const pkc: PolykeyClient = new PolykeyClient({
     nodePath,

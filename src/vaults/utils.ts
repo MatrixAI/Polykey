@@ -5,6 +5,7 @@ import path from 'path';
 import base58 from 'bs58';
 import { EncryptedFS } from 'encryptedfs';
 
+import * as utils from '../utils';
 import * as vaultErrors from './errors';
 import * as keysUtils from '../keys/utils';
 
@@ -43,15 +44,11 @@ async function fileExists(fs: FileSystem, path): Promise<boolean> {
   return true;
 }
 
-function isUnixHiddenPath(path: string): boolean {
-  return /\.|\/\.[^\/]+/g.test(path);
-}
-
 async function* readdirRecursively(dir: string) {
   const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
   for (const dirent of dirents) {
     const res = path.resolve(dir, dirent.name);
-    if (dirent.isDirectory() && !isUnixHiddenPath(dirent.name)) {
+    if (dirent.isDirectory()) {
       yield* readdirRecursively(res);
     } else if (dirent.isFile()) {
       yield res;
@@ -60,13 +57,11 @@ async function* readdirRecursively(dir: string) {
 }
 
 async function* readdirRecursivelyEFS(fs: EncryptedFS, dir: string) {
-  const dirents = fs.readdirSync(dir);
+  const readdir = utils.promisify(fs.readdir).bind(fs);
+  const dirents = await readdir(dir);
   for (const dirent of dirents) {
     const res = dirent;
-    if (
-      fs.statSync(path.join(dir, res)).isDirectory() &&
-      !isUnixHiddenPath(dirent)
-    ) {
+    if (fs.statSync(path.join(dir, res)).isDirectory() && dirent !== '.git') {
       yield* readdirRecursivelyEFS(fs, path.join(dir, res));
     } else if (fs.statSync(path.join(dir, res)).isFile()) {
       yield path.resolve(dir, res);

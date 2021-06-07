@@ -5,6 +5,9 @@ package clientInterface;
 service Client {
   rpc Echo(EchoMessage) returns (EchoMessage) {};
 
+  // Agent
+  rpc AgentStop(EmptyMessage) returns (EmptyMessage) {};
+
   // Nodes
   rpc NodesList(EmptyMessage) returns (stream NodeMessage) {};
 

@@ -29,7 +29,10 @@ describe('CLI keys', () => {
 
   afterEach(async () => {
     await polykeyAgent.stop();
-    await fs.promises.rmdir(dataDir, { recursive: true });
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   test('should get the certificate chain', async () => {

@@ -1,57 +1,68 @@
-import { errors } from '../../grpc';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
-import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
 
-const commandStartAgent = createCommand('start', {
-  description: {
-    description: 'Starts the polykey agent',
-    args: {
-      passphrase: 'Passphrase to unlock the polykey',
-    },
-  },
+import PolykeyAgent from '../../PolykeyAgent';
+
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as agentUtils from '../../agent/utils';
+
+const commandStartAgent = binUtils.createCommand('start', {
+  description: 'Starts the polykey agent',
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
-commandStartAgent.requiredOption(
-  '-, --passphrase <passphrase>',
-  '(required) Password to unlock polykey',
+commandStartAgent.option(
+  '-b, --background',
+  'Starts the agent as a background process',
 );
 commandStartAgent.action(async (options) => {
-  const clientConfig = {};
-  clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
+  const agentConfig = {};
+  agentConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   if (options.verbose) {
-    clientConfig['logger'].setLevel(LogLevel.DEBUG);
+    agentConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
-  }
+  const nodePath = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
+  agentConfig['nodePath'] = nodePath;
+  const background = options.background;
 
-  const client = new PolykeyClient(clientConfig);
+  const password = await fs.promises.readFile(options.passwordFile, {
+    encoding: 'utf-8',
+  });
 
   try {
-    await client.start({});
-    const grpcClient = client.grpcClient;
-  } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
-      process.stderr.write(`${err.message}\n`);
-    }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
-      process.stderr.write(`${err.message}\n`);
+    if (background) {
+      await agentUtils.spawnBackgroundAgent(nodePath, password);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
-        }),
-      );
+      const agent = new PolykeyAgent(agentConfig);
+      await agent.start({ password: password });
+
+      // If started add handlers for terminating.
+      const termHandler = async () => await agent.stop();
+      process.on('SIGTERM', termHandler); //for kill command.
+      process.on('SIGHUP', termHandler); // edge case if remote terminal closes. like someone runs agent start in ssh.
+      process.on('SIGINT', termHandler); // For ctrl+C
     }
+  } catch (err) {
+    process.stderr.write(
+      binUtils.outputFormatter({
+        type: 'error',
+        description: err.description,
+        message: err.message,
+      }),
+    );
+    throw err;
   } finally {
-    client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

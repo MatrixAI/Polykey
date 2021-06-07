@@ -2,15 +2,13 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 
-import { checkKeynodeState } from '../../src/bootstrap';
+import { checkKeynodeState } from '@/bootstrap';
 
 import * as utils from './utils';
 
 let dataDir: string;
 let passwordFile: string;
 let nodePath: string;
-
-jest.mock('@matrixai/logger');
 
 describe('CLI bootstrap', () => {
   beforeEach(async () => {
@@ -23,7 +21,10 @@ describe('CLI bootstrap', () => {
   });
 
   afterEach(async () => {
-    await fs.promises.rmdir(dataDir, { recursive: true });
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   test("Should create state if directory doesn't exist.", async () => {
