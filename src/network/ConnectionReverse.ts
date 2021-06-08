@@ -1,6 +1,7 @@
 import type { Socket, AddressInfo } from 'net';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { Host, Port, Address, NetworkMessage } from './types';
+import type { NodeId } from '../nodes/types';
 import type { Certificate } from '../keys/types';
 import type { AbstractConstructorParameters, Timer } from '../types';
 
@@ -11,7 +12,6 @@ import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import { utils as keysUtils } from '../keys';
 import { promise } from '../utils';
-import { NodeId } from '@/nodes/types';
 
 type ConnectionsReverse = {
   egress: Map<Address, ConnectionReverse>;
