@@ -1,14 +1,13 @@
-import { agentPB, GRPCClientAgent } from '@/agent';
 import type { NodeId, NodeData } from './types';
 import type { Host, Port, ProxyConfig } from '../network/types';
+import type { KeyManager } from '../keys';
+import type { NodeAddressMessage } from '../proto/js/Agent_pb';
 
 import Logger from '@matrixai/logger';
 import * as nodeUtils from './utils';
-import * as networkUtils from '../network/utils';
 import * as nodeErrors from './errors';
-import { NodeAddressMessage } from '@/proto/js/Agent_pb';
-import { ForwardProxy } from '../network';
-import { KeyManager } from '@/keys';
+import { agentPB, GRPCClientAgent } from '../agent';
+import { ForwardProxy, utils as networkUtils } from '../network';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.

@@ -1,16 +1,16 @@
-import type { FileSystem } from '../types';
 import type { KeyManager } from '../keys';
 import type { NodeId, NodeAddress, NodeData, NodeBucket } from '../nodes/types';
 import type { Host, Port } from '../network/types';
-import type { Timer } from '../types';
+import type { FileSystem, Timer } from '../types';
 
-import NodeGraph from './NodeGraph';
 import Logger from '@matrixai/logger';
+import NodeGraph from './NodeGraph';
+import * as nodesErrors from './errors';
+import { ForwardProxy, ReverseProxy } from '../network';
+import { GRPCClientAgent } from '../agent';
 import * as utils from '../utils';
-import * as nodeErrors from './errors';
 import * as agentPB from '../proto/js/Agent_pb';
-import { ForwardProxy, ReverseProxy } from '@/network';
-import { GRPCClientAgent } from '@/agent';
+
 class NodeManager {
   // LevelDB directory to store all the information for managing nodes
   public readonly nodesPath: string;
@@ -180,7 +180,7 @@ class NodeManager {
     timer?: Timer,
   ): Promise<void> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeManagerNotStarted();
+      throw new nodesErrors.ErrorNodeManagerNotStarted();
     }
     await this.revProxy.openConnection(egressHost, egressPort, timer);
   }

@@ -4,9 +4,8 @@ import type { NodeId } from '../nodes/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import lockfile from 'proper-lockfile';
-
 import * as utils from '../utils';
-import { ErrorPolykey } from '@/errors';
+import { ErrorPolykey } from '../errors';
 
 class Lockfile {
   public static readonly LOCKFILE_NAME = 'agent-lock.json';

@@ -1,12 +1,11 @@
-import { promisify } from 'util';
+import type { Gestalt } from '../gestalts/types';
+import type { NodeId, NodeInfo } from '../nodes/types';
+import type { IdentityId, ProviderId } from '../identities/types';
+import type { GestaltGraph } from '../gestalts';
 
 import * as grpc from '@grpc/grpc-js';
 import * as clientPB from '../proto/js/Client_pb';
-
-import { GestaltGraph } from '../gestalts';
-import { Gestalt } from '@/gestalts/types';
-import { NodeId, NodeInfo } from '@/nodes/types';
-import { IdentityId, ProviderId } from '@/identities/types';
+import { promisify } from '../utils';
 
 const createGestaltsRPC = ({
   gestaltGraph,

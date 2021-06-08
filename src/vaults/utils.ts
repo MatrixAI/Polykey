@@ -1,9 +1,10 @@
+import type { FileSystem } from '../types';
+
 import fs from 'fs';
 import path from 'path';
 import base58 from 'bs58';
 import { EncryptedFS } from 'encryptedfs';
 import { getRandomBytes, getRandomBytesSync } from '../keys/utils';
-import { FileSystem } from '@/types';
 
 const KEY_LEN = 32;
 const ID_LEN = 42;

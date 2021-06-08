@@ -1,3 +1,5 @@
+import type { LevelDB } from 'level';
+import type { AbstractBatch } from 'abstract-leveldown';
 import type {
   NodeId,
   NodeAddress,
@@ -5,22 +7,20 @@ import type {
   NodeData,
   NodeGraphOp,
 } from './types';
-import type { LevelDB } from 'level';
 import type { FileSystem } from '../types';
 import type { KeyManager } from '../keys';
-import type { AbstractBatch } from 'abstract-leveldown';
 
-import Logger from '@matrixai/logger';
 import path from 'path';
 import level from 'level';
 import { Mutex } from 'async-mutex';
-import * as utils from '../utils';
+import Logger from '@matrixai/logger';
+import NodeConnection from './NodeConnection';
 import * as nodeUtils from './utils';
 import * as nodeErrors from './errors';
-import NodeConnection from './NodeConnection';
+import { ForwardProxy } from '../network';
 import { utils as keysUtils } from '../keys';
 import * as agentPB from '../proto/js/Agent_pb';
-import { ForwardProxy } from '@/network';
+import * as utils from '../utils';
 
 // A Kademlia 'node', containing its own set of k-buckets of contacts (other nodes)
 class NodeGraph {

@@ -1,9 +1,8 @@
+import type { FileSystem } from '../types';
+
 import Logger from '@matrixai/logger';
-
 import * as errors from './errors';
-
-import { FileSystem } from '@/types';
-import { KeyManager, utils as keyUtils, errors as keyErrors } from '@/keys';
+import { KeyManager, utils as keyUtils, errors as keyErrors } from '../keys';
 
 class SessionManager {
   private _started: boolean;
