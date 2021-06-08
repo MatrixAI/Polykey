@@ -55,16 +55,16 @@ describe('NodeManager', () => {
     });
   });
   afterEach(async () => {
+    await keyManager.stop();
+    await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    await keyManager.stop();
-    await fwdProxy.stop();
   });
 
   test('construction has no side effects', async () => {
-    const nodesPath = `${dataDir}/nodes`;
+    const nodesPath = path.join(dataDir, 'nodes');
     new NodeManager({
       nodesPath: nodesPath,
       keyManager: keyManager,
@@ -75,7 +75,7 @@ describe('NodeManager', () => {
     await expect(fs.promises.stat(nodesPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs the node leveldb', async () => {
-    const nodesPath = `${dataDir}/nodes`;
+    const nodesPath = path.join(dataDir, 'nodes');
     const nodeManager = new NodeManager({
       nodesPath: nodesPath,
       keyManager: keyManager,

@@ -40,10 +40,8 @@ const createVaultRPC = ({
       callback: grpc.sendUnaryData<clientPB.StatusMessage>,
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
-      let status: Vault;
       try {
-        console.log(call.request.getName());
-        status = await vaultManager.createVault(call.request.getName());
+        await vaultManager.createVault(call.request.getName());
         response.setSuccess(true);
       } catch (err) {
         response.setSuccess(false);

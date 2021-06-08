@@ -38,8 +38,8 @@ describe('NodeGraph', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
+    const keysPath = path.join(dataDir, 'keys');
+    keyManager = new KeyManager({ keysPath: keysPath, logger: logger });
     await keyManager.start({ password: 'password' });
     await fwdProxy.start({
       tlsConfig: {
@@ -49,21 +49,21 @@ describe('NodeGraph', () => {
     });
   });
   afterEach(async () => {
+    await keyManager.stop();
+    await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
-    await keyManager.stop();
-    await fwdProxy.stop();
   });
 
   test('construction has no side effects', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     await expect(fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs the node leveldb', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -72,7 +72,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('start and stop preserves the buckets db key', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -84,7 +84,7 @@ describe('NodeGraph', () => {
     expect(bucketsDbKey).toEqual(bucketsDbKey_);
   });
   test('finds correct bucket (bucket 0)', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
 
     // "1" XOR "0" = distance of 1
@@ -106,7 +106,7 @@ describe('NodeGraph', () => {
     expect(bucketIndex).toBe(348);
   });
   test('finds correct node address', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -121,7 +121,7 @@ describe('NodeGraph', () => {
     expect(foundAddress).toEqual({ ip: '227.1.1.1', port: 4567 });
   });
   test('unable to find node address', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -136,7 +136,7 @@ describe('NodeGraph', () => {
     expect(foundAddress).toBeUndefined();
   });
   test('adds a single node into a bucket', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -161,7 +161,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('adds multiple nodes into the same bucket', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -201,7 +201,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('adds a single node into different buckets', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'IY2M0YTI5YzdhMTUzNGFjYWIxNmNiNGNmNTFiYTBjYTg' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -238,7 +238,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('deletes a single node (and removes bucket)', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -271,7 +271,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('deletes a single node (and retains remainder of bucket)', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -330,7 +330,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('enforces k-bucket size, removing least active node when a new node is discovered', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'A' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -393,7 +393,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('retrieves all buckets', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -448,7 +448,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('finds a single closest node', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -469,7 +469,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('finds 3 closest nodes', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
@@ -510,7 +510,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('finds the 20 closest nodes', async () => {
-    const nodePath = `${dataDir}/nodes`;
+    const nodePath = path.join(dataDir, 'nodes');
     const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
     const nodeId = 'NODEID0' as NodeId;
     await nodeGraph.start({ nodeId });
