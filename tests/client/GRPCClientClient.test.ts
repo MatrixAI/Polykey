@@ -158,9 +158,6 @@ describe('GRPCClientClient', () => {
     await client.stop();
     await testUtils.closeTestClientServer(server);
 
-    await sessionManager.stop();
-    await gestaltGraph.stop();
-    await identitiesManager.stop();
     await nodeManager.stop();
     await vaultManager.stop();
     await keyManager.stop();
@@ -170,7 +167,7 @@ describe('GRPCClientClient', () => {
       recursive: true,
     });
   });
-  test('echo', async () => {
+  test.only('echo', async () => {
     const echoMessage = new clientPB.EchoMessage();
     echoMessage.setChallenge('yes');
     await client.echo(echoMessage);

@@ -16,32 +16,32 @@ describe('polykey', () => {
   });
 });
 
-// describe('CLI echoes', () => {
-//   beforeEach(async () => {
-//     dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
-//     polykeyAgent = new PolykeyAgent({
-//       nodePath: dataDir,
-//       logger: logger,
-//     });
-//     await polykeyAgent.start({
-//       password: 'password',
-//     });
-//   });
+describe('CLI echoes', () => {
+  beforeEach(async () => {
+    dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    polykeyAgent = new PolykeyAgent({
+      nodePath: dataDir,
+      logger: logger,
+    });
+    await polykeyAgent.start({
+      password: 'password',
+    });
+  });
 
-//   afterEach(async () => {
-//     await polykeyAgent.stop();
-//   });
+  afterEach(async () => {
+    await polykeyAgent.stop();
+  });
 
-//   test('should echo', async () => {
-//     const result = await pk(['echoes', 'echo', '-np', dataDir, 'HelloWorld']);
-//     expect(result).toBe(0);
-//   });
+  test('should echo', async () => {
+    const result = await pk(['echoes', 'echo', '-np', dataDir, 'HelloWorld']);
+    expect(result).toBe(0);
+  });
 
-//   test('should cause error', async () => {
-//     const result = await pk(['echoes', 'echo', '-np', dataDir, 'ThrowAnError']);
-//     expect(result).toBe(1);
-//   });
-// });
+  test('should cause error', async () => {
+    const result = await pk(['echoes', 'echo', '-np', dataDir, 'ThrowAnError']);
+    expect(result).toBe(1);
+  });
+});
 
 // describe('CLI vaults', () => {
 //   beforeEach(async () => {
