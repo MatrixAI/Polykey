@@ -11,14 +11,11 @@ async function checkPassword(
   const passwordFile = meta.get('passwordFile').pop();
   meta.remove('passwordFile');
   let password;
-  // console.log(passwordFile);
   if (passwordFile) {
     password = await fs.promises.readFile(passwordFile, { encoding: 'utf-8' });
     await sessionManager.startSession(password.trim());
   } else if (!sessionManager.sessionStarted) {
-    throw new clientErrors.ErrorClientPasswordNotProvided(
-      'Password File must be provided.',
-    );
+    throw new clientErrors.ErrorClientPasswordNotProvided();
   }
 }
 

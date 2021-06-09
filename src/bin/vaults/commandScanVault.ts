@@ -1,13 +1,12 @@
-import * as grpcErrors from '../../grpc/errors';
-import * as clientErrors from '../../client/errors';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
 import { clientPB } from '../../client';
-import { createCommand, outputFormatter } from '../utils';
-import { getDefaultNodePath } from '../../utils';
-import * as grpc from '@grpc/grpc-js';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandScanVaults = createCommand('scan', {
+const commandScanVaults = binUtils.createCommand('scan', {
   description: 'Lists the vaults of another node',
   aliases: ['fetch'],
   nodePath: true,
@@ -35,7 +34,9 @@ commandScanVaults.action(async (options) => {
   if (options.passwordFile) {
     meta.set('passwordFile', options.passwordFile);
   }
-  clientConfig['nodePath'] = options.nodePath ? options.nodePath : getDefaultNodePath();
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
@@ -46,30 +47,30 @@ commandScanVaults.action(async (options) => {
     const grpcClient = client.grpcClient;
 
     const data: Array<string> = [];
-    const vaultListGenerator = grpcClient.vaultsScan(vaultMessage);
+    const vaultListGenerator = grpcClient.vaultsScan(vaultMessage, meta);
     for await (const vault of vaultListGenerator) {
       data.push(`${vault.getName()}`);
     }
     process.stdout.write(
-      outputFormatter({
+      binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: data,
       }),
     );
   } catch (err) {
-    if (err instanceof clientErrors.ErrorClientPasswordNotProvided) {
-      process.stderr.write(`${err.message}\nUse --password-file <file>\n`);
-    } else if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();

@@ -1,13 +1,12 @@
-import * as grpcErrors from '../../grpc/errors';
-import * as clientErrors from '../../client/errors';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
 import { clientPB } from '../../client';
-import { createCommand, outputFormatter } from '../utils';
-import { getDefaultNodePath } from '../../utils';
-import * as grpc from '@grpc/grpc-js';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandRenameVault = createCommand('rename', {
+const commandRenameVault = binUtils.createCommand('rename', {
   description: 'Renames an existing vault',
   nodePath: true,
   verbose: true,
@@ -38,7 +37,9 @@ commandRenameVault.action(async (options) => {
   if (options.passwordFile) {
     meta.set('passwordFile', options.passwordFile);
   }
-  clientConfig['nodePath'] = options.nodePath ? options.nodePath : getDefaultNodePath();
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
@@ -55,7 +56,7 @@ commandRenameVault.action(async (options) => {
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {
       process.stdout.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
             `Renamed vault: ${vaultMessage.getId()} to ${vaultMessage.getName()}`,
@@ -64,22 +65,20 @@ commandRenameVault.action(async (options) => {
       );
     } else {
       process.stdout.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [`Failed to rename vault: ${vaultMessage.getId()}`],
         }),
       );
     }
   } catch (err) {
-    if (err instanceof clientErrors.ErrorClientPasswordNotProvided) {
-      process.stderr.write(`${err.message}\nUse --password-file <file>\n`);
-    } else if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
       process.stderr.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: 'error',
           description: err.description,
           message: err.message,
@@ -92,7 +91,8 @@ commandRenameVault.action(async (options) => {
     options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;
-    options.format = undefined;  }
+    options.format = undefined;
+  }
 });
 
 export default commandRenameVault;

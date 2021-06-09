@@ -139,6 +139,7 @@ const createVaultRPC = ({
       const nodeId = call.request.getId();
 
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         const vaults: Array<string> = await gitManager.scanNodeVaults(nodeId);
         let vaultMessage: clientPB.VaultMessage;
         for (const vault of vaults) {

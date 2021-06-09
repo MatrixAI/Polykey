@@ -1,23 +1,16 @@
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { pk } from './utils';
-import { PolykeyAgent } from '../../src';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { PolykeyAgent } from '@';
 import { NodeAddress } from '@/nodes/types';
-import main from '@/bin/polykey';
-import { sleep } from '@/utils';
+import * as utils from './utils';
 
 const logger = new Logger('CLI Test', LogLevel.WARN, [new StreamHandler()]);
 let dataDir: string;
 let passwordFile: string;
 let polykeyAgent: PolykeyAgent;
-
-describe('polykey', () => {
-  test('default help display', async () => {
-    expect(await main(['', ''])).toBe(0);
-  });
-});
+const passwordExitCode = 64;
 
 describe('CLI vaults', () => {
   beforeEach(async () => {
@@ -41,37 +34,11 @@ describe('CLI vaults', () => {
     await fs.promises.rmdir(dataDir, { recursive: true });
   });
 
-  test('should not function if the password is not provided and the session not started', async () => {
-    const result = await pk([
-      'vaults',
-      'create',
-      '-np',
-      dataDir,
-      '-vn',
-      'MyTestVault',
-      '--password-file',
-      passwordFile,
-    ]);
-    expect(result).toBe(0);
-    await polykeyAgent.sessionManager.stopSession();
-    const result2 = await pk([
-      'vaults',
-      'touch',
-      '-np',
-      dataDir,
-      '-vn',
-      'MyTestVault2',
-    ]);
-    expect(result2).toBe(0);
-    const vaults = polykeyAgent.vaults.listVaults().sort();
-    expect(vaults.length).toBe(1);
-    expect(vaults[0].name).toBe('MyTestVault');
-  });
   test('should list vaults', async () => {
     await polykeyAgent.vaults.createVault('Vault1');
     await polykeyAgent.vaults.createVault('Vault2');
 
-    const result = await pk([
+    const result = await utils.pk([
       'vaults',
       'list',
       '-np',
@@ -80,9 +47,13 @@ describe('CLI vaults', () => {
       passwordFile,
     ]);
     expect(result).toBe(0);
+
+    await polykeyAgent.sessionManager.stopSession();
+    const result2 = await utils.pk(['vaults', 'list', '-np', dataDir]);
+    expect(result2).toBe(passwordExitCode);
   });
   test('should create vaults', async () => {
-    const result = await pk([
+    const result = await utils.pk([
       'vaults',
       'create',
       '-np',
@@ -93,7 +64,7 @@ describe('CLI vaults', () => {
       passwordFile,
     ]);
     expect(result).toBe(0);
-    const result2 = await pk([
+    const result2 = await utils.pk([
       'vaults',
       'touch',
       '-np',
@@ -102,6 +73,18 @@ describe('CLI vaults', () => {
       'MyTestVault2',
     ]);
     expect(result2).toBe(0);
+
+    await polykeyAgent.sessionManager.stopSession();
+    const result3 = await utils.pk([
+      'vaults',
+      'new',
+      '-np',
+      dataDir,
+      '-vn',
+      'MyTestVault3',
+    ]);
+    expect(result3).toBe(passwordExitCode);
+
     const vaults = polykeyAgent.vaults.listVaults().sort();
     expect(vaults[0].name).toBe('MyTestVault');
     expect(vaults[1].name).toBe('MyTestVault2');
@@ -111,7 +94,7 @@ describe('CLI vaults', () => {
     const ids = polykeyAgent.vaults.getVaultIds('Vault1');
     expect(ids.length).toBe(1);
 
-    const result = await pk([
+    const result = await utils.pk([
       'vaults',
       'rename',
       '-vn',
@@ -124,16 +107,30 @@ describe('CLI vaults', () => {
       passwordFile,
     ]);
     expect(result).toBe(0);
+
     const list = polykeyAgent.vaults.listVaults();
     expect(list.length).toBe(1);
     expect(list[0].name).toBe('RenamedVault');
+
+    await polykeyAgent.sessionManager.stopSession();
+    const result2 = await utils.pk([
+      'vaults',
+      'rename',
+      '-np',
+      dataDir,
+      '-vn',
+      'RenamedVault',
+      '-nn',
+      'PasswordError',
+    ]);
+    expect(result2).toBe(passwordExitCode);
   });
   test('should fail to rename non-existent vault', async () => {
     await polykeyAgent.vaults.createVault('Vault1');
     const ids = polykeyAgent.vaults.getVaultIds('Vault1');
     expect(ids.length).toBe(1);
 
-    const result = await pk([
+    const result = await utils.pk([
       'vaults',
       'rename',
       '-vn',
@@ -153,10 +150,24 @@ describe('CLI vaults', () => {
   });
   test('should delete vault', async () => {
     await polykeyAgent.vaults.createVault('Vault1');
-    const ids = polykeyAgent.vaults.getVaultIds('Vault1');
+    let ids = polykeyAgent.vaults.getVaultIds('Vault1');
     expect(ids.length).toBe(1);
 
-    const result = await pk([
+    await polykeyAgent.sessionManager.stopSession();
+    const result = await utils.pk([
+      'vaults',
+      'delete',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+    ]);
+    expect(result).toBe(passwordExitCode);
+
+    ids = polykeyAgent.vaults.getVaultIds('Vault1');
+    expect(ids.length).toBe(1);
+
+    const result2 = await utils.pk([
       'vaults',
       'delete',
       '-np',
@@ -166,7 +177,8 @@ describe('CLI vaults', () => {
       '--password-file',
       passwordFile,
     ]);
-    expect(result).toBe(0);
+    expect(result2).toBe(0);
+
     const list = polykeyAgent.vaults.listVaults();
     expect(list.length).toBe(0);
   });
@@ -175,7 +187,7 @@ describe('CLI vaults', () => {
     const ids = polykeyAgent.vaults.getVaultIds('Vault1');
     expect(ids.length).toBe(1);
 
-    const result = await pk([
+    const result = await utils.pk([
       'vaults',
       'stat',
       '-np',
@@ -186,6 +198,17 @@ describe('CLI vaults', () => {
       passwordFile,
     ]);
     expect(result).toBe(0);
+
+    await polykeyAgent.sessionManager.stopSession();
+    const result2 = await utils.pk([
+      'vaults',
+      'stat',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+    ]);
+    expect(result2).toBe(passwordExitCode);
   });
   test('should clone a vault', async () => {
     const dataDir2 = await fs.promises.mkdtemp(
@@ -227,7 +250,7 @@ describe('CLI vaults', () => {
     // Vault does not exist on the source PolykeyAgent so the pull command throws an error which
     // caught, the error is checked and if it is ErrorVaultUndefined, then the Agent attempts a
     // clone instead
-    const result = await pk([
+    const result = await utils.pk([
       'vaults',
       'pull',
       '-np',
@@ -288,7 +311,7 @@ describe('CLI vaults', () => {
     // Vault does not exist on the source PolykeyAgent so the pull command throws an error which
     // caught, the error is checked and if it is ErrorVaultUndefined, then the Agent attempts a
     // clone instead
-    const result = await pk([
+    const result = await utils.pk([
       'vaults',
       'pull',
       '-np',
@@ -313,7 +336,21 @@ describe('CLI vaults', () => {
     const clonedVault = polykeyAgent.vaults.getVault(list[0].id);
     await expect(clonedVault.listSecrets()).resolves.toStrictEqual([]);
 
-    const result2 = await pk([
+    await polykeyAgent.sessionManager.stopSession();
+    const result2 = await utils.pk([
+      'vaults',
+      'pull',
+      '-np',
+      dataDir,
+      '-ni',
+      targetNodeId as string,
+      '-vn',
+      'Vault1',
+    ]);
+    expect(result2).toBe(passwordExitCode);
+    await expect(clonedVault.listSecrets()).resolves.toStrictEqual([]);
+
+    const result3 = await utils.pk([
       'vaults',
       'pull',
       '-np',
@@ -325,7 +362,7 @@ describe('CLI vaults', () => {
       '--password-file',
       passwordFile,
     ]);
-    expect(result2).toBe(0);
+    expect(result3).toBe(0);
 
     await expect(clonedVault.listSecrets()).resolves.toStrictEqual([
       'MySecret',
@@ -377,7 +414,20 @@ describe('CLI vaults', () => {
     const targetVaults = targetPolykeyAgent.vaults.listVaults();
     expect(targetVaults.length).toBe(3);
 
-    const result = await pk([
+    const result = await utils.pk([
+      'vaults',
+      'scan',
+      '-np',
+      dataDir,
+      '-ni',
+      targetNodeId as string,
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result).toBe(0);
+
+    await polykeyAgent.sessionManager.stopSession();
+    const result2 = await utils.pk([
       'vaults',
       'scan',
       '-np',
@@ -385,7 +435,7 @@ describe('CLI vaults', () => {
       '-ni',
       targetNodeId as string,
     ]);
-    expect(result).toBe(0);
+    expect(result2).toBe(passwordExitCode);
 
     await targetPolykeyAgent.stop();
     await fs.promises.rmdir(dataDir2, { recursive: true });

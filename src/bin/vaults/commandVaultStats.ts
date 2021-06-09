@@ -1,13 +1,12 @@
-import * as grpcErrors from '../../grpc/errors';
-import * as clientErrors from '../../client/errors';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
 import { clientPB } from '../../client';
-import { createCommand, outputFormatter } from '../utils';
-import { getDefaultNodePath } from '../../utils';
-import * as grpc from '@grpc/grpc-js';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandVaultStats = createCommand('stat', {
+const commandVaultStats = binUtils.createCommand('stat', {
   description: 'Gets stats of an existing vault',
   nodePath: true,
   verbose: true,
@@ -31,8 +30,9 @@ commandVaultStats.action(async (options) => {
   if (options.passwordFile) {
     meta.set('passwordFile', options.passwordFile);
   }
-  clientConfig['nodePath'] = options.nodePath ? options.nodePath : getDefaultNodePath();
-
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
@@ -45,25 +45,25 @@ commandVaultStats.action(async (options) => {
     const responseMessage = await grpcClient.vaultsStat(vaultMessage, meta);
 
     process.stdout.write(
-      outputFormatter({
+      binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [`${vaultMessage.getId()}:\t\t${responseMessage.getStats()}`],
       }),
     );
   } catch (err) {
-    if (err instanceof clientErrors.ErrorClientPasswordNotProvided) {
-      process.stderr.write(`${err.message}\nUse --password-file <file>\n`);
-    } else if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     await client.stop();
