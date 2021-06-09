@@ -1,6 +1,5 @@
 import fs from 'fs';
-
-import { errors } from '@/grpc';
+import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';

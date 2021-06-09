@@ -1,6 +1,5 @@
 import { spawn } from 'child_process';
-
-import { errors } from '@/grpc';
+import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';

@@ -1,4 +1,4 @@
-import { errors } from '@/grpc';
+import { errors } from '../../grpc';
 import { clientPB } from '../../client';
 import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
