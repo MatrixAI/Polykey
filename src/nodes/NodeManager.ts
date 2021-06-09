@@ -97,6 +97,7 @@ class NodeManager {
   public async stop() {
     this.logger.info('Stopping Node Manager');
     this._started = false;
+    await this.nodeGraph.stop();
     this.logger.info('Stopped Node Manager');
   }
 

@@ -242,6 +242,7 @@ function outputFormatter(msg: OutputObject): string {
     if (msg.message) {
       output += ` - ${msg.message}`;
     }
+    output += '\n';
   }
   return output;
 }
