@@ -71,14 +71,9 @@ const createVaultRPC = ({
       try {
         await utils.checkPassword(call.metadata, sessionManager);
         const name = call.request.getId();
-        const id = vaultManager.getVaultIds(name);
-        if (id.length > 1) {
-          logger.warn(
-            'There are multiple vaults with the same name. To avoid conflicts, rename the vault(s)',
-          );
-        }
+        const id = utils.parseVaultInput(name, vaultManager);
         const result = await vaultManager.renameVault(
-          id[0],
+          id,
           call.request.getName(),
         );
         response.setSuccess(result);
@@ -95,13 +90,8 @@ const createVaultRPC = ({
       try {
         await utils.checkPassword(call.metadata, sessionManager);
         const name = call.request.getName();
-        const id = vaultManager.getVaultIds(name);
-        if (id.length > 1) {
-          logger.warn(
-            'There are multiple vaults with the same name. To avoid conflicts, rename the vault(s)',
-          );
-        }
-        const result = await vaultManager.deleteVault(id[0]);
+        const id = utils.parseVaultInput(name, vaultManager);
+        const result = await vaultManager.deleteVault(id);
         response.setSuccess(result);
         callback(null, response);
       } catch (err) {
@@ -115,13 +105,16 @@ const createVaultRPC = ({
       const response = new clientPB.EmptyMessage();
       try {
         await utils.checkPassword(call.metadata, sessionManager);
+        // vault name
         const name = call.request.getName();
+        const vaultId = utils.parseVaultInput(name, vaultManager);
+        // node id
         const id = call.request.getId();
         try {
-          await gitManager.pullVault(name, id);
+          await gitManager.pullVault(vaultId, id);
         } catch (err) {
           if (err instanceof errors.ErrorVaultUndefined) {
-            await gitManager.cloneVault(name, id);
+            await gitManager.cloneVault(vaultId, id);
           }
         }
         callback(null, response);
@@ -195,13 +188,8 @@ const createVaultRPC = ({
       try {
         await utils.checkPassword(call.metadata, sessionManager);
         const name = call.request.getName();
-        const id = vaultManager.getVaultIds(name);
-        if (id.length > 1) {
-          logger.warn(
-            'There are multiple vaults with the same name. To avoid conflicts, rename the vault(s)',
-          );
-        }
-        const stats = await vaultManager.vaultStats(id[0]);
+        const id = utils.parseVaultInput(name, vaultManager);
+        const stats = await vaultManager.vaultStats(id);
         response.setStats(JSON.stringify(stats));
         callback(null, response);
       } catch (err) {

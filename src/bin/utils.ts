@@ -95,7 +95,10 @@ function createCommand(
   }
   if (passwordFile) {
     cmd.addOption(
-      new commander.Option('--password-file <passwordFile>', 'Password File Path'),
+      new commander.Option(
+        '--password-file <passwordFile>',
+        'Password File Path',
+      ),
     );
   }
   return cmd;
