@@ -433,7 +433,7 @@ describe('NodeConnection', () => {
     client.start();
     const gitRequest = gitFront.connectToNodeGit(client);
     const list = await gitRequest.scanVaults();
-    expect(list).toStrictEqual(['vault1']);
+    expect(list).toStrictEqual([`${newVault.vaultId}\tvault1`]);
 
     await conn.stop();
     await revProxy.closeConnection(
@@ -474,7 +474,7 @@ describe('NodeConnection', () => {
     const client = conn.getClient();
     client.start();
     const gitRequest = gitFront.connectToNodeGit(client);
-    const vaultUrl = `http://0.0.0.0/vault1`;
+    const vaultUrl = `http://0.0.0.0/${newVault.vaultId}`;
     await git.clone({
       fs: newVault2.EncryptedFS,
       http: gitRequest,

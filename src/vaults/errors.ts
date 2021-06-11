@@ -6,7 +6,10 @@ class ErrorSecrets extends ErrorPolykey {}
 
 class ErrorVaultManagerNotStarted extends ErrorVaults {}
 
-class ErrorVaultUndefined extends ErrorVaults {}
+class ErrorVaultUndefined extends ErrorVaults {
+  description: string = 'Vault does not exist';
+  exitCode: number = 10;
+}
 
 class ErrorVaultDefined extends ErrorVaults {}
 

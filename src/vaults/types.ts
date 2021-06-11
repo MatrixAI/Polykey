@@ -6,7 +6,12 @@ type VaultKey = Buffer;
  * map vaultId -> Vault, VaultKey, VaultName
  */
 type Vaults = {
-  [key: string]: { vault: Vault; vaultKey: VaultKey; vaultName: string };
+  [key: string]: {
+    vault: Vault;
+    vaultKey: VaultKey;
+    vaultName: string;
+    vaultLink?: string;
+  };
 };
 
 type NodePermissions = {

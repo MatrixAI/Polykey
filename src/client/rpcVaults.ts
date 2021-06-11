@@ -2,17 +2,24 @@ import { promisify } from 'util';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
+import Logger from '@matrixai/logger';
 
 import { VaultManager, Vault } from '../vaults';
-import { SessionManager, errors as sessionErrors } from '../session';
+import { SessionManager } from '../session';
+import * as errors from './../vaults/errors';
+import { GitManager } from '../git';
+import * as utils from './utils';
 
 const createVaultRPC = ({
   vaultManager,
+  gitManager,
   sessionManager,
 }: {
   vaultManager: VaultManager;
+  gitManager: GitManager;
   sessionManager: SessionManager;
 }) => {
+  const logger = new Logger('RPCVaults');
   return {
     vaultsList: async (
       call: grpc.ServerWritableStream<
@@ -20,20 +27,25 @@ const createVaultRPC = ({
         clientPB.VaultMessage
       >,
     ): Promise<void> => {
-      // call.request // PROCESS THE REQEUST MESSAGE
-      const write = promisify(call.write).bind(call);
-      const vaults: Array<{
-        name: string;
-        id: string;
-      }> = vaultManager.listVaults();
-      let vaultMessage: clientPB.VaultMessage;
-      for (const vault of vaults) {
-        vaultMessage = new clientPB.VaultMessage();
-        vaultMessage.setName(vault.name);
-        vaultMessage.setId(vault.id);
-        await write(vaultMessage);
+      const genWritable = grpcUtils.generatorWritable(call);
+
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const vaults: Array<{
+          name: string;
+          id: string;
+        }> = vaultManager.listVaults();
+        let vaultMessage: clientPB.VaultMessage;
+        for (const vault of vaults) {
+          vaultMessage = new clientPB.VaultMessage();
+          vaultMessage.setName(vault.name);
+          vaultMessage.setId(vault.id);
+          await genWritable.next(vaultMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
       }
-      call.end();
     },
     vaultsCreate: async (
       call: grpc.ServerUnaryCall<clientPB.VaultMessage, clientPB.StatusMessage>,
@@ -42,7 +54,7 @@ const createVaultRPC = ({
       const response = new clientPB.StatusMessage();
       let status: Vault;
       try {
-        console.log(call.request.getName());
+        await utils.checkPassword(call.metadata, sessionManager);
         status = await vaultManager.createVault(call.request.getName());
         response.setSuccess(true);
       } catch (err) {
@@ -57,8 +69,11 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const name = call.request.getId();
+        const id = utils.parseVaultInput(name, vaultManager);
         const result = await vaultManager.renameVault(
-          call.request.getId(),
+          id,
           call.request.getName(),
         );
         response.setSuccess(result);
@@ -73,11 +88,68 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        const result = await vaultManager.deleteVault(call.request.getId());
+        await utils.checkPassword(call.metadata, sessionManager);
+        const name = call.request.getName();
+        const id = utils.parseVaultInput(name, vaultManager);
+        const result = await vaultManager.deleteVault(id);
         response.setSuccess(result);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+      }
+    },
+    vaultsPull: async (
+      call: grpc.ServerUnaryCall<clientPB.VaultMessage, clientPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+    ): Promise<void> => {
+      const response = new clientPB.EmptyMessage();
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        // vault name
+        const name = call.request.getName();
+        // node id
+        const id = call.request.getId();
+        const vaultsList = await gitManager.scanNodeVaults(id);
+        let vault, vaultId;
+        for (const vaults in vaultsList) {
+          vault = vaultsList[vaults].split('\t');
+          if (vault[1] === name) {
+            vaultId = vault[0];
+          }
+        }
+        try {
+          await gitManager.pullVault(vaultId, id);
+        } catch (err) {
+          if (err instanceof errors.ErrorVaultUnlinked) {
+            await gitManager.cloneVault(vaultId, id);
+          }
+        }
+        callback(null, response);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
+      }
+    },
+    vaultsScan: async (
+      call: grpc.ServerWritableStream<
+        clientPB.VaultMessage,
+        clientPB.VaultMessage
+      >,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+      const nodeId = call.request.getId();
+
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const vaults: Array<string> = await gitManager.scanNodeVaults(nodeId);
+        let vaultMessage: clientPB.VaultMessage;
+        for (const vault of vaults) {
+          vaultMessage = new clientPB.VaultMessage();
+          vaultMessage.setName(vault);
+          await genWritable.next(vaultMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
       }
     },
     vaultsListSecrets: async (
@@ -120,14 +192,16 @@ const createVaultRPC = ({
       callback: grpc.sendUnaryData<clientPB.StatMessage>,
     ): Promise<void> => {
       const response = new clientPB.StatMessage();
-      const vaultId = call.request.getId();
-      if (!vaultId) {
-        callback({ code: grpc.status.NOT_FOUND }, null);
-        return;
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const name = call.request.getName();
+        const id = utils.parseVaultInput(name, vaultManager);
+        const stats = await vaultManager.vaultStats(id);
+        response.setStats(JSON.stringify(stats));
+        callback(null, response);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
       }
-      const stats = await vaultManager.vaultStats(vaultId);
-      response.setStats(JSON.stringify(stats));
-      callback(null, response);
     },
     vaultsDeleteSecret: async (
       call: grpc.ServerUnaryCall<

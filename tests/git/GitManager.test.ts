@@ -202,9 +202,10 @@ describe('GitManager is', () => {
   afterAll(async () => {
     await sourceFwdProxy.stop();
   });
+
   test('able to scan vaults from another node', async () => {
-    await targetVaultManager.createVault('MyFirstVault');
-    await targetVaultManager.createVault('MySecondVault');
+    const vault1 = await targetVaultManager.createVault('MyFirstVault');
+    const vault2 = await targetVaultManager.createVault('MySecondVault');
     await sourceNodeManager.setNode(targetNodeId, {
       ip: targetHost,
       port: targetPort,
@@ -215,7 +216,12 @@ describe('GitManager is', () => {
     } as NodeAddress);
     await revProxy.openConnection(sourceHost, sourcePort);
     const list = await sourceGitManager.scanNodeVaults(targetNodeId);
-    expect(list.sort()).toStrictEqual(['MyFirstVault', 'MySecondVault']);
+    expect(list.sort()).toStrictEqual(
+      [
+        `${vault1.vaultId}\t${vault1.vaultName}`,
+        `${vault2.vaultId}\t${vault2.vaultName}`,
+      ].sort(),
+    );
   });
   test('able to clone and pull vaults from another node', async () => {
     const vault = await targetVaultManager.createVault('MyFirstVault');
@@ -230,7 +236,7 @@ describe('GitManager is', () => {
       port: targetPort,
     } as NodeAddress);
     await revProxy.openConnection(sourceHost, sourcePort);
-    await sourceGitManager.cloneVault('MyFirstVault', targetNodeId);
+    await sourceGitManager.cloneVault(vault.vaultId, targetNodeId);
     const vaultsList = sourceVaultManager.listVaults();
     expect(vaultsList[0].name).toStrictEqual('MyFirstVault');
     const clonedVault = sourceVaultManager.getVault(vaultsList[0].id);
@@ -238,7 +244,7 @@ describe('GitManager is', () => {
       Buffer.from('Success?'),
     );
     vault.addSecret('MySecondSecret', Buffer.from('SecondSuccess?'));
-    await sourceGitManager.pullVault('MyFirstVault', targetNodeId);
+    await sourceGitManager.pullVault(vault.vaultId, targetNodeId);
     expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
       ['MyFirstSecret', 'MySecondSecret'].sort(),
     );
@@ -246,7 +252,7 @@ describe('GitManager is', () => {
       Buffer.from('SecondSuccess?'),
     );
   });
-  test('able to handle various rejection cases', async () => {
+  test('able to handle various edge cases', async () => {
     const vault = await targetVaultManager.createVault('MyFirstVault');
     const vault2 = await targetVaultManager.createVault('MySecondVault');
     await vault.initializeVault();
@@ -262,14 +268,21 @@ describe('GitManager is', () => {
     } as NodeAddress);
     await revProxy.openConnection(sourceHost, sourcePort);
     await sourceVaultManager.createVault('MyFirstVault');
+    await sourceGitManager.cloneVault(vault.vaultId, targetNodeId);
+    const list = sourceVaultManager.listVaults();
+    expect(list[0].name).toBe('MyFirstVault');
+    expect(list[1].name).toBe('MyFirstVault copy');
+    const copiedVault = sourceVaultManager.getVault(list[1].id);
+    await expect(copiedVault.getSecret('MyFirstSecret')).resolves.toStrictEqual(
+      Buffer.from('Success?'),
+    );
     await expect(
-      sourceGitManager.cloneVault('MyFirstVault', targetNodeId),
-    ).rejects.toThrow(vaultsErrors.ErrorVaultDefined);
-    await expect(
-      sourceGitManager.pullVault('MySecondVault', targetNodeId),
-    ).rejects.toThrow(vaultsErrors.ErrorVaultUndefined);
-    await expect(
-      sourceGitManager.pullVault('MyFirstVault', targetNodeId),
+      sourceGitManager.pullVault(vault2.vaultId, targetNodeId),
     ).rejects.toThrow(vaultsErrors.ErrorVaultUnlinked);
+    await vault.updateSecret('MyFirstSecret', Buffer.from('Success!'));
+    await sourceGitManager.pullVault(vault.vaultId, targetNodeId);
+    await expect(copiedVault.getSecret('MyFirstSecret')).resolves.toStrictEqual(
+      Buffer.from('Success!'),
+    );
   });
 });

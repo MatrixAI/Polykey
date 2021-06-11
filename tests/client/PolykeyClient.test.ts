@@ -8,6 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 
 import { PolykeyClient } from '@';
+import { GitManager } from '@/git';
 import { NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
 import { GestaltGraph } from '@/gestalts';
@@ -37,6 +38,7 @@ describe('GRPCClientClient', () => {
   let identitiesPath: string;
 
   let keyManager: KeyManager;
+  let gitManager: GitManager;
   let nodeManager: NodeManager;
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
@@ -105,18 +107,6 @@ describe('GRPCClientClient', () => {
       fs: fs,
       logger: logger,
     });
-    identitiesManager = new IdentitiesManager({
-      identitiesPath: identitiesPath,
-      keyManager: keyManager,
-      fs: fs,
-      logger: logger,
-    });
-    gestaltGraph = new GestaltGraph({
-      gestaltsPath: gestaltsPath,
-      keyManager: keyManager,
-      fs: fs,
-      logger: logger,
-    });
 
     identitiesManager = new IdentitiesManager({
       identitiesPath: identitiesPath,
@@ -130,6 +120,11 @@ describe('GRPCClientClient', () => {
       keyManager: keyManager,
       fs: fs,
       logger: logger,
+    });
+
+    gitManager = new GitManager({
+      vaultManager,
+      nodeManager,
     });
 
     sessionManager = new SessionManager({
@@ -150,6 +145,7 @@ describe('GRPCClientClient', () => {
       nodeManager,
       identitiesManager,
       gestaltGraph,
+      gitManager,
       sessionManager,
     });
 
@@ -176,7 +172,9 @@ describe('GRPCClientClient', () => {
     await testUtils.closeTestClientServer(server);
 
     await lockfile.stop();
-
+    await sessionManager.stop();
+    await gestaltGraph.stop();
+    await identitiesManager.stop();
     await nodeManager.stop();
     await vaultManager.stop();
     await keyManager.stop();

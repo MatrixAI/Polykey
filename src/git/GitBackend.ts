@@ -45,17 +45,15 @@ class GitBackend {
    * @param vaultName Name of vault
    */
   public async *handleInfoRequest(
-    vaultName: string,
+    vaultId: string,
   ): AsyncGenerator<Buffer | null> {
-    const vaultID = this.getVaultID(vaultName)[0];
-
     // Service for uploading packets
     const service = 'upload-pack';
 
-    const fileSystem = this.getVault(vaultID).EncryptedFS;
+    const fileSystem = this.getVault(vaultId).EncryptedFS;
 
-    if (!fileSystem.existsSync(vaultID)) {
-      throw new Error(`repository does not exist: '${vaultID}'`);
+    if (!fileSystem.existsSync(vaultId)) {
+      throw new Error(`repository does not exist: '${vaultId}'`);
     }
 
     // define the service
@@ -67,7 +65,7 @@ class GitBackend {
 
     for (const buffer of (await gitUtils.uploadPack(
       fileSystem,
-      vaultID,
+      vaultId,
       undefined,
       true,
     )) ?? []) {
@@ -82,9 +80,7 @@ class GitBackend {
    * @param body body of pack request
    * @returns Two streams used to send the pack response
    */
-  public async handlePackRequest(vaultName: string, body: Buffer) {
-    const vaultId = this.getVaultID(vaultName)[0];
-
+  public async handlePackRequest(vaultId: string, body: Buffer) {
     const fileSystem = this.getVault(vaultId).EncryptedFS;
 
     if (body.toString().slice(4, 8) == 'want') {
@@ -115,7 +111,7 @@ class GitBackend {
   public async *handleVaultNamesRequest(): AsyncGenerator<Uint8Array> {
     const vaults = this.getVaultNames();
     for (const vault in vaults) {
-      yield Buffer.from(vaults[vault].name);
+      yield Buffer.from(`${vaults[vault].id}\t${vaults[vault].name}`);
     }
   }
 }

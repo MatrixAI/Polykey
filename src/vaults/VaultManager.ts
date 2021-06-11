@@ -176,7 +176,7 @@ class VaultManager {
     newVaultName: string,
   ): Promise<boolean> {
     if (!this.vaults[vaultId]) {
-      throw new errors.ErrorVaultUndefined('vault does not exist');
+      throw new errors.ErrorVaultUndefined();
     }
 
     const vault = this.vaults[vaultId].vault;
@@ -280,6 +280,18 @@ class VaultManager {
       throw new errors.ErrorVaultUndefined(`${vaultId} does not exist`);
     } else {
       return this.vaults[vaultId].vault;
+    }
+  }
+
+  public setLinkVault(vaultId: string, linkVault: string): void {
+    this.vaults[vaultId].vaultLink = linkVault;
+  }
+
+  public getLinkVault(vaultId: string): Vault | undefined {
+    for (const elem in this.vaults) {
+      if (this.vaults[elem].vaultLink === vaultId) {
+        return this.vaults[elem].vault;
+      }
     }
   }
 

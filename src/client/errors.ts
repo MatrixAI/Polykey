@@ -4,4 +4,14 @@ class ErrorClient extends ErrorPolykey {}
 
 class ErrorClientClientNotStarted extends ErrorClient {}
 
-export { ErrorClient, ErrorClientClientNotStarted };
+class ErrorClientPasswordNotProvided extends ErrorClient {
+  description: string =
+    'Password file is required to access PolyKey, use --password-file <file>';
+  exitCode: number = 64;
+}
+
+export {
+  ErrorClient,
+  ErrorClientClientNotStarted,
+  ErrorClientPasswordNotProvided,
+};
