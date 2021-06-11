@@ -4,28 +4,30 @@ import fs from 'fs';
 import path from 'path';
 import base58 from 'bs58';
 import { EncryptedFS } from 'encryptedfs';
-import { getRandomBytes, getRandomBytesSync } from '../keys/utils';
+
+import * as vaultErrors from './errors';
+import * as keysUtils from '../keys/utils';
 
 const KEY_LEN = 32;
 const ID_LEN = 42;
 
 async function generateVaultKey() {
-  const key = await getRandomBytes(KEY_LEN);
+  const key = await keysUtils.getRandomBytes(KEY_LEN);
   return Buffer.from(key);
 }
 
 function generateVaultKeySync() {
-  const key = getRandomBytesSync(KEY_LEN);
+  const key = keysUtils.getRandomBytesSync(KEY_LEN);
   return Buffer.from(key);
 }
 
 async function generateVaultId() {
-  const id = await getRandomBytes(ID_LEN);
+  const id = await keysUtils.getRandomBytes(ID_LEN);
   return base58.encode(id);
 }
 
 function generateVaultIdSync() {
-  const id = getRandomBytesSync(ID_LEN);
+  const id = keysUtils.getRandomBytesSync(ID_LEN);
   return base58.encode(id);
 }
 
@@ -72,6 +74,30 @@ async function* readdirRecursivelyEFS(fs: EncryptedFS, dir: string) {
   }
 }
 
+function serializeEncrypt<T>(key: Buffer, value: T): Buffer {
+  return keysUtils.encryptWithKey(
+    key,
+    Buffer.from(JSON.stringify(value), 'utf-8'),
+  );
+}
+
+function unserializeDecrypt<T>(key: Buffer, data: Buffer): T {
+  const value_ = keysUtils.decryptWithKey(key, data);
+  if (!value_) {
+    throw new vaultErrors.ErrorVaultMapDecrypt();
+  }
+  let value;
+  try {
+    value = JSON.parse(value_.toString('utf-8'));
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      throw new vaultErrors.ErrorVaultMapParse();
+    }
+    throw e;
+  }
+  return value;
+}
+
 export {
   generateVaultKey,
   generateVaultKeySync,
@@ -80,4 +106,6 @@ export {
   fileExists,
   readdirRecursively,
   readdirRecursivelyEFS,
+  serializeEncrypt,
+  unserializeDecrypt,
 };
