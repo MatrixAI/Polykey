@@ -85,7 +85,7 @@ class Vault {
       fs: efs,
       dir: this.vaultId,
       author: {
-        name: this.vaultName,
+        name: this.vaultId,
       },
       message: 'Initial Commit',
     });

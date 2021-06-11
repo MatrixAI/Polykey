@@ -163,6 +163,7 @@ class Polykey {
       new GitManager({
         vaultManager: this.vaults,
         nodeManager: this.nodes,
+        logger: logger,
       });
     this.gitBackend =
       gitBackend ??
@@ -335,7 +336,6 @@ class Polykey {
     await this.lockfile.stop();
 
     await this.revProxy.stop();
-    await this.fwdProxy.stop();
 
     await this.grpcServer.stop();
 
@@ -346,6 +346,9 @@ class Polykey {
 
     await this.vaults.stop();
     await this.nodes.stop();
+
+    await this.fwdProxy.stop();
+
     await this.keys.stop();
     this.keys.unsetWorkerManager();
     await this.workers.stop();

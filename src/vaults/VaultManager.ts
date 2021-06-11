@@ -283,6 +283,18 @@ class VaultManager {
     }
   }
 
+  public setLinkVault(vaultId: string, linkVault: string): void {
+    this.vaults[vaultId].vaultLink = linkVault;
+  }
+
+  public getLinkVault(vaultId: string): Vault | undefined {
+    for (const elem in this.vaults) {
+      if (this.vaults[elem].vaultLink === vaultId) {
+        return this.vaults[elem].vault;
+      }
+    }
+  }
+
   /* === Helpers === */
 
   /**

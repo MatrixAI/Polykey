@@ -107,13 +107,20 @@ const createVaultRPC = ({
         await utils.checkPassword(call.metadata, sessionManager);
         // vault name
         const name = call.request.getName();
-        const vaultId = utils.parseVaultInput(name, vaultManager);
         // node id
         const id = call.request.getId();
+        const vaultsList = await gitManager.scanNodeVaults(id);
+        let vault, vaultId;
+        for (const vaults in vaultsList) {
+          vault = vaultsList[vaults].split('\t');
+          if (vault[1] === name) {
+            vaultId = vault[0];
+          }
+        }
         try {
           await gitManager.pullVault(vaultId, id);
         } catch (err) {
-          if (err instanceof errors.ErrorVaultUndefined) {
+          if (err instanceof errors.ErrorVaultUnlinked) {
             await gitManager.cloneVault(vaultId, id);
           }
         }

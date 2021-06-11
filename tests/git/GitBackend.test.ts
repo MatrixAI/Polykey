@@ -83,7 +83,7 @@ describe('GitBackend is', () => {
       await vault.initializeVault();
       const vId = vaultManager.getVaultIds('MyTestVault').pop();
       expect(vId).toBeTruthy();
-      const response = gitBackend.handleInfoRequest('MyTestVault');
+      const response = gitBackend.handleInfoRequest(vault.vaultId);
       const data: Array<Buffer> = [];
       for await (const byte of response) {
         if (byte !== null) {
