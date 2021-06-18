@@ -76,6 +76,22 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
+  public vaultsShare(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.ShareMessage>(
+      this.client,
+      this.client.vaultsShare,
+    )(...args);
+  }
+
+  public vaultPermissions(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
+      this.client,
+      this.client.vaultsPermissions,
+    )(...args);
+  }
+
   public vaultsListSecrets(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(

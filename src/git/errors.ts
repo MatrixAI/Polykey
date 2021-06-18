@@ -6,4 +6,11 @@ class ErrorRepositoryUndefined extends ErrorGit {}
 
 class ErrorCommit extends ErrorGit {}
 
-export { ErrorGit, ErrorRepositoryUndefined, ErrorCommit };
+class ErrorGitPermissionDenied extends ErrorGit {}
+
+export {
+  ErrorGit,
+  ErrorRepositoryUndefined,
+  ErrorCommit,
+  ErrorGitPermissionDenied,
+};

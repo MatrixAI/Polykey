@@ -81,6 +81,17 @@ function deserialize_agentInterface_PackChunk(buffer_arg) {
   return Agent_pb.PackChunk.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_PermissionMessage(arg) {
+  if (!(arg instanceof Agent_pb.PermissionMessage)) {
+    throw new Error('Expected argument of type agentInterface.PermissionMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_PermissionMessage(buffer_arg) {
+  return Agent_pb.PermissionMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_RelayMessage(arg) {
   if (!(arg instanceof Agent_pb.RelayMessage)) {
     throw new Error('Expected argument of type agentInterface.RelayMessage');
@@ -90,6 +101,17 @@ function serialize_agentInterface_RelayMessage(arg) {
 
 function deserialize_agentInterface_RelayMessage(buffer_arg) {
   return Agent_pb.RelayMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_VaultPermMessage(arg) {
+  if (!(arg instanceof Agent_pb.VaultPermMessage)) {
+    throw new Error('Expected argument of type agentInterface.VaultPermMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_VaultPermMessage(buffer_arg) {
+  return Agent_pb.VaultPermMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -131,10 +153,10 @@ var AgentService = exports.AgentService = {
     path: '/agentInterface.Agent/ScanVaults',
     requestStream: false,
     responseStream: true,
-    requestType: Agent_pb.EmptyMessage,
+    requestType: Agent_pb.NodeIdMessage,
     responseType: Agent_pb.PackChunk,
-    requestSerialize: serialize_agentInterface_EmptyMessage,
-    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    requestSerialize: serialize_agentInterface_NodeIdMessage,
+    requestDeserialize: deserialize_agentInterface_NodeIdMessage,
     responseSerialize: serialize_agentInterface_PackChunk,
     responseDeserialize: deserialize_agentInterface_PackChunk,
   },
@@ -192,6 +214,17 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_RelayMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  checkVaultPermisssions: {
+    path: '/agentInterface.Agent/checkVaultPermisssions',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.VaultPermMessage,
+    responseType: Agent_pb.PermissionMessage,
+    requestSerialize: serialize_agentInterface_VaultPermMessage,
+    requestDeserialize: deserialize_agentInterface_VaultPermMessage,
+    responseSerialize: serialize_agentInterface_PermissionMessage,
+    responseDeserialize: deserialize_agentInterface_PermissionMessage,
   },
 };
 

@@ -8,7 +8,7 @@ service Agent {
 
   rpc GetGitInfo (InfoRequest) returns (stream PackChunk) {};
   rpc GetGitPack(stream PackChunk) returns (stream PackChunk) {};
-  rpc ScanVaults (EmptyMessage) returns (stream PackChunk) {};
+  rpc ScanVaults (NodeIdMessage) returns (stream PackChunk) {};
   rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {}
   rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {}
 
@@ -17,6 +17,8 @@ service Agent {
   rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {}
 
   rpc SendHolePunchMessage (RelayMessage) returns (EmptyMessage) {}
+
+  rpc checkVaultPermisssions (VaultPermMessage) returns (PermissionMessage) {}
 }
 
 message EmptyMessage {}
@@ -81,4 +83,13 @@ message NodeAddressMessage {
 
 message NodeTableMessage {
   map<string, NodeAddressMessage> nodeTable = 1;
+}
+
+message VaultPermMessage {
+  string nodeId = 1;
+  string vaultId = 2;
+}
+
+message PermissionMessage {
+  bool permission = 1;
 }

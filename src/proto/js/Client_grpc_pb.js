@@ -114,6 +114,17 @@ function deserialize_clientInterface_PasswordMessage(buffer_arg) {
   return Client_pb.PasswordMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_PermissionMessage(arg) {
+  if (!(arg instanceof Client_pb.PermissionMessage)) {
+    throw new Error('Expected argument of type clientInterface.PermissionMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_PermissionMessage(buffer_arg) {
+  return Client_pb.PermissionMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_ProviderMessage(arg) {
   if (!(arg instanceof Client_pb.ProviderMessage)) {
     throw new Error('Expected argument of type clientInterface.ProviderMessage');
@@ -167,6 +178,17 @@ function serialize_clientInterface_SecretSpecificMessage(arg) {
 
 function deserialize_clientInterface_SecretSpecificMessage(buffer_arg) {
   return Client_pb.SecretSpecificMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_clientInterface_ShareMessage(arg) {
+  if (!(arg instanceof Client_pb.ShareMessage)) {
+    throw new Error('Expected argument of type clientInterface.ShareMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_ShareMessage(buffer_arg) {
+  return Client_pb.ShareMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_clientInterface_StatMessage(arg) {
@@ -536,6 +558,28 @@ vaultsList: {
     requestDeserialize: deserialize_clientInterface_SecretNewMessage,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
+  },
+  vaultsShare: {
+    path: '/clientInterface.Client/VaultsShare',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.ShareMessage,
+    responseType: Client_pb.EmptyMessage,
+    requestSerialize: serialize_clientInterface_ShareMessage,
+    requestDeserialize: deserialize_clientInterface_ShareMessage,
+    responseSerialize: serialize_clientInterface_EmptyMessage,
+    responseDeserialize: deserialize_clientInterface_EmptyMessage,
+  },
+  vaultsPermissions: {
+    path: '/clientInterface.Client/VaultsPermissions',
+    requestStream: false,
+    responseStream: true,
+    requestType: Client_pb.ShareMessage,
+    responseType: Client_pb.PermissionMessage,
+    requestSerialize: serialize_clientInterface_ShareMessage,
+    requestDeserialize: deserialize_clientInterface_ShareMessage,
+    responseSerialize: serialize_clientInterface_PermissionMessage,
+    responseDeserialize: deserialize_clientInterface_PermissionMessage,
   },
   // Identities
 identitiesAuthenticate: {

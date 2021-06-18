@@ -7,6 +7,9 @@ import Logger from '@matrixai/logger';
 import { VaultManager, errors as vaultsErrors } from '../vaults';
 import { NodeManager, errors as nodesErrors } from '../nodes';
 import { GitFrontend } from '.';
+import { agentPB } from '../agent';
+
+import * as gitErrors from './errors';
 
 class GitManager {
   protected vaultManager: VaultManager;
@@ -63,18 +66,23 @@ class GitManager {
       nodeAddress,
     );
     const client = this.nodeManager.getClient(nodeId as NodeId);
-    const gitRequest = this.gitFrontend.connectToNodeGit(client);
+    const gitRequest = this.gitFrontend.connectToNodeGit(
+      client,
+      this.nodeManager.getNodeId(),
+    );
     return await gitRequest.scanVaults();
   }
 
   /**
-   * Pull a vault from another node, clones it if the vault does not already
-   * exist locally
+   * Clones a vault from another node
    *
    * @throws ErrorRemoteVaultUndefined if vaultName does not exist on
    * connected node
+   * @throws ErrorNodeConnectionNotExist if the address of the node to connect to
+   * does not exist
+   * @throws ErrorRGitPermissionDenied if the node cannot access the desired vault
    * @param vaultId Id of vault
-   * @param nodeId identifier of node to pull/clone from
+   * @param nodeId identifier of node to clone from
    */
   public async cloneVault(vaultId: string, nodeId: string): Promise<void> {
     const nodeAddress = await this.nodeManager.getNode(nodeId as NodeId);
@@ -85,7 +93,20 @@ class GitManager {
     }
     this.nodeManager.createConnectionToNode(nodeId as NodeId, nodeAddress);
     const client = this.nodeManager.getClient(nodeId as NodeId);
-    const gitRequest = this.gitFrontend.connectToNodeGit(client);
+
+    // Send a message to the connected agent to see if the clone can occur
+    const vaultPermMessage = new agentPB.VaultPermMessage();
+    vaultPermMessage.setNodeid(this.nodeManager.getNodeId());
+    vaultPermMessage.setVaultid(vaultId);
+    const permission = await client.checkVaultPermissions(vaultPermMessage);
+    if (permission.getPermission() === false) {
+      throw new gitErrors.ErrorGitPermissionDenied();
+    }
+
+    const gitRequest = this.gitFrontend.connectToNodeGit(
+      client,
+      this.nodeManager.getNodeId(),
+    );
     const vaultUrl = `http://0.0.0.0/${vaultId}`;
     const info = await git.getRemoteInfo({
       http: gitRequest,
@@ -128,6 +149,17 @@ class GitManager {
     });
   }
 
+  /**
+   * Pulls a vault from another node
+   *
+   * @throws ErrorVaultUnlinked if the vault does not have an already cloned repo
+   * @throws ErrorVaultModified if changes have been made to the local repo
+   * @throws ErrorNodeConnectionNotExist if the address of the node to connect to
+   * does not exist
+   * @throws ErrorRGitPermissionDenied if the node cannot access the desired vault
+   * @param vaultId Id of vault
+   * @param nodeId identifier of node to clone from
+   */
   public async pullVault(vaultId: string, nodeId: string): Promise<void> {
     // Strangely enough this is needed for pulls along with ref set to 'HEAD'
     // In isogit's documentation, this is just to get the currentBranch name
@@ -158,7 +190,20 @@ class GitManager {
     }
     this.nodeManager.createConnectionToNode(nodeId as NodeId, nodeAddress);
     const client = this.nodeManager.getClient(nodeId as NodeId);
-    const gitRequest = this.gitFrontend.connectToNodeGit(client);
+
+    // Send a message to the connected agent to see if the clone can occur
+    const vaultPermMessage = new agentPB.VaultPermMessage();
+    vaultPermMessage.setNodeid(this.nodeManager.getNodeId());
+    vaultPermMessage.setVaultid(vaultId);
+    const permission = await client.checkVaultPermissions(vaultPermMessage);
+    if (permission.getPermission() === false) {
+      throw new gitErrors.ErrorGitPermissionDenied();
+    }
+
+    const gitRequest = this.gitFrontend.connectToNodeGit(
+      client,
+      this.nodeManager.getNodeId(),
+    );
     await git.pull({
       fs: vault.EncryptedFS,
       http: gitRequest,

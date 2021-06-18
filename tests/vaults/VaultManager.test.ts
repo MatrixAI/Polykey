@@ -1,3 +1,6 @@
+import type { NodeId, NodeInfo } from '@/nodes/types';
+import { ProviderId, IdentityId, IdentityInfo } from '@/identities/types';
+
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -5,21 +8,50 @@ import level from 'level';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
+import { ACL } from '@/acl';
+import { GestaltGraph } from '@/gestalts';
+import { DB } from '@/db';
+
 import * as errors from '@/vaults/errors';
 
 describe('VaultManager is', () => {
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  let keyManager: KeyManager;
   let dataDir: string;
+  let db: DB;
+  let acl: ACL;
+  let gestaltGraph: GestaltGraph;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
+    const keysPath = `${dataDir}/keys`;
+    keyManager = new KeyManager({ keysPath, logger });
+    await keyManager.start({ password: 'password' });
+    const dbPath = `${dataDir}/db`;
+    db = new DB({ dbPath, keyManager, logger });
+    await db.start();
+    acl = new ACL({
+      db: db,
+      logger: logger,
+    });
+    await acl.start();
+    gestaltGraph = new GestaltGraph({
+      db: db,
+      acl: acl,
+      logger: logger,
+    });
+    await gestaltGraph.start();
   });
 
   afterEach(async () => {
+    await gestaltGraph.stop();
+    await acl.stop();
+    await db.stop();
+    await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -27,90 +59,163 @@ describe('VaultManager is', () => {
   });
 
   test('type correct', () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
     expect(vaultManager).toBeInstanceOf(VaultManager);
   });
   test('starting and stopping', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
 
     expect(await vaultManager.started()).toBe(true);
+
     await vaultManager.stop();
-    await keyManager.stop();
   });
   test('creating the directory', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
 
     expect(await fs.promises.stat(dataDir)).toBeTruthy();
+
     await vaultManager.stop();
-    await keyManager.stop();
+  });
+  test('checking gestalt permissions for vaults', async () => {
+    const vaultManager = new VaultManager({
+      vaultsPath: path.join(dataDir, 'vaults'),
+      keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
+      fs: fs,
+      logger: logger,
+    });
+
+    const node1: NodeInfo = {
+      id: '123' as NodeId,
+      links: { nodes: {}, identities: {} },
+    };
+    const node2: NodeInfo = {
+      id: '345' as NodeId,
+      links: { nodes: {}, identities: {} },
+    };
+    const node3: NodeInfo = {
+      id: '678' as NodeId,
+      links: { nodes: {}, identities: {} },
+    };
+    const node4: NodeInfo = {
+      id: '890' as NodeId,
+      links: { nodes: {}, identities: {} },
+    };
+    const id1: IdentityInfo = {
+      providerId: 'github.com' as ProviderId,
+      identityId: 'abc' as IdentityId,
+      links: {
+        nodes: {},
+      },
+    };
+    const id2: IdentityInfo = {
+      providerId: 'github.com' as ProviderId,
+      identityId: 'def' as IdentityId,
+      links: {
+        nodes: {},
+      },
+    };
+
+    await gestaltGraph.setNode(node1);
+    await gestaltGraph.setNode(node2);
+    await gestaltGraph.setNode(node3);
+    await gestaltGraph.setNode(node4);
+    await gestaltGraph.setIdentity(id1);
+    await gestaltGraph.setIdentity(id2);
+
+    await gestaltGraph.linkNodeAndNode(node1, node2);
+    await gestaltGraph.linkNodeAndIdentity(node1, id1);
+    await gestaltGraph.linkNodeAndIdentity(node4, id2);
+
+    await vaultManager.start({});
+
+    const vault = await vaultManager.createVault('Test');
+
+    await vaultManager.setVaultPerm('123', vault.vaultId);
+
+    let record = await vaultManager.getVaultPermissions(vault.vaultId);
+    expect(record).not.toBeUndefined();
+    expect(record['123']['pull']).toBeNull();
+    expect(record['345']['pull']).toBeNull();
+    expect(record['678']).toBeUndefined();
+    expect(record['890']).toBeUndefined();
+
+    await vaultManager.unsetVaultPerm('345', vault.vaultId);
+
+    record = await vaultManager.getVaultPermissions(vault.vaultId);
+    expect(record).not.toBeUndefined();
+    expect(record['123']['pull']).toBeUndefined();
+    expect(record['345']['pull']).toBeUndefined();
+
+    await gestaltGraph.unlinkNodeAndNode(node1.id, node2.id);
+
+    await vaultManager.setVaultPerm('345', vault.vaultId);
+
+    record = await vaultManager.getVaultPermissions(vault.vaultId);
+    expect(record).not.toBeUndefined();
+    expect(record['123']['pull']).toBeUndefined();
+    expect(record['345']['pull']).toBeNull();
+
+    await vaultManager.stop();
   });
   test('able to create a vault', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
+
     const vault = await vaultManager.createVault('MyTestVault');
+
     expect(vault).toBeTruthy();
+
     await vaultManager.stop();
-    await keyManager.stop();
   });
   test('able to create and get a vault', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
+
     const newVault = await vaultManager.createVault('MyTestVault');
     const theVault = vaultManager.getVault(newVault.vaultId);
 
@@ -120,22 +225,19 @@ describe('VaultManager is', () => {
     );
 
     await vaultManager.stop();
-    await keyManager.stop();
   });
   test('able to rename a vault', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
     await vaultManager.start({});
+
     const newVault = await vaultManager.createVault('MyTestVault');
     const result = await vaultManager.renameVault(
       newVault.vaultId,
@@ -149,22 +251,20 @@ describe('VaultManager is', () => {
     );
 
     await vaultManager.stop();
-    await keyManager.stop();
   });
   test('able to delete a vault', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
+
     await vaultManager.start({});
+
     const firstVault = await vaultManager.createVault('MyFirstVault');
     const secondVault = await vaultManager.createVault('MySecondVault');
     const thirdVault = await vaultManager.createVault('MyThirdVault');
@@ -178,22 +278,20 @@ describe('VaultManager is', () => {
     expect(vaultManager.getVault(thirdVault.vaultId)).toBe(thirdVault);
 
     await vaultManager.stop();
-    await keyManager.stop();
   });
   test('able to list vaults', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
+
     await vaultManager.start({});
+
     await vaultManager.createVault('MyTestVault');
     await vaultManager.createVault('MyOtherTestVault');
 
@@ -204,19 +302,18 @@ describe('VaultManager is', () => {
     await vaultManager.stop();
   });
   test('able to get vault stats', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
+
     await vaultManager.start({});
+
     const vault1 = await vaultManager.createVault('MyTestVault');
     const vault2 = await vaultManager.createVault('MyOtherTestVault');
 
@@ -224,21 +321,20 @@ describe('VaultManager is', () => {
     const stat2 = await vaultManager.vaultStats(vault2.vaultId);
 
     expect(stat1.ctime < stat2.ctime).toBeTruthy();
+
     await vaultManager.stop();
   });
   test('able to create many vaults', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
+
     const vaultNames = [
       'Vault1',
       'Vault2',
@@ -270,26 +366,23 @@ describe('VaultManager is', () => {
     expect(vaultManager.listVaults().length).toEqual(vaultNames.length);
 
     await vaultManager.stop();
-    await keyManager.stop();
   });
   test('able to write metadata', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
+
     await vaultManager.start({});
+
     await vaultManager.createVault('MyVault');
 
     await vaultManager.stop();
-    await keyManager.stop();
 
     const leveldb = await level(vaultManager.metadataPath);
     await leveldb.open();
@@ -299,18 +392,16 @@ describe('VaultManager is', () => {
     await leveldb.close();
   });
   test('able to read and load existing metadata', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
+
     const vaultNames = [
       'Vault1',
       'Vault2',
@@ -325,6 +416,7 @@ describe('VaultManager is', () => {
     ];
 
     await vaultManager.start({});
+
     for (const vaultName of vaultNames) {
       await vaultManager.createVault(vaultName);
     }
@@ -345,15 +437,42 @@ describe('VaultManager is', () => {
     // vault = vaultManager.getVault('Vault1');
 
     await vaultManager.stop();
+    await gestaltGraph.stop();
+    await acl.stop();
+    await db.stop();
+
+    const dbPath = `${dataDir}/db`;
+    const db2 = new DB({ dbPath, keyManager, logger });
+
+    await db2.start();
+
+    const acl2 = new ACL({
+      db: db2,
+      logger: logger,
+    });
+
+    await acl2.start();
+
+    const gestaltGraph2 = new GestaltGraph({
+      db: db2,
+      acl: acl2,
+      logger: logger,
+    });
+
+    await gestaltGraph2.start();
 
     const vaultManager2 = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db2,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
 
     await vaultManager2.start({});
+
     const vaults2 = vaultManager2.listVaults();
     let vaultId2: string = '';
     for (const v of vaults2) {
@@ -373,7 +492,9 @@ describe('VaultManager is', () => {
     expect(vaultManager2.getLinkVault('12345667889')?.vaultId).toBe(id);
 
     await vaultManager2.stop();
-    await keyManager.stop();
+    await gestaltGraph2.stop();
+    await acl2.stop();
+    await db2.stop();
   });
   test('able to recover metadata after complex operations', async () => {
     const vaultNames = [
@@ -400,19 +521,18 @@ describe('VaultManager is', () => {
       'ThirdImpact',
       'Cake',
     ];
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
+
     await vaultManager.start({});
+
     for (const vaultName of vaultNames) {
       await vaultManager.createVault(vaultName);
     }
@@ -437,15 +557,42 @@ describe('VaultManager is', () => {
     expect(vn.sort()).toEqual(alteredVaultNames.sort());
 
     await vaultManager.stop();
+    await gestaltGraph.stop();
+    await acl.stop();
+    await db.stop();
+
+    const dbPath = `${dataDir}/db`;
+    const db2 = new DB({ dbPath, keyManager, logger });
+
+    await db2.start();
+
+    const acl2 = new ACL({
+      db: db2,
+      logger: logger,
+    });
+
+    await acl2.start();
+
+    const gestaltGraph2 = new GestaltGraph({
+      db: db2,
+      acl: acl2,
+      logger: logger,
+    });
+
+    await gestaltGraph2.start();
 
     const vaultManager2 = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      db: db2,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
 
     await vaultManager2.start({});
+
     await vaultManager2.createVault('Pumpkin');
 
     // implicit test of keys
@@ -460,6 +607,97 @@ describe('VaultManager is', () => {
     expect(vaultManager2.listVaults().length).toEqual(alteredVaultNames.length);
 
     await vaultManager2.stop();
-    await keyManager.stop();
+    await gestaltGraph2.stop();
+    await acl2.stop();
+    await db2.stop();
   });
 });
+
+// Old tests for setting Vault Actions (are private now)
+// test('setting vault permissions', async () => {
+//   const vaultManager = new VaultManager({
+//     vaultsPath: path.join(dataDir, 'vaults'),
+//     keyManager: keyManager,
+//     db: db,
+//     acl: acl,
+//     gestaltGraph: gestaltGraph,
+//     fs: fs,
+//     logger: logger,
+//   });
+//   await vaultManager.start({});
+//   const vault = await vaultManager.createVault('Test');
+//   await vaultManager.setVaultAction(['1234567'], vault.vaultId);
+//   const record = await acl.getNodePerm('1234567' as NodeId);
+//   expect(record?.vaults[vault.vaultId]['pull']).toBeNull();
+//   expect(record?.vaults[vault.vaultId]['clone']).toBeUndefined();
+//   await expect(acl.getNodePerm('1234568' as NodeId)).resolves.toBeUndefined();
+//   await vaultManager.setVaultAction(['1', '2', '3', '4', '5'], vault.vaultId);
+//   await vaultManager.unsetVaultAction(['5'], vault.vaultId);
+//   const perms = await acl.getVaultPerm(vault.vaultId as VaultId);
+//   expect(perms['1'].vaults[vault.vaultId]['pull']).toBeNull();
+//   expect(perms['2'].vaults[vault.vaultId]['pull']).toBeNull();
+//   expect(perms['3'].vaults[vault.vaultId]['pull']).toBeNull();
+//   expect(perms['4'].vaults[vault.vaultId]['pull']).toBeNull();
+//   expect(perms['5'].vaults[vault.vaultId]['pull']).toBeUndefined();
+
+//   await vaultManager.stop();
+// });
+// test('unsetting vault permissions', async () => {
+//   const vaultManager = new VaultManager({
+//     vaultsPath: path.join(dataDir, 'vaults'),
+//     keyManager: keyManager,
+//     db: db,
+//     acl: acl,
+//     gestaltGraph: gestaltGraph,
+//     fs: fs,
+//     logger: logger,
+//   });
+//   await vaultManager.start({});
+//   const vault = await vaultManager.createVault('Test');
+//   await vaultManager.setVaultAction(['1234567'], vault.vaultId);
+//   await vaultManager.unsetVaultAction(['1234567'], vault.vaultId);
+//   const record = await acl.getNodePerm('1234567' as NodeId);
+//   expect(record?.vaults[vault.vaultId]['pull']).toBeUndefined();
+//   await vaultManager.setVaultAction(['1', '2', '3', '4', '5'], vault.vaultId);
+//   await vaultManager.unsetVaultAction(['2', '3', '4', '5'], vault.vaultId);
+//   const perms = await acl.getVaultPerm(vault.vaultId as VaultId);
+//   expect(perms['1'].vaults[vault.vaultId]['pull']).toBeNull();
+//   expect(perms['2'].vaults[vault.vaultId]['pull']).toBeUndefined();
+//   expect(perms['3'].vaults[vault.vaultId]['pull']).toBeUndefined();
+//   expect(perms['4'].vaults[vault.vaultId]['pull']).toBeUndefined();
+//   expect(perms['5'].vaults[vault.vaultId]['pull']).toBeUndefined();
+//   await vaultManager.stop();
+// });
+// test('checking the vault permissions', async () => {
+//   const vaultManager = new VaultManager({
+//     vaultsPath: path.join(dataDir, 'vaults'),
+//     keyManager: keyManager,
+//     db: db,
+//     acl: acl,
+//     gestaltGraph: gestaltGraph,
+//     fs: fs,
+//     logger: logger,
+//   });
+//   await vaultManager.start({});
+//   const vault = await vaultManager.createVault('Test');
+//   await vaultManager.setVaultAction(
+//     ['one', 'two', 'three', 'four', 'five', 'six'],
+//     vault.vaultId,
+//   );
+//   await vaultManager.unsetVaultAction(
+//     ['one', 'three', 'five'],
+//     vault.vaultId,
+//   );
+//   const record = await vaultManager.getVaultPermissions(vault.vaultId);
+//   expect(record).not.toBeUndefined();
+//   expect(record['one']['pull']).toBeUndefined();
+//   expect(record['three']['pull']).toBeUndefined();
+//   expect(record['five']['pull']).toBeUndefined();
+//   expect(record['two']['pull']).toBeNull();
+//   expect(record['four']['pull']).toBeNull();
+//   expect(record['six']['pull']).toBeNull();
+//   const perm = await vaultManager.getVaultPermissions(vault.vaultId, 'two');
+//   expect(perm['two']['pull']).toBeNull();
+//   expect(perm['four']).toBeUndefined();
+//   await vaultManager.stop();
+// });

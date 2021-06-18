@@ -13,6 +13,8 @@ import { Lockfile } from './lockfile';
 import { NodeManager } from './nodes';
 import { VaultManager } from './vaults';
 import { GestaltGraph } from './gestalts';
+import { ACL } from './acl';
+import { DB } from './db';
 import { WorkerManager } from './workers';
 import { SessionManager } from './session';
 import { certNodeId } from './network/utils';
@@ -33,6 +35,8 @@ class Polykey {
   public readonly gestalts: GestaltGraph;
   public readonly identities: IdentitiesManager;
   public readonly workers: WorkerManager;
+  public readonly acl: ACL;
+  public readonly db: DB;
 
   // GRPC
   public readonly grpcServer: GRPCServer;
@@ -57,6 +61,8 @@ class Polykey {
     nodeManager,
     gestaltGraph,
     identitiesManager,
+    acl,
+    db,
     workerManager,
     gitManager,
     gitBackend,
@@ -74,6 +80,8 @@ class Polykey {
     nodeManager?: NodeManager;
     gestaltGraph?: GestaltGraph;
     identitiesManager?: IdentitiesManager;
+    acl?: ACL;
+    db?: DB;
     workerManager?: WorkerManager;
     gitManager?: GitManager;
     gitBackend?: GitBackend;
@@ -93,8 +101,9 @@ class Polykey {
     const keysPath = path.join(this.nodePath, 'keys');
     const nodesPath = path.join(this.nodePath, 'nodes');
     const vaultsPath = path.join(this.nodePath, 'vaults');
-    const gestaltGraphPath = path.join(this.nodePath, 'gestalts/graph');
     const identitiesPath = path.join(this.nodePath, 'identities');
+    const dbPath = path.join(this.nodePath, 'db');
+
     this.fwdProxy =
       fwdProxy ??
       new ForwardProxy({
@@ -119,11 +128,35 @@ class Polykey {
         fs: this.fs,
         logger: this.logger.getChild('KeyManager'),
       });
+    this.db =
+      db ??
+      new DB({
+        dbPath: dbPath,
+        keyManager: this.keys,
+        fs: this.fs,
+        logger: this.logger,
+      });
+    this.acl =
+      acl ??
+      new ACL({
+        db: this.db,
+        logger: this.logger.getChild('ACL'),
+      });
+    this.gestalts =
+      gestaltGraph ??
+      new GestaltGraph({
+        db: this.db,
+        acl: this.acl,
+        logger: this.logger.getChild('GestaltGraph'),
+      });
     this.vaults =
       vaultManager ??
       new VaultManager({
         vaultsPath: vaultsPath,
         keyManager: this.keys,
+        db: this.db,
+        acl: this.acl,
+        gestaltGraph: this.gestalts,
         fs: this.fs,
         logger: this.logger.getChild('VaultManager'),
       });
@@ -136,14 +169,6 @@ class Polykey {
         revProxy: this.revProxy,
         fs: this.fs,
         logger: this.logger.getChild('NodeManager'),
-      });
-    this.gestalts =
-      gestaltGraph ??
-      new GestaltGraph({
-        gestaltGraphPath,
-        keyManager: this.keys,
-        fs: this.fs,
-        logger: this.logger.getChild('GestaltGraph'),
       });
     this.identities =
       identitiesManager ??
@@ -270,6 +295,10 @@ class Polykey {
     const cert = this.keys.getRootCert();
     const nodeId = certNodeId(cert);
 
+    await this.db.start({ fresh });
+
+    await this.acl.start({ fresh });
+
     await this.nodes.start({ nodeId, fresh });
     await this.vaults.start({ fresh });
     await this.gestalts.start({ fresh });
@@ -347,6 +376,8 @@ class Polykey {
     await this.nodes.stop();
 
     await this.fwdProxy.stop();
+
+    await this.db.stop();
 
     await this.keys.stop();
     this.keys.unsetWorkerManager();

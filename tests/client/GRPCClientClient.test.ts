@@ -14,9 +14,11 @@ import { VaultManager } from '@/vaults';
 import { GestaltGraph } from '@/gestalts';
 import { SessionManager } from '@/session';
 import { IdentitiesManager } from '@/identities';
+import { ACL } from '@/acl';
 import { clientPB, GRPCClientClient } from '@/client';
 import { KeyManager, utils as keyUtils } from '@/keys';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
+import { DB } from '@/db';
 
 import * as testUtils from './utils';
 
@@ -32,8 +34,8 @@ describe('GRPCClientClient', () => {
   let keysPath: string;
   let nodesPath: string;
   let vaultsPath: string;
-  let gestaltGraphPath: string;
   let identitiesPath: string;
+  let dbPath: string;
 
   let keyManager: KeyManager;
   let gitManager: GitManager;
@@ -42,6 +44,8 @@ describe('GRPCClientClient', () => {
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
   let sessionManager: SessionManager;
+  let acl: ACL;
+  let db: DB;
 
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
@@ -65,8 +69,8 @@ describe('GRPCClientClient', () => {
     keysPath = path.join(dataDir, 'keys');
     nodesPath = path.join(dataDir, 'nodes');
     vaultsPath = path.join(dataDir, 'vaults');
-    gestaltGraphPath = path.join(dataDir, 'gestalts/graph');
     identitiesPath = path.join(dataDir, 'identities');
+    dbPath = path.join(dataDir, 'db');
 
     fwdProxy = new ForwardProxy({
       authToken: 'abc',
@@ -83,9 +87,30 @@ describe('GRPCClientClient', () => {
       logger: logger,
     });
 
+    db = new DB({
+      dbPath: dbPath,
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+
+    acl = new ACL({
+      db: db,
+      logger: logger,
+    });
+
+    gestaltGraph = new GestaltGraph({
+      db: db,
+      acl: acl,
+      logger: logger,
+    });
+
     vaultManager = new VaultManager({
       vaultsPath: vaultsPath,
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
@@ -106,13 +131,6 @@ describe('GRPCClientClient', () => {
       logger: logger,
     });
 
-    gestaltGraph = new GestaltGraph({
-      gestaltGraphPath: gestaltGraphPath,
-      keyManager: keyManager,
-      fs: fs,
-      logger: logger,
-    });
-
     gitManager = new GitManager({
       vaultManager,
       nodeManager,
@@ -125,6 +143,8 @@ describe('GRPCClientClient', () => {
     });
 
     await keyManager.start({ password: 'password' });
+    await db.start();
+    await acl.start();
     await vaultManager.start({});
     await nodeManager.start({ nodeId: nodeId });
     await identitiesManager.start();
@@ -159,6 +179,7 @@ describe('GRPCClientClient', () => {
     await identitiesManager.stop();
     await nodeManager.stop();
     await vaultManager.stop();
+    await db.stop();
     await keyManager.stop();
 
     await fs.promises.rm(dataDir, {

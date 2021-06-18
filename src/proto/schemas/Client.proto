@@ -36,6 +36,8 @@ service Client {
   rpc VaultsRenameSecret(SecretRenameMessage) returns (StatusMessage) {};
   rpc VaultsNewSecret(SecretNewMessage) returns (StatusMessage) {};
   rpc VaultsNewDirSecret(SecretNewMessage) returns (EmptyMessage) {};
+  rpc VaultsShare(ShareMessage) returns (EmptyMessage) {};
+  rpc VaultsPermissions(ShareMessage) returns (stream PermissionMessage) {};
 
   // Identities
   rpc IdentitiesAuthenticate(ProviderMessage) returns (ProviderMessage) {};
@@ -99,6 +101,17 @@ message SecretMessage {
 
 message StatMessage {
   string stats = 1;
+}
+
+message ShareMessage {
+  string name = 1;
+  string id = 2;
+  bool set = 3;
+}
+
+message PermissionMessage {
+  string id = 1;
+  string action = 2;
 }
 
 // Nodes

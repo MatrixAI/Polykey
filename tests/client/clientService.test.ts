@@ -15,10 +15,12 @@ import { GestaltGraph } from '@/gestalts';
 import { SessionManager } from '@/session';
 import { VaultManager } from '@/vaults';
 import { IdentitiesManager } from '@/identities';
+import { ACL } from '@/acl';
 import { GitManager } from '@/git';
 import { KeyManager, utils as keyUtils } from '@/keys';
 import { ClientClient } from '@/proto/js/Client_grpc_pb';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
+import { DB } from '@/db';
 
 import * as testUtils from './utils';
 import * as grpcUtils from '@/grpc/utils';
@@ -38,18 +40,20 @@ describe('Client service', () => {
   let keysPath: string;
   let nodesPath: string;
   let vaultsPath: string;
-  let gestaltGraphPath: string;
   let identitiesPath: string;
-
-  let passwordFile: string;
+  let dbPath: string;
 
   let keyManager: KeyManager;
+  let gitManager: GitManager;
   let nodeManager: NodeManager;
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
-  let sessionManager: SessionManager;
-  let gitManager: GitManager;
   let identitiesManager: IdentitiesManager;
+  let sessionManager: SessionManager;
+  let acl: ACL;
+  let db: DB;
+
+  let passwordFile: string;
 
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
@@ -65,8 +69,6 @@ describe('Client service', () => {
       86400,
     );
     nodeId = networkUtils.certNodeId(cert);
-    passwordFile = path.join(os.tmpdir(), 'passwordfile');
-    await fs.promises.writeFile(passwordFile, 'password');
   });
 
   beforeEach(async () => {
@@ -76,8 +78,8 @@ describe('Client service', () => {
     keysPath = path.join(dataDir, 'keys');
     nodesPath = path.join(dataDir, 'nodes');
     vaultsPath = path.join(dataDir, 'vaults');
-    gestaltGraphPath = path.join(dataDir, 'gestalts');
     identitiesPath = path.join(dataDir, 'identities');
+    dbPath = path.join(dataDir, 'db');
 
     passwordFile = path.join(dataDir, 'password');
     await fs.promises.writeFile(passwordFile, 'password');
@@ -106,9 +108,30 @@ describe('Client service', () => {
       logger: logger,
     });
 
+    db = new DB({
+      dbPath: dbPath,
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+
+    acl = new ACL({
+      db: db,
+      logger: logger,
+    });
+
+    gestaltGraph = new GestaltGraph({
+      db: db,
+      acl: acl,
+      logger: logger,
+    });
+
     vaultManager = new VaultManager({
       vaultsPath: vaultsPath,
       keyManager: keyManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger,
     });
@@ -124,13 +147,6 @@ describe('Client service', () => {
 
     identitiesManager = new IdentitiesManager({
       identitiesPath: identitiesPath,
-      keyManager: keyManager,
-      fs: fs,
-      logger: logger,
-    });
-
-    gestaltGraph = new GestaltGraph({
-      gestaltGraphPath: gestaltGraphPath,
       keyManager: keyManager,
       fs: fs,
       logger: logger,
@@ -154,6 +170,8 @@ describe('Client service', () => {
     });
 
     await keyManager.start({ password: 'password' });
+    await db.start();
+    await acl.start();
     await vaultManager.start({});
     await nodeManager.start({ nodeId: nodeId });
     await identitiesManager.start();
@@ -183,6 +201,7 @@ describe('Client service', () => {
     await identitiesManager.stop();
     await nodeManager.stop();
     await vaultManager.stop();
+    await db.stop();
     await keyManager.stop();
     await fs.promises.rmdir(dataDir, { recursive: true });
   });
@@ -621,7 +640,9 @@ describe('Client service', () => {
 
     const mv = new clientPB.EmptyMessage();
 
-    const key = await getRootKeyPair(mv);
+    await fs.promises.writeFile(passwordFile, 'somepassphrase');
+
+    const key = await getRootKeyPair(mv, meta);
 
     expect(key.getPrivate()).not.toBe(keyPair.privateKey);
     expect(key.getPublic()).not.toBe(keyPair.publicKey);

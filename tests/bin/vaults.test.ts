@@ -25,7 +25,6 @@ describe('CLI vaults', () => {
     });
     await polykeyAgent.start({
       password: 'password',
-      sessionDuration: 1000,
     });
   });
 
@@ -210,6 +209,74 @@ describe('CLI vaults', () => {
     ]);
     expect(result2).toBe(passwordExitCode);
   });
+  test('should share a vault', async () => {
+    await polykeyAgent.vaults.createVault('Vault1');
+    const id = polykeyAgent.vaults.getVaultId('Vault1');
+    expect(id).toBeTruthy();
+
+    const result = await utils.pk([
+      'vaults',
+      'share',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+      '--password-file',
+      passwordFile,
+      '-u',
+      '123',
+      '345',
+      '135',
+    ]);
+    expect(result).toBe(0);
+
+    await polykeyAgent.sessionManager.stopSession();
+    const result2 = await utils.pk([
+      'vaults',
+      'share',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+      '123',
+      '345',
+      '135',
+    ]);
+    expect(result2).toBe(passwordExitCode);
+  });
+  test('should get permissions of a vault', async () => {
+    const vault = await polykeyAgent.vaults.createVault('Vault1');
+    const id = polykeyAgent.vaults.getVaultId('Vault1');
+    expect(id).toBeTruthy();
+    await polykeyAgent.vaults.setVaultAction(
+      ['123', '456', '789'],
+      vault.vaultId,
+    );
+    await polykeyAgent.vaults.unsetVaultAction(['456'], vault.vaultId);
+
+    const result = await utils.pk([
+      'vaults',
+      'perms',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result).toBe(0);
+
+    await polykeyAgent.sessionManager.stopSession();
+    const result2 = await utils.pk([
+      'vaults',
+      'permissions',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+    ]);
+    expect(result2).toBe(passwordExitCode);
+  });
   test('should clone a vault', async () => {
     const dataDir2 = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -225,6 +292,10 @@ describe('CLI vaults', () => {
     await vault.initializeVault();
     const id = targetPolykeyAgent.vaults.getVaultId('Vault1');
     expect(id).toBeTruthy();
+    await targetPolykeyAgent.vaults.setVaultAction(
+      [polykeyAgent.nodes.getNodeId()],
+      vault.vaultId,
+    );
 
     const targetNodeId = targetPolykeyAgent.nodes.getNodeId();
     const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
@@ -286,6 +357,10 @@ describe('CLI vaults', () => {
     await vault.initializeVault();
     const id = targetPolykeyAgent.vaults.getVaultId('Vault1');
     expect(id).toBeTruthy();
+    await targetPolykeyAgent.vaults.setVaultAction(
+      [polykeyAgent.nodes.getNodeId()],
+      vault.vaultId,
+    );
 
     const targetNodeId = targetPolykeyAgent.nodes.getNodeId();
     const targetHost = targetPolykeyAgent.revProxy.getIngressHost();

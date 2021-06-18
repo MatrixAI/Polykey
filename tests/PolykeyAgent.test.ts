@@ -33,12 +33,14 @@ describe('Polykey', () => {
   });
   test('async start constructs node path', async () => {
     const nodePath = `${dataDir}/polykey`;
+    const dbPath = `${dataDir}/polykey/db`;
     const pk = new PolykeyAgent({ nodePath, logger });
     await pk.start({ password: 'password' });
     const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain('keys');
     expect(nodePathContents).toContain('vaults');
-    expect(nodePathContents).toContain('gestalts');
+    expect(nodePathContents).toContain('db');
+    expect(nodePathContents).toContain('nodes');
     expect(nodePathContents).toContain('identities');
     await pk.stop();
   });
@@ -50,7 +52,8 @@ describe('Polykey', () => {
     const nodePathContents = await fs.promises.readdir(nodePath);
     expect(nodePathContents).toContain('keys');
     expect(nodePathContents).toContain('vaults');
-    expect(nodePathContents).toContain('gestalts');
+    expect(nodePathContents).toContain('db');
+    expect(nodePathContents).toContain('nodes');
     expect(nodePathContents).toContain('identities');
     await fs.promises.rm(dataDir, { force: true, recursive: true });
   });
