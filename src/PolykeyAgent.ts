@@ -93,7 +93,7 @@ class Polykey {
     const keysPath = path.join(this.nodePath, 'keys');
     const nodesPath = path.join(this.nodePath, 'nodes');
     const vaultsPath = path.join(this.nodePath, 'vaults');
-    const gestaltsPath = path.join(this.nodePath, 'gestalts');
+    const gestaltGraphPath = path.join(this.nodePath, 'gestalts/graph');
     const identitiesPath = path.join(this.nodePath, 'identities');
     this.fwdProxy =
       fwdProxy ??
@@ -140,7 +140,7 @@ class Polykey {
     this.gestalts =
       gestaltGraph ??
       new GestaltGraph({
-        gestaltsPath,
+        gestaltGraphPath,
         keyManager: this.keys,
         fs: this.fs,
         logger: this.logger.getChild('GestaltGraph'),

@@ -3,7 +3,6 @@ import type {
   GestaltGraphKey,
   GestaltKey,
   GestaltId,
-  GestaltGraphValue,
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
@@ -87,30 +86,24 @@ function ungestaltGraphKey(
   return [d as GestaltGraphDomain, gk as GestaltKey];
 }
 
-function serializeGraphValue(
-  graphDbKey: Buffer,
-  value: GestaltGraphValue,
-): Buffer {
+function serializeEncrypt<T>(graphDbKey: Buffer, value: T): Buffer {
   return keysUtils.encryptWithKey(
     graphDbKey,
     Buffer.from(JSON.stringify(value), 'utf-8'),
   );
 }
 
-function unserializeGraphValue(
-  graphDbKey: Buffer,
-  data: Buffer,
-): GestaltGraphValue {
+function unserializeDecrypt<T>(graphDbKey: Buffer, data: Buffer): T {
   const value_ = keysUtils.decryptWithKey(graphDbKey, data);
   if (!value_) {
-    throw new gestaltsErrors.ErrorGestaltsGraphValueDecrypt();
+    throw new gestaltsErrors.ErrorGestaltsDecrypt();
   }
   let value;
   try {
     value = JSON.parse(value_.toString('utf-8'));
   } catch (e) {
     if (e instanceof SyntaxError) {
-      throw new gestaltsErrors.ErrorGestaltsGraphValueParse();
+      throw new gestaltsErrors.ErrorGestaltsParse();
     }
     throw e;
   }
@@ -126,6 +119,6 @@ export {
   identityFromKey,
   gestaltGraphKey,
   ungestaltGraphKey,
-  serializeGraphValue,
-  unserializeGraphValue,
+  serializeEncrypt,
+  unserializeDecrypt,
 };

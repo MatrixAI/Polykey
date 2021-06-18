@@ -10,9 +10,9 @@ class ErrorGestaltsGraphKeyParse extends ErrorGestalts {}
 
 class ErrorGestaltsGraphNotStarted extends ErrorGestalts {}
 
-class ErrorGestaltsGraphValueDecrypt extends ErrorGestalts {}
+class ErrorGestaltsDecrypt extends ErrorGestalts {}
 
-class ErrorGestaltsGraphValueParse extends ErrorGestalts {}
+class ErrorGestaltsParse extends ErrorGestalts {}
 
 export {
   ErrorGestalts,
@@ -20,6 +20,6 @@ export {
   ErrorGestaltsGraphKeyRead,
   ErrorGestaltsGraphKeyWrite,
   ErrorGestaltsGraphKeyParse,
-  ErrorGestaltsGraphValueDecrypt,
-  ErrorGestaltsGraphValueParse,
+  ErrorGestaltsDecrypt,
+  ErrorGestaltsParse,
 };
