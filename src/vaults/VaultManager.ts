@@ -1,13 +1,14 @@
-import type { Vaults } from './types';
+import type { VaultId, Vaults } from './types';
 import type { FileSystem } from '../types';
 import type { WorkerManager } from '../workers';
 
 import fs from 'fs';
 import path from 'path';
-import level from 'level';
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
 import Vault from './Vault';
+import VaultMap from './VaultMap';
+
 import { generateVaultKey, fileExists, generateVaultId } from './utils';
 import { KeyManager, errors as keysErrors } from '../keys';
 import { NodeManager } from '../nodes';
@@ -19,7 +20,7 @@ class VaultManager {
   public readonly vaultsPath: string;
   public readonly metadataPath: string;
   protected fs: FileSystem;
-  protected leveldb;
+  protected vaultMap: VaultMap;
   protected keyManager: KeyManager;
   protected nodeManager: NodeManager;
   protected logger: Logger;
@@ -41,13 +42,11 @@ class VaultManager {
   constructor({
     vaultsPath,
     keyManager,
-    // nodeManager,
     fs,
     logger,
   }: {
     vaultsPath: string;
     keyManager: KeyManager;
-    // nodeManager: NodeManager;
     fs?: FileSystem;
     logger?: Logger;
   }) {
@@ -58,10 +57,12 @@ class VaultManager {
     this.logger = logger ?? new Logger('VaultManager');
     this.vaults = {};
     this._started = false;
-
-    // this.nodeManager = nodeManager;
-
-    // Git frontend
+    this.vaultMap = new VaultMap({
+      vaultMapPath: this.vaultsPath,
+      keyManager: this.keyManager,
+      fs: this.fs,
+      logger: this.logger,
+    });
     this.gitFrontend = new GitFrontend();
   }
 
@@ -95,30 +96,28 @@ class VaultManager {
     this.logger.info(`Creating metadataPath at ${this.metadataPath}`);
     await utils.mkdirExists(this.fs, this.metadataPath);
 
-    this.leveldb = await level(this.metadataPath, { valueEncoding: 'json' });
+    await this.vaultMap.start();
     await this.loadVaultData();
     this._started = true;
   }
 
   public async stop() {
-    await this.leveldb?.close();
+    this.logger.info('Stopping Vault Manager');
+    if (this._started) {
+      await this.vaultMap.stop();
+    }
     this._started = false;
+    this.logger.info('Stopped Vault Manager');
   }
 
   /**
    * Checks to see whether or not the current VaultManager instance has been started.
    *
-   * Checks for: _started, keyManager, gitFrontend, leveldb and existance of vault metadata
+   * Checks for: _started, keyManager and gitFrontend
    * @returns true if all vaultManager components have been constructed
    */
   public async started(): Promise<boolean> {
-    if (
-      this._started &&
-      this.keyManager &&
-      this.gitFrontend &&
-      this.leveldb.isOpen() &&
-      (await fileExists(this.fs, this.metadataPath))
-    ) {
+    if (this._started && this.keyManager && this.gitFrontend) {
       return true;
     }
     return false;
@@ -156,7 +155,7 @@ class VaultManager {
     this.vaults[id] = { vault: vault, vaultKey: key, vaultName: vaultName };
 
     // write vault data
-    await this.putValueLeveldb(id, { vaultKey: key, vaultName: vaultName });
+    await this.vaultMap.setVault(vaultName, id as VaultId, key);
 
     return vault;
   }
@@ -180,12 +179,14 @@ class VaultManager {
     }
 
     const vault = this.vaults[vaultId].vault;
+
+    await this.vaultMap.renameVault(vault.vaultName, newVaultName);
+
     await vault.renameVault(newVaultName);
 
     // update vaults
     this.vaults[vaultId].vaultName = newVaultName;
 
-    await this.putValueLeveldb(vaultId, { vaultName: newVaultName });
     return true;
   }
 
@@ -228,11 +229,12 @@ class VaultManager {
     if (await fileExists(this.fs, vaultPath)) {
       return false;
     }
+    const vault = this.vaults[vaultId].vault;
 
     // Remove from mappings
     delete this.vaults[vaultId];
 
-    await this.deleteValueLeveldb(vaultId);
+    await this.vaultMap.delVault(vault.vaultName);
 
     return true;
   }
@@ -271,7 +273,7 @@ class VaultManager {
   /**
    * Retreieves the Vault instance
    *
-   * @throws ErrorVaultUndefined if vaultName does not exist
+   * @throws ErrorVaultUndefined if vaultId does not exist
    * @param vaultId Id of vault
    * @returns a vault instance.
    */
@@ -283,10 +285,29 @@ class VaultManager {
     }
   }
 
-  public setLinkVault(vaultId: string, linkVault: string): void {
-    this.vaults[vaultId].vaultLink = linkVault;
+  /**
+   * Sets the Vault Id that the specified vault has been cloned from
+   *
+   * @throws ErrorVaultUndefined if vaultId does not exist
+   * @param vaultId Id of vault
+   * @param linkVault Id of the cloned vault
+   */
+  public async setLinkVault(vaultId: string, linkVault: string): Promise<void> {
+    if (!this.vaults[vaultId]) {
+      throw new errors.ErrorVaultUndefined(`${vaultId} does not exist`);
+    } else {
+      this.vaults[vaultId].vaultLink = linkVault;
+      await this.vaultMap.setVaultLink(vaultId as VaultId, linkVault);
+    }
   }
 
+  /**
+   * Gets the Vault that is associated with a cloned Vault ID
+   *
+   * @throws ErrorVaultUndefined if vaultId does not exist
+   * @param vaultId Id of vault that has been cloned
+   * @returns instance of the vault that is linked to the cloned vault
+   */
   public getLinkVault(vaultId: string): Vault | undefined {
     for (const elem in this.vaults) {
       if (this.vaults[elem].vaultLink === vaultId) {
@@ -296,129 +317,16 @@ class VaultManager {
   }
 
   /* === Helpers === */
-
   /**
-   * Puts a vaultname, and encrypted vault key into the leveldb
-   * @param vaultName name of vault
-   * @param vaultKey vault key.
-   */
-  private async putValueLeveldb(
-    id: string,
-    { vaultName, vaultKey }: { vaultName?: string; vaultKey?: Buffer },
-  ): Promise<void> {
-    const release = await this.metadataMutex.acquire();
-
-    let encryptedVaultKey: undefined | string = undefined;
-    if (vaultKey) {
-      encryptedVaultKey = (
-        await this.keyManager.encryptWithRootKeyPair(vaultKey)
-      ).toString('binary');
-    }
-
-    let data = {
-      vaultName: vaultName ?? '',
-      vaultKey: encryptedVaultKey ?? '',
-    };
-
-    if (vaultName && encryptedVaultKey) {
-      await new Promise<void>((resolve) => {
-        this.leveldb.put(id, data);
-        resolve();
-      });
-      release();
-      return;
-    }
-
-    await new Promise<void>((resolve) => {
-      this.leveldb.get(id, function (err, value) {
-        if (err) {
-          if (err.notFound) {
-            release();
-            throw new errors.ErrorVaults(
-              'Vault does not yet exist, please specify both vaultName and vaultKey',
-            );
-          }
-          release();
-          throw err;
-        }
-
-        data = value;
-        if (encryptedVaultKey) {
-          data.vaultKey = encryptedVaultKey;
-        }
-        if (vaultName) {
-          data.vaultName = vaultName;
-        }
-        resolve();
-      });
-    });
-
-    if (data.vaultKey === '') {
-      release();
-      throw new errors.ErrorMalformedVaultDBValue(
-        'Attempting to put an empty string as the vaultKey',
-      );
-    }
-    if (data.vaultName === '') {
-      release();
-      throw new errors.ErrorMalformedVaultDBValue(
-        'Attempting to put an empty string as the vaultName',
-      );
-    }
-
-    await new Promise<void>((resolve) => {
-      this.leveldb.put(id, data);
-      resolve();
-    });
-    release();
-  }
-
-  /**
-   * Deletes vault from metadata leveldb
-   * @param vaultName name of vault to delete
-   */
-  private async deleteValueLeveldb(vaultId: string): Promise<void> {
-    const release = await this.metadataMutex.acquire();
-
-    await this.leveldb.del(vaultId);
-
-    release();
-  }
-
-  /**
-   * Load existing vaults data into memory from vault metadata path.
+   * Loads existing vaults data from the vaults db into memory.
    * If metadata does not exist, does nothing.
    */
   private async loadVaultData(): Promise<void> {
     const release = await this.metadataMutex.acquire();
     try {
       this.logger.info(`Reading metadata from ${this.metadataPath}`);
-
-      await new Promise<void>((resolve) => {
-        this.leveldb
-          .createReadStream()
-          .on('data', async (data) => {
-            const id = await data.key;
-            const vaultMeta = data.value;
-            const vaultKey = await this.keyManager.decryptWithRootKeyPair(
-              Buffer.from(vaultMeta.vaultKey, 'binary'),
-            );
-            this.vaults[id] = {
-              vault: new Vault({
-                vaultId: id,
-                vaultName: data.key,
-                key: vaultKey,
-                baseDir: this.vaultsPath,
-                logger: this.logger,
-              }),
-              vaultName: vaultMeta.vaultName,
-              vaultKey: vaultKey,
-            };
-          })
-          .on('end', async () => {
-            resolve();
-          });
-      });
+      const vaults = await this.vaultMap.loadVaultData();
+      this.vaults = vaults;
     } catch (err) {
       release();
       throw err;

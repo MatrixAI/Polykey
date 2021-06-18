@@ -339,6 +339,8 @@ describe('VaultManager is', () => {
     expect(vaultId).not.toBe('');
 
     const vault = vaultManager.getVault(vaultId);
+    const id = vault.vaultId;
+    await vaultManager.setLinkVault(id, '12345667889');
     expect(vault).toBeTruthy();
     // vault = vaultManager.getVault('Vault1');
 
@@ -367,6 +369,8 @@ describe('VaultManager is', () => {
     const vn: Array<string> = [];
     vaultManager2.listVaults().forEach((a) => vn.push(a.name));
     expect(vn.sort()).toEqual(vaultNames.sort());
+
+    expect(vaultManager2.getLinkVault('12345667889')?.vaultId).toBe(id);
 
     await vaultManager2.stop();
     await keyManager.stop();
