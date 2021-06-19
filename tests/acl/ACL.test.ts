@@ -378,7 +378,12 @@ describe('ACL', () => {
         },
       },
     ]);
-    expect(results[2]).toEqual(results[1]);
+    // if p2 was executed ahead of p3
+    // then results[2] would equal results[1]
+    // if p3 was executed ahead of p2
+    // then results[2] woudl equal []
+    // the order of execution is not specified
+    expect([results[1], []]).toContainEqual(results[2]);
     await acl.stop();
   });
 });

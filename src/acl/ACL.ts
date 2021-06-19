@@ -46,7 +46,7 @@ class ACL {
   >;
   protected aclDbMutex: Mutex = new Mutex();
 
-  protected _transacting: boolean = false;
+  // protected _transacting: boolean = false;
   protected _started: boolean = false;
 
   constructor({
@@ -71,8 +71,8 @@ class ACL {
     return this._started;
   }
 
-  get transacting(): boolean {
-    return this._transacting;
+  get locked(): boolean {
+    return this.aclDbMutex.isLocked();
   }
 
   public async start({
@@ -176,11 +176,9 @@ class ACL {
    */
   public async transaction<T>(f: (acl: ACL) => Promise<T>): Promise<T> {
     const release = await this.aclDbMutex.acquire();
-    this._transacting = true;
     try {
       return await f(this);
     } finally {
-      this._transacting = false;
       release();
     }
   }
@@ -190,15 +188,10 @@ class ACL {
    * within a transaction context
    */
   protected async _transaction<T>(f: () => Promise<T>): Promise<T> {
-    if (this._transacting) {
+    if (this.aclDbMutex.isLocked()) {
       return await f();
     } else {
-      const release = await this.aclDbMutex.acquire();
-      try {
-        return await f();
-      } finally {
-        release();
-      }
+      return await this.transaction(f);
     }
   }
 
