@@ -121,6 +121,19 @@ function pidIsRunning(pid: number) {
   }
 }
 
+function arraySet<T>(items: Array<T>, item: T) {
+  if (items.indexOf(item) === -1) {
+    items.push(item);
+  }
+}
+
+function arrayUnset<T>(items: Array<T>, item: T) {
+  const itemIndex = items.indexOf(item);
+  if (itemIndex !== -1) {
+    items.splice(itemIndex, 1);
+  }
+}
+
 export {
   getDefaultNodePath,
   mkdirExists,
@@ -134,4 +147,6 @@ export {
   timerStop,
   promise,
   pidIsRunning,
+  arraySet,
+  arrayUnset,
 };

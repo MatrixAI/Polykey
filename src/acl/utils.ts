@@ -9,19 +9,6 @@ async function generatePermId(): Promise<PermissionId> {
   return base58.encode(id) as PermissionId;
 }
 
-function arraySet<T>(items: Array<T>, item: T) {
-  if (items.indexOf(item) === -1) {
-    items.push(item);
-  }
-}
-
-function arrayUnset<T>(items: Array<T>, item: T) {
-  const itemIndex = items.indexOf(item);
-  if (itemIndex !== -1) {
-    items.splice(itemIndex, 1);
-  }
-}
-
 function serializeEncrypt<T>(key: Buffer, value: T): Buffer {
   return keysUtils.encryptWithKey(
     key,
@@ -46,10 +33,4 @@ function unserializeDecrypt<T>(key: Buffer, data: Buffer): T {
   return value;
 }
 
-export {
-  generatePermId,
-  arraySet,
-  arrayUnset,
-  serializeEncrypt,
-  unserializeDecrypt,
-};
+export { generatePermId, serializeEncrypt, unserializeDecrypt };

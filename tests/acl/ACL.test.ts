@@ -1,3 +1,4 @@
+import type { Permission } from '@/acl/types';
 import type { NodeId } from '@/nodes/types';
 import type { VaultId } from '@/vaults/types';
 
@@ -122,7 +123,7 @@ describe('ACL', () => {
       trust: true,
       vaults: {},
     });
-    let vaultPerm;
+    let vaultPerm: Record<NodeId, Permission>;
     await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
     // idempotent
     await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
@@ -130,7 +131,7 @@ describe('ACL', () => {
     expect(vaultPerm['g1-1']).toEqual({
       trust: true,
       vaults: {
-        v1: ['pull'],
+        v1: { pull: null },
       },
     });
     await acl.unsetVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
@@ -140,21 +141,21 @@ describe('ACL', () => {
     expect(vaultPerm['g1-1']).toEqual({
       trust: true,
       vaults: {
-        v1: [],
+        v1: {},
       },
     });
     await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
     await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'clone');
     vaultPerm = await acl.getVaultPerm('v1' as VaultId);
-    expect(vaultPerm['g1-1'].vaults['v1']).toContainEqual('pull');
-    expect(vaultPerm['g1-1'].vaults['v1']).toContainEqual('clone');
+    expect(vaultPerm['g1-1'].vaults['v1']).toHaveProperty('pull');
+    expect(vaultPerm['g1-1'].vaults['v1']).toHaveProperty('clone');
     const vaultPerms = await acl.getVaultPerms();
     expect(vaultPerms).toEqual({
       v1: {
         'g1-1': {
           trust: true,
           vaults: {
-            v1: ['pull', 'clone'],
+            v1: { pull: null, clone: null },
           },
         },
       },
@@ -168,7 +169,7 @@ describe('ACL', () => {
     const g1Perm = {
       trust: true,
       vaults: {
-        v1: ['pull'],
+        v1: { pull: null },
       },
     };
     await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, g1Perm);
@@ -196,7 +197,7 @@ describe('ACL', () => {
     await acl.setNodesPerm(['g1-1'] as Array<NodeId>, {
       trust: true,
       vaults: {
-        v1: ['clone'],
+        v1: { clone: null },
       },
     });
     await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
@@ -206,17 +207,17 @@ describe('ACL', () => {
     const vaultPerm3 = await acl.getVaultPerm('v3' as VaultId);
     expect(vaultPerm1).toEqual(vaultPerm2);
     expect(vaultPerm2).toEqual(vaultPerm3);
-    expect(vaultPerm1['g1-1'].vaults['v1']).toContainEqual('clone');
-    expect(vaultPerm1['g1-1'].vaults['v1']).toContainEqual('pull');
+    expect(vaultPerm1['g1-1'].vaults['v1']).toHaveProperty('clone');
+    expect(vaultPerm1['g1-1'].vaults['v1']).toHaveProperty('pull');
     const vaultPerms = await acl.getVaultPerms();
     expect(vaultPerms).toMatchObject({
       v1: {
         'g1-1': {
           trust: true,
           vaults: {
-            v1: ['clone', 'pull'],
-            v2: ['clone', 'pull'],
-            v3: ['clone', 'pull'],
+            v1: { clone: null, pull: null },
+            v2: { clone: null, pull: null },
+            v3: { clone: null, pull: null },
           },
         },
       },
@@ -224,9 +225,9 @@ describe('ACL', () => {
         'g1-1': {
           trust: true,
           vaults: {
-            v1: ['clone', 'pull'],
-            v2: ['clone', 'pull'],
-            v3: ['clone', 'pull'],
+            v1: { clone: null, pull: null },
+            v2: { clone: null, pull: null },
+            v3: { clone: null, pull: null },
           },
         },
       },
@@ -234,9 +235,9 @@ describe('ACL', () => {
         'g1-1': {
           trust: true,
           vaults: {
-            v1: ['clone', 'pull'],
-            v2: ['clone', 'pull'],
-            v3: ['clone', 'pull'],
+            v1: { clone: null, pull: null },
+            v2: { clone: null, pull: null },
+            v3: { clone: null, pull: null },
           },
         },
       },
@@ -253,7 +254,7 @@ describe('ACL', () => {
     const g1Perm = {
       trust: true,
       vaults: {
-        v1: ['pull'],
+        v1: { pull: null },
       },
     };
     await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, g1Perm);
@@ -285,8 +286,8 @@ describe('ACL', () => {
       'g1-second': {
         trust: true,
         vaults: {
-          v1: ['clone'],
-          v2: ['pull'],
+          v1: { clone: null },
+          v2: { pull: null },
         },
       },
     });
@@ -297,7 +298,7 @@ describe('ACL', () => {
       'g1-second': {
         trust: true,
         vaults: {
-          v2: ['pull'],
+          v2: { pull: null },
         },
       },
     });
@@ -342,22 +343,22 @@ describe('ACL', () => {
         'g1-first': {
           trust: true,
           vaults: {
-            v1: [],
-            v4: ['pull'],
+            v1: {},
+            v4: { pull: null },
           },
         },
         'g1-fourth': {
           trust: true,
           vaults: {
-            v1: [],
-            v4: ['pull'],
+            v1: {},
+            v4: { pull: null },
           },
         },
         'g1-third': {
           trust: true,
           vaults: {
-            v1: [],
-            v4: ['pull'],
+            v1: {},
+            v4: { pull: null },
           },
         },
       },
@@ -365,15 +366,15 @@ describe('ACL', () => {
         'g2-first': {
           trust: true,
           vaults: {
-            v1: ['clone'],
-            v4: ['clone'],
+            v1: { clone: null },
+            v4: { clone: null },
           },
         },
         'g2-second': {
           trust: true,
           vaults: {
-            v1: ['clone'],
-            v4: ['clone'],
+            v1: { clone: null },
+            v4: { clone: null },
           },
         },
       },

@@ -6,8 +6,10 @@ type PermissionId = Opaque<'PermissionId', string>;
 
 type Permission = {
   trust: boolean;
-  vaults: Record<VaultId, Array<VaultAction>>;
+  vaults: Record<VaultId, VaultActions>;
 };
+
+type VaultActions = Partial<Record<VaultAction, null>>;
 
 type ACLOp_ =
   | {
@@ -23,7 +25,7 @@ type ACLOp_ =
   | {
       domain: 'vaults';
       key: VaultId;
-      value: Array<NodeId>;
+      value: Record<NodeId, null>;
     };
 
 type ACLOp =
@@ -34,4 +36,4 @@ type ACLOp =
       type: 'del';
     } & Omit<ACLOp_, 'value'>);
 
-export { PermissionId, Permission, ACLOp };
+export { PermissionId, Permission, VaultActions, ACLOp };
