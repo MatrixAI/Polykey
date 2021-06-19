@@ -1,14 +1,18 @@
 import type { Buffer } from 'buffer';
-import type { AbstractBatch } from 'abstract-leveldown';
-import type { LevelDB } from 'level';
 import type {
-  GestaltGraphDomain,
-  GestaltGraphKey,
+  AbstractBatch,
+  AbstractLevelDOWN,
+  AbstractIterator,
+} from 'abstract-leveldown';
+import type { LevelDB } from 'level';
+import type { LevelUp } from 'levelup';
+import type {
   GestaltKey,
-  GestaltGraphValue,
+  GestaltNodeKey,
+  GestaltIdentityKey,
   GestaltKeySet,
-  GestaltGraphOp,
   Gestalt,
+  GestaltGraphOp,
 } from './types';
 import type { FileSystem } from '../types';
 import type { NodeId, NodeInfo } from '../nodes/types';
@@ -17,6 +21,8 @@ import type { KeyManager } from '../keys';
 
 import path from 'path';
 import level from 'level';
+import subleveldown from 'subleveldown';
+import sublevelprefixer from 'sublevel-prefixer';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from './utils';
@@ -31,8 +37,21 @@ class GestaltGraph {
   protected logger: Logger;
   protected fs: FileSystem;
   protected keyManager: KeyManager;
-  protected graphDb: LevelDB<GestaltGraphKey, Buffer>;
+  protected graphDb: LevelDB<string, Buffer>;
   protected graphDbKey: Buffer;
+  protected graphDbPrefixer: (domain: string, key: string) => string;
+  protected graphMatrixDb: LevelUp<
+    AbstractLevelDOWN<GestaltKey, Buffer>,
+    AbstractIterator<GestaltKey, Buffer>
+  >;
+  protected graphNodesDb: LevelUp<
+    AbstractLevelDOWN<GestaltNodeKey, Buffer>,
+    AbstractIterator<GestaltNodeKey, Buffer>
+  >;
+  protected graphIdentitiesDb: LevelUp<
+    AbstractLevelDOWN<GestaltIdentityKey, Buffer>,
+    AbstractIterator<GestaltIdentityKey, Buffer>
+  >;
   protected graphDbMutex: Mutex = new Mutex();
   protected _started: boolean = false;
 
@@ -58,6 +77,10 @@ class GestaltGraph {
     return this._started;
   }
 
+  get locked(): boolean {
+    return this.graphDbMutex.isLocked();
+  }
+
   async start({
     bits = 256,
     fresh = false,
@@ -65,57 +88,157 @@ class GestaltGraph {
     bits?: number;
     fresh?: boolean;
   } = {}) {
-    this.logger.info('Starting Gestalt Graph');
-    if (!this.keyManager.started) {
-      throw new keysErrors.ErrorKeyManagerNotStarted();
-    }
-    this.logger.info(`Setting gestalt graph path to ${this.gestaltGraphPath}`);
-    if (fresh) {
-      await this.fs.promises.rm(this.gestaltGraphPath, {
-        force: true,
+    try {
+      if (this._started) {
+        return;
+      }
+      this.logger.info('Starting Gestalt Graph');
+      this._started = true;
+      if (!this.keyManager.started) {
+        throw new keysErrors.ErrorKeyManagerNotStarted();
+      }
+      this.logger.info(
+        `Setting gestalt graph path to ${this.gestaltGraphPath}`,
+      );
+      if (fresh) {
+        await this.fs.promises.rm(this.gestaltGraphPath, {
+          force: true,
+          recursive: true,
+        });
+      }
+      await utils.mkdirExists(this.fs, this.gestaltGraphPath, {
         recursive: true,
       });
+      const {
+        p: graphDbP,
+        resolveP: resolveGraphDbP,
+        rejectP: rejectGraphDbP,
+      } = utils.promise<void>();
+      const { p: graphMatrixDbP, resolveP: resolveGraphMatrixDbP } =
+        utils.promise<void>();
+      const { p: graphNodesDbP, resolveP: resolveGraphNodesDbP } =
+        utils.promise<void>();
+      const { p: graphIdentitiesDbP, resolveP: resolveGraphIdentitiesDbP } =
+        utils.promise<void>();
+      const graphDbKey = await this.setupGraphDbKey(bits);
+      const graphDbPrefixer = sublevelprefixer('!');
+      const graphDb = level(
+        this.graphDbPath,
+        { valueEncoding: 'binary' },
+        (e) => {
+          if (e) {
+            rejectGraphDbP(e);
+          } else {
+            resolveGraphDbP();
+          }
+        },
+      );
+      const graphMatrixDb = subleveldown<GestaltKey, Buffer>(
+        graphDb,
+        'matrix',
+        {
+          valueEncoding: 'binary',
+          open: (cb) => {
+            cb(undefined);
+            resolveGraphMatrixDbP();
+          },
+        },
+      );
+      const graphNodesDb = subleveldown<GestaltNodeKey, Buffer>(
+        graphDb,
+        'nodes',
+        {
+          valueEncoding: 'binary',
+          open: (cb) => {
+            cb(undefined);
+            resolveGraphNodesDbP();
+          },
+        },
+      );
+      const graphIdentitiesDb = subleveldown<GestaltIdentityKey, Buffer>(
+        graphDb,
+        'identities',
+        {
+          valueEncoding: 'binary',
+          open: (cb) => {
+            cb(undefined);
+            resolveGraphIdentitiesDbP();
+          },
+        },
+      );
+      await Promise.all([
+        graphDbP,
+        graphMatrixDbP,
+        graphNodesDbP,
+        graphIdentitiesDbP,
+      ]);
+      this.graphDb = graphDb;
+      this.graphDbKey = graphDbKey;
+      this.graphDbPrefixer = graphDbPrefixer;
+      this.graphMatrixDb = graphMatrixDb;
+      this.graphNodesDb = graphNodesDb;
+      this.graphIdentitiesDb = graphIdentitiesDb;
+      this.logger.info('Started Gestalts Graph');
+    } catch (e) {
+      this._started = false;
+      throw e;
     }
-    await utils.mkdirExists(this.fs, this.gestaltGraphPath, {
-      recursive: true,
-    });
-    const graphDbKey = await this.setupGraphDbKey(bits);
-    const graphDb = await level(this.graphDbPath, { valueEncoding: 'binary' });
-    this.graphDb = graphDb;
-    this.graphDbKey = graphDbKey;
-    this._started = true;
-    this.logger.info('Started Gestalts Graph');
   }
 
   async stop() {
-    this.logger.info('Stopping Gestalt Graph');
-    if (this._started) {
-      await this.graphDb.close();
+    if (!this._started) {
+      return;
     }
+    this.logger.info('Stopping Gestalt Graph');
     this._started = false;
+    await this.graphDb.close();
     this.logger.info('Stopped Gestalt Graph');
+  }
+
+  /**
+   * Run several operations within the same lock
+   * This does not ensure atomicity of the underlying database
+   * Database atomicity still depends on the underlying operation
+   */
+  public async transaction<T>(
+    f: (gestaltGraph: GestaltGraph) => Promise<T>,
+  ): Promise<T> {
+    const release = await this.graphDbMutex.acquire();
+    try {
+      return await f(this);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Transaction wrapper that will not lock if the operation was executed
+   * within a transaction context
+   */
+  protected async _transaction<T>(f: () => Promise<T>): Promise<T> {
+    if (this.graphDbMutex.isLocked()) {
+      return await f();
+    } else {
+      return await this.transaction(f);
+    }
   }
 
   public async getGestalts(): Promise<Array<Gestalt>> {
     const release = await this.graphDbMutex.acquire();
     try {
       const unvisited: Map<GestaltKey, GestaltKeySet> = new Map();
-      for await (const o of this.graphDb.createReadStream({
-        gt: 'matrix',
-        lt: 'nodes',
-      })) {
-        const ggK = (o as any).key;
+      for await (const o of this.graphMatrixDb.createReadStream()) {
+        const gK = (o as any).key as GestaltKey;
         const data = (o as any).value;
-        const [, gK] = gestaltsUtils.ungestaltGraphKey(ggK as GestaltGraphKey);
-        const ggV = gestaltsUtils.unserializeDecrypt<GestaltGraphValue>(
+        const gKs = gestaltsUtils.unserializeDecrypt<GestaltKeySet>(
           this.graphDbKey,
           data,
         );
-        unvisited.set(gK, ggV);
+        unvisited.set(gK, gKs);
       }
       const gestalts: Array<Gestalt> = [];
       let gestalt: Gestalt;
-      for (const [gK, ggV] of unvisited) {
+      for (const [gK, gKs] of unvisited) {
         gestalt = {
           matrix: {},
           nodes: {},
@@ -129,13 +252,19 @@ class GestaltGraph {
             break;
           }
           const gId = gestaltsUtils.ungestaltKey(vertex);
-          const vertexKeys = ggV;
+          const vertexKeys = gKs;
           gestalt.matrix[vertex] = vertexKeys;
           if (gId.type === 'node') {
-            const nodeInfo = await this.getGraphDb('nodes', vertex);
+            const nodeInfo = await this.getGraphDb(
+              'nodes',
+              vertex as GestaltNodeKey,
+            );
             gestalt.nodes[vertex] = nodeInfo!;
           } else if (gId.type === 'identity') {
-            const identityInfo = await this.getGraphDb('identities', vertex);
+            const identityInfo = await this.getGraphDb(
+              'identities',
+              vertex as GestaltIdentityKey,
+            );
             gestalt.identities[vertex] = identityInfo!;
           }
           unvisited.delete(vertex);
@@ -296,10 +425,16 @@ class GestaltGraph {
         }
         gestalt.matrix[vertex] = vertexKeys;
         if (gId.type === 'node') {
-          const nodeInfo = await this.getGraphDb('nodes', vertex);
+          const nodeInfo = await this.getGraphDb(
+            'nodes',
+            vertex as GestaltNodeKey,
+          );
           gestalt.nodes[vertex] = nodeInfo!;
         } else if (gId.type === 'identity') {
-          const identityInfo = await this.getGraphDb('identities', vertex);
+          const identityInfo = await this.getGraphDb(
+            'identities',
+            vertex as GestaltIdentityKey,
+          );
           gestalt.identities[vertex] = identityInfo!;
         }
         visited.add(vertex);
@@ -641,80 +776,70 @@ class GestaltGraph {
   }
 
   protected async getGraphDb(
-    d: 'matrix',
-    gK: GestaltKey,
+    domain: 'matrix',
+    key: GestaltKey,
   ): Promise<GestaltKeySet | undefined>;
   protected async getGraphDb(
-    d: 'nodes',
-    gK: GestaltKey,
+    domain: 'nodes',
+    key: GestaltNodeKey,
   ): Promise<NodeInfo | undefined>;
   protected async getGraphDb(
-    d: 'identities',
-    gK: GestaltKey,
+    domain: 'identities',
+    key: GestaltIdentityKey,
   ): Promise<IdentityInfo | undefined>;
-  protected async getGraphDb(
-    d: GestaltGraphDomain,
-    gK: GestaltKey,
-  ): Promise<GestaltGraphValue | undefined> {
+  protected async getGraphDb(domain: any, key: any): Promise<any> {
     if (!this._started) {
       throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
     }
-    const ggK = gestaltsUtils.gestaltGraphKey(d, gK);
     let data: Buffer;
     try {
-      data = await this.graphDb.get(ggK);
+      data = await this.graphDb.get(this.graphDbPrefixer(domain, key));
     } catch (e) {
       if (e.notFound) {
         return undefined;
       }
       throw e;
     }
-    return gestaltsUtils.unserializeDecrypt<GestaltGraphValue>(
-      this.graphDbKey,
-      data,
-    );
+    return gestaltsUtils.unserializeDecrypt(this.graphDbKey, data);
   }
 
   protected async putGraphDb(
-    d: 'matrix',
-    gK: GestaltKey,
-    ggV: GestaltKeySet,
+    domain: 'matrix',
+    key: GestaltKey,
+    value: GestaltKeySet,
   ): Promise<void>;
   protected async putGraphDb(
-    d: 'nodes',
-    gK: GestaltKey,
-    ggV: NodeInfo,
+    domain: 'nodes',
+    key: GestaltNodeKey,
+    value: NodeInfo,
   ): Promise<void>;
   protected async putGraphDb(
-    d: 'identities',
-    gK: GestaltKey,
-    ggV: IdentityInfo,
+    domain: 'identities',
+    key: GestaltIdentityKey,
+    value: IdentityInfo,
   ): Promise<void>;
-  protected async putGraphDb(
-    d: GestaltGraphDomain,
-    gK: GestaltKey,
-    ggV: GestaltGraphValue,
-  ): Promise<void> {
+  protected async putGraphDb(domain: any, key: any, value: any): Promise<void> {
     if (!this._started) {
       throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
     }
-    const ggK = gestaltsUtils.gestaltGraphKey(d, gK);
-    const data = gestaltsUtils.serializeEncrypt<GestaltGraphValue>(
-      this.graphDbKey,
-      ggV,
-    );
-    await this.graphDb.put(ggK, data);
+    const data = gestaltsUtils.serializeEncrypt(this.graphDbKey, value);
+    await this.graphDb.put(this.graphDbPrefixer(domain, key), data);
   }
 
-  protected async delGraphDb(d: 'matrix', gK: GestaltKey): Promise<void>;
-  protected async delGraphDb(d: 'nodes', gK: GestaltKey): Promise<void>;
-  protected async delGraphDb(d: 'identities', gK: GestaltKey): Promise<void>;
-  protected async delGraphDb(d: GestaltGraphDomain, gK: GestaltKey) {
+  protected async delGraphDb(domain: 'matrix', key: GestaltKey): Promise<void>;
+  protected async delGraphDb(
+    domain: 'nodes',
+    key: GestaltNodeKey,
+  ): Promise<void>;
+  protected async delGraphDb(
+    domain: 'identities',
+    key: GestaltIdentityKey,
+  ): Promise<void>;
+  protected async delGraphDb(domain: any, key: any): Promise<void> {
     if (!this._started) {
       throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
     }
-    const ggK = gestaltsUtils.gestaltGraphKey(d, gK);
-    await this.graphDb.del(ggK);
+    await this.graphDb.del(this.graphDbPrefixer(domain, key));
   }
 
   protected async batchGraphDb(ops: Array<GestaltGraphOp>): Promise<void> {
@@ -726,17 +851,13 @@ class GestaltGraph {
       if (op.type === 'del') {
         ops_.push({
           type: op.type,
-          key: gestaltsUtils.gestaltGraphKey(op.domain, op.key),
+          key: this.graphDbPrefixer(op.domain, op.key),
         });
       } else if (op.type === 'put') {
-        const ggK = gestaltsUtils.gestaltGraphKey(op.domain, op.key);
-        const data = gestaltsUtils.serializeEncrypt<GestaltGraphValue>(
-          this.graphDbKey,
-          op.value,
-        );
+        const data = gestaltsUtils.serializeEncrypt(this.graphDbKey, op.value);
         ops_.push({
           type: op.type,
-          key: ggK,
+          key: this.graphDbPrefixer(op.domain, op.key),
           value: data,
         });
       }

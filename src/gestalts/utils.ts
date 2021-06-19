@@ -1,8 +1,10 @@
 import type {
-  GestaltGraphDomain,
-  GestaltGraphKey,
   GestaltKey,
+  GestaltNodeKey,
+  GestaltIdentityKey,
   GestaltId,
+  GestaltNodeId,
+  GestaltIdentityId,
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
@@ -14,6 +16,9 @@ import { utils as keysUtils } from '../keys';
 /**
  * Construct GestaltKey from GestaltId
  */
+function gestaltKey(gestaltId: GestaltNodeId): GestaltNodeKey;
+function gestaltKey(gestaltId: GestaltIdentityId): GestaltIdentityKey;
+function gestaltKey(gestaltId: GestaltId): GestaltKey;
 function gestaltKey(gestaltId: GestaltId): GestaltKey {
   return canonicalize(gestaltId) as GestaltKey;
 }
@@ -21,6 +26,9 @@ function gestaltKey(gestaltId: GestaltId): GestaltKey {
 /**
  * Deconstruct GestaltKey to GestaltId
  */
+function ungestaltKey(gestaltKey: GestaltNodeKey): GestaltNodeId;
+function ungestaltKey(gestaltKey: GestaltIdentityKey): GestaltIdentityId;
+function ungestaltKey(gestaltKey: GestaltKey): GestaltId;
 function ungestaltKey(gestaltKey: GestaltKey): GestaltId {
   return JSON.parse(gestaltKey);
 }
@@ -28,8 +36,8 @@ function ungestaltKey(gestaltKey: GestaltKey): GestaltId {
 /**
  * Construct GestaltKey from NodeId
  */
-function keyFromNode(nodeId: NodeId): GestaltKey {
-  return gestaltKey({ type: 'node', nodeId });
+function keyFromNode(nodeId: NodeId): GestaltNodeKey {
+  return gestaltKey({ type: 'node', nodeId }) as GestaltNodeKey;
 }
 
 /**
@@ -38,19 +46,20 @@ function keyFromNode(nodeId: NodeId): GestaltKey {
 function keyFromIdentity(
   providerId: ProviderId,
   identityId: IdentityId,
-): GestaltKey {
-  return gestaltKey({ type: 'identity', providerId, identityId });
+): GestaltIdentityKey {
+  return gestaltKey({
+    type: 'identity',
+    providerId,
+    identityId,
+  }) as GestaltIdentityKey;
 }
 
 /**
  * Deconstruct GestaltKey to NodeId
  * This is a partial function.
  */
-function nodeFromKey(nodeKey: GestaltKey): NodeId {
-  const node = ungestaltKey(nodeKey);
-  if (node.type !== 'node') {
-    throw new TypeError();
-  }
+function nodeFromKey(nodeKey: GestaltNodeKey): NodeId {
+  const node = ungestaltKey(nodeKey) as GestaltNodeId;
   return node.nodeId;
 }
 
@@ -58,32 +67,11 @@ function nodeFromKey(nodeKey: GestaltKey): NodeId {
  * Deconstruct GestaltKey to IdentityId and ProviderId
  * This is a partial function.
  */
-function identityFromKey(identityKey: GestaltKey): [ProviderId, IdentityId] {
-  const identity = ungestaltKey(identityKey);
-  if (identity.type !== 'identity') {
-    throw new TypeError();
-  }
+function identityFromKey(
+  identityKey: GestaltIdentityKey,
+): [ProviderId, IdentityId] {
+  const identity = ungestaltKey(identityKey) as GestaltIdentityId;
   return [identity.providerId, identity.identityId];
-}
-
-/**
- * Constructs GestaltGraphKey from GestaltKey in particular domain.
- */
-function gestaltGraphKey(
-  d: GestaltGraphDomain,
-  gk: GestaltKey,
-): GestaltGraphKey {
-  return `${d}.${gk}` as GestaltGraphKey;
-}
-
-/**
- * Deconstructs GestaltGraphKey to GestaltGraphDomain and GestaltKey
- */
-function ungestaltGraphKey(
-  ggK: GestaltGraphKey,
-): [GestaltGraphDomain, GestaltKey] {
-  const [d, gk] = ggK.split(/\.(.+)/);
-  return [d as GestaltGraphDomain, gk as GestaltKey];
 }
 
 function serializeEncrypt<T>(graphDbKey: Buffer, value: T): Buffer {
@@ -117,8 +105,6 @@ export {
   keyFromIdentity,
   nodeFromKey,
   identityFromKey,
-  gestaltGraphKey,
-  ungestaltGraphKey,
   serializeEncrypt,
   unserializeDecrypt,
 };

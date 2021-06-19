@@ -2,40 +2,30 @@ import type { Opaque } from '../types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { IdentityId, ProviderId, IdentityInfo } from '../identities/types';
 
-// the GestaltId is the actual underlying data
-// when we want to differentiate the GestaltKey
-type GestaltId =
-  | {
-      type: 'node';
-      nodeId: NodeId;
-    }
-  | {
-      type: 'identity';
-      identityId: IdentityId;
-      providerId: ProviderId;
-    };
-type GestaltKey = Opaque<'GestaltKey', string>;
+type GestaltId = GestaltNodeId | GestaltIdentityId;
+type GestaltNodeId = {
+  type: 'node';
+  nodeId: NodeId;
+};
+type GestaltIdentityId = {
+  type: 'identity';
+  identityId: IdentityId;
+  providerId: ProviderId;
+};
+
+type GestaltKey = GestaltNodeKey | GestaltIdentityKey;
+type GestaltNodeKey = Opaque<'GestaltNodeKey', string>;
+type GestaltIdentityKey = Opaque<'GestaltIdentityKey', string>;
 
 type GestaltKeySet = Record<GestaltKey, null>;
 type GestaltMatrix = Record<GestaltKey, GestaltKeySet>;
-type GestaltNodes = Record<GestaltKey, NodeInfo>;
-type GestaltIdentities = Record<GestaltKey, IdentityInfo>;
+type GestaltNodes = Record<GestaltNodeKey, NodeInfo>;
+type GestaltIdentities = Record<GestaltIdentityKey, IdentityInfo>;
 type Gestalt = {
   matrix: GestaltMatrix;
   nodes: GestaltNodes;
   identities: GestaltIdentities;
 };
-
-// the GESTALT GRAPH should only store verified entities
-// it should not be storing non verified entities
-// the verification process has to use the `identities`
-// domain, or the nodes domain
-// it doesn't actually have to be synced by the DHT
-// the DHT doesn't really matter all that much
-
-type GestaltGraphKey = Opaque<'GestaltGraphKey', string>;
-type GestaltGraphValue = GestaltKeySet | NodeInfo | IdentityInfo;
-type GestaltGraphDomain = 'matrix' | 'nodes' | 'identities';
 
 type GestaltGraphOp_ =
   | {
@@ -45,12 +35,12 @@ type GestaltGraphOp_ =
     }
   | {
       domain: 'nodes';
-      key: GestaltKey;
+      key: GestaltNodeKey;
       value: NodeInfo;
     }
   | {
       domain: 'identities';
-      key: GestaltKey;
+      key: GestaltIdentityKey;
       value: IdentityInfo;
     };
 
@@ -63,15 +53,16 @@ type GestaltGraphOp =
     } & Omit<GestaltGraphOp_, 'value'>);
 
 export type {
-  GestaltKey,
-  GestaltKeySet,
   GestaltId,
+  GestaltNodeId,
+  GestaltIdentityId,
+  GestaltKey,
+  GestaltNodeKey,
+  GestaltIdentityKey,
+  GestaltKeySet,
   GestaltMatrix,
   GestaltNodes,
   GestaltIdentities,
   Gestalt,
-  GestaltGraphKey,
-  GestaltGraphValue,
-  GestaltGraphDomain,
   GestaltGraphOp,
 };
