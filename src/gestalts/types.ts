@@ -2,6 +2,8 @@ import type { Opaque } from '../types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { IdentityId, ProviderId, IdentityInfo } from '../identities/types';
 
+type GestaltAction = 'notify';
+
 type GestaltId = GestaltNodeId | GestaltIdentityId;
 type GestaltNodeId = {
   type: 'node';
@@ -53,6 +55,7 @@ type GestaltGraphOp =
     } & Omit<GestaltGraphOp_, 'value'>);
 
 export type {
+  GestaltAction,
   GestaltId,
   GestaltNodeId,
   GestaltIdentityId,
