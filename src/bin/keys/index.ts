@@ -1,5 +1,3 @@
-import { createCommand } from '../utils';
-
 import commandGetPrimaryKeyPair from './commandGetRootKeyPair';
 import commandRenewKeyPair from './commandRenewKeyPair';
 import commandResetKeyPair from './commandResetKeyPair';
@@ -10,8 +8,9 @@ import commandEncryptKeys from './commandEncryptKeys';
 import commandCertChain from '../keys/commandCertChain';
 import commandChangePassword from '../keys/commandChangePassword';
 import commandRootCert from './commandGetCert';
+import * as binUtils from '../utils';
 
-const commandKeys = createCommand('keys');
+const commandKeys = binUtils.createCommand('keys');
 commandKeys.description('manipulate keys');
 commandKeys.addCommand(commandGetPrimaryKeyPair);
 commandKeys.addCommand(commandRenewKeyPair);

@@ -1,31 +1,29 @@
-import fs from 'fs/promises';
-import { errors } from '../../grpc';
+import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import { clientPB } from '../../client';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandVerify = createCommand('verify', {
-  description: {
-    description: 'Verify a signature with the root keypair',
-    args: {
-      filePath: 'Path to the data',
-      signaturePath: 'Path to the signature',
-    },
-  },
+const commandVerify = binUtils.createCommand('verify', {
+  description: 'Verifies a signature with the root keypair',
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandVerify.requiredOption(
   '-fp, --file-path <filePath>',
-  '(required) Path to the file to be verified',
+  '(required) Path to the file to be verified, file must be binary encoded',
 );
 commandVerify.requiredOption(
   '-sp, --signature-path <signaturePath>',
-  '(required) Path to the signature to be verified',
+  '(required) Path to the signature to be verified, file must be binary encoded',
 );
 commandVerify.action(async (options) => {
+  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -33,9 +31,12 @@ commandVerify.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const cryptoMessage = new clientPB.CryptoMessage();
@@ -44,38 +45,45 @@ commandVerify.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const data = await fs.readFile(options.filePath, { encoding: 'binary' });
-    const signature = await fs.readFile(options.signaturePath, {
+    const data = await fs.promises.readFile(options.filePath, {
+      encoding: 'binary',
+    });
+    const signature = await fs.promises.readFile(options.signaturePath, {
       encoding: 'binary',
     });
 
     cryptoMessage.setData(data);
     cryptoMessage.setSignature(signature);
 
-    const response = await grpcClient.keysVerify(cryptoMessage);
+    const response = await grpcClient.keysVerify(cryptoMessage, meta);
 
     process.stdout.write(
-      outputFormatter({
+      binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [`Signature verification:\t\t${response.getSuccess()}`],
       }),
     );
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
-    }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

@@ -148,30 +148,6 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
-  public keysDelete(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      this.client,
-      this.client.keysDelete,
-    )(...args);
-  }
-
-  public keysGet(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.KeyMessage>(
-      this.client,
-      this.client.keysGet,
-    )(...args);
-  }
-
-  public keysPut(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      this.client,
-      this.client.keysPut,
-    )(...args);
-  }
-
   public keysRootKeyPair(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(

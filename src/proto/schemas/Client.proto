@@ -9,10 +9,7 @@ service Client {
   rpc NodesList(EmptyMessage) returns (stream NodeMessage) {};
 
   // Keys
-  rpc KeysDelete(KeyMessage) returns (EmptyMessage) {};
-  rpc KeysGet(KeyMessage) returns (KeyMessage) {};
   rpc KeysRootKeyPair (EmptyMessage) returns (KeyPairMessage) {};
-  rpc KeysPut (KeyMessage) returns (EmptyMessage) {};
   rpc KeysResetKeyPair (KeyMessage) returns (EmptyMessage) {};
   rpc KeysRenewKeyPair (KeyMessage) returns (EmptyMessage) {};
   rpc KeysEncrypt (CryptoMessage) returns (CryptoMessage) {};

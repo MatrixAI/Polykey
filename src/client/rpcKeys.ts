@@ -1,54 +1,19 @@
-import { promisify } from 'util';
-
 import * as grpc from '@grpc/grpc-js';
 import * as clientPB from '../proto/js/Client_pb';
 
 import { KeyManager } from '../keys';
+import * as utils from './utils';
+import * as grpcUtils from '../grpc/utils';
+import { SessionManager } from '../session';
 
-const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
+const createKeysRPC = ({
+  keyManager,
+  sessionManager,
+}: {
+  keyManager: KeyManager;
+  sessionManager: SessionManager;
+}) => {
   return {
-    keysDelete: async (
-      call: grpc.ServerUnaryCall<clientPB.KeyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
-    ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
-      try {
-        await keyManager.delKey(call.request.getName());
-      } catch (err) {
-        callback(err, response);
-      }
-      callback(null, response);
-    },
-    keysGet: async (
-      call: grpc.ServerUnaryCall<clientPB.KeyMessage, clientPB.KeyMessage>,
-      callback: grpc.sendUnaryData<clientPB.KeyMessage>,
-    ): Promise<void> => {
-      const response = new clientPB.KeyMessage();
-      try {
-        const key = await keyManager.getKey(call.request.getName());
-        if (key) {
-          response.setName(key.toString());
-        }
-      } catch (err) {
-        callback(err, response);
-      }
-      callback(null, response);
-    },
-    keysPut: async (
-      call: grpc.ServerUnaryCall<clientPB.KeyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
-    ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
-      try {
-        await keyManager.putKey(
-          call.request.getName(),
-          Buffer.from(call.request.getKey()),
-        );
-      } catch (err) {
-        callback(err, response);
-      }
-      callback(null, response);
-    },
     keysRootKeyPair: async (
       call: grpc.ServerUnaryCall<
         clientPB.EmptyMessage,
@@ -58,11 +23,12 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.KeyPairMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         const keyPair = keyManager.getRootKeyPairPem();
         response.setPublic(keyPair.publicKey);
         response.setPrivate(keyPair.privateKey);
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -72,9 +38,10 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         await keyManager.resetRootKeyPair(call.request.getName());
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -84,9 +51,10 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         await keyManager.renewRootKeyPair(call.request.getName());
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -99,12 +67,13 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.CryptoMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         const data = await keyManager.encryptWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
         );
         response.setData(data.toString('binary'));
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -117,12 +86,13 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.CryptoMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         const data = await keyManager.decryptWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
         );
         response.setData(data.toString('binary'));
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -135,12 +105,13 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.CryptoMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         const signature = await keyManager.signWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
         );
         response.setSignature(signature.toString('binary'));
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -153,13 +124,14 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         const status = await keyManager.verifyWithRootKeyPair(
           Buffer.from(call.request.getData(), 'binary'),
           Buffer.from(call.request.getSignature(), 'binary'),
         );
         response.setSuccess(status);
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -172,9 +144,10 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         await keyManager.changeRootKeyPassword(call.request.getPassword());
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -187,10 +160,11 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
     ): Promise<void> => {
       const response = new clientPB.CertificateMessage();
       try {
+        await utils.checkPassword(call.metadata, sessionManager);
         const cert = keyManager.getRootCertPem();
         response.setCert(cert);
       } catch (err) {
-        callback(err, response);
+        callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
@@ -200,15 +174,20 @@ const createKeysRPC = ({ keyManager }: { keyManager: KeyManager }) => {
         clientPB.CertificateMessage
       >,
     ): Promise<void> => {
-      const write = promisify(call.write).bind(call);
-      const certs: Array<string> = await keyManager.getRootCertChainPems();
-      let certMessage: clientPB.CertificateMessage;
-      for (const cert of certs) {
-        certMessage = new clientPB.CertificateMessage();
-        certMessage.setCert(cert);
-        await write(certMessage);
+      const genWritable = grpcUtils.generatorWritable(call);
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const certs: Array<string> = await keyManager.getRootCertChainPems();
+        let certMessage: clientPB.CertificateMessage;
+        for (const cert of certs) {
+          certMessage = new clientPB.CertificateMessage();
+          certMessage.setCert(cert);
+          await genWritable.next(certMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
       }
-      call.end();
     },
   };
 };

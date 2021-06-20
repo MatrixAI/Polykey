@@ -48,7 +48,10 @@ function createClientService({
       gitManager: gitManager,
       sessionManager: sessionManager,
     }),
-    ...createKeysRPC({ keyManager: keyManager }),
+    ...createKeysRPC({
+      keyManager: keyManager,
+      sessionManager: sessionManager,
+    }),
     ...createIdentitiesRPC({ identitiesManager: identitiesManager }),
     ...createGestaltRPC({ gestaltGraph: gestaltGraph }),
     nodesList: async (
