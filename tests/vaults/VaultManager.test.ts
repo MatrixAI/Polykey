@@ -416,13 +416,13 @@ describe('VaultManager is', () => {
     for (const vaultName of vaultNames) {
       await vaultManager.createVault(vaultName);
     }
-    const v10 = vaultManager.getVaultIds('Vault10').pop();
+    const v10 = vaultManager.getVaultId('Vault10');
     expect(v10).toBeTruthy();
     await vaultManager.deleteVault(v10!);
-    const v5 = vaultManager.getVaultIds('Vault5').pop();
+    const v5 = vaultManager.getVaultId('Vault5');
     expect(v5).toBeTruthy();
     await vaultManager.deleteVault(v5!);
-    const v9 = vaultManager.getVaultIds('Vault9').pop();
+    const v9 = vaultManager.getVaultId('Vault9');
     expect(v9).toBeTruthy();
     const vault9 = vaultManager.getVault(v9!);
     await vaultManager.renameVault(v9!, 'Vault10');
@@ -449,7 +449,7 @@ describe('VaultManager is', () => {
     await vaultManager2.createVault('Pumpkin');
 
     // implicit test of keys
-    const v102 = vaultManager2.getVaultIds('Vault10').pop();
+    const v102 = vaultManager2.getVaultId('Vault10');
     expect(v102).toBeTruthy();
     expect(vault9.EncryptedFS.Stats).toEqual(
       vaultManager2.getVault(v102!).EncryptedFS.Stats,

@@ -1,34 +1,29 @@
 import fs from 'fs';
 import os from 'os';
 import { execSync } from 'child_process';
-import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as CLIErrors from '../errors';
+import * as grpcErrors from '../../grpc/errors';
 
-const commandEditSecret = createCommand('edit', {
-  description: {
-    description: 'edit a secret with the default system editor',
-    args: {
-      vaultId: 'ID of the vault that the secret is in',
-      secret: 'path to secret to be deleted',
-    },
-  },
+const commandEditSecret = binUtils.createCommand('edit', {
+  description: 'Edits a secret with the default system editor',
   aliases: ['ed'],
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandEditSecret.requiredOption(
-  '-vi, --vault-id <vaultId>',
-  "Id of the vault'",
-);
-commandEditSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
-  "secret path'",
+  '(required) Path to the secret to be edited, specified as <vaultName>:<secretPath>',
 );
 commandEditSecret.action(async (options) => {
+  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -36,9 +31,12 @@ commandEditSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const secretMessage = new clientPB.SecretSpecificMessage();
@@ -49,58 +47,69 @@ commandEditSecret.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setId(options.vaultId);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(options.secretPath);
+    const secretPath: string = options.secretPath;
+    if (!binUtils.pathRegex.test(secretPath)) {
+      throw new CLIErrors.ErrorSecretPathFormat();
+    }
+    const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    const pCall = await grpcClient.vaultsGetSecret(vaultSpecificMessage);
+    vaultMessage.setName(vaultName);
+    vaultSpecificMessage.setVault(vaultMessage);
+    vaultSpecificMessage.setName(secretName);
+
+    const pCall = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
 
     const secretContent = pCall.getName();
 
     // Linux
-    // make a temp file for editing
     const tmpDir = fs.mkdtempSync(`${os.tmpdir}/pksecret`);
     const tmpFile = `${tmpDir}/pkSecretFile`;
-    // write secret to file
+
     fs.writeFileSync(tmpFile, secretContent);
-    // open editor
+
     execSync(`$EDITOR \"${tmpFile}\"`, { stdio: 'inherit' });
-    // send updated secret to polykey
+
     const content = fs.readFileSync(tmpFile, { encoding: 'utf-8' });
+
     secretMessage.setVault(vaultSpecificMessage);
     secretMessage.setContent(content);
-    await grpcClient.vaultsEditSecret(secretMessage);
+    await grpcClient.vaultsEditSecret(secretMessage, meta);
 
-    // remove temp directory
     fs.rmdirSync(tmpDir, { recursive: true });
 
     // Windows
     // TODO: complete windows impl
 
     process.stdout.write(
-      outputFormatter({
+      binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Edited secret: ${vaultMessage.getName()} in vault: ${vaultMessage.getId()}`,
+          `Edited secret: ${vaultMessage.getName()} in vault: ${vaultMessage.getName()}`,
         ],
       }),
     );
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
         }),
       );
+      throw err;
     }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

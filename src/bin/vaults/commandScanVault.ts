@@ -39,15 +39,15 @@ commandScanVaults.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setId(options.nodeId);
+  const nodeMessage = new clientPB.NodeMessage();
+  nodeMessage.setName(options.nodeId);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
     const data: Array<string> = [];
-    const vaultListGenerator = grpcClient.vaultsScan(vaultMessage, meta);
+    const vaultListGenerator = grpcClient.vaultsScan(nodeMessage, meta);
     for await (const vault of vaultListGenerator) {
       data.push(`${vault.getName()}`);
     }

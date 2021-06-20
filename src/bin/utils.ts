@@ -3,7 +3,8 @@ import type { POJO } from '../types';
 import commander from 'commander';
 import Logger, { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
-import * as CLIErrors from './errors';
+
+const pathRegex = /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
 
 const logger = new Logger('polykey');
 
@@ -124,39 +125,6 @@ function promisifyGrpc<t1, t2>(
   };
 }
 
-/**
- * The user is to input the secre path prefixed by the vault name like so:
- * <vaultName>:<secretPath>
- * This can take many forms:
- * MyVault:/a/b/secret
- * MyVault:a/b/secret
- * MyVault:./a/b/secret
- * As it stands, all these refer to the same thing, i.e. they all start from root.
- * i.e. everything == MyVault:/a/b/secret
- * There also should not be any file extensions on the secret
- * Incorrect:
- * MyVault:
- * :secret
- * @param input: the textual input from the user
- * @throws ErrorSecretPathFormat if the secret path is not formatted correctly.
- * @returns An array containing [vaultName, secretPath]
- */
-function parseSecretPath(input: string): Array<string> {
-  const split = input.split(':');
-
-  if (split.length !== 2 || split[0] === '' || split[1] === '') {
-    throw new CLIErrors.ErrorSecretPathFormat(
-      'Secret Path is not <vaultName>:<secretPath>',
-    );
-  }
-
-  const secretPath = split[1].replace('/^[./]+/g', '/');
-
-  const result = [split[0], secretPath];
-
-  return result;
-}
-
 // async function getAgentClient(
 //   // polykeyPath: string,
 //   // pkLogger: Logger,
@@ -251,6 +219,7 @@ function outputFormatter(msg: OutputObject): string {
 }
 
 export {
+  pathRegex,
   verboseToLogLevel,
   createCommand,
   promisifyGrpc,

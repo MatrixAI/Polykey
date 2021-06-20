@@ -76,7 +76,6 @@ describe('GRPC agent', () => {
 
     gitBackend = new GitBackend({
       getVault: vaultManager.getVault.bind(vaultManager),
-      getVaultID: vaultManager.getVaultIds.bind(vaultManager),
       getVaultNames: vaultManager.listVaults.bind(vaultManager),
       logger: logger,
     });

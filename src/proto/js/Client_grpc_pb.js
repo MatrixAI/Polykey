@@ -136,6 +136,28 @@ function deserialize_clientInterface_SecretMessage(buffer_arg) {
   return Client_pb.SecretMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_SecretNewMessage(arg) {
+  if (!(arg instanceof Client_pb.SecretNewMessage)) {
+    throw new Error('Expected argument of type clientInterface.SecretNewMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_SecretNewMessage(buffer_arg) {
+  return Client_pb.SecretNewMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_clientInterface_SecretRenameMessage(arg) {
+  if (!(arg instanceof Client_pb.SecretRenameMessage)) {
+    throw new Error('Expected argument of type clientInterface.SecretRenameMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_SecretRenameMessage(buffer_arg) {
+  return Client_pb.SecretRenameMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_SecretSpecificMessage(arg) {
   if (!(arg instanceof Client_pb.SecretSpecificMessage)) {
     throw new Error('Expected argument of type clientInterface.SecretSpecificMessage');
@@ -475,10 +497,10 @@ vaultsList: {
     path: '/clientInterface.Client/VaultsScan',
     requestStream: false,
     responseStream: true,
-    requestType: Client_pb.VaultMessage,
+    requestType: Client_pb.NodeMessage,
     responseType: Client_pb.VaultMessage,
-    requestSerialize: serialize_clientInterface_VaultMessage,
-    requestDeserialize: deserialize_clientInterface_VaultMessage,
+    requestSerialize: serialize_clientInterface_NodeMessage,
+    requestDeserialize: deserialize_clientInterface_NodeMessage,
     responseSerialize: serialize_clientInterface_VaultMessage,
     responseDeserialize: deserialize_clientInterface_VaultMessage,
   },
@@ -519,10 +541,10 @@ vaultsList: {
     path: '/clientInterface.Client/VaultsRenameSecret',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.VaultSpecificMessage,
+    requestType: Client_pb.SecretRenameMessage,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_clientInterface_VaultSpecificMessage,
-    requestDeserialize: deserialize_clientInterface_VaultSpecificMessage,
+    requestSerialize: serialize_clientInterface_SecretRenameMessage,
+    requestDeserialize: deserialize_clientInterface_SecretRenameMessage,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -530,10 +552,10 @@ vaultsList: {
     path: '/clientInterface.Client/VaultsNewSecret',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.VaultSpecificMessage,
+    requestType: Client_pb.SecretNewMessage,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_clientInterface_VaultSpecificMessage,
-    requestDeserialize: deserialize_clientInterface_VaultSpecificMessage,
+    requestSerialize: serialize_clientInterface_SecretNewMessage,
+    requestDeserialize: deserialize_clientInterface_SecretNewMessage,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -541,10 +563,10 @@ vaultsList: {
     path: '/clientInterface.Client/VaultsNewDirSecret',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.VaultMessage,
+    requestType: Client_pb.SecretNewMessage,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_clientInterface_VaultMessage,
-    requestDeserialize: deserialize_clientInterface_VaultMessage,
+    requestSerialize: serialize_clientInterface_SecretNewMessage,
+    requestDeserialize: deserialize_clientInterface_SecretNewMessage,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },

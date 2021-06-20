@@ -8,6 +8,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { VaultManager, VaultMap } from '@/vaults';
 
+import * as vaultErrors from '@/vaults/errors';
+
 describe('VaultMap is', () => {
   const logger = new Logger('VaultMap Test', LogLevel.WARN, [
     new StreamHandler(),
@@ -34,6 +36,7 @@ describe('VaultMap is', () => {
     const keyManager = new KeyManager({
       keysPath: path.join(dataDir, 'keys'),
       fs: fs,
+      logger: logger,
     });
     vaultMap = new VaultMap({
       vaultMapPath: vaultMapPath,
@@ -48,6 +51,7 @@ describe('VaultMap is', () => {
     const keyManager = new KeyManager({
       keysPath: path.join(dataDir, 'keys'),
       fs: fs,
+      logger: logger,
     });
     vaultMap = new VaultMap({
       vaultMapPath: vaultMapPath,
@@ -68,6 +72,7 @@ describe('VaultMap is', () => {
     const keyManager = new KeyManager({
       keysPath: path.join(dataDir, 'keys'),
       fs: fs,
+      logger: logger,
     });
     vaultMap = new VaultMap({
       vaultMapPath: vaultMapPath,
@@ -78,6 +83,7 @@ describe('VaultMap is', () => {
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      logger: logger,
     });
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
@@ -109,6 +115,7 @@ describe('VaultMap is', () => {
     const keyManager = new KeyManager({
       keysPath: path.join(dataDir, 'keys'),
       fs: fs,
+      logger: logger,
     });
     vaultMap = new VaultMap({
       vaultMapPath: vaultMapPath,
@@ -119,6 +126,7 @@ describe('VaultMap is', () => {
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      logger: logger,
     });
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
@@ -147,6 +155,7 @@ describe('VaultMap is', () => {
     const keyManager = new KeyManager({
       keysPath: path.join(dataDir, 'keys'),
       fs: fs,
+      logger: logger,
     });
     vaultMap = new VaultMap({
       vaultMapPath: vaultMapPath,
@@ -157,6 +166,7 @@ describe('VaultMap is', () => {
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
       keyManager: keyManager,
+      logger: logger,
     });
     await keyManager.start({ password: 'password' });
     await vaultManager.start({});
@@ -182,6 +192,30 @@ describe('VaultMap is', () => {
     await expect(
       vaultMap.getVaultIdByVaultName('MyRenamedVault'),
     ).resolves.toBe(vault1.vaultId as VaultId);
+
+    await vaultMap.stop();
+    await keyManager.stop();
+  });
+  test('maintaining unique vault names', async () => {
+    const keyManager = new KeyManager({
+      keysPath: path.join(dataDir, 'keys'),
+      fs: fs,
+      logger: logger,
+    });
+    vaultMap = new VaultMap({
+      vaultMapPath: vaultMapPath,
+      keyManager: keyManager,
+      fs: fs,
+      logger: logger,
+    });
+
+    await keyManager.start({ password: 'password' });
+    await vaultMap.start();
+
+    await vaultMap.setVault('Test', '123' as VaultId, Buffer.from('test'));
+    await expect(
+      vaultMap.setVault('Test', '345' as VaultId, Buffer.from('test')),
+    ).rejects.toThrow(vaultErrors.ErrorVaultDefined);
 
     await vaultMap.stop();
     await keyManager.stop();

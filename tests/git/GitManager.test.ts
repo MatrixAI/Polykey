@@ -140,7 +140,6 @@ describe('GitManager is', () => {
     });
     targetGitBackend = new GitBackend({
       getVault: targetVaultManager.getVault.bind(targetVaultManager),
-      getVaultID: targetVaultManager.getVaultIds.bind(targetVaultManager),
       getVaultNames: targetVaultManager.listVaults.bind(targetVaultManager),
       logger: logger,
     });

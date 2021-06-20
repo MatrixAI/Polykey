@@ -1,36 +1,29 @@
-import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import * as CLIErrors from '../errors';
+import * as grpcErrors from '../../grpc/errors';
 
-// TODO: once this can be tested then the environment option needs to be handled
-
-const commandGetSecret = createCommand('get', {
-  description: {
-    description: 'Retrieves a secret from a given vault',
-    args: {
-      vaultId: 'ID of the vault',
-      secretPath: 'Path to the secret to retreive',
-    },
-  },
+const commandGetSecret = binUtils.createCommand('get', {
+  description: 'Retrieves a secret from a given vault',
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandGetSecret.requiredOption(
-  '-vi, --vault-id <vaultId>',
-  '(required) Id of the vault to get the secret from',
-);
-commandGetSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
-  '(required) Path to the secret to get',
+  '(required) Path to the secret to get, specified as <vaultName>:<secretPath>',
 );
 commandGetSecret.option(
   '-e, --env',
   'Wrap the secret in an environment variable declaration',
 );
 commandGetSecret.action(async (options) => {
+  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -38,9 +31,14 @@ commandGetSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
+  if (options.passwordFile) {
+    meta.set('passwordFile', options.passwordFile);
   }
+  clientConfig['nodePath'] = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
+
+  const isEnv: boolean = options.env ?? false;
 
   const client = new PolykeyClient(clientConfig);
   const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
@@ -50,37 +48,63 @@ commandGetSecret.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setId(options.vaultId);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(options.secretPath);
+    const secretPath: string = options.secretPath;
+    if (!binUtils.pathRegex.test(secretPath)) {
+      throw new CLIErrors.ErrorSecretPathFormat();
+    }
+    const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    const pCall = grpcClient.vaultsGetSecret(vaultSpecificMessage);
+    vaultMessage.setName(vaultName);
+    vaultSpecificMessage.setVault(vaultMessage);
+    vaultSpecificMessage.setName(secretName);
+
+    const pCall = grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
 
     const responseMessage = await pCall;
-    process.stdout.write(
-      outputFormatter({
-        type: options.format === 'json' ? 'json' : 'list',
-        data: [
-          `${vaultSpecificMessage.getName()}:\t\t${responseMessage.getName()}`,
-        ],
-      }),
-    );
-  } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
-      process.stderr.write(`${err.message}\n`);
-    }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
-      process.stderr.write(`${err.message}\n`);
+    if (isEnv) {
+      process.stdout.write(
+        binUtils.outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [
+            `Export ${vaultSpecificMessage
+              .getName()
+              .toUpperCase()
+              .replace('-', '_')}='${responseMessage.getName()}`,
+          ],
+        }),
+      );
     } else {
       process.stdout.write(
-        outputFormatter({
+        binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+          data: [
+            `${vaultSpecificMessage.getName()}:\t\t${responseMessage.getName()}`,
+          ],
         }),
       );
     }
+  } catch (err) {
+    if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
+      process.stderr.write(`${err.message}\n`);
+    }
+    if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
+      process.stderr.write(`${err.message}\n`);
+    } else {
+      process.stderr.write(
+        binUtils.outputFormatter({
+          type: 'error',
+          description: err.description,
+          message: err.message,
+        }),
+      );
+      throw err;
+    }
   } finally {
     client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 
