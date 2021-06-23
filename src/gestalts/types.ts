@@ -2,7 +2,8 @@ import type { Opaque } from '../types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { IdentityId, ProviderId, IdentityInfo } from '../identities/types';
 
-type GestaltAction = 'notify';
+type GestaltAction = 'notify' | 'scan';
+type GestaltActions = Partial<Record<GestaltAction, null>>;
 
 type GestaltId = GestaltNodeId | GestaltIdentityId;
 type GestaltNodeId = {
@@ -29,33 +30,9 @@ type Gestalt = {
   identities: GestaltIdentities;
 };
 
-type GestaltGraphOp_ =
-  | {
-      domain: 'matrix';
-      key: GestaltKey;
-      value: GestaltKeySet;
-    }
-  | {
-      domain: 'nodes';
-      key: GestaltNodeKey;
-      value: NodeInfo;
-    }
-  | {
-      domain: 'identities';
-      key: GestaltIdentityKey;
-      value: IdentityInfo;
-    };
-
-type GestaltGraphOp =
-  | ({
-      type: 'put';
-    } & GestaltGraphOp_)
-  | ({
-      type: 'del';
-    } & Omit<GestaltGraphOp_, 'value'>);
-
 export type {
   GestaltAction,
+  GestaltActions,
   GestaltId,
   GestaltNodeId,
   GestaltIdentityId,
@@ -67,5 +44,4 @@ export type {
   GestaltNodes,
   GestaltIdentities,
   Gestalt,
-  GestaltGraphOp,
 };
