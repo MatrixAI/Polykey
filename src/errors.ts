@@ -31,6 +31,8 @@ export { ErrorPolykey, ErrorUndefinedBehaviour };
  * This ensures that we have one place to construct and
  * reference all Polykey errors
  */
+export * from './acl/errors';
+export * from './db/errors';
 export * from './keys/errors';
 export * from './vaults/errors';
 export * from './git/errors';

@@ -12,6 +12,13 @@ type POJO = { [key: string]: any };
 type Opaque<K, T> = T & { __TYPE__: K };
 
 /**
+ * Any type that can be turned into a string
+ */
+interface ToString {
+  toString(): string;
+}
+
+/**
  * Allows extension of constructors that use POJOs
  */
 type AbstractConstructorParameters<T> = ConstructorParameters<
@@ -63,8 +70,9 @@ type LockConfig = {
 } & POJO;
 
 export {
-  Opaque,
   POJO,
+  Opaque,
+  ToString,
   AbstractConstructorParameters,
   Ref,
   Timer,

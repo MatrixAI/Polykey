@@ -10,16 +10,10 @@ class ErrorACLVaultIdMissing extends ErrorACL {}
 
 class ErrorACLNodeIdExists extends ErrorACL {}
 
-class ErrorACLDecrypt extends ErrorACL {}
-
-class ErrorACLParse extends ErrorACL {}
-
 export {
   ErrorACL,
   ErrorACLNotStarted,
   ErrorACLNodeIdMissing,
   ErrorACLVaultIdMissing,
   ErrorACLNodeIdExists,
-  ErrorACLDecrypt,
-  ErrorACLParse,
 };

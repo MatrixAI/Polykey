@@ -8,11 +8,13 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { ACL, errors as aclErrors } from '@/acl';
 import { KeyManager } from '@/keys';
+import { DB } from '@/db';
 
 describe('ACL', () => {
   const logger = new Logger('ACL Test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   let keyManager: KeyManager;
+  let db: DB;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -20,43 +22,20 @@ describe('ACL', () => {
     const keysPath = `${dataDir}/keys`;
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
+    const dbPath = `${dataDir}/db`;
+    db = new DB({ dbPath, keyManager, logger });
+    await db.start();
   });
   afterEach(async () => {
+    await db.stop();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-  test('construction has no side effects', async () => {
-    const aclPath = `${dataDir}/acl`;
-    new ACL({ aclPath, keyManager, logger });
-    await expect(fs.promises.stat(aclPath)).rejects.toThrow(/ENOENT/);
-  });
-  test('async start constructs the acl leveldb', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
-    await acl.start();
-    const aclPathContents = await fs.promises.readdir(aclPath);
-    expect(aclPathContents).toContain('acl_db');
-    await acl.stop();
-  });
-  test('start and stop preserves the acl key', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
-    await acl.start();
-    const aclDbKey = await keyManager.getKey('ACL');
-    expect(aclDbKey).not.toBeUndefined();
-    await acl.stop();
-    await acl.start();
-    const aclDbKey_ = await keyManager.getKey('ACL');
-    expect(aclDbKey_).not.toBeUndefined();
-    await acl.stop();
-    expect(aclDbKey).toEqual(aclDbKey_);
-  });
   test('trust and untrust gestalts', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
+    const acl = new ACL({ db, logger });
     await acl.start();
     // gestalt 1
     await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, {
@@ -116,8 +95,7 @@ describe('ACL', () => {
     await acl.stop();
   });
   test('setting and unsetting vault actions', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
+    const acl = new ACL({ db, logger });
     await acl.start();
     // the node id must exist as a gestalt first
     await expect(
@@ -175,8 +153,7 @@ describe('ACL', () => {
     await acl.stop();
   });
   test('joining existing gestalt permissions', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
+    const acl = new ACL({ db, logger });
     await acl.start();
     const g1Perm = {
       gestalt: {
@@ -205,8 +182,7 @@ describe('ACL', () => {
     await acl.stop();
   });
   test('joining existing vault permisisons', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
+    const acl = new ACL({ db, logger });
     await acl.start();
     await acl.setNodesPerm(['g1-1'] as Array<NodeId>, {
       gestalt: {
@@ -270,8 +246,7 @@ describe('ACL', () => {
     await acl.stop();
   });
   test('node removal', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
+    const acl = new ACL({ db, logger });
     await acl.start();
     const g1Perm = {
       gestalt: {
@@ -292,8 +267,7 @@ describe('ACL', () => {
     await acl.stop();
   });
   test('vault removal', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
+    const acl = new ACL({ db, logger });
     await acl.start();
     const g1Perm = {
       gestalt: {
@@ -335,8 +309,7 @@ describe('ACL', () => {
     await acl.stop();
   });
   test('transactional operations', async () => {
-    const aclPath = `${dataDir}/acl`;
-    const acl = new ACL({ aclPath, keyManager, logger });
+    const acl = new ACL({ db, logger });
     await acl.start();
     const p1 = acl.getNodePerms();
     const p2 = acl.transaction(async (acl) => {
