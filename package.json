@@ -74,7 +74,6 @@
     "level": "^6.0.1",
     "multihashing": "^0.3.3",
     "node-forge": "^0.10.0",
-    "node-jose": "^2.0.0",
     "oauth2orize": "^1.11.0",
     "pako": "^1.0.11",
     "passport": "^0.4.1",
