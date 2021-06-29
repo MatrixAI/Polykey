@@ -38,7 +38,7 @@
   "types": "dist/Polykey.d.ts",
   "scripts": {
     "build": "tsc",
-    "postbuild": "cp -fR src/schemas src/proto src/openapi.yaml dist && mkdir -p dist/certs && cp -f src/certs/*.crt src/certs/*.pub dist/certs",
+    "postbuild": "cp -fR src/proto dist",
     "ts-node": "ts-node -r tsconfig-paths/register",
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",

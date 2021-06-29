@@ -1,6 +1,6 @@
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId, NodeInfo } from '@/nodes/types';
 
 import os from 'os';
 import path from 'path';
@@ -22,6 +22,10 @@ import { DB } from '@/db';
 import * as grpcErrors from '@/grpc/errors';
 
 describe('NodeConnection', () => {
+  const node: NodeInfo = {
+    id: 'NodeId' as NodeId,
+    links: { nodes: {}, identities: {} },
+  };
   jest.setTimeout(50000);
   const logger = new Logger('NodeConnection Test', LogLevel.WARN, [
     new StreamHandler(),
@@ -158,6 +162,7 @@ describe('NodeConnection', () => {
     await serverDb.start();
     await serverACL.start();
     await serverGestaltGraph.start();
+    await serverGestaltGraph.setNode(node);
     await serverVaultManager.start({});
     await serverNodeManager.start({ nodeId: targetNodeId });
 
@@ -481,7 +486,7 @@ describe('NodeConnection', () => {
     await newVault.initializeVault();
     await newVault.addSecret('secret-1', Buffer.from('secret-content'));
     const newClientVault = await clientVaultManager.createVault('vault2');
-    await serverVaultManager.setVaultAction(['NodeId'], newVault.vaultId);
+    await serverVaultManager.setVaultPerm('NodeId', newVault.vaultId);
     const gitFront = new GitFrontend();
     const client = conn.getClient();
     client.start();

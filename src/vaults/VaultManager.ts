@@ -21,10 +21,10 @@ import { DB } from '../db';
 import * as utils from '../utils';
 import * as errors from './errors';
 import * as aclErrors from '../acl/errors';
+import * as gestaltErrors from '../gestalts/errors';
 
 class VaultManager {
   public readonly vaultsPath: string;
-  public readonly metadataPath: string;
   protected acl: ACL;
   protected gestaltGraph: GestaltGraph;
   protected fs: FileSystem;
@@ -65,7 +65,6 @@ class VaultManager {
     logger?: Logger;
   }) {
     this.vaultsPath = vaultsPath;
-    this.metadataPath = path.join(this.vaultsPath, 'vaultMeta');
     this.keyManager = keyManager;
     this.acl = acl;
     this.gestaltGraph = gestaltGraph;
@@ -107,9 +106,6 @@ class VaultManager {
     }
 
     await utils.mkdirExists(this.fs, this.vaultsPath, { recursive: true });
-
-    this.logger.info(`Creating metadataPath at ${this.metadataPath}`);
-    await utils.mkdirExists(this.fs, this.metadataPath);
 
     await this.vaultMap.start();
     await this.loadVaultData();
@@ -437,6 +433,9 @@ class VaultManager {
         const gestalt = await this.gestaltGraph.getGestaltByNode(
           nodeId as NodeId,
         );
+        if (!gestalt) {
+          throw new gestaltErrors.ErrorGestaltsGraphNodeIdMissing();
+        }
         const nodes = gestalt?.nodes;
         for (const node in nodes) {
           await this.setVaultAction([nodes[node].id], vaultId as VaultId);
@@ -459,6 +458,9 @@ class VaultManager {
         const gestalt = await this.gestaltGraph.getGestaltByNode(
           nodeId as NodeId,
         );
+        if (!gestalt) {
+          return;
+        }
         const nodes = gestalt?.nodes;
         for (const node in nodes) {
           await this.unsetVaultAction([nodes[node].id], vaultId as VaultId);
@@ -500,7 +502,6 @@ class VaultManager {
   private async loadVaultData(): Promise<void> {
     const release = await this.metadataMutex.acquire();
     try {
-      this.logger.info(`Reading metadata from ${this.metadataPath}`);
       const vaults = await this.vaultMap.loadVaultData();
       this.vaults = vaults;
     } catch (err) {

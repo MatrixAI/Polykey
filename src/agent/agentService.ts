@@ -10,7 +10,7 @@ import { ErrorGRPC } from '../grpc/errors';
 import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
 
 import * as agentPB from '../proto/js/Agent_pb';
-import * as grpcUtils from '../../src/grpc/utils';
+import * as grpcUtils from '../grpc/utils';
 
 /**
  * Creates the client service for use with a GRPCServer
