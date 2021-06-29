@@ -91,6 +91,14 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
       this.client.sendHolePunchMessage,
     )(...args);
   }
+
+  public checkVaultPermissions(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<agentPB.PermissionMessage>(
+      this.client,
+      this.client.checkVaultPermisssions,
+    )(...args);
+  }
 }
 
 export default GRPCClientAgent;

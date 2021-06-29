@@ -76,8 +76,12 @@ class GitFrontend {
    * Requests the vault names from the connected node.
    * @param client A connection object to the node
    */
-  private async requestVaultNames(client: GRPCClientAgent): Promise<string[]> {
-    const request = new agentPB.EmptyMessage();
+  private async requestVaultNames(
+    client: GRPCClientAgent,
+    nodeId: string,
+  ): Promise<string[]> {
+    const request = new agentPB.NodeIdMessage();
+    request.setNodeid(nodeId);
     const response = client.scanVaults(request);
 
     const data: string[] = [];
@@ -93,12 +97,12 @@ class GitFrontend {
    * Creates a GitRequest object from the desired node connection.
    * @param client GRPC connection to desired node
    */
-  connectToNodeGit(client: GRPCClientAgent): GitRequest {
+  connectToNodeGit(client: GRPCClientAgent, nodeId: string): GitRequest {
     const gitRequest = new GitRequest(
       ((vaultName: string) => this.requestInfo(vaultName, client)).bind(this),
       ((vaultName: string, body: any) =>
         this.requestPack(vaultName, body, client)).bind(this),
-      (() => this.requestVaultNames(client)).bind(this),
+      (() => this.requestVaultNames(client, nodeId)).bind(this),
     );
     return gitRequest;
   }

@@ -5,6 +5,8 @@ import commandPullVault from './commandPullVault';
 import commandRenameVault from './commandRenameVault';
 import commandScanVault from './commandScanVault';
 import commandVaultStats from './commandVaultStats';
+import commandVaultShare from './commandVaultShare';
+import commandVaultPermissions from './commandVaultPermissions';
 import * as binUtils from '../utils';
 
 const commandVaults = binUtils.createCommand('vaults');
@@ -16,5 +18,7 @@ commandVaults.addCommand(commandPullVault);
 commandVaults.addCommand(commandRenameVault);
 commandVaults.addCommand(commandScanVault);
 commandVaults.addCommand(commandVaultStats);
+commandVaults.addCommand(commandVaultShare);
+commandVaults.addCommand(commandVaultPermissions);
 
 export default commandVaults;

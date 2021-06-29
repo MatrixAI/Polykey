@@ -18,6 +18,7 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     getClosestLocalNodes: IAgentService_IGetClosestLocalNodes;
     synchronizeDHT: IAgentService_ISynchronizeDHT;
     sendHolePunchMessage: IAgentService_ISendHolePunchMessage;
+    checkVaultPermisssions: IAgentService_IcheckVaultPermisssions;
 }
 
 interface IAgentService_IEcho extends grpc.MethodDefinition<Agent_pb.EchoMessage, Agent_pb.EchoMessage> {
@@ -47,12 +48,12 @@ interface IAgentService_IGetGitPack extends grpc.MethodDefinition<Agent_pb.PackC
     responseSerialize: grpc.serialize<Agent_pb.PackChunk>;
     responseDeserialize: grpc.deserialize<Agent_pb.PackChunk>;
 }
-interface IAgentService_IScanVaults extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.PackChunk> {
+interface IAgentService_IScanVaults extends grpc.MethodDefinition<Agent_pb.NodeIdMessage, Agent_pb.PackChunk> {
     path: "/agentInterface.Agent/ScanVaults";
     requestStream: false;
     responseStream: true;
-    requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
-    requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+    requestSerialize: grpc.serialize<Agent_pb.NodeIdMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.NodeIdMessage>;
     responseSerialize: grpc.serialize<Agent_pb.PackChunk>;
     responseDeserialize: grpc.deserialize<Agent_pb.PackChunk>;
 }
@@ -101,6 +102,15 @@ interface IAgentService_ISendHolePunchMessage extends grpc.MethodDefinition<Agen
     responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
+interface IAgentService_IcheckVaultPermisssions extends grpc.MethodDefinition<Agent_pb.VaultPermMessage, Agent_pb.PermissionMessage> {
+    path: "/agentInterface.Agent/checkVaultPermisssions";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.VaultPermMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.VaultPermMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.PermissionMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.PermissionMessage>;
+}
 
 export const AgentService: IAgentService;
 
@@ -108,12 +118,13 @@ export interface IAgentServer extends grpc.UntypedServiceImplementation {
     echo: grpc.handleUnaryCall<Agent_pb.EchoMessage, Agent_pb.EchoMessage>;
     getGitInfo: grpc.handleServerStreamingCall<Agent_pb.InfoRequest, Agent_pb.PackChunk>;
     getGitPack: grpc.handleBidiStreamingCall<Agent_pb.PackChunk, Agent_pb.PackChunk>;
-    scanVaults: grpc.handleServerStreamingCall<Agent_pb.EmptyMessage, Agent_pb.PackChunk>;
+    scanVaults: grpc.handleServerStreamingCall<Agent_pb.NodeIdMessage, Agent_pb.PackChunk>;
     getRootCertificate: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.CertificateMessage>;
     requestCertificateSigning: grpc.handleUnaryCall<Agent_pb.CertificateMessage, Agent_pb.CertificateMessage>;
     getClosestLocalNodes: grpc.handleUnaryCall<Agent_pb.NodeIdMessage, Agent_pb.NodeTableMessage>;
     synchronizeDHT: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.NodeTableMessage>;
     sendHolePunchMessage: grpc.handleUnaryCall<Agent_pb.RelayMessage, Agent_pb.EmptyMessage>;
+    checkVaultPermisssions: grpc.handleUnaryCall<Agent_pb.VaultPermMessage, Agent_pb.PermissionMessage>;
 }
 
 export interface IAgentClient {
@@ -125,8 +136,8 @@ export interface IAgentClient {
     getGitPack(): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     getGitPack(options: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     getGitPack(metadata: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
-    scanVaults(request: Agent_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
-    scanVaults(request: Agent_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
+    scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
+    scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
     getRootCertificate(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.CertificateMessage) => void): grpc.ClientUnaryCall;
     getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.CertificateMessage) => void): grpc.ClientUnaryCall;
     getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.CertificateMessage) => void): grpc.ClientUnaryCall;
@@ -142,6 +153,9 @@ export interface IAgentClient {
     sendHolePunchMessage(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    checkVaultPermisssions(request: Agent_pb.VaultPermMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
+    checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
+    checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
 }
 
 export class AgentClient extends grpc.Client implements IAgentClient {
@@ -153,8 +167,8 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public getGitInfo(request: Agent_pb.InfoRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
     public getGitPack(options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     public getGitPack(metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
-    public scanVaults(request: Agent_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
-    public scanVaults(request: Agent_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
+    public scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
+    public scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
     public getRootCertificate(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.CertificateMessage) => void): grpc.ClientUnaryCall;
     public getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.CertificateMessage) => void): grpc.ClientUnaryCall;
     public getRootCertificate(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.CertificateMessage) => void): grpc.ClientUnaryCall;
@@ -170,4 +184,7 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public sendHolePunchMessage(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public checkVaultPermisssions(request: Agent_pb.VaultPermMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
+    public checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
+    public checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
 }

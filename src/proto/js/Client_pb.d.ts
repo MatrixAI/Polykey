@@ -242,6 +242,55 @@ export namespace StatMessage {
     }
 }
 
+export class ShareMessage extends jspb.Message { 
+    getName(): string;
+    setName(value: string): ShareMessage;
+    getId(): string;
+    setId(value: string): ShareMessage;
+    getSet(): boolean;
+    setSet(value: boolean): ShareMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ShareMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ShareMessage): ShareMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ShareMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ShareMessage;
+    static deserializeBinaryFromReader(message: ShareMessage, reader: jspb.BinaryReader): ShareMessage;
+}
+
+export namespace ShareMessage {
+    export type AsObject = {
+        name: string,
+        id: string,
+        set: boolean,
+    }
+}
+
+export class PermissionMessage extends jspb.Message { 
+    getId(): string;
+    setId(value: string): PermissionMessage;
+    getAction(): string;
+    setAction(value: string): PermissionMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PermissionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PermissionMessage): PermissionMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PermissionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PermissionMessage;
+    static deserializeBinaryFromReader(message: PermissionMessage, reader: jspb.BinaryReader): PermissionMessage;
+}
+
+export namespace PermissionMessage {
+    export type AsObject = {
+        id: string,
+        action: string,
+    }
+}
+
 export class NodeMessage extends jspb.Message { 
     getName(): string;
     setName(value: string): NodeMessage;

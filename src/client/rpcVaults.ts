@@ -1,3 +1,6 @@
+import type { VaultAction } from '../vaults/types';
+import type { NodeId } from '../nodes/types';
+
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
@@ -380,6 +383,60 @@ const createVaultRPC = ({
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+      }
+    },
+    vaultsShare: async (
+      call: grpc.ServerUnaryCall<clientPB.ShareMessage, clientPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+    ): Promise<void> => {
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const nodeIds = JSON.parse(call.request.getId()) as Array<string>;
+        const set: boolean = call.request.getSet();
+        const id = utils.parseVaultInput(call.request.getName(), vaultManager);
+        for (const nodeId of nodeIds) {
+          if (!set) {
+            await vaultManager.setVaultPerm(nodeId, id);
+          } else {
+            await vaultManager.unsetVaultPerm(nodeId, id);
+          }
+        }
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
+      }
+      const response = new clientPB.EmptyMessage();
+      callback(null, response);
+    },
+    vaultsPermissions: async (
+      call: grpc.ServerWritableStream<
+        clientPB.ShareMessage,
+        clientPB.PermissionMessage
+      >,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const name = call.request.getName();
+        const id = utils.parseVaultInput(name, vaultManager);
+        const node = call.request.getId();
+        let perms: Record<NodeId, VaultAction>;
+        if (node) {
+          perms = await vaultManager.getVaultPermissions(id, node);
+        } else {
+          perms = await vaultManager.getVaultPermissions(id);
+        }
+        const permissionMessage = new clientPB.PermissionMessage();
+        for (const nodeId in perms) {
+          permissionMessage.setId(nodeId);
+          if (perms[nodeId]['pull'] !== undefined) {
+            permissionMessage.setAction('pull');
+          }
+          await genWritable.next(permissionMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
       }
     },
   };

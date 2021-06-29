@@ -302,3 +302,46 @@ export namespace NodeTableMessage {
         nodetableMap: Array<[string, NodeAddressMessage.AsObject]>,
     }
 }
+
+export class VaultPermMessage extends jspb.Message { 
+    getNodeid(): string;
+    setNodeid(value: string): VaultPermMessage;
+    getVaultid(): string;
+    setVaultid(value: string): VaultPermMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultPermMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultPermMessage): VaultPermMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultPermMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultPermMessage;
+    static deserializeBinaryFromReader(message: VaultPermMessage, reader: jspb.BinaryReader): VaultPermMessage;
+}
+
+export namespace VaultPermMessage {
+    export type AsObject = {
+        nodeid: string,
+        vaultid: string,
+    }
+}
+
+export class PermissionMessage extends jspb.Message { 
+    getPermission(): boolean;
+    setPermission(value: boolean): PermissionMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PermissionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PermissionMessage): PermissionMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PermissionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PermissionMessage;
+    static deserializeBinaryFromReader(message: PermissionMessage, reader: jspb.BinaryReader): PermissionMessage;
+}
+
+export namespace PermissionMessage {
+    export type AsObject = {
+        permission: boolean,
+    }
+}

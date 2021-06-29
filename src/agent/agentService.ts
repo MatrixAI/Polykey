@@ -105,12 +105,13 @@ function createAgentService({
       });
     },
     scanVaults: async (
-      call: grpc.ServerWritableStream<agentPB.EmptyMessage, agentPB.PackChunk>,
+      call: grpc.ServerWritableStream<agentPB.NodeIdMessage, agentPB.PackChunk>,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       const response = new agentPB.PackChunk();
+      const id = call.request.getNodeid();
 
-      const listResponse = gitBackend.handleVaultNamesRequest();
+      const listResponse = gitBackend.handleVaultNamesRequest(id);
 
       for await (const byte of listResponse) {
         if (byte !== null) {
@@ -222,6 +223,30 @@ function createAgentService({
       }
 
       callback(null, response);
+    },
+    checkVaultPermisssions: async (
+      call: grpc.ServerUnaryCall<
+        agentPB.VaultPermMessage,
+        agentPB.PermissionMessage
+      >,
+      callback: grpc.sendUnaryData<agentPB.PermissionMessage>,
+    ): Promise<void> => {
+      const response = new agentPB.PermissionMessage();
+      try {
+        const nodeId = call.request.getNodeid();
+        const vaultId = call.request.getVaultid();
+        const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
+        if (result[nodeId] === undefined) {
+          response.setPermission(false);
+        } else if (result[nodeId]['pull'] === undefined) {
+          response.setPermission(false);
+        } else {
+          response.setPermission(true);
+        }
+        callback(null, response);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
+      }
     },
   };
 

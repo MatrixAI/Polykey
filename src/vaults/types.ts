@@ -65,6 +65,8 @@ type VaultMapOp =
       type: 'del';
     } & Omit<VaultMapOp_, 'value'>);
 
+type VaultActions = Partial<Record<VaultAction, null>>;
+
 export type {
   VaultId,
   VaultAction,
@@ -75,4 +77,5 @@ export type {
   FileChange,
   FileChanges,
   VaultMapOp,
+  VaultActions,
 };

@@ -6,11 +6,18 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GitBackend } from '@/git';
 import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
+import { ACL } from '@/acl';
+import { GestaltGraph } from '@/gestalts';
+import { DB } from '@/db';
 
 let dataDir: string;
 let destDir: string;
 let keyManager: KeyManager;
 let vaultManager: VaultManager;
+let acl: ACL;
+let gestaltGraph: GestaltGraph;
+let db: DB;
+
 // let gitBackend: GitBackend;
 // let gitRequest: GitRequest;
 const logger = new Logger('GitBackend', LogLevel.WARN, [new StreamHandler()]);
@@ -19,29 +26,39 @@ beforeEach(async () => {
   dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
   destDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
   keyManager = new KeyManager({
-    keysPath: `${dataDir}/keys`,
+    keysPath: path.join(dataDir, 'keys'),
     logger: logger,
   });
+  await keyManager.start({ password: 'password' });
+  db = new DB({ dbPath: path.join(dataDir, 'db'), keyManager, logger });
+  await db.start();
+  acl = new ACL({
+    db: db,
+    logger: logger,
+  });
+  await acl.start();
+  gestaltGraph = new GestaltGraph({
+    db: db,
+    acl: acl,
+    logger: logger,
+  });
+  await gestaltGraph.start();
   vaultManager = new VaultManager({
     vaultsPath: dataDir,
     keyManager: keyManager,
+    db: db,
+    acl: acl,
+    gestaltGraph: gestaltGraph,
     fs: fs,
     logger: logger,
   });
-  // gitBackend = new GitBackend({
-  //   getVault: vaultManager.getVault.bind(vaultManager),
-  //   getVaultID: vaultManager.getVaultIds.bind(vaultManager),
-  //   getVaultNames: vaultManager.listVaults.bind(vaultManager),
-  //   logger: logger,
-  // });
-  // gitRequest = new GitRequest(
-  //   gitBackend.handleInfoRequest.bind(gitBackend),
-  //   gitBackend.handlePackRequest.bind(gitBackend),
-  //   gitBackend.handleVaultNamesRequest.bind(gitBackend),
-  // );
 });
 
 afterEach(async () => {
+  await gestaltGraph.stop();
+  await acl.stop();
+  await db.stop();
+  await keyManager.stop();
   await fs.promises.rm(dataDir, {
     force: true,
     recursive: true,
@@ -55,26 +72,23 @@ afterEach(async () => {
 describe('GitBackend is', () => {
   test('type correct', async () => {
     try {
-      await keyManager.start({ password: 'password' });
       await vaultManager.start({});
       const gitBackend = new GitBackend({
         getVault: vaultManager.getVault.bind(vaultManager),
-        getVaultNames: vaultManager.listVaults.bind(vaultManager),
+        getVaultNames: vaultManager.scanVaults.bind(vaultManager),
         logger: logger,
       });
       expect(gitBackend).toBeInstanceOf(GitBackend);
     } finally {
       await vaultManager.stop();
-      await keyManager.stop();
     }
   });
   test('returning correct info response', async () => {
     try {
-      await keyManager.start({ password: 'password' });
       await vaultManager.start({});
       const gitBackend = new GitBackend({
         getVault: vaultManager.getVault.bind(vaultManager),
-        getVaultNames: vaultManager.listVaults.bind(vaultManager),
+        getVaultNames: vaultManager.scanVaults.bind(vaultManager),
         logger: logger,
       });
       const vault = await vaultManager.createVault('MyTestVault');
@@ -92,7 +106,46 @@ describe('GitBackend is', () => {
       expect(Buffer.concat(data).toString().length).toBe(226);
     } finally {
       await vaultManager.stop();
-      await keyManager.stop();
+    }
+  });
+  test('able to scan vaults correctly', async () => {
+    try {
+      await vaultManager.start({});
+      const gitBackend = new GitBackend({
+        getVault: vaultManager.getVault.bind(vaultManager),
+        getVaultNames: vaultManager.scanVaults.bind(vaultManager),
+        logger: logger,
+      });
+      const vault = await vaultManager.createVault('MyTestVault');
+      await vault.initializeVault();
+      const vId = vaultManager.getVaultId('MyTestVault');
+      expect(vId).toBeTruthy();
+      let response = gitBackend.handleVaultNamesRequest('123');
+      let data: string[] = [];
+      for await (const vault of response) {
+        data.push(vault.toString());
+      }
+      expect(data).toStrictEqual([]);
+
+      await vaultManager.createVault('MySecondVault');
+      const vault3 = await vaultManager.createVault('MyThirdVault');
+
+      await vaultManager.setVaultAction(['123'], vault3.vaultId);
+      await vaultManager.setVaultAction(['123'], vault.vaultId);
+
+      response = gitBackend.handleVaultNamesRequest('123');
+      data = [];
+      for await (const vaults of response) {
+        data.push(vaults.toString());
+      }
+      expect(data.sort()).toStrictEqual(
+        [
+          `${vault3.vaultId}\t${vault3.vaultName}`,
+          `${vault.vaultId}\t${vault.vaultName}`,
+        ].sort(),
+      );
+    } finally {
+      await vaultManager.stop();
     }
   });
   // test('returning correct pack response', async () => {

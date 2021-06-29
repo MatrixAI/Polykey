@@ -1,6 +1,7 @@
-import type { VaultId, Vaults } from './types';
+import type { VaultId, Vaults, VaultAction } from './types';
 import type { FileSystem } from '../types';
 import type { WorkerManager } from '../workers';
+import { NodeId } from '../nodes/types';
 
 import fs from 'fs';
 import path from 'path';
@@ -13,12 +14,19 @@ import { generateVaultKey, fileExists, generateVaultId } from './utils';
 import { KeyManager, errors as keysErrors } from '../keys';
 import { NodeManager } from '../nodes';
 import { GitFrontend } from '../git';
+import { GestaltGraph } from '../gestalts';
+import { ACL } from '../acl';
+import { DB } from '../db';
+
 import * as utils from '../utils';
 import * as errors from './errors';
+import * as aclErrors from '../acl/errors';
 
 class VaultManager {
   public readonly vaultsPath: string;
   public readonly metadataPath: string;
+  protected acl: ACL;
+  protected gestaltGraph: GestaltGraph;
   protected fs: FileSystem;
   protected vaultMap: VaultMap;
   protected keyManager: KeyManager;
@@ -42,25 +50,32 @@ class VaultManager {
   constructor({
     vaultsPath,
     keyManager,
+    db,
+    acl,
+    gestaltGraph,
     fs,
     logger,
   }: {
     vaultsPath: string;
     keyManager: KeyManager;
+    db: DB;
+    acl: ACL;
+    gestaltGraph: GestaltGraph;
     fs?: FileSystem;
     logger?: Logger;
   }) {
     this.vaultsPath = vaultsPath;
     this.metadataPath = path.join(this.vaultsPath, 'vaultMeta');
     this.keyManager = keyManager;
+    this.acl = acl;
+    this.gestaltGraph = gestaltGraph;
     this.fs = fs ?? require('fs');
     this.logger = logger ?? new Logger('VaultManager');
     this.vaults = {};
     this._started = false;
     this.vaultMap = new VaultMap({
+      db: db,
       vaultMapPath: this.vaultsPath,
-      keyManager: this.keyManager,
-      fs: this.fs,
       logger: this.logger,
     });
     this.gitFrontend = new GitFrontend();
@@ -211,33 +226,37 @@ class VaultManager {
    * @returns true if successfil, false if vault path still exists
    */
   public async deleteVault(vaultId: string): Promise<boolean> {
-    if (!this.vaults[vaultId]) {
-      throw new errors.ErrorVaultUndefined(
-        `Vault does not exist: '${vaultId}'`,
-      );
-    }
-    // this is convenience function for removing all tags
-    // and triggering garbage collection
-    // destruction is a better word as we should ensure all traces are removed
+    return await this.acl._transaction(async () => {
+      if (!this.vaults[vaultId]) {
+        throw new errors.ErrorVaultUndefined(
+          `Vault does not exist: '${vaultId}'`,
+        );
+      }
+      // this is convenience function for removing all tags
+      // and triggering garbage collection
+      // destruction is a better word as we should ensure all traces are removed
 
-    const vaultPath = path.join(this.vaultsPath, vaultId);
-    // Remove directory on file system
-    if (await fileExists(this.fs, vaultPath)) {
-      await this.fs.promises.rm(vaultPath, { recursive: true });
-      this.logger.info(`Removed vault directory at '${vaultPath}'`);
-    }
+      const vaultPath = path.join(this.vaultsPath, vaultId);
+      // Remove directory on file system
+      if (await fileExists(this.fs, vaultPath)) {
+        await this.fs.promises.rm(vaultPath, { recursive: true });
+        this.logger.info(`Removed vault directory at '${vaultPath}'`);
+      }
 
-    if (await fileExists(this.fs, vaultPath)) {
-      return false;
-    }
-    const vault = this.vaults[vaultId].vault;
+      if (await fileExists(this.fs, vaultPath)) {
+        return false;
+      }
+      const vault = this.vaults[vaultId].vault;
 
-    // Remove from mappings
-    delete this.vaults[vaultId];
+      // Remove from mappings
+      delete this.vaults[vaultId];
 
-    await this.vaultMap.delVault(vault.vaultName);
+      await this.vaultMap.delVault(vault.vaultName);
 
-    return true;
+      await this.acl.unsetVaultPerms(vault.vaultId as VaultId);
+
+      return true;
+    });
   }
 
   /**
@@ -254,6 +273,31 @@ class VaultManager {
       });
     }
     return vaults;
+  }
+
+  /**
+   * Scans all the vaults for current node which a node Id has permissions for
+   *
+   * @returns Array of VaultName and VaultIds managed currently by the vault manager
+   */
+  public async scanVaults(
+    nodeId: string,
+  ): Promise<Array<{ name: string; id: string }>> {
+    return await this.acl._transaction(async () => {
+      const vaults: Array<{ name: string; id: string }> = [];
+      for (const id in this.vaults) {
+        const list = await this.acl.getVaultPerm(id as VaultId);
+        if (list[nodeId]) {
+          if (list[nodeId].vaults[id]['pull'] !== undefined) {
+            vaults.push({
+              name: this.vaults[id].vaultName,
+              id: id,
+            });
+          }
+        }
+      }
+      return vaults;
+    });
   }
 
   /**
@@ -313,6 +357,139 @@ class VaultManager {
         return this.vaults[elem].vault;
       }
     }
+  }
+
+  /**
+   * Gives pulling permissions for a vault to one or more nodes
+   *
+   * @param nodeIds Id(s) of the nodes to share with
+   * @param vaultId Id of the vault that the permissions are for
+   */
+  private async setVaultAction(
+    nodeIds: string[],
+    vaultId: string,
+  ): Promise<void> {
+    return await this.acl._transaction(async () => {
+      for (const nodeId of nodeIds) {
+        try {
+          await this.acl.setVaultAction(
+            vaultId as VaultId,
+            nodeId as NodeId,
+            'pull',
+          );
+        } catch (err) {
+          if (err instanceof aclErrors.ErrorACLNodeIdMissing) {
+            await this.acl.setNodePerm(nodeId as NodeId, {
+              gestalt: {
+                notify: null,
+              },
+              vaults: {},
+            });
+            await this.acl.setVaultAction(
+              vaultId as VaultId,
+              nodeId as NodeId,
+              'pull',
+            );
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Removes pulling permissions for a vault for one or more nodes
+   *
+   * @param nodeIds Id(s) of the nodes to remove permissions from
+   * @param vaultId Id of the vault that the permissions are for
+   */
+  private async unsetVaultAction(
+    nodeIds: string[],
+    vaultId: string,
+  ): Promise<void> {
+    return await this.acl._transaction(async () => {
+      for (const nodeId of nodeIds) {
+        try {
+          await this.acl.unsetVaultAction(
+            vaultId as VaultId,
+            nodeId as NodeId,
+            'pull',
+          );
+        } catch (err) {
+          if (err instanceof aclErrors.ErrorACLNodeIdMissing) {
+            return;
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Sets the permissions of a gestalt using a provided nodeId
+   * This should take in a nodeId representing a gestalt, and remove
+   * all permissions for all nodeIds that are associated in the gestalt graph
+   *
+   * @param nodeId Identifier for gestalt as NodeId
+   * @param vaultId Id of the vault to set permissions for
+   */
+  public async setVaultPerm(nodeId: string, vaultId: string): Promise<void> {
+    return await this.gestaltGraph._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const gestalt = await this.gestaltGraph.getGestaltByNode(
+          nodeId as NodeId,
+        );
+        const nodes = gestalt?.nodes;
+        for (const node in nodes) {
+          await this.setVaultAction([nodes[node].id], vaultId as VaultId);
+        }
+      });
+    });
+  }
+
+  /**
+   * Unsets the permissions of a gestalt using a provided nodeId
+   * This should take in a nodeId representing a gestalt, and remove
+   * all permissions for all nodeIds that are associated in the gestalt graph
+   *
+   * @param nodeId Identifier for gestalt as NodeId
+   * @param vaultId Id of the vault to unset permissions for
+   */
+  public async unsetVaultPerm(nodeId: string, vaultId: string): Promise<void> {
+    return await this.gestaltGraph._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const gestalt = await this.gestaltGraph.getGestaltByNode(
+          nodeId as NodeId,
+        );
+        const nodes = gestalt?.nodes;
+        for (const node in nodes) {
+          await this.unsetVaultAction([nodes[node].id], vaultId as VaultId);
+        }
+      });
+    });
+  }
+
+  /**
+   * Gets the permissions of a vault for a single or all nodes
+   *
+   * @param nodeId Id of the specific node to look up permissions for
+   * @param vaultId Id of the vault to look up permissions for
+   * @returns a record of the permissions for the vault
+   */
+  public async getVaultPermissions(
+    vaultId: string,
+    nodeId?: string,
+  ): Promise<Record<NodeId, VaultAction>> {
+    return await this.acl._transaction(async () => {
+      const record: Record<NodeId, VaultAction> = {};
+      const perms = await this.acl.getVaultPerm(vaultId as VaultId);
+      for (const node in perms) {
+        if (nodeId && nodeId === node) {
+          record[node] = perms[node].vaults[vaultId];
+        } else if (!nodeId) {
+          record[node] = perms[node].vaults[vaultId];
+        }
+      }
+      return record;
+    });
   }
 
   /* === Helpers === */

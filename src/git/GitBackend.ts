@@ -18,7 +18,9 @@ import * as gitUtils from './utils';
 
 class GitBackend {
   private getVault: (vaultID: string) => Vault;
-  private getVaultNames: () => Array<{ name: string; id: string }>;
+  private getVaultNames: (
+    nodeId: string,
+  ) => Promise<Array<{ name: string; id: string }>>;
   private logger: Logger;
 
   constructor({
@@ -27,7 +29,9 @@ class GitBackend {
     logger,
   }: {
     getVault: (vaultID: string) => Vault;
-    getVaultNames: () => Array<{ name: string; id: string }>;
+    getVaultNames: (
+      nodeId: string,
+    ) => Promise<Array<{ name: string; id: string }>>;
     logger?: Logger;
   }) {
     this.getVault = getVault;
@@ -103,8 +107,10 @@ class GitBackend {
   /**
    * Returns a generator that yields the names of the vaults
    */
-  public async *handleVaultNamesRequest(): AsyncGenerator<Uint8Array> {
-    const vaults = this.getVaultNames();
+  public async *handleVaultNamesRequest(
+    nodeId: string,
+  ): AsyncGenerator<Uint8Array> {
+    const vaults = await this.getVaultNames(nodeId);
     for (const vault in vaults) {
       yield Buffer.from(`${vaults[vault].id}\t${vaults[vault].name}`);
     }

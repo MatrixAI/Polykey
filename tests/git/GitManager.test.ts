@@ -6,6 +6,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
 import { GitManager, GitBackend } from '@/git';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { utils as networkUtils } from '@/network';
@@ -14,6 +15,11 @@ import { VaultManager, errors as vaultsErrors } from '@/vaults';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
 import { AgentService, createAgentService } from '@/agent';
+import { ACL } from '@/acl';
+import { GestaltGraph } from '@/gestalts';
+import { DB } from '@/db';
+
+import * as gitErrors from '@/git/errors';
 
 describe('GitManager is', () => {
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
@@ -30,12 +36,18 @@ describe('GitManager is', () => {
   const revProxy = new ReverseProxy({
     logger: logger,
   });
+  let sourceACL: ACL;
+  let sourceGestaltGraph: GestaltGraph;
+  let sourceDb: DB;
 
   let targetKeyManager: KeyManager;
   let targetNodeManager: NodeManager;
   let targetVaultManager: VaultManager;
   let targetFwdProxy: ForwardProxy;
   let targetGitBackend: GitBackend;
+  let targetACL: ACL;
+  let targetGestaltGraph: GestaltGraph;
+  let targetDb: DB;
 
   const sourceHost = '127.0.0.1' as Host;
   const sourcePort = 11112 as Port;
@@ -85,9 +97,26 @@ describe('GitManager is', () => {
       fs: fs,
       logger: logger,
     });
-    sourceVaultManager = new VaultManager({
-      vaultsPath: path.join(dataDir, 'vaults'),
+    sourceDb = new DB({
+      dbPath: path.join(dataDir, 'db'),
       keyManager: sourceKeyManager,
+      logger: logger,
+    });
+    sourceACL = new ACL({
+      db: sourceDb,
+      logger: logger,
+    });
+    sourceGestaltGraph = new GestaltGraph({
+      db: sourceDb,
+      acl: sourceACL,
+      logger: logger,
+    });
+    sourceVaultManager = new VaultManager({
+      vaultsPath: dataDir,
+      keyManager: sourceKeyManager,
+      db: sourceDb,
+      acl: sourceACL,
+      gestaltGraph: sourceGestaltGraph,
       fs: fs,
       logger: logger,
     });
@@ -112,6 +141,9 @@ describe('GitManager is', () => {
       egressHost: sourceHost,
       egressPort: sourcePort,
     });
+    await sourceDb.start();
+    await sourceACL.start();
+    await sourceGestaltGraph.start();
     await sourceVaultManager.start({});
     await sourceNodeManager.start({ nodeId: 'abc' as NodeId });
     await sourceGitManager.start();
@@ -124,9 +156,27 @@ describe('GitManager is', () => {
       fs: fs,
       logger: logger,
     });
+    targetDb = new DB({
+      dbPath: path.join(dataDir2, 'db'),
+      keyManager: targetKeyManager,
+      fs: fs,
+      logger: logger,
+    });
+    targetACL = new ACL({
+      db: targetDb,
+      logger: logger,
+    });
+    targetGestaltGraph = new GestaltGraph({
+      db: targetDb,
+      acl: targetACL,
+      logger: logger,
+    });
     targetVaultManager = new VaultManager({
       vaultsPath: path.join(dataDir2, 'vaults'),
       keyManager: targetKeyManager,
+      db: targetDb,
+      acl: targetACL,
+      gestaltGraph: targetGestaltGraph,
       fs: fs,
       logger: logger,
     });
@@ -140,10 +190,13 @@ describe('GitManager is', () => {
     });
     targetGitBackend = new GitBackend({
       getVault: targetVaultManager.getVault.bind(targetVaultManager),
-      getVaultNames: targetVaultManager.listVaults.bind(targetVaultManager),
+      getVaultNames: targetVaultManager.scanVaults.bind(targetVaultManager),
       logger: logger,
     });
     await targetKeyManager.start({ password: 'password2' });
+    await targetDb.start();
+    await targetACL.start();
+    await targetGestaltGraph.start();
     await targetVaultManager.start({});
     await targetNodeManager.start({ nodeId: targetNodeId });
     agentService = createAgentService({
@@ -183,9 +236,15 @@ describe('GitManager is', () => {
     await sourceGitManager.stop();
     await sourceNodeManager.stop();
     await sourceVaultManager.stop();
+    await sourceGestaltGraph.stop();
+    await sourceACL.stop();
+    await sourceDb.stop();
     await sourceKeyManager.stop();
     await targetNodeManager.stop();
     await targetVaultManager.stop();
+    await targetGestaltGraph.stop();
+    await targetACL.stop();
+    await targetDb.stop();
     await targetKeyManager.stop();
     await targetFwdProxy.stop();
     await fs.promises.rm(dataDir, {
@@ -214,7 +273,17 @@ describe('GitManager is', () => {
       port: targetPort,
     } as NodeAddress);
     await revProxy.openConnection(sourceHost, sourcePort);
-    const list = await sourceGitManager.scanNodeVaults(targetNodeId);
+    let list = await sourceGitManager.scanNodeVaults(targetNodeId);
+    expect(list.sort()).toStrictEqual([]);
+    await targetVaultManager.setVaultAction(
+      [sourceNodeManager.getNodeId()],
+      vault1.vaultId,
+    );
+    await targetVaultManager.setVaultAction(
+      [sourceNodeManager.getNodeId()],
+      vault2.vaultId,
+    );
+    list = await sourceGitManager.scanNodeVaults(targetNodeId);
     expect(list.sort()).toStrictEqual(
       [
         `${vault1.vaultId}\t${vault1.vaultName}`,
@@ -224,6 +293,10 @@ describe('GitManager is', () => {
   });
   test('able to clone and pull vaults from another node', async () => {
     const vault = await targetVaultManager.createVault('MyFirstVault');
+    await targetVaultManager.setVaultAction(
+      [sourceNodeManager.getNodeId()],
+      vault.vaultId,
+    );
     await vault.initializeVault();
     await vault.addSecret('MyFirstSecret', Buffer.from('Success?'));
     await sourceNodeManager.setNode(targetNodeId, {
@@ -254,6 +327,14 @@ describe('GitManager is', () => {
   test('able to handle various edge cases', async () => {
     const vault = await targetVaultManager.createVault('MyFirstVault');
     const vault2 = await targetVaultManager.createVault('MySecondVault');
+    await targetVaultManager.setVaultAction(
+      [sourceNodeManager.getNodeId()],
+      vault.vaultId,
+    );
+    await targetVaultManager.setVaultAction(
+      [sourceNodeManager.getNodeId()],
+      vault2.vaultId,
+    );
     await vault.initializeVault();
     await vault2.initializeVault();
     await vault.addSecret('MyFirstSecret', Buffer.from('Success?'));
@@ -282,6 +363,43 @@ describe('GitManager is', () => {
     await sourceGitManager.pullVault(vault.vaultId, targetNodeId);
     await expect(copiedVault.getSecret('MyFirstSecret')).resolves.toStrictEqual(
       Buffer.from('Success!'),
+    );
+  });
+  test('unable to clone and pull vaults when permissions are not set', async () => {
+    const vault = await targetVaultManager.createVault('MyFirstVault');
+    await vault.initializeVault();
+    await vault.addSecret('MyFirstSecret', Buffer.from('Success?'));
+    await sourceNodeManager.setNode(targetNodeId, {
+      ip: targetHost,
+      port: targetPort,
+    } as NodeAddress);
+    await sourceNodeManager.createConnectionToNode(targetNodeId, {
+      ip: targetHost,
+      port: targetPort,
+    } as NodeAddress);
+    await revProxy.openConnection(sourceHost, sourcePort);
+    await expect(
+      sourceGitManager.cloneVault(vault.vaultId, targetNodeId),
+    ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
+    const vaultsList = sourceVaultManager.listVaults();
+    expect(vaultsList).toStrictEqual([]);
+    await targetVaultManager.setVaultAction(
+      [sourceNodeManager.getNodeId()],
+      vault.vaultId,
+    );
+    await sourceGitManager.cloneVault(vault.vaultId, targetNodeId);
+    await targetVaultManager.unsetVaultAction(
+      [sourceNodeManager.getNodeId()],
+      vault.vaultId,
+    );
+    vault.addSecret('MySecondSecret', Buffer.from('SecondSuccess?'));
+    await expect(
+      sourceGitManager.pullVault(vault.vaultId, targetNodeId),
+    ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
+    const list = sourceVaultManager.listVaults();
+    const clonedVault = sourceVaultManager.getVault(list[0].id);
+    expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
+      ['MyFirstSecret'].sort(),
     );
   });
 });

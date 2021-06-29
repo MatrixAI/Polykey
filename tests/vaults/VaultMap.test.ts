@@ -6,7 +6,8 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { KeyManager } from '@/keys';
-import { VaultManager, VaultMap } from '@/vaults';
+import { VaultMap } from '@/vaults';
+import { DB } from '@/db';
 
 import * as vaultErrors from '@/vaults/errors';
 
@@ -15,17 +16,27 @@ describe('VaultMap is', () => {
     new StreamHandler(),
   ]);
   let dataDir: string;
+  let keyManager: KeyManager;
   let vaultMap: VaultMap;
+  let db: DB;
   let vaultMapPath: string;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    vaultMapPath = path.join(dataDir, 'vaultMap');
+    const keysPath = `${dataDir}/keys`;
+    keyManager = new KeyManager({ keysPath, logger });
+    await keyManager.start({ password: 'password' });
+    const dbPath = `${dataDir}/db`;
+    db = new DB({ dbPath, keyManager, logger });
+    await db.start();
+    vaultMapPath = path.join(dataDir, 'vaultdb');
   });
 
   afterEach(async () => {
+    await db.stop();
+    await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -33,157 +44,99 @@ describe('VaultMap is', () => {
   });
 
   test('type correct', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     vaultMap = new VaultMap({
+      db: db,
       vaultMapPath: vaultMapPath,
-      keyManager: keyManager,
-      fs: fs,
       logger: logger,
     });
     expect(vaultMap).toBeInstanceOf(VaultMap);
   });
 
   test('starting and stopping', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     vaultMap = new VaultMap({
+      db: db,
       vaultMapPath: vaultMapPath,
-      keyManager: keyManager,
-      fs: fs,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
-    await vaultMap.start();
+    await vaultMap.start({ fresh: true });
 
     expect(vaultMap.started).toBeTruthy();
 
     await vaultMap.stop();
-    await keyManager.stop();
   });
 
   test('putting a vault into storage', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     vaultMap = new VaultMap({
+      db: db,
       vaultMapPath: vaultMapPath,
-      keyManager: keyManager,
-      fs: fs,
       logger: logger,
     });
-    const vaultManager = new VaultManager({
-      vaultsPath: path.join(dataDir, 'vaults'),
-      keyManager: keyManager,
-      logger: logger,
-    });
-    await keyManager.start({ password: 'password' });
-    await vaultManager.start({});
-    await vaultMap.start();
+    await vaultMap.start({ fresh: true });
 
-    const vault1 = await vaultManager.createVault('MyFirstVault');
     await vaultMap.setVault(
-      vault1.vaultName,
-      vault1.vaultId as VaultId,
+      'MyFirstVault',
+      '12345' as VaultId,
       Buffer.from('test'),
     );
     await expect(
-      vaultMap.getVaultLinkByVaultId(vault1.vaultId as VaultId),
+      vaultMap.getVaultLinkByVaultId('12345' as VaultId),
     ).resolves.toBe(undefined);
     await expect(vaultMap.getVaultIdByVaultName('MyFirstVault')).resolves.toBe(
-      vault1.vaultId,
+      '12345',
     );
 
-    await vaultMap.setVaultLink(vault1.vaultId as VaultId, '1234567890');
+    await vaultMap.setVaultLink('12345' as VaultId, '1234567890');
     await expect(
-      vaultMap.getVaultLinkByVaultId(vault1.vaultId as VaultId),
+      vaultMap.getVaultLinkByVaultId('12345' as VaultId),
     ).resolves.toBe('1234567890');
 
     await vaultMap.stop();
-    await keyManager.stop();
   });
 
   test('deleting a vault from storage', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     vaultMap = new VaultMap({
+      db: db,
       vaultMapPath: vaultMapPath,
-      keyManager: keyManager,
-      fs: fs,
       logger: logger,
     });
-    const vaultManager = new VaultManager({
-      vaultsPath: path.join(dataDir, 'vaults'),
-      keyManager: keyManager,
-      logger: logger,
-    });
-    await keyManager.start({ password: 'password' });
-    await vaultManager.start({});
-    await vaultMap.start();
+    await vaultMap.start({ fresh: true });
 
-    const vault1 = await vaultManager.createVault('MyFirstVault');
     await vaultMap.setVault(
-      vault1.vaultName,
-      vault1.vaultId as VaultId,
+      'MyFirstVault',
+      '12345' as VaultId,
       Buffer.from('test'),
     );
-    await vaultMap.setVaultLink(vault1.vaultId as VaultId, '1234567890');
+    await vaultMap.setVaultLink('12345' as VaultId, '1234567890');
     await vaultMap.delVault('MyFirstVault');
     await expect(
-      vaultMap.getVaultLinkByVaultId(vault1.vaultId as VaultId),
+      vaultMap.getVaultLinkByVaultId('12345' as VaultId),
     ).resolves.toBe(undefined);
     await expect(vaultMap.getVaultIdByVaultName('MyFirstVault')).resolves.toBe(
       undefined,
     );
 
     await vaultMap.stop();
-    await keyManager.stop();
   });
 
   test('renaming a vault', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     vaultMap = new VaultMap({
+      db: db,
       vaultMapPath: vaultMapPath,
-      keyManager: keyManager,
-      fs: fs,
       logger: logger,
     });
-    const vaultManager = new VaultManager({
-      vaultsPath: path.join(dataDir, 'vaults'),
-      keyManager: keyManager,
-      logger: logger,
-    });
-    await keyManager.start({ password: 'password' });
-    await vaultManager.start({});
-    await vaultMap.start();
+    await vaultMap.start({ fresh: true });
 
-    const vault1 = await vaultManager.createVault('MyFirstVault');
     await vaultMap.setVault(
-      vault1.vaultName,
-      vault1.vaultId as VaultId,
+      'MyFirstVault',
+      '12345' as VaultId,
       Buffer.from('test'),
     );
-    await vaultMap.setVaultLink(vault1.vaultId as VaultId, '1234567890');
+    await vaultMap.setVaultLink('12345' as VaultId, '1234567890');
     await expect(
-      vaultMap.getVaultLinkByVaultId(vault1.vaultId as VaultId),
+      vaultMap.getVaultLinkByVaultId('12345' as VaultId),
     ).resolves.toBe('1234567890');
     await expect(vaultMap.getVaultIdByVaultName('MyFirstVault')).resolves.toBe(
-      vault1.vaultId,
+      '12345',
     );
     await vaultMap.renameVault('MyFirstVault', 'MyRenamedVault');
     await expect(vaultMap.getVaultIdByVaultName('MyFirstVault')).resolves.toBe(
@@ -191,26 +144,17 @@ describe('VaultMap is', () => {
     );
     await expect(
       vaultMap.getVaultIdByVaultName('MyRenamedVault'),
-    ).resolves.toBe(vault1.vaultId as VaultId);
+    ).resolves.toBe('12345' as VaultId);
 
     await vaultMap.stop();
-    await keyManager.stop();
   });
   test('maintaining unique vault names', async () => {
-    const keyManager = new KeyManager({
-      keysPath: path.join(dataDir, 'keys'),
-      fs: fs,
-      logger: logger,
-    });
     vaultMap = new VaultMap({
+      db: db,
       vaultMapPath: vaultMapPath,
-      keyManager: keyManager,
-      fs: fs,
       logger: logger,
     });
-
-    await keyManager.start({ password: 'password' });
-    await vaultMap.start();
+    await vaultMap.start({ fresh: true });
 
     await vaultMap.setVault('Test', '123' as VaultId, Buffer.from('test'));
     await expect(
@@ -218,6 +162,5 @@ describe('VaultMap is', () => {
     ).rejects.toThrow(vaultErrors.ErrorVaultDefined);
 
     await vaultMap.stop();
-    await keyManager.stop();
   });
 });
