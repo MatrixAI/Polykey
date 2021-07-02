@@ -52,10 +52,8 @@ class VaultMap {
   }
 
   public async start({
-    bits = 256,
     fresh = false,
   }: {
-    bits?: number;
     fresh?: boolean;
   } = {}): Promise<void> {
     try {

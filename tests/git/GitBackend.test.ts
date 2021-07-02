@@ -1,3 +1,5 @@
+import type { NodeId, NodeInfo } from '@/nodes/types';
+
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
@@ -21,6 +23,10 @@ let db: DB;
 // let gitBackend: GitBackend;
 // let gitRequest: GitRequest;
 const logger = new Logger('GitBackend', LogLevel.WARN, [new StreamHandler()]);
+const node1: NodeInfo = {
+  id: '123' as NodeId,
+  links: { nodes: {}, identities: {} },
+};
 
 beforeEach(async () => {
   dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
@@ -43,6 +49,7 @@ beforeEach(async () => {
     logger: logger,
   });
   await gestaltGraph.start();
+  await gestaltGraph.setNode(node1);
   vaultManager = new VaultManager({
     vaultsPath: dataDir,
     keyManager: keyManager,
@@ -130,8 +137,8 @@ describe('GitBackend is', () => {
       await vaultManager.createVault('MySecondVault');
       const vault3 = await vaultManager.createVault('MyThirdVault');
 
-      await vaultManager.setVaultAction(['123'], vault3.vaultId);
-      await vaultManager.setVaultAction(['123'], vault.vaultId);
+      await vaultManager.setVaultPerm('123', vault3.vaultId);
+      await vaultManager.setVaultPerm('123', vault.vaultId);
 
       response = gitBackend.handleVaultNamesRequest('123');
       data = [];

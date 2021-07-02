@@ -1,4 +1,4 @@
-import type { NodeId, NodeAddress } from '../../src/nodes/types';
+import type { NodeId, NodeAddress, NodeInfo } from '../../src/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
 
@@ -25,6 +25,11 @@ describe('GitManager is', () => {
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  const node: NodeInfo = {
+    id: '12345' as NodeId,
+    links: { nodes: {}, identities: {} },
+  };
+
   let dataDir: string;
   let dataDir2: string;
 
@@ -171,6 +176,7 @@ describe('GitManager is', () => {
       acl: targetACL,
       logger: logger,
     });
+    node.id = sourceNodeManager.getNodeId();
     targetVaultManager = new VaultManager({
       vaultsPath: path.join(dataDir2, 'vaults'),
       keyManager: targetKeyManager,
@@ -197,6 +203,7 @@ describe('GitManager is', () => {
     await targetDb.start();
     await targetACL.start();
     await targetGestaltGraph.start();
+    await targetGestaltGraph.setNode(node);
     await targetVaultManager.start({});
     await targetNodeManager.start({ nodeId: targetNodeId });
     agentService = createAgentService({
@@ -275,12 +282,12 @@ describe('GitManager is', () => {
     await revProxy.openConnection(sourceHost, sourcePort);
     let list = await sourceGitManager.scanNodeVaults(targetNodeId);
     expect(list.sort()).toStrictEqual([]);
-    await targetVaultManager.setVaultAction(
-      [sourceNodeManager.getNodeId()],
+    await targetVaultManager.setVaultPerm(
+      sourceNodeManager.getNodeId(),
       vault1.vaultId,
     );
-    await targetVaultManager.setVaultAction(
-      [sourceNodeManager.getNodeId()],
+    await targetVaultManager.setVaultPerm(
+      sourceNodeManager.getNodeId(),
       vault2.vaultId,
     );
     list = await sourceGitManager.scanNodeVaults(targetNodeId);
@@ -293,8 +300,8 @@ describe('GitManager is', () => {
   });
   test('able to clone and pull vaults from another node', async () => {
     const vault = await targetVaultManager.createVault('MyFirstVault');
-    await targetVaultManager.setVaultAction(
-      [sourceNodeManager.getNodeId()],
+    await targetVaultManager.setVaultPerm(
+      sourceNodeManager.getNodeId(),
       vault.vaultId,
     );
     await vault.initializeVault();
@@ -327,12 +334,12 @@ describe('GitManager is', () => {
   test('able to handle various edge cases', async () => {
     const vault = await targetVaultManager.createVault('MyFirstVault');
     const vault2 = await targetVaultManager.createVault('MySecondVault');
-    await targetVaultManager.setVaultAction(
-      [sourceNodeManager.getNodeId()],
+    await targetVaultManager.setVaultPerm(
+      sourceNodeManager.getNodeId(),
       vault.vaultId,
     );
-    await targetVaultManager.setVaultAction(
-      [sourceNodeManager.getNodeId()],
+    await targetVaultManager.setVaultPerm(
+      sourceNodeManager.getNodeId(),
       vault2.vaultId,
     );
     await vault.initializeVault();
@@ -383,13 +390,13 @@ describe('GitManager is', () => {
     ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
     const vaultsList = sourceVaultManager.listVaults();
     expect(vaultsList).toStrictEqual([]);
-    await targetVaultManager.setVaultAction(
-      [sourceNodeManager.getNodeId()],
+    await targetVaultManager.setVaultPerm(
+      sourceNodeManager.getNodeId(),
       vault.vaultId,
     );
     await sourceGitManager.cloneVault(vault.vaultId, targetNodeId);
-    await targetVaultManager.unsetVaultAction(
-      [sourceNodeManager.getNodeId()],
+    await targetVaultManager.unsetVaultPerm(
+      sourceNodeManager.getNodeId(),
       vault.vaultId,
     );
     vault.addSecret('MySecondSecret', Buffer.from('SecondSuccess?'));

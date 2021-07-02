@@ -1,3 +1,5 @@
+import type { NodeId, NodeInfo } from '@/nodes/types';
+
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -11,6 +13,18 @@ let dataDir: string;
 let passwordFile: string;
 let polykeyAgent: PolykeyAgent;
 const passwordExitCode = 64;
+const node1: NodeInfo = {
+  id: '123' as NodeId,
+  links: { nodes: {}, identities: {} },
+};
+const node2: NodeInfo = {
+  id: '456' as NodeId,
+  links: { nodes: {}, identities: {} },
+};
+const node3: NodeInfo = {
+  id: '789' as NodeId,
+  links: { nodes: {}, identities: {} },
+};
 
 describe('CLI vaults', () => {
   beforeEach(async () => {
@@ -26,6 +40,9 @@ describe('CLI vaults', () => {
     await polykeyAgent.start({
       password: 'password',
     });
+    await polykeyAgent.gestalts.setNode(node1);
+    await polykeyAgent.gestalts.setNode(node2);
+    await polykeyAgent.gestalts.setNode(node3);
   });
 
   afterEach(async () => {
@@ -248,11 +265,11 @@ describe('CLI vaults', () => {
     const vault = await polykeyAgent.vaults.createVault('Vault1');
     const id = polykeyAgent.vaults.getVaultId('Vault1');
     expect(id).toBeTruthy();
-    await polykeyAgent.vaults.setVaultAction(
-      ['123', '456', '789'],
-      vault.vaultId,
-    );
-    await polykeyAgent.vaults.unsetVaultAction(['456'], vault.vaultId);
+    await polykeyAgent.vaults.setVaultPerm('123', vault.vaultId);
+    await polykeyAgent.vaults.setVaultPerm('456', vault.vaultId);
+    await polykeyAgent.vaults.setVaultPerm('789', vault.vaultId);
+
+    await polykeyAgent.vaults.unsetVaultPerm('456', vault.vaultId);
 
     const result = await utils.pk([
       'vaults',
@@ -292,8 +309,13 @@ describe('CLI vaults', () => {
     await vault.initializeVault();
     const id = targetPolykeyAgent.vaults.getVaultId('Vault1');
     expect(id).toBeTruthy();
-    await targetPolykeyAgent.vaults.setVaultAction(
-      [polykeyAgent.nodes.getNodeId()],
+
+    await targetPolykeyAgent.gestalts.setNode({
+      id: polykeyAgent.nodes.getNodeId(),
+      links: { nodes: {}, identities: {} },
+    });
+    await targetPolykeyAgent.vaults.setVaultPerm(
+      polykeyAgent.nodes.getNodeId(),
       vault.vaultId,
     );
 
@@ -357,8 +379,13 @@ describe('CLI vaults', () => {
     await vault.initializeVault();
     const id = targetPolykeyAgent.vaults.getVaultId('Vault1');
     expect(id).toBeTruthy();
-    await targetPolykeyAgent.vaults.setVaultAction(
-      [polykeyAgent.nodes.getNodeId()],
+
+    await targetPolykeyAgent.gestalts.setNode({
+      id: polykeyAgent.nodes.getNodeId(),
+      links: { nodes: {}, identities: {} },
+    });
+    await targetPolykeyAgent.vaults.setVaultPerm(
+      polykeyAgent.nodes.getNodeId(),
       vault.vaultId,
     );
 
