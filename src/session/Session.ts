@@ -106,7 +106,7 @@ class Session {
     }
     this.logger.info(`Writing token to ${this.sessionFile}`);
     await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
-    this.fs.promises.writeFile(this.sessionFile, this._token);
+    await this.fs.promises.writeFile(this.sessionFile, this._token);
   }
 
   /**

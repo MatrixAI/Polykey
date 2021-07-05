@@ -4,22 +4,19 @@ import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 
-const commandDeleteNode = createCommand('delete', {
+const commandClaimNode = createCommand('claim', {
   description: {
-    description: 'Removes node to the node graph',
+    description: 'Make claim to a node, forms a link between to the node.',
     args: {
-      nodeId: 'Id of the node to remove',
+      node: 'Id of the node.',
     },
   },
   nodePath: true,
   verbose: true,
   format: true,
 });
-commandDeleteNode.requiredOption(
-  '-ni, --node-id <nodeId>',
-  '(required) Id of the node to be removed',
-);
-commandDeleteNode.action(async (options) => {
+commandClaimNode.arguments('<node>');
+commandClaimNode.action(async (node, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -32,26 +29,23 @@ commandDeleteNode.action(async (options) => {
   }
 
   const client = new PolykeyClient(clientConfig);
-  const providerMessage = new clientPB.ProviderMessage();
-  const tokenMessage = new clientPB.TokenSpecificMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    providerMessage.setId(options.providerId);
-    providerMessage.setMessage(options.identity);
-    tokenMessage.setProvider(providerMessage);
-    tokenMessage.setToken(options.tokenData);
-
-    await grpcClient.identitiesPutToken(tokenMessage);
+    //Claiming the node.
+    const nodeMessage = new clientPB.NodeMessage();
+    nodeMessage.setName(node);
+    await grpcClient.nodesClaim(
+      nodeMessage,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [
-          `Successsfully put token: ${tokenMessage.getToken()} into identity: ${providerMessage.getId()}:${providerMessage.getMessage()}`,
-        ],
+        data: [`Suceeded in claiming Node: ${node}`],
       }),
     );
   } catch (err) {
@@ -68,9 +62,10 @@ commandDeleteNode.action(async (options) => {
         }),
       );
     }
+    throw err;
   } finally {
     client.stop();
   }
 });
 
-export default commandDeleteNode;
+export default commandClaimNode;

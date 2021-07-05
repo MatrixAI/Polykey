@@ -9,6 +9,7 @@ import createEchoRPC from './rpcEcho';
 import createSessionRPC from './rpcSession';
 import createVaultRPC from './rpcVaults';
 import createKeysRPC from './rpcKeys';
+import createNodesRPC from './rpcNodes';
 import createGestaltRPC from './rpcGestalts';
 import createIdentitiesRPC from './rpcIdentities';
 import { PolykeyAgent } from '../';
@@ -48,6 +49,10 @@ function createClientService({ polykeyAgent }: { polykeyAgent: PolykeyAgent }) {
       nodeManager: polykeyAgent.nodes,
       sessionManager: polykeyAgent.sessions,
       discovery: polykeyAgent.discovery,
+    }),
+    ...createNodesRPC({
+      nodeManager: polykeyAgent.nodes,
+      sessionManager: polykeyAgent.sessions,
     }),
     nodesList: async (
       call: grpc.ServerWritableStream<

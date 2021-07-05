@@ -1,6 +1,7 @@
 import type { Vault } from '@/vaults';
 import type { SessionToken } from '@/session/types';
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { Host, Port } from '@/network/types';
+import type { NodeId, NodeInfo, NodeAddress } from '@/nodes/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 
 import os from 'os';
@@ -25,14 +26,15 @@ import { DB } from '@/db';
 import { PolykeyAgent } from '@';
 
 import * as utils from '@/utils';
+import * as testKeynodeUtils from '../utils';
 import * as testUtils from './utils';
 import * as grpcUtils from '@/grpc/utils';
 import * as gestaltsUtils from '@/gestalts/utils';
 import * as polykeyErrors from '@/errors';
 import * as vaultErrors from '@/vaults/errors';
+import * as nodesErrors from '@/nodes/errors';
 import { GithubProvider } from '../../src/identities/providers';
 import TestProvider from '../identities/TestProvider';
-import { ErrorNodeGraphEmptyShortlist } from '@/errors';
 
 describe('Client service', () => {
   const logger = new Logger('ClientServerTest', LogLevel.WARN, [
@@ -44,7 +46,6 @@ describe('Client service', () => {
 
   let dataDir: string;
   let keysPath: string;
-  let nodesPath: string;
   let vaultsPath: string;
   let identitiesPath: string;
   let dbPath: string;
@@ -83,53 +84,11 @@ describe('Client service', () => {
     await gestaltGraph.linkNodeAndIdentity(node2, identity1);
   }
 
-  beforeAll(async () => {
-    const keyPair = await keyUtils.generateKeyPair(4096);
-    const cert = keyUtils.generateCertificate(
-      keyPair.publicKey,
-      keyPair.privateKey,
-      keyPair.privateKey,
-      86400,
-    );
-    nodeId = networkUtils.certNodeId(cert);
-
-    //Filling in infos.
-    token = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'tegefaulkes' as IdentityId,
-      tokenData: {
-        accessToken: 'Oauth token here, DO NOT COMMIT.',
-      },
-    };
-    testToken = {
-      providerId: 'test-provider' as ProviderId,
-      identityId: 'test_user' as IdentityId,
-      tokenData: {
-        accessToken: 'abc123',
-      },
-    };
-
-    node2 = {
-      id: 'NodeIdABC' as NodeId,
-      chain: {},
-    };
-    node1 = {
-      id: nodeId,
-      chain: {},
-    };
-    identity1 = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'IdentityIdABC' as IdentityId,
-      claims: {},
-    };
-  });
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     keysPath = path.join(dataDir, 'keys');
-    nodesPath = path.join(dataDir, 'nodes');
     vaultsPath = path.join(dataDir, 'vaults');
     identitiesPath = path.join(dataDir, 'identities');
     dbPath = path.join(dataDir, 'db');
@@ -221,16 +180,7 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    await polykeyAgent.keys.start({ password: 'password' });
-    await polykeyAgent.db.start({ keyPair: keyManager.getRootKeyPair() });
-    await polykeyAgent.acl.start();
-    await polykeyAgent.sigchain.start();
-    await polykeyAgent.vaults.start({});
-    await polykeyAgent.nodes.start({ nodeId: nodeId });
-    await polykeyAgent.identities.start();
-    await polykeyAgent.gestalts.start();
-    await polykeyAgent.gitManager.start();
-    await polykeyAgent.sessions.start({ bits: 4069 });
+    await polykeyAgent.start({ password: 'password' });
 
     //adding provider.
     const githubProvider = new GithubProvider({ clientId: 'abc', logger });
@@ -244,15 +194,48 @@ describe('Client service', () => {
 
     client = await testUtils.openSimpleClientClient(port);
 
-    const token = await polykeyAgent.sessions.generateJWTToken();
+    const sessionToken = await polykeyAgent.sessions.generateJWTToken();
     callCredentials = {
       credentials: grpc.CallCredentials.createFromMetadataGenerator(
         (_params, callback) => {
           const meta = new grpc.Metadata();
-          meta.add('Authorization', `Bearer: ${token}`);
+          meta.add('Authorization', `Bearer: ${sessionToken}`);
           callback(null, meta);
         },
       ),
+    };
+
+    const cert = keyManager.getRootCert();
+    nodeId = networkUtils.certNodeId(cert);
+
+    //Filling in infos.
+    token = {
+      providerId: 'github.com' as ProviderId,
+      identityId: 'tegefaulkes' as IdentityId,
+      tokenData: {
+        accessToken: 'Oauth token here, DO NOT COMMIT.',
+      },
+    };
+    testToken = {
+      providerId: 'test-provider' as ProviderId,
+      identityId: 'test_user' as IdentityId,
+      tokenData: {
+        accessToken: 'abc123',
+      },
+    };
+
+    node2 = {
+      id: 'NodeIdABC' as NodeId,
+      chain: {},
+    };
+    node1 = {
+      id: nodeId,
+      chain: {},
+    };
+    identity1 = {
+      providerId: 'github.com' as ProviderId,
+      identityId: 'IdentityIdABC' as IdentityId,
+      claims: {},
     };
   });
 
@@ -260,16 +243,7 @@ describe('Client service', () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await polykeyAgent.sessions.stop();
-    await polykeyAgent.gitManager.stop();
-    await polykeyAgent.gestalts.stop();
-    await polykeyAgent.identities.stop();
-    await polykeyAgent.nodes.stop();
-    await polykeyAgent.vaults.stop();
-    await polykeyAgent.sigchain.stop();
-    await polykeyAgent.acl.stop();
-    await polykeyAgent.db.stop();
-    await polykeyAgent.keys.stop();
+    await polykeyAgent.stop();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -700,7 +674,7 @@ describe('Client service', () => {
     const vaultId = vaults[0].id;
 
     //creating a gestalts state
-    const info = await createGestaltState();
+    await createGestaltState();
 
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
@@ -729,7 +703,7 @@ describe('Client service', () => {
     const vaultId = vaults[0].id;
 
     //creating a gestalts state
-    const info = await createGestaltState();
+    await createGestaltState();
     await vaultManager.setVaultPerm(node2.id, vaultId);
 
     const meta = new grpc.Metadata();
@@ -762,7 +736,7 @@ describe('Client service', () => {
     const vaultId = vaults[0].id;
 
     //creating a gestalts state
-    const info = await createGestaltState();
+    await createGestaltState();
     await vaultManager.setVaultPerm(node2.id, vaultId);
 
     const meta = new grpc.Metadata();
@@ -1027,7 +1001,7 @@ describe('Client service', () => {
     });
   });
   //Identities.
-  describe('Identities', () => {
+  describe('Identities RPC', () => {
     test('can Authenticate an identity.', async () => {
       const identitiesAuthenticate =
         grpcUtils.promisifyReadableStreamCall<clientPB.ProviderMessage>(
@@ -1189,14 +1163,14 @@ describe('Client service', () => {
     });
   });
   //gestalts
-  describe('gestalts', () => {
+  describe('Gestalts RPC', () => {
     test('can get gestalt from Node.', async () => {
       const gestaltsGetNode =
         grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
           client,
           client.gestaltsGetNode,
         );
-      const info = await createGestaltState();
+      await createGestaltState();
 
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(node2.id);
@@ -1215,7 +1189,7 @@ describe('Client service', () => {
           client,
           client.gestaltsGetIdentity,
         );
-      const info = await createGestaltState();
+      await createGestaltState();
       //testing the call
       const providerMessage = new clientPB.ProviderMessage();
       providerMessage.setId(identity1.providerId);
@@ -1328,7 +1302,7 @@ describe('Client service', () => {
       //I have no idea how to test this. so we just check for expected error for now.
       await expect(
         gestaltsDiscoverNode(nodeMessage, callCredentials),
-      ).rejects.toThrow(ErrorNodeGraphEmptyShortlist);
+      ).rejects.toThrow(nodesErrors.ErrorNodeGraphEmptyDatabase);
     });
     test('can discover gestalt via Identity.', async () => {
       const gestaltsDiscoverIdentity =
@@ -1351,7 +1325,7 @@ describe('Client service', () => {
         await gestaltsDiscoverIdentity(providerMessage, callCredentials),
       ).toBeInstanceOf(clientPB.EmptyMessage);
     });
-    test('Should get gestalt permissions by node.', async () => {
+    test('should get gestalt permissions by node.', async () => {
       const gestaltsGetActionsByNode =
         grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
           client,
@@ -1382,7 +1356,7 @@ describe('Client service', () => {
       );
       expect(test2.getActionList().length).toBe(0);
     });
-    test('Should get gestalt permissions by Identity.', async () => {
+    test('should get gestalt permissions by Identity.', async () => {
       const gestaltsGetActionsByIdentity =
         grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
           client,
@@ -1424,7 +1398,7 @@ describe('Client service', () => {
       );
       expect(test2.getActionList().length).toBe(0);
     });
-    test('Should set gestalt permissions by node.', async () => {
+    test('should set gestalt permissions by node.', async () => {
       const gestaltsSetActionByNode =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1449,7 +1423,7 @@ describe('Client service', () => {
       const check2 = await gestaltGraph.getGestaltActionsByNode(node2.id);
       expect(Object.keys(check2!)).toContain('notify');
     });
-    test('Should set gestalt permissions by Identity.', async () => {
+    test('should set gestalt permissions by Identity.', async () => {
       const gestaltsSetActionByIdentity =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1484,7 +1458,7 @@ describe('Client service', () => {
       );
       expect(Object.keys(check2!)).toContain('notify');
     });
-    test('Should unset gestalt permissions by node.', async () => {
+    test('should unset gestalt permissions by node.', async () => {
       const gestaltsUnsetActionByNode =
         grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
           client,
@@ -1516,7 +1490,7 @@ describe('Client service', () => {
       const keys2 = Object.keys(check2!);
       expect(keys2.length).toBe(0);
     });
-    test('Should unset gestalt permissions by Identity.', async () => {
+    test('should unset gestalt permissions by Identity.', async () => {
       const gestaltsUnsetActionByIdentity =
         grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
           client,
@@ -1559,5 +1533,177 @@ describe('Client service', () => {
       const keys2 = Object.keys(check2!);
       expect(keys2.length).toBe(0);
     });
+  });
+  describe('Nodes RPC', () => {
+    test('can get local node details', async () => {
+      const nodesGetLocalDetails =
+        grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
+          client,
+          client.nodesGetLocalDetails,
+        );
+
+      const emptyMessage = new clientPB.EmptyMessage();
+      const res = await nodesGetLocalDetails(emptyMessage, callCredentials);
+      const details = polykeyAgent.nodes.getNodeDetails();
+      expect(res.getNodeId()).toEqual(details.id);
+      expect(res.getNodeAddress()).toEqual(details.address);
+      expect(res.getPublicKey()).toEqual(details.publicKey);
+    });
+    test('can get remote node details', async () => {
+      const server = await testKeynodeUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+      // Add remote node's details to local node
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
+
+      const nodesGetDetails =
+        grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
+          client,
+          client.nodesGetDetails,
+        );
+      const nodeMessage = new clientPB.NodeMessage();
+      nodeMessage.setName(server.nodes.getNodeId());
+      const res = await nodesGetDetails(nodeMessage, callCredentials);
+      const details = server.nodes.getNodeDetails();
+      expect(res.getNodeId()).toEqual(details.id);
+      expect(res.getNodeAddress()).toEqual(details.address);
+      expect(res.getPublicKey()).toEqual(details.publicKey);
+      await testKeynodeUtils.cleanupRemoteKeynode(server);
+    });
+    test('can add a node', async () => {
+      const nodesAdd = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        client,
+        client.nodesAdd,
+      );
+      const nodeId = 'nodeId1';
+      const host = '127.0.0.1';
+      const port = 11111;
+      const nodeAddressMessage = new clientPB.NodeAddressMessage();
+      nodeAddressMessage.setId(nodeId);
+      nodeAddressMessage.setHost(host);
+      nodeAddressMessage.setPort(port);
+      await nodesAdd(nodeAddressMessage, callCredentials);
+      const nodeAddress = await nodeManager.getNode(nodeId as NodeId);
+      if (!nodeAddress) {
+        fail('Node address undefined');
+      }
+      expect(nodeAddress.ip).toBe(host);
+      expect(nodeAddress.port).toBe(port);
+    });
+    test('can ping a node (online + offline)', async () => {
+      const server = await testKeynodeUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
+      const serverNodeId = server.nodes.getNodeId();
+      await server.stop();
+
+      // Case 1: cannot establish new connection, so offline
+      const nodesPing = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        client,
+        client.nodesPing,
+      );
+      const nodeMessage = new clientPB.NodeMessage();
+      nodeMessage.setName(serverNodeId);
+      const res1 = await nodesPing(nodeMessage, callCredentials);
+      expect(res1.getSuccess()).toEqual(false);
+      // Case 2: can establish new connection, so online
+      await server.start({ password: 'password' });
+      // Update the details (changed because we started again)
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
+      const res2 = await nodesPing(nodeMessage, callCredentials);
+      expect(res2.getSuccess()).toEqual(true);
+      // Case 3: pre-existing connection no longer active, so offline
+      await server.stop();
+      const res3 = await nodesPing(nodeMessage, callCredentials);
+      expect(res3.getSuccess()).toEqual(false);
+
+      await testKeynodeUtils.cleanupRemoteKeynode(server);
+    }, 50000); // ping needs to timeout, so longer test timeout required
+    // test('can claim a node', async () => {
+    //   fail('Claiming a node not implemented.');
+    // });
+    test('can find a node (local)', async () => {
+      const nodesFind =
+        grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
+          client,
+          client.nodesFind,
+        );
+      // Case 1: node already exists in the local node graph (no contact required)
+      const nodeId = 'nodeId' as NodeId;
+      const nodeAddress: NodeAddress = {
+        ip: '127.0.0.1' as Host,
+        port: 11111 as Port,
+      };
+      await nodeManager.setNode(nodeId, nodeAddress);
+
+      const nodeMessage = new clientPB.NodeMessage();
+      nodeMessage.setName(nodeId);
+      const res = await nodesFind(nodeMessage, callCredentials);
+      expect(res.getId()).toEqual(nodeId);
+      expect(res.getHost()).toEqual(nodeAddress.ip);
+      expect(res.getPort()).toEqual(nodeAddress.port);
+    });
+    test('can find a node (contacts remote node)', async () => {
+      const server = await testKeynodeUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
+      // Case 2: node can be found on the remote node
+      const nodeId = 'nodeId' as NodeId;
+      const nodeAddress: NodeAddress = {
+        ip: '127.0.0.1' as Host,
+        port: 11111 as Port,
+      };
+      await server.nodes.setNode(nodeId, nodeAddress);
+      const nodesFind =
+        grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
+          client,
+          client.nodesFind,
+        );
+      const nodeMessage = new clientPB.NodeMessage();
+      nodeMessage.setName(nodeId);
+      const res = await nodesFind(nodeMessage, callCredentials);
+      expect(res.getId()).toEqual(nodeId);
+      expect(res.getHost()).toEqual(nodeAddress.ip);
+      expect(res.getPort()).toEqual(nodeAddress.port);
+
+      await testKeynodeUtils.cleanupRemoteKeynode(server);
+    });
+    test(
+      'cannot find a node (contacts remote node)',
+      async () => {
+        const server = await testKeynodeUtils.setupRemoteKeynode({
+          logger: logger,
+        });
+        await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
+        // Case 3: node exhausts all contacts and cannot find node
+        const nodeId = 'unfindableNode' as NodeId;
+        // Add a single dummy node to the server node graph database
+        // Server will not be able to connect to this node (the only node in its
+        // database), and will therefore not be able to locate the node.
+        server.nodes.setNode(
+          'dummyNode' as NodeId,
+          {
+            ip: '127.0.0.2' as Host,
+            port: 22222 as Port,
+          } as NodeAddress,
+        );
+        const nodesFind =
+          grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
+            client,
+            client.nodesFind,
+          );
+        const nodeMessage = new clientPB.NodeMessage();
+        nodeMessage.setName(nodeId);
+        // So unfindableNode cannot be found
+        await expect(nodesFind(nodeMessage, callCredentials)).rejects.toThrow(
+          nodesErrors.ErrorNodeGraphNodeNotFound,
+        );
+
+        await testKeynodeUtils.cleanupRemoteKeynode(server);
+      },
+      global.defaultTimeout * 3,
+    );
   });
 });

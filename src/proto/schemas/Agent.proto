@@ -9,14 +9,11 @@ service Agent {
   rpc GetGitInfo (InfoRequest) returns (stream PackChunk) {};
   rpc GetGitPack(stream PackChunk) returns (stream PackChunk) {};
   rpc ScanVaults (NodeIdMessage) returns (stream PackChunk) {};
-  rpc GetRootCertificate (EmptyMessage) returns (CertificateMessage) {}
-  rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {}
 
+  rpc GetNodeDetails (EmptyMessage) returns (NodeDetailsMessage) {}
   rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
   rpc GetClaims (ClaimTypeMessage) returns (ClaimsMessage) {}
   rpc GetChainData (EmptyMessage) returns (ChainDataMessage) {}
-
-  rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {}
 
   rpc SendHolePunchMessage (RelayMessage) returns (EmptyMessage) {}
 
@@ -63,10 +60,6 @@ message ConnectionMessage {
   string bIp = 4;
 }
 
-message CertificateMessage {
-  string cert = 1;
-}
-
 message RelayMessage {
   string srcId = 1;
   string targetId = 2;
@@ -76,6 +69,17 @@ message RelayMessage {
 
 message NodeIdMessage {
   string nodeId = 1;
+}
+
+message NodeDetailsMessage {
+  // This is a hash of the public key that uniquely identifies the node
+  string node_id = 1;
+
+  // public key of the node (root key)
+  string public_key = 2;
+
+  // host:port of node
+  string node_address = 3;
 }
 
 message NodeAddressMessage {

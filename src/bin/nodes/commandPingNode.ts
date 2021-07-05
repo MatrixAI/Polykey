@@ -3,19 +3,21 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
+import * as ErrorsBin from '../errors';
+import { ErrorNodeGraphNodeNotFound } from '../../errors';
 
-const commandGetNode = createCommand('get', {
+const commandGetNode = createCommand('ping', {
   description: {
-    description: 'Gets the information of a node',
+    description: "Pings a node to check if it's online",
     args: {
-      node: '(optional) Id of the node..',
+      node: 'Id of the node.',
     },
   },
   nodePath: true,
   verbose: true,
   format: true,
 });
-commandGetNode.arguments('[node]');
+commandGetNode.arguments('<node>');
 commandGetNode.action(async (node, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
@@ -29,38 +31,41 @@ commandGetNode.action(async (node, options) => {
   }
 
   const client = new PolykeyClient(clientConfig);
-  let res: clientPB.NodeDetailsMessage;
+
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    if (node) {
-      //getting specific node.
-      const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName(node);
-      res = await grpcClient.nodesGetDetails(
+    //Pinging a specific node.
+    const nodeMessage = new clientPB.NodeMessage();
+    nodeMessage.setName(node);
+    let statusMessage;
+    let error;
+    try {
+      statusMessage = await grpcClient.nodesPing(
         nodeMessage,
         await client.session.createJWTCallCredentials(),
       );
-    } else {
-      //Getting keynode.
-      const emptyMessage = new clientPB.EmptyMessage();
-      res = await grpcClient.nodesGetLocalDetails(
-        emptyMessage,
-        await client.session.createJWTCallCredentials(),
-      );
+    } catch (err) {
+      if (err instanceof ErrorNodeGraphNodeNotFound) {
+        error = new ErrorsBin.ErrorPingNodeFailed(
+          `Failed to resolve node ID ${node} to an address.`,
+        );
+      } else {
+        throw err;
+      }
     }
-    //Output here depends on the format of the response.
-    let output: string[] | any = [];
-    if (options.format === 'json') {
-      //Json format.
-      output = res.toObject();
-    } else {
-      // list format.
-      output.push(`NodeID: ${res.getNodeId()}`);
-      output.push(`Address: ${res.getNodeAddress()}`);
-      output.push(`${res.getPublicKey()}`);
-    }
+
+    const status = { success: false, message: '' };
+    status.success = statusMessage ? statusMessage.getSuccess() : false;
+    if (!status.success && !error)
+      error = new ErrorsBin.ErrorPingNodeFailed('No response received');
+
+    //Constructing message.
+    if (status.success) status.message = 'Node is Active.';
+    else status.message = error.message;
+
+    const output: any = options.format === 'json' ? status : [status.message];
 
     process.stdout.write(
       outputFormatter({
@@ -68,11 +73,14 @@ commandGetNode.action(async (node, options) => {
         data: output,
       }),
     );
+
+    if (error) throw error;
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
-    }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
+    } else if (err instanceof ErrorsBin.ErrorPingNodeFailed) {
+      // Do nothing.
+    } else if (err instanceof errors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
       process.stdout.write(

@@ -14,9 +14,9 @@ import * as grpc from '@grpc/grpc-js';
 import * as clientPB from '../proto/js/Client_pb';
 
 import * as grpcUtils from '../grpc/utils';
-import { NodeInfo } from '@/nodes/types';
-import * as utils from '@/client/utils';
-import * as errors from '@/errors';
+import { NodeInfo } from '../nodes/types';
+import * as utils from '../client/utils';
+import * as errors from '../errors';
 
 const createIdentitiesRPC = ({
   identitiesManager,

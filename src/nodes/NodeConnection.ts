@@ -1,4 +1,4 @@
-import type { NodeId, NodeData } from './types';
+import type { NodeId, NodeDetails, NodeData } from './types';
 import type { Host, Port, ProxyConfig } from '../network/types';
 import type { KeyManager } from '../keys';
 import { NodeAddressMessage } from '../proto/js/Agent_pb';
@@ -7,8 +7,8 @@ import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type { ClaimId, ClaimEncoded } from '../claims/types';
 
 import Logger from '@matrixai/logger';
-import * as nodeUtils from './utils';
-import * as nodeErrors from './errors';
+import * as nodesUtils from './utils';
+import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
 import { agentPB, GRPCClientAgent } from '../agent';
 import { ForwardProxy, utils as networkUtils } from '../network';
@@ -115,7 +115,11 @@ class NodeConnection {
           signature,
         );
       }),
-    ]);
+    ]).catch(async (e) => {
+      await this.stop();
+      // If we catch an error, re-throw it to handle it.
+      throw e;
+    });
     // 5. When finished, you have a connection to other node
     // Then you can create/start the GRPCClient, and perform the request
     await this.client.start({});
@@ -139,16 +143,32 @@ class NodeConnection {
    */
   public getRootCertChain(): Array<Certificate> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeConnectionNotStarted();
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
     }
     const connInfo = this.fwdProxy.getConnectionInfoByIngress(
       this.ingressHost,
       this.ingressPort,
     );
     if (!connInfo) {
-      throw new nodeErrors.ErrorNodeConnectionInfoNotExist();
+      throw new nodesErrors.ErrorNodeConnectionInfoNotExist();
     }
     return connInfo.certificates;
+  }
+
+  /**
+   * Performs a GRPC request to retrieve the node details of the target node.
+   */
+  public async getNodeDetails(): Promise<NodeDetails> {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
+    }
+    const emptyMessage = new agentPB.EmptyMessage();
+    const response = await this.client.getNodeDetails(emptyMessage);
+    return {
+      id: response.getNodeId(),
+      publicKey: response.getPublicKey(),
+      address: response.getNodeAddress(),
+    } as NodeDetails;
   }
 
   /**
@@ -179,7 +199,7 @@ class NodeConnection {
    */
   public async getClosestNodes(targetNodeId: NodeId): Promise<Array<NodeData>> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeConnectionNotStarted();
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
     }
     // Construct the message
     const nodeIdMessage = new agentPB.NodeIdMessage();
@@ -197,7 +217,10 @@ class NodeConnection {
             ip: address.getIp() as Host,
             port: address.getPort() as Port,
           },
-          distance: nodeUtils.calculateDistance(targetNodeId, nodeId as NodeId),
+          distance: nodesUtils.calculateDistance(
+            targetNodeId,
+            nodeId as NodeId,
+          ),
         });
       });
     return nodes;
@@ -220,7 +243,7 @@ class NodeConnection {
     signature: Buffer,
   ): Promise<void> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeConnectionNotStarted();
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
     }
     const relayMsg = new agentPB.RelayMessage();
     relayMsg.setSrcid(sourceNodeId);
@@ -237,7 +260,7 @@ class NodeConnection {
    */
   public async getChainData(): Promise<ChainDataEncoded> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeConnectionNotStarted();
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
     }
     const chainData: ChainDataEncoded = {};
     const emptyMsg = new agentPB.EmptyMessage();

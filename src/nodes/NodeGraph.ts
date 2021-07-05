@@ -8,6 +8,7 @@ import type {
 import type { Host, Port } from '../network/types';
 import type { DB } from '../db';
 import type { DBLevel, DBOp } from '../db/types';
+import type { NodeConnection } from '../nodes';
 
 import { Mutex } from 'async-mutex';
 import lexi from 'lexicographic-integer';
@@ -430,7 +431,7 @@ class NodeGraph {
     // If we have no nodes at all in our database (even after synchronising),
     // then we should throw an error. We aren't going to find any others.
     if (shortlist.length == 0) {
-      throw new nodeErrors.ErrorNodeGraphEmptyShortlist();
+      throw new nodeErrors.ErrorNodeGraphEmptyDatabase();
     }
     // Need to keep track of the nodes that have been contacted.
     // Not sufficient to simply check if there's already a pre-existing connection
@@ -452,10 +453,16 @@ class NodeGraph {
       }
       // Connect to the node (check if pre-existing connection exists, otherwise
       // create a new one)
-      const nodeConnection = await this.nodeManager.createConnectionToNode(
-        nextNode.id,
-        nextNode.address,
-      );
+      let nodeConnection: NodeConnection;
+      try {
+        nodeConnection = await this.nodeManager.createConnectionToNode(
+          nextNode.id,
+          nextNode.address,
+        );
+      } catch (e) {
+        // If we can't connect to the node, then skip it.
+        continue;
+      }
       contacted[nextNode.id] = true;
       // Ask the node to get their own closest nodes to the target.
       const foundClosest = await nodeConnection.getClosestNodes(targetNodeId);
@@ -471,10 +478,13 @@ class NodeGraph {
           // Attempt to create a connection to the node. Will throw an error
           // (ErrorConnectionStart, from ConnectionForward) if the connection
           // cannot be established
-          await this.nodeManager.createConnectionToNode(
-            nodeData.id,
-            nodeData.address,
-          );
+
+          // TODO: For now, will simply add this target node without creating a
+          // connection to it.
+          // await this.nodeManager.createConnectionToNode(
+          //   nodeData.id,
+          //   nodeData.address,
+          // );
           await this.setNode(nodeData.id, nodeData.address);
           foundAddress = nodeData.address;
           // We have found the target node, so we can stop trying to look for it

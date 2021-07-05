@@ -3,7 +3,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
-import { parseId } from '@/bin/identities/utils';
+import { parseId } from './utils';
 import * as utils from '../../utils';
 
 const commandTrustGestalts = createCommand('perms', {

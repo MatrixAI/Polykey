@@ -264,6 +264,35 @@ describe('NodeConnection', () => {
     );
   });
 
+  test('receives node details of connected target', async () => {
+    const conn = new NodeConnection({
+      sourceNodeId: sourceNodeId,
+      targetNodeId: targetNodeId,
+      targetHost: targetHost,
+      targetPort: targetPort,
+      forwardProxy: fwdProxy,
+      keyManager: clientKeyManager,
+      logger: logger,
+    });
+    await conn.start({});
+    await revProxy.openConnection(sourceHost, sourcePort);
+
+    const details = await conn.getNodeDetails();
+    expect(details.id).toBe(targetNodeId);
+    expect(details.publicKey).toBe(
+      serverKeyManager.getRootKeyPairPem().publicKey,
+    );
+    expect(details.address).toBe(
+      networkUtils.buildAddress(targetHost, targetPort),
+    );
+
+    await conn.stop();
+    await revProxy.closeConnection(
+      fwdProxy.getEgressHost(),
+      fwdProxy.getEgressPort(),
+    );
+  });
+
   test('receives 20 closest local nodes from connected target', async () => {
     const conn = new NodeConnection({
       sourceNodeId: sourceNodeId,

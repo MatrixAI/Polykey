@@ -27,7 +27,6 @@ const createVaultRPC = ({
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-
       try {
         await utils.verifyToken(call.metadata, sessionManager);
         const vaults: Array<{

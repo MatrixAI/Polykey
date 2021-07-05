@@ -87,7 +87,7 @@ async function spawnBackgroundAgent(
     password: password,
   };
 
-  let pid: number = 0;
+  let pid;
 
   let externalResolve;
   let externalReject;

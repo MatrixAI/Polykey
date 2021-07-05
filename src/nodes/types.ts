@@ -1,9 +1,16 @@
 import type { Opaque } from '../types';
-import type { Host, Port } from '../network/types';
+import type { Address, Host, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
+import type { PublicKeyPem } from '../keys/types';
 
 type NodeId = Opaque<'NodeId', string>;
+
+type NodeDetails = {
+  id: NodeId;
+  publicKey: PublicKeyPem;
+  address: Address;
+};
 
 type NodeAddress = {
   ip: Host;
@@ -67,6 +74,7 @@ type NodeGraphOp =
 
 export type {
   NodeId,
+  NodeDetails,
   NodeAddress,
   NodeData,
   NodeClaim,

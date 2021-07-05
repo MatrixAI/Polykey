@@ -26,6 +26,16 @@ class ErrorInvalidArguments extends ErrorCLI {
   exitCode: number = 64;
 }
 
+class ErrorPingNodeFailed extends ErrorCLI {
+  description: string = 'Node was not online or not found.';
+  exitCode: number = 1;
+}
+
+class ErrorFindNodeFailed extends ErrorCLI {
+  description: string = 'Failed to find the node in the DHT';
+  exitCode: number = 1;
+}
+
 export {
   ErrorCLI,
   ErrorGRPCNotStarted,
@@ -33,4 +43,6 @@ export {
   ErrorVaultNameAmbiguous,
   ErrorSecretsUndefined,
   ErrorInvalidArguments,
+  ErrorPingNodeFailed,
+  ErrorFindNodeFailed,
 };

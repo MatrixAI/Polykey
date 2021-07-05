@@ -125,28 +125,22 @@ function createAgentService({
       }
       await genWritable.next(null);
     },
-    getRootCertificate: async (
+    getNodeDetails: async (
       call: grpc.ServerUnaryCall<
         agentPB.EmptyMessage,
-        agentPB.CertificateMessage
+        agentPB.NodeDetailsMessage
       >,
-      callback: grpc.sendUnaryData<agentPB.CertificateMessage>,
+      callback: grpc.sendUnaryData<agentPB.NodeDetailsMessage>,
     ): Promise<void> => {
-      const response = new agentPB.CertificateMessage();
-      response.setCert('XXXXXXXXXXXXXXXXMYCERTXXXXXXXXXXXXXXXXXX');
-      callback(null, response);
-    },
-    requestCertificateSigning: async (
-      call: grpc.ServerUnaryCall<
-        agentPB.CertificateMessage,
-        agentPB.CertificateMessage
-      >,
-      callback: grpc.sendUnaryData<agentPB.CertificateMessage>,
-    ): Promise<void> => {
-      const response = new agentPB.CertificateMessage();
-      const requestCert = call.request.getCert();
-      // sign it
-      response.setCert(requestCert);
+      const response = new agentPB.NodeDetailsMessage();
+      try {
+        const details = nodeManager.getNodeDetails();
+        response.setNodeId(details.id);
+        response.setPublicKey(details.publicKey);
+        response.setNodeAddress(details.address);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), response);
+      }
       callback(null, response);
     },
     /**
@@ -162,19 +156,23 @@ function createAgentService({
       >,
       callback: grpc.sendUnaryData<agentPB.NodeTableMessage>,
     ): Promise<void> => {
-      const targetNodeId = call.request.getNodeid() as NodeId;
       const response = new agentPB.NodeTableMessage();
-
-      // Get all local nodes that are closest to the target node from the request
-      const closestNodes = await nodeManager.getClosestLocalNodes(targetNodeId);
-      for (const node of closestNodes) {
-        const addressMessage = new agentPB.NodeAddressMessage();
-        addressMessage.setIp(node.address.ip);
-        addressMessage.setPort(node.address.port);
-        // Add the node to the response's map (mapping of node ID -> node address)
-        response.getNodetableMap().set(node.id, addressMessage);
+      try {
+        const targetNodeId = call.request.getNodeid() as NodeId;
+        // Get all local nodes that are closest to the target node from the request
+        const closestNodes = await nodeManager.getClosestLocalNodes(
+          targetNodeId,
+        );
+        for (const node of closestNodes) {
+          const addressMessage = new agentPB.NodeAddressMessage();
+          addressMessage.setIp(node.address.ip);
+          addressMessage.setPort(node.address.port);
+          // Add the node to the response's map (mapping of node ID -> node address)
+          response.getNodetableMap().set(node.id, addressMessage);
+        }
+      } catch (err) {
+        callback(grpcUtils.fromError(err), response);
       }
-
       callback(null, response);
     },
     /**
@@ -206,51 +204,29 @@ function createAgentService({
       callback: grpc.sendUnaryData<agentPB.ChainDataMessage>,
     ): Promise<void> => {
       const response = new agentPB.ChainDataMessage();
-      const chainData = await nodeManager.getChainData();
-      // Iterate through each claim in the chain, and serialize for transport
-      for (const c in chainData) {
-        const claimId = c as ClaimId;
-        const claim = chainData[claimId];
-        const claimMessage = new agentPB.ClaimMessage();
-        // Will always have a payload (never undefined) so cast as string
-        claimMessage.setPayload(claim.payload as string);
-        // Add the signatures
-        for (const signatureData of claim.signatures) {
-          const signature = new agentPB.SignatureMessage();
-          // Will always have a protected header (never undefined) so cast as string
-          signature.setHeader(signatureData.protected as string);
-          signature.setSignature(signatureData.signature);
-          claimMessage.getSignaturesList().push(signature);
+      try {
+        const chainData = await nodeManager.getChainData();
+        // Iterate through each claim in the chain, and serialize for transport
+        for (const c in chainData) {
+          const claimId = c as ClaimId;
+          const claim = chainData[claimId];
+          const claimMessage = new agentPB.ClaimMessage();
+          // Will always have a payload (never undefined) so cast as string
+          claimMessage.setPayload(claim.payload as string);
+          // Add the signatures
+          for (const signatureData of claim.signatures) {
+            const signature = new agentPB.SignatureMessage();
+            // Will always have a protected header (never undefined) so cast as string
+            signature.setHeader(signatureData.protected as string);
+            signature.setSignature(signatureData.signature);
+            claimMessage.getSignaturesList().push(signature);
+          }
+          // Add the serialized claim
+          response.getChaindataMap().set(claimId, claimMessage);
         }
-        // Add the serialized claim
-        response.getChaindataMap().set(claimId, claimMessage);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), response);
       }
-      callback(null, response);
-    },
-    synchronizeDHT: async (
-      call: grpc.ServerUnaryCall<
-        agentPB.EmptyMessage,
-        agentPB.NodeTableMessage
-      >,
-      callback: grpc.sendUnaryData<agentPB.NodeTableMessage>,
-    ): Promise<void> => {
-      const response = new agentPB.NodeTableMessage();
-
-      // GET THE DHT SOMEHOW
-      const addresses = [
-        { ip: '5.5.5.5', port: 1234 },
-        { ip: '6.6.6.6', port: 5678 },
-      ];
-
-      for (const address of addresses) {
-        const addressMessage = new agentPB.NodeAddressMessage();
-        addressMessage.setIp(address.ip);
-        addressMessage.setPort(address.port);
-        response
-          .getNodetableMap()
-          .set(`nodeIdxxx${address.ip}xxx`, addressMessage);
-      }
-
       callback(null, response);
     },
     sendHolePunchMessage: async (
@@ -258,22 +234,25 @@ function createAgentService({
       callback: grpc.sendUnaryData<agentPB.EmptyMessage>,
     ): Promise<void> => {
       const response = new agentPB.EmptyMessage();
-      // Firstly, check if this node is the desired node
-      // If so, then we want to make this node start sending hole punching packets
-      // back to the source node.
-      if (nodeManager.getNodeId() == (call.request.getTargetid() as NodeId)) {
-        const [host, port] = networkUtils.parseAddress(
-          call.request.getEgressaddress(),
-        );
-        await nodeManager.openConnection(host, port);
-        // Otherwise, find if node in table
-        // If so, ask the nodemanager to relay to the node
-      } else if (
-        await nodeManager.knowsNode(call.request.getSrcid() as NodeId)
-      ) {
-        nodeManager.relayHolePunchMessage(call.request);
+      try {
+        // Firstly, check if this node is the desired node
+        // If so, then we want to make this node start sending hole punching packets
+        // back to the source node.
+        if (nodeManager.getNodeId() == (call.request.getTargetid() as NodeId)) {
+          const [host, port] = networkUtils.parseAddress(
+            call.request.getEgressaddress(),
+          );
+          await nodeManager.openConnection(host, port);
+          // Otherwise, find if node in table
+          // If so, ask the nodemanager to relay to the node
+        } else if (
+          await nodeManager.knowsNode(call.request.getSrcid() as NodeId)
+        ) {
+          nodeManager.relayHolePunchMessage(call.request);
+        }
+      } catch (err) {
+        callback(grpcUtils.fromError(err), response);
       }
-
       callback(null, response);
     },
     checkVaultPermisssions: async (
