@@ -28,6 +28,13 @@ class ErrorGRPCServerVerification extends ErrorGRPC {}
  */
 class ErrorGRPCConnection extends ErrorGRPC {}
 
+/**
+ * Generic Message error
+ */
+class ErrorGRPCInvalidMessage extends ErrorGRPC {
+  exitCode: number = 70;
+}
+
 export {
   ErrorGRPC,
   ErrorGRPCClientNotStarted,
@@ -40,4 +47,5 @@ export {
   ErrorGRPCServerNotSecured,
   ErrorGRPCServerVerification,
   ErrorGRPCConnection,
+  ErrorGRPCInvalidMessage,
 };

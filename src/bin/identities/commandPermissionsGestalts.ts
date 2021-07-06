@@ -3,12 +3,12 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
-import { parseId } from './utils';
+import { parseId } from '@/bin/identities/utils';
 import * as utils from '../../utils';
 
-const commandTrustGestalts = createCommand('trust', {
+const commandTrustGestalts = createCommand('perms', {
   description: {
-    description: 'Trusts a node id or identity',
+    description: 'gets the permisson for an node or identity',
     args: {
       id: 'nodeId or "providerId:identityId"',
     },
@@ -30,43 +30,40 @@ commandTrustGestalts.action(async (id, options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const action = 'notify';
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
-    const setActionMessage = new clientPB.SetActionsMessage();
-    setActionMessage.setAction(action);
+    let actions;
     if (nodeId) {
-      // Setting by Node.
+      //Getting by Node.
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(nodeId);
-      setActionMessage.setNode(nodeMessage);
-      await grpcClient.gestaltsSetActionByNode(
-        setActionMessage,
+      const test = await grpcClient.gestaltsGetActionsByNode(
+        nodeMessage,
         await client.session.createJWTCallCredentials(),
       );
+      actions = test.getActionList();
     } else {
-      //  Setting by Identity
+      //Getting by Identity
       const providerMessage = new clientPB.ProviderMessage();
       providerMessage.setId(providerId!);
       providerMessage.setMessage(identityId!);
-      setActionMessage.setIdentity(providerMessage);
-      await grpcClient.gestaltsSetActionByIdentity(
-        setActionMessage,
+      const test = await grpcClient.gestaltsGetActionsByIdentity(
+        providerMessage,
         await client.session.createJWTCallCredentials(),
       );
+      actions = test.getActionList();
     }
 
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [`Trusting: ${id}`],
+        data: [`Permissions: ${actions}`],
       }),
     );
   } catch (err) {

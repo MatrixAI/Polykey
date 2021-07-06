@@ -6,9 +6,9 @@ import { createCommand, outputFormatter } from '../utils';
 import { parseId } from './utils';
 import * as utils from '../../utils';
 
-const commandTrustGestalts = createCommand('trust', {
+const commandTrustGestalts = createCommand('untrust', {
   description: {
-    description: 'Trusts a node id or identity',
+    description: 'untrusts a node id or identity',
     args: {
       id: 'nodeId or "providerId:identityId"',
     },
@@ -47,7 +47,7 @@ commandTrustGestalts.action(async (id, options) => {
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(nodeId);
       setActionMessage.setNode(nodeMessage);
-      await grpcClient.gestaltsSetActionByNode(
+      await grpcClient.gestaltsUnsetActionByNode(
         setActionMessage,
         await client.session.createJWTCallCredentials(),
       );
@@ -57,7 +57,7 @@ commandTrustGestalts.action(async (id, options) => {
       providerMessage.setId(providerId!);
       providerMessage.setMessage(identityId!);
       setActionMessage.setIdentity(providerMessage);
-      await grpcClient.gestaltsSetActionByIdentity(
+      await grpcClient.gestaltsUnsetActionByIdentity(
         setActionMessage,
         await client.session.createJWTCallCredentials(),
       );
@@ -66,7 +66,7 @@ commandTrustGestalts.action(async (id, options) => {
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [`Trusting: ${id}`],
+        data: [`untrusting: ${id}`],
       }),
     );
   } catch (err) {

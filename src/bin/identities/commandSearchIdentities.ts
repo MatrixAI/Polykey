@@ -1,25 +1,24 @@
-import { clientPB } from '../../client';
-import { createCommand, outputFormatter } from '../utils';
+import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import PolykeyClient from '@/PolykeyClient';
-import { errors } from '@/grpc';
-import * as utils from '@/utils';
+import { clientPB } from '../../client';
+import PolykeyClient from '../../PolykeyClient';
+import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
 
-const commandAugmentKeynode = createCommand('authenticate', {
+const commandTrustGestalts = createCommand('search', {
   description: {
-    description: 'authenticate a social identity provider e.g. github.com',
+    description: 'Searches a provider for any connected identities.',
     args: {
-      providerId: 'Provider that identity is linked to',
-      identityId: 'Identitiy to augment the keynode with',
+      providerId: 'The provider to search on',
     },
   },
+  nodePath: true,
   verbose: true,
   format: true,
-  nodePath: true,
 });
-commandAugmentKeynode.arguments('<providerId> <identityId>');
-commandAugmentKeynode.alias('aug');
-commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
+
+commandTrustGestalts.arguments('<providerId>');
+commandTrustGestalts.action(async (providerId, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -32,39 +31,21 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-
   try {
-    //starting client
     await client.start({});
     const grpcClient = client.grpcClient;
-
-    //constructing message.
     const providerMessage = new clientPB.ProviderMessage();
     providerMessage.setId(providerId);
-    providerMessage.setMessage(identitiyId);
 
-    //sending message.
-    const gen = grpcClient.identitiesAuthenticate(
+    const res = await grpcClient.identitiesGetInfo(
       providerMessage,
       await client.session.createJWTCallCredentials(),
     );
-    const codeMessage = (await gen.next()).value;
 
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [`Your device code is: ${codeMessage!.getMessage()}`],
-      }),
-    );
-
-    const successMessage = (await gen.next()).value;
-
-    process.stdout.write(
-      outputFormatter({
-        type: options.format === 'json' ? 'json' : 'list',
-        data: [
-          `Successfully authenticated user: ${successMessage!.getMessage()}`,
-        ],
+        data: [`Found identity: ${res.getId()}:${res.getMessage()}`],
       }),
     );
   } catch (err) {
@@ -74,7 +55,7 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
     if (err instanceof errors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {
-      process.stderr.write(
+      process.stdout.write(
         outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: ['Error:', err.message],
@@ -87,4 +68,4 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
   }
 });
 
-export default commandAugmentKeynode;
+export default commandTrustGestalts;
