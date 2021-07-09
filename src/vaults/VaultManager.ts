@@ -209,7 +209,10 @@ class VaultManager {
    */
   public async vaultStats(vaultId: string): Promise<fs.Stats> {
     const vault = this.vaults[vaultId].vault;
-    return vault.EncryptedFS.statSync(vault.vaultId);
+    const stat = utils
+      .promisify(vault.EncryptedFS.stat)
+      .bind(vault.EncryptedFS);
+    return await stat(vault.vaultId);
   }
 
   /**

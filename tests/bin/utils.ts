@@ -1,6 +1,13 @@
 import path from 'path';
-import { exec } from 'child_process';
+import { exec, ExecException } from 'child_process';
 import main from '../../src/bin/polykey';
+
+type CliRes = {
+  code: number;
+  error: ExecException | null;
+  stdout: string;
+  stderr: string;
+};
 
 /**
  * Creates a new process and executes './src/bin/polykey' with the args provided
@@ -9,8 +16,8 @@ import main from '../../src/bin/polykey';
  * @param cwd current working directory, usually '.'
  * @returns { code, error, stdout, stderr }
  */
-function cli(args: Array<string>, cwd: string) {
-  return new Promise((resolve) => {
+function cli(args: Array<string>, cwd: string): Promise<CliRes> {
+  return new Promise<CliRes>((resolve) => {
     exec(
       `ts-node -r tsconfig-paths/register ${path.resolve(
         './src/bin/polykey',

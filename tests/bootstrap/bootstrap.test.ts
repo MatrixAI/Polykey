@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { bootstrapPolykeyState, checkKeynodeState } from '@/bootstrap';
 import PolykeyAgent from '@/PolykeyAgent';
@@ -8,7 +9,9 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as bootstrapErrors from '@/bootstrap/errors';
 import * as agentUtils from '@/agent/utils';
 
-jest.mock('@matrixai/logger'); // Cleans up output.
+const logger = new Logger('AgentServerTest', LogLevel.WARN, [
+  new StreamHandler(),
+]);
 
 async function fakeKeynode(nodePath) {
   await fs.promises.mkdir(path.join(nodePath, 'keys'));
@@ -54,7 +57,10 @@ describe('Bootstrap', () => {
     });
 
     test('Keynode without contents in directory', async () => {
-      const pk = new PolykeyAgent({ nodePath: nodePath });
+      const pk = new PolykeyAgent({
+        nodePath: nodePath,
+        logger: logger,
+      });
       await pk.start({ password: 'password' });
       await pk.stop();
       expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
@@ -93,8 +99,8 @@ describe('Bootstrap', () => {
     test('Should be able to start agent on created state.', async () => {
       await bootstrapPolykeyState(nodePath, password);
       const polykeyAgent = new PolykeyAgent({
-        fs: fs,
         nodePath: nodePath,
+        logger: logger,
       });
       await polykeyAgent.start({ password });
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeTruthy();

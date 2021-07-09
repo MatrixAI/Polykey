@@ -1,14 +1,4 @@
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
-import { pk } from './utils';
-import { PolykeyAgent } from '../../src';
 import main from '@/bin/polykey';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
-const logger = new Logger('CLI Test', LogLevel.WARN, [new StreamHandler()]);
-let dataDir: string;
-let polykeyAgent: PolykeyAgent;
 
 describe('polykey', () => {
   test('default help display', async () => {

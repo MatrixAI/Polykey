@@ -33,7 +33,6 @@ describe('Polykey', () => {
   });
   test('async start constructs node path', async () => {
     const nodePath = `${dataDir}/polykey`;
-    const dbPath = `${dataDir}/polykey/db`;
     const pk = new PolykeyAgent({ nodePath, logger });
     await pk.start({ password: 'password' });
     const nodePathContents = await fs.promises.readdir(nodePath);

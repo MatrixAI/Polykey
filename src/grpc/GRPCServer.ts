@@ -177,6 +177,10 @@ class GRPCServer {
     }
     return;
   }
+
+  public closeServerForce(): void {
+    this.server.forceShutdown();
+  }
 }
 
 export default GRPCServer;

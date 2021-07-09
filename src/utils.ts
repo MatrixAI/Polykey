@@ -1,15 +1,9 @@
-import fs from 'fs';
-import path from 'path';
 import os from 'os';
 import process from 'process';
 import { Buffer } from 'buffer';
 import { FileSystem, Timer } from './types';
-import PolykeyAgent from './PolykeyAgent';
-import { Lockfile } from './lockfile';
 
 import * as errors from './errors';
-import * as utils from './utils';
-import * as networkUtils from './network/utils';
 
 function getDefaultNodePath(): string {
   const prefix = 'polykey';

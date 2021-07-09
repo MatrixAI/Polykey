@@ -205,17 +205,10 @@ class Polykey {
 
     // Get GRPC Services
     const clientService: IClientServer = createClientService({
-      keyManager: this.keys,
-      vaultManager: this.vaults,
-      nodeManager: this.nodes,
-      identitiesManager: this.identities,
-      gestaltGraph: this.gestalts,
-      gitManager: this.gitManager,
-      sessionManager: this.sessionManager,
+      polykeyAgent: this,
     });
 
     const agentService: IAgentServer = createAgentService({
-      keyManager: this.keys,
       vaultManager: this.vaults,
       nodeManager: this.nodes,
       gitBackend: this.gitBackend,
@@ -364,8 +357,6 @@ class Polykey {
     await this.lockfile.stop();
 
     await this.revProxy.stop();
-
-    await this.grpcServer.stop();
 
     await this.gitManager.stop();
 

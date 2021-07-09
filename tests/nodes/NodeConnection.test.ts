@@ -167,7 +167,6 @@ describe('NodeConnection', () => {
     await serverNodeManager.start({ nodeId: targetNodeId });
 
     agentService = createAgentService({
-      keyManager: serverKeyManager,
       vaultManager: serverVaultManager,
       nodeManager: serverNodeManager,
       gitBackend: serverGitBackend,
@@ -506,7 +505,10 @@ describe('NodeConnection', () => {
     await clientGestaltGraph.stop();
     await clientVaultManager.stop();
     await clientDb.stop();
-    await fs.promises.rmdir(dataDir2, { recursive: true });
+    await fs.promises.rm(dataDir2, {
+      force: true,
+      recursive: true,
+    });
   });
   test('cloning and pulling the vaults of another agent over a node connection', async () => {
     const conn = new NodeConnection({
@@ -592,6 +594,9 @@ describe('NodeConnection', () => {
     await clientGestaltGraph.stop();
     await clientVaultManager.stop();
     await clientDb.stop();
-    await fs.promises.rmdir(dataDir2, { recursive: true });
+    await fs.promises.rm(dataDir2, {
+      force: true,
+      recursive: true,
+    });
   });
 });

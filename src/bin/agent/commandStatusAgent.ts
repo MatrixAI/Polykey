@@ -1,51 +1,44 @@
-import { errors } from '../../grpc';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
-import PolykeyClient from '../../PolykeyClient';
-import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
+import * as binUtils from '../utils';
+import { checkAgentRunning } from '../../agent/utils';
 
-const commandStatusAgent = createCommand('status', {
-  description: {
-    description: 'Gets the status of the polykey agent',
-    args: {},
-  },
+const commandStatusAgent = binUtils.createCommand('status', {
+  description: 'Gets the status of the polykey agent',
   nodePath: true,
   verbose: true,
   format: true,
+  passwordFile: true,
 });
 commandStatusAgent.action(async (options) => {
-  const clientConfig = {};
-  clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
-  if (options.verbose) {
-    clientConfig['logger'].setLevel(LogLevel.DEBUG);
-  }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
-  }
+  const nodePath = options.nodePath
+    ? options.nodePath
+    : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const message = (await checkAgentRunning(options.nodePath))
+    ? 'online'
+    : 'offline';
 
   try {
-    await client.start({});
-    const grpcClient = client.grpcClient;
+    process.stdout.write(
+      binUtils.outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [`Agent is ${message}`],
+      }),
+    );
   } catch (err) {
-    if (err instanceof errors.ErrorGRPCClientTimeout) {
-      process.stderr.write(`${err.message}\n`);
-    }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
-      process.stderr.write(`${err.message}\n`);
-    } else {
-      process.stdout.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
-        }),
-      );
-    }
+    process.stderr.write(
+      binUtils.outputFormatter({
+        type: 'error',
+        description: err.description,
+        message: err.message,
+      }),
+    );
+    throw err;
   } finally {
-    client.stop();
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

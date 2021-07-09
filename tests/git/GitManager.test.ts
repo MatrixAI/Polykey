@@ -207,7 +207,6 @@ describe('GitManager is', () => {
     await targetVaultManager.start({});
     await targetNodeManager.start({ nodeId: targetNodeId });
     agentService = createAgentService({
-      keyManager: targetKeyManager,
       vaultManager: targetVaultManager,
       nodeManager: targetNodeManager,
       gitBackend: targetGitBackend,
