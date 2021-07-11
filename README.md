@@ -1,5 +1,7 @@
 # PolyKey (library)
 
+[![pipeline status](https://gitlab.com/MatrixAI/open-source/js-polykey/badges/master/pipeline.svg)](https://gitlab.com/MatrixAI/open-source/js-polykey/commits/master)
+
 ## Overview
 
 PolyKey is decentralised distributed peer to peer (P2P) secret sharing & secret
