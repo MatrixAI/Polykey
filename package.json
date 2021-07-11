@@ -43,8 +43,9 @@
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
-    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts",
-    "bootstrap-certs": "scripts/bootstrap-certs.ts"
+    "docs": "typedoc --out ./docs src && touch ./docs/.nojekyll",
+    "proto-generate": "scripts/proto-generate.sh",
+    "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.2.5",
