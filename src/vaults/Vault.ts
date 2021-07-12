@@ -22,9 +22,10 @@ import Logger from '@matrixai/logger';
 import { GitRequest } from '../git';
 
 import * as utils from '../utils';
-import { utils as gitUtils } from '../git';
 import * as vaultsUtils from './utils';
-import { errors as vaultsErrors } from './';
+import * as gitUtils from '../git/utils';
+import * as vaultsErrors from './errors';
+import * as gitErrors from '../git/errors';
 
 class Vault {
   public readonly baseDir: string;
@@ -78,11 +79,9 @@ class Vault {
     const efs = new EncryptedFS(key, fs, this.baseDir);
     this.efs = efs;
     const exists = utils.promisify(this.efs.exists).bind(this.efs);
-    this.logger.info(`Created vault directory at ${this.baseDir}`);
-
-    if (!(await exists('.git'))) {
-      const release = await this.lock.acquire();
-      try {
+    const release = await this.lock.acquire();
+    try {
+      if (!(await exists('.git'))) {
         await git.init({
           fs: this.efs,
           dir: '',
@@ -103,15 +102,24 @@ class Vault {
           path.join('.git', 'packed-refs'),
           '# pack-refs with: peeled fully-peeled sorted',
         );
-        this.logger.info(
-          `Writing initial vault commit at '${path.join(
-            '.git',
-            'packed-refs',
-          )}'`,
-        );
-      } finally {
-        release();
+        this.logger.info(`Initialising vault at '${this.baseDir}'`);
+      } else {
+        // const files = vaultsUtils.readdirRecursivelyEFS2(this.efs, '', true);
+        // for await (const filepath of files) {
+        //   await git.add({
+        //     fs: this.efs,
+        //     dir: '',
+        //     filepath: filepath,
+        //   });
+        // }
+        // await git.checkout({
+        //   fs: this.efs,
+        //   dir: '',
+        //   force: true,
+        // });
       }
+    } finally {
+      release();
     }
   }
 
@@ -127,8 +135,6 @@ class Vault {
 
   /**
    * Renames the vault, does not effect the underlying fs name
-   *
-   * @param newVaultName name to change to
    */
   public async renameVault(newVaultName: VaultName): Promise<void> {
     this.vaultName = newVaultName;
@@ -136,8 +142,6 @@ class Vault {
 
   /**
    * Retreives stats for a vault
-   *
-   * @returns the stats of the vault directory
    */
   public async stats(): Promise<fs.Stats> {
     return await this.fs.promises.stat(this.baseDir);
@@ -145,15 +149,6 @@ class Vault {
 
   /**
    * Adds a secret to the vault
-   *
-   * @throws ErrorVaultUninitialised if the vault repository has
-   * not been initialised
-   * @throws ErrorSecretDefined if the secret name matches an existing file
-   * @throws ErrorGitFile if the secret added is a .git file
-   * @param secretName full path of the secret to add
-   * @param content content of the secret to add
-   * @param secretPath path of directory to store secret
-   * @returns true if the secret exists in the vault directory
    */
   public async addSecret(
     secretName: SecretName,
@@ -211,10 +206,6 @@ class Vault {
 
   /**
    * Changes the contents of a secret
-   * @throws ErrorSecretUndefined if the secret name does not match
-   * an existing file
-   * @param secretName name of the secret to update
-   * @param content content of the secret to update
    */
   public async updateSecret(
     secretName: SecretName,
@@ -247,12 +238,6 @@ class Vault {
 
   /**
    * Changes the name of a secret in a vault
-   *
-   * @throws ErrorGitFile is the currSecretName or newSecretName is '.git'
-   * @throws ErrorSecretDefined if the new name of the secret already exists
-   * @param currSecretName current name of the secret (full path)
-   * @param newSecretName new name of the secret (full path)
-   * @return true if the new secret name exists in the directory
    */
   public async renameSecret(
     currSecretName: SecretName,
@@ -316,9 +301,6 @@ class Vault {
 
   /**
    * Returns the contents of a secret
-   * @throws ErrorSecretUndefined if secret with specified name does not exist
-   * @param secretName name of secret including the path.
-   * @returns Buffer or string representing the contents of the secret
    */
   public async getSecret(secretName: SecretName): Promise<string> {
     const release = await this.lock.acquire();
@@ -326,6 +308,7 @@ class Vault {
     try {
       return (await readFile(secretName)).toString();
     } catch (err) {
+      // Throw an error if the secret does not exist
       if (err.code === 'ENOENT') {
         throw new vaultsErrors.ErrorSecretUndefined(
           `Secret with name: ${secretName} does not exist`,
@@ -339,13 +322,6 @@ class Vault {
 
   /**
    * Removes a secret from a vault
-   * @throws ErrorGitFile if secretName is '.git'
-   * @throws ErrorRecursiveDelete if the specified secret is a directory but
-   * the deletion is not recursive
-   * @throws ErrorSecretUdefined if the secret does not exist
-   * @param secretName name of the secret
-   * @param recursive if the deletion should be recursive
-   * @returns true if the secret no longer exists in the vault directory
    */
   public async deleteSecret(
     secretName: SecretName,
@@ -366,7 +342,7 @@ class Vault {
         if (fileOptions?.recursive) {
           // Remove the specified directory
           await rmdir(secretName, { recursive: true });
-          this.logger.info(`Deleted directory at '${secretName}}'`);
+          this.logger.info(`Deleted directory at '${secretName}'`);
           await this.commitChanges(
             [
               {
@@ -383,7 +359,9 @@ class Vault {
           );
         }
       } else if (await exists(secretName)) {
+        // Remove the specified file
         await unlink(secretName);
+        this.logger.info(`Deleted secret at '${secretName}'`);
 
         // Commit changes
         await this.commitChanges(
@@ -398,7 +376,7 @@ class Vault {
         // Throw error if secret doesn't exist
       } else {
         throw new vaultsErrors.ErrorSecretUndefined(
-          'path: ' + secretName + ' does not exist in vault',
+          `path '${secretName}' does not exist in vault`,
         );
       }
       if (await exists(secretName)) {
@@ -412,11 +390,7 @@ class Vault {
 
   /**
    * Adds an empty directory to the root of the vault.
-   * i.e. mkdir("folder", {recursive = false}) creates the "<vaultDir>/folder" directory
-   *
-   * @param path path of the directory
-   * @param recursive determines if the directory is added recursively
-   * @returns true if the dir exists in the vault directory
+   * i.e. mkdir("folder", { recursive = false }) creates the "<vaultDir>/folder" directory
    */
   public async mkdir(
     dirPath: SecretName,
@@ -449,11 +423,6 @@ class Vault {
 
   /**
    * Adds a secret directory to the vault
-   *
-   * @throws ErrorVaultUninitialised if the vault repository has
-   * not been initialised
-   * @throws ErrorGitFile if the secret added is a .git file
-   * @param secretDirectory on disk path to directory of secrets to be added
    */
   public async addSecretDirectory(secretDirectory: SecretName): Promise<void> {
     const release = await this.lock.acquire();
@@ -463,6 +432,7 @@ class Vault {
     const writeFile = utils.promisify(this.efs.writeFile).bind(this.efs);
     const mkdir = utils.promisify(this.efs.mkdir).bind(this.efs);
     try {
+      // Obtain the path to each secret in the provided directory
       for await (const secretPath of vaultsUtils.readdirRecursively(
         absoluteDirPath,
       )) {
@@ -471,6 +441,7 @@ class Vault {
           path.dirname(absoluteDirPath),
           secretPath,
         );
+        // Obtain the content of the secret
         const secretName = path.basename(secretPath);
         const content = await fs.promises.readFile(secretPath);
         // Throw error if the '.git' file is nonexistent
@@ -486,29 +457,32 @@ class Vault {
           // If existing path exists, write secret
         } else if (await exists(relPath)) {
           try {
+            // Write secret into vault
             await writeFile(relPath, content, {});
-            this.logger.info(`Updated secret at directory '${relPath}'`);
+            this.logger.info(`Added secret at directory '${relPath}'`);
             commitList.push({
               fileName: relPath,
               action: 'modified',
             });
           } catch (err) {
+            // Warn of a failed addition but continue operation
             this.logger.warn(`Adding secret ${relPath} failed`);
           }
         } else {
           try {
-            // Create the directory if it doesn't exist
+            // Create directory if it doesn't exist
             await mkdir(path.dirname(relPath), {
               recursive: true,
             });
-            // Write secret into the vault
+            // Write secret into vault
             await writeFile(relPath, content, {});
-            this.logger.info(`Wrote secret to directory at '${relPath}'`);
+            this.logger.info(`Added secret to directory at '${relPath}'`);
             commitList.push({
               fileName: relPath,
               action: 'added',
             });
           } catch (err) {
+            // Warn of a failed addition but continue operation
             this.logger.warn(`Adding secret ${relPath} failed`);
           }
         }
@@ -528,8 +502,6 @@ class Vault {
 
   /**
    * Retrieves a list of the secrets in a vault
-   *
-   * @returns a list of the curent secrets
    */
   public async listSecrets(): Promise<SecretList> {
     const secrets: SecretList = [];
@@ -553,26 +525,26 @@ class Vault {
   ): Promise<void> {
     const efs = new EncryptedFS(vaultKey, fs, this.baseDir);
     this.efs = efs;
+    const writeFile = utils.promisify(this.efs.writeFile).bind(this.efs);
+
+    // Construct the target vault id
+    const vaultId = `${vaultsUtils.splitVaultId(this.vaultId)}:${nodeId}`;
+
+    // Clone desired vault
     await git.clone({
       fs: this.efs,
       http: gitHandler,
       dir: '',
-      url: `http://0.0.0.0/${vaultsUtils.splitVaultId(this.vaultId)}:${nodeId}`,
+      url: `http://0.0.0.0/${vaultId}`,
       ref: 'master',
       singleBranch: true,
     });
-    // pack-refs not auto-generated by isomorphic git but needed
-    const writeFile = utils.promisify(this.efs.writeFile).bind(this.efs);
+    // Write pack-refs that are not auto-generated by isomorphic git but needed
     await writeFile(
       path.join('.git', 'packed-refs'),
       '# pack-refs with: peeled fully-peeled sorted',
     );
-    this.logger.info(
-      `Writing initial vault clone commit at '${path.join(
-        '.git',
-        'packed-refs',
-      )}'`,
-    );
+    this.logger.info(`Cloned vault at '${this.vaultId}'`);
   }
 
   /**
@@ -582,15 +554,16 @@ class Vault {
     gitHandler: GitRequest,
     nodeId: NodeId,
   ): Promise<void> {
-    // Throw an error if merge conflicts occur
+    // Construct the target vault id
+    const vaultId = `${vaultsUtils.splitVaultId(this.vaultId)}:${nodeId}`;
+
     try {
+      // Pull from the target vault Id
       await git.pull({
         fs: this.efs,
         http: gitHandler,
         dir: '',
-        url: `http://0.0.0.0/${vaultsUtils.splitVaultId(
-          this.vaultId,
-        )}:${nodeId}`,
+        url: `http://0.0.0.0/${vaultId}`,
         ref: 'HEAD',
         singleBranch: true,
         author: {
@@ -598,6 +571,7 @@ class Vault {
         },
       });
     } catch (err) {
+      // Throw an error if merge conflicts occur
       if (err instanceof git.Errors.MergeNotSupportedError) {
         throw new vaultsErrors.ErrorVaultMergeConflict(
           'Merge Conflicts are not supported yet',
@@ -608,18 +582,18 @@ class Vault {
 
   /**
    * Returns an async generator that yields buffers representing the git info response
-   * @param vaultName Name of vault
    */
   public async *handleInfoRequest(): AsyncGenerator<Buffer | null> {
-    // Service for uploading packets
+    // Define the service for uploading packets
     const service = 'upload-pack';
-    // define the service
     yield Buffer.from(
       gitUtils.createGitPacketLine('# service=git-' + service + '\n'),
     );
 
+    // Separator for message
     yield Buffer.from('0000');
 
+    // Reading the relevant files to contruct the information reply
     for (const buffer of (await gitUtils.uploadPack(this.efs, '.git', true)) ??
       []) {
       yield buffer;
@@ -629,16 +603,18 @@ class Vault {
   /**
    * Takes vaultName and a pack request and returns two streams used to handle the pack
    * response
-   * @param vaultName name of the vault
-   * @param body body of pack request
-   * @returns Two streams used to send the pack response
    */
   public async handlePackRequest(body: Buffer): Promise<PassThrough[]> {
     if (body.toString().slice(4, 8) === 'want') {
+      // Determine the oid of the requested object
       const wantedObjectId = body.toString().slice(9, 49);
+
+      // Pack the requested object into a message
       const packResult = await gitUtils.packObjects(this.efs, '.git', [
         wantedObjectId,
       ]);
+
+      // Construct and return readable streams to send the message
       const readable = new PassThrough();
       const progressStream = new PassThrough();
       const sideBand = gitUtils.mux(
@@ -649,7 +625,12 @@ class Vault {
       );
       return [sideBand, progressStream];
     } else {
-      throw new Error('Method not implemented');
+      // Throw error if the request is not for pack information
+      throw new gitErrors.ErrorGitUnimplementedMethod(
+        `Request of type '${body
+          .toString()
+          .slice(4, 8)}' not valid, expected 'want'`,
+      );
     }
   }
 
@@ -657,10 +638,6 @@ class Vault {
 
   /**
    * Commits the changes made to a vault repository
-   *
-   * @param fileChanges changes that have been made to files
-   * @param message description of change
-   * @returns a commit message
    */
   protected async commitChanges(
     fileChanges: FileChanges,
@@ -668,6 +645,7 @@ class Vault {
   ): Promise<void> {
     // Obtain each file change
     for (const fileChange of fileChanges) {
+      // Use isomorphic git to add or remove the file/dir
       if (fileChange.action === 'removed') {
         await git.remove({
           fs: this.efs,

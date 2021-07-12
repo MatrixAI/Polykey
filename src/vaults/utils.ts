@@ -58,17 +58,52 @@ async function* readdirRecursively(dir: string) {
   }
 }
 
-async function* readdirRecursivelyEFS(fs: EncryptedFS, dir: string) {
+async function* readdirRecursivelyEFS(
+  fs: EncryptedFS,
+  dir: string,
+  dirs?: boolean,
+) {
+  const readdir = utils.promisify(fs.readdir).bind(fs);
+  const stat = utils.promisify(fs.stat).bind(fs);
+  const dirents = await readdir(dir);
+  let secretPath: string;
+  for (const dirent of dirents) {
+    const res = dirent;
+    secretPath = path.join(dir, res);
+    if ((await stat(secretPath)).isDirectory() && dirent !== '.git') {
+      if (dirs === true) {
+        yield secretPath;
+      }
+      yield* readdirRecursivelyEFS(fs, secretPath, dirs);
+    } else if ((await stat(secretPath)).isFile()) {
+      yield secretPath;
+    }
+  }
+}
+
+async function* readdirRecursivelyEFS2(
+  fs: EncryptedFS,
+  dir: string,
+  dirs?: boolean,
+): AsyncGenerator<string> {
   const readdir = utils.promisify(fs.readdir).bind(fs);
   const dirents = await readdir(dir);
   let secretPath: string;
   for (const dirent of dirents) {
     const res = dirent;
     secretPath = path.join(dir, res);
-    if (fs.statSync(secretPath).isDirectory() && dirent !== '.git') {
-      yield* readdirRecursivelyEFS(fs, secretPath);
-    } else if (fs.statSync(secretPath).isFile()) {
-      yield secretPath;
+    if (dirent !== '.git') {
+      try {
+        await readdir(secretPath);
+        if (dirs === true) {
+          yield secretPath;
+        }
+        yield* readdirRecursivelyEFS2(fs, secretPath, dirs);
+      } catch (err) {
+        if (err.code === 'ENOTDIR') {
+          yield secretPath;
+        }
+      }
     }
   }
 }
@@ -196,6 +231,7 @@ export {
   fileExists,
   readdirRecursively,
   readdirRecursivelyEFS,
+  readdirRecursivelyEFS2,
   constructGitHandler,
   searchVaultName,
 };

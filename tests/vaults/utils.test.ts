@@ -33,31 +33,31 @@ describe('Vaults utils', () => {
     const vaultId = vaultsUtils.splitVaultId(id);
     expect(vaultId).not.toContain(nodeId);
   });
-  // test('EFS can be read recursively', async () => {
-  //   const key = await vaultsUtils.generateVaultKey();
-  //   const efs = new EncryptedFS(key, fs, dataDir);
-  //   const mkdir = utils.promisify(efs.mkdir).bind(efs);
-  //   const writeFile = utils.promisify(efs.writeFile).bind(efs);
-  //   await mkdir('dir', { recursive: true });
-  //   await mkdir('dir/dir2/dir3', { recursive: true });
-  //   await writeFile('dir/file', 'content');
-  //   let files: string[] = [];
-  //   for await (const file of vaultsUtils.readdirRecursivelyEFS(
-  //     efs,
-  //     '',
-  //     false,
-  //   )) {
-  //     files.push(file);
-  //   }
-  //   expect(files.sort()).toStrictEqual(['dir/file'].sort());
-  //   files = [];
-  //   for await (const file of vaultsUtils.readdirRecursivelyEFS(efs, '', true)) {
-  //     files.push(file);
-  //   }
-  //   expect(files.sort()).toStrictEqual(
-  //     ['dir', 'dir/dir2', 'dir/dir2/dir3', 'dir/file'].sort(),
-  //   );
-  // });
+  test('EFS can be read recursively', async () => {
+    const key = await vaultsUtils.generateVaultKey();
+    const efs = new EncryptedFS(key, fs, dataDir);
+    const mkdir = utils.promisify(efs.mkdir).bind(efs);
+    const writeFile = utils.promisify(efs.writeFile).bind(efs);
+    await mkdir('dir', { recursive: true });
+    await mkdir('dir/dir2/dir3', { recursive: true });
+    await writeFile('dir/file', 'content');
+    let files: string[] = [];
+    for await (const file of vaultsUtils.readdirRecursivelyEFS(
+      efs,
+      '',
+      false,
+    )) {
+      files.push(file);
+    }
+    expect(files.sort()).toStrictEqual(['dir/file'].sort());
+    files = [];
+    for await (const file of vaultsUtils.readdirRecursivelyEFS(efs, '', true)) {
+      files.push(file);
+    }
+    expect(files.sort()).toStrictEqual(
+      ['dir', 'dir/dir2', 'dir/dir2/dir3', 'dir/file'].sort(),
+    );
+  });
   // test('a persisted EFS object can be read recursively', async () => {
   //   const key = await vaultsUtils.generateVaultKey();
   //   const efs = new EncryptedFS(key, fs, dataDir);

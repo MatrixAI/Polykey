@@ -542,4 +542,21 @@ describe('Vault is', () => {
     expect(content).toBe('secret-content');
     await vault2.stop();
   });
+  // test('able to erase dirty commits on start up', async () => {
+  //   await vault.start({ key });
+  //   await vault.addSecret('secret-1', 'secret-content');
+  //   await vault.mkdir('dir-1', { recursive: true });
+  //   await vault.addSecret('dir-1/secret-1', 'secret-content');
+  //   await vault.start({ key });
+  //   await fs.promises.writeFile(path.join(dataDir, `${vault.vaultId}:nodeID`), 'dirty-commit');
+  //   const vault2 = new Vault({
+  //     vaultId: vaultId,
+  //     vaultName: name,
+  //     baseDir: efsDir,
+  //     fs: fs,
+  //     logger: logger,
+  //   });
+  //   await vault2.start({ key });
+  //   await vault2.stop();
+  // });
 });

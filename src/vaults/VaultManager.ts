@@ -26,14 +26,14 @@ import { GitRequest } from '../git';
 import { agentPB } from '../agent';
 
 import * as utils from '../utils';
-import { utils as vaultsUtils } from './';
-import { errors as vaultsErrors } from './';
+import * as vaultsUtils from './utils';
+import * as vaultsErrors from './errors';
 import * as keysErrors from '../keys/errors';
 import * as gitErrors from '../git/errors';
 import * as nodesErrors from '../nodes/errors';
-import { errors as aclErrors } from '../acl';
-import { errors as gestaltErrors } from '../gestalts';
-import { errors as dbErrors } from '../db';
+import * as aclErrors from '../acl/errors';
+import * as gestaltErrors from '../gestalts/errors';
+import * as dbErrors from '../db/errors';
 
 class VaultManager {
   public readonly vaultsPath: string;
@@ -105,7 +105,7 @@ class VaultManager {
     this._started = false;
   }
 
-  // TODO: Add in node manager started in here
+  // TODO: Add in node manager started in here (currently is a function not a getter)
   get started(): boolean {
     if (
       this._started &&
@@ -155,6 +155,7 @@ class VaultManager {
         force: true,
         recursive: true,
       });
+      this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
     }
     await utils.mkdirExists(this.fs, this.vaultsPath, { recursive: true });
     this.vaultsDb = await this.db.level<string>(this.vaultsDbDomain);
@@ -176,7 +177,6 @@ class VaultManager {
     if (fresh) {
       await this.vaultsDb.clear();
     }
-    // await this.loadVaultData();
     this._started = true;
     this.logger.info('Started Vault Manager');
   }
@@ -229,6 +229,9 @@ class VaultManager {
 
     // Create the Vault instance and path
     await this.fs.promises.mkdir(path.join(this.vaultsPath, vaultId));
+    this.logger.info(
+      `Creating new vault directory at '${path.join(this.vaultsPath, vaultId)}`,
+    );
     const vault = new Vault({
       vaultId: vaultId,
       vaultName: vaultName,
@@ -274,6 +277,7 @@ class VaultManager {
     vaultId: VaultId,
     newVaultName: VaultName,
   ): Promise<boolean> {
+    // If the vault does not already exist in the memory map, set up the vault
     if (!this.vaults[vaultId]) {
       await this.setupVault(vaultId);
     }
@@ -309,15 +313,20 @@ class VaultManager {
   public async deleteVault(vaultId: VaultId): Promise<boolean> {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
+        // If the vault does not already exist in the memory map, set up the vault
         if (!this.vaults[vaultId]) {
           await this.setupVault(vaultId);
         }
+        // Delete the vault state
         await this.vaults[vaultId].stop();
         const vaultPath = this.vaults[vaultId].baseDir;
         this.logger.info(`Removed vault directory at '${vaultPath}'`);
+
+        // Return if the vault was not successfully deleted
         if (await vaultsUtils.fileExists(this.fs, vaultPath)) {
           return false;
         }
+        // Remove vault from the database
         const name = this.vaults[vaultId].vaultName;
         await this.deleteVaultOps(name);
 
@@ -367,6 +376,7 @@ class VaultManager {
    */
   public async scanVaults(nodeId: NodeId): Promise<VaultMap> {
     return await this.acl._transaction(async () => {
+      // List all vaults
       const vaults = await this.listVaults();
       const scan: VaultMap = [];
       for (const vault of vaults) {
@@ -425,8 +435,10 @@ class VaultManager {
         // Obtain the gestalt from the provided node
         const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
         if (gestalt == null) {
+          // Throw an error if the gestalt does not exist
           throw new gestaltErrors.ErrorGestaltsGraphNodeIdMissing();
         }
+        // Set the vault permissions for each node in the gestalt
         const nodes = gestalt?.nodes;
         for (const node in nodes) {
           await this.setVaultAction([nodes[node].id], vaultId);
@@ -452,8 +464,10 @@ class VaultManager {
         // Obtain the gestalt from the provided node
         const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
         if (gestalt == null) {
+          // If no gestalt for the given node is found, return
           return;
         }
+        // Unset the vault permissions for each node in the gestalt
         const nodes = gestalt?.nodes;
         for (const node in nodes) {
           await this.unsetVaultAction([nodes[node].id], vaultId);
@@ -505,6 +519,7 @@ class VaultManager {
     // Create a connection to the specified node
     const nodeAddress = await this.nodeManager.getNode(nodeId);
     if (nodeAddress == null) {
+      // Throw an error if node is not recognised
       throw new nodesErrors.ErrorNodeConnectionNotExist(
         'Node does not exist in node store',
       );
@@ -524,6 +539,7 @@ class VaultManager {
     vaultPermMessage.setVaultId(id);
     const permission = await client.vaultsPermisssionsCheck(vaultPermMessage);
     if (permission.getPermission() === false) {
+      // Throw an error if the permissions for the node are not valid
       throw new gitErrors.ErrorGitPermissionDenied();
     }
 
@@ -550,7 +566,11 @@ class VaultManager {
         valid = true;
       }
     }
+
+    // Clone the vault
     await this.cloneVaultOps(gitRequest, vaultName, vaultId, nodeId);
+
+    // Set the default pulling node to the specified node Id
     await this.setDefaultNode(
       (vaultsUtils.splitVaultId(vaultId) +
         ':' +
@@ -574,10 +594,12 @@ class VaultManager {
    */
   public async pullVault(vaultId: VaultId, nodeId?: NodeId): Promise<void> {
     let node = nodeId;
+    // If no nodeId was provided, obtain the default node
     if (nodeId == null) {
       node = await this.getDefaultNode(vaultId);
     }
     if (node == null) {
+      // Throw an error if a linked vault cannot be found for the vault
       throw new vaultsErrors.ErrorVaultUnlinked(
         'Vault Id has not been cloned from remote repository',
       );
@@ -586,6 +608,7 @@ class VaultManager {
     // Create a connection to the specified node
     const nodeAddress = await this.nodeManager.getNode(node);
     if (nodeAddress == null) {
+      // Throw an error if node is not recognised
       throw new nodesErrors.ErrorNodeConnectionNotExist(
         'Node does not exist in node store',
       );
@@ -604,6 +627,7 @@ class VaultManager {
     vaultPermMessage.setVaultId(id);
     const permission = await client.vaultsPermisssionsCheck(vaultPermMessage);
     if (permission.getPermission() === false) {
+      // Throw an error if the permissions for the node are not valid
       throw new gitErrors.ErrorGitPermissionDenied();
     }
 
@@ -613,10 +637,11 @@ class VaultManager {
       this.nodeManager.getNodeId(),
     );
 
+    // Obtain a list of the remote vaults and throw an error if the desired vault is undefined
     const list = await gitRequest.scanVaults();
-
     vaultsUtils.searchVaultName(list, id);
 
+    // Pull the vault
     const vault = await this.getVault(vaultId);
     await vault.pullVault(
       gitRequest,
@@ -633,6 +658,7 @@ class VaultManager {
   public async *handleVaultNamesRequest(
     nodeId: NodeId,
   ): AsyncGenerator<Uint8Array> {
+    // Obtain a list of all vaults
     const vaults = await this.scanVaults(nodeId);
     for (const vault in vaults) {
       // Yield each vault Id and name
@@ -659,6 +685,7 @@ class VaultManager {
       }
       i++;
       if (i > 50) {
+        // Throw an error if a unique id cannot be generated after 50 attempts
         throw new vaultsErrors.ErrorCreateVaultId(
           'Could not create a unique vaultId after 50 attempts',
         );
@@ -695,11 +722,14 @@ class VaultManager {
       fs: fs,
       logger: this.logger,
     });
+    this.logger.info(`Created empty vault at '${vault.baseDir}'`);
 
     // Generate the key and store the vault in memory and on disk
     const key = await vaultsUtils.generateVaultKey();
     await this.createVaultOps(vaultName, newVaultId, key);
     this.vaults[newVaultId] = vault;
+
+    // Clone into the vault
     await vault.cloneVault(
       gitHandler,
       key,
@@ -754,6 +784,7 @@ class VaultManager {
         vaultName,
       );
       if (existingId != null) {
+        // Throw an error if the vault name already exists
         throw new vaultsErrors.ErrorVaultDefined(
           'Vault Name already exists in Polykey, specify a new Vault Name',
         );
@@ -814,6 +845,7 @@ class VaultManager {
     return await this._transaction(async () => {
       let vaultName: VaultName = '';
 
+      // Obtain the vault information form the database
       for await (const o of this.vaultsNamesDb.createReadStream({})) {
         const vId = (o as any).value;
         const name = (o as any).key as VaultName;
@@ -824,14 +856,18 @@ class VaultManager {
         }
       }
       if (vaultName === '') {
+        // Throw an error if the vault name does not exist
         throw new vaultsErrors.ErrorVaultUndefined();
       }
 
       // Obtain the vault key from the database
       const vaultKey = await this.getVaultKeyByVaultId(vaultId);
       if (vaultKey == null) {
+        // Throw an error if the vault key does not exist
         throw new vaultsErrors.ErrorVaultUndefined();
       }
+
+      // Construct and start the vault
       this.vaults[vaultId] = new Vault({
         vaultId: vaultId,
         vaultName: vaultName,

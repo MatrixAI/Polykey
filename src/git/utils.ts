@@ -439,7 +439,7 @@ async function log(
     while (true) {
       const Commit = tips.pop();
       if (Commit == null) {
-        throw new gitErrors.ErrorCommit('Commit history invalid');
+        throw new gitErrors.ErrorGitReadObject('Commit history invalid');
       }
       const commit = Commit.commit;
 
@@ -599,8 +599,11 @@ function parseAuthor(author: string): Identity {
 
 function parseTimezoneOffset(offset: string): number {
   const matches = offset.match(/(\+|-)(\d\d)(\d\d)/);
-  if (matches == null)
-    throw new gitErrors.ErrorCommit('No timezone found on commit object');
+  if (matches == null) {
+    throw new gitErrors.ErrorGitReadObject(
+      'No timezone found on commit object',
+    );
+  }
   const sign = matches[1];
   const hours = matches[2];
   const minutes = matches[3];
