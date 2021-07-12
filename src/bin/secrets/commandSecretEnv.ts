@@ -15,14 +15,6 @@ const commandSecretEnv = binUtils.createCommand('env', {
   format: true,
   passwordFile: true,
 });
-// commandSecretEnv.option(
-//   '--command <command>',
-//   'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
-// );
-// commandSecretEnv.option(
-//   '--run <run>',
-//   'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
-// );
 commandSecretEnv.arguments(
   "Secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]', you can also control what the environment variable will be called using '[<variableName>]' (defaults to upper, snake case of the original secret name)",
 );
@@ -63,7 +55,7 @@ commandSecretEnv.action(async (options, command) => {
     }[] = [];
 
     for (const path of secretPathList) {
-      if (!binUtils.pathRegex.test(path)) {
+      if (!path.includes(':')) {
         throw new CLIErrors.ErrorSecretPathFormat();
       }
 
@@ -80,54 +72,29 @@ commandSecretEnv.action(async (options, command) => {
 
     const secretEnv = { ...process.env };
 
-    await client.start({});
-    const grpcClient = client.grpcClient;
+    // await client.start({});
+    // const grpcClient = client.grpcClient;
 
-    for (const obj of parsedPathList) {
-      vaultMessage.setName(obj.vaultName);
-      vaultSpecificMessage.setVault(vaultMessage);
-      vaultSpecificMessage.setName(obj.secretName);
-      const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
-      const secret = res.getName();
-      secretEnv[obj.variableName] = secret;
-    }
-
-    console.log(secretEnv);
-
-    // const shellPath = process.env.SHELL ?? 'sh';
-    // const args: string[] = [];
-
-    // if (options.command && options.run) {
-    //   throw new CLIErrors.ErrorInvalidArguments(
-    //     'Only one of --command or --run can be specified',
-    //   );
-    // } else if (options.command) {
-    //   args.push('-i');
-    //   args.push('-c');
-    //   args.push(`"${options.command}"`);
-    // } else if (options.run) {
-    //   args.push('-c');
-    //   args.push(`"${options.run}"`);
+    // for (const obj of parsedPathList) {
+    //   vaultMessage.setName(obj.vaultName);
+    //   vaultSpecificMessage.setVault(vaultMessage);
+    //   vaultSpecificMessage.setName(obj.secretName);
+    //   const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
+    //   const secret = res.getName();
+    //   secretEnv[obj.variableName] = secret;
     // }
 
-    // const shell = spawn(shellCommand, {
-    //   stdio: 'inherit',
-    //   env: secretEnv,
-    //   shell: true,
-    // });
+    // binUtils.spawnShell(shellCommand, secretEnv, options.format);
+    // process.stdout.write(
+    //   binUtils.outputFormatter({
+    //     type: options.format === 'json' ? 'json' : 'list',
+    //     data: [
+    //       // `${secretName.toUpperCase().replace('-', '_')}='${secret}`,
+    //     ],
+    //   }),
+    // );
 
-    // shell.on('close', (code) => {
-    //   if (code != 0) {
-    //     process.stdout.write(
-    //       binUtils.outputFormatter({
-    //         type: options.format === 'json' ? 'json' : 'list',
-    //         data: [`Terminated with ${code}`],
-    //       }),
-    //     );
-    //   }
-    // });
   } catch (err) {
-    console.log(err);
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }

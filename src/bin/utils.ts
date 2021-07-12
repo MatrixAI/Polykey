@@ -1,5 +1,6 @@
 import type { POJO } from '../types';
 
+import { spawn } from 'child_process';
 import commander from 'commander';
 import Logger, { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
@@ -218,6 +219,25 @@ function outputFormatter(msg: OutputObject): string {
   return output;
 }
 
+function spawnShell(command: string, environmentVariables: POJO, format: string): void {
+  const shell = spawn(command, {
+    stdio: 'inherit',
+    env: environmentVariables,
+    shell: true,
+  });
+
+  shell.on('close', (code) => {
+    if (code != 0) {
+      process.stdout.write(
+        outputFormatter({
+          type: format === 'json' ? 'json' : 'list',
+          data: [`Terminated with ${code}`],
+        }),
+      );
+    }
+  });
+}
+
 export {
   pathRegex,
   verboseToLogLevel,
@@ -227,6 +247,7 @@ export {
   // createAsyncAction,
   // createSyncAction,
   outputFormatter,
+  spawnShell,
   OutputObject,
   PolykeyCommand,
 };
