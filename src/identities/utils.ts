@@ -1,40 +1,6 @@
-import type { ProviderTokens } from './types';
-
 import os from 'os';
 import process from 'process';
-import { spawn } from 'child_process';
-import * as identitiesErrors from './errors';
-import { utils as keysUtils } from '../keys';
-
-function serializeProviderTokens(
-  tokenDbKey: Buffer,
-  value: ProviderTokens,
-): Buffer {
-  return keysUtils.encryptWithKey(
-    tokenDbKey,
-    Buffer.from(JSON.stringify(value), 'utf-8'),
-  );
-}
-
-function unserializeProviderTokens(
-  tokenDbKey: Buffer,
-  data: Buffer,
-): ProviderTokens {
-  const value_ = keysUtils.decryptWithKey(tokenDbKey, data);
-  if (!value_) {
-    throw new identitiesErrors.ErrorIdentitiesTokenValueDecrypt();
-  }
-  let value;
-  try {
-    value = JSON.parse(value_.toString('utf-8'));
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      throw new identitiesErrors.ErrorIdentitiesTokenValueParse();
-    }
-    throw e;
-  }
-  return value;
-}
+import spawn from 'cross-spawn';
 
 function browser(url: string): void {
   let platform = process.platform;
@@ -81,4 +47,4 @@ function browser(url: string): void {
   browserProcess.unref();
 }
 
-export { serializeProviderTokens, unserializeProviderTokens, browser };
+export { browser };

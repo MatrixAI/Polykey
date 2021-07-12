@@ -1,93 +1,113 @@
-import type { LevelDB } from 'level';
 import type {
   ProviderId,
   IdentityId,
   ProviderTokens,
   TokenData,
 } from './types';
-import type { FileSystem } from '../types';
-import type { KeyManager } from '../keys';
+import type { DB } from '../db';
+import type { DBLevel } from '../db/types';
 import type Provider from './Provider';
 
-import path from 'path';
-import level from 'level';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
-import * as identitiesUtils from './utils';
 import * as identitiesErrors from './errors';
-import { utils as keysUtils, errors as keysErrors } from '../keys';
-import * as utils from '../utils';
+import { errors as dbErrors } from '../db';
 
 class IdentitiesManager {
   public readonly identitiesPath: string;
   public readonly tokenDbPath: string;
 
   protected logger: Logger;
-  protected fs: FileSystem;
-  protected keyManager: KeyManager;
-  protected tokenDb: LevelDB<ProviderId, Buffer>;
-  protected tokenDbKey: Buffer;
-  protected tokenDbMutex: Mutex = new Mutex();
+  protected db: DB;
+  protected identitiesDbDomain: string = this.constructor.name;
+  protected identitiesTokensDbDomain: Array<string> = [
+    this.identitiesDbDomain,
+    'tokens',
+  ];
+  protected identitiesDb: DBLevel<string>;
+  protected identitiesTokensDb: DBLevel<ProviderId>;
+  protected lock: Mutex = new Mutex();
   protected providers: Map<ProviderId, Provider> = new Map();
   protected _started: boolean = false;
 
-  constructor({
-    identitiesPath,
-    keyManager,
-    fs,
-    logger,
-  }: {
-    identitiesPath: string;
-    keyManager: KeyManager;
-    fs?: FileSystem;
-    logger?: Logger;
-  }) {
+  constructor({ db, logger }: { db: DB; logger?: Logger }) {
     this.logger = logger ?? new Logger(this.constructor.name);
-    this.fs = fs ?? require('fs');
-    this.identitiesPath = identitiesPath;
-    this.keyManager = keyManager;
-    this.tokenDbPath = path.join(identitiesPath, 'token_db');
+    this.db = db;
   }
 
   get started(): boolean {
     return this._started;
   }
 
+  get locked(): boolean {
+    return this.lock.isLocked();
+  }
+
   async start({
-    bits = 256,
     fresh = false,
   }: {
-    bits?: number;
     fresh?: boolean;
   } = {}) {
-    this.logger.info('Starting Identities Manager');
-    if (!this.keyManager.started) {
-      throw new keysErrors.ErrorKeyManagerNotStarted();
+    try {
+      if (this._started) {
+        return;
+      }
+      this.logger.info('Starting Identities Manager');
+      this._started = true;
+      if (!this.db.started) {
+        throw new dbErrors.ErrorDBNotStarted();
+      }
+      const identitiesDb = await this.db.level<string>(this.identitiesDbDomain);
+      // tokens stores ProviderId -> ProviderTokens
+      const identitiesTokensDb = await this.db.level<ProviderId>(
+        this.identitiesTokensDbDomain[1],
+        identitiesDb,
+      );
+      if (fresh) {
+        await identitiesDb.clear();
+        this.providers = new Map();
+      }
+      this.identitiesDb = identitiesDb;
+      this.identitiesTokensDb = identitiesTokensDb;
+      this.logger.info('Started Identities Manager');
+    } catch (e) {
+      this._started = false;
+      throw e;
     }
-    this.logger.info(`Setting identities path to ${this.identitiesPath}`);
-    if (fresh) {
-      await this.fs.promises.rm(this.identitiesPath, {
-        force: true,
-        recursive: true,
-      });
-      this.providers = new Map();
-    }
-    await utils.mkdirExists(this.fs, this.identitiesPath);
-    const tokenDbKey = await this.setupTokenDbKey(bits);
-    const tokenDb = await level(this.tokenDbPath, { valueEncoding: 'binary' });
-    this.tokenDb = tokenDb;
-    this.tokenDbKey = tokenDbKey;
-    this._started = true;
-    this.logger.info('Started Identities Manager');
   }
 
   async stop() {
     this.logger.info('Stopping Identities Manager');
-    if (this._started) {
-      await this.tokenDb.close();
-    }
     this._started = false;
     this.logger.info('Stopped Identities Manager');
+  }
+
+  /**
+   * Run several operations within the same lock
+   * This does not ensure atomicity of the underlying database
+   * Database atomicity still depends on the underlying operation
+   */
+  public async transaction<T>(
+    f: (identitiesManager: IdentitiesManager) => Promise<T>,
+  ): Promise<T> {
+    const release = await this.lock.acquire();
+    try {
+      return await f(this);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Transaction wrapper that will not lock if the operation was executed
+   * within a transaction context
+   */
+  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
+    if (this.lock.isLocked()) {
+      return await f();
+    } else {
+      return await this.transaction(f);
+    }
   }
 
   public getProviders(): Record<ProviderId, Provider> {
@@ -119,16 +139,16 @@ class IdentitiesManager {
     if (!this._started) {
       throw new identitiesErrors.ErrorIdentitiesManagerNotStarted();
     }
-    let data: Buffer;
-    try {
-      data = await this.tokenDb.get(providerId);
-    } catch (e) {
-      if (e.notFound) {
+    return await this._transaction(async () => {
+      const providerTokens = await this.db.get<ProviderTokens>(
+        this.identitiesTokensDbDomain,
+        providerId,
+      );
+      if (providerTokens == null) {
         return {};
       }
-      throw e;
-    }
-    return identitiesUtils.unserializeProviderTokens(this.tokenDbKey, data);
+      return providerTokens;
+    });
   }
 
   public async getToken(
@@ -138,20 +158,16 @@ class IdentitiesManager {
     if (!this._started) {
       throw new identitiesErrors.ErrorIdentitiesManagerNotStarted();
     }
-    let data: Buffer;
-    try {
-      data = await this.tokenDb.get(providerId);
-    } catch (e) {
-      if (e.notFound) {
+    return await this._transaction(async () => {
+      const providerTokens = await this.db.get<ProviderTokens>(
+        this.identitiesTokensDbDomain,
+        providerId,
+      );
+      if (providerTokens == null) {
         return undefined;
       }
-      throw e;
-    }
-    const providerTokens = identitiesUtils.unserializeProviderTokens(
-      this.tokenDbKey,
-      data,
-    );
-    return providerTokens[identityId];
+      return providerTokens[identityId];
+    });
   }
 
   public async putToken(
@@ -162,19 +178,15 @@ class IdentitiesManager {
     if (!this._started) {
       throw new identitiesErrors.ErrorIdentitiesManagerNotStarted();
     }
-    const release = await this.tokenDbMutex.acquire();
-    try {
-      const providerTokens: ProviderTokens =
-        (await this.getToken(providerId, identityId)) ?? {};
+    return await this._transaction(async () => {
+      const providerTokens = await this.getTokens(providerId);
       providerTokens[identityId] = tokenData;
-      const data = identitiesUtils.serializeProviderTokens(
-        this.tokenDbKey,
+      await this.db.put(
+        this.identitiesTokensDbDomain,
+        providerId,
         providerTokens,
       );
-      await this.tokenDb.put(providerId, data);
-    } finally {
-      release();
-    }
+    });
   }
 
   public async delToken(
@@ -184,36 +196,22 @@ class IdentitiesManager {
     if (!this._started) {
       throw new identitiesErrors.ErrorIdentitiesManagerNotStarted();
     }
-    const release = await this.tokenDbMutex.acquire();
-    try {
-      const providerTokens = await this.getToken(providerId, identityId);
-      if (!providerTokens) {
+    return await this._transaction(async () => {
+      const providerTokens = await this.getTokens(providerId);
+      if (!(identityId in providerTokens)) {
         return;
       }
       delete providerTokens[identityId];
       if (!Object.keys(providerTokens).length) {
-        await this.tokenDb.del(providerId);
+        await this.db.del(this.identitiesTokensDbDomain, providerId);
         return;
       }
-      const data = identitiesUtils.serializeProviderTokens(
-        this.tokenDbKey,
+      await this.db.put(
+        this.identitiesTokensDbDomain,
+        providerId,
         providerTokens,
       );
-      await this.tokenDb.put(providerId, data);
-    } finally {
-      release();
-    }
-  }
-
-  protected async setupTokenDbKey(bits: number = 256): Promise<Buffer> {
-    let tokenDbKey = await this.keyManager.getKey(this.constructor.name);
-    if (tokenDbKey != null) {
-      return tokenDbKey;
-    }
-    this.logger.info('Generating token db key');
-    tokenDbKey = await keysUtils.generateKey(bits);
-    await this.keyManager.putKey(this.constructor.name, tokenDbKey);
-    return tokenDbKey;
+    });
   }
 }
 

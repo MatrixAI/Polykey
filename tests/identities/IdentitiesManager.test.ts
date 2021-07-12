@@ -12,6 +12,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
+import { DB } from '@/db';
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import TestProvider from './TestProvider';
@@ -22,6 +23,7 @@ describe('IdentitiesManager', () => {
   ]);
   let dataDir: string;
   let keyManager: KeyManager;
+  let db: DB;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -29,36 +31,23 @@ describe('IdentitiesManager', () => {
     const keysPath = `${dataDir}/keys`;
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
+    const dbPath = `${dataDir}/db`;
+    db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
   });
   afterEach(async () => {
+    await db.stop();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-  test('construction has no side effects', async () => {
-    const identitiesPath = `${dataDir}/identities`;
-    new IdentitiesManager({ identitiesPath, keyManager, logger });
-    await expect(fs.promises.stat(identitiesPath)).rejects.toThrow(/ENOENT/);
-  });
-  test('async start constructs the token leveldb', async () => {
-    const identitiesPath = `${dataDir}/identities`;
-    const identitiesManager = new IdentitiesManager({
-      identitiesPath,
-      keyManager,
-      logger,
-    });
-    await identitiesManager.start();
-    const identitiesPathContents = await fs.promises.readdir(identitiesPath);
-    expect(identitiesPathContents).toContain('token_db');
-    await identitiesManager.stop();
-  });
   test('get, set and unset tokens', async () => {
-    const identitiesPath = `${dataDir}/identities`;
     const identitiesManager = new IdentitiesManager({
-      identitiesPath,
-      keyManager,
+      db,
       logger,
     });
     await identitiesManager.start();
@@ -80,10 +69,8 @@ describe('IdentitiesManager', () => {
     await identitiesManager.stop();
   });
   test('start and stop preserves state', async () => {
-    const identitiesPath = `${dataDir}/identities`;
     const identitiesManager = new IdentitiesManager({
-      identitiesPath,
-      keyManager,
+      db,
       logger,
     });
     await identitiesManager.start();
@@ -105,10 +92,8 @@ describe('IdentitiesManager', () => {
     await identitiesManager.stop();
   });
   test('fresh start deletes all state', async () => {
-    const identitiesPath = `${dataDir}/identities`;
     const identitiesManager = new IdentitiesManager({
-      identitiesPath,
-      keyManager,
+      db,
       logger,
     });
     await identitiesManager.start();
@@ -128,10 +113,8 @@ describe('IdentitiesManager', () => {
     await identitiesManager.stop();
   });
   test('register and unregister providers', async () => {
-    const identitiesPath = `${dataDir}/identities`;
     const identitiesManager = new IdentitiesManager({
-      identitiesPath,
-      keyManager,
+      db,
       logger,
     });
     await identitiesManager.start();
@@ -158,10 +141,8 @@ describe('IdentitiesManager', () => {
     await identitiesManager.stop();
   });
   test('using TestProvider', async () => {
-    const identitiesPath = `${dataDir}/identities`;
     const identitiesManager = new IdentitiesManager({
-      identitiesPath,
-      keyManager,
+      db,
       logger,
     });
     await identitiesManager.start();
