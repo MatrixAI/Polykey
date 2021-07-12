@@ -1,23 +1,24 @@
 import type { AbstractBatch } from 'abstract-leveldown';
 import type { LevelDB } from 'level';
 import type { DBLevel, DBOp } from './types';
-import type { KeyManager } from '../keys';
+import type { KeyPair, PrivateKey, PublicKey } from '../keys/types';
 import type { FileSystem } from '../types';
 
+import path from 'path';
 import level from 'level';
 import subleveldown from 'subleveldown';
 import Logger from '@matrixai/logger';
 import * as dbUtils from './utils';
 import * as dbErrors from './errors';
-import { utils as keysUtils, errors as keysErrors } from '../keys';
+import { utils as keysUtils } from '../keys';
 import * as utils from '../utils';
 
 class DB {
   public readonly dbPath: string;
+  public readonly dbKeyPath: string;
 
   protected logger: Logger;
   protected fs: FileSystem;
-  protected keyManager: KeyManager;
   protected _db: LevelDB<string, Buffer>;
   protected dbKey: Buffer;
   protected _started: boolean = false;
@@ -32,37 +33,34 @@ class DB {
 
   public constructor({
     dbPath,
-    keyManager,
     fs,
     logger,
   }: {
     dbPath: string;
-    keyManager: KeyManager;
     fs?: FileSystem;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.fs = fs ?? require('fs');
-    this.dbPath = dbPath;
-    this.keyManager = keyManager;
+    this.dbPath = path.join(dbPath, 'db');
+    this.dbKeyPath = path.join(dbPath, 'db_key');
   }
 
   public async start({
+    keyPair,
     bits = 256,
     fresh = false,
   }: {
+    keyPair: KeyPair;
     bits?: number;
     fresh?: boolean;
-  } = {}): Promise<void> {
+  }): Promise<void> {
     try {
       if (this._started) {
         return;
       }
       this.logger.info('Starting DB');
       this._started = true;
-      if (!this.keyManager.started) {
-        throw new keysErrors.ErrorKeyManagerNotStarted();
-      }
       this.logger.info(`Setting DB path to ${this.dbPath}`);
       if (fresh) {
         await this.fs.promises.rm(this.dbPath, {
@@ -82,7 +80,7 @@ class DB {
           });
         },
       );
-      const dbKey = await this.setupDbKey(bits);
+      const dbKey = await this.setupDbKey(keyPair, bits);
       this._db = db;
       this.dbKey = dbKey;
       this.logger.info('Started DB');
@@ -186,15 +184,87 @@ class DB {
     return dbUtils.unserializeDecrypt(this.dbKey, data);
   }
 
-  protected async setupDbKey(bits: number = 256): Promise<Buffer> {
-    let dbKey = await this.keyManager.getKey(this.constructor.name);
-    if (dbKey != null) {
-      return dbKey;
+  protected async setupDbKey(
+    keyPair: KeyPair,
+    bits: number = 256,
+  ): Promise<Buffer> {
+    let keyDbKey: Buffer;
+    if (await this.existsDbKey()) {
+      keyDbKey = await this.readDbKey(keyPair.privateKey);
+    } else {
+      this.logger.info('Generating keys db key');
+      keyDbKey = await keysUtils.generateKey(bits);
+      await this.writeDbKey(keyPair.publicKey, keyDbKey);
     }
-    this.logger.info('Generating DB key');
-    dbKey = await keysUtils.generateKey(bits);
-    await this.keyManager.putKey(this.constructor.name, dbKey);
-    return dbKey;
+    return keyDbKey;
+  }
+
+  protected async existsDbKey(): Promise<boolean> {
+    this.logger.info(`Checking ${this.dbKeyPath}`);
+    try {
+      await this.fs.promises.stat(this.dbKeyPath);
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        return false;
+      }
+      throw new dbErrors.ErrorDBKeyRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    return true;
+  }
+
+  protected async readDbKey(privateKey: PrivateKey): Promise<Buffer> {
+    let keysDbKeyCipher;
+    this.logger.info(`Reading ${this.dbKeyPath}`);
+    try {
+      keysDbKeyCipher = await this.fs.promises.readFile(this.dbKeyPath);
+    } catch (e) {
+      throw new dbErrors.ErrorDBKeyRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    let keysDbKeyPlain;
+    try {
+      keysDbKeyPlain = keysUtils.decryptWithPrivateKey(
+        privateKey,
+        keysDbKeyCipher,
+      );
+    } catch (e) {
+      throw new dbErrors.ErrorDBKeyParse(e.message);
+    }
+    return keysDbKeyPlain;
+  }
+
+  protected async writeDbKey(
+    publicKey: PublicKey,
+    keysDbKeyPlain: Buffer,
+  ): Promise<void> {
+    const keysDbKeyCipher = keysUtils.encryptWithPublicKey(
+      publicKey,
+      keysDbKeyPlain,
+    );
+    this.logger.info(`Writing ${this.dbKeyPath}`);
+    try {
+      await this.fs.promises.writeFile(
+        `${this.dbKeyPath}.tmp`,
+        keysDbKeyCipher,
+      );
+      await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
+    } catch (e) {
+      throw new dbErrors.ErrorDBKeyWrite(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
   }
 }
 

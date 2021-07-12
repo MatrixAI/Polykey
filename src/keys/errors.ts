@@ -20,14 +20,6 @@ class ErrorRootCertsGC extends ErrorKeys {}
 
 class ErrorEncryptSize extends ErrorKeys {}
 
-class ErrorKeysDbKeyRead extends ErrorKeys {}
-
-class ErrorKeysDbKeyWrite extends ErrorKeys {}
-
-class ErrorKeysDbKeyParse extends ErrorKeys {}
-
-class ErrorKeysDbDecrypt extends ErrorKeys {}
-
 export {
   ErrorKeys,
   ErrorKeyManagerNotStarted,
@@ -39,8 +31,4 @@ export {
   ErrorRootCertRenew,
   ErrorRootCertsGC,
   ErrorEncryptSize,
-  ErrorKeysDbKeyRead,
-  ErrorKeysDbKeyWrite,
-  ErrorKeysDbKeyParse,
-  ErrorKeysDbDecrypt,
 };

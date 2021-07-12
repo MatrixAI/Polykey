@@ -8,4 +8,18 @@ class ErrorDBDecrypt extends ErrorDB {}
 
 class ErrorDBParse extends ErrorDB {}
 
-export { ErrorDB, ErrorDBNotStarted, ErrorDBDecrypt, ErrorDBParse };
+class ErrorDBKeyRead extends ErrorDB {}
+
+class ErrorDBKeyWrite extends ErrorDB {}
+
+class ErrorDBKeyParse extends ErrorDB {}
+
+export {
+  ErrorDB,
+  ErrorDBNotStarted,
+  ErrorDBDecrypt,
+  ErrorDBParse,
+  ErrorDBKeyRead,
+  ErrorDBKeyWrite,
+  ErrorDBKeyParse,
+};
