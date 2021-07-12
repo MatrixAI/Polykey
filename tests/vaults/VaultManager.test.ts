@@ -18,12 +18,11 @@ describe('VaultManager is', () => {
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let keyManager: KeyManager;
   let dataDir: string;
+  let keyManager: KeyManager;
   let db: DB;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -32,8 +31,10 @@ describe('VaultManager is', () => {
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, keyManager, logger });
-    await db.start();
+    db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
     acl = new ACL({
       db: db,
       logger: logger,
@@ -46,7 +47,6 @@ describe('VaultManager is', () => {
     });
     await gestaltGraph.start();
   });
-
   afterEach(async () => {
     await gestaltGraph.stop();
     await acl.stop();
@@ -57,7 +57,6 @@ describe('VaultManager is', () => {
       recursive: true,
     });
   });
-
   test('type correct', () => {
     const vaultManager = new VaultManager({
       vaultsPath: path.join(dataDir, 'vaults'),
@@ -442,9 +441,10 @@ describe('VaultManager is', () => {
     await db.stop();
 
     const dbPath = `${dataDir}/db`;
-    const db2 = new DB({ dbPath, keyManager, logger });
-
-    await db2.start();
+    const db2 = new DB({ dbPath, logger });
+    await db2.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
 
     const acl2 = new ACL({
       db: db2,
@@ -562,9 +562,10 @@ describe('VaultManager is', () => {
     await db.stop();
 
     const dbPath = `${dataDir}/db`;
-    const db2 = new DB({ dbPath, keyManager, logger });
-
-    await db2.start();
+    const db2 = new DB({ dbPath, logger });
+    await db2.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
 
     const acl2 = new ACL({
       db: db2,

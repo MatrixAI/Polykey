@@ -569,7 +569,9 @@ describe('Client service', () => {
     const secrets: Array<string> = [];
     for (let i = 0; i < 10; i++) {
       const tmpFile = `${tmpDir}/pkSecretFile${i.toString()}`;
-      secrets.push(path.join(`${path.basename(tmpDir)}`, `pkSecretFile${i.toString()}`));
+      secrets.push(
+        path.join(`${path.basename(tmpDir)}`, `pkSecretFile${i.toString()}`),
+      );
       // write secret to file
       await fs.promises.writeFile(tmpFile, tmpFile);
     }

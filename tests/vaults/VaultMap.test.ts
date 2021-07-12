@@ -29,8 +29,10 @@ describe('VaultMap is', () => {
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, keyManager, logger });
-    await db.start();
+    db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
     vaultMapPath = path.join(dataDir, 'vaultdb');
   });
 

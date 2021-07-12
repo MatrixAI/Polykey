@@ -26,49 +26,61 @@ describe('DB', () => {
   });
   test('construction has no side effects', async () => {
     const dbPath = `${dataDir}/db`;
-    new DB({ dbPath, keyManager, logger });
+    new DB({ dbPath, logger });
     await expect(fs.promises.stat(dbPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs the db leveldb', async () => {
     const dbPath = `${dataDir}/db`;
-    const db = new DB({ dbPath, keyManager, logger });
-    await db.start();
+    const db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
     const dbPathContents = await fs.promises.readdir(dbPath);
     expect(dbPathContents.length).toBeGreaterThan(1);
     await db.stop();
   });
   test('start and stop preserves the db key', async () => {
     const dbPath = `${dataDir}/db`;
-    const db = new DB({ dbPath, keyManager, logger });
-    await db.start();
-    const dbDbKey = await keyManager.getKey(DB.name);
-    expect(dbDbKey).not.toBeUndefined();
+    const db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
+    const dbKey = await fs.promises.readFile(`${dataDir}/db/db_key`);
     await db.stop();
-    await db.start();
-    const dbDbKey_ = await keyManager.getKey(DB.name);
-    expect(dbDbKey_).not.toBeUndefined();
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
+    const dbKey_ = await fs.promises.readFile(`${dataDir}/db/db_key`);
     await db.stop();
-    expect(dbDbKey).toEqual(dbDbKey_);
+    expect(dbKey).toEqual(dbKey_);
   });
-  test('get and put and del', async () => {
-    const dbPath = `${dataDir}/db`;
-    const db = new DB({ dbPath, keyManager, logger });
-    await db.start();
-    await db.put([], 'a', 'value0');
-    expect(await db.get([], 'a')).toBe('value0');
-    await db.del([], 'a');
-    expect(await db.get([], 'a')).toBeUndefined();
-    await db.level<string>('level1');
-    await db.put(['level1'], 'a', 'value1');
-    expect(await db.get(['level1'], 'a')).toBe('value1');
-    await db.del(['level1'], 'a');
-    expect(await db.get(['level1'], 'a')).toBeUndefined();
-    await db.stop();
-  });
+  test(
+    'get and put and del',
+    async () => {
+      const dbPath = `${dataDir}/db`;
+      const db = new DB({ dbPath, logger });
+      await db.start({
+        keyPair: keyManager.getRootKeyPair(),
+      });
+      await db.put([], 'a', 'value0');
+      expect(await db.get([], 'a')).toBe('value0');
+      await db.del([], 'a');
+      expect(await db.get([], 'a')).toBeUndefined();
+      await db.level<string>('level1');
+      await db.put(['level1'], 'a', 'value1');
+      expect(await db.get(['level1'], 'a')).toBe('value1');
+      await db.del(['level1'], 'a');
+      expect(await db.get(['level1'], 'a')).toBeUndefined();
+      await db.stop();
+    },
+    global.defaultTimeout * 2,
+  );
   test('db levels are leveldbs', async () => {
     const dbPath = `${dataDir}/db`;
-    const db = new DB({ dbPath, keyManager, logger });
-    await db.start();
+    const db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
     await db.db.put('a', db.serializeEncrypt('value0'));
     expect(await db.get([], 'a')).toBe('value0');
     await db.put([], 'b', 'value0');
@@ -82,8 +94,10 @@ describe('DB', () => {
   });
   test('clearing a level clears all sublevels', async () => {
     const dbPath = `${dataDir}/db`;
-    const db = new DB({ dbPath, keyManager, logger });
-    await db.start();
+    const db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
     const level1 = await db.level<string>('level1');
     await db.level<string>('level2', level1);
     await db.put([], 'a', 'value0');

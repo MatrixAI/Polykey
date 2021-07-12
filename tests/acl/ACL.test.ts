@@ -23,8 +23,10 @@ describe('ACL', () => {
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, keyManager, logger });
-    await db.start();
+    db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
   });
   afterEach(async () => {
     await db.stop();
@@ -34,154 +36,169 @@ describe('ACL', () => {
       recursive: true,
     });
   });
-  test('trust and untrust gestalts', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
-    // gestalt 1
-    await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, {
-      gestalt: {
-        notify: null,
-      },
-      vaults: {
-        v1: { pull: null },
-      },
-    });
-    // gestalt2
-    await acl.setNodesPerm(['g2-first', 'g2-second'] as Array<NodeId>, {
-      gestalt: {
-        notify: null,
-      },
-      vaults: {
-        v2: { clone: null },
-      },
-    });
-    // check g1 perm
-    const g1Perm1 = await acl.getNodePerm('g1-first' as NodeId);
-    const g1Perm2 = await acl.getNodePerm('g1-second' as NodeId);
-    expect(g1Perm1).toBeDefined();
-    expect(g1Perm1).toEqual(g1Perm2);
-    expect(g1Perm1!.gestalt).toHaveProperty('notify');
-    expect(g1Perm1!.vaults['v1']).toHaveProperty('pull');
-    // check g2 perm
-    const g2Perm = await acl.getNodePerm('g2-first' as NodeId);
-    const g2Perm_ = await acl.getNodePerm('g2-second' as NodeId);
-    expect(g2Perm).toBeDefined();
-    expect(g2Perm).toEqual(g2Perm_);
-    expect(g2Perm!.gestalt).toHaveProperty('notify');
-    expect(g2Perm!.vaults['v2']).toHaveProperty('clone');
-    // make g1 permission untrusted
-    const g1PermNew = {
-      ...g1Perm1!,
-      gestalt: {},
-    };
-    await acl.setNodePerm('g1-first' as NodeId, g1PermNew);
-    // check that g1-second also gets the same permission
-    const g1Perm3 = await acl.getNodePerm('g1-second' as NodeId);
-    expect(g1Perm3).toEqual(g1PermNew);
-    const nodePerms = await acl.getNodePerms();
-    expect(nodePerms).toEqual([
-      {
-        'g1-first': g1PermNew,
-        'g1-second': g1PermNew,
-      },
-      {
-        'g2-first': g2Perm,
-        'g2-second': g2Perm,
-      },
-    ]);
-    // check that the permission object is identical
-    // this should be a performance optimisation
-    expect(nodePerms[0]['g1-first']).toBe(nodePerms[0]['g1-second']);
-    await acl.stop();
-  });
-  test('setting and unsetting vault actions', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
-    // the node id must exist as a gestalt first
-    await expect(
-      acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull'),
-    ).rejects.toThrow(aclErrors.ErrorACLNodeIdMissing);
-    await acl.setNodesPerm(['g1-1'] as Array<NodeId>, {
-      gestalt: {
-        notify: null,
-      },
-      vaults: {},
-    });
-    let vaultPerm: Record<NodeId, Permission>;
-    await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
-    // idempotent
-    await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
-    vaultPerm = await acl.getVaultPerm('v1' as VaultId);
-    expect(vaultPerm['g1-1']).toEqual({
-      gestalt: {
-        notify: null,
-      },
-      vaults: {
-        v1: { pull: null },
-      },
-    });
-    await acl.unsetVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
-    // idempotent
-    await acl.unsetVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
-    vaultPerm = await acl.getVaultPerm('v1' as VaultId);
-    expect(vaultPerm['g1-1']).toEqual({
-      gestalt: {
-        notify: null,
-      },
-      vaults: {
-        v1: {},
-      },
-    });
-    await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
-    await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'clone');
-    vaultPerm = await acl.getVaultPerm('v1' as VaultId);
-    expect(vaultPerm['g1-1'].vaults['v1']).toHaveProperty('pull');
-    expect(vaultPerm['g1-1'].vaults['v1']).toHaveProperty('clone');
-    const vaultPerms = await acl.getVaultPerms();
-    expect(vaultPerms).toEqual({
-      v1: {
-        'g1-1': {
-          gestalt: {
-            notify: null,
-          },
-          vaults: {
-            v1: { pull: null, clone: null },
+  test(
+    'trust and untrust gestalts',
+    async () => {
+      const acl = new ACL({ db, logger });
+      await acl.start();
+      // gestalt 1
+      await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {
+          v1: { pull: null },
+        },
+      });
+      // gestalt2
+      await acl.setNodesPerm(['g2-first', 'g2-second'] as Array<NodeId>, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {
+          v2: { clone: null },
+        },
+      });
+      // check g1 perm
+      const g1Perm1 = await acl.getNodePerm('g1-first' as NodeId);
+      const g1Perm2 = await acl.getNodePerm('g1-second' as NodeId);
+      expect(g1Perm1).toBeDefined();
+      expect(g1Perm1).toEqual(g1Perm2);
+      expect(g1Perm1!.gestalt).toHaveProperty('notify');
+      expect(g1Perm1!.vaults['v1']).toHaveProperty('pull');
+      // check g2 perm
+      const g2Perm = await acl.getNodePerm('g2-first' as NodeId);
+      const g2Perm_ = await acl.getNodePerm('g2-second' as NodeId);
+      expect(g2Perm).toBeDefined();
+      expect(g2Perm).toEqual(g2Perm_);
+      expect(g2Perm!.gestalt).toHaveProperty('notify');
+      expect(g2Perm!.vaults['v2']).toHaveProperty('clone');
+      // make g1 permission untrusted
+      const g1PermNew = {
+        ...g1Perm1!,
+        gestalt: {},
+      };
+      await acl.setNodePerm('g1-first' as NodeId, g1PermNew);
+      // check that g1-second also gets the same permission
+      const g1Perm3 = await acl.getNodePerm('g1-second' as NodeId);
+      expect(g1Perm3).toEqual(g1PermNew);
+      const nodePerms = await acl.getNodePerms();
+      expect(nodePerms).toEqual([
+        {
+          'g1-first': g1PermNew,
+          'g1-second': g1PermNew,
+        },
+        {
+          'g2-first': g2Perm,
+          'g2-second': g2Perm,
+        },
+      ]);
+      // check that the permission object is identical
+      // this should be a performance optimisation
+      expect(nodePerms[0]['g1-first']).toBe(nodePerms[0]['g1-second']);
+      await acl.stop();
+    },
+    global.defaultTimeout * 2,
+  );
+  test(
+    'setting and unsetting vault actions',
+    async () => {
+      const acl = new ACL({ db, logger });
+      await acl.start();
+      // the node id must exist as a gestalt first
+      await expect(
+        acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull'),
+      ).rejects.toThrow(aclErrors.ErrorACLNodeIdMissing);
+      await acl.setNodesPerm(['g1-1'] as Array<NodeId>, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+      let vaultPerm: Record<NodeId, Permission>;
+      await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
+      // idempotent
+      await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
+      vaultPerm = await acl.getVaultPerm('v1' as VaultId);
+      expect(vaultPerm['g1-1']).toEqual({
+        gestalt: {
+          notify: null,
+        },
+        vaults: {
+          v1: { pull: null },
+        },
+      });
+      await acl.unsetVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
+      // idempotent
+      await acl.unsetVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
+      vaultPerm = await acl.getVaultPerm('v1' as VaultId);
+      expect(vaultPerm['g1-1']).toEqual({
+        gestalt: {
+          notify: null,
+        },
+        vaults: {
+          v1: {},
+        },
+      });
+      await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull');
+      await acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'clone');
+      vaultPerm = await acl.getVaultPerm('v1' as VaultId);
+      expect(vaultPerm['g1-1'].vaults['v1']).toHaveProperty('pull');
+      expect(vaultPerm['g1-1'].vaults['v1']).toHaveProperty('clone');
+      const vaultPerms = await acl.getVaultPerms();
+      expect(vaultPerms).toEqual({
+        v1: {
+          'g1-1': {
+            gestalt: {
+              notify: null,
+            },
+            vaults: {
+              v1: { pull: null, clone: null },
+            },
           },
         },
-      },
-    });
-    await acl.stop();
-  });
-  test('joining existing gestalt permissions', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
-    const g1Perm = {
-      gestalt: {
-        notify: null,
-      },
-      vaults: {
-        v1: { pull: null },
-      },
-    };
-    await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, g1Perm);
-    await acl.joinNodePerm(
-      'g1-second' as NodeId,
-      ['g1-third', 'g1-fourth'] as Array<NodeId>,
-    );
-    const nodePerm = await acl.getNodePerm('g1-fourth' as NodeId);
-    expect(nodePerm).toEqual(g1Perm);
-    const nodePerms = await acl.getNodePerms();
-    expect(nodePerms).toEqual([
-      {
-        'g1-first': g1Perm,
-        'g1-second': g1Perm,
-        'g1-third': g1Perm,
-        'g1-fourth': g1Perm,
-      },
-    ]);
-    await acl.stop();
-  });
-  test('joining existing vault permisisons', async () => {
+      });
+      await acl.stop();
+    },
+    global.defaultTimeout * 2,
+  );
+  test(
+    'joining existing gestalt permissions',
+    async () => {
+      const acl = new ACL({ db, logger });
+      await acl.start();
+      const g1Perm = {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {
+          v1: { pull: null },
+        },
+      };
+      await acl.setNodesPerm(
+        ['g1-first', 'g1-second'] as Array<NodeId>,
+        g1Perm,
+      );
+      await acl.joinNodePerm(
+        'g1-second' as NodeId,
+        ['g1-third', 'g1-fourth'] as Array<NodeId>,
+      );
+      const nodePerm = await acl.getNodePerm('g1-fourth' as NodeId);
+      expect(nodePerm).toEqual(g1Perm);
+      const nodePerms = await acl.getNodePerms();
+      expect(nodePerms).toEqual([
+        {
+          'g1-first': g1Perm,
+          'g1-second': g1Perm,
+          'g1-third': g1Perm,
+          'g1-fourth': g1Perm,
+        },
+      ]);
+      await acl.stop();
+    },
+    global.defaultTimeout * 2,
+  );
+  test('joining existing vault permissions', async () => {
     const acl = new ACL({ db, logger });
     await acl.start();
     await acl.setNodesPerm(['g1-1'] as Array<NodeId>, {

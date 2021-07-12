@@ -363,6 +363,10 @@ describe('CLI secrets', () => {
     expect(result2).toBe(0);
 
     list = await vault.listSecrets();
-    expect(list.sort()).toStrictEqual(['secrets/secret-1', 'secrets/secret-2', 'secrets/secret-3']);
+    expect(list.sort()).toStrictEqual([
+      'secrets/secret-1',
+      'secrets/secret-2',
+      'secrets/secret-3',
+    ]);
   });
 });
