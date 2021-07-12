@@ -32,7 +32,6 @@ function createClientService({ polykeyAgent }: { polykeyAgent: PolykeyAgent }) {
     }),
     ...createVaultRPC({
       vaultManager: polykeyAgent.vaults,
-      gitManager: polykeyAgent.gitManager,
       sessionManager: polykeyAgent.sessions,
     }),
     ...createKeysRPC({

@@ -27,17 +27,7 @@ class ErrorVaultUnlinked extends ErrorVaults {}
 
 class ErrorCreateVaultId extends ErrorVaults {}
 
-class ErrorVaultMap extends ErrorVaults {}
-
-class ErrorVaultMapNotStarted extends ErrorVaultMap {}
-
-class ErrorVaultMapNodeIdMissing extends ErrorVaultMap {}
-
-class ErrorVaultMapVaultIdMissing extends ErrorVaultMap {}
-
-class ErrorVaultMapDecrypt extends ErrorVaultMap {}
-
-class ErrorVaultMapParse extends ErrorVaultMap {}
+class ErrorVaultMergeConflict extends ErrorVaults {}
 
 class ErrorSecretUndefined extends ErrorSecrets {}
 
@@ -59,12 +49,7 @@ export {
   ErrorMalformedVaultDBValue,
   ErrorVaultUnlinked,
   ErrorCreateVaultId,
-  ErrorVaultMap,
-  ErrorVaultMapNotStarted,
-  ErrorVaultMapNodeIdMissing,
-  ErrorVaultMapVaultIdMissing,
-  ErrorVaultMapDecrypt,
-  ErrorVaultMapParse,
+  ErrorVaultMergeConflict,
   ErrorSecretUndefined,
   ErrorSecretDefined,
   ErrorReadingSecret,

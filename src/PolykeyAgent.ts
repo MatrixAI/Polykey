@@ -4,7 +4,6 @@ import type { Host, Port } from './network/types';
 import path from 'path';
 import process from 'process';
 import Logger from '@matrixai/logger';
-import { GitBackend, GitManager } from './git';
 import * as utils from './utils';
 import * as errors from './errors';
 import { KeyManager } from './keys';
@@ -49,10 +48,6 @@ class Polykey {
   public readonly grpcHost: string;
   public readonly grpcPort: number;
 
-  // Git
-  public readonly gitManager: GitManager;
-  public readonly gitBackend: GitBackend;
-
   // Proxies
   public readonly fwdProxy: ForwardProxy;
   public readonly revProxy: ReverseProxy;
@@ -72,8 +67,6 @@ class Polykey {
     acl,
     db,
     workerManager,
-    gitManager,
-    gitBackend,
     grpcHost,
     grpcPort,
     fwdProxy,
@@ -94,8 +87,6 @@ class Polykey {
     acl?: ACL;
     db?: DB;
     workerManager?: WorkerManager;
-    gitManager?: GitManager;
-    gitBackend?: GitBackend;
     grpcHost?: string;
     grpcPort?: number;
     fwdProxy?: ForwardProxy;
@@ -165,17 +156,6 @@ class Polykey {
         acl: this.acl,
         logger: this.logger.getChild('GestaltGraph'),
       });
-    this.vaults =
-      vaultManager ??
-      new VaultManager({
-        vaultsPath: vaultsPath,
-        keyManager: this.keys,
-        db: this.db,
-        acl: this.acl,
-        gestaltGraph: this.gestalts,
-        fs: this.fs,
-        logger: this.logger.getChild('VaultManager'),
-      });
     this.nodes =
       nodeManager ??
       new NodeManager({
@@ -186,6 +166,18 @@ class Polykey {
         revProxy: this.revProxy,
         fs: this.fs,
         logger: this.logger.getChild('NodeManager'),
+      });
+    this.vaults =
+      vaultManager ??
+      new VaultManager({
+        vaultsPath: vaultsPath,
+        keyManager: this.keys,
+        nodeManager: this.nodes,
+        db: this.db,
+        acl: this.acl,
+        gestaltGraph: this.gestalts,
+        fs: this.fs,
+        logger: this.logger.getChild('VaultManager'),
       });
     this.identities =
       identitiesManager ??
@@ -215,21 +207,6 @@ class Polykey {
       new WorkerManager({
         logger: this.logger.getChild('WorkerManager'),
       });
-    this.gitManager =
-      gitManager ??
-      new GitManager({
-        vaultManager: this.vaults,
-        nodeManager: this.nodes,
-        logger: logger,
-      });
-    this.gitBackend =
-      gitBackend ??
-      new GitBackend({
-        getVault: this.vaults.getVault.bind(this.vaults),
-        getVaultNames: this.vaults.listVaults.bind(this.vaults),
-        logger: logger,
-      });
-
     this.sessions = new SessionManager({
       db: this.db,
       logger: logger,
@@ -243,7 +220,6 @@ class Polykey {
     const agentService: IAgentServer = createAgentService({
       vaultManager: this.vaults,
       nodeManager: this.nodes,
-      gitBackend: this.gitBackend,
       sigchain: this.sigchain,
       notificationsManager: this.notifications,
     });
@@ -326,15 +302,14 @@ class Polykey {
 
     await this.sigchain.start({ fresh });
     await this.nodes.start({ nodeId, fresh });
-    await this.vaults.start({ fresh });
     await this.gestalts.start({ fresh });
+    await this.vaults.start({ fresh });
     await this.identities.start({ fresh });
     await this.notifications.start({ fresh });
 
     const keyPrivatePem = this.keys.getRootKeyPairPem().privateKey;
     const certChainPem = await this.keys.getRootCertChainPem();
 
-    await this.gitManager.start();
     await this.discovery.start();
 
     // GRPC Server
@@ -394,14 +369,13 @@ class Polykey {
     await this.revProxy.stop();
 
     await this.discovery.stop();
-    await this.gitManager.stop();
 
     await this.notifications.stop();
 
     await this.identities.stop();
-    await this.gestalts.stop();
 
     await this.vaults.stop();
+    await this.gestalts.stop();
     await this.nodes.stop();
     await this.sigchain.stop();
 

@@ -54,7 +54,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsList(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultMessage>(
+    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
       this.client,
       this.client.vaultsList,
     )(...args);
@@ -100,11 +100,19 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
-  public vaultsShare(...args) {
+  public vaultsSetPerms(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.ShareMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.SetVaultPermMessage>(
       this.client,
-      this.client.vaultsShare,
+      this.client.vaultsSetPerms,
+    )(...args);
+  }
+
+  public vaultsUnsetPerms(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.UnsetVaultPermMessage>(
+      this.client,
+      this.client.vaultsUnsetPerms,
     )(...args);
   }
 
@@ -182,7 +190,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsNewDirSecret(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsNewDirSecret,
     )(...args);

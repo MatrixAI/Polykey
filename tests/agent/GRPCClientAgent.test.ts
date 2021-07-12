@@ -6,7 +6,6 @@ import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 
-import { GitBackend } from '@/git';
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
@@ -40,7 +39,6 @@ describe('GRPC agent', () => {
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeManager: NodeManager;
-  let gitBackend: GitBackend;
   let sigchain: Sigchain;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
@@ -95,16 +93,6 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    vaultManager = new VaultManager({
-      vaultsPath: vaultsPath,
-      keyManager: keyManager,
-      db: db,
-      acl: acl,
-      gestaltGraph: gestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
-
     nodeManager = new NodeManager({
       db: db,
       sigchain: sigchain,
@@ -115,9 +103,14 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    gitBackend = new GitBackend({
-      getVault: vaultManager.getVault.bind(vaultManager),
-      getVaultNames: vaultManager.scanVaults.bind(vaultManager),
+    vaultManager = new VaultManager({
+      vaultsPath: vaultsPath,
+      keyManager: keyManager,
+      nodeManager: nodeManager,
+      db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
+      fs: fs,
       logger: logger,
     });
 
@@ -125,14 +118,13 @@ describe('GRPC agent', () => {
     await db.start({ keyPair: keyManager.getRootKeyPair() });
     await acl.start();
     await gestaltGraph.start();
-    await vaultManager.start({});
     await nodeManager.start({ nodeId: 'NODEID' as NodeId });
+    await vaultManager.start({});
 
     [server, port] = await testUtils.openTestAgentServer({
       keyManager,
       vaultManager,
       nodeManager,
-      gitBackend,
       sigchain,
     });
 
@@ -164,14 +156,14 @@ describe('GRPC agent', () => {
   test('can check permissions', async () => {
     const vault = await vaultManager.createVault('TestAgentVault');
     await gestaltGraph.setNode(node1);
-    await vaultManager.setVaultPerm('12345', vault.vaultId);
-    await vaultManager.unsetVaultPerm('12345', vault.vaultId);
+    await vaultManager.setVaultPermissions('12345', vault.vaultId);
+    await vaultManager.unsetVaultPermissions('12345', vault.vaultId);
     const vaultPermMessage = new agentPB.VaultPermMessage();
     vaultPermMessage.setNodeid('12345');
     vaultPermMessage.setVaultid(vault.vaultId);
     const response = await client.checkVaultPermissions(vaultPermMessage);
     expect(response.getPermission()).toBeFalsy();
-    await vaultManager.setVaultPerm('12345', vault.vaultId);
+    await vaultManager.setVaultPermissions('12345', vault.vaultId);
     const response2 = await client.checkVaultPermissions(vaultPermMessage);
     expect(response2.getPermission()).toBeTruthy();
     await vaultManager.deleteVault(vault.vaultId);
@@ -188,7 +180,7 @@ describe('GRPC agent', () => {
       data.push(Buffer.from(chunk).toString());
     }
     expect(data).toStrictEqual([]);
-    await vaultManager.setVaultPerm('12345', vault.vaultId);
+    await vaultManager.setVaultPermissions('12345', vault.vaultId);
     const response2 = client.scanVaults(NodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {

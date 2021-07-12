@@ -1,15 +1,17 @@
-import type { DB } from '../db';
-import type { DBLevel, DBOp } from '../db/types';
-import type { VaultId, Vaults } from './types';
-import type { KeyManager } from '../keys';
+import type { DB } from '../../src/db';
+import type { DBLevel, DBOp } from '../../src/db/types';
+import type { VaultId, Vaults } from '../../src/vaults/types';
+import type { KeyManager } from '../../src/keys';
 
+import path from 'path';
+import fs from 'fs';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 
-import { Vault } from './';
+import { Vault } from '../../src/vaults';
 
-import * as vaultErrors from './errors';
-import { errors as dbErrors } from '../db';
+import * as vaultErrors from '../../src/vaults/errors';
+import { errors as dbErrors } from '../../src/db';
 
 class VaultMap {
   public readonly vaultMapPath: string;
@@ -129,7 +131,7 @@ class VaultMap {
    * Transaction wrapper that will not lock if the operation was executed
    * within a transaction context
    */
-  protected async _transaction<T>(f: () => Promise<T>): Promise<T> {
+  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
     if (this.lock.isLocked()) {
       return await f();
     } else {
@@ -156,7 +158,7 @@ class VaultMap {
   }
 
   /**
-   * Gets the vault lin for a given vault id
+   * Gets the vault link for a given vault id
    */
   public async getVaultLinkByVaultId(
     vaultId: VaultId,
@@ -314,8 +316,8 @@ class VaultMap {
           vault: new Vault({
             vaultId: id,
             vaultName: name,
-            key: Buffer.from(vaultKey),
-            baseDir: this.vaultMapPath,
+            baseDir: path.join(this.vaultMapPath, id),
+            fs: fs,
             logger: this.logger,
           }),
           vaultName: name,

@@ -19,7 +19,6 @@ import { VaultManager } from '@/vaults';
 import { IdentitiesManager } from '@/identities';
 import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
-import { GitManager } from '@/git';
 import { KeyManager, utils as keyUtils } from '@/keys';
 import { NotificationsManager } from '@/notifications';
 import { GithubProvider } from '@/identities/providers';
@@ -52,7 +51,6 @@ describe('Client service', () => {
 
   let polykeyAgent: PolykeyAgent;
   let keyManager: KeyManager;
-  let gitManager: GitManager;
   let nodeManager: NodeManager;
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
@@ -135,16 +133,6 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    vaultManager = new VaultManager({
-      vaultsPath: vaultsPath,
-      keyManager: keyManager,
-      db: db,
-      acl: acl,
-      gestaltGraph: gestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
-
     nodeManager = new NodeManager({
       db: db,
       sigchain: sigchain,
@@ -155,8 +143,14 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    identitiesManager = new IdentitiesManager({
+    vaultManager = new VaultManager({
+      vaultsPath: vaultsPath,
+      keyManager: keyManager,
+      nodeManager: nodeManager,
       db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
+      fs: fs,
       logger: logger,
     });
 
@@ -168,9 +162,9 @@ describe('Client service', () => {
       logger,
     });
 
-    gitManager = new GitManager({
-      vaultManager: vaultManager,
-      nodeManager: nodeManager,
+    identitiesManager = new IdentitiesManager({
+      db: db,
+      logger: logger,
     });
 
     polykeyAgent = new PolykeyAgent({
@@ -182,7 +176,6 @@ describe('Client service', () => {
       identitiesManager: identitiesManager,
       acl: acl,
       db: db,
-      gitManager: gitManager,
       fwdProxy: fwdProxy,
       revProxy: revProxy,
       fs: fs,
@@ -287,730 +280,656 @@ describe('Client service', () => {
     const meta = new grpc.Metadata();
     meta.set('passwordFile', passwordFile);
 
-    const m = new clientPB.EmptyMessage();
+    const emptyMessage = new clientPB.EmptyMessage();
 
-    const res = await requestJWT(m, meta);
+    const res = await requestJWT(emptyMessage, meta);
     expect(typeof res.getToken()).toBe('string');
     const result = await polykeyAgent.sessions.verifyJWTToken(
       res.getToken() as SessionToken,
     );
     expect(result).toBeTruthy();
   });
-  test('can get vaults', async () => {
-    const listVaults =
-      grpcUtils.promisifyReadableStreamCall<clientPB.VaultMessage>(
-        client,
-        client.vaultsList,
-      );
-
-    const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
-
-    for (const vaultName of vaultList) {
-      await vaultManager.createVault(vaultName);
-    }
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const m = new clientPB.EmptyMessage();
-    const res = listVaults(m, meta, callCredentials);
-    const names: Array<string> = [];
-    for await (const val of res) {
-      names.push(val.getName());
-    }
-
-    expect(names.sort()).toStrictEqual(vaultList.sort());
-  });
-  test('can create vault', async () => {
-    const createVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-      client,
-      client.vaultsCreate,
-    );
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const m = new clientPB.VaultMessage();
-    m.setName('NewVault');
-
-    const res = await createVault(m, meta, callCredentials);
-    expect(res.getSuccess()).toBe(true);
-    const name = vaultManager.listVaults().pop()?.name;
-    expect(name).toBe('NewVault');
-  });
-  test('can delete vaults', async () => {
-    const deleteVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-      client,
-      client.vaultsDelete,
-    );
-
-    const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
-    const vaultList2 = ['Vault2', 'Vault3', 'Vault4', 'Vault5'];
-
-    const vaults: Array<Vault> = [];
-
-    for (const vaultName of vaultList) {
-      vaults.push(await vaultManager.createVault(vaultName));
-    }
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const m = new clientPB.VaultMessage();
-    m.setName(vaults[0].vaultId);
-
-    const res = await deleteVault(m, meta, callCredentials);
-    expect(res.getSuccess()).toBe(true);
-
-    const list: Array<string> = [];
-    const listVaults = vaultManager.listVaults().sort();
-    for (const vault of listVaults) {
-      list.push(vault.name);
-    }
-    expect(list).toStrictEqual(vaultList2.sort());
-
-    await expect(deleteVault(m, meta, callCredentials)).rejects.toThrow(
-      vaultErrors.ErrorVaultUndefined,
-    );
-  });
-  test('can rename vaults', async () => {
-    const renameVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-      client,
-      client.vaultsRename,
-    );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const m = new clientPB.VaultMessage();
-    m.setId(vault.vaultId);
-    m.setName('MyRenamedVault');
-
-    const res = await renameVault(m, meta, callCredentials);
-    expect(res.getSuccess()).toBe(true);
-
-    const name = vaultManager.listVaults().pop()?.name;
-    expect(name).toBe('MyRenamedVault');
-  });
-  test('can get stats for vaults', async () => {
-    const statsVault = grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
-      client,
-      client.vaultsStat,
-    );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    const vault2 = await vaultManager.createVault('MySecondVault');
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const m = new clientPB.VaultMessage();
-    m.setName(vault.vaultId);
-
-    const res = await statsVault(m, meta, callCredentials);
-    const stats1 = res.getStats();
-
-    m.setName(vault2.vaultId);
-    const res2 = await statsVault(m, meta, callCredentials);
-    const stats2 = res2.getStats();
-
-    expect(stats1).toBe(
-      JSON.stringify(await vaultManager.vaultStats(vault.vaultId)),
-    );
-    expect(stats2).toBe(
-      JSON.stringify(await vaultManager.vaultStats(vault2.vaultId)),
-    );
-  });
-  test('can make a directory in a vault', async () => {
-    const mkdirVault = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.vaultsMkdir,
-    );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-    const dirPath = 'dir/dir1/dir2';
-
-    const m = new clientPB.VaultSpecificMessage();
-    const mv = new clientPB.VaultMessage();
-    mv.setName(vault.vaultName);
-    m.setVault(mv);
-    m.setName(dirPath);
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    await mkdirVault(m, meta, callCredentials);
-
-    expect(
-      vault.EncryptedFS.existsSync(`${vault.vaultId}/${dirPath}`),
-    ).toBeTruthy();
-  });
-  test('can list secrets in a vault', async () => {
-    const listSecretsVault =
-      grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
-        client,
-        client.vaultsListSecrets,
-      );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-
-    const secretList = ['Secret1', 'Secret2', 'Secret3', 'Secret4', 'Secret5'];
-
-    for (const secretName of secretList) {
-      await vault.addSecret(secretName, Buffer.from(secretName));
-    }
-
-    const m = new clientPB.VaultMessage();
-    m.setName(vault.vaultName);
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    const res = listSecretsVault(m, meta, callCredentials);
-
-    const names: Array<string> = [];
-    for await (const val of res) {
-      names.push(val.getName());
-    }
-
-    expect(names.sort()).toStrictEqual(secretList.sort());
-  });
-  test('can delete secrets in a vault', async () => {
-    const deleteSecretVault =
-      grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-        client,
-        client.vaultsDeleteSecret,
-      );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-
-    const secretList = ['Secret1', 'Secret2', 'Secret3', 'Secret4', 'Secret5'];
-    const secretList2 = ['Secret2', 'Secret3', 'Secret4', 'Secret5'];
-
-    for (const secretName of secretList) {
-      await vault.addSecret(secretName, Buffer.from(secretName));
-    }
-
-    const m = new clientPB.VaultSpecificMessage();
-    const mv = new clientPB.VaultMessage();
-    mv.setName(vault.vaultName);
-    m.setVault(mv);
-    m.setName('Secret1');
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    const res = await deleteSecretVault(m, meta, callCredentials);
-    expect(res.getSuccess()).toBeTruthy();
-
-    expect((await vault.listSecrets()).sort()).toStrictEqual(
-      secretList2.sort(),
-    );
-  });
-  test('can edit secrets in a vault', async () => {
-    const editSecretVault = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.vaultsEditSecret,
-    );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-
-    const secretList = ['Secret1', 'Secret2', 'Secret3', 'Secret4', 'Secret5'];
-
-    for (const secretName of secretList) {
-      await vault.addSecret(secretName, Buffer.from(secretName));
-    }
-
-    const m = new clientPB.SecretSpecificMessage();
-    const mv = new clientPB.VaultSpecificMessage();
-    const mvs = new clientPB.VaultMessage();
-    mvs.setName(vault.vaultName);
-    mv.setVault(mvs);
-    mv.setName('Secret1');
-    m.setContent('content-change');
-    m.setVault(mv);
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    await editSecretVault(m, meta, callCredentials);
-
-    expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
-      'content-change',
-    );
-  });
-  test('can get secrets in a vault', async () => {
-    const getSecretVault = grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
-      client,
-      client.vaultsGetSecret,
-    );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-
-    const secretList = ['Secret1', 'Secret2', 'Secret3', 'Secret4', 'Secret5'];
-
-    for (const secretName of secretList) {
-      await vault.addSecret(secretName, Buffer.from(secretName));
-    }
-
-    const m = new clientPB.VaultSpecificMessage();
-    const mv = new clientPB.VaultMessage();
-    mv.setName(vault.vaultName);
-    m.setVault(mv);
-    m.setName('Secret1');
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    const response = await getSecretVault(m, meta, callCredentials);
-
-    expect(response.getName().toString()).toStrictEqual('Secret1');
-  });
-  test('can rename secrets in a vault', async () => {
-    const renameSecretVault =
-      grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-        client,
-        client.vaultsRenameSecret,
-      );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-
-    const secretList = ['Secret1', 'Secret2', 'Secret3', 'Secret4', 'Secret5'];
-    const secretList2 = ['Secret2', 'Secret3', 'Secret4', 'Secret5', 'Secret6'];
-
-    for (const secretName of secretList) {
-      await vault.addSecret(secretName, Buffer.from(secretName));
-    }
-
-    const m = new clientPB.SecretRenameMessage();
-    const mv = new clientPB.VaultMessage();
-    const mos = new clientPB.SecretMessage();
-    const mns = new clientPB.SecretMessage();
-
-    mv.setName(vault.vaultName);
-    mos.setName('Secret1');
-    mns.setName('Secret6');
-    m.setVault(mv);
-    m.setOldname(mos);
-    m.setNewname(mns);
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    const response = await renameSecretVault(m, meta, callCredentials);
-
-    expect(response.getSuccess()).toBeTruthy();
-    expect((await vault.listSecrets()).sort()).toStrictEqual(
-      secretList2.sort(),
-    );
-  });
-  test('can add secrets in a vault', async () => {
-    const newSecretVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-      client,
-      client.vaultsNewSecret,
-    );
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-
-    const m = new clientPB.SecretNewMessage();
-    const mv = new clientPB.VaultMessage();
-    mv.setName(vault.vaultName);
-    m.setVault(mv);
-    m.setName('Secret1');
-    m.setContent('secret-content');
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    const response = await newSecretVault(m, meta, callCredentials);
-
-    expect(response.getSuccess()).toBeTruthy();
-    expect((await vault.listSecrets()).sort()).toStrictEqual(['Secret1']);
-    expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
-      'secret-content',
-    );
-  });
-  test('can add a directory of secrets in a vault', async () => {
-    const newDirSecretVault =
-      grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-        client,
-        client.vaultsNewDirSecret,
-      );
-
-    // make a temp file for editing
-    const tmpDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'pksecret'),
-    );
-    const secrets: Array<string> = [];
-    for (let i = 0; i < 10; i++) {
-      const tmpFile = `${tmpDir}/pkSecretFile${i.toString()}`;
-      secrets.push(
-        path.join(`${path.basename(tmpDir)}`, `pkSecretFile${i.toString()}`),
-      );
-      // write secret to file
-      await fs.promises.writeFile(tmpFile, tmpFile);
-    }
-
-    const vault = await vaultManager.createVault('MyFirstVault');
-    await vault.initializeVault();
-
-    const m = new clientPB.SecretNewMessage();
-    const mv = new clientPB.VaultMessage();
-    mv.setName(vault.vaultName);
-    m.setVault(mv);
-    m.setName(tmpDir);
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    await newDirSecretVault(m, meta, callCredentials);
-
-    expect((await vault.listSecrets()).sort()).toStrictEqual(secrets.sort());
-
-    // remove temp directory
-    await fs.promises.rmdir(tmpDir, { recursive: true });
-  });
-  test('can add permissions to a vault', async () => {
-    const vaultsShare = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.vaultsShare,
-    );
-
-    //creating a vault.
-    await vaultManager.createVault('vault1');
-    const vaults = await vaultManager.listVaults();
-    const vaultId = vaults[0].id;
-
-    //creating a gestalts state
-    await createGestaltState();
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    //Doing the tests.
-    const shareMessage = new clientPB.ShareMessage();
-    const ids = [node2.id];
-    shareMessage.setName(vaultId);
-    shareMessage.setId(JSON.stringify(ids)); //nodeIDs
-    shareMessage.setSet(false);
-    await vaultsShare(shareMessage, callCredentials);
-
-    const result = await vaultManager.getVaultPermissions(vaultId);
-    const stringResult = JSON.stringify(result);
-    expect(stringResult).toContain(node2.id);
-    expect(stringResult).toContain('pull');
-  });
-  test('can remove permissions to a vault', async () => {
-    const vaultsShare = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.vaultsShare,
-    );
-
-    //creating a vault.
-    await vaultManager.createVault('vault1');
-    const vaults = await vaultManager.listVaults();
-    const vaultId = vaults[0].id;
-
-    //creating a gestalts state
-    await createGestaltState();
-    await vaultManager.setVaultPerm(node2.id, vaultId);
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    //Doing the tests.
-    const shareMessage = new clientPB.ShareMessage();
-    const ids = [node2.id];
-    shareMessage.setName(vaultId);
-    shareMessage.setId(JSON.stringify(ids)); //nodeIDs
-    shareMessage.setSet(true); //Removing permission.
-    await vaultsShare(shareMessage, callCredentials);
-
-    const result = await vaultManager.getVaultPermissions(vaultId);
-    const stringResult = JSON.stringify(result);
-    expect(stringResult).toContain(node2.id);
-    expect(stringResult.includes('pull')).toBeFalsy();
-  });
-  test('can get permissions to a vault', async () => {
-    const vaultsPermissions =
-      grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
-        client,
-        client.vaultsPermissions,
-      );
-    //name = vaultID
-    //id = nodeID
-
-    //creating a vault.
-    await vaultManager.createVault('vault1');
-    const vaults = await vaultManager.listVaults();
-    const vaultId = vaults[0].id;
-
-    //creating a gestalts state
-    await createGestaltState();
-    await vaultManager.setVaultPerm(node2.id, vaultId);
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-    //Doing the tests.
-    const shareMessage = new clientPB.ShareMessage();
-    shareMessage.setName(vaultId);
-    shareMessage.setId(node2.id);
-    const resGen = vaultsPermissions(shareMessage, callCredentials);
-
-    const results: Array<clientPB.PermissionMessage.AsObject> = [];
-    for await (const res of resGen) {
-      results.push(res.toObject());
-    }
-    const resultsString = JSON.stringify(results);
-    expect(resultsString).toContain(node2.id);
-    expect(resultsString).toContain('pull');
-  });
-  test('can get root keypair', async () => {
-    const getRootKeyPair =
-      grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
-        client,
-        client.keysRootKeyPair,
-      );
-
-    const keyPair = await keyManager.getRootKeyPairPem();
-
-    const m = new clientPB.EmptyMessage();
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const key = await getRootKeyPair(m, meta, callCredentials);
-
-    expect(key.getPrivate()).toBe(keyPair.privateKey);
-    expect(key.getPublic()).toBe(keyPair.publicKey);
-  });
-  test('can reset root keypair', async () => {
-    const getRootKeyPair =
-      grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
-        client,
-        client.keysRootKeyPair,
-      );
-
-    const resetKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.keysResetKeyPair,
-    );
-
-    const keyPair = await keyManager.getRootKeyPairPem();
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const m = new clientPB.KeyMessage();
-    m.setName('somepassphrase');
-
-    await resetKeyPair(m, meta, callCredentials);
-
-    const mv = new clientPB.EmptyMessage();
-
-    await fs.promises.writeFile(passwordFile, 'somepassphrase');
-
-    const key = await getRootKeyPair(mv, meta, callCredentials);
-
-    expect(key.getPrivate()).not.toBe(keyPair.privateKey);
-    expect(key.getPublic()).not.toBe(keyPair.publicKey);
-  });
-  test('can renew root keypair', async () => {
-    const renewKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-      client,
-      client.keysRenewKeyPair,
-    );
-
-    const rootKeyPair1 = await keyManager.getRootKeyPairPem();
-
-    const m = new clientPB.KeyMessage();
-    m.setName('somepassphrase');
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    await renewKeyPair(m, meta, callCredentials);
-
-    const rootKeyPair2 = keyManager.getRootKeyPairPem();
-
-    expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
-    expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
-  });
-  test('can encrypt and decrypt with root keypair', async () => {
-    const encryptWithKeyPair =
-      grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
-        client,
-        client.keysEncrypt,
-      );
-
-    const decryptWithKeyPair =
-      grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
-        client,
-        client.keysDecrypt,
-      );
-
-    const plainText = Buffer.from('abc');
-    const cryptoMessage = new clientPB.CryptoMessage();
-    cryptoMessage.setData(plainText.toString('binary'));
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const cipherText = await encryptWithKeyPair(
-      cryptoMessage,
-      meta,
-      callCredentials,
-    );
-
-    cryptoMessage.setData(cipherText.getData());
-    const plainText_ = await decryptWithKeyPair(
-      cryptoMessage,
-      meta,
-      callCredentials,
-    );
-
-    expect(plainText_.getData()).toBe(plainText.toString());
-  });
-  test('can encrypt and decrypt with root keypair', async () => {
-    const signWithKeyPair =
-      grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
-        client,
-        client.keysSign,
-      );
-
-    const verifyWithKeyPair =
-      grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-        client,
-        client.keysVerify,
-      );
-
-    const data = Buffer.from('abc');
-    const cryptoMessage = new clientPB.CryptoMessage();
-    cryptoMessage.setData(data.toString('binary'));
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const signature = await signWithKeyPair(
-      cryptoMessage,
-      meta,
-      callCredentials,
-    );
-
-    cryptoMessage.setSignature(signature.getSignature());
-
-    const signed = await verifyWithKeyPair(
-      cryptoMessage,
-      meta,
-      callCredentials,
-    );
-
-    expect(signed.getSuccess()).toBe(true);
-  });
-  test('can change password', async () => {
-    const changePasswordKeys =
-      grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-        client,
-        client.keysChangePassword,
-      );
-
-    const m = new clientPB.PasswordMessage();
-    m.setPassword('newpassword');
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    await changePasswordKeys(m, meta, callCredentials);
-
-    await nodeManager.stop();
-    await vaultManager.stop();
-    await keyManager.stop();
-
-    await expect(keyManager.start({ password: 'password' })).rejects.toThrow();
-  });
-  test('can get the root certificate and chains', async () => {
-    const getCerts = grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
-      client,
-      client.certsGet,
-    );
-
-    const getChainCerts =
-      grpcUtils.promisifyReadableStreamCall<clientPB.CertificateMessage>(
-        client,
-        client.certsChainGet,
-      );
-
-    const m = new clientPB.EmptyMessage();
-
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
-
-    const res = getChainCerts(m, meta, callCredentials);
-    const certs: Array<string> = [];
-    for await (const val of res) {
-      certs.push(val.getCert());
-    }
-
-    expect(certs.sort()).toStrictEqual(
-      (await keyManager.getRootCertChainPems()).sort(),
-    );
-
-    const response = await getCerts(m, meta, callCredentials);
-
-    expect(response.getCert()).toBe(keyManager.getRootCertPem());
-  });
-  test('getting all gestalts', async () => {
-    const listGestalts =
-      grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
-        client,
-        client.gestaltsList,
-      );
-
-    await gestaltGraph.setNode(node2);
-    await gestaltGraph.setIdentity(identity1);
-
-    const m = new clientPB.EmptyMessage();
-
-    const res = listGestalts(m, callCredentials);
-
-    const gestalts: Array<string> = [];
-    for await (const val of res) {
-      gestalts.push(JSON.parse(val.getName()));
-    }
-    const identityGestalt = await gestaltGraph.getGestaltByIdentity(
-      identity1.providerId,
-      identity1.identityId,
-    );
-    const nodeGestalt = await gestaltGraph.getGestaltByNode(node2.id);
-    expect(gestalts).toContainEqual(identityGestalt);
-    expect(gestalts).toContainEqual(nodeGestalt);
-    expect(gestalts).toHaveLength(2);
-  });
-  test('setting independent node and identity gestalts', async () => {
-    await gestaltGraph.setNode(node2);
-    await gestaltGraph.setIdentity(identity1);
-    const gestaltNode = await gestaltGraph.getGestaltByNode(node2.id);
-    const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
-      identity1.providerId,
-      identity1.identityId,
-    );
-    const gkNode = gestaltsUtils.keyFromNode(node2.id);
-    const gkIdentity = gestaltsUtils.keyFromIdentity(
-      identity1.providerId,
-      identity1.identityId,
-    );
-    expect(gestaltNode).toStrictEqual({
-      matrix: { [gkNode]: {} },
-      nodes: { [gkNode]: node2 },
-      identities: {},
+  describe('vaults', () => {
+    test('can get vaults', async () => {
+      const listVaults =
+        grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
+          client,
+          client.vaultsList,
+        );
+
+      const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
+
+      for (const vaultName of vaultList) {
+        await vaultManager.createVault(vaultName);
+      }
+
+      const emptyMessage = new clientPB.EmptyMessage();
+      const res = listVaults(emptyMessage, callCredentials);
+      const names: Array<string> = [];
+      for await (const val of res) {
+        names.push(val.getName());
+      }
+
+      expect(names.sort()).toStrictEqual(vaultList.sort());
     });
-    expect(gestaltIdentity).toStrictEqual({
-      matrix: { [gkIdentity]: {} },
-      nodes: {},
-      identities: { [gkIdentity]: identity1 },
+    test('can create vault', async () => {
+      const createVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
+        client,
+        client.vaultsCreate,
+      );
+
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName('NewVault');
+
+      const vaultId = await createVault(vaultMessage, callCredentials);
+      const vault = (await vaultManager.listVaults()).pop();
+      expect(vault?.name).toBe('NewVault');
+      expect(vault?.id).toBe(vaultId.getId());
+    });
+    test('can delete vaults', async () => {
+      const deleteVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        client,
+        client.vaultsDelete,
+      );
+
+      const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
+      const vaultList2 = ['Vault2', 'Vault3', 'Vault4', 'Vault5'];
+
+      const vaults: Array<Vault> = [];
+
+      for (const vaultName of vaultList) {
+        vaults.push(await vaultManager.createVault(vaultName));
+      }
+
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vaults[0].vaultId);
+
+      const res = await deleteVault(vaultMessage, callCredentials);
+      expect(res.getSuccess()).toBe(true);
+
+      const list: Array<string> = [];
+      const listVaults = (await vaultManager.listVaults()).sort();
+      for (const vault of listVaults) {
+        list.push(vault.name);
+      }
+      expect(list).toStrictEqual(vaultList2.sort());
+
+      await expect(deleteVault(vaultMessage, callCredentials)).rejects.toThrow(
+        vaultErrors.ErrorVaultUndefined,
+      );
+    });
+    test('can rename vaults', async () => {
+      const renameVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
+        client,
+        client.vaultsRename,
+      );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const vaultRenameMessage = new clientPB.VaultRenameMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+      vaultRenameMessage.setVault(vaultMessage);
+      vaultRenameMessage.setNewname('MyRenamedVault');
+
+      const vaultId = await renameVault(vaultRenameMessage, callCredentials);
+      expect(vaultId.getId()).toBe(vault.vaultId);
+
+      const name = (await vaultManager.listVaults()).pop()?.name;
+      expect(name).toBe('MyRenamedVault');
+    });
+    test('can get stats for vaults', async () => {
+      const statsVault = grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
+        client,
+        client.vaultsStat,
+      );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault2 = await vaultManager.createVault('MySecondVault');
+
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultId);
+
+      const res = await statsVault(vaultMessage, callCredentials);
+      const stats1 = res.getStats();
+
+      vaultMessage.setName(vault2.vaultId);
+      const res2 = await statsVault(vaultMessage, callCredentials);
+      const stats2 = res2.getStats();
+
+      expect(stats1).toBe(
+        JSON.stringify(await vaultManager.vaultStats(vault.vaultId)),
+      );
+      expect(stats2).toBe(
+        JSON.stringify(await vaultManager.vaultStats(vault2.vaultId)),
+      );
+    });
+    test('can make a directory in a vault', async () => {
+      const mkdirVault = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        client,
+        client.vaultsMkdir,
+      );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+      const dirPath = 'dir/dir1/dir2';
+
+      const vaultMkdirMessage = new clientPB.VaultMkdirMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+      vaultMkdirMessage.setVault(vaultMessage);
+      vaultMkdirMessage.setDirname(dirPath);
+
+      await mkdirVault(vaultMkdirMessage, callCredentials);
+
+      await expect(
+        fs.promises.readdir(path.join(dataDir, 'vaults', vault.vaultId)),
+      ).resolves.toContain(`dir.data`);
+    });
+    test('can list secrets in a vault', async () => {
+      const listSecretsVault =
+        grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
+          client,
+          client.vaultsListSecrets,
+        );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const secretList = [
+        'Secret1',
+        'Secret2',
+        'Secret3',
+        'Secret4',
+        'Secret5',
+      ];
+
+      for (const secretName of secretList) {
+        await vault.addSecret(secretName, secretName);
+      }
+
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+
+      const res = listSecretsVault(vaultMessage, callCredentials);
+
+      const names: Array<string> = [];
+      for await (const val of res) {
+        names.push(val.getName());
+      }
+
+      expect(names.sort()).toStrictEqual(secretList.sort());
+    });
+    test('can delete secrets in a vault', async () => {
+      const deleteSecretVault =
+        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.vaultsDeleteSecret,
+        );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const secretList = [
+        'Secret1',
+        'Secret2',
+        'Secret3',
+        'Secret4',
+        'Secret5',
+      ];
+      const secretList2 = ['Secret2', 'Secret3', 'Secret4', 'Secret5'];
+
+      for (const secretName of secretList) {
+        await vault.addSecret(secretName, secretName);
+      }
+
+      const secretMessage = new clientPB.SecretMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+      secretMessage.setVault(vaultMessage);
+      secretMessage.setName('Secret1');
+
+      const res = await deleteSecretVault(secretMessage, callCredentials);
+      expect(res.getSuccess()).toBeTruthy();
+
+      expect((await vault.listSecrets()).sort()).toStrictEqual(
+        secretList2.sort(),
+      );
+    });
+    test('can edit secrets in a vault', async () => {
+      const editSecretVault =
+        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+          client,
+          client.vaultsEditSecret,
+        );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const secretList = [
+        'Secret1',
+        'Secret2',
+        'Secret3',
+        'Secret4',
+        'Secret5',
+      ];
+
+      for (const secretName of secretList) {
+        await vault.addSecret(secretName, secretName);
+      }
+
+      const secretEditMessage = new clientPB.SecretEditMessage();
+      const secretMessage = new clientPB.SecretMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+      secretMessage.setVault(vaultMessage);
+      secretMessage.setName('Secret1');
+      secretMessage.setContent('content-change');
+      secretEditMessage.setSecret(secretMessage);
+
+      await editSecretVault(secretEditMessage, callCredentials);
+
+      expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
+        'content-change',
+      );
+    });
+    test('can get secrets in a vault', async () => {
+      const getSecretVault =
+        grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
+          client,
+          client.vaultsGetSecret,
+        );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const secretList = [
+        'Secret1',
+        'Secret2',
+        'Secret3',
+        'Secret4',
+        'Secret5',
+      ];
+
+      for (const secretName of secretList) {
+        await vault.addSecret(secretName, secretName);
+      }
+
+      const secretMessage = new clientPB.SecretMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+      secretMessage.setVault(vaultMessage);
+      secretMessage.setName('Secret1');
+
+      const response = await getSecretVault(secretMessage, callCredentials);
+
+      expect(response.getContent()).toStrictEqual('Secret1');
+    });
+    test('can rename secrets in a vault', async () => {
+      const renameSecretVault =
+        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.vaultsRenameSecret,
+        );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const secretList = [
+        'Secret1',
+        'Secret2',
+        'Secret3',
+        'Secret4',
+        'Secret5',
+      ];
+      const secretList2 = [
+        'Secret2',
+        'Secret3',
+        'Secret4',
+        'Secret5',
+        'Secret6',
+      ];
+
+      for (const secretName of secretList) {
+        await vault.addSecret(secretName, secretName);
+      }
+
+      const secretRenameMessage = new clientPB.SecretRenameMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      const secretMessage = new clientPB.SecretMessage();
+
+      vaultMessage.setName(vault.vaultName);
+      secretMessage.setName('Secret1');
+      secretMessage.setVault(vaultMessage);
+      secretRenameMessage.setNewname('Secret6');
+      secretRenameMessage.setOldsecret(secretMessage);
+
+      const response = await renameSecretVault(
+        secretRenameMessage,
+        callCredentials,
+      );
+
+      expect(response.getSuccess()).toBeTruthy();
+      expect((await vault.listSecrets()).sort()).toStrictEqual(
+        secretList2.sort(),
+      );
+    });
+    test('can add secrets in a vault', async () => {
+      const newSecretVault =
+        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.vaultsNewSecret,
+        );
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const secretMessage = new clientPB.SecretMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+      secretMessage.setVault(vaultMessage);
+      secretMessage.setName('Secret1');
+      secretMessage.setContent('secret-content');
+
+      const response = await newSecretVault(secretMessage, callCredentials);
+
+      expect(response.getSuccess()).toBeTruthy();
+      expect((await vault.listSecrets()).sort()).toStrictEqual(['Secret1']);
+      expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
+        'secret-content',
+      );
+    });
+    test('can add a directory of secrets in a vault', async () => {
+      const newDirSecretVault =
+        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.vaultsNewDirSecret,
+        );
+
+      // make a temp file for editing
+      const tmpDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'pksecret'),
+      );
+      const secrets: Array<string> = [];
+      for (let i = 0; i < 10; i++) {
+        const tmpFile = `${tmpDir}/pkSecretFile${i.toString()}`;
+        secrets.push(
+          path.join(`${path.basename(tmpDir)}`, `pkSecretFile${i.toString()}`),
+        );
+        // write secret to file
+        await fs.promises.writeFile(tmpFile, tmpFile);
+      }
+
+      const vault = await vaultManager.createVault('MyFirstVault');
+
+      const secretDirectoryMessage = new clientPB.SecretDirectoryMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setName(vault.vaultName);
+      secretDirectoryMessage.setVault(vaultMessage);
+      secretDirectoryMessage.setSecretdirectory(tmpDir);
+
+      await newDirSecretVault(secretDirectoryMessage, callCredentials);
+
+      expect((await vault.listSecrets()).sort()).toStrictEqual(secrets.sort());
+
+      // remove temp directory
+      await fs.promises.rmdir(tmpDir, { recursive: true });
+    });
+    test('can add permissions to a vault', async () => {
+      const vaultsSetPerms =
+        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.vaultsSetPerms,
+        );
+
+      // Creating a vault
+      await vaultManager.createVault('vault1');
+      const vaults = await vaultManager.listVaults();
+      const vaultId = vaults[0].id;
+
+      // Creating a gestalts state
+      await createGestaltState();
+
+      const setVaultPermMessage = new clientPB.SetVaultPermMessage();
+      const nodeMessage = new clientPB.NodeMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      nodeMessage.setName(node2.id);
+      vaultMessage.setName(vaults[0].name);
+      setVaultPermMessage.setVault(vaultMessage);
+      setVaultPermMessage.setNode(nodeMessage);
+      await vaultsSetPerms(setVaultPermMessage, callCredentials);
+
+      const result = await vaultManager.getVaultPermissions(vaultId);
+      const stringResult = JSON.stringify(result);
+      expect(stringResult).toContain(node2.id);
+      expect(stringResult).toContain('pull');
+    });
+    test('can remove permissions to a vault', async () => {
+      const vaultsUnsetPerms =
+        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.vaultsUnsetPerms,
+        );
+
+      // Creating a vault.
+      await vaultManager.createVault('vault1');
+      const vaults = await vaultManager.listVaults();
+      const vaultId = vaults[0].id;
+
+      // Creating a gestalts state
+      await createGestaltState();
+      await vaultManager.setVaultPermissions(node2.id, vaultId);
+
+      const unsetVaultPermMessage = new clientPB.UnsetVaultPermMessage();
+      const nodeMessage = new clientPB.NodeMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      nodeMessage.setName(node2.id);
+      vaultMessage.setName(vaults[0].name);
+      unsetVaultPermMessage.setVault(vaultMessage);
+      unsetVaultPermMessage.setNode(nodeMessage);
+      await vaultsUnsetPerms(unsetVaultPermMessage, callCredentials);
+
+      const result = await vaultManager.getVaultPermissions(vaultId);
+      const stringResult = JSON.stringify(result);
+      expect(stringResult).toContain(node2.id);
+      expect(stringResult.includes('pull')).toBeFalsy();
+    });
+    test('can get permissions to a vault', async () => {
+      const vaultsPermissions =
+        grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
+          client,
+          client.vaultsPermissions,
+        );
+
+      // Creating a vault
+      await vaultManager.createVault('vault1');
+      const vaults = await vaultManager.listVaults();
+      const vaultId = vaults[0].id;
+
+      // Creating a gestalts state
+      await createGestaltState();
+      await vaultManager.setVaultPermissions(node2.id, vaultId);
+
+      const getVaultPermMessage = new clientPB.GetVaultPermMessage();
+      const vaultMessage = new clientPB.VaultMessage();
+      const nodeMessage = new clientPB.NodeMessage();
+      vaultMessage.setName(vaults[0].name);
+      nodeMessage.setName(node2.id);
+      getVaultPermMessage.setVault(vaultMessage);
+      getVaultPermMessage.setNode(nodeMessage);
+      const resGen = vaultsPermissions(getVaultPermMessage, callCredentials);
+
+      const results: Array<clientPB.PermissionMessage.AsObject> = [];
+      for await (const res of resGen) {
+        results.push(res.toObject());
+      }
+      const resultsString = JSON.stringify(results);
+      expect(resultsString).toContain(node2.id);
+      expect(resultsString).toContain('pull');
     });
   });
-  //Identities.
-  describe('Identities RPC', () => {
+  describe('keys', () => {
+    test('can get root keypair', async () => {
+      const getRootKeyPair =
+        grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
+          client,
+          client.keysRootKeyPair,
+        );
+
+      const keyPair = keyManager.getRootKeyPairPem();
+
+      const emptyMessage = new clientPB.EmptyMessage();
+
+      const key = await getRootKeyPair(emptyMessage, callCredentials);
+
+      expect(key.getPrivate()).toBe(keyPair.privateKey);
+      expect(key.getPublic()).toBe(keyPair.publicKey);
+    });
+    test('can reset root keypair', async () => {
+      const getRootKeyPair =
+        grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
+          client,
+          client.keysRootKeyPair,
+        );
+
+      const resetKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        client,
+        client.keysResetKeyPair,
+      );
+
+      const keyPair = keyManager.getRootKeyPairPem();
+
+      const keyMessage = new clientPB.KeyMessage();
+      keyMessage.setName('somepassphrase');
+
+      await resetKeyPair(keyMessage, callCredentials);
+
+      const emptyMessage = new clientPB.EmptyMessage();
+
+      await fs.promises.writeFile(passwordFile, 'somepassphrase');
+
+      const key = await getRootKeyPair(emptyMessage, callCredentials);
+
+      expect(key.getPrivate()).not.toBe(keyPair.privateKey);
+      expect(key.getPublic()).not.toBe(keyPair.publicKey);
+    });
+    test('can renew root keypair', async () => {
+      const renewKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        client,
+        client.keysRenewKeyPair,
+      );
+
+      const rootKeyPair1 = keyManager.getRootKeyPairPem();
+
+      const keyMessage = new clientPB.KeyMessage();
+      keyMessage.setName('somepassphrase');
+
+      await renewKeyPair(keyMessage, callCredentials);
+
+      const rootKeyPair2 = keyManager.getRootKeyPairPem();
+
+      expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
+      expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
+    });
+    test('can encrypt and decrypt with root keypair', async () => {
+      const encryptWithKeyPair =
+        grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+          client,
+          client.keysEncrypt,
+        );
+
+      const decryptWithKeyPair =
+        grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+          client,
+          client.keysDecrypt,
+        );
+
+      const plainText = Buffer.from('abc');
+      const cryptoMessage = new clientPB.CryptoMessage();
+      cryptoMessage.setData(plainText.toString('binary'));
+
+      const cipherText = await encryptWithKeyPair(
+        cryptoMessage,
+        callCredentials,
+      );
+
+      cryptoMessage.setData(cipherText.getData());
+      const plainText_ = await decryptWithKeyPair(
+        cryptoMessage,
+        callCredentials,
+      );
+
+      expect(plainText_.getData()).toBe(plainText.toString());
+    });
+    test('can encrypt and decrypt with root keypair', async () => {
+      const signWithKeyPair =
+        grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+          client,
+          client.keysSign,
+        );
+
+      const verifyWithKeyPair =
+        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.keysVerify,
+        );
+
+      const data = Buffer.from('abc');
+      const cryptoMessage = new clientPB.CryptoMessage();
+      cryptoMessage.setData(data.toString('binary'));
+
+      const signature = await signWithKeyPair(cryptoMessage, callCredentials);
+
+      cryptoMessage.setSignature(signature.getSignature());
+
+      const signed = await verifyWithKeyPair(cryptoMessage, callCredentials);
+
+      expect(signed.getSuccess()).toBe(true);
+    });
+    test('can change password', async () => {
+      const changePasswordKeys =
+        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+          client,
+          client.keysChangePassword,
+        );
+
+      const passwordMessage = new clientPB.PasswordMessage();
+      passwordMessage.setPassword('newpassword');
+
+      await changePasswordKeys(passwordMessage, callCredentials);
+
+      await nodeManager.stop();
+      await vaultManager.stop();
+      await keyManager.stop();
+
+      await expect(
+        keyManager.start({ password: 'password' }),
+      ).rejects.toThrow();
+    });
+    test('can get the root certificate and chains', async () => {
+      const getCerts =
+        grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
+          client,
+          client.certsGet,
+        );
+
+      const getChainCerts =
+        grpcUtils.promisifyReadableStreamCall<clientPB.CertificateMessage>(
+          client,
+          client.certsChainGet,
+        );
+
+      const emptyMessage = new clientPB.EmptyMessage();
+
+      const res = getChainCerts(emptyMessage, callCredentials);
+      const certs: Array<string> = [];
+      for await (const val of res) {
+        certs.push(val.getCert());
+      }
+
+      expect(certs.sort()).toStrictEqual(
+        (await keyManager.getRootCertChainPems()).sort(),
+      );
+
+      const response = await getCerts(emptyMessage, callCredentials);
+
+      expect(response.getCert()).toBe(keyManager.getRootCertPem());
+    });
+  });
+  describe('identities', () => {
     test('can Authenticate an identity.', async () => {
       const identitiesAuthenticate =
         grpcUtils.promisifyReadableStreamCall<clientPB.ProviderMessage>(
@@ -1171,8 +1090,58 @@ describe('Client service', () => {
       expect(resString).toContain(testToken.identityId);
     });
   });
-  //gestalts
-  describe('Gestalts RPC', () => {
+  describe('gestalts', () => {
+    test('getting all gestalts', async () => {
+      const listGestalts =
+        grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
+          client,
+          client.gestaltsList,
+        );
+
+      await gestaltGraph.setNode(node2);
+      await gestaltGraph.setIdentity(identity1);
+
+      const m = new clientPB.EmptyMessage();
+
+      const res = listGestalts(m, callCredentials);
+
+      const gestalts: Array<string> = [];
+      for await (const val of res) {
+        gestalts.push(JSON.parse(val.getName()));
+      }
+      const identityGestalt = await gestaltGraph.getGestaltByIdentity(
+        identity1.providerId,
+        identity1.identityId,
+      );
+      const nodeGestalt = await gestaltGraph.getGestaltByNode(node2.id);
+      expect(gestalts).toContainEqual(identityGestalt);
+      expect(gestalts).toContainEqual(nodeGestalt);
+      expect(gestalts).toHaveLength(2);
+    });
+    test('setting independent node and identity gestalts', async () => {
+      await gestaltGraph.setNode(node2);
+      await gestaltGraph.setIdentity(identity1);
+      const gestaltNode = await gestaltGraph.getGestaltByNode(node2.id);
+      const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
+        identity1.providerId,
+        identity1.identityId,
+      );
+      const gkNode = gestaltsUtils.keyFromNode(node2.id);
+      const gkIdentity = gestaltsUtils.keyFromIdentity(
+        identity1.providerId,
+        identity1.identityId,
+      );
+      expect(gestaltNode).toStrictEqual({
+        matrix: { [gkNode]: {} },
+        nodes: { [gkNode]: node2 },
+        identities: {},
+      });
+      expect(gestaltIdentity).toStrictEqual({
+        matrix: { [gkIdentity]: {} },
+        nodes: {},
+        identities: { [gkIdentity]: identity1 },
+      });
+    });
     test('can get gestalt from Node.', async () => {
       const gestaltsGetNode =
         grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(

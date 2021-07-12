@@ -1,12 +1,17 @@
 import * as utils from '@/vaults/utils';
 
 describe('utils', () => {
-  test('vaultIds are alphanumeric', async () => {
-    const id1 = await utils.generateVaultId();
-    const id2 = utils.generateVaultIdSync();
+  // test('vaultIds are alphanumeric', async () => {
+  //   const id1 = utils.generateVaultId('abc');
 
-    expect(isAlphaNumeric(id1)).toBe(true);
-    expect(isAlphaNumeric(id2)).toBe(true);
+  //   expect(isAlphaNumeric(id1)).toBe(true);
+  // });
+  test('vaultIds can be split', async () => {
+    const nodeId = 'alkjsddfjknacqqquiry32741834id';
+    const id = utils.generateVaultId(nodeId);
+    expect(id).toContain(nodeId);
+    const vaultId = utils.splitVaultId(id);
+    expect(vaultId).not.toContain(nodeId);
   });
 });
 

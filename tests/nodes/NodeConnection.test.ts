@@ -5,12 +5,10 @@ import type { NodeId, NodeInfo } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import git from 'isomorphic-git';
 import Logger, { StreamHandler, LogLevel } from '@matrixai/logger';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NodeConnection, NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
-import { GitBackend, GitFrontend } from '@/git';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { utils as networkUtils } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
@@ -47,7 +45,6 @@ describe('NodeConnection', () => {
   let clientKeyManager: KeyManager, serverKeyManager: KeyManager;
   let serverVaultManager: VaultManager;
   let serverNodeManager: NodeManager;
-  let serverGitBackend: GitBackend;
   let serverSigchain: Sigchain;
   let serverACL: ACL, clientACL: ACL;
   let serverGestaltGraph: GestaltGraph, clientGestaltGraph: GestaltGraph;
@@ -140,6 +137,7 @@ describe('NodeConnection', () => {
     serverVaultManager = new VaultManager({
       vaultsPath: serverVaultsPath,
       keyManager: serverKeyManager,
+      nodeManager: serverNodeManager,
       db: serverDb,
       acl: serverACL,
       gestaltGraph: serverGestaltGraph,
@@ -168,25 +166,19 @@ describe('NodeConnection', () => {
       keyManager: serverKeyManager,
       logger: logger,
     });
-    serverGitBackend = new GitBackend({
-      getVault: serverVaultManager.getVault.bind(serverVaultManager),
-      getVaultNames: serverVaultManager.scanVaults.bind(serverVaultManager),
-      logger: logger,
-    });
     await serverKeyManager.start({ password: 'password' });
     await serverDb.start({ keyPair: serverKeyManager.getRootKeyPair() });
     await serverACL.start();
     await serverSigchain.start();
     await serverGestaltGraph.start();
     await serverGestaltGraph.setNode(node);
-    await serverVaultManager.start({});
     await serverNodeManager.start({ nodeId: targetNodeId });
     await serverNotificationsManager.start({});
+    await serverVaultManager.start({});
 
     agentService = createAgentService({
       vaultManager: serverVaultManager,
       nodeManager: serverNodeManager,
-      gitBackend: serverGitBackend,
       sigchain: serverSigchain,
       notificationsManager: serverNotificationsManager,
     });
@@ -485,165 +477,5 @@ describe('NodeConnection', () => {
       fwdProxy.getEgressHost(),
       fwdProxy.getEgressPort(),
     );
-  });
-  test('scanning the vaults of another agent over a node connection', async () => {
-    const conn = new NodeConnection({
-      sourceNodeId: sourceNodeId,
-      targetNodeId: targetNodeId,
-      targetHost: targetHost,
-      targetPort: targetPort,
-      forwardProxy: fwdProxy,
-      keyManager: clientKeyManager,
-      logger: logger,
-    });
-    await conn.start({});
-    await revProxy.openConnection(sourceHost, sourcePort);
-
-    const dataDir2 = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    clientDb = new DB({
-      dbPath: path.join(dataDir2, 'db'),
-      fs: fs,
-      logger: logger,
-    });
-    clientACL = new ACL({
-      db: clientDb,
-      logger: logger,
-    });
-    clientGestaltGraph = new GestaltGraph({
-      db: clientDb,
-      acl: clientACL,
-      logger: logger,
-    });
-    const clientVaultManager = new VaultManager({
-      vaultsPath: path.join(dataDir2, 'vaults'),
-      keyManager: clientKeyManager,
-      db: clientDb,
-      acl: clientACL,
-      gestaltGraph: clientGestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
-    await clientDb.start({ keyPair: clientKeyManager.getRootKeyPair() });
-    await clientACL.start();
-    await clientGestaltGraph.start();
-    await clientVaultManager.start({});
-    const newVault = await serverVaultManager.createVault('vault1');
-    await newVault.initializeVault();
-    await newVault.addSecret('secret-1', Buffer.from('secret-content'));
-    const newClientVault = await clientVaultManager.createVault('vault2');
-    await serverVaultManager.setVaultPerm('NodeId', newVault.vaultId);
-    const gitFront = new GitFrontend();
-    const client = conn.getClient();
-    client.start();
-    const gitRequest = gitFront.connectToNodeGit(client, 'NodeId');
-    const list = await gitRequest.scanVaults();
-    expect(list).toStrictEqual([`${newVault.vaultId}\tvault1`]);
-
-    await serverVaultManager.deleteVault(newVault.vaultId);
-    await clientVaultManager.createVault(newClientVault.vaultId);
-
-    await conn.stop();
-    await revProxy.closeConnection(
-      fwdProxy.getEgressHost(),
-      fwdProxy.getEgressPort(),
-    );
-    await clientACL.stop();
-    await clientGestaltGraph.stop();
-    await clientVaultManager.stop();
-    await clientDb.stop();
-    await fs.promises.rm(dataDir2, {
-      force: true,
-      recursive: true,
-    });
-  });
-  test('cloning and pulling the vaults of another agent over a node connection', async () => {
-    const conn = new NodeConnection({
-      sourceNodeId: sourceNodeId,
-      targetNodeId: targetNodeId,
-      targetHost: targetHost,
-      targetPort: targetPort,
-      forwardProxy: fwdProxy,
-      keyManager: clientKeyManager,
-      logger: logger,
-    });
-    await conn.start({});
-    await revProxy.openConnection(sourceHost, sourcePort);
-
-    const dataDir2 = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    clientDb = new DB({
-      dbPath: path.join(dataDir2, 'db'),
-      fs: fs,
-      logger: logger,
-    });
-    clientACL = new ACL({
-      db: clientDb,
-      logger: logger,
-    });
-    clientGestaltGraph = new GestaltGraph({
-      db: clientDb,
-      acl: clientACL,
-      logger: logger,
-    });
-    const clientVaultManager = new VaultManager({
-      vaultsPath: path.join(dataDir2, 'vaults'),
-      keyManager: clientKeyManager,
-      db: clientDb,
-      acl: clientACL,
-      gestaltGraph: clientGestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
-    await clientDb.start({ keyPair: clientKeyManager.getRootKeyPair() });
-    await clientACL.start();
-    await clientGestaltGraph.start();
-    await clientVaultManager.start({});
-    const newVault = await serverVaultManager.createVault('vault1');
-    await newVault.initializeVault();
-    await newVault.addSecret('secret-1', Buffer.from('secret-content'));
-    const newVault2 = await clientVaultManager.createVault('vault2');
-    const gitFront = new GitFrontend();
-    const client = conn.getClient();
-    client.start();
-    const gitRequest = gitFront.connectToNodeGit(client, 'NodeId');
-    const vaultUrl = `http://0.0.0.0/${newVault.vaultId}`;
-    await git.clone({
-      fs: newVault2.EncryptedFS,
-      http: gitRequest,
-      dir: newVault2.vaultId,
-      url: vaultUrl,
-      ref: 'master',
-      singleBranch: true,
-    });
-    await git.setConfig({
-      fs: newVault2.EncryptedFS,
-      dir: newVault2.vaultId,
-      path: 'user.name',
-      value: newVault2.vaultName,
-    });
-    expect(await newVault2.listSecrets()).toStrictEqual(['secret-1']);
-    expect(await newVault2.getSecret('secret-1')).toStrictEqual(
-      Buffer.from('secret-content'),
-    );
-
-    await serverVaultManager.deleteVault(newVault.vaultId);
-    await clientVaultManager.createVault(newVault2.vaultId);
-
-    await conn.stop();
-    await revProxy.closeConnection(
-      fwdProxy.getEgressHost(),
-      fwdProxy.getEgressPort(),
-    );
-    await clientACL.stop();
-    await clientGestaltGraph.stop();
-    await clientVaultManager.stop();
-    await clientDb.stop();
-    await fs.promises.rm(dataDir2, {
-      force: true,
-      recursive: true,
-    });
   });
 });

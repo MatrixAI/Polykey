@@ -53,8 +53,11 @@ async function passwordFromMetadata(
   return password;
 }
 
-function parseVaultInput(input: string, vaultManager: VaultManager): string {
-  const id = vaultManager.getVaultId(input);
+async function parseVaultInput(
+  input: string,
+  vaultManager: VaultManager,
+): Promise<string> {
+  const id = await vaultManager.getVaultId(input);
   if (id) {
     return id;
   } else {

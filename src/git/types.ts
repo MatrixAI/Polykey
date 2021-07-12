@@ -1,3 +1,6 @@
+import type { PassThrough } from 'readable-stream';
+import type { DeflatedObject, WrappedObject, RawObject } from 'isomorphic-git';
+
 type Config = {
   line: string;
   ref?: string;
@@ -7,11 +10,11 @@ type Config = {
 };
 
 type Refs = {
-  [key: string]: any;
+  [key: string]: Config;
 };
 
 type SymRefs = {
-  [key: string]: any;
+  [key: string]: string;
 };
 
 type RefsAdResponse = {
@@ -28,6 +31,30 @@ type Packfile = {
   [key: string]: any;
 };
 
+type Identity = {
+  name: string;
+  email: string;
+  timestamp: number;
+  timezoneOffset: number;
+};
+
+type Pack = {
+  packstream: PassThrough;
+  shallows: Set<string>;
+  unshallows: Set<string>;
+  acks: Array<Ack>;
+};
+
+type PackIndex = {
+  hashes: string[];
+  offsets: Map<string, number>;
+  packfileSha: string;
+  getExternalRefDelta: (
+    oid: string,
+  ) => Promise<DeflatedObject | WrappedObject | RawObject>;
+  pack?: Buffer;
+};
+
 type BufferEncoding =
   | 'utf8'
   | 'hex'
@@ -40,4 +67,13 @@ type BufferEncoding =
   | 'latin1'
   | 'binary';
 
-export type { Config, Refs, RefsAdResponse, Ack, Packfile, BufferEncoding };
+export type {
+  Refs,
+  RefsAdResponse,
+  Ack,
+  Packfile,
+  BufferEncoding,
+  Identity,
+  Pack,
+  PackIndex,
+};
