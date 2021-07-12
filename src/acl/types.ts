@@ -1,4 +1,4 @@
-import type { Opaque, Ref } from '../types';
+import type { Opaque } from '../types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultId, VaultActions } from '../vaults/types';
 
