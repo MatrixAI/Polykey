@@ -60,7 +60,7 @@ env.action(async (options, command) => {
     }[] = [];
 
     for (const path of secretPathList) {
-      if (!binUtils.pathRegex.test(path)) {
+      if (!path.includes(':')) {
         throw new CLIErrors.ErrorSecretPathFormat();
       }
 
@@ -114,24 +114,17 @@ env.action(async (options, command) => {
     //   args.push(`"${options.run}"`);
     // }
 
-    // const shell = spawn(shellCommand, {
-    //   stdio: 'inherit',
-    //   env: secretEnv,
-    //   shell: true,
-    // });
+    // binUtils.spawnShell(shellCommand, secretEnv, options.format);
+    // process.stdout.write(
+    //   binUtils.outputFormatter({
+    //     type: options.format === 'json' ? 'json' : 'list',
+    //     data: [
+    //       // `${secretName.toUpperCase().replace('-', '_')}='${secret}`,
+    //     ],
+    //   }),
+    // );
 
-    // shell.on('close', (code) => {
-    //   if (code != 0) {
-    //     process.stdout.write(
-    //       binUtils.outputFormatter({
-    //         type: options.format === 'json' ? 'json' : 'list',
-    //         data: [`Terminated with ${code}`],
-    //       }),
-    //     );
-    //   }
-    // });
   } catch (err) {
-    console.log(err);
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }

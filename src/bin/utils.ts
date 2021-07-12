@@ -4,6 +4,10 @@ import os from 'os';
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
 import prompts from 'prompts';
+import { spawn } from 'child_process';
+import commander from 'commander';
+import Logger, { LogLevel } from '@matrixai/logger';
+
 import * as grpc from '@grpc/grpc-js';
 import * as clientUtils from '../client/utils';
 import * as clientErrors from '../client/errors';
@@ -153,11 +157,58 @@ async function retryAuth<T>(
       }
     }
   }
+// Async function requestPassword(keyManager: KeyManager, attempts: number = 3) {
+//   let i = 0;
+//   let correct = false;
+//   while (i < attempts) {
+//     const response = await prompts({
+//       type: 'text',
+//       name: 'password',
+//       message: 'Please enter your password',
+//     });
+//     try {
+//       clientUtils.checkPassword(response.password, keyManager);
+//       correct = true;
+//     } catch (err) {
+//       if (err instanceof clientErrors.ErrorPassword) {
+//         if (attempts == 2) {
+//           throw new clientErrors.ErrorPassword();
+//         }
+//         i++;
+//       }
+//     }
+//     if (correct) {
+//       break;
+//     }
+//   }
+//   return;
+// }
+function spawnShell(command: string, environmentVariables: POJO, format: string): void {
+  const shell = spawn(command, {
+    stdio: 'inherit',
+    env: environmentVariables,
+    shell: true,
+  });
+
+  shell.on('close', (code) => {
+    if (code != 0) {
+      process.stdout.write(
+        outputFormatter({
+          type: format === 'json' ? 'json' : 'list',
+          data: [`Terminated with ${code}`],
+        }),
+      );
+    }
+  });
 }
 
 export {
   getDefaultNodePath,
   verboseToLogLevel,
+  createCommand,
+  promisifyGrpc,
+  outputFormatter,
+  spawnShell,
   OutputObject,
   outputFormatter,
   requestPassword,
