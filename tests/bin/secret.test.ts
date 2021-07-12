@@ -250,4 +250,57 @@ describe('CLI secrets', () => {
       ]);
     });
   });
+
+  describe('commandNewDirSecret', () => {
+    test('should inject secrets into a sub-shell', async () => {
+      const vaultName = 'Vault9' as VaultName;
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+
+      const vaultName2 = 'Vault10' as VaultName;
+      const vault2 = await polykeyAgent.vaults.createVault(vaultName2);
+
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_1', Buffer.from('test-1'));
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_2', Buffer.from('test-2'));
+      await vaultOps.addSecret(vault2, 'TEST_VARIABLE_3', Buffer.from('test-3'));
+
+      // const secretPath = path.join(dataDir, 'secret');
+      // await fs.promises.writeFile(secretPath, 'this is a secret');
+
+      const result = await utils.pk([
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+        'Vault1:TEST_VARIABLE_1',
+        'Vault2:TEST_VARIABLE_3',
+        'Vault1:TEST_VARIABLE_2',
+        // 'bash',
+      ]);
+      expect(result).toBe(0);
+
+      // let list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MySecret']);
+      // expect(await vault.getSecret('MySecret')).toStrictEqual(
+      //   Buffer.from('this is a secret'),
+      // );
+
+      // await polykeyAgent.sessionManager.stopSession();
+      // const result2 = await utils.pk([
+      //   'secrets',
+      //   'create',
+      //   '-np',
+      //   dataDir,
+      //   '-sp',
+      //   'Vault1:MySecret',
+      //   '-fp',
+      //   secretPath,
+      // ]);
+      // expect(result2).toBe(passwordExitCode);
+
+      // list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MySecret']);
+    });
+  });
 });
