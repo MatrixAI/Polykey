@@ -15,14 +15,14 @@ const commandSecretEnv = binUtils.createCommand('env', {
   format: true,
   passwordFile: true,
 });
-commandSecretEnv.option(
-  '--command <command>',
-  'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
-);
-commandSecretEnv.option(
-  '--run <run>',
-  'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
-);
+// commandSecretEnv.option(
+//   '--command <command>',
+//   'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
+// );
+// commandSecretEnv.option(
+//   '--run <run>',
+//   'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
+// );
 commandSecretEnv.arguments(
   "Secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]', you can also control what the environment variable will be called using '[<variableName>]' (defaults to upper, snake case of the original secret name)",
 );
@@ -42,10 +42,14 @@ commandSecretEnv.action(async (options, command) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
+  let shellCommand;
   const client = new PolykeyClient(clientConfig);
   const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
   const vaultMessage = new clientPB.VaultMessage();
   const secretPathList: string[] = Array.from<string>(command.args.values());
+  if(!binUtils.pathRegex.test(secretPathList[secretPathList.length - 1])) {
+    shellCommand = secretPathList.pop();
+  }
 
   try {
     if (secretPathList.length < 1) {
@@ -88,39 +92,42 @@ commandSecretEnv.action(async (options, command) => {
       secretEnv[obj.variableName] = secret;
     }
 
-    const shellPath = process.env.SHELL ?? 'sh';
-    const args: string[] = [];
+    console.log(secretEnv);
 
-    if (options.command && options.run) {
-      throw new CLIErrors.ErrorInvalidArguments(
-        'Only one of --command or --run can be specified',
-      );
-    } else if (options.command) {
-      args.push('-i');
-      args.push('-c');
-      args.push(`"${options.command}"`);
-    } else if (options.run) {
-      args.push('-c');
-      args.push(`"${options.run}"`);
-    }
+    // const shellPath = process.env.SHELL ?? 'sh';
+    // const args: string[] = [];
 
-    const shell = spawn(shellPath, args, {
-      stdio: 'inherit',
-      env: secretEnv,
-      shell: true,
-    });
+    // if (options.command && options.run) {
+    //   throw new CLIErrors.ErrorInvalidArguments(
+    //     'Only one of --command or --run can be specified',
+    //   );
+    // } else if (options.command) {
+    //   args.push('-i');
+    //   args.push('-c');
+    //   args.push(`"${options.command}"`);
+    // } else if (options.run) {
+    //   args.push('-c');
+    //   args.push(`"${options.run}"`);
+    // }
 
-    shell.on('close', (code) => {
-      if (code != 0) {
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Terminated with ${code}`],
-          }),
-        );
-      }
-    });
+    // const shell = spawn(shellCommand, {
+    //   stdio: 'inherit',
+    //   env: secretEnv,
+    //   shell: true,
+    // });
+
+    // shell.on('close', (code) => {
+    //   if (code != 0) {
+    //     process.stdout.write(
+    //       binUtils.outputFormatter({
+    //         type: options.format === 'json' ? 'json' : 'list',
+    //         data: [`Terminated with ${code}`],
+    //       }),
+    //     );
+    //   }
+    // });
   } catch (err) {
+    console.log(err);
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     }
