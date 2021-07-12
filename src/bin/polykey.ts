@@ -8,6 +8,7 @@ import commandSecrets from './secrets';
 import commandKeys from './keys';
 import commandNodes from './nodes';
 import commandIdentities from './identities';
+import commandNotifications from './notifications';
 import commandEchoes from './echo';
 import { createCommand } from './utils';
 
@@ -24,6 +25,7 @@ async function main(argv = process.argv): Promise<number> {
   rootCommand.addCommand(commandKeys);
   rootCommand.addCommand(commandNodes);
   rootCommand.addCommand(commandIdentities);
+  rootCommand.addCommand(commandNotifications);
   rootCommand.addCommand(commandEchoes);
   try {
     // argv will have node path and the script path as the first 2 parameters

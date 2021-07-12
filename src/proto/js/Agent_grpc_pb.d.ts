@@ -17,6 +17,7 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     getClaims: IAgentService_IGetClaims;
     getChainData: IAgentService_IGetChainData;
     sendHolePunchMessage: IAgentService_ISendHolePunchMessage;
+    notificationsSend: IAgentService_INotificationsSend;
     checkVaultPermisssions: IAgentService_IcheckVaultPermisssions;
 }
 
@@ -101,6 +102,15 @@ interface IAgentService_ISendHolePunchMessage extends grpc.MethodDefinition<Agen
     responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
+interface IAgentService_INotificationsSend extends grpc.MethodDefinition<Agent_pb.NotificationMessage, Agent_pb.EmptyMessage> {
+    path: "/agentInterface.Agent/NotificationsSend";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.NotificationMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.NotificationMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+}
 interface IAgentService_IcheckVaultPermisssions extends grpc.MethodDefinition<Agent_pb.VaultPermMessage, Agent_pb.PermissionMessage> {
     path: "/agentInterface.Agent/checkVaultPermisssions";
     requestStream: false;
@@ -123,6 +133,7 @@ export interface IAgentServer extends grpc.UntypedServiceImplementation {
     getClaims: grpc.handleUnaryCall<Agent_pb.ClaimTypeMessage, Agent_pb.ClaimsMessage>;
     getChainData: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.ChainDataMessage>;
     sendHolePunchMessage: grpc.handleUnaryCall<Agent_pb.RelayMessage, Agent_pb.EmptyMessage>;
+    notificationsSend: grpc.handleUnaryCall<Agent_pb.NotificationMessage, Agent_pb.EmptyMessage>;
     checkVaultPermisssions: grpc.handleUnaryCall<Agent_pb.VaultPermMessage, Agent_pb.PermissionMessage>;
 }
 
@@ -152,6 +163,9 @@ export interface IAgentClient {
     sendHolePunchMessage(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsSend(request: Agent_pb.NotificationMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     checkVaultPermisssions(request: Agent_pb.VaultPermMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
     checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
     checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
@@ -183,6 +197,9 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public sendHolePunchMessage(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public sendHolePunchMessage(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsSend(request: Agent_pb.NotificationMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public checkVaultPermisssions(request: Agent_pb.VaultPermMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
     public checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;
     public checkVaultPermisssions(request: Agent_pb.VaultPermMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.PermissionMessage) => void): grpc.ClientUnaryCall;

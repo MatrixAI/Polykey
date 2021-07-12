@@ -41,7 +41,7 @@ class GitManager {
     if (!(await this.vaultManager.started())) {
       throw new vaultsErrors.ErrorVaultManagerNotStarted();
     }
-    if (!(await this.nodeManager.started())) {
+    if (!(await this.nodeManager.started)) {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
     }
   }

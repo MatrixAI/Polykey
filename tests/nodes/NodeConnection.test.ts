@@ -19,6 +19,7 @@ import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { DB } from '@/db';
 import { Sigchain } from '@/sigchain';
+import { NotificationsManager } from '@/notifications';
 
 import * as grpcErrors from '@/grpc/errors';
 
@@ -51,6 +52,7 @@ describe('NodeConnection', () => {
   let serverACL: ACL, clientACL: ACL;
   let serverGestaltGraph: GestaltGraph, clientGestaltGraph: GestaltGraph;
   let serverDb: DB, clientDb: DB;
+  let serverNotificationsManager: NotificationsManager;
 
   let sourceNodeId: NodeId, targetNodeId: NodeId;
   let sourceKeyPairPem: KeyPairPem, targetKeyPairPem: KeyPairPem;
@@ -159,6 +161,13 @@ describe('NodeConnection', () => {
       fs: fs,
       logger: logger,
     });
+    serverNotificationsManager = new NotificationsManager({
+      acl: serverACL,
+      db: serverDb,
+      nodeManager: serverNodeManager,
+      keyManager: serverKeyManager,
+      logger: logger,
+    });
     serverGitBackend = new GitBackend({
       getVault: serverVaultManager.getVault.bind(serverVaultManager),
       getVaultNames: serverVaultManager.scanVaults.bind(serverVaultManager),
@@ -172,12 +181,14 @@ describe('NodeConnection', () => {
     await serverGestaltGraph.setNode(node);
     await serverVaultManager.start({});
     await serverNodeManager.start({ nodeId: targetNodeId });
+    await serverNotificationsManager.start({});
 
     agentService = createAgentService({
       vaultManager: serverVaultManager,
       nodeManager: serverNodeManager,
       gitBackend: serverGitBackend,
       sigchain: serverSigchain,
+      notificationsManager: serverNotificationsManager,
     });
     server = new GRPCServer({
       services: [[AgentService, agentService]],

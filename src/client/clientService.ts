@@ -14,6 +14,7 @@ import createGestaltRPC from './rpcGestalts';
 import createIdentitiesRPC from './rpcIdentities';
 import { PolykeyAgent } from '../';
 import * as grpcUtils from '../grpc/utils';
+import createNotificationsRPC from './rpcNotifications';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -52,6 +53,10 @@ function createClientService({ polykeyAgent }: { polykeyAgent: PolykeyAgent }) {
     }),
     ...createNodesRPC({
       nodeManager: polykeyAgent.nodes,
+      sessionManager: polykeyAgent.sessions,
+    }),
+    ...createNotificationsRPC({
+      notificationsManager: polykeyAgent.notifications,
       sessionManager: polykeyAgent.sessions,
     }),
     nodesList: async (

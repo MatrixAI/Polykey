@@ -13,6 +13,7 @@ import { Lockfile } from './lockfile';
 import { NodeManager } from './nodes';
 import { VaultManager } from './vaults';
 import { GestaltGraph } from './gestalts';
+import { NotificationsManager } from './notifications';
 import { Sigchain } from './sigchain';
 import { ACL } from './acl';
 import { DB } from './db';
@@ -36,6 +37,7 @@ class Polykey {
   public readonly nodes: NodeManager;
   public readonly gestalts: GestaltGraph;
   public readonly identities: IdentitiesManager;
+  public readonly notifications: NotificationsManager;
   public readonly workers: WorkerManager;
   public readonly sigchain: Sigchain;
   public readonly acl: ACL;
@@ -66,6 +68,7 @@ class Polykey {
     gestaltGraph,
     identitiesManager,
     sigchain,
+    notificationsManager,
     acl,
     db,
     workerManager,
@@ -87,6 +90,7 @@ class Polykey {
     gestaltGraph?: GestaltGraph;
     identitiesManager?: IdentitiesManager;
     sigchain?: Sigchain;
+    notificationsManager?: NotificationsManager;
     acl?: ACL;
     db?: DB;
     workerManager?: WorkerManager;
@@ -197,6 +201,15 @@ class Polykey {
         nodeManager: this.nodes,
         logger: this.logger.getChild('Discovery'),
       });
+    this.notifications =
+      notificationsManager ??
+      new NotificationsManager({
+        acl: this.acl,
+        db: this.db,
+        nodeManager: this.nodes,
+        keyManager: this.keys,
+        logger: this.logger.getChild('NotificationsManager'),
+      });
     this.workers =
       workerManager ??
       new WorkerManager({
@@ -232,6 +245,7 @@ class Polykey {
       nodeManager: this.nodes,
       gitBackend: this.gitBackend,
       sigchain: this.sigchain,
+      notificationsManager: this.notifications,
     });
 
     // Create GRPC Server with the services just created.
@@ -315,6 +329,7 @@ class Polykey {
     await this.vaults.start({ fresh });
     await this.gestalts.start({ fresh });
     await this.identities.start({ fresh });
+    await this.notifications.start({ fresh });
 
     const keyPrivatePem = this.keys.getRootKeyPairPem().privateKey;
     const certChainPem = await this.keys.getRootCertChainPem();
@@ -380,6 +395,8 @@ class Polykey {
 
     await this.discovery.stop();
     await this.gitManager.stop();
+
+    await this.notifications.stop();
 
     await this.identities.stop();
     await this.gestalts.stop();

@@ -10,7 +10,8 @@ import type {
   NodeData,
   NodeBucket,
 } from '../nodes/types';
-import type { Host, Port, Address } from '../network/types';
+import type { SignedNotification } from '../notifications/types';
+import type { Host, Port } from '../network/types';
 import type { FileSystem, Timer } from '../types';
 import type { DB } from '../db';
 
@@ -22,9 +23,9 @@ import * as dbErrors from '../db/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
 import * as networkUtils from '../network/utils';
-import { ForwardProxy, ReverseProxy } from '../network';
-import { GRPCClientAgent } from '../agent';
 import * as agentPB from '../proto/js/Agent_pb';
+import { GRPCClientAgent } from '../agent';
+import { ForwardProxy, ReverseProxy } from '../network';
 
 class NodeManager {
   // LevelDB directory to store all the information for managing nodes
@@ -332,6 +333,21 @@ class NodeManager {
       message.getEgressaddress(),
       Buffer.from(message.getSignature()),
     );
+  }
+
+  /**
+   * Sends a notification to a node.
+   */
+  public async sendNotification(
+    nodeId: NodeId,
+    message: SignedNotification,
+  ): Promise<void> {
+    const targetAddress: NodeAddress = await this.findNode(nodeId);
+    const connection: NodeConnection = await this.createConnectionToNode(
+      nodeId,
+      targetAddress,
+    );
+    await connection.sendNotification(message);
   }
 
   public getConnectionToNode(targetNodeId: NodeId): NodeConnection {

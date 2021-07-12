@@ -1,7 +1,7 @@
 import type { NodeId, NodeDetails, NodeData } from './types';
 import type { Host, Port, ProxyConfig } from '../network/types';
 import type { KeyManager } from '../keys';
-import { NodeAddressMessage } from '../proto/js/Agent_pb';
+import type { SignedNotification } from '../notifications/types';
 import type { ChainDataEncoded } from '../sigchain/types';
 import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
 import type { ClaimId, ClaimEncoded } from '../claims/types';
@@ -10,6 +10,7 @@ import Logger from '@matrixai/logger';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
+import { NodeAddressMessage } from '../proto/js/Agent_pb';
 import { agentPB, GRPCClientAgent } from '../agent';
 import { ForwardProxy, utils as networkUtils } from '../network';
 
@@ -251,6 +252,16 @@ class NodeConnection {
     relayMsg.setEgressaddress(egressAddress);
     relayMsg.setSignature(signature.toString());
     await this.client.sendHolePunchMessage(relayMsg);
+  }
+
+  /**
+   * Performs a GRPC request to send a notification to the target.
+   */
+  public async sendNotification(message: SignedNotification): Promise<void> {
+    const notificationMsg = new agentPB.NotificationMessage();
+    notificationMsg.setContent(message);
+    await this.client.notificationsSend(notificationMsg);
+    return;
   }
 
   /**

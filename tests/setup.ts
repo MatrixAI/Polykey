@@ -12,4 +12,4 @@ declare global {
 
 global.projectDir = path.join(__dirname, '../');
 global.testDir = __dirname;
-global.defaultTimeout = 10000;
+global.defaultTimeout = 60000;
