@@ -58,7 +58,11 @@ commandGetSecret.action(async (options) => {
     vaultSpecificMessage.setVault(vaultMessage);
     vaultSpecificMessage.setName(secretName);
 
-    const pCall = grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
+    const pCall = grpcClient.vaultsGetSecret(
+      vaultSpecificMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const responseMessage = await pCall;
     if (isEnv) {

@@ -16,13 +16,13 @@ try {
 }
 
 const keyPath = path.resolve(
-  `${certsDir}/bootstrap.polykey.io.key`
+  `${certsDir}/bootstrap.polykey.io.key.ts`
 );
 const pubPath = path.resolve(
-  `${certsDir}/bootstrap.polykey.io.pub`
+  `${certsDir}/bootstrap.polykey.io.pub.ts`
 );
 const crtPath = path.resolve(
-  `${certsDir}/bootstrap.polykey.io.crt`
+  `${certsDir}/bootstrap.polykey.io.crt.ts`
 );
 
 const now = new Date();
@@ -115,9 +115,9 @@ try {
   }
 }
 
-const keyPem = pki.privateKeyToPem(keys.privateKey);
-const pubPem = pki.publicKeyToPem(keys.publicKey);
-const crtPem = pki.certificateToPem(cert);
+const keyPem = `const priv = '${JSON.stringify(pki.privateKeyToPem(keys.privateKey))}';\n\nexport { priv };`;
+const pubPem = `const pub = '${JSON.stringify(pki.publicKeyToPem(keys.publicKey))}';\n\nexport { pub };`;
+const crtPem = `const cert = '${JSON.stringify(pki.certificateToPem(cert))}';\n\nexport { cert };`;
 
 console.error(`Writing ${keyPath}`);
 fs.writeFileSync(keyPath, keyPem);

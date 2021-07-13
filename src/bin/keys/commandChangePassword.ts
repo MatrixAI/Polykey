@@ -45,7 +45,11 @@ commandChangePassword.action(async (options) => {
     });
     passwordMessage.setPassword(password);
 
-    await grpcClient.keysChangePassword(passwordMessage, meta);
+    await grpcClient.keysChangePassword(
+      passwordMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

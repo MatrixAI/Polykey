@@ -33,6 +33,7 @@ export { ErrorPolykey, ErrorUndefinedBehaviour };
  */
 export * from './acl/errors';
 export * from './db/errors';
+export * from './session/errors';
 export * from './keys/errors';
 export * from './vaults/errors';
 export * from './git/errors';

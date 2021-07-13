@@ -50,7 +50,11 @@ commandPullVault.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.vaultsPull(vaultMessage, meta);
+    await grpcClient.vaultsPull(
+      vaultMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

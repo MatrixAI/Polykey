@@ -49,7 +49,11 @@ commandNewDirSecret.action(async (options) => {
     secretNewMessage.setVault(vaultMessage);
     secretNewMessage.setName(options.directoryPath);
 
-    await grpcClient.vaultsNewDirSecret(secretNewMessage, meta);
+    await grpcClient.vaultsNewDirSecret(
+      secretNewMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

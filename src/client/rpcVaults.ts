@@ -29,7 +29,7 @@ const createVaultRPC = ({
       const genWritable = grpcUtils.generatorWritable(call);
 
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaults: Array<{
           name: string;
           id: string;
@@ -53,13 +53,13 @@ const createVaultRPC = ({
       const response = new clientPB.StatusMessage();
       let vault: Vault;
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         vault = await vaultManager.createVault(call.request.getName());
         await vault.initializeVault();
         response.setSuccess(true);
       } catch (err) {
         response.setSuccess(false);
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
       }
       callback(null, response);
     },
@@ -69,7 +69,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const name = call.request.getId();
         const id = utils.parseVaultInput(name, vaultManager);
         const result = await vaultManager.renameVault(
@@ -88,7 +88,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const name = call.request.getName();
         const id = utils.parseVaultInput(name, vaultManager);
         const result = await vaultManager.deleteVault(id);
@@ -104,7 +104,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         // vault name
         const name = call.request.getName();
         // node id
@@ -139,7 +139,7 @@ const createVaultRPC = ({
       const nodeId = call.request.getName();
 
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaults: Array<string> = await gitManager.scanNodeVaults(nodeId);
         let vaultMessage: clientPB.VaultMessage;
         for (const vault of vaults) {
@@ -161,7 +161,7 @@ const createVaultRPC = ({
       const genWritable = grpcUtils.generatorWritable(call);
 
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const name = call.request.getName();
         const id = utils.parseVaultInput(name, vaultManager);
         const vault = vaultManager.getVault(id);
@@ -186,7 +186,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -207,7 +207,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const name = call.request.getName();
         const id = utils.parseVaultInput(name, vaultManager);
         const stats = await vaultManager.vaultStats(id);
@@ -226,7 +226,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -252,7 +252,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const secretMessage = call.request.getVault();
         if (!secretMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -284,7 +284,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.SecretMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -310,7 +310,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaultMessage = call.request.getVault();
         const oldSecretMessage = call.request.getOldname();
         const newSecretMessage = call.request.getNewname();
@@ -340,7 +340,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -368,7 +368,7 @@ const createVaultRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -390,7 +390,7 @@ const createVaultRPC = ({
       callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
     ): Promise<void> => {
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const nodeIds = JSON.parse(call.request.getId()) as Array<string>;
         const set: boolean = call.request.getSet();
         const id = utils.parseVaultInput(call.request.getName(), vaultManager);
@@ -416,7 +416,7 @@ const createVaultRPC = ({
       const genWritable = grpcUtils.generatorWritable(call);
 
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
+        await utils.verifyToken(call.metadata, sessionManager);
         const name = call.request.getName();
         const id = utils.parseVaultInput(name, vaultManager);
         const node = call.request.getId();

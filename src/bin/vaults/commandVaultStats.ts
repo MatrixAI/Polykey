@@ -42,7 +42,11 @@ commandVaultStats.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const responseMessage = await grpcClient.vaultsStat(vaultMessage, meta);
+    const responseMessage = await grpcClient.vaultsStat(
+      vaultMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

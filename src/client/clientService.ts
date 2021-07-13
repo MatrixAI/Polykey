@@ -6,6 +6,7 @@ import { ClientService, IClientServer } from '../proto/js/Client_grpc_pb';
 import * as clientPB from '../proto/js/Client_pb';
 
 import createEchoRPC from './rpcEcho';
+import createSessionRPC from './rpcSession';
 import createVaultRPC from './rpcVaults';
 import createKeysRPC from './rpcKeys';
 import createGestaltRPC from './rpcGestalts';
@@ -20,15 +21,21 @@ import * as grpcUtils from '../grpc/utils';
  */
 function createClientService({ polykeyAgent }: { polykeyAgent: PolykeyAgent }) {
   const clientService: IClientServer = {
-    ...createEchoRPC(),
+    ...createEchoRPC({
+      sessionManager: polykeyAgent.sessions,
+    }),
+    ...createSessionRPC({
+      sessionManager: polykeyAgent.sessions,
+      keyManager: polykeyAgent.keys,
+    }),
     ...createVaultRPC({
       vaultManager: polykeyAgent.vaults,
       gitManager: polykeyAgent.gitManager,
-      sessionManager: polykeyAgent.sessionManager,
+      sessionManager: polykeyAgent.sessions,
     }),
     ...createKeysRPC({
       keyManager: polykeyAgent.keys,
-      sessionManager: polykeyAgent.sessionManager,
+      sessionManager: polykeyAgent.sessions,
     }),
     ...createIdentitiesRPC({
       identitiesManager: polykeyAgent.identities,

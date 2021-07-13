@@ -61,7 +61,11 @@ commandCreateSecret.action(async (options) => {
     secretNewMessage.setName(secretName);
     secretNewMessage.setContent(content);
 
-    const pCall = grpcClient.vaultsNewSecret(secretNewMessage, meta);
+    const pCall = grpcClient.vaultsNewSecret(
+      secretNewMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {

@@ -1,25 +1,28 @@
-import fs from 'fs';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import type { Claim } from '../../sigchain/types';
+
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
+import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../../grpc/errors';
 
-const commandSignKeys = binUtils.createCommand('sign', {
-  description: 'Signs a provided file with the root keypair',
+import PolykeyClient from '../../PolykeyClient';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
+import { clientPB } from '../../client';
+
+const commandAgentUnlock = binUtils.createCommand('unlock', {
+  description:
+    'Requests a jwt token from the Polykey Agent and starts a session.',
+  aliases: ['authenticate'],
   nodePath: true,
   verbose: true,
   format: true,
   passwordFile: true,
 });
-commandSignKeys.requiredOption(
-  '-fp, --file-path <filePath>',
-  '(required) Path to the file to be signed, file must be binary encoded',
-);
-commandSignKeys.action(async (options) => {
+commandAgentUnlock.arguments('[password]');
+commandAgentUnlock.action(async (password, options) => {
   const meta = new grpc.Metadata();
+
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -30,35 +33,37 @@ commandSignKeys.action(async (options) => {
   if (options.passwordFile) {
     meta.set('passwordFile', options.passwordFile);
   }
-  clientConfig['nodePath'] = options.nodePath
+  const nodePath = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
+  clientConfig['nodePath'] = nodePath;
+
+  if (password) {
+    meta.set('password', password);
+  }
+
+  if (!password && !options.passwordFile) {
+    const input = await binUtils.requestPassword();
+    meta.set('password', input);
+  }
 
   const client = new PolykeyClient(clientConfig);
-  const cryptoMessage = new clientPB.CryptoMessage();
+  const m = new clientPB.EmptyMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const data = await fs.promises.readFile(options.filePath, {
-      encoding: 'binary',
-    });
+    const pCall = grpcClient.sessionRequestJWT(m, meta);
 
-    cryptoMessage.setData(data);
+    const responseMessage = await pCall;
+    const token: Claim = responseMessage.getToken() as Claim;
 
-    const response = await grpcClient.keysSign(
-      cryptoMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
-    );
+    // Write token to file
+    await client.session.start({ token });
+    await client.session.writeToken();
 
-    process.stdout.write(
-      binUtils.outputFormatter({
-        type: options.format === 'json' ? 'json' : 'list',
-        data: [`Signature:\t\t${response.getSignature()}`],
-      }),
-    );
+    process.stdout.write('Client session started');
   } catch (err) {
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
@@ -83,4 +88,4 @@ commandSignKeys.action(async (options) => {
   }
 });
 
-export default commandSignKeys;
+export default commandAgentUnlock;

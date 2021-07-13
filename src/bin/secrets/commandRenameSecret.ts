@@ -63,7 +63,11 @@ commandRenameSecret.action(async (options) => {
     newSecretMessage.setName(options.secretName);
     vaultSpecificMessage.setNewname(newSecretMessage);
 
-    const pCall = grpcClient.vaultsRenameSecret(vaultSpecificMessage, meta);
+    const pCall = grpcClient.vaultsRenameSecret(
+      vaultSpecificMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {

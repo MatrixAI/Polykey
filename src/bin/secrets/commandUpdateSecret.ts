@@ -63,7 +63,11 @@ commandUpdateSecret.action(async (options) => {
     secretMessage.setVault(vaultSpecificMessage);
     secretMessage.setContent(content);
 
-    await grpcClient.vaultsEditSecret(secretMessage, meta);
+    await grpcClient.vaultsEditSecret(
+      secretMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

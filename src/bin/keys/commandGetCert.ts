@@ -36,7 +36,11 @@ commandGetCert.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const response = await grpcClient.certsGet(emptyMessage, meta);
+    const response = await grpcClient.certsGet(
+      emptyMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

@@ -10,7 +10,7 @@ let dataDir: string;
 let polykeyAgent: PolykeyAgent;
 let duration: number;
 let passwordFile: string;
-const passwordExitCode = 64;
+const jwtTokenExitCode = 77;
 
 describe('CLI secrets', () => {
   beforeEach(async () => {
@@ -26,8 +26,17 @@ describe('CLI secrets', () => {
     });
     await polykeyAgent.start({
       password: 'password',
-      sessionDuration: duration,
     });
+
+    // Authorize session
+    await utils.pk([
+      'agent',
+      'unlock',
+      '-np',
+      dataDir,
+      '--password-file',
+      passwordFile,
+    ]);
   });
 
   afterEach(async () => {
@@ -62,27 +71,11 @@ describe('CLI secrets', () => {
     ]);
     expect(result).toBe(0);
 
-    let list = await vault.listSecrets();
+    const list = await vault.listSecrets();
     expect(list.sort()).toStrictEqual(['MySecret']);
     expect(await vault.getSecret('MySecret')).toStrictEqual(
       Buffer.from('this is a secret'),
     );
-
-    await polykeyAgent.sessionManager.stopSession();
-    const result2 = await utils.pk([
-      'secrets',
-      'create',
-      '-np',
-      dataDir,
-      '-sp',
-      'Vault1:MySecret',
-      '-fp',
-      secretPath,
-    ]);
-    expect(result2).toBe(passwordExitCode);
-
-    list = await vault.listSecrets();
-    expect(list.sort()).toStrictEqual(['MySecret']);
   });
   test('should delete secrets', async () => {
     const vault = await polykeyAgent.vaults.createVault('Vault1');
@@ -91,20 +84,6 @@ describe('CLI secrets', () => {
     await vault.addSecret('MySecret', Buffer.from('this is the secret'));
 
     let list = await vault.listSecrets();
-    expect(list.sort()).toStrictEqual(['MySecret']);
-
-    await polykeyAgent.sessionManager.stopSession();
-    const result = await utils.pk([
-      'secrets',
-      'delete',
-      '-np',
-      dataDir,
-      '-sp',
-      'Vault1:MySecret',
-    ]);
-    expect(result).toBe(passwordExitCode);
-
-    list = await vault.listSecrets();
     expect(list.sort()).toStrictEqual(['MySecret']);
 
     const result2 = await utils.pk([
@@ -139,17 +118,6 @@ describe('CLI secrets', () => {
       passwordFile,
     ]);
     expect(result).toBe(0);
-
-    await polykeyAgent.sessionManager.stopSession();
-    const result2 = await utils.pk([
-      'secrets',
-      'get',
-      '-np',
-      dataDir,
-      '-sp',
-      'Vault1:MySecret',
-    ]);
-    expect(result2).toBe(passwordExitCode);
   });
   test('should list secrets', async () => {
     const vault = await polykeyAgent.vaults.createVault('Vault1');
@@ -170,17 +138,6 @@ describe('CLI secrets', () => {
       passwordFile,
     ]);
     expect(result).toBe(0);
-
-    await polykeyAgent.sessionManager.stopSession();
-    const result2 = await utils.pk([
-      'secrets',
-      'list',
-      '-np',
-      dataDir,
-      '-vn',
-      'Vault1',
-    ]);
-    expect(result2).toBe(passwordExitCode);
   });
   test('should make a directory', async () => {
     const vault = await polykeyAgent.vaults.createVault('Vault1');
@@ -207,23 +164,7 @@ describe('CLI secrets', () => {
       Buffer.from('this is the secret 2'),
     );
 
-    let list = await vault.listSecrets();
-    expect(list.sort()).toStrictEqual(
-      ['dir1/MySecret1', 'dir1/dir2/MySecret2'].sort(),
-    );
-
-    await polykeyAgent.sessionManager.stopSession();
-    const result2 = await utils.pk([
-      'secrets',
-      'mkdir',
-      '-np',
-      dataDir,
-      '-sp',
-      'Vault1:dir3',
-    ]);
-    expect(result2).toBe(passwordExitCode);
-
-    list = await vault.listSecrets();
+    const list = await vault.listSecrets();
     expect(list.sort()).toStrictEqual(
       ['dir1/MySecret1', 'dir1/dir2/MySecret2'].sort(),
     );
@@ -248,23 +189,7 @@ describe('CLI secrets', () => {
     ]);
     expect(result).toBe(0);
 
-    let list = await vault.listSecrets();
-    expect(list.sort()).toStrictEqual(['MyRenamedSecret']);
-
-    await polykeyAgent.sessionManager.stopSession();
-    const result2 = await utils.pk([
-      'secrets',
-      'rename',
-      '-np',
-      dataDir,
-      '-sp',
-      'Vault1:MyRenamedSecret',
-      '-sn',
-      'NoPasswordCommand',
-    ]);
-    expect(result2).toBe(passwordExitCode);
-
-    list = await vault.listSecrets();
+    const list = await vault.listSecrets();
     expect(list.sort()).toStrictEqual(['MyRenamedSecret']);
   });
   test('should update secrets', async () => {
@@ -275,19 +200,6 @@ describe('CLI secrets', () => {
     await fs.promises.writeFile(secretPath, 'updated-content');
 
     await vault.addSecret('MySecret', Buffer.from('original-content'));
-
-    await polykeyAgent.sessionManager.stopSession();
-    const result = await utils.pk([
-      'secrets',
-      'update',
-      '-np',
-      dataDir,
-      '-sp',
-      'Vault1:MySecret',
-      '-fp',
-      secretPath,
-    ]);
-    expect(result).toBe(passwordExitCode);
 
     expect(await vault.getSecret('MySecret')).toStrictEqual(
       Buffer.from('original-content'),
@@ -332,19 +244,6 @@ describe('CLI secrets', () => {
       'this is the secret 3',
     );
 
-    await polykeyAgent.sessionManager.stopSession();
-    const result = await utils.pk([
-      'secrets',
-      'dir',
-      '-np',
-      dataDir,
-      '-vn',
-      'Vault1',
-      '-dp',
-      secretDir,
-    ]);
-    expect(result).toBe(passwordExitCode);
-
     let list = await vault.listSecrets();
     expect(list.sort()).toStrictEqual([]);
 
@@ -368,5 +267,157 @@ describe('CLI secrets', () => {
       'secrets/secret-2',
       'secrets/secret-3',
     ]);
+  });
+});
+
+describe('CLI secrets', () => {
+  beforeEach(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    passwordFile = path.join(dataDir, 'passwordFile');
+    await fs.promises.writeFile(passwordFile, 'password');
+    duration = 500;
+    polykeyAgent = new PolykeyAgent({
+      nodePath: dataDir,
+      logger: logger,
+    });
+    await polykeyAgent.start({
+      password: 'password',
+    });
+  });
+
+  afterEach(async () => {
+    await new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), duration);
+    });
+    await polykeyAgent.stop();
+    await fs.promises.rmdir(dataDir, { recursive: true });
+  });
+
+  test('should not create secrets without token', async () => {
+    const vault = await polykeyAgent.vaults.createVault('Vault1');
+    await vault.initializeVault();
+
+    const secretPath = path.join(dataDir, 'secret');
+    await fs.promises.writeFile(secretPath, 'this is a secret');
+
+    const result = await utils.pk([
+      'secrets',
+      'create',
+      '-np',
+      dataDir,
+      '-sp',
+      'Vault1:MySecret',
+      '-fp',
+      secretPath,
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result).toBe(jwtTokenExitCode);
+  });
+  test('should not delete secrets without token', async () => {
+    const result2 = await utils.pk([
+      'secrets',
+      'rm',
+      '-np',
+      dataDir,
+      '-sp',
+      'Vault1:MySecret',
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result2).toBe(jwtTokenExitCode);
+  });
+  test('should not retreive secrets without token', async () => {
+    const result = await utils.pk([
+      'secrets',
+      'get',
+      '-np',
+      dataDir,
+      '-sp',
+      'Vault1:MySecret',
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result).toBe(jwtTokenExitCode);
+  });
+  test('should not list secrets without token', async () => {
+    const result = await utils.pk([
+      'secrets',
+      'ls',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result).toBe(jwtTokenExitCode);
+  });
+  test('should not make a directory without token', async () => {
+    const result = await utils.pk([
+      'secrets',
+      'mkdir',
+      '-np',
+      dataDir,
+      '-sp',
+      'Vault1:dir1/dir2',
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result).toBe(jwtTokenExitCode);
+  });
+  test('should not rename secrets without token', async () => {
+    const result = await utils.pk([
+      'secrets',
+      'rename',
+      '-np',
+      dataDir,
+      '-sp',
+      'Vault1:MySecret',
+      '-sn',
+      'MyRenamedSecret',
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result).toBe(jwtTokenExitCode);
+  });
+  test('should not update secrets without token', async () => {
+    const vault = await polykeyAgent.vaults.createVault('Vault1');
+    await vault.initializeVault();
+
+    const secretPath = path.join(dataDir, 'secret');
+    await fs.promises.writeFile(secretPath, 'updated-content');
+
+    const result2 = await utils.pk([
+      'secrets',
+      'update',
+      '-np',
+      dataDir,
+      '-sp',
+      'Vault1:MySecret',
+      '-fp',
+      secretPath,
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result2).toBe(jwtTokenExitCode);
+  });
+  test('should not add a directory of secrets without token', async () => {
+    const secretDir = path.join(dataDir, 'secrets');
+    const result2 = await utils.pk([
+      'secrets',
+      'dir',
+      '-np',
+      dataDir,
+      '-vn',
+      'Vault1',
+      '-dp',
+      secretDir,
+      '--password-file',
+      passwordFile,
+    ]);
+    expect(result2).toBe(jwtTokenExitCode);
   });
 });

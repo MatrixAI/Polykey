@@ -1,28 +1,22 @@
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
+import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../../grpc/errors';
 
-const commandVaultPermissions = binUtils.createCommand('permissions', {
-  description: 'Sets the permissions of a vault for Node Ids',
-  aliases: ['perms'],
+import PolykeyClient from '../../PolykeyClient';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
+import { clientPB } from '../../client';
+
+const commandAgentLockAll = binUtils.createCommand('lockall', {
+  description:
+    'Requests a jwt token from the Polykey Agent and starts a session.',
   nodePath: true,
   verbose: true,
   format: true,
   passwordFile: true,
 });
-commandVaultPermissions.requiredOption(
-  '-vn, --vault-name <vaultName>',
-  '(required) Name of the vault to set permissions from',
-);
-commandVaultPermissions.option(
-  '-ni, --node-id <nodeId>',
-  'The node Id to check the permissions of',
-);
-commandVaultPermissions.action(async (options) => {
+commandAgentLockAll.action(async (options) => {
   const meta = new grpc.Metadata();
 
   const clientConfig = {};
@@ -35,35 +29,25 @@ commandVaultPermissions.action(async (options) => {
   if (options.passwordFile) {
     meta.set('passwordFile', options.passwordFile);
   }
-  clientConfig['nodePath'] = options.nodePath
+  const nodePath = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
+  clientConfig['nodePath'] = nodePath;
 
   const client = new PolykeyClient(clientConfig);
-  const shareMessage = new clientPB.ShareMessage();
-  shareMessage.setName(options.vaultName);
-  shareMessage.setId(options.nodeId);
+  const m = new clientPB.EmptyMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const data: Array<string> = [];
-    const permListGenerator = grpcClient.vaultPermissions(
-      shareMessage,
+    await grpcClient.sessionChangeKey(
+      m,
       meta,
       await client.session.createJWTCallCredentials(),
     );
-    for await (const perm of permListGenerator) {
-      data.push(`${perm.getId()}:\t\t${perm.getAction()}`);
-    }
 
-    process.stdout.write(
-      binUtils.outputFormatter({
-        type: options.format === 'json' ? 'json' : 'list',
-        data: data,
-      }),
-    );
+    process.stdout.write('Locked all clients');
   } catch (err) {
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
@@ -80,7 +64,7 @@ commandVaultPermissions.action(async (options) => {
       throw err;
     }
   } finally {
-    await client.stop();
+    client.stop();
     options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;
@@ -88,4 +72,4 @@ commandVaultPermissions.action(async (options) => {
   }
 });
 
-export default commandVaultPermissions;
+export default commandAgentLockAll;

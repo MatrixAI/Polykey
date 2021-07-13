@@ -63,6 +63,26 @@ export namespace EchoMessage {
     }
 }
 
+export class JWTTokenMessage extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): JWTTokenMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): JWTTokenMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: JWTTokenMessage): JWTTokenMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: JWTTokenMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): JWTTokenMessage;
+    static deserializeBinaryFromReader(message: JWTTokenMessage, reader: jspb.BinaryReader): JWTTokenMessage;
+}
+
+export namespace JWTTokenMessage {
+    export type AsObject = {
+        token: string,
+    }
+}
+
 export class VaultMessage extends jspb.Message { 
     getName(): string;
     setName(value: string): VaultMessage;

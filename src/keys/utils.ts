@@ -561,6 +561,7 @@ export {
   publicKeyToFingerprint,
   encryptPrivateKey,
   decryptPrivateKey,
+  publicKeyFromPrivateKey,
   generateCertificate,
   certToAsn1,
   certFromAsn1,

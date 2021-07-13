@@ -47,7 +47,11 @@ commandEncryptKeys.action(async (options) => {
 
     cryptoMessage.setData(plainText);
 
-    const response = await grpcClient.keysEncrypt(cryptoMessage, meta);
+    const response = await grpcClient.keysEncrypt(
+      cryptoMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({

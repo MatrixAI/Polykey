@@ -1,15 +1,16 @@
 import type { NodeId } from './nodes/types';
+import type { Claim } from './sigchain/types';
+import type { FileSystem, LockConfig } from './types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
-import { ChannelCredentials } from '@grpc/grpc-js';
 
-import { ErrorClientClientNotStarted } from './client/errors';
-import { GRPCClientClient } from './client';
-import { Lockfile } from './lockfile';
-import { FileSystem, LockConfig } from './types';
 import * as utils from './utils';
+import { Session } from './session';
+import { Lockfile } from './lockfile';
 import { ErrorPolykey } from './errors';
+import { GRPCClientClient } from './client';
+import { ErrorClientClientNotStarted } from './client/errors';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -31,6 +32,10 @@ class PolykeyClient {
   public readonly grpcHost: string;
   public readonly grpcPort: number;
   public readonly lockPath: string;
+  public readonly clientPath: string;
+
+  // Session
+  public readonly session: Session;
 
   constructor({
     nodePath,
@@ -41,19 +46,25 @@ class PolykeyClient {
     fs?: FileSystem;
     logger?: Logger;
   }) {
+    this.fs = fs ?? require('fs');
     this.logger = logger ?? new Logger('CLI Logger');
+
     this.nodePath =
       nodePath ?? path.resolve(nodePath ?? utils.getDefaultNodePath());
-    this.fs = fs ?? require('fs');
     this.lockPath = path.join(this.nodePath, Lockfile.LOCKFILE_NAME);
+    this.clientPath = path.join(this.nodePath, 'client');
+
+    this.session = new Session({
+      clientPath: this.clientPath,
+      logger: this.logger,
+    });
   }
 
-  async start({
+  public async start({
     timeout,
     host,
     port,
   }: {
-    credentials?: ChannelCredentials;
     timeout?: number;
     host?: string;
     port?: number;
@@ -94,8 +105,17 @@ class PolykeyClient {
     if (!port && !lock.port) {
       this.logger.warn('PolykeyClient started with default port: 0');
     }
+
+    await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
+
+    // Attempt to read token from fs
+    const token = await this.session.readToken();
+    if (token) {
+      this.session.start({ token: token as Claim });
+    }
   }
-  async stop() {
+
+  public async stop() {
     if (this.grpcClient) {
       await this.grpcClient.stop();
     }

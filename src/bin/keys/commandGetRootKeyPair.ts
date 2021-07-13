@@ -37,7 +37,11 @@ commandGetRootKeyPair.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const keyPair = await grpcClient.keysRootKeyPair(emptyMessage, meta);
+    const keyPair = await grpcClient.keysRootKeyPair(
+      emptyMessage,
+      meta,
+      await client.session.createJWTCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({
