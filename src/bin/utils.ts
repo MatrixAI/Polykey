@@ -5,7 +5,7 @@ import commander from 'commander';
 import Logger, { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 
-const pathRegex = /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
+const pathRegex = /^([\w-\ ]+)(?::)([\w\-\\\/\.\$\ ]*)([\*]?)(?:=)?([a-zA-Z_][\w]+)?$/;
 
 const logger = new Logger('polykey');
 

@@ -46,7 +46,6 @@ commandSecretEnv.action(async (options, command) => {
 
   try {
     const secretPathList: string[] = Array.from<string>(command.args.values());
-    console.log(options.export);
 
     if (secretPathList.length < 1) {
       throw new CLIErrors.ErrorSecretsUndefined();
@@ -66,6 +65,7 @@ commandSecretEnv.action(async (options, command) => {
     const grpcClient = client.grpcClient;
 
     let output = '';
+    let secrets: string[] = [];
 
     for (const path of secretPathList) {
       if (path.includes(':')) {
@@ -73,22 +73,42 @@ commandSecretEnv.action(async (options, command) => {
           output = 'export ';
         }
 
-        const [, vaultName, secretName, variableName] = path.match(
+        const [, vaultName, secretName, glob, variableName] = path.match(
           binUtils.pathRegex,
         )!;
 
-        const varName = variableName ?? secretName.toUpperCase().replace('-', '_');
+        console.log(vaultName, secretName, glob, variableName);
 
-        vaultMessage.setName(vaultName);
-        vaultSpecificMessage.setVault(vaultMessage);
-        vaultSpecificMessage.setName(secretName);
-        const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
-        const secret = res.getName();
-        secretEnv[varName] = secret;
+        if (glob) {
+          vaultMessage.setName(vaultName);
 
-        data.push(output + `${varName}=${secret}`);
+          const secretListGenerator = grpcClient.vaultsListSecrets(
+            vaultMessage,
+            meta,
+          );
 
+          for await (const secret of secretListGenerator) {
+            const sec = secret.getName();
+            if (sec.includes(secretName))
+            secrets.push(`${sec}`);
+          }
+        } else {
+          secrets.push(secretName);
+        }
+
+        for (const secName of secrets) {
+          vaultMessage.setName(vaultName);
+          vaultSpecificMessage.setVault(vaultMessage);
+          vaultSpecificMessage.setName(secName);
+          const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
+          const secret = res.getName();
+          const varName = variableName ?? secName.toUpperCase().replace('-', '_');
+          secretEnv[varName] = secret;
+
+          data.push(output + `${varName}=${secret}`);
+        }
         output = '';
+        secrets = [];
       } else if (path === '-e' || path === '--export') {
         output += 'export ';
       } else {
