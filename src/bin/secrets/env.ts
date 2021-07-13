@@ -1,3 +1,4 @@
+import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as clientUtils } from '../../client';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
@@ -70,17 +71,15 @@ env.action(async (options, command) => {
     let output = '';
     let secrets: string[] = [];
 
-    for (const path of secretPathList) {
-      if (path.includes(':')) {
+    for (const secPath of secretPathList) {
+      if (secPath.includes(':')) {
         if (options.export) {
           output = 'export ';
         }
 
-        const [, vaultName, secretName, glob, variableName] = path.match(
+        const [, vaultName, secretName, glob, variableName] = secPath.match(
           binUtils.pathRegex,
         )!;
-
-        console.log(vaultName, secretName, glob, variableName);
 
         if (glob) {
           vaultMessage.setName(vaultName);
@@ -105,14 +104,14 @@ env.action(async (options, command) => {
           vaultSpecificMessage.setName(secName);
           const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
           const secret = res.getName();
-          const varName = variableName ?? secName.toUpperCase().replace('-', '_');
+          const varName = variableName ?? path.basename(secName.toUpperCase().replace('-', '_'));
           secretEnv[varName] = secret;
 
           data.push(output + `${varName}=${secret}`);
         }
         output = '';
         secrets = [];
-      } else if (path === '-e' || path === '--export') {
+      } else if (secPath === '-e' || secPath === '--export') {
         output += 'export ';
       } else {
         throw new CLIErrors.ErrorSecretPathFormat();
