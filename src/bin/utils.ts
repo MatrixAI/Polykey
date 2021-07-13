@@ -1,6 +1,6 @@
 import type { POJO } from '../types';
 
-import { spawn } from 'child_process';
+import { spawn } from 'cross-spawn';
 import commander from 'commander';
 import Logger, { LogLevel } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
