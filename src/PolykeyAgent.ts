@@ -132,7 +132,6 @@ class Polykey {
       db ??
       new DB({
         dbPath: dbPath,
-        keyManager: this.keys,
         fs: this.fs,
         logger: this.logger,
       });
@@ -173,9 +172,7 @@ class Polykey {
     this.identities =
       identitiesManager ??
       new IdentitiesManager({
-        identitiesPath,
-        keyManager: this.keys,
-        fs: this.fs,
+        db: this.db,
         logger: this.logger.getChild('IdentitiesManager'),
       });
     this.workers =
@@ -232,13 +229,11 @@ class Polykey {
     password,
     rootKeyPairBits,
     rootCertDuration,
-    keysDbBits,
     fresh = false,
   }: {
     password: string;
     rootKeyPairBits?: number;
     rootCertDuration?: number;
-    keysDbBits?: number;
     fresh?: boolean;
   }) {
     this.logger.info('Starting Polykey');
@@ -278,7 +273,6 @@ class Polykey {
       password,
       rootKeyPairBits,
       rootCertDuration,
-      keysDbBits,
       fresh,
     });
 
@@ -286,7 +280,10 @@ class Polykey {
     const cert = this.keys.getRootCert();
     const nodeId = certNodeId(cert);
 
-    await this.db.start({ fresh });
+    await this.db.start({
+      keyPair: this.keys.getRootKeyPair(),
+      bits: rootKeyPairBits,
+    });
 
     await this.acl.start({ fresh });
 

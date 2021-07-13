@@ -105,7 +105,6 @@ describe('Client service', () => {
 
     db = new DB({
       dbPath: dbPath,
-      keyManager: keyManager,
       fs: fs,
       logger: logger,
     });
@@ -141,9 +140,7 @@ describe('Client service', () => {
     });
 
     identitiesManager = new IdentitiesManager({
-      identitiesPath: identitiesPath,
-      keyManager: keyManager,
-      fs: fs,
+      db: db,
       logger: logger,
     });
 
@@ -169,7 +166,7 @@ describe('Client service', () => {
     });
 
     await polykeyAgent.keys.start({ password: 'password' });
-    await polykeyAgent.db.start();
+    await polykeyAgent.db.start({ keyPair: keyManager.getRootKeyPair() });
     await polykeyAgent.acl.start();
     await polykeyAgent.vaults.start({});
     await polykeyAgent.nodes.start({ nodeId: nodeId });

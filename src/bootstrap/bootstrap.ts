@@ -59,7 +59,7 @@ async function bootstrapPolykeyState(
   await polykeyAgent.keys.start({
     password: password,
   });
-  await polykeyAgent.db.start();
+  await polykeyAgent.db.start({ keyPair: polykeyAgent.keys.getRootKeyPair() });
   await polykeyAgent.vaults.start({});
   const cert = polykeyAgent.keys.getRootCert();
   const nodeId = networkUtils.certNodeId(cert);
