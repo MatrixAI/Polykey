@@ -4,7 +4,7 @@ import os from 'os';
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
 import prompts from 'prompts';
-import { spawn } from 'child_process';
+import { spawn } from 'cross-spawn';
 import commander from 'commander';
 import Logger, { LogLevel } from '@matrixai/logger';
 

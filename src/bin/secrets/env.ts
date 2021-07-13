@@ -1,4 +1,3 @@
-import { spawn } from 'child_process';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as clientUtils } from '../../client';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
@@ -49,30 +48,19 @@ env.action(async (options, command) => {
   }
 
   try {
+    const secretPathList: string[] = Array.from<string>(command.args.values());
+    console.log(options.export);
+
     if (secretPathList.length < 1) {
       throw new CLIErrors.ErrorSecretsUndefined();
     }
 
-    const parsedPathList: {
-      vaultName: string;
-      secretName: string;
-      variableName: string;
-    }[] = [];
+    if(!binUtils.pathRegex.test(secretPathList[secretPathList.length - 1])) {
+      shellCommand = secretPathList.pop();
+    }
 
-    for (const path of secretPathList) {
-      if (!path.includes(':')) {
-        throw new CLIErrors.ErrorSecretPathFormat();
-      }
-
-      const [, vaultName, secretName, variableName] = path.match(
-        binUtils.pathRegex,
-      )!;
-      parsedPathList.push({
-        vaultName,
-        secretName,
-        variableName:
-          variableName ?? secretName.toUpperCase().replace('-', '_'),
-      });
+    if (secretPathList.length < 1) {
+      throw new CLIErrors.ErrorSecretsUndefined();
     }
 
     const secretEnv = { ...process.env };
@@ -80,49 +68,47 @@ env.action(async (options, command) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    for (const obj of parsedPathList) {
-      vaultMessage.setNameOrId(obj.vaultName);
-      secretMessage.setSecretName(obj.secretName);
-      const pCall = grpcClient.vaultsSecretsGet(secretMessage);
-      const { p, resolveP } = utils.promise();
-      pCall.call.on('metadata', async (meta) => {
-        await clientUtils.refreshSession(meta, client.session);
-        resolveP(null);
-      });
+    let output = '';
 
-      const res = await pCall;
-      await p;
-      const secret = res.getSecretName();
-      secretEnv[obj.variableName] = secret;
+    for (const path of secretPathList) {
+      if (path.includes(':')) {
+        if (options.export) {
+          output = 'export ';
+        }
+
+        const [, vaultName, secretName, variableName] = path.match(
+          binUtils.pathRegex,
+        )!;
+
+        const varName = variableName ?? secretName.toUpperCase().replace('-', '_');
+
+        vaultMessage.setName(vaultName);
+        vaultSpecificMessage.setVault(vaultMessage);
+        vaultSpecificMessage.setName(secretName);
+        const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
+        const secret = res.getName();
+        secretEnv[varName] = secret;
+
+        data.push(output + `${varName}=${secret}`);
+
+        output = '';
+      } else if (path === '-e' || path === '--export') {
+        output += 'export ';
+      } else {
+        throw new CLIErrors.ErrorSecretPathFormat();
+      }
     }
 
-    console.log(secretEnv);
-
-    // const shellPath = process.env.SHELL ?? 'sh';
-    // const args: string[] = [];
-
-    // if (options.command && options.run) {
-    //   throw new CLIErrors.ErrorInvalidArguments(
-    //     'Only one of --command or --run can be specified',
-    //   );
-    // } else if (options.command) {
-    //   args.push('-i');
-    //   args.push('-c');
-    //   args.push(`"${options.command}"`);
-    // } else if (options.run) {
-    //   args.push('-c');
-    //   args.push(`"${options.run}"`);
-    // }
-
-    // binUtils.spawnShell(shellCommand, secretEnv, options.format);
-    // process.stdout.write(
-    //   binUtils.outputFormatter({
-    //     type: options.format === 'json' ? 'json' : 'list',
-    //     data: [
-    //       // `${secretName.toUpperCase().replace('-', '_')}='${secret}`,
-    //     ],
-    //   }),
-    // );
+    if(shellCommand) {
+      binUtils.spawnShell(shellCommand, secretEnv, options.format);
+    } else {
+      process.stdout.write(
+        binUtils.outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: data,
+        }),
+      );
+    }
 
   } catch (err) {
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {

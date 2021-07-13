@@ -302,5 +302,49 @@ describe('CLI secrets', () => {
       // list = await vault.listSecrets();
       // expect(list.sort()).toStrictEqual(['MySecret']);
     });
+    test('should export secrets', async () => {
+      const stdoutSpy = jest.spyOn(process.stdout, 'write');
+
+      const vaultName = 'Vault11' as VaultName;
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+
+      const vaultName2 = 'Vault12' as VaultName;
+      const vault2 = await polykeyAgent.vaults.createVault(vaultName2);
+
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_1', Buffer.from('test-1'));
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_2', Buffer.from('test-2'));
+      await vaultOps.addSecret(vault2, 'TEST_VARIABLE_3', Buffer.from('test-3'));
+
+      const message = 'export TEST_VAR_1=test-1\nTEST_VAR_3=test-3\nexport TEST_VAR_4=test-2\n';
+      const message2 = 'export TEST_VAR_1=test-1\nexport TEST_VAR_3=test-3\nexport TEST_VAR_4=test-2\n';
+
+      const result = await utils.pk([
+        'secrets',
+        'env',
+        '--',
+        '-e',
+        'Vault1:TEST_VAR_1',
+        'Vault2:TEST_VAR_3',
+        '-e',
+        'Vault1:TEST_VAR_2=TEST_VAR_4',
+      ]);
+      expect(result).toBe(0);
+      expect(stdoutSpy).toHaveBeenLastCalledWith(message);
+
+      const result2 = await utils.pk([
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+        '-e',
+        'Vault1:TEST_VAR_1',
+        'Vault2:TEST_VAR_3',
+        'Vault1:TEST_VAR_2=TEST_VAR_4',
+      ]);
+      expect(result2).toBe(0);
+      expect(stdoutSpy).toHaveBeenLastCalledWith(message2);
+    });
   });
 });
