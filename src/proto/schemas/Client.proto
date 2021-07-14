@@ -41,6 +41,7 @@ service Client {
   rpc VaultsNewDirSecret(SecretNewMessage) returns (EmptyMessage) {};
   rpc VaultsShare(ShareMessage) returns (EmptyMessage) {};
   rpc VaultsPermissions(ShareMessage) returns (stream PermissionMessage) {};
+  rpc SecretsEnv(VaultMessage) returns(stream DirectoryMessage) {};
 
   // Identities
   rpc IdentitiesAuthenticate(ProviderMessage) returns (ProviderMessage) {};
@@ -115,6 +116,10 @@ message ShareMessage {
 message PermissionMessage {
   string id = 1;
   string action = 2;
+}
+
+message DirectoryMessage {
+  string dir = 1;
 }
 
 // Nodes

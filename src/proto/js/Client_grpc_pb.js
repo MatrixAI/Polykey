@@ -26,6 +26,17 @@ function deserialize_clientInterface_CryptoMessage(buffer_arg) {
   return Client_pb.CryptoMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_DirectoryMessage(arg) {
+  if (!(arg instanceof Client_pb.DirectoryMessage)) {
+    throw new Error('Expected argument of type clientInterface.DirectoryMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_DirectoryMessage(buffer_arg) {
+  return Client_pb.DirectoryMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_EchoMessage(arg) {
   if (!(arg instanceof Client_pb.EchoMessage)) {
     throw new Error('Expected argument of type clientInterface.EchoMessage');
@@ -592,6 +603,17 @@ vaultsList: {
     requestDeserialize: deserialize_clientInterface_ShareMessage,
     responseSerialize: serialize_clientInterface_PermissionMessage,
     responseDeserialize: deserialize_clientInterface_PermissionMessage,
+  },
+  secretsEnv: {
+    path: '/clientInterface.Client/SecretsEnv',
+    requestStream: false,
+    responseStream: true,
+    requestType: Client_pb.VaultMessage,
+    responseType: Client_pb.DirectoryMessage,
+    requestSerialize: serialize_clientInterface_VaultMessage,
+    requestDeserialize: deserialize_clientInterface_VaultMessage,
+    responseSerialize: serialize_clientInterface_DirectoryMessage,
+    responseDeserialize: deserialize_clientInterface_DirectoryMessage,
   },
   // Identities
 identitiesAuthenticate: {

@@ -439,6 +439,30 @@ const createVaultRPC = ({
         await genWritable.throw(err);
       }
     },
+    secretsEnv: async (
+      call: grpc.ServerWritableStream<
+        clientPB.VaultMessage,
+        clientPB.DirectoryMessage
+      >,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+      try {
+        await utils.checkPassword(call.metadata, sessionManager);
+        const name = call.request.getName();
+        const pattern = call.request.getId();
+        const id = utils.parseVaultInput(name, vaultManager);
+        const vault = vaultManager.getVault(id);
+        const res = await utils.glob(vault.EncryptedFS, pattern);
+        const dirMessage = new clientPB.DirectoryMessage();
+        for (const file in res) {
+          dirMessage.setDir(file);
+          await genWritable.next(dirMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
+      }
+    },
   };
 };
 

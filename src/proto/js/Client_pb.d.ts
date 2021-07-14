@@ -291,6 +291,26 @@ export namespace PermissionMessage {
     }
 }
 
+export class DirectoryMessage extends jspb.Message { 
+    getDir(): string;
+    setDir(value: string): DirectoryMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): DirectoryMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: DirectoryMessage): DirectoryMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: DirectoryMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): DirectoryMessage;
+    static deserializeBinaryFromReader(message: DirectoryMessage, reader: jspb.BinaryReader): DirectoryMessage;
+}
+
+export namespace DirectoryMessage {
+    export type AsObject = {
+        dir: string,
+    }
+}
+
 export class NodeMessage extends jspb.Message { 
     getName(): string;
     setName(value: string): NodeMessage;

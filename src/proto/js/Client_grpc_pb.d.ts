@@ -39,6 +39,7 @@ interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
     vaultsNewDirSecret: IClientService_IVaultsNewDirSecret;
     vaultsShare: IClientService_IVaultsShare;
     vaultsPermissions: IClientService_IVaultsPermissions;
+    secretsEnv: IClientService_ISecretsEnv;
     identitiesAuthenticate: IClientService_IIdentitiesAuthenticate;
     tokensPut: IClientService_ITokensPut;
     tokensGet: IClientService_ITokensGet;
@@ -322,6 +323,15 @@ interface IClientService_IVaultsPermissions extends grpc.MethodDefinition<Client
     responseSerialize: grpc.serialize<Client_pb.PermissionMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.PermissionMessage>;
 }
+interface IClientService_ISecretsEnv extends grpc.MethodDefinition<Client_pb.VaultMessage, Client_pb.DirectoryMessage> {
+    path: "/clientInterface.Client/SecretsEnv";
+    requestStream: false;
+    responseStream: true;
+    requestSerialize: grpc.serialize<Client_pb.VaultMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.VaultMessage>;
+    responseSerialize: grpc.serialize<Client_pb.DirectoryMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.DirectoryMessage>;
+}
 interface IClientService_IIdentitiesAuthenticate extends grpc.MethodDefinition<Client_pb.ProviderMessage, Client_pb.ProviderMessage> {
     path: "/clientInterface.Client/IdentitiesAuthenticate";
     requestStream: false;
@@ -455,6 +465,7 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     vaultsNewDirSecret: grpc.handleUnaryCall<Client_pb.SecretNewMessage, Client_pb.EmptyMessage>;
     vaultsShare: grpc.handleUnaryCall<Client_pb.ShareMessage, Client_pb.EmptyMessage>;
     vaultsPermissions: grpc.handleServerStreamingCall<Client_pb.ShareMessage, Client_pb.PermissionMessage>;
+    secretsEnv: grpc.handleServerStreamingCall<Client_pb.VaultMessage, Client_pb.DirectoryMessage>;
     identitiesAuthenticate: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.ProviderMessage>;
     tokensPut: grpc.handleUnaryCall<Client_pb.TokenSpecificMessage, Client_pb.EmptyMessage>;
     tokensGet: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.TokenMessage>;
@@ -553,6 +564,8 @@ export interface IClientClient {
     vaultsShare(request: Client_pb.ShareMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     vaultsPermissions(request: Client_pb.ShareMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
     vaultsPermissions(request: Client_pb.ShareMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
+    secretsEnv(request: Client_pb.VaultMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.DirectoryMessage>;
+    secretsEnv(request: Client_pb.VaultMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.DirectoryMessage>;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
@@ -673,6 +686,8 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public vaultsShare(request: Client_pb.ShareMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public vaultsPermissions(request: Client_pb.ShareMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
     public vaultsPermissions(request: Client_pb.ShareMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
+    public secretsEnv(request: Client_pb.VaultMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.DirectoryMessage>;
+    public secretsEnv(request: Client_pb.VaultMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.DirectoryMessage>;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
