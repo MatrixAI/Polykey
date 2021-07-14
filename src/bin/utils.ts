@@ -220,6 +220,49 @@ function outputFormatter(msg: OutputObject): string {
 }
 
 function spawnShell(command: string, environmentVariables: POJO, format: string): void {
+  // This code is what this function should look like after the kexec package is added
+  // try {
+  //   kexec(command, {
+  //     stdio: 'inherit',
+  //     env: environmentVariables,
+  //     shell: true,
+  //   });
+  // } catch (err) {
+  //   if (
+  //     err.code !== "MODULE_NOT_FOUND" &&
+  //     err.code !== "UNDECLARED_DEPENDENCY"
+  //   ) {
+  //     throw err;
+  //   }
+
+  //   const shell = spawn(command, {
+  //     stdio: 'inherit',
+  //     env: environmentVariables,
+  //     shell: true,
+  //   });
+  //   shell.on("exit", (code: number, signal: NodeJS.Signals) => {
+  //     process.on("exit", () => {
+  //       if (signal) {
+  //         process.kill(process.pid, signal);
+  //       } else {
+  //         process.exitCode = code;
+  //       }
+  //     });
+  //   });
+  //   process.on("SIGINT", () => {
+  //     shell.kill("SIGINT")
+  //   });
+  //   shell.on('close', (code) => {
+  //     if (code != 0) {
+  //       process.stdout.write(
+  //         outputFormatter({
+  //           type: format === 'json' ? 'json' : 'list',
+  //           data: [`Terminated with ${code}`],
+  //         }),
+  //       );
+  //     }
+  //   });
+  // }
   const shell = spawn(command, {
     stdio: 'inherit',
     env: environmentVariables,
