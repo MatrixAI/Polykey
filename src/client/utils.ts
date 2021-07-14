@@ -6,6 +6,7 @@ import type {
 import type { KeyManager } from '../keys';
 import type { Session, SessionManager } from '../sessions';
 import type { SessionToken } from '../sessions/types';
+import type { Path } from 'globrex';
 
 import fs from 'fs';
 import path from 'path';
@@ -153,7 +154,10 @@ export type { Authenticate };
 const isHidden = /(^|[\\\/])\.[^\\\/\.]/g;
 let CACHE = {};
 
-async function walk(output, prefix, lexer, opts, dirname='', level=0) {
+async function walk(filesystem: typeof fs, output: string[], prefix: string, lexer, opts, dirname='', level=0) {
+  const readdir = utils.promisify(filesystem.readdir).bind(filesystem);
+  const lstat = utils.promisify(filesystem.lstat).bind(filesystem);
+
   const rgx = lexer.segments[level];
   const dir = path.resolve(opts.cwd, prefix, dirname);
   const files = await readdir(dir);
@@ -165,7 +169,7 @@ async function walk(output, prefix, lexer, opts, dirname='', level=0) {
   for (; i < len; i++) {
     fullpath = path.join(dir, file=files[i]);
     relpath = dirname ? path.join(dirname, file) : file;
-    if (!dot && isHidden.test(relpath)) continue;
+    // if (!dot && isHidden.test(relpath)) continue;
     isMatch = lexer.regex.test(relpath);
 
     if ((stats=CACHE[relpath]) === void 0) {
@@ -180,11 +184,13 @@ async function walk(output, prefix, lexer, opts, dirname='', level=0) {
     if (rgx && !rgx.test(file)) continue;
     !filesOnly && isMatch && output.push(path.join(prefix, relpath));
 
-    await walk(output, prefix, lexer, opts, relpath, rgx && rgx.toString() !== lexer.globstar && level + 1);
+    await walk(filesystem, output, prefix, lexer, opts, relpath, rgx && rgx.toString() !== lexer.globstar && level + 1);
   }
 }
 
-async function glob(str: string, opts={ cwd: '.', absolute: true, filesOnly: false, flush: true }) {
+async function glob(filesystem: typeof fs, str: string, opts={ cwd: '.', absolute: true, filesOnly: false, flush: true }) {
+  const stat = utils.promisify(filesystem.stat).bind(filesystem);
+
   if (!str) return [];
 
   let glob = globalyzer(str);
@@ -211,7 +217,7 @@ async function glob(str: string, opts={ cwd: '.', absolute: true, filesOnly: fal
   const res = globrex(glob.glob, { filepath:true, globstar:true, extended:true });
   const globPath = res.path;
 
-  await walk(matches, glob.base, globPath, opts, '.', 0);
+  await walk(filesystem, matches, glob.base, globPath, opts, '.', 0);
 
   return opts.absolute ? matches.map(x => path.resolve(opts.cwd, x)) : matches;
 }
