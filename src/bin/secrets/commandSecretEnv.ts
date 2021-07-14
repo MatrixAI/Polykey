@@ -48,10 +48,6 @@ commandSecretEnv.action(async (options, command) => {
   try {
     const secretPathList: string[] = Array.from<string>(command.args.values());
 
-    if (secretPathList.length < 1) {
-      throw new CLIErrors.ErrorSecretsUndefined();
-    }
-
     if(!binUtils.pathRegex.test(secretPathList[secretPathList.length - 1])) {
       shellCommand = secretPathList.pop();
     }
@@ -88,8 +84,11 @@ commandSecretEnv.action(async (options, command) => {
 
           for await (const secret of secretListGenerator) {
             const sec = secret.getName();
-            if (sec.includes(secretName))
-            secrets.push(`${sec}`);
+            if (glob === '**' && sec.includes(secretName)) {
+              secrets.push(sec);
+            } else if (glob === '*' && path.relative(path.dirname(sec), secretName) === '') {
+              secrets.push(sec);
+            }
           }
         } else {
           secrets.push(secretName);

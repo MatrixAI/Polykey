@@ -49,8 +49,10 @@ describe('CLI secrets', () => {
     const vault2 = await polykeyAgent.vaults.createVault('Vault2');
     await vault2.initializeVault();
 
+    await vault.mkdir('dir1', { recursive: true });
     await vault.addSecret('TEST VAR 1', Buffer.from('test-1'));
     await vault.addSecret('TEST_VAR_2', Buffer.from('test-2'));
+    await vault.addSecret('dir1/TEST_VAR_4', Buffer.from('test-4'));
     await vault2.addSecret('TEST_VAR_3', Buffer.from('test-3'));
 
     const message = 'export TEST VAR 1=test-1\nTEST_VAR_3=test-3\nexport TEST_VAR_4=test-2\n';
@@ -94,11 +96,14 @@ describe('CLI secrets', () => {
     const vault = await polykeyAgent.vaults.createVault('Vault1');
     await vault.initializeVault();
 
-    await vault.mkdir('dir1/dir2', { recursive: true });
+    await vault.mkdir('dir1/dir2/dir3', { recursive: true });
     await vault.addSecret('dir1/dir2/TEST VAR 1', Buffer.from('test-1'));
     await vault.addSecret('dir1/dir2/TEST_VAR_2', Buffer.from('test-2'));
+    await vault.addSecret('TEST_VAR_3', Buffer.from('test-3'));
+    await vault.addSecret('dir1/dir2/dir3/TEST_VAR_4', Buffer.from('test-4'));
 
     const message = 'export TEST VAR 1=test-1\nexport TEST_VAR_2=test-2\n';
+    const message2 = 'export TEST_VAR_3=test-3\nexport TEST VAR 1=test-1\nexport TEST_VAR_2=test-2\nexport TEST_VAR_4=test-4\n';
 
     const result = await utils.pk([
       'secrets',
@@ -112,6 +117,19 @@ describe('CLI secrets', () => {
     ]);
     expect(result).toBe(0);
     expect(stdoutSpy).toHaveBeenLastCalledWith(message);
+
+    const result2 = await utils.pk([
+      'secrets',
+      'env',
+      '-np',
+      dataDir,
+      '--password-file',
+      passwordFile,
+      '-e',
+      'Vault1:**',
+    ]);
+    expect(result2).toBe(0);
+    expect(stdoutSpy).toHaveBeenLastCalledWith(message2);
   });
   test('should create secrets', async () => {
     const vault = await polykeyAgent.vaults.createVault('Vault1');
