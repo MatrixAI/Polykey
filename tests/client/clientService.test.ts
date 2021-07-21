@@ -1,5 +1,5 @@
 import type { Vault } from '@/vaults';
-import type { Claim } from '@/sigchain/types';
+import type { SessionToken } from '@/session/types';
 import type { NodeId, NodeInfo } from '@/nodes/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 
@@ -256,7 +256,7 @@ describe('Client service', () => {
     const res = await requestJWT(m, meta);
     expect(typeof res.getToken()).toBe('string');
     const result = await polykeyAgent.sessions.verifyJWTToken(
-      res.getToken() as Claim,
+      res.getToken() as SessionToken,
     );
     expect(result).toBeTruthy();
   });

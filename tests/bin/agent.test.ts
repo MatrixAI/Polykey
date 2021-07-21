@@ -1,4 +1,4 @@
-import type { Claim } from '@/sigchain/types';
+import type { SessionToken } from '@/session/types';
 
 import os from 'os';
 import path from 'path';
@@ -306,7 +306,7 @@ describe('CLI agent', () => {
         { encoding: 'utf-8' },
       );
 
-      const verify = await agent.sessions.verifyJWTToken(content as Claim);
+      const verify = await agent.sessions.verifyJWTToken(content as SessionToken);
       expect(verify).toBeTruthy();
 
       await agent.stop();
@@ -358,7 +358,7 @@ describe('CLI agent', () => {
       );
 
       await expect(
-        agent.sessions.verifyJWTToken(content as Claim),
+        agent.sessions.verifyJWTToken(content as SessionToken),
       ).rejects.toThrow(sessionErrors.ErrorSessionJWTTokenInvalid);
 
       await agent.stop();

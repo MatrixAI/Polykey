@@ -1,4 +1,4 @@
-import type { Claim } from '../../sigchain/types';
+import type { SessionToken } from '../../session/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { clientPB, errors as clientErrors } from '../../client';

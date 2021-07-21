@@ -34,7 +34,6 @@ describe('Sessions', () => {
 
     db = new DB({
       dbPath: dbPath,
-      keyManager: keyManager,
       fs: fs,
       logger: logger,
     });
@@ -44,7 +43,7 @@ describe('Sessions', () => {
       logger: logger,
     });
     await keyManager.start({ password: 'password' });
-    await db.start();
+    await db.start({ keyPair: keyManager.getRootKeyPair() });
     await sessionManager.start({ bits: 4069 });
   });
 

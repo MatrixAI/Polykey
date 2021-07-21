@@ -1,4 +1,4 @@
-import type { Claim } from '../../sigchain/types';
+import type { SessionToken } from '../../session/types';
 
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -57,7 +57,7 @@ commandAgentUnlock.action(async (password, options) => {
     const pCall = grpcClient.sessionRequestJWT(m, meta);
 
     const responseMessage = await pCall;
-    const token: Claim = responseMessage.getToken() as Claim;
+    const token: SessionToken = responseMessage.getToken() as SessionToken;
 
     // Write token to file
     await client.session.start({ token });

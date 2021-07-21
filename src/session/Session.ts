@@ -1,4 +1,4 @@
-import type { Claim } from '../sigchain/types';
+import type { SessionToken } from './types';
 import type { FileSystem } from '../types';
 
 import path from 'path';
@@ -14,7 +14,7 @@ import * as sessionErrors from './errors';
 class Session {
   private fs: FileSystem;
   private logger: Logger;
-  private _token: Claim;
+  private _token: SessionToken;
 
   public readonly clientPath: string;
   public readonly sessionFile: string;
@@ -42,7 +42,7 @@ class Session {
   /**
    * Starts the session, given a Claim/token.
    */
-  public async start({ token }: { token: Claim }) {
+  public async start({ token }: { token: SessionToken }) {
     this.logger.info('Starting Session');
     this._token = token;
     this.logger.info('Started Session');
@@ -53,11 +53,11 @@ class Session {
       return;
     }
     this.logger.info('Stopping Session');
-    this._token = '' as Claim;
+    this._token = '' as SessionToken;
     this.logger.info('Stopped Session');
   }
 
-  public get token(): Claim {
+  public get token(): SessionToken {
     return this._token;
   }
 
