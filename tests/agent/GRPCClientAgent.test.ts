@@ -10,6 +10,7 @@ import { GitBackend } from '@/git';
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
+import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { agentPB, GRPCClientAgent } from '@/agent';
@@ -24,7 +25,7 @@ describe('GRPC agent', () => {
   ]);
   const node1: NodeInfo = {
     id: '12345' as NodeId,
-    links: { nodes: {}, identities: {} },
+    chain: {},
   };
 
   let client: GRPCClientAgent;
@@ -34,13 +35,13 @@ describe('GRPC agent', () => {
   let dataDir: string;
   let keysPath: string;
   let vaultsPath: string;
-  let nodesPath: string;
   let dbPath: string;
 
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeManager: NodeManager;
   let gitBackend: GitBackend;
+  let sigchain: Sigchain;
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let db: DB;
@@ -54,7 +55,6 @@ describe('GRPC agent', () => {
     );
     keysPath = path.join(dataDir, 'keys');
     vaultsPath = path.join(dataDir, 'vaults');
-    nodesPath = path.join(dataDir, 'nodes');
     dbPath = path.join(dataDir, 'db');
 
     fwdProxy = new ForwardProxy({
@@ -74,7 +74,6 @@ describe('GRPC agent', () => {
 
     db = new DB({
       dbPath: dbPath,
-      keyManager: keyManager,
       fs: fs,
       logger: logger,
     });
@@ -90,6 +89,12 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
+    sigchain = new Sigchain({
+      keyManager: keyManager,
+      db: db,
+      logger: logger,
+    });
+
     vaultManager = new VaultManager({
       vaultsPath: vaultsPath,
       keyManager: keyManager,
@@ -101,7 +106,8 @@ describe('GRPC agent', () => {
     });
 
     nodeManager = new NodeManager({
-      nodesPath: nodesPath,
+      db: db,
+      sigchain: sigchain,
       keyManager: keyManager,
       fwdProxy: fwdProxy,
       revProxy: revProxy,
@@ -116,7 +122,7 @@ describe('GRPC agent', () => {
     });
 
     await keyManager.start({ password: 'password' });
-    await db.start();
+    await db.start({ keyPair: keyManager.getRootKeyPair() });
     await acl.start();
     await gestaltGraph.start();
     await vaultManager.start({});
@@ -127,6 +133,7 @@ describe('GRPC agent', () => {
       vaultManager,
       nodeManager,
       gitBackend,
+      sigchain,
     });
 
     client = await testUtils.openTestAgentClient(port);

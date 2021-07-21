@@ -13,6 +13,7 @@ import { Lockfile } from './lockfile';
 import { NodeManager } from './nodes';
 import { VaultManager } from './vaults';
 import { GestaltGraph } from './gestalts';
+import { Sigchain } from './sigchain';
 import { ACL } from './acl';
 import { DB } from './db';
 import { WorkerManager } from './workers';
@@ -35,6 +36,7 @@ class Polykey {
   public readonly gestalts: GestaltGraph;
   public readonly identities: IdentitiesManager;
   public readonly workers: WorkerManager;
+  public readonly sigchain: Sigchain;
   public readonly acl: ACL;
   public readonly db: DB;
 
@@ -61,6 +63,7 @@ class Polykey {
     nodeManager,
     gestaltGraph,
     identitiesManager,
+    sigchain,
     acl,
     db,
     workerManager,
@@ -80,6 +83,7 @@ class Polykey {
     nodeManager?: NodeManager;
     gestaltGraph?: GestaltGraph;
     identitiesManager?: IdentitiesManager;
+    sigchain?: Sigchain;
     acl?: ACL;
     db?: DB;
     workerManager?: WorkerManager;
@@ -99,9 +103,7 @@ class Polykey {
     this.fs = fs ?? require('fs');
     this.nodePath = path.resolve(nodePath ?? utils.getDefaultNodePath());
     const keysPath = path.join(this.nodePath, 'keys');
-    const nodesPath = path.join(this.nodePath, 'nodes');
     const vaultsPath = path.join(this.nodePath, 'vaults');
-    const identitiesPath = path.join(this.nodePath, 'identities');
     const dbPath = path.join(this.nodePath, 'db');
 
     this.fwdProxy =
@@ -135,6 +137,13 @@ class Polykey {
         fs: this.fs,
         logger: this.logger,
       });
+    this.sigchain =
+      sigchain ??
+      new Sigchain({
+        keyManager: this.keys,
+        db: this.db,
+        logger: this.logger.getChild('Sigchain'),
+      });
     this.acl =
       acl ??
       new ACL({
@@ -162,7 +171,8 @@ class Polykey {
     this.nodes =
       nodeManager ??
       new NodeManager({
-        nodesPath: nodesPath,
+        db: this.db,
+        sigchain: this.sigchain,
         keyManager: this.keys,
         fwdProxy: this.fwdProxy,
         revProxy: this.revProxy,
@@ -209,6 +219,7 @@ class Polykey {
       vaultManager: this.vaults,
       nodeManager: this.nodes,
       gitBackend: this.gitBackend,
+      sigchain: this.sigchain,
     });
 
     // Create GRPC Server with the services just created.
@@ -287,6 +298,7 @@ class Polykey {
 
     await this.acl.start({ fresh });
 
+    await this.sigchain.start({ fresh });
     await this.nodes.start({ nodeId, fresh });
     await this.vaults.start({ fresh });
     // await this.gestalts.start({ fresh });
@@ -360,6 +372,7 @@ class Polykey {
 
     await this.vaults.stop();
     await this.nodes.stop();
+    await this.sigchain.stop();
 
     await this.fwdProxy.stop();
 

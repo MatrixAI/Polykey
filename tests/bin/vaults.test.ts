@@ -15,15 +15,15 @@ let polykeyAgent: PolykeyAgent;
 const jwtTokenExitCode = 77;
 const node1: NodeInfo = {
   id: '123' as NodeId,
-  links: { nodes: {}, identities: {} },
+  chain: {},
 };
 const node2: NodeInfo = {
   id: '456' as NodeId,
-  links: { nodes: {}, identities: {} },
+  chain: {},
 };
 const node3: NodeInfo = {
   id: '789' as NodeId,
-  links: { nodes: {}, identities: {} },
+  chain: {},
 };
 
 describe('CLI vaults', () => {
@@ -261,7 +261,7 @@ describe('CLI vaults', () => {
 
     await targetPolykeyAgent.gestalts.setNode({
       id: polykeyAgent.nodes.getNodeId(),
-      links: { nodes: {}, identities: {} },
+      chain: {},
     });
     await targetPolykeyAgent.vaults.setVaultPerm(
       polykeyAgent.nodes.getNodeId(),
@@ -334,7 +334,7 @@ describe('CLI vaults', () => {
 
     await targetPolykeyAgent.gestalts.setNode({
       id: polykeyAgent.nodes.getNodeId(),
-      links: { nodes: {}, identities: {} },
+      chain: {},
     });
     await targetPolykeyAgent.vaults.setVaultPerm(
       polykeyAgent.nodes.getNodeId(),

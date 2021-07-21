@@ -4,11 +4,13 @@ import type {
   TokenData,
   IdentityData,
 } from '../../types';
-import type {
-  LinkId,
-  LinkClaimIdentity,
-  LinkInfoIdentity,
-} from '../../../links/types';
+// import type {
+//   LinkId,
+//   LinkClaimIdentity,
+//   LinkInfoIdentity,
+// } from '../../../claims/types';
+import type { Claim } from '../../../claims/types';
+import type { IdentityClaim, IdentityClaimId } from '../../../identities/types';
 
 import { fetch, Request, Headers } from 'cross-fetch';
 import { Searcher } from 'fast-fuzzy';
@@ -361,10 +363,10 @@ class GitHubProvider extends Provider {
    * Publish a link claim.
    * These are published as gists.
    */
-  public async publishLinkClaim(
+  public async publishClaim(
     authIdentityId: IdentityId,
-    linkClaim: LinkClaimIdentity,
-  ): Promise<LinkInfoIdentity> {
+    identityClaim: Claim, // give link claim we want to publush
+  ): Promise<IdentityClaim> {
     let tokenData = await this.getToken(authIdentityId);
     if (!tokenData) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
@@ -376,7 +378,7 @@ class GitHubProvider extends Provider {
       description: this.gistDescription,
       files: {
         [this.gistFilename]: {
-          content: JSON.stringify(linkClaim),
+          content: JSON.stringify(identityClaim),
         },
       },
       public: true,
@@ -409,7 +411,7 @@ class GitHubProvider extends Provider {
       );
     }
     return {
-      ...linkClaim,
+      ...identityClaim,
       id: data.id,
       url: data.html_url ?? undefined,
     };
@@ -420,10 +422,10 @@ class GitHubProvider extends Provider {
    * GitHub LinkInfos are published as gists.
    * The link id is the gist id
    */
-  public async getLinkInfo(
+  public async getClaim(
     authIdentityId: IdentityId,
-    linkId: LinkId,
-  ): Promise<LinkInfoIdentity | undefined> {
+    claimId: IdentityClaimId,
+  ): Promise<IdentityClaim | undefined> {
     let tokenData = await this.getToken(authIdentityId);
     if (!tokenData) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
@@ -432,7 +434,7 @@ class GitHubProvider extends Provider {
     }
     tokenData = await this.checkToken(tokenData, authIdentityId);
     const request = this.createRequest(
-      `${this.apiUrl}/gists/${linkId}`,
+      `${this.apiUrl}/gists/${claimId}`,
       {
         method: 'GET',
       },
@@ -464,13 +466,13 @@ class GitHubProvider extends Provider {
     if (linkClaimData == null) {
       return;
     }
-    const linkClaim = this.parseLinkClaim(linkClaimData);
+    const linkClaim = this.parseClaim(linkClaimData);
     if (!linkClaim) {
       return;
     }
     return {
       ...linkClaim,
-      id: linkId,
+      id: claimId,
       url: data.html_url ?? undefined,
     };
   }
@@ -478,10 +480,10 @@ class GitHubProvider extends Provider {
   /**
    * Gets LinkInfo from a given identity.
    */
-  public async *getLinkInfos(
+  public async *getClaims(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<LinkInfoIdentity> {
+  ): AsyncGenerator<IdentityClaim> {
     const gistsSearchUrl = 'https://gist.github.com/search';
     let pageNum = 1;
     while (true) {
@@ -489,7 +491,7 @@ class GitHubProvider extends Provider {
       url.searchParams.set('p', pageNum.toString());
       url.searchParams.set(
         'q',
-        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`,
+        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`, //githubidentityclaim
       );
       const request = new Request(url.toString(), { method: 'GET' });
       const response = await fetch(request);
@@ -499,9 +501,9 @@ class GitHubProvider extends Provider {
         );
       }
       const data = await response.text();
-      const linkIds = await this.extractLinkIds(data);
+      const linkIds = await this.extractLinkIds(data); // TODO: rename/change extractLinkIds
       for (const linkId of linkIds) {
-        const linkInfo = await this.getLinkInfo(authIdentityId, linkId);
+        const linkInfo = await this.getClaim(authIdentityId, linkId);
         if (linkInfo) {
           yield linkInfo;
         }
@@ -561,8 +563,8 @@ class GitHubProvider extends Provider {
     }
   }
 
-  protected extractLinkIds(html: string): Array<LinkId> {
-    const linkIds: Array<LinkId> = [];
+  protected extractLinkIds(html: string): Array<IdentityClaimId> {
+    const linkIds: Array<IdentityClaimId> = [];
     const $ = cheerio.load(html);
     $('.gist-snippet > .gist-snippet-meta')
       .children('ul')
@@ -572,7 +574,7 @@ class GitHubProvider extends Provider {
           const matches = link.match(/\/.+?\/(.+)/);
           if (matches) {
             const linkId = matches[1];
-            linkIds.push(linkId);
+            linkIds.push(linkId as IdentityClaimId);
           }
         }
       });

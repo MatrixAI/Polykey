@@ -1,4 +1,4 @@
-import type { Cryptolink } from '@/sigchain/types';
+import type { Claim, ClaimId, ClaimData } from '@/claims/types';
 import type { NodeId } from '@/nodes/types';
 import type { ProviderId, IdentityId } from '@/identities/types';
 
@@ -7,8 +7,9 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
+import { DB } from '@/db';
 import { Sigchain } from '@/sigchain';
-import * as sigchainUtils from '@/sigchain/utils';
+import * as claimsUtils from '@/claims/utils';
 
 describe('Sigchain', () => {
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
@@ -16,6 +17,8 @@ describe('Sigchain', () => {
   ]);
   let dataDir: string;
   let keyManager: KeyManager;
+  let db: DB;
+  const srcNodeId = 'NodeId1' as NodeId;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -24,8 +27,14 @@ describe('Sigchain', () => {
     const keysPath = `${dataDir}/keys`;
     keyManager = new KeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
+    const dbPath = `${dataDir}/db`;
+    db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
   });
   afterEach(async () => {
+    await db.stop();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -33,68 +42,49 @@ describe('Sigchain', () => {
     });
   });
 
-  test('construction has no side effects', async () => {
-    const sigchainPath = `${dataDir}/sigchain`;
-    new Sigchain({ sigchainPath, keyManager, logger });
-    await expect(fs.promises.stat(sigchainPath)).rejects.toThrow(/ENOENT/);
-  });
-  test('async start constructs the sigchain leveldb and initialises the sequence number', async () => {
-    const sigchainPath = `${dataDir}/sigchain`;
-    const sigchain = new Sigchain({ sigchainPath, keyManager, logger });
+  test('async start initialises the sequence number', async () => {
+    const sigchain = new Sigchain({ keyManager, db, logger });
     await sigchain.start();
-    const sigchainPathContents = await fs.promises.readdir(sigchainPath);
-    expect(sigchainPathContents).toContain('sigchain_db');
     const sequenceNumber = await sigchain.getSequenceNumber();
     expect(sequenceNumber).toBe(0);
     await sigchain.stop();
   });
-  test('start and stop preserves the acl key', async () => {
-    const sigchainPath = `${dataDir}/sigchain`;
-    const sigchain = new Sigchain({ sigchainPath, keyManager, logger });
-    await sigchain.start();
-    const sigchainDbKey = await keyManager.getKey('Sigchain');
-    expect(sigchainDbKey).not.toBeUndefined();
-    await sigchain.stop();
-    await sigchain.start();
-    const followingSigchainDbKey = await keyManager.getKey('Sigchain');
-    expect(followingSigchainDbKey).not.toBeUndefined();
-    await sigchain.stop();
-    expect(sigchainDbKey).toEqual(followingSigchainDbKey);
-  });
   test('adds and retrieves a cryptolink, verifies signature', async () => {
-    const sigchainPath = `${dataDir}/sigchain`;
-    const sigchain = new Sigchain({ sigchainPath, keyManager, logger });
+    const sigchain = new Sigchain({ keyManager, db, logger });
     await sigchain.start();
-    const cryptolink: Cryptolink = {
-      claimType: 'cryptolink',
-      linkId: 'id1',
+    const cryptolink: ClaimData = {
       type: 'node',
-      node1: 'NodeId1' as NodeId,
+      node1: srcNodeId,
       node2: 'NodeId2' as NodeId,
     };
-    await sigchain.addCryptolink(cryptolink);
+    await sigchain.addClaim(cryptolink);
     const claim = await sigchain.getClaim(1);
 
     // Check the claim is correct
-    const decoded = sigchainUtils.decodeClaim(claim);
-    expect(decoded).toEqual({
-      header: { alg: 'RS256' },
+    const decoded = claimsUtils.decodeClaim(claim);
+    const expected: Claim = {
       payload: {
-        hashPrevious: null,
-        sequenceNumber: 1,
-        claimData: {
-          claimType: 'cryptolink',
-          linkId: 'id1',
+        hPrev: null,
+        seq: 1,
+        data: {
           type: 'node',
-          node1: 'NodeId1',
-          node2: 'NodeId2',
+          node1: srcNodeId,
+          node2: 'NodeId2' as NodeId,
         },
         iat: expect.any(Number),
       },
-    });
+      signatures: expect.any(Object),
+    };
+    expect(decoded).toStrictEqual(expected);
 
     // Check the signature is valid
-    const verified = await sigchainUtils.verifyClaimSignature(
+    expect(Object.keys(decoded.signatures).length).toBe(1);
+    expect(decoded.signatures[srcNodeId]).toBeDefined;
+    expect(decoded.signatures[srcNodeId].header).toStrictEqual({
+      alg: 'RS256',
+      kid: srcNodeId,
+    });
+    const verified = await claimsUtils.verifyClaimSignature(
       claim,
       keyManager.getRootKeyPairPem().publicKey,
     );
@@ -103,173 +93,256 @@ describe('Sigchain', () => {
     await sigchain.stop();
   });
   test('adds and retrieves 2 cryptolinks, verifies signatures and hash', async () => {
-    const sigchainPath = `${dataDir}/sigchain`;
-    const sigchain = new Sigchain({ sigchainPath, keyManager, logger });
+    const sigchain = new Sigchain({ keyManager, db, logger });
     await sigchain.start();
-    const cryptolink1: Cryptolink = {
-      claimType: 'cryptolink',
-      linkId: 'id1',
+    const cryptolink: ClaimData = {
       type: 'node',
-      node1: 'NodeId1' as NodeId,
+      node1: srcNodeId,
       node2: 'NodeId2' as NodeId,
     };
-    await sigchain.addCryptolink(cryptolink1);
+    await sigchain.addClaim(cryptolink);
 
-    const cryptolink2: Cryptolink = {
-      claimType: 'cryptolink',
-      linkId: 'id2',
+    const cryptolink2: ClaimData = {
       type: 'node',
-      node1: 'NodeId1' as NodeId,
+      node1: srcNodeId,
       node2: 'NodeId3' as NodeId,
     };
-    await sigchain.addCryptolink(cryptolink2);
+    await sigchain.addClaim(cryptolink2);
 
     const claim1 = await sigchain.getClaim(1);
     const claim2 = await sigchain.getClaim(2);
 
     // Check the claim is correct
-    const decoded1 = sigchainUtils.decodeClaim(claim1);
-    expect(decoded1).toEqual({
-      header: { alg: 'RS256' },
+    const decoded1 = claimsUtils.decodeClaim(claim1);
+    const expected1: Claim = {
       payload: {
-        hashPrevious: null,
-        sequenceNumber: 1,
-        claimData: {
-          claimType: 'cryptolink',
-          linkId: 'id1',
+        hPrev: null,
+        seq: 1,
+        data: {
           type: 'node',
-          node1: 'NodeId1',
-          node2: 'NodeId2',
+          node1: srcNodeId,
+          node2: 'NodeId2' as NodeId,
         },
         iat: expect.any(Number),
       },
-    });
-    const decoded2 = sigchainUtils.decodeClaim(claim2);
-    expect(decoded2).toEqual({
-      header: { alg: 'RS256' },
+      signatures: expect.any(Object),
+    };
+    expect(decoded1).toStrictEqual(expected1);
+    const decoded2 = claimsUtils.decodeClaim(claim2);
+    const expected2: Claim = {
       payload: {
-        hashPrevious: expect.any(String),
-        sequenceNumber: 2,
-        claimData: {
-          claimType: 'cryptolink',
-          linkId: 'id2',
+        hPrev: expect.any(String),
+        seq: 2,
+        data: {
           type: 'node',
-          node1: 'NodeId1',
-          node2: 'NodeId3',
+          node1: srcNodeId,
+          node2: 'NodeId3' as NodeId,
         },
         iat: expect.any(Number),
       },
-    });
+      signatures: expect.any(Object),
+    };
+    expect(decoded2).toStrictEqual(expected2);
 
-    // Check the signature is valid
-    const verified1 = await sigchainUtils.verifyClaimSignature(
+    // Check the signature is valid in each claim
+    expect(Object.keys(decoded1.signatures).length).toBe(1);
+    expect(decoded1.signatures[srcNodeId]).toBeDefined;
+    expect(decoded1.signatures[srcNodeId].header).toStrictEqual({
+      alg: 'RS256',
+      kid: srcNodeId,
+    });
+    const verified1 = await claimsUtils.verifyClaimSignature(
       claim1,
-      keyManager.getRootKeyPairPem().publicKey,
-    );
-    const verified2 = await sigchainUtils.verifyClaimSignature(
-      claim2,
       keyManager.getRootKeyPairPem().publicKey,
     );
     expect(verified1).toBe(true);
+
+    expect(Object.keys(decoded2.signatures).length).toBe(1);
+    expect(decoded2.signatures[srcNodeId]).toBeDefined;
+    expect(decoded2.signatures[srcNodeId].header).toStrictEqual({
+      alg: 'RS256',
+      kid: srcNodeId,
+    });
+    const verified2 = await claimsUtils.verifyClaimSignature(
+      claim2,
+      keyManager.getRootKeyPairPem().publicKey,
+    );
     expect(verified2).toBe(true);
 
     // Check the hash of the previous claim is correct
-    const verifiedHash = await sigchainUtils.verifyHashOfClaim(
+    const verifiedHash = await claimsUtils.verifyHashOfClaim(
       claim1,
-      decoded2.payload.hashPrevious,
+      decoded2.payload.hPrev as string,
     );
     expect(verifiedHash).toBe(true);
 
     await sigchain.stop();
   });
-  test('retrieves all cryptolinks from sigchain', async () => {
-    const sigchainPath = `${dataDir}/sigchain`;
-    const sigchain = new Sigchain({ sigchainPath, keyManager, logger });
+  test('retrieves chain data', async () => {
+    const sigchain = new Sigchain({ keyManager, db, logger });
     await sigchain.start();
 
-    // Add 30 claims, with cryptolink claims at sequence numbers 5, 10, 13, 29.
-    for (let i = 0; i < 30; i++) {
-      // Add 2 node cryptolinks
-      if (i == 5 || i == 13) {
-        const cryptolink: Cryptolink = {
-          claimType: 'cryptolink',
-          linkId: 'id' + i.toString(),
+    // Add 10 claims
+    for (let i = 1; i <= 5; i++) {
+      const nodeLink: ClaimData = {
+        type: 'node',
+        node1: srcNodeId,
+        node2: ('NodeId' + i.toString()) as NodeId,
+      };
+      await sigchain.addClaim(nodeLink);
+    }
+    for (let i = 6; i <= 10; i++) {
+      const identityLink: ClaimData = {
+        type: 'identity',
+        node: srcNodeId,
+        provider: ('ProviderId' + i.toString()) as ProviderId,
+        identity: ('IdentityId' + i.toString()) as IdentityId,
+      };
+      await sigchain.addClaim(identityLink);
+    }
+
+    const chainData = await sigchain.getChainData();
+    for (let i = 1; i <= 10; i++) {
+      const claimId = claimsUtils.numToLexiString(i) as ClaimId;
+      const claim = chainData[claimId];
+      const decodedClaim = claimsUtils.decodeClaim(claim);
+      if (i <= 5) {
+        expect(decodedClaim.payload.data).toEqual({
           type: 'node',
-          node1: 'NodeId1' as NodeId,
+          node1: srcNodeId,
+          node2: ('NodeId' + i.toString()) as NodeId,
+        });
+      } else {
+        expect(decodedClaim.payload.data).toEqual({
+          type: 'identity',
+          node: srcNodeId,
+          provider: ('ProviderId' + i.toString()) as ProviderId,
+          identity: ('IdentityId' + i.toString()) as IdentityId,
+        });
+      }
+    }
+  });
+  test('retrieves all cryptolinks (nodes and identities) from sigchain (in expected lexicographic order)', async () => {
+    const sigchain = new Sigchain({ keyManager, db, logger });
+    await sigchain.start();
+
+    // Add 30 claims
+    for (let i = 1; i <= 30; i++) {
+      // If even, add a node link
+      if (i % 2 == 0) {
+        const nodeLink: ClaimData = {
+          type: 'node',
+          node1: srcNodeId,
           node2: ('NodeId' + i.toString()) as NodeId,
         };
-        await sigchain.addCryptolink(cryptolink);
-        // Add 2 identity cryptolinks
-      } else if (i == 10 || i == 29) {
-        const cryptolink: Cryptolink = {
-          claimType: 'cryptolink',
-          linkId: 'id' + i.toString(),
+        await sigchain.addClaim(nodeLink);
+        // If odd, add an identity link
+      } else {
+        const identityLink: ClaimData = {
           type: 'identity',
-          node: 'NodeId1' as NodeId,
+          node: srcNodeId,
           provider: ('ProviderId' + i.toString()) as ProviderId,
           identity: ('IdentityId' + i.toString()) as IdentityId,
         };
-        await sigchain.addCryptolink(cryptolink);
-      } else {
-        await sigchain.addArbitraryClaim();
+        await sigchain.addClaim(identityLink);
       }
     }
 
-    const cryptolinks = await sigchain.getAllCryptolinks();
-    expect(cryptolinks.length).toBe(4);
-    // Verify each cryptolink
-    for (const c of cryptolinks) {
-      const decoded = sigchainUtils.decodeClaim(c);
-      const i = decoded.payload.sequenceNumber;
-      // Verify contents of node cryptolinks
-      if (i == 5 || i == 13) {
-        expect(decoded).toEqual({
-          header: { alg: 'RS256' },
-          payload: {
-            hashPrevious: expect.any(String),
-            sequenceNumber: i,
-            claimData: {
-              claimType: 'cryptolink',
-              linkId: 'id' + i.toString(),
-              type: 'node',
-              node1: 'NodeId1',
-              node2: 'NodeId' + i.toString(),
-            },
-            iat: expect.any(Number),
+    // Verify the nodes:
+    const nodeLinks = await sigchain.getClaims('node');
+    const decodedNodes = nodeLinks.map((n) => {
+      return claimsUtils.decodeClaim(n);
+    });
+    let expectedSeqNum = 2;
+    let i = 0;
+    for (const d of decodedNodes) {
+      // Check they've been returned in numerical order (according to the
+      // lexicographic integer num)
+      const seqNum = d.payload.seq;
+      expect(seqNum).toBe(expectedSeqNum);
+
+      // Verify the structure of claim
+      const expected: Claim = {
+        payload: {
+          hPrev: claimsUtils.hashClaim(await sigchain.getClaim(seqNum - 1)),
+          seq: expectedSeqNum,
+          data: {
+            type: 'node',
+            node1: srcNodeId,
+            node2: ('NodeId' + expectedSeqNum.toString()) as NodeId,
           },
-        });
-        // Verify contents of identity cryptolinks
-      } else if (i == 10 || i == 29) {
-        expect(decoded).toEqual({
-          header: { alg: 'RS256' },
-          payload: {
-            hashPrevious: expect.any(String),
-            sequenceNumber: i,
-            claimData: {
-              claimType: 'cryptolink',
-              linkId: 'id' + i.toString(),
-              type: 'identity',
-              node: 'NodeId1',
-              provider: 'ProviderId' + i.toString(),
-              identity: 'IdentityId' + i.toString(),
-            },
-            iat: expect.any(Number),
-          },
-        });
-      }
-      // Verify signature of the cryptolink
-      const verified = await sigchainUtils.verifyClaimSignature(
-        c,
+          iat: expect.any(Number),
+        },
+        signatures: expect.any(Object),
+      };
+      expect(d).toEqual(expected);
+      // Verify the signature
+      expect(Object.keys(d.signatures).length).toBe(1);
+      expect(d.signatures[srcNodeId]).toBeDefined;
+      expect(d.signatures[srcNodeId].header).toStrictEqual({
+        alg: 'RS256',
+        kid: srcNodeId,
+      });
+      const verified = await claimsUtils.verifyClaimSignature(
+        nodeLinks[i],
         keyManager.getRootKeyPairPem().publicKey,
       );
       expect(verified).toBe(true);
+      // Because every node link was an even number, we can simply add 2 to
+      // the current sequence number to get the next expected one.
+      expectedSeqNum = seqNum + 2;
+      i++;
+    }
 
-      // Verify hash of the cryptolinks
-      const verifiedHash = await sigchainUtils.verifyHashOfClaim(
-        await sigchain.getClaim(i - 1),
-        decoded.payload.hashPrevious,
+    // Verify the identities:
+    const identityLinks = await sigchain.getClaims('identity');
+    const decodedIdentities = identityLinks.map((n) => {
+      return claimsUtils.decodeClaim(n);
+    });
+    // Reset these counts
+    expectedSeqNum = 1;
+    i = 0;
+    for (const id of decodedIdentities) {
+      // Check they've been returned in numerical order (according to the
+      // lexicographic integer num)
+      const seqNum = id.payload.seq;
+      expect(seqNum).toBe(expectedSeqNum);
+
+      // Verify the structure of claim
+      const expected: Claim = {
+        payload: {
+          hPrev:
+            expectedSeqNum == 1
+              ? null
+              : claimsUtils.hashClaim(await sigchain.getClaim(seqNum - 1)),
+          seq: expectedSeqNum,
+          data: {
+            type: 'identity',
+            node: srcNodeId,
+            provider: ('ProviderId' + expectedSeqNum.toString()) as ProviderId,
+            identity: ('IdentityId' + expectedSeqNum.toString()) as IdentityId,
+          },
+          iat: expect.any(Number),
+        },
+        signatures: expect.any(Object),
+      };
+      expect(id).toEqual(expected);
+      // Verify the signature
+      expect(Object.keys(id.signatures).length).toBe(1);
+      expect(id.signatures[srcNodeId]).toBeDefined;
+      expect(id.signatures[srcNodeId].header).toStrictEqual({
+        alg: 'RS256',
+        kid: srcNodeId,
+      });
+      const verified = await claimsUtils.verifyClaimSignature(
+        nodeLinks[i],
+        keyManager.getRootKeyPairPem().publicKey,
       );
-      expect(verifiedHash).toBe(true);
+      expect(verified).toBe(true);
+      // Because every identity link was an odd number, we can simply add 2 to
+      // the current sequence number to get the next expected one.
+      expectedSeqNum = seqNum + 2;
+      i++;
     }
 
     await sigchain.stop();
