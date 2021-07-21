@@ -4,6 +4,7 @@ variables:
 stages:
   - check
   - build
+  - release
 
 image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
 
@@ -29,18 +30,45 @@ test:
 
 nix-dry:
   stage: check
+  interruptible: true
   script:
     - nix-build -v -v --dry-run ./release.nix --attr application
     - nix-build -v -v --dry-run ./release.nix --attr docker
-  interruptible: true
+    - nix-build -v -v --dry-run ./release.nix --attr package.linux.x64.elf
+    - nix-build -v -v --dry-run ./release.nix --attr package.windows.x64.exe
+    - nix-build -v -v --dry-run ./release.nix --attr package.macos.x64.macho
 
 nix:
   stage: build
+  interruptible: true
   script:
     - >
         nix-build ./release.nix
+        --max-jobs $(nproc)
         --attr application
         --attr docker
   only:
     - master
+
+packages:
+  stage: release
   interruptible: true
+  script:
+    - >
+        nix-shell -I nixpkgs=./pkgs.nix --packages git gitAndTools.gh --run '
+        builds="$(nix-build \
+          --max-jobs $(nproc) --cores $(nproc) \
+          ./release.nix \
+          --attr package.linux.x64.elf \
+          --attr package.windows.x64.exe \
+          --attr package.macos.x64.macho)";
+        commit="$(git rev-parse --short HEAD)";
+        gh release \
+          create "$commit" $builds \
+          --title "Build-$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+          --prerelease \
+          --notes "" \
+          --repo MatrixAI/js-polykey;
+        '
+  only:
+    - master
