@@ -37,7 +37,7 @@
   "main": "dist/Polykey.js",
   "types": "dist/Polykey.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p ./tsconfig.build.json",
     "postbuild": "cp -fR src/proto dist",
     "ts-node": "ts-node -r tsconfig-paths/register",
     "test": "jest",
