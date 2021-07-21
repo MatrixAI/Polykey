@@ -114,33 +114,29 @@ describe('VaultManager is', () => {
 
     const node1: NodeInfo = {
       id: '123' as NodeId,
-      links: { nodes: {}, identities: {} },
+      chain: {},
     };
     const node2: NodeInfo = {
       id: '345' as NodeId,
-      links: { nodes: {}, identities: {} },
+      chain: {},
     };
     const node3: NodeInfo = {
       id: '678' as NodeId,
-      links: { nodes: {}, identities: {} },
+      chain: {},
     };
     const node4: NodeInfo = {
       id: '890' as NodeId,
-      links: { nodes: {}, identities: {} },
+      chain: {},
     };
     const id1: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
-        nodes: {},
-      },
+      claims: {},
     };
     const id2: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'def' as IdentityId,
-      links: {
-        nodes: {},
-      },
+      claims: {},
     };
 
     await gestaltGraph.setNode(node1);

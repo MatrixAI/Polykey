@@ -1,5 +1,5 @@
 import type { Vault } from '@/vaults';
-import type { Claim } from '@/sigchain/types';
+import type { SessionToken } from '@/session/types';
 import type { NodeId, NodeInfo } from '@/nodes/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 
@@ -15,6 +15,7 @@ import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
 import { VaultManager } from '@/vaults';
 import { IdentitiesManager } from '@/identities';
+import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
 import { GitManager } from '@/git';
 import { KeyManager, utils as keyUtils } from '@/keys';
@@ -52,6 +53,7 @@ describe('Client service', () => {
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
+  let sigchain: Sigchain;
   let acl: ACL;
   let db: DB;
 
@@ -114,6 +116,12 @@ describe('Client service', () => {
       logger: logger,
     });
 
+    sigchain = new Sigchain({
+      keyManager: keyManager,
+      db: db,
+      logger: logger,
+    });
+
     gestaltGraph = new GestaltGraph({
       db: db,
       acl: acl,
@@ -131,7 +139,8 @@ describe('Client service', () => {
     });
 
     nodeManager = new NodeManager({
-      nodesPath: nodesPath,
+      db: db,
+      sigchain: sigchain,
       keyManager: keyManager,
       fwdProxy: fwdProxy,
       revProxy: revProxy,
@@ -168,6 +177,7 @@ describe('Client service', () => {
     await polykeyAgent.keys.start({ password: 'password' });
     await polykeyAgent.db.start({ keyPair: keyManager.getRootKeyPair() });
     await polykeyAgent.acl.start();
+    await polykeyAgent.sigchain.start();
     await polykeyAgent.vaults.start({});
     await polykeyAgent.nodes.start({ nodeId: nodeId });
     await polykeyAgent.identities.start();
@@ -203,6 +213,7 @@ describe('Client service', () => {
     await polykeyAgent.identities.stop();
     await polykeyAgent.nodes.stop();
     await polykeyAgent.vaults.stop();
+    await polykeyAgent.sigchain.stop();
     await polykeyAgent.acl.stop();
     await polykeyAgent.db.stop();
     await polykeyAgent.keys.stop();
@@ -245,7 +256,7 @@ describe('Client service', () => {
     const res = await requestJWT(m, meta);
     expect(typeof res.getToken()).toBe('string');
     const result = await polykeyAgent.sessions.verifyJWTToken(
-      res.getToken() as Claim,
+      res.getToken() as SessionToken,
     );
     expect(result).toBeTruthy();
   });
@@ -827,18 +838,13 @@ describe('Client service', () => {
 
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setIdentity(identityInfo);
 
@@ -862,17 +868,12 @@ describe('Client service', () => {
   test('setting independent node and identity gestalts', async () => {
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     await gestaltGraph.setIdentity(identityInfo);

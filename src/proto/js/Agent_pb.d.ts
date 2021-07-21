@@ -345,3 +345,115 @@ export namespace PermissionMessage {
         permission: boolean,
     }
 }
+
+export class ClaimTypeMessage extends jspb.Message { 
+    getClaimtype(): string;
+    setClaimtype(value: string): ClaimTypeMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ClaimTypeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ClaimTypeMessage): ClaimTypeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ClaimTypeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ClaimTypeMessage;
+    static deserializeBinaryFromReader(message: ClaimTypeMessage, reader: jspb.BinaryReader): ClaimTypeMessage;
+}
+
+export namespace ClaimTypeMessage {
+    export type AsObject = {
+        claimtype: string,
+    }
+}
+
+export class ClaimsMessage extends jspb.Message { 
+    clearClaimsList(): void;
+    getClaimsList(): Array<ClaimMessage>;
+    setClaimsList(value: Array<ClaimMessage>): ClaimsMessage;
+    addClaims(value?: ClaimMessage, index?: number): ClaimMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ClaimsMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ClaimsMessage): ClaimsMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ClaimsMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ClaimsMessage;
+    static deserializeBinaryFromReader(message: ClaimsMessage, reader: jspb.BinaryReader): ClaimsMessage;
+}
+
+export namespace ClaimsMessage {
+    export type AsObject = {
+        claimsList: Array<ClaimMessage.AsObject>,
+    }
+}
+
+export class ChainDataMessage extends jspb.Message { 
+
+    getChaindataMap(): jspb.Map<string, ClaimMessage>;
+    clearChaindataMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ChainDataMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ChainDataMessage): ChainDataMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ChainDataMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ChainDataMessage;
+    static deserializeBinaryFromReader(message: ChainDataMessage, reader: jspb.BinaryReader): ChainDataMessage;
+}
+
+export namespace ChainDataMessage {
+    export type AsObject = {
+
+        chaindataMap: Array<[string, ClaimMessage.AsObject]>,
+    }
+}
+
+export class ClaimMessage extends jspb.Message { 
+    getPayload(): string;
+    setPayload(value: string): ClaimMessage;
+    clearSignaturesList(): void;
+    getSignaturesList(): Array<SignatureMessage>;
+    setSignaturesList(value: Array<SignatureMessage>): ClaimMessage;
+    addSignatures(value?: SignatureMessage, index?: number): SignatureMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ClaimMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: ClaimMessage): ClaimMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ClaimMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ClaimMessage;
+    static deserializeBinaryFromReader(message: ClaimMessage, reader: jspb.BinaryReader): ClaimMessage;
+}
+
+export namespace ClaimMessage {
+    export type AsObject = {
+        payload: string,
+        signaturesList: Array<SignatureMessage.AsObject>,
+    }
+}
+
+export class SignatureMessage extends jspb.Message { 
+    getSignature(): string;
+    setSignature(value: string): SignatureMessage;
+    getHeader(): string;
+    setHeader(value: string): SignatureMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): SignatureMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: SignatureMessage): SignatureMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: SignatureMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): SignatureMessage;
+    static deserializeBinaryFromReader(message: SignatureMessage, reader: jspb.BinaryReader): SignatureMessage;
+}
+
+export namespace SignatureMessage {
+    export type AsObject = {
+        signature: string,
+        header: string,
+    }
+}

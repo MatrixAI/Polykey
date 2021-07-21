@@ -1,4 +1,4 @@
-import type { Claim } from '../sigchain/types';
+import type { SessionToken } from './types';
 
 import * as sessionErrors from './errors';
 
@@ -121,7 +121,7 @@ class SessionManager {
         .setIssuedAt()
         .setExpirationTime(input)
         .sign(createPrivateKey(privateKeyPem));
-      return claim as Claim;
+      return claim as SessionToken;
     });
   }
 
@@ -133,7 +133,7 @@ class SessionManager {
    * @param claim
    * @returns
    */
-  public async verifyJWTToken(claim: Claim) {
+  public async verifyJWTToken(claim: SessionToken) {
     return await this._transaction(async () => {
       if (!this.started) {
         throw new sessionErrors.ErrorSessionManagerNotStarted();

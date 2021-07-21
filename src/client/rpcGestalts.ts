@@ -1,5 +1,5 @@
 import type { Gestalt } from '../gestalts/types';
-import type { NodeId, NodeInfo } from '../nodes/types';
+import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
 import type { GestaltGraph } from '../gestalts';
 

@@ -1,90 +1,31 @@
-import type { Claim, DecodedClaim, ClaimPayload, ClaimData } from './types';
 import type { PublicKeyPem } from '../keys/types';
+import type { ChainData, ChainDataEncoded } from './types';
+import type { ClaimId } from '../claims/types';
 
-import { utils as keysUtils } from '../keys';
-import * as sigchainErrors from './errors';
-import { jwtVerify } from 'jose/jwt/verify';
-import { createPublicKey } from 'crypto';
-import { decode } from 'jose/util/base64url';
-import { md } from 'node-forge';
+import * as claimsUtils from '../claims/utils';
 
-// Assumes the Claim has been constructed through the Sigchain::createClaim()
-// function.
-function decodeClaim(claim: Claim): DecodedClaim {
-  const textDecoder = new TextDecoder();
-  const header = JSON.parse(textDecoder.decode(decode(claim.split('.')[0])));
-  const payload = JSON.parse(textDecoder.decode(decode(claim.split('.')[1])));
-
-  const claimPayload: ClaimPayload = {
-    hashPrevious: payload.hashPrevious,
-    sequenceNumber: payload.sequenceNumber as number,
-    claimData: payload.claimData as ClaimData,
-  };
-  const decoded = {
-    header: {
-      alg: header.alg,
-    },
-    payload: {
-      ...claimPayload,
-      iat: payload.iat,
-    },
-  } as DecodedClaim;
-  return decoded;
-}
-
-async function verifyClaimSignature(
-  claim: Claim,
+/**
+ * Verifies each claim in a ChainDataEncoded record, and returns a ChainData
+ * record containing the decoded Claims.
+ */
+async function verifyChainData(
+  chain: ChainDataEncoded,
   publicKey: PublicKeyPem,
-): Promise<boolean> {
-  const jwkPublicKey = createPublicKey(publicKey);
-  try {
-    await jwtVerify(claim, jwkPublicKey);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-function verifyHashOfClaim(claim: Claim, claimHash: string): boolean {
-  let newHash;
-  newHash = md.sha256.create();
-  newHash.update(claim);
-  newHash = newHash.digest().toHex();
-  if (newHash === claimHash) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-function serializeEncrypt<T>(key: Buffer, value: T): Buffer {
-  return keysUtils.encryptWithKey(
-    key,
-    Buffer.from(JSON.stringify(value), 'utf-8'),
-  );
-}
-
-function unserializeDecrypt<T>(key: Buffer, data: Buffer): T {
-  const value_ = keysUtils.decryptWithKey(key, data);
-  if (!value_) {
-    throw new sigchainErrors.ErrorSigchainDecrypt();
-  }
-  let value;
-  try {
-    value = JSON.parse(value_.toString('utf-8'));
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      throw new sigchainErrors.ErrorSigchainParse();
+): Promise<ChainData> {
+  const decodedChain: ChainData = {};
+  for (const claimId in chain) {
+    const encodedClaim = chain[claimId as ClaimId];
+    // Verify the claim
+    // If the claim can't be verified, we simply don't add it to the decoded chain
+    if (!(await claimsUtils.verifyClaimSignature(encodedClaim, publicKey))) {
+      continue;
     }
-    throw e;
+    // If verified, add the claim to the decoded chain
+    decodedChain[claimId as ClaimId] = await claimsUtils.decodeClaim(
+      encodedClaim,
+    );
   }
-  return value;
+  return decodedChain;
 }
 
-export {
-  decodeClaim,
-  verifyClaimSignature,
-  verifyHashOfClaim,
-  serializeEncrypt,
-  unserializeDecrypt,
-};
+export { verifyChainData };

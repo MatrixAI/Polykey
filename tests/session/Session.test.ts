@@ -1,4 +1,4 @@
-import type { Claim } from '@/sigchain/types';
+import type { SessionToken } from '@/session/types';
 
 import fs from 'fs';
 import os from 'os';
@@ -42,21 +42,21 @@ describe('Session is', () => {
     expect(session).toBeInstanceOf(Session);
   });
   test('starts and stops', async () => {
-    await session.start({ token: 'abc' as Claim });
-    expect(session.token).toBe('abc' as Claim);
+    await session.start({ token: 'abc' as SessionToken });
+    expect(session.token).toBe('abc' as SessionToken);
     await session.stop();
-    expect(session.token).toBe('' as Claim);
+    expect(session.token).toBe('' as SessionToken);
   });
   test('can read token', async () => {
     await utils.mkdirExists(fs, session.clientPath, { recursive: true });
     await fs.promises.writeFile(session.sessionFile, 'token');
     const token = await session.readToken();
-    await session.start({ token: token as Claim });
-    expect(session.token).toBe('token' as Claim);
+    await session.start({ token: token as SessionToken });
+    expect(session.token).toBe('token' as SessionToken);
     await session.stop();
   });
   test('can write token', async () => {
-    await session.start({ token: '123' as Claim });
+    await session.start({ token: '123' as SessionToken });
     await session.writeToken();
     const token = await fs.promises.readFile(session.sessionFile, {
       encoding: 'utf-8',

@@ -1,5 +1,5 @@
 import type { NodeId } from './nodes/types';
-import type { Claim } from './sigchain/types';
+import type { SessionToken } from './session/types';
 import type { FileSystem, LockConfig } from './types';
 
 import path from 'path';
@@ -111,7 +111,7 @@ class PolykeyClient {
     // Attempt to read token from fs
     const token = await this.session.readToken();
     if (token) {
-      this.session.start({ token: token as Claim });
+      this.session.start({ token: token as SessionToken });
     }
   }
 

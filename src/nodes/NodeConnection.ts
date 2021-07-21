@@ -1,11 +1,15 @@
 import type { NodeId, NodeData } from './types';
 import type { Host, Port, ProxyConfig } from '../network/types';
 import type { KeyManager } from '../keys';
-import type { NodeAddressMessage } from '../proto/js/Agent_pb';
+import { NodeAddressMessage } from '../proto/js/Agent_pb';
+import type { ChainDataEncoded } from '../sigchain/types';
+import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
+import type { ClaimId, ClaimEncoded } from '../claims/types';
 
 import Logger from '@matrixai/logger';
 import * as nodeUtils from './utils';
 import * as nodeErrors from './errors';
+import * as keysUtils from '../keys/utils';
 import { agentPB, GRPCClientAgent } from '../agent';
 import { ForwardProxy, utils as networkUtils } from '../network';
 
@@ -129,6 +133,45 @@ class NodeConnection {
   }
 
   /**
+   * Get the root certificate chain (i.e. the entire chain) of the node at the
+   * end of this connection.
+   * Ordered from newest to oldest.
+   */
+  public getRootCertChain(): Array<Certificate> {
+    if (!this._started) {
+      throw new nodeErrors.ErrorNodeConnectionNotStarted();
+    }
+    const connInfo = this.fwdProxy.getConnectionInfoByIngress(
+      this.ingressHost,
+      this.ingressPort,
+    );
+    if (!connInfo) {
+      throw new nodeErrors.ErrorNodeConnectionInfoNotExist();
+    }
+    return connInfo.certificates;
+  }
+
+  /**
+   * Finds the public key of a corresponding node ID, from the certificate chain
+   * of the node at the end of this connection.
+   * Because a keynode's root key can be refreshed, its node ID can also change.
+   * Sometimes these previous root keys are also still valid - these would be
+   * found in the certificate chain.
+   */
+  public getExpectedPublicKey(expectedNodeId: NodeId): PublicKeyPem | null {
+    const certificates = this.getRootCertChain();
+    let publicKey: PublicKeyPem | null = null;
+    for (const cert of certificates) {
+      if (networkUtils.certNodeId(cert) == expectedNodeId) {
+        publicKey = keysUtils.publicKeyToPem(
+          cert.publicKey as PublicKey,
+        ) as PublicKeyPem;
+      }
+    }
+    return publicKey;
+  }
+
+  /**
    * Performs a GRPC request to retrieve the closest nodes relative to the given
    * target node ID.
    * @param targetNodeId the node ID to find other nodes closest to it
@@ -185,6 +228,40 @@ class NodeConnection {
     relayMsg.setEgressaddress(egressAddress);
     relayMsg.setSignature(signature.toString());
     await this.client.sendHolePunchMessage(relayMsg);
+  }
+
+  /**
+   * Performs a GRPC request to retrieve the NodeInfo of the node at the end of
+   * the connection.
+   * @returns the reconstructed NodeInfo (containing UNVERIFIED links)
+   */
+  public async getChainData(): Promise<ChainDataEncoded> {
+    if (!this._started) {
+      throw new nodeErrors.ErrorNodeConnectionNotStarted();
+    }
+    const chainData: ChainDataEncoded = {};
+    const emptyMsg = new agentPB.EmptyMessage();
+    const response = await this.client.getChainData(emptyMsg);
+    // Reconstruct each claim from the returned ChainDataMessage
+    response
+      .getChaindataMap()
+      .forEach((claimMsg: agentPB.ClaimMessage, id: string) => {
+        const claimId = id as ClaimId;
+        // Reconstruct the signatures array
+        const signatures: Array<{ signature: string; protected: string }> = [];
+        for (const signatureData of claimMsg.getSignaturesList()) {
+          signatures.push({
+            signature: signatureData.getSignature(),
+            protected: signatureData.getHeader(),
+          });
+        }
+        // Add to the record of chain data, casting as expected ClaimEncoded
+        chainData[claimId] = {
+          signatures: signatures,
+          payload: claimMsg.getPayload(),
+        } as ClaimEncoded;
+      });
+    return chainData;
   }
 }
 

@@ -10,22 +10,26 @@ import { NodeManager } from '@/nodes';
 import { promisify } from '@/utils';
 import { KeyManager } from '@/keys';
 import { GitBackend } from '@/git';
+import { Sigchain } from '@/sigchain';
 
 async function openTestAgentServer({
   keyManager,
   vaultManager,
   nodeManager,
   gitBackend,
+  sigchain,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   gitBackend: GitBackend;
+  sigchain: Sigchain;
 }) {
   const agentService: IAgentServer = createAgentService({
     vaultManager,
     nodeManager,
     gitBackend: gitBackend,
+    sigchain: sigchain,
   });
 
   const server = new grpc.Server();

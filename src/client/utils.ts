@@ -1,4 +1,4 @@
-import type { Claim } from '../sigchain/types';
+import type { SessionToken } from '../session/types';
 
 import fs from 'fs';
 import * as grpc from '@grpc/grpc-js';
@@ -71,7 +71,7 @@ async function verifyToken(
     throw new clientErrors.ErrorClientJWTTokenNotProvided();
   }
   const token = auth.toString().split(' ')[1];
-  await sessionManager.verifyJWTToken(token as Claim);
+  await sessionManager.verifyJWTToken(token as SessionToken);
 }
 
 export { checkPassword, parseVaultInput, passwordFromMetadata, verifyToken };

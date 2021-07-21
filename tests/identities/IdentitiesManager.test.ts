@@ -5,7 +5,8 @@ import type {
   IdentityData,
 } from '@/identities/types';
 import type { NodeId } from '@/nodes/types';
-import type { LinkClaimIdentity, LinkInfoIdentity } from '@/links/types';
+import type { Claim, ClaimData, SignatureData } from '@/claims/types';
+import type { IdentityClaim } from '@/identities/types';
 
 import os from 'os';
 import path from 'path';
@@ -181,27 +182,46 @@ describe('IdentitiesManager', () => {
     }
     expect(identityDatas).toHaveLength(1);
     expect(identityDatas).not.toContainEqual(identityData);
-    const linkClaim: LinkClaimIdentity = {
-      type: 'identity',
-      node: 'somenode' as NodeId,
-      provider: testProvider.id,
-      identity: identityId,
-      timestamp: Math.floor(Date.now() / 1000),
+    // Now publish a claim
+    const signatures: Record<NodeId, SignatureData> = {};
+    signatures['somenode' as NodeId] = {
       signature: 'examplesignature',
+      header: {
+        alg: 'RS256',
+        kid: 'somenode' as NodeId,
+      },
     };
-    const linkInfo = await testProvider.publishLinkClaim(identityId, linkClaim);
-    expect(linkInfo).toBeDefined();
-    expect(linkInfo).toMatchObject(linkClaim);
-    const linkInfo_ = await testProvider.getLinkInfo(identityId, linkInfo.id);
-    expect(linkInfo).toStrictEqual(linkInfo_);
-    const linkInfos: Array<LinkInfoIdentity> = [];
-    for await (const linkInfo of testProvider.getLinkInfos(
+    const rawClaim: Claim = {
+      payload: {
+        hPrev: null,
+        seq: 1,
+        iat: Math.floor(Date.now() / 1000),
+        data: {
+          type: 'identity',
+          node: 'somenode' as NodeId,
+          provider: testProvider.id,
+          identity: identityId,
+        } as ClaimData,
+      },
+      signatures: signatures,
+    };
+    const publishedClaim = await testProvider.publishClaim(
       identityId,
+      rawClaim,
+    );
+    expect(publishedClaim).toBeDefined();
+    // publishedClaim will contain 2 extra metadata fields: URL and id
+    expect(publishedClaim).toMatchObject(rawClaim);
+    const publishedClaim_ = await testProvider.getClaim(
       identityId,
-    )) {
-      linkInfos.push(linkInfo);
+      publishedClaim.id,
+    );
+    expect(publishedClaim).toStrictEqual(publishedClaim_);
+    const publishedClaims: Array<IdentityClaim> = [];
+    for await (const claim of testProvider.getClaims(identityId, identityId)) {
+      publishedClaims.push(claim);
     }
-    expect(linkInfos).toContainEqual(linkInfo);
+    expect(publishedClaims).toContainEqual(publishedClaim);
     await identitiesManager.stop();
   });
 });

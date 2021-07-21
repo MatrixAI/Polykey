@@ -94,10 +94,10 @@ class DB {
     if (!this._started) {
       return;
     }
-    this.logger.info('Stopping ACL');
+    this.logger.info('Stopping DB');
     this._started = false;
     await this.db.close();
-    this.logger.info('Stopped ACL');
+    this.logger.info('Stopped DB');
   }
 
   public async level<K>(

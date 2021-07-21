@@ -1,16 +1,18 @@
 import type { NodeId } from '../nodes/types';
+import type { ClaimId } from '../claims/types';
 import * as grpc from '@grpc/grpc-js';
 import { GitBackend } from '../git';
 import { promisify } from '../utils';
 import * as networkUtils from '../network/utils';
-import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
+import { Sigchain } from '../sigchain';
 import { ErrorGRPC } from '../grpc/errors';
 import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
 
 import * as agentPB from '../proto/js/Agent_pb';
 import * as grpcUtils from '../grpc/utils';
+import * as claimsUtils from '../claims/utils';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -21,10 +23,12 @@ function createAgentService({
   vaultManager,
   nodeManager,
   gitBackend,
+  sigchain,
 }: {
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   gitBackend: GitBackend;
+  sigchain: Sigchain;
 }): IAgentServer {
   const agentService: IAgentServer = {
     echo: async (
@@ -171,6 +175,56 @@ function createAgentService({
         response.getNodetableMap().set(node.id, addressMessage);
       }
 
+      callback(null, response);
+    },
+    /**
+     * Retrieves all claims (of a specific type) of this node (within its sigchain).
+     * TODO: Currently not required. Will need to refactor once we filter on what
+     * claims we desire from the sigchain (e.g. in discoverGestalt).
+     */
+    getClaims: async (
+      call: grpc.ServerUnaryCall<
+        agentPB.ClaimTypeMessage,
+        agentPB.ClaimsMessage
+      >,
+      callback: grpc.sendUnaryData<agentPB.ClaimsMessage>,
+    ): Promise<void> => {
+      const response = new agentPB.ClaimsMessage();
+      // response.setClaimsList(
+      //   await sigchain.getClaims(call.request.getClaimtype() as ClaimType)
+      // );
+      callback(null, response);
+    },
+    /**
+     * Retrieves the ChainDataEncoded of this node.
+     */
+    getChainData: async (
+      call: grpc.ServerUnaryCall<
+        agentPB.EmptyMessage,
+        agentPB.ChainDataMessage
+      >,
+      callback: grpc.sendUnaryData<agentPB.ChainDataMessage>,
+    ): Promise<void> => {
+      const response = new agentPB.ChainDataMessage();
+      const chainData = await nodeManager.getChainData();
+      // Iterate through each claim in the chain, and serialize for transport
+      for (const c in chainData) {
+        const claimId = c as ClaimId;
+        const claim = chainData[claimId];
+        const claimMessage = new agentPB.ClaimMessage();
+        // Will always have a payload (never undefined) so cast as string
+        claimMessage.setPayload(claim.payload as string);
+        // Add the signatures
+        for (const signatureData of claim.signatures) {
+          const signature = new agentPB.SignatureMessage();
+          // Will always have a protected header (never undefined) so cast as string
+          signature.setHeader(signatureData.protected as string);
+          signature.setSignature(signatureData.signature);
+          claimMessage.getSignaturesList().push(signature);
+        }
+        // Add the serialized claim
+        response.getChaindataMap().set(claimId, claimMessage);
+      }
       callback(null, response);
     },
     synchronizeDHT: async (

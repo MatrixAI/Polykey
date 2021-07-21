@@ -1,13 +1,4 @@
-import type { NodeId, NodeBucket } from './types';
-import type { Host, Port } from '../network/types';
-import type { PublicKeyFingerprint } from '../keys/types';
-
-import { utils as keysUtils } from '../keys';
-import * as nodeErrors from './errors';
-
-function nodeId(id: PublicKeyFingerprint): NodeId {
-  return id as NodeId;
-}
+import type { NodeId } from './types';
 
 /**
  * Compute the distance between two nodes.
@@ -29,6 +20,38 @@ function calculateDistance(nodeId1: NodeId, nodeId2: NodeId): BigInt {
 }
 
 /**
+ * Find the correct index of the k-bucket to add a new node to.
+ * A node's k-buckets are organised such that for the ith k-bucket where
+ * 0 <= i < nodeIdBits, the contacts in this ith bucket are known to adhere to
+ * the following inequality:
+ * 2^i <= distance (from current node) < 2^(i+1)
+ *
+ * NOTE: because XOR is a commutative operation (i.e. a XOR b = b XOR a), the
+ * order of the passed parameters is actually irrelevant. These variables are
+ * purely named for communicating function purpose.
+ */
+function calculateBucketIndex(
+  sourceNode: NodeId,
+  targetNode: NodeId,
+  nodeIdBits: number,
+) {
+  const distance = calculateDistance(sourceNode, targetNode);
+  // start at the last bucket: most likely to be here based on relation of
+  // bucket index to distance
+  let bucketIndex = nodeIdBits - 1;
+  for (; bucketIndex >= 0; bucketIndex--) {
+    const lowerBound = BigInt(2) ** BigInt(bucketIndex);
+    const upperBound = BigInt(2) ** BigInt(bucketIndex + 1);
+    // if 2^i <= distance (from current node) < 2^(i+1),
+    // then break and return current index
+    if (lowerBound <= distance && distance < upperBound) {
+      break;
+    }
+  }
+  return bucketIndex;
+}
+
+/**
  * Node ID to an array of 8-bit unsigned ints
  */
 function nodeIdToU8(id: string) {
@@ -40,39 +63,4 @@ function nodeIdToU8(id: string) {
   );
 }
 
-function serializeGraphValue(graphDbKey: Buffer, value: NodeBucket): Buffer {
-  return keysUtils.encryptWithKey(
-    graphDbKey,
-    Buffer.from(JSON.stringify(value), 'utf-8'),
-  );
-}
-
-function unserializeGraphValue(graphDbKey: Buffer, data: Buffer): NodeBucket {
-  const value_ = keysUtils.decryptWithKey(graphDbKey, data);
-  if (!value_) {
-    throw new nodeErrors.ErrorNodeGraphValueDecrypt();
-  }
-  let value: NodeBucket;
-  try {
-    value = JSON.parse(value_.toString('utf-8'));
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      throw new nodeErrors.ErrorNodeGraphValueParse();
-    }
-    throw e;
-  }
-  // Cast the non-primitive types correctly (ensures type safety when using them)
-  for (const nodeId of Object.keys(value)) {
-    value[nodeId].address.ip = value[nodeId].address.ip as Host;
-    value[nodeId].address.port = value[nodeId].address.port as Port;
-    value[nodeId].lastUpdated = new Date(value[nodeId].lastUpdated);
-  }
-  return value;
-}
-
-export {
-  nodeId,
-  calculateDistance,
-  serializeGraphValue,
-  unserializeGraphValue,
-};
+export { calculateDistance, calculateBucketIndex };

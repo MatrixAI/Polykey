@@ -18,6 +18,7 @@ import { AgentService, createAgentService } from '@/agent';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { DB } from '@/db';
+import { Sigchain } from '@/sigchain';
 
 import * as gitErrors from '@/git/errors';
 
@@ -27,7 +28,7 @@ describe('GitManager is', () => {
   ]);
   const node: NodeInfo = {
     id: '12345' as NodeId,
-    links: { nodes: {}, identities: {} },
+    chain: {},
   };
 
   let dataDir: string;
@@ -37,6 +38,7 @@ describe('GitManager is', () => {
   let sourceNodeManager: NodeManager;
   let sourceVaultManager: VaultManager;
   let sourceGitManager: GitManager;
+  let sourceSigchain: Sigchain;
   let sourceFwdProxy: ForwardProxy;
   const revProxy = new ReverseProxy({
     logger: logger,
@@ -50,6 +52,7 @@ describe('GitManager is', () => {
   let targetVaultManager: VaultManager;
   let targetFwdProxy: ForwardProxy;
   let targetGitBackend: GitBackend;
+  let targetSigchain: Sigchain;
   let targetACL: ACL;
   let targetGestaltGraph: GestaltGraph;
   let targetDb: DB;
@@ -104,10 +107,14 @@ describe('GitManager is', () => {
     });
     sourceDb = new DB({
       dbPath: path.join(dataDir, 'db'),
-      keyManager: sourceKeyManager,
       logger: logger,
     });
     sourceACL = new ACL({
+      db: sourceDb,
+      logger: logger,
+    });
+    sourceSigchain = new Sigchain({
+      keyManager: sourceKeyManager,
       db: sourceDb,
       logger: logger,
     });
@@ -126,7 +133,8 @@ describe('GitManager is', () => {
       logger: logger,
     });
     sourceNodeManager = new NodeManager({
-      nodesPath: path.join(dataDir, 'nodes'),
+      db: sourceDb,
+      sigchain: sourceSigchain,
       keyManager: sourceKeyManager,
       fwdProxy: sourceFwdProxy,
       revProxy: revProxy,
@@ -146,8 +154,9 @@ describe('GitManager is', () => {
       egressHost: sourceHost,
       egressPort: sourcePort,
     });
-    await sourceDb.start();
+    await sourceDb.start({ keyPair: sourceKeyManager.getRootKeyPair() });
     await sourceACL.start();
+    await sourceSigchain.start();
     await sourceGestaltGraph.start();
     await sourceVaultManager.start({});
     await sourceNodeManager.start({ nodeId: 'abc' as NodeId });
@@ -163,11 +172,15 @@ describe('GitManager is', () => {
     });
     targetDb = new DB({
       dbPath: path.join(dataDir2, 'db'),
-      keyManager: targetKeyManager,
       fs: fs,
       logger: logger,
     });
     targetACL = new ACL({
+      db: targetDb,
+      logger: logger,
+    });
+    targetSigchain = new Sigchain({
+      keyManager: targetKeyManager,
       db: targetDb,
       logger: logger,
     });
@@ -187,7 +200,8 @@ describe('GitManager is', () => {
       logger: logger,
     });
     targetNodeManager = new NodeManager({
-      nodesPath: path.join(dataDir2, 'nodes'),
+      db: targetDb,
+      sigchain: targetSigchain,
       keyManager: targetKeyManager,
       fwdProxy: targetFwdProxy,
       revProxy: revProxy,
@@ -200,8 +214,9 @@ describe('GitManager is', () => {
       logger: logger,
     });
     await targetKeyManager.start({ password: 'password2' });
-    await targetDb.start();
+    await targetDb.start({ keyPair: targetKeyManager.getRootKeyPair() });
     await targetACL.start();
+    await targetSigchain.start();
     await targetGestaltGraph.start();
     await targetGestaltGraph.setNode(node);
     await targetVaultManager.start({});
@@ -210,6 +225,7 @@ describe('GitManager is', () => {
       vaultManager: targetVaultManager,
       nodeManager: targetNodeManager,
       gitBackend: targetGitBackend,
+      sigchain: targetSigchain,
     });
     server = new GRPCServer({
       services: [[AgentService, agentService]],
@@ -243,12 +259,14 @@ describe('GitManager is', () => {
     await sourceNodeManager.stop();
     await sourceVaultManager.stop();
     await sourceGestaltGraph.stop();
+    await sourceSigchain.stop();
     await sourceACL.stop();
     await sourceDb.stop();
     await sourceKeyManager.stop();
     await targetNodeManager.stop();
     await targetVaultManager.stop();
     await targetGestaltGraph.stop();
+    await targetSigchain.stop();
     await targetACL.stop();
     await targetDb.stop();
     await targetKeyManager.stop();

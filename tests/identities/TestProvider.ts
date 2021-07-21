@@ -5,11 +5,8 @@ import type {
   TokenData,
   IdentityData,
 } from '@/identities/types';
-import type {
-  LinkId,
-  LinkClaimIdentity,
-  LinkInfoIdentity,
-} from '@/links/types';
+import type { Claim } from '@/claims/types';
+import type { IdentityClaim, IdentityClaimId } from '@/identities/types';
 import type { NodeId } from '@/nodes/types';
 
 import { Provider, errors as identitiesErrors } from '@/identities';
@@ -19,8 +16,8 @@ class TestProvider extends Provider {
 
   protected linkIdCounter: number = 0;
   protected users: Record<IdentityId, POJO>;
-  protected links: Record<LinkId, string>;
-  protected userLinks: Record<IdentityId, Array<LinkId>>;
+  protected links: Record<IdentityClaimId, string>;
+  protected userLinks: Record<IdentityId, Array<IdentityClaimId>>;
   protected userTokens: Record<string, IdentityId>;
 
   public constructor() {
@@ -122,10 +119,10 @@ class TestProvider extends Provider {
     return;
   }
 
-  public async publishLinkClaim(
+  public async publishClaim(
     authIdentityId: IdentityId,
-    linkClaim: LinkClaimIdentity,
-  ): Promise<LinkInfoIdentity> {
+    identityClaim: Claim,
+  ): Promise<IdentityClaim> {
     let tokenData = await this.getToken(authIdentityId);
     if (!tokenData) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
@@ -133,21 +130,21 @@ class TestProvider extends Provider {
       );
     }
     tokenData = await this.checkToken(tokenData, authIdentityId);
-    const linkId = this.linkIdCounter.toString();
+    const linkId = this.linkIdCounter.toString() as IdentityClaimId;
     this.linkIdCounter++;
-    this.links[linkId] = JSON.stringify(linkClaim);
+    this.links[linkId] = JSON.stringify(identityClaim);
     const links = this.userLinks[authIdentityId] ?? [];
     links.push(linkId);
     return {
-      ...linkClaim,
+      ...identityClaim,
       id: linkId,
     };
   }
 
-  public async getLinkInfo(
+  public async getClaim(
     authIdentityId: IdentityId,
-    linkId: LinkId,
-  ): Promise<LinkInfoIdentity | undefined> {
+    claimId: IdentityClaimId,
+  ): Promise<IdentityClaim | undefined> {
     let tokenData = await this.getToken(authIdentityId);
     if (!tokenData) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
@@ -155,24 +152,24 @@ class TestProvider extends Provider {
       );
     }
     tokenData = await this.checkToken(tokenData, authIdentityId);
-    const linkClaimData = this.links[linkId];
+    const linkClaimData = this.links[claimId];
     if (!linkClaimData) {
       return;
     }
-    const linkClaim = this.parseLinkClaim(linkClaimData);
+    const linkClaim = this.parseClaim(linkClaimData);
     if (!linkClaim) {
       return;
     }
     return {
-      id: linkId,
+      id: claimId,
       ...linkClaim,
     };
   }
 
-  public async *getLinkInfos(
+  public async *getClaims(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<LinkInfoIdentity> {
+  ): AsyncGenerator<IdentityClaim> {
     let tokenData = await this.getToken(authIdentityId);
     if (!tokenData) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
@@ -180,11 +177,11 @@ class TestProvider extends Provider {
       );
     }
     tokenData = await this.checkToken(tokenData, authIdentityId);
-    const linkIds = this.userLinks[identityId] ?? [];
-    for (const linkId of linkIds) {
-      const linkInfo = await this.getLinkInfo(authIdentityId, linkId);
-      if (linkInfo) {
-        yield linkInfo;
+    const claimIds = this.userLinks[identityId] ?? [];
+    for (const claimId of claimIds) {
+      const claimInfo = await this.getClaim(authIdentityId, claimId);
+      if (claimInfo) {
+        yield claimInfo;
       }
     }
   }

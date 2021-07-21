@@ -16,6 +16,8 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     getRootCertificate: IAgentService_IGetRootCertificate;
     requestCertificateSigning: IAgentService_IRequestCertificateSigning;
     getClosestLocalNodes: IAgentService_IGetClosestLocalNodes;
+    getClaims: IAgentService_IGetClaims;
+    getChainData: IAgentService_IGetChainData;
     synchronizeDHT: IAgentService_ISynchronizeDHT;
     sendHolePunchMessage: IAgentService_ISendHolePunchMessage;
     checkVaultPermisssions: IAgentService_IcheckVaultPermisssions;
@@ -84,6 +86,24 @@ interface IAgentService_IGetClosestLocalNodes extends grpc.MethodDefinition<Agen
     responseSerialize: grpc.serialize<Agent_pb.NodeTableMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.NodeTableMessage>;
 }
+interface IAgentService_IGetClaims extends grpc.MethodDefinition<Agent_pb.ClaimTypeMessage, Agent_pb.ClaimsMessage> {
+    path: "/agentInterface.Agent/GetClaims";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.ClaimTypeMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.ClaimTypeMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.ClaimsMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.ClaimsMessage>;
+}
+interface IAgentService_IGetChainData extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.ChainDataMessage> {
+    path: "/agentInterface.Agent/GetChainData";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.ChainDataMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.ChainDataMessage>;
+}
 interface IAgentService_ISynchronizeDHT extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.NodeTableMessage> {
     path: "/agentInterface.Agent/SynchronizeDHT";
     requestStream: false;
@@ -122,6 +142,8 @@ export interface IAgentServer extends grpc.UntypedServiceImplementation {
     getRootCertificate: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.CertificateMessage>;
     requestCertificateSigning: grpc.handleUnaryCall<Agent_pb.CertificateMessage, Agent_pb.CertificateMessage>;
     getClosestLocalNodes: grpc.handleUnaryCall<Agent_pb.NodeIdMessage, Agent_pb.NodeTableMessage>;
+    getClaims: grpc.handleUnaryCall<Agent_pb.ClaimTypeMessage, Agent_pb.ClaimsMessage>;
+    getChainData: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.ChainDataMessage>;
     synchronizeDHT: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.NodeTableMessage>;
     sendHolePunchMessage: grpc.handleUnaryCall<Agent_pb.RelayMessage, Agent_pb.EmptyMessage>;
     checkVaultPermisssions: grpc.handleUnaryCall<Agent_pb.VaultPermMessage, Agent_pb.PermissionMessage>;
@@ -147,6 +169,12 @@ export interface IAgentClient {
     getClosestLocalNodes(request: Agent_pb.NodeIdMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
+    getClaims(request: Agent_pb.ClaimTypeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.ClaimsMessage) => void): grpc.ClientUnaryCall;
+    getClaims(request: Agent_pb.ClaimTypeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.ClaimsMessage) => void): grpc.ClientUnaryCall;
+    getClaims(request: Agent_pb.ClaimTypeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.ClaimsMessage) => void): grpc.ClientUnaryCall;
+    getChainData(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.ChainDataMessage) => void): grpc.ClientUnaryCall;
+    getChainData(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.ChainDataMessage) => void): grpc.ClientUnaryCall;
+    getChainData(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.ChainDataMessage) => void): grpc.ClientUnaryCall;
     synchronizeDHT(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
@@ -178,6 +206,12 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public getClosestLocalNodes(request: Agent_pb.NodeIdMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
+    public getClaims(request: Agent_pb.ClaimTypeMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.ClaimsMessage) => void): grpc.ClientUnaryCall;
+    public getClaims(request: Agent_pb.ClaimTypeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.ClaimsMessage) => void): grpc.ClientUnaryCall;
+    public getClaims(request: Agent_pb.ClaimTypeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.ClaimsMessage) => void): grpc.ClientUnaryCall;
+    public getChainData(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.ChainDataMessage) => void): grpc.ClientUnaryCall;
+    public getChainData(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.ChainDataMessage) => void): grpc.ClientUnaryCall;
+    public getChainData(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.ChainDataMessage) => void): grpc.ClientUnaryCall;
     public synchronizeDHT(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public synchronizeDHT(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;

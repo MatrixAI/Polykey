@@ -25,7 +25,7 @@ let db: DB;
 const logger = new Logger('GitBackend', LogLevel.WARN, [new StreamHandler()]);
 const node1: NodeInfo = {
   id: '123' as NodeId,
-  links: { nodes: {}, identities: {} },
+  chain: {},
 };
 
 beforeEach(async () => {
@@ -36,8 +36,8 @@ beforeEach(async () => {
     logger: logger,
   });
   await keyManager.start({ password: 'password' });
-  db = new DB({ dbPath: path.join(dataDir, 'db'), keyManager, logger });
-  await db.start();
+  db = new DB({ dbPath: path.join(dataDir, 'db'), logger });
+  await db.start({ keyPair: keyManager.getRootKeyPair() });
   acl = new ACL({
     db: db,
     logger: logger,
