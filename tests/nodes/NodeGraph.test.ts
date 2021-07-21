@@ -6,9 +6,12 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as keysUtils from '@/keys/utils';
-import { NodeGraph } from '@/nodes';
+import * as nodesUtils from '@/nodes/utils';
+import { NodeGraph, NodeManager } from '@/nodes';
 import { KeyManager } from '@/keys';
-import { ForwardProxy } from '@/network';
+import { ForwardProxy, ReverseProxy } from '@/network';
+import { DB } from '@/db';
+import { Sigchain } from '@/sigchain';
 
 describe('NodeGraph', () => {
   const logger = new Logger('NodeGraph Test', LogLevel.WARN, [
@@ -18,9 +21,16 @@ describe('NodeGraph', () => {
     authToken: 'auth',
     logger: logger,
   });
+  const revProxy = new ReverseProxy({
+    logger: logger,
+  });
   let dataDir: string;
   let keyManager: KeyManager;
   let keyPairPem, certPem;
+  let db: DB;
+  let nodeManager: NodeManager;
+  let sigchain: Sigchain;
+  const nodeId = 'NODEID' as NodeId;
 
   beforeAll(async () => {
     const keyPair = await keysUtils.generateKeyPair(4096);
@@ -47,8 +57,33 @@ describe('NodeGraph', () => {
         certChainPem: certPem,
       },
     });
+    const dbPath = `${dataDir}/db`;
+    db = new DB({ dbPath, logger });
+    await db.start({
+      keyPair: keyManager.getRootKeyPair(),
+    });
+    sigchain = new Sigchain({
+      keyManager: keyManager,
+      db: db,
+      logger: logger,
+    });
+    await sigchain.start();
+    nodeManager = new NodeManager({
+      db: db,
+      sigchain: sigchain,
+      keyManager: keyManager,
+      fwdProxy: fwdProxy,
+      revProxy: revProxy,
+      logger: logger,
+    });
+    await nodeManager.start({
+      nodeId: nodeId,
+    });
   });
   afterEach(async () => {
+    await db.stop();
+    await sigchain.stop();
+    await nodeManager.stop();
     await keyManager.stop();
     await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
@@ -57,57 +92,8 @@ describe('NodeGraph', () => {
     });
   });
 
-  test('construction has no side effects', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
-    await expect(fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/);
-  });
-  test('async start constructs the node leveldb', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
-    const nodeId = 'NODEID' as NodeId;
-    await nodeGraph.start({ nodeId });
-    const nodesPathContents = await fs.promises.readdir(nodePath);
-    expect(nodesPathContents).toContain('buckets_db');
-    await nodeGraph.stop();
-  });
-  test('start and stop preserves the buckets db key', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
-    const nodeId = 'NODEID' as NodeId;
-    await nodeGraph.start({ nodeId });
-    const bucketsDbKey = await keyManager.getKey('NodeGraph');
-    await nodeGraph.stop();
-    await nodeGraph.start({ nodeId });
-    const bucketsDbKey_ = await keyManager.getKey('NodeGraph');
-    await nodeGraph.stop();
-    expect(bucketsDbKey).toEqual(bucketsDbKey_);
-  });
-  test('finds correct bucket (bucket 0)', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
-
-    // "1" XOR "0" = distance of 1
-    // Therefore, bucket 0
-    const nodeId1 = '1' as NodeId;
-    const nodeId2 = '0' as NodeId;
-    const bucketIndex = nodeGraph.getBucketIndex(nodeId1, nodeId2);
-    expect(bucketIndex).toBe(0);
-  });
-  test('finds correct bucket (bucket 348)', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
-
-    // nodeId1 XOR nodeID2 = distance between 2^348 and 2^349
-    // Therefore, bucket 348
-    const nodeId1 = 'IY2M0YTI5YzdhMTUzNGFjYWIxNmNiNGNmNTFiYTBjYTg' as NodeId;
-    const nodeId2 = 'YmY3NWM1ZThlZGE4YzlkYWFmN2NiMDNmY2RhYmFlMjEw' as NodeId;
-    const bucketIndex = nodeGraph.getBucketIndex(nodeId1, nodeId2);
-    expect(bucketIndex).toBe(348);
-  });
   test('finds correct node address', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -121,8 +107,7 @@ describe('NodeGraph', () => {
     expect(foundAddress).toEqual({ ip: '227.1.1.1', port: 4567 });
   });
   test('unable to find node address', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -136,8 +121,7 @@ describe('NodeGraph', () => {
     expect(foundAddress).toBeUndefined();
   });
   test('adds a single node into a bucket', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -161,8 +145,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('adds multiple nodes into the same bucket', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -201,8 +184,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('adds a single node into different buckets', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'IY2M0YTI5YzdhMTUzNGFjYWIxNmNiNGNmNTFiYTBjYTg' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -238,8 +220,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('deletes a single node (and removes bucket)', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -263,7 +244,7 @@ describe('NodeGraph', () => {
     }
 
     // Delete the node
-    await nodeGraph.deleteNode(newNode4Id);
+    await nodeGraph.unsetNode(newNode4Id);
     // Check bucket no longer exists
     const newBucket = await nodeGraph.getBucket(2);
     expect(newBucket).toBeUndefined();
@@ -271,8 +252,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('deletes a single node (and retains remainder of bucket)', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -310,7 +290,7 @@ describe('NodeGraph', () => {
     }
 
     // Delete the node
-    await nodeGraph.deleteNode(newNode4Id);
+    await nodeGraph.unsetNode(newNode4Id);
     // Check node no longer exists in the bucket
     const newBucket = await nodeGraph.getBucket(2);
     if (newBucket) {
@@ -330,14 +310,13 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('enforces k-bucket size, removing least active node when a new node is discovered', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'A' as NodeId;
     await nodeGraph.start({ nodeId });
 
     // Add k nodes to the database (importantly, they all go into the same bucket)
     // Assumes that k will not be >= 100
-    for (let i = 1; i <= nodeGraph.getMaxNodesPerBucket(); i++) {
+    for (let i = 1; i <= nodeGraph.maxNodesPerBucket; i++) {
       let nodeId;
       if (i < 10) {
         nodeId = ('NODEID0' + i) as NodeId;
@@ -352,11 +331,15 @@ describe('NodeGraph', () => {
     }
     // All of these nodes are in bucket 59
     const originalBucket = await nodeGraph.getBucket(
-      nodeGraph.getBucketIndex('A' as NodeId, 'NODEID01' as NodeId),
+      nodesUtils.calculateBucketIndex(
+        'A' as NodeId,
+        'NODEID01' as NodeId,
+        nodeGraph.nodeIdBits,
+      ),
     );
     if (originalBucket) {
       expect(Object.keys(originalBucket).length).toBe(
-        nodeGraph.getMaxNodesPerBucket(),
+        nodeGraph.maxNodesPerBucket,
       );
     } else {
       // Should be unreachable
@@ -364,18 +347,21 @@ describe('NodeGraph', () => {
     }
 
     // Attempt to add a new node into this full bucket
-    const newNodeId = ('NODEID' +
-      (nodeGraph.getMaxNodesPerBucket() + 1)) as NodeId;
+    const newNodeId = ('NODEID' + (nodeGraph.maxNodesPerBucket + 1)) as NodeId;
     const newNodeAddress = { ip: '1.1.1.1' as Host, port: 1111 as Port };
     await nodeGraph.setNode(newNodeId, newNodeAddress);
 
     const finalBucket = await nodeGraph.getBucket(
-      nodeGraph.getBucketIndex('A' as NodeId, 'NODEID01' as NodeId),
+      nodesUtils.calculateBucketIndex(
+        'A' as NodeId,
+        'NODEID01' as NodeId,
+        nodeGraph.nodeIdBits,
+      ),
     );
     if (finalBucket) {
       // We should still have a full bucket (but no more)
       expect(Object.keys(finalBucket).length).toEqual(
-        nodeGraph.getMaxNodesPerBucket(),
+        nodeGraph.maxNodesPerBucket,
       );
       // Ensure that this new node is in the bucket
       expect(finalBucket[newNodeId]).toEqual({
@@ -393,8 +379,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('retrieves all buckets', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -412,13 +397,18 @@ describe('NodeGraph', () => {
     const node22Address = { ip: '22.22.22.22', port: 2222 } as NodeAddress;
     await nodeGraph.setNode(node22Id, node22Address);
 
+    // Bucket 10 (lexicographic ordering - should appear after 2):
+    const node10Id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaadb' as NodeId;
+    const node10Address = { ip: '10.10.10.10', port: 1010 } as NodeAddress;
+    await nodeGraph.setNode(node10Id, node10Address);
+
     // Bucket 351 (maximum):
     const node351Id = 'ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ' as NodeId;
     const node351Address = { ip: '351.351.351.351', port: 351 } as NodeAddress;
     await nodeGraph.setNode(node351Id, node351Address);
 
     const buckets = await nodeGraph.getAllBuckets();
-    expect(buckets.length).toBe(3);
+    expect(buckets.length).toBe(4);
     // Bucket 1:
     expect(buckets).toContainEqual({
       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab: {
@@ -448,8 +438,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('finds a single closest node', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -469,8 +458,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('finds 3 closest nodes', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID1' as NodeId;
     await nodeGraph.start({ nodeId });
 
@@ -510,8 +498,7 @@ describe('NodeGraph', () => {
     await nodeGraph.stop();
   });
   test('finds the 20 closest nodes', async () => {
-    const nodePath = `${dataDir}/nodes`;
-    const nodeGraph = new NodeGraph({ nodePath, keyManager, fwdProxy, logger });
+    const nodeGraph = new NodeGraph({ db, nodeManager, logger });
     const nodeId = 'NODEID0' as NodeId;
     await nodeGraph.start({ nodeId });
 

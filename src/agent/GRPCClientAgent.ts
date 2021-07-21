@@ -76,6 +76,22 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
+  public getClaims(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<agentPB.ClaimsMessage>(
+      this.client,
+      this.client.getClaims,
+    )(...args);
+  }
+
+  public getChainData(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<agentPB.ChainDataMessage>(
+      this.client,
+      this.client.getChainData,
+    )(...args);
+  }
+
   public synchronizeDHT(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.NodeTableMessage>(

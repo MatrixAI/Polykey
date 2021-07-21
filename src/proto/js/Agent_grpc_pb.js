@@ -15,6 +15,39 @@ function deserialize_agentInterface_CertificateMessage(buffer_arg) {
   return Agent_pb.CertificateMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_ChainDataMessage(arg) {
+  if (!(arg instanceof Agent_pb.ChainDataMessage)) {
+    throw new Error('Expected argument of type agentInterface.ChainDataMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_ChainDataMessage(buffer_arg) {
+  return Agent_pb.ChainDataMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_ClaimTypeMessage(arg) {
+  if (!(arg instanceof Agent_pb.ClaimTypeMessage)) {
+    throw new Error('Expected argument of type agentInterface.ClaimTypeMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_ClaimTypeMessage(buffer_arg) {
+  return Agent_pb.ClaimTypeMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_ClaimsMessage(arg) {
+  if (!(arg instanceof Agent_pb.ClaimsMessage)) {
+    throw new Error('Expected argument of type agentInterface.ClaimsMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_ClaimsMessage(buffer_arg) {
+  return Agent_pb.ClaimsMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_EchoMessage(arg) {
   if (!(arg instanceof Agent_pb.EchoMessage)) {
     throw new Error('Expected argument of type agentInterface.EchoMessage');
@@ -192,6 +225,28 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_NodeIdMessage,
     responseSerialize: serialize_agentInterface_NodeTableMessage,
     responseDeserialize: deserialize_agentInterface_NodeTableMessage,
+  },
+  getClaims: {
+    path: '/agentInterface.Agent/GetClaims',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.ClaimTypeMessage,
+    responseType: Agent_pb.ClaimsMessage,
+    requestSerialize: serialize_agentInterface_ClaimTypeMessage,
+    requestDeserialize: deserialize_agentInterface_ClaimTypeMessage,
+    responseSerialize: serialize_agentInterface_ClaimsMessage,
+    responseDeserialize: deserialize_agentInterface_ClaimsMessage,
+  },
+  getChainData: {
+    path: '/agentInterface.Agent/GetChainData',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.EmptyMessage,
+    responseType: Agent_pb.ChainDataMessage,
+    requestSerialize: serialize_agentInterface_EmptyMessage,
+    requestDeserialize: deserialize_agentInterface_EmptyMessage,
+    responseSerialize: serialize_agentInterface_ChainDataMessage,
+    responseDeserialize: deserialize_agentInterface_ChainDataMessage,
   },
   synchronizeDHT: {
     path: '/agentInterface.Agent/SynchronizeDHT',

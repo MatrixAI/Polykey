@@ -1,36 +1,57 @@
 import type { KeyManager } from '../keys';
+import type { PublicKeyPem } from '../keys/types';
+import type { Sigchain } from '../sigchain';
+import type { ChainData, ChainDataEncoded } from '../sigchain/types';
+import type { ClaimId } from '../claims/types';
 import type { NodeId, NodeAddress, NodeData, NodeBucket } from '../nodes/types';
 import type { Host, Port } from '../network/types';
 import type { FileSystem, Timer } from '../types';
+import type { DB } from '../db';
 
 import Logger from '@matrixai/logger';
 import NodeGraph from './NodeGraph';
+import NodeConnection from './NodeConnection';
 import * as nodesErrors from './errors';
+import * as dbErrors from '../db/errors';
+import * as sigchainUtils from '../sigchain/utils';
+import * as claimsUtils from '../claims/utils';
 import { ForwardProxy, ReverseProxy } from '../network';
 import { GRPCClientAgent } from '../agent';
-import * as utils from '../utils';
 import * as agentPB from '../proto/js/Agent_pb';
 
 class NodeManager {
   // LevelDB directory to store all the information for managing nodes
-  public readonly nodesPath: string;
+  // public readonly nodesPath: string;
 
+  protected db: DB;
   protected fs: FileSystem;
   protected logger: Logger;
   protected _started: boolean = false;
 
+  protected nodeId: NodeId;
   protected nodeGraph: NodeGraph;
+  protected sigchain: Sigchain;
+  protected keyManager: KeyManager;
+  protected fwdProxy: ForwardProxy;
   protected revProxy: ReverseProxy;
 
+  // active connections to other nodes
+  protected connections: Map<NodeId, NodeConnection> = new Map();
+  // Node ID -> node address mappings for the bootstrap/broker nodes
+  protected brokerNodes: NodeBucket = {};
+  protected brokerNodeConnections: Map<NodeId, NodeConnection> = new Map();
+
   constructor({
-    nodesPath,
+    db,
+    sigchain,
     keyManager,
     fwdProxy,
     revProxy,
     fs,
     logger,
   }: {
-    nodesPath: string;
+    db: DB;
+    sigchain: Sigchain;
     keyManager: KeyManager;
     fwdProxy: ForwardProxy;
     revProxy: ReverseProxy;
@@ -38,22 +59,21 @@ class NodeManager {
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger('NodeManager');
-    this.nodesPath = nodesPath;
+    this.db = db;
     this.fs = fs ?? require('fs');
 
     // Instantiate the node graph (containing Kademlia implementation)
     this.nodeGraph = new NodeGraph({
-      nodePath: nodesPath,
-      keyManager: keyManager,
-      fwdProxy: fwdProxy,
-      fs: this.fs,
+      db: db,
+      nodeManager: this,
       logger: this.logger,
     });
+    this.sigchain = sigchain;
+    this.keyManager = keyManager;
+    this.fwdProxy = fwdProxy;
     this.revProxy = revProxy;
   }
 
-  // Initialise leveldb database
-  // fresh: if true, remove and recreate the
   public async start({
     nodeId,
     brokerNodes = {},
@@ -64,20 +84,22 @@ class NodeManager {
     fresh?: boolean;
   }) {
     this.logger.info('Starting Node Manager');
-    this.logger.info(`Setting nodes path to ${this.nodesPath}`);
-    if (fresh) {
-      await this.fs.promises.rm(this.nodesPath, {
-        force: true,
-        recursive: true,
-      });
+    this._started = true;
+    if (!this.db.started) {
+      throw new dbErrors.ErrorDBNotStarted();
     }
-    await utils.mkdirExists(this.fs, this.nodesPath);
-
+    this.nodeId = nodeId;
+    // establish and start connections to the brokers
+    for (const brokerId in brokerNodes) {
+      await this.createConnectionToBroker(
+        brokerId as NodeId,
+        brokerNodes[brokerId].address,
+      );
+    }
     await this.nodeGraph.start({
       nodeId: nodeId,
-      brokerNodes: brokerNodes,
+      // brokerNodes: brokerNodes,
     });
-    this._started = true;
     this.logger.info('Started Node Manager');
   }
 
@@ -97,6 +119,12 @@ class NodeManager {
   public async stop() {
     this.logger.info('Stopping Node Manager');
     this._started = false;
+    for (const [, conn] of this.connections) {
+      await conn.stop();
+    }
+    for (const [, conn] of this.brokerNodeConnections) {
+      await conn.stop();
+    }
     await this.nodeGraph.stop();
     this.logger.info('Stopped Node Manager');
   }
@@ -125,6 +153,92 @@ class NodeManager {
     return this.nodeGraph.getNodeId();
   }
 
+  /**
+   * Connects to the target node and retrieves its public key from its root
+   * certificate chain (corresponding to the provided public key fingerprint -
+   * the node ID).
+   */
+  public async getPublicKey(targetNodeId: NodeId): Promise<PublicKeyPem> {
+    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
+    const connection: NodeConnection = await this.createConnectionToNode(
+      targetNodeId,
+      targetAddress,
+    );
+    const publicKey = connection.getExpectedPublicKey(
+      targetNodeId,
+    ) as PublicKeyPem;
+    if (!publicKey) {
+      throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
+    }
+    return publicKey;
+  }
+
+  /**
+   * Retrieves the cryptolinks of this node, returning as a collection of
+   * records (for storage in the gestalt graph)
+   */
+  public async getChainData(): Promise<ChainDataEncoded> {
+    return await this.sigchain.getChainData();
+  }
+
+  /**
+   * Connects to the target node, and retrieves its sigchain data.
+   * Verifies and returns the decoded chain as ChainData. Note: this will drop
+   * any unverifiable claims.
+   * For node1 -> node2 claims, the verification process also involves connecting
+   * to node2 to verify the claim (to retrieve its signing public key).
+   */
+  public async requestChainData(targetNodeId: NodeId): Promise<ChainData> {
+    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
+    const connection: NodeConnection = await this.createConnectionToNode(
+      targetNodeId,
+      targetAddress,
+    );
+    // Verify the node's chain with its own public key
+    const unverifiedChainData = await connection.getChainData();
+    const publicKey = connection.getExpectedPublicKey(
+      targetNodeId,
+    ) as PublicKeyPem;
+    if (!publicKey) {
+      throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
+    }
+    const verifiedChainData = await sigchainUtils.verifyChainData(
+      unverifiedChainData,
+      publicKey,
+    );
+
+    // Then, for any node -> node claims, we also need to verify with the
+    // node on the other end of the claim
+    // e.g. a node claim from A -> B, verify with B's public key
+    for (const c in verifiedChainData) {
+      const claimId = c as ClaimId;
+      const payload = verifiedChainData[claimId].payload;
+      if (payload.data.type == 'node') {
+        const endNodeId = payload.data.node2;
+        const endAddress: NodeAddress = await this.findNode(endNodeId);
+        const endConnection: NodeConnection = await this.createConnectionToNode(
+          endNodeId,
+          endAddress,
+        );
+        const endPublicKey = endConnection.getExpectedPublicKey(
+          targetNodeId,
+        ) as PublicKeyPem;
+        if (!endPublicKey) {
+          throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
+        }
+        const verified = await claimsUtils.verifyClaimSignature(
+          unverifiedChainData[claimId],
+          endPublicKey,
+        );
+        // If unverifiable, remove the claim from the ChainData to return
+        if (!verified) {
+          delete verifiedChainData[claimId];
+        }
+      }
+    }
+    return verifiedChainData;
+  }
+
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
@@ -132,7 +246,9 @@ class NodeManager {
     await this.nodeGraph.setNode(nodeId, nodeAddress);
   }
 
-  public async getClosestGlobalNodes(targetNodeId: NodeId): Promise<boolean> {
+  public async getClosestGlobalNodes(
+    targetNodeId: NodeId,
+  ): Promise<NodeAddress | undefined> {
     return await this.nodeGraph.getClosestGlobalNodes(targetNodeId);
   }
 
@@ -143,10 +259,33 @@ class NodeManager {
   /**
    * Forwards a received hole punch message on.
    */
+  // public async relayHolePunchMessage(
+  //   message: agentPB.RelayMessage,
+  // ): Promise<void> {
+  //   await this.nodeGraph.relayHolePunchMessage(message);
+  // }
+
+  /**
+   * Forwards a received hole punch message on to the target.
+   * The node is assumed to be known, and a connection to the node is also assumed
+   * to have already been established (as right now, this will only be called by
+   * a 'broker' node).
+   * @param message the original relay message (assumed to be created in
+   * nodeConnection.start())
+   */
   public async relayHolePunchMessage(
     message: agentPB.RelayMessage,
   ): Promise<void> {
-    await this.nodeGraph.relayHolePunchMessage(message);
+    const conn = this.connections.get(message.getTargetid() as NodeId);
+    if (conn === undefined) {
+      throw new nodesErrors.ErrorNodeConnectionNotExist();
+    }
+    await conn.sendHolePunchMessage(
+      message.getSrcid() as NodeId,
+      message.getTargetid() as NodeId,
+      message.getEgressaddress(),
+      Buffer.from(message.getSignature()),
+    );
   }
 
   /**
@@ -155,14 +294,105 @@ class NodeManager {
    * @param targetNodeId node ID of the node (server) to connect to
    * @param targetNodeAddress address (host and port) of node to connect to
    */
+  // public async createConnectionToNode(
+  //   targetNodeId: NodeId,
+  //   targetNodeAddress: NodeAddress,
+  // ): Promise<void> {
+  //   await this.nodeGraph.createConnectionToNode(
+  //     targetNodeId,
+  //     targetNodeAddress,
+  //   );
+  // }
+
+  public getConnectionToNode(targetNodeId: NodeId): NodeConnection {
+    const conn = this.connections.get(targetNodeId);
+    if (conn) {
+      return conn;
+    } else {
+      throw new nodesErrors.ErrorNodeConnectionNotExist();
+    }
+  }
+
+  /**
+   * Treat this node as the client, and attempt to create a unidirectional
+   * connection to another node (server). Either by retrieving a pre-existing
+   * one, or by instantiating a new GRPCClientAgent.
+   *
+   * @param targetNodeId ID of the node wanting to connect to
+   * @param targetNodeAddress host and port of the node wanting to connect to
+   */
   public async createConnectionToNode(
     targetNodeId: NodeId,
     targetNodeAddress: NodeAddress,
-  ): Promise<void> {
-    await this.nodeGraph.createConnectionToNode(
-      targetNodeId,
-      targetNodeAddress,
-    );
+  ): Promise<NodeConnection> {
+    // Throw error if trying to connect to self
+    if (targetNodeId == this.nodeId) {
+      throw new nodesErrors.ErrorNodeGraphSelfConnect();
+    }
+    // Attempt to get an existing connection
+    const existingConnection: NodeConnection | undefined =
+      this.connections.get(targetNodeId);
+    if (existingConnection) {
+      return existingConnection;
+    }
+    // Otherwise, create a new connection
+    const nodeConnection = new NodeConnection({
+      sourceNodeId: this.nodeId,
+      targetNodeId: targetNodeId,
+      targetHost: targetNodeAddress.ip,
+      targetPort: targetNodeAddress.port,
+      forwardProxy: this.fwdProxy,
+      keyManager: this.keyManager,
+      logger: this.logger,
+    });
+    await nodeConnection.start({
+      brokerConnections: this.brokerNodeConnections,
+    });
+    // Add it to the map of active connections
+    this.connections.set(targetNodeId, nodeConnection);
+    return nodeConnection;
+  }
+
+  /**
+   * Create and start a connection to a broker node. Assumes that a direct
+   * connection to the broker can be established (i.e. no hole punching required).
+   *
+   * @param brokerNodeId ID of the broker node to connect to
+   * @param brokerNodeAddress host and port of the broker node to connect to
+   * @returns
+   */
+  public async createConnectionToBroker(
+    brokerNodeId: NodeId,
+    brokerNodeAddress: NodeAddress,
+  ): Promise<NodeConnection> {
+    // Throw error if trying to connect to self
+    if (brokerNodeId == this.nodeId) {
+      throw new nodesErrors.ErrorNodeGraphSelfConnect();
+    }
+    // Attempt to get an existing connection
+    const existingConnection = this.brokerNodeConnections.get(brokerNodeId);
+    if (existingConnection) {
+      return existingConnection;
+    }
+    const brokerConnection = new NodeConnection({
+      sourceNodeId: this.nodeId,
+      targetNodeId: brokerNodeId,
+      targetHost: brokerNodeAddress.ip,
+      targetPort: brokerNodeAddress.port,
+      forwardProxy: this.fwdProxy,
+      keyManager: this.keyManager,
+      logger: this.logger,
+    });
+    // TODO: may need to change this start() to some kind of special 'direct
+    // connection' mechanism (currently just does the same openConnection() call
+    // as any other node, but without hole punching).
+    await brokerConnection.start({});
+    this.brokerNodeConnections.set(brokerNodeId, brokerConnection);
+    return brokerConnection;
+  }
+
+  public getBrokerNodeConnections(): Map<NodeId, NodeConnection> {
+    return this.brokerNodeConnections;
   }
 
   /**
@@ -193,7 +423,12 @@ class NodeManager {
    * @throws ErrorNodeConnectionNotExist if a connection to the target does not exist
    */
   public getClient(targetNodeId: NodeId): GRPCClientAgent {
-    return this.nodeGraph.getClient(targetNodeId);
+    const conn = this.connections.get(targetNodeId);
+    if (conn) {
+      return conn.getClient();
+    } else {
+      throw new nodesErrors.ErrorNodeConnectionNotExist();
+    }
   }
 
   /**
@@ -203,6 +438,27 @@ class NodeManager {
    */
   public async getNode(targetNodeId: NodeId): Promise<NodeAddress | undefined> {
     return await this.nodeGraph.getNode(targetNodeId);
+  }
+
+  /**
+   * Retrieves the node address. If an entry doesn't exist in the db, then
+   * proceeds to locate it using Kademlia.
+   */
+  public async findNode(targetNodeId: NodeId): Promise<NodeAddress> {
+    // First check if we already have an existing ID -> address record
+    let address = await this.getNode(targetNodeId);
+    // Otherwise, attempt to locate it by contacting network
+    if (address == null) {
+      address = await this.nodeGraph.getClosestGlobalNodes(targetNodeId);
+      // TODO: This currently just does one iteration
+      // If not found in this single iteration, we throw an exception
+      if (address == null) {
+        throw new nodesErrors.ErrorNodeGraphNodeNotFound();
+      }
+    }
+    // We ensure that we always return a NodeAddress (either by lookup, or
+    // network search) - if we can't locate it from either, we throw an exception
+    return address;
   }
 }
 

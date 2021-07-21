@@ -18,13 +18,14 @@ import { AgentService, createAgentService } from '@/agent';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { DB } from '@/db';
+import { Sigchain } from '@/sigchain';
 
 import * as grpcErrors from '@/grpc/errors';
 
 describe('NodeConnection', () => {
   const node: NodeInfo = {
     id: 'NodeId' as NodeId,
-    links: { nodes: {}, identities: {} },
+    chain: {},
   };
   jest.setTimeout(50000);
   const logger = new Logger('NodeConnection Test', LogLevel.WARN, [
@@ -46,6 +47,7 @@ describe('NodeConnection', () => {
   let serverVaultManager: VaultManager;
   let serverNodeManager: NodeManager;
   let serverGitBackend: GitBackend;
+  let serverSigchain: Sigchain;
   let serverACL: ACL, clientACL: ACL;
   let serverGestaltGraph: GestaltGraph, clientGestaltGraph: GestaltGraph;
   let serverDb: DB, clientDb: DB;
@@ -107,7 +109,6 @@ describe('NodeConnection', () => {
     // Server setup
     const serverKeysPath = path.join(serverDataDir, 'serverKeys');
     const serverVaultsPath = path.join(serverDataDir, 'serverVaults');
-    const serverNodesPath = path.join(serverDataDir, 'serverNodes');
     const serverDbPath = path.join(serverDataDir, 'serverDb');
 
     serverKeyManager = new KeyManager({
@@ -117,11 +118,15 @@ describe('NodeConnection', () => {
     });
     serverDb = new DB({
       dbPath: serverDbPath,
-      keyManager: serverKeyManager,
       fs: fs,
       logger: logger,
     });
     serverACL = new ACL({
+      db: serverDb,
+      logger: logger,
+    });
+    serverSigchain = new Sigchain({
+      keyManager: serverKeyManager,
       db: serverDb,
       logger: logger,
     });
@@ -146,7 +151,8 @@ describe('NodeConnection', () => {
       logger: logger,
     });
     serverNodeManager = new NodeManager({
-      nodesPath: serverNodesPath,
+      db: serverDb,
+      sigchain: serverSigchain,
       keyManager: serverKeyManager,
       fwdProxy: serverFwdProxy,
       revProxy: revProxy,
@@ -159,8 +165,9 @@ describe('NodeConnection', () => {
       logger: logger,
     });
     await serverKeyManager.start({ password: 'password' });
-    await serverDb.start();
+    await serverDb.start({ keyPair: serverKeyManager.getRootKeyPair() });
     await serverACL.start();
+    await serverSigchain.start();
     await serverGestaltGraph.start();
     await serverGestaltGraph.setNode(node);
     await serverVaultManager.start({});
@@ -170,6 +177,7 @@ describe('NodeConnection', () => {
       vaultManager: serverVaultManager,
       nodeManager: serverNodeManager,
       gitBackend: serverGitBackend,
+      sigchain: serverSigchain,
     });
     server = new GRPCServer({
       services: [[AgentService, agentService]],
@@ -219,6 +227,7 @@ describe('NodeConnection', () => {
     await serverKeyManager.stop();
     await serverDb.stop();
     await serverACL.stop();
+    await serverSigchain.stop();
     await serverGestaltGraph.stop();
     await serverVaultManager.stop();
     await serverNodeManager.stop();
@@ -455,7 +464,6 @@ describe('NodeConnection', () => {
     );
     clientDb = new DB({
       dbPath: path.join(dataDir2, 'db'),
-      keyManager: clientKeyManager,
       fs: fs,
       logger: logger,
     });
@@ -477,7 +485,7 @@ describe('NodeConnection', () => {
       fs: fs,
       logger: logger,
     });
-    await clientDb.start();
+    await clientDb.start({ keyPair: clientKeyManager.getRootKeyPair() });
     await clientACL.start();
     await clientGestaltGraph.start();
     await clientVaultManager.start({});
@@ -528,7 +536,6 @@ describe('NodeConnection', () => {
     );
     clientDb = new DB({
       dbPath: path.join(dataDir2, 'db'),
-      keyManager: clientKeyManager,
       fs: fs,
       logger: logger,
     });
@@ -550,7 +557,7 @@ describe('NodeConnection', () => {
       fs: fs,
       logger: logger,
     });
-    await clientDb.start();
+    await clientDb.start({ keyPair: clientKeyManager.getRootKeyPair() });
     await clientACL.start();
     await clientGestaltGraph.start();
     await clientVaultManager.start({});

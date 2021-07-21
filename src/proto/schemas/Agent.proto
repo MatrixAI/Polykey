@@ -13,6 +13,8 @@ service Agent {
   rpc RequestCertificateSigning (CertificateMessage) returns (CertificateMessage) {}
 
   rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
+  rpc GetClaims (ClaimTypeMessage) returns (ClaimsMessage) {}
+  rpc GetChainData (EmptyMessage) returns (ChainDataMessage) {}
 
   rpc SynchronizeDHT (EmptyMessage) returns (NodeTableMessage) {}
 
@@ -92,4 +94,30 @@ message VaultPermMessage {
 
 message PermissionMessage {
   bool permission = 1;
+}
+
+// The specific ClaimType of Claims to get
+message ClaimTypeMessage {
+  string claimType = 1;
+}
+
+// A list of base64url encoded claims
+message ClaimsMessage {
+  repeated ClaimMessage claims = 1;
+}
+
+// A map of ClaimId -> ClaimEncoded
+message ChainDataMessage {
+  map<string, ClaimMessage> chainData = 1;
+}
+
+// The components of a ClaimEncoded type (i.e. a GeneralJWS) for GRPC transport
+message ClaimMessage {
+  string payload = 1;  // base64 encoded
+  repeated SignatureMessage signatures = 2;
+}
+
+message SignatureMessage {
+  string signature = 1; // base64 encoded
+  string header = 2;    // base64 encoded ('protected' field in GeneralJWS)
 }
