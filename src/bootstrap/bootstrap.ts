@@ -83,16 +83,8 @@ async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
     if (
       files.includes('keys') &&
       files.includes('vaults') &&
-      files.includes('nodes') &&
-      files.includes('identities') &&
       files.includes('db')
     ) {
-      // Checking individual files to see if the keynode is malformed
-      const nodesPath = path.join(nodePath, 'nodes');
-      const nodesFiles = await fs.promises.readdir(nodesPath);
-      if (!nodesFiles.includes('buckets_db')) {
-        return 'MALFORMED_KEYNODE';
-      }
       const keysPath = path.join(nodePath, 'keys');
       const keysFiles = await fs.promises.readdir(keysPath);
       if (
@@ -103,11 +95,6 @@ async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
         !keysFiles.includes('root_pub') &&
         !keysFiles.includes('keys_db_key')
       ) {
-        return 'MALFORMED_KEYNODE';
-      }
-      const identitiesPath = path.join(nodePath, 'identities');
-      const identitiesFiles = await fs.promises.readdir(identitiesPath);
-      if (!identitiesFiles.includes('token_db')) {
         return 'MALFORMED_KEYNODE';
       }
       return 'KEYNODE_EXISTS'; // Should be a good initilized keynode.

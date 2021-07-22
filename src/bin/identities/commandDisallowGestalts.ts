@@ -6,11 +6,14 @@ import { createCommand, outputFormatter } from '../utils';
 import { parseId } from './utils';
 import * as utils from '../../utils';
 
-const commandTrustGestalts = createCommand('trust', {
+const commandAllowGestalts = createCommand('disallow', {
   description: {
-    description: 'Trusts a node id or identity',
+    description:
+      'Gets a gestalt with a node id or identity from the gestalt graph',
     args: {
+      delete: 'Flag to untrust the node/identity',
       id: 'nodeId or "providerId:identityId"',
+      permissions: 'Permission to set',
     },
   },
   nodePath: true,
@@ -18,8 +21,8 @@ const commandTrustGestalts = createCommand('trust', {
   format: true,
 });
 
-commandTrustGestalts.arguments('<id>');
-commandTrustGestalts.action(async (id, options) => {
+commandAllowGestalts.arguments('<id> <permissions>');
+commandAllowGestalts.action(async (id, permissions, options) => {
   //parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
@@ -30,24 +33,28 @@ commandTrustGestalts.action(async (id, options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const action = 'notify';
+  const gestaltTrustMessage = new clientPB.GestaltTrustMessage();
+  gestaltTrustMessage.setSet(options.trust);
+
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
     const setActionMessage = new clientPB.SetActionsMessage();
-    setActionMessage.setAction(action);
+    setActionMessage.setAction(permissions);
+    let name: string;
     if (nodeId) {
       // Setting by Node.
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(nodeId);
       setActionMessage.setNode(nodeMessage);
-      await grpcClient.gestaltsSetActionByNode(
+      name = `${nodeId}`;
+      //Trusting
+      await grpcClient.gestaltsUnsetActionByNode(
         setActionMessage,
         await client.session.createJWTCallCredentials(),
       );
@@ -57,16 +64,19 @@ commandTrustGestalts.action(async (id, options) => {
       providerMessage.setId(providerId!);
       providerMessage.setMessage(identityId!);
       setActionMessage.setIdentity(providerMessage);
-      await grpcClient.gestaltsSetActionByIdentity(
+      name = `${id}`;
+      //Trusting.
+      await grpcClient.gestaltsUnsetActionByIdentity(
         setActionMessage,
         await client.session.createJWTCallCredentials(),
       );
     }
 
+    const action = options.action;
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [`Trusting: ${id}`],
+        data: [`Allowing: ${name} ${action}`],
       }),
     );
   } catch (err) {
@@ -85,8 +95,8 @@ commandTrustGestalts.action(async (id, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 
-export default commandTrustGestalts;
+export default commandAllowGestalts;

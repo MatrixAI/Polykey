@@ -306,7 +306,9 @@ describe('CLI agent', () => {
         { encoding: 'utf-8' },
       );
 
-      const verify = await agent.sessions.verifyJWTToken(content as SessionToken);
+      const verify = await agent.sessions.verifyJWTToken(
+        content as SessionToken,
+      );
       expect(verify).toBeTruthy();
 
       await agent.stop();

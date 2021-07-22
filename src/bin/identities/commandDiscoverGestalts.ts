@@ -6,9 +6,10 @@ import { createCommand, outputFormatter } from '../utils';
 import { parseId } from './utils';
 import * as utils from '../../utils';
 
-const commandTrustGestalts = createCommand('trust', {
+const commandTrustGestalts = createCommand('discover', {
   description: {
-    description: 'Trusts a node id or identity',
+    description:
+      'Starts discovery process using Node or Identity as a starting point.',
     args: {
       id: 'nodeId or "providerId:identityId"',
     },
@@ -40,25 +41,21 @@ commandTrustGestalts.action(async (id, options) => {
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
-    const setActionMessage = new clientPB.SetActionsMessage();
-    setActionMessage.setAction(action);
     if (nodeId) {
-      // Setting by Node.
+      // Discovery by Node.
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(nodeId);
-      setActionMessage.setNode(nodeMessage);
-      await grpcClient.gestaltsSetActionByNode(
-        setActionMessage,
+      await grpcClient.gestaltsDiscoverNode(
+        nodeMessage,
         await client.session.createJWTCallCredentials(),
       );
     } else {
-      //  Setting by Identity
+      //  Discovery by Identity
       const providerMessage = new clientPB.ProviderMessage();
       providerMessage.setId(providerId!);
       providerMessage.setMessage(identityId!);
-      setActionMessage.setIdentity(providerMessage);
-      await grpcClient.gestaltsSetActionByIdentity(
-        setActionMessage,
+      await grpcClient.gestaltsDiscoverIdentity(
+        providerMessage,
         await client.session.createJWTCallCredentials(),
       );
     }
@@ -66,7 +63,7 @@ commandTrustGestalts.action(async (id, options) => {
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [`Trusting: ${id}`],
+        data: [`Starting discovery at: ${id}...`],
       }),
     );
   } catch (err) {

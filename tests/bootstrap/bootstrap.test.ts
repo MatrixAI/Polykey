@@ -56,7 +56,7 @@ describe('Bootstrap', () => {
       expect(await checkKeynodeState(nodePath)).toBe('MALFORMED_KEYNODE');
     });
 
-    test('Keynode without contents in directory', async () => {
+    test('Keynode with contents in directory', async () => {
       const pk = new PolykeyAgent({
         nodePath: nodePath,
         logger: logger,
@@ -64,7 +64,7 @@ describe('Bootstrap', () => {
       await pk.start({ password: 'password' });
       await pk.stop();
       expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
-    });
+    }, 20000);
   });
 
   describe('BootstrapPolykeyState', () => {
