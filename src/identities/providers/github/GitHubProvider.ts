@@ -4,11 +4,6 @@ import type {
   TokenData,
   IdentityData,
 } from '../../types';
-// import type {
-//   LinkId,
-//   LinkClaimIdentity,
-//   LinkInfoIdentity,
-// } from '../../../claims/types';
 import type { Claim } from '../../../claims/types';
 import type { IdentityClaim, IdentityClaimId } from '../../../identities/types';
 
@@ -360,12 +355,12 @@ class GitHubProvider extends Provider {
   }
 
   /**
-   * Publish a link claim.
+   * Publish an identity claim.
    * These are published as gists.
    */
   public async publishClaim(
     authIdentityId: IdentityId,
-    identityClaim: Claim, // give link claim we want to publush
+    identityClaim: Claim, // give claim we want to publush
   ): Promise<IdentityClaim> {
     let tokenData = await this.getToken(authIdentityId);
     if (!tokenData) {
@@ -418,9 +413,9 @@ class GitHubProvider extends Provider {
   }
 
   /**
-   * Gets the LinkInfo.
-   * GitHub LinkInfos are published as gists.
-   * The link id is the gist id
+   * Gets the identity claim.
+   * GitHub identity claims are published as gists.
+   * The claimId is the gist id
    */
   public async getClaim(
     authIdentityId: IdentityId,
@@ -478,7 +473,7 @@ class GitHubProvider extends Provider {
   }
 
   /**
-   * Gets LinkInfo from a given identity.
+   * Gets all IdentityClaims from a given identity.
    */
   public async *getClaims(
     authIdentityId: IdentityId,
@@ -501,14 +496,14 @@ class GitHubProvider extends Provider {
         );
       }
       const data = await response.text();
-      const linkIds = await this.extractLinkIds(data); // TODO: rename/change extractLinkIds
-      for (const linkId of linkIds) {
-        const linkInfo = await this.getClaim(authIdentityId, linkId);
-        if (linkInfo) {
-          yield linkInfo;
+      const claimIds = await this.extractClaimIds(data);
+      for (const claimId of claimIds) {
+        const claim = await this.getClaim(authIdentityId, claimId);
+        if (claim) {
+          yield claim;
         }
       }
-      if (linkIds.length === 0) {
+      if (claimIds.length === 0) {
         break;
       } else {
         pageNum = pageNum + 1;
@@ -563,22 +558,22 @@ class GitHubProvider extends Provider {
     }
   }
 
-  protected extractLinkIds(html: string): Array<IdentityClaimId> {
-    const linkIds: Array<IdentityClaimId> = [];
+  protected extractClaimIds(html: string): Array<IdentityClaimId> {
+    const claimIds: Array<IdentityClaimId> = [];
     const $ = cheerio.load(html);
     $('.gist-snippet > .gist-snippet-meta')
       .children('ul')
       .each((_, ele) => {
-        const link = $('li > a', ele).first().attr('href');
-        if (link) {
-          const matches = link.match(/\/.+?\/(.+)/);
+        const claim = $('li > a', ele).first().attr('href');
+        if (claim) {
+          const matches = claim.match(/\/.+?\/(.+)/);
           if (matches) {
-            const linkId = matches[1];
-            linkIds.push(linkId as IdentityClaimId);
+            const claimId = matches[1];
+            claimIds.push(claimId as IdentityClaimId);
           }
         }
       });
-    return linkIds;
+    return claimIds;
   }
 }
 

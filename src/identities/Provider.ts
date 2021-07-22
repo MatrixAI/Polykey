@@ -84,7 +84,7 @@ abstract class Provider {
   }
 
   /**
-   * This verifies that the link claim JSON data fits our schema
+   * This verifies that the claim's JSON data fits our schema
    * This does not verify whether the signature is correct
    */
   public parseClaim(identityClaimData: string): Claim | undefined {
