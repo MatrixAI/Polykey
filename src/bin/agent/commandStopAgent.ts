@@ -33,7 +33,10 @@ commandStopAgent.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.agentStop(emptyMessage);
+    await grpcClient.agentStop(
+      emptyMessage,
+      await client.session.createCallCredentials(),
+    );
 
     process.stdout.write(
       binUtils.outputFormatter({
@@ -58,7 +61,7 @@ commandStopAgent.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
+    await client.stop();
     options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;

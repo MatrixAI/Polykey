@@ -6,6 +6,7 @@ import { ClientClient } from '@/proto/js/Client_grpc_pb';
 import { createClientService } from '@/client';
 import PolykeyClient from '@/PolykeyClient';
 import { promisify } from '@/utils';
+import { SessionCredentials, SessionToken } from '@/sessions/types';
 
 async function openTestClientServer({ polykeyAgent }: { polykeyAgent }) {
   const clientService: IClientServer = createClientService({
@@ -64,6 +65,18 @@ function closeSimpleClientClient(client: ClientClient): void {
   client.close();
 }
 
+function createCallCredentials(token: SessionToken): SessionCredentials {
+  return {
+    credentials: grpc.CallCredentials.createFromMetadataGenerator(
+      (_params, callback) => {
+        const meta = new grpc.Metadata();
+        meta.add('Authorization', `Bearer: ${token}`);
+        callback(null, meta);
+      },
+    ),
+  } as SessionCredentials;
+}
+
 export {
   openTestClientServer,
   closeTestClientServer,
@@ -71,4 +84,5 @@ export {
   closeTestClientClient,
   openSimpleClientClient,
   closeSimpleClientClient,
+  createCallCredentials,
 };

@@ -1,4 +1,4 @@
-import type { SessionToken } from '../../session/types';
+import type { SessionToken } from '../../sessions/types';
 
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -13,7 +13,6 @@ import { clientPB } from '../../client';
 const commandAgentUnlock = binUtils.createCommand('unlock', {
   description:
     'Requests a jwt token from the Polykey Agent and starts a session.',
-  aliases: ['authenticate'],
   nodePath: true,
   verbose: true,
   format: true,
@@ -54,7 +53,7 @@ commandAgentUnlock.action(async (password, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.sessionRequestJWT(m, meta);
+    const pCall = grpcClient.sessionUnlock(m, meta);
 
     const responseMessage = await pCall;
     const token: SessionToken = responseMessage.getToken() as SessionToken;
@@ -80,7 +79,7 @@ commandAgentUnlock.action(async (password, options) => {
       throw err;
     }
   } finally {
-    client.stop();
+    await client.stop();
     options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;

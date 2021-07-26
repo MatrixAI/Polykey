@@ -138,11 +138,6 @@ function arrayUnset<T>(items: Array<T>, item: T) {
   }
 }
 
-async function generateUserToken() {
-  const bytes = await keysUtils.getRandomBytes(32);
-  return base58.encode(bytes);
-}
-
 export {
   getDefaultNodePath,
   mkdirExists,
@@ -158,5 +153,4 @@ export {
   pidIsRunning,
   arraySet,
   arrayUnset,
-  generateUserToken,
 };

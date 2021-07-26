@@ -1,7 +1,6 @@
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -14,7 +13,6 @@ const commandCreateSecret = binUtils.createCommand('create', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandCreateSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
@@ -25,7 +23,6 @@ commandCreateSecret.requiredOption(
   '(required) File path containing the secret to be added',
 );
 commandCreateSecret.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -33,16 +30,14 @@ commandCreateSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const secretNewMessage = new clientPB.SecretNewMessage();
+  const secretMessage = new clientPB.SecretMessage();
   const vaultMessage = new clientPB.VaultMessage();
+  secretMessage.setVault(vaultMessage);
 
   try {
     await client.start({});
@@ -57,15 +52,16 @@ commandCreateSecret.action(async (options) => {
     const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
 
     vaultMessage.setName(vaultName);
-    secretNewMessage.setVault(vaultMessage);
-    secretNewMessage.setName(secretName);
-    secretNewMessage.setContent(content);
+    secretMessage.setName(secretName);
+    secretMessage.setContent(content);
 
     const pCall = grpcClient.vaultsNewSecret(
-      secretNewMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      secretMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {
@@ -73,7 +69,7 @@ commandCreateSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${secretNewMessage.getName()} successfully created in vault: ${vaultMessage.getName()}`,
+            `Secret: ${secretMessage.getName()} successfully created in vault: ${vaultMessage.getName()}`,
           ],
         }),
       );
@@ -82,7 +78,7 @@ commandCreateSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to create secret: ${secretNewMessage.getName()} in vault: ${vaultMessage.getName()}`,
+            `Failed to create secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()}`,
           ],
         }),
       );
@@ -104,8 +100,7 @@ commandCreateSecret.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

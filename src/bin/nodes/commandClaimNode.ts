@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 
@@ -37,10 +37,15 @@ commandClaimNode.action(async (node, options) => {
     //Claiming the node.
     const nodeMessage = new clientPB.NodeMessage();
     nodeMessage.setName(node);
-    await grpcClient.nodesClaim(
+    const pCall = grpcClient.nodesClaim(
       nodeMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    await pCall;
 
     process.stdout.write(
       outputFormatter({
@@ -64,7 +69,7 @@ commandClaimNode.action(async (node, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

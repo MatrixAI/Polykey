@@ -18,7 +18,7 @@ import { ACL } from './acl';
 import { DB } from './db';
 import { Discovery } from './discovery';
 import { WorkerManager } from './workers';
-import { SessionManager } from './session';
+import { SessionManager } from './sessions';
 import { certNodeId } from './network/utils';
 import { IdentitiesManager } from './identities';
 import { ForwardProxy, ReverseProxy } from './network';
@@ -215,6 +215,14 @@ class Polykey {
     // Get GRPC Services
     const clientService: IClientServer = createClientService({
       polykeyAgent: this,
+      discovery: this.discovery,
+      gestaltGraph: this.gestalts,
+      identitiesManager: this.identities,
+      keyManager: this.keys,
+      nodeManager: this.nodes,
+      notificationsManager: this.notifications,
+      sessionManager: this.sessions,
+      vaultManager: this.vaults,
     });
 
     const agentService: IAgentServer = createAgentService({

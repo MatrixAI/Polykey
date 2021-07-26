@@ -2,9 +2,11 @@ import type { NodeId, NodeInfo } from '@/nodes/types';
 import * as testUtils from './utils';
 
 import os from 'os';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import TestProvider from '../identities/TestProvider';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
 import { PolykeyAgent } from '@';
 import {
   IdentityId,
@@ -12,10 +14,9 @@ import {
   ProviderId,
 } from '../../src/identities/types';
 import { identityString } from '../../src/bin/identities/utils';
-import commandAuthenticateProvider from '../../dist/bin/identities/commandAuthenticateProvider';
-import * as utils from './utils';
 import { GithubProvider } from '../../src/identities/providers';
-import TestProvider from '../identities/TestProvider';
+
+import * as utils from './utils';
 
 const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
   new StreamHandler(),
@@ -23,7 +24,6 @@ const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
 let dataDir: string;
 let nodePath: string;
 let passwordFile: string;
-let passOpt;
 let polykeyAgent: PolykeyAgent;
 const node1: NodeInfo = {
   id: '123' as NodeId,

@@ -1,7 +1,6 @@
 import { spawn } from 'child_process';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -13,7 +12,6 @@ const commandSecretEnv = binUtils.createCommand('env', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandSecretEnv.option(
   '--command <command>',
@@ -27,7 +25,6 @@ commandSecretEnv.arguments(
   "Secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]', you can also control what the environment variable will be called using '[<variableName>]' (defaults to upper, snake case of the original secret name)",
 );
 commandSecretEnv.action(async (options, command) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -35,16 +32,14 @@ commandSecretEnv.action(async (options, command) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
   const vaultMessage = new clientPB.VaultMessage();
+  const secretMessage = new clientPB.SecretMessage();
+  secretMessage.setVault(vaultMessage);
   const secretPathList: string[] = Array.from<string>(command.args.values());
 
   try {
@@ -81,13 +76,16 @@ commandSecretEnv.action(async (options, command) => {
 
     for (const obj of parsedPathList) {
       vaultMessage.setName(obj.vaultName);
-      vaultSpecificMessage.setVault(vaultMessage);
-      vaultSpecificMessage.setName(obj.secretName);
-      const res = await grpcClient.vaultsGetSecret(
-        vaultSpecificMessage,
-        meta,
-        await client.session.createJWTCallCredentials(),
+      secretMessage.setName(obj.secretName);
+      const pCall = grpcClient.vaultsGetSecret(
+        secretMessage,
+        await client.session.createCallCredentials(),
       );
+      pCall.call.on('metadata', (meta) => {
+        clientUtils.refreshSession(meta, client.session);
+      });
+
+      const res = await pCall;
       const secret = res.getName();
       secretEnv[obj.variableName] = secret;
     }
@@ -141,8 +139,7 @@ commandSecretEnv.action(async (options, command) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

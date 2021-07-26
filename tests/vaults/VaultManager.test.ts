@@ -3,6 +3,7 @@ import type { ProviderId, IdentityId, IdentityInfo } from '@/identities/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
 import type { VaultId } from '@/vaults/types';
+import type { ChainData } from '@/sigchain/types';
 
 import os from 'os';
 import path from 'path';
@@ -247,33 +248,33 @@ describe('VaultManager is', () => {
   test('checking gestalt permissions for vaults', async () => {
     const node1: NodeInfo = {
       id: '123' as NodeId,
-      chain: { nodes: {}, identities: {} },
+      chain: { nodes: {}, identities: {} } as ChainData,
     };
     const node2: NodeInfo = {
       id: '345' as NodeId,
-      chain: { nodes: {}, identities: {} },
+      chain: { nodes: {}, identities: {} } as ChainData,
     };
     const node3: NodeInfo = {
       id: '678' as NodeId,
-      chain: { nodes: {}, identities: {} },
+      chain: { nodes: {}, identities: {} } as ChainData,
     };
     const node4: NodeInfo = {
       id: '890' as NodeId,
-      chain: { nodes: {}, identities: {} },
+      chain: { nodes: {}, identities: {} } as ChainData,
     };
     const id1: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
       claims: {
         nodes: {},
-      },
+      } as ChainData,
     };
     const id2: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'def' as IdentityId,
       claims: {
         nodes: {},
-      },
+      } as ChainData,
     };
 
     await gestaltGraph.setNode(node1);
@@ -488,7 +489,7 @@ describe('VaultManager is', () => {
     beforeEach(async () => {
       node = {
         id: nodeManager.getNodeId(),
-        chain: { nodes: {}, identities: {} },
+        chain: { nodes: {}, identities: {} } as ChainData,
       };
       const targetKeyPair = await keysUtils.generateKeyPair(4096);
       targetKeyPairPem = keysUtils.keyPairToPem(targetKeyPair);

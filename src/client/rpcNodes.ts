@@ -1,6 +1,6 @@
 import type { NodeManager } from '../nodes';
 import type { NodeAddress, NodeId } from '../nodes/types';
-import type { SessionManager } from '../session';
+import type { SessionManager } from '../sessions';
 
 import * as grpc from '@grpc/grpc-js';
 import * as clientPB from '../proto/js/Client_pb';
@@ -29,7 +29,11 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new clientPB.NodeDetailsMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const details = nodeManager.getNodeDetails();
         response.setNodeId(details.id);
         response.setPublicKey(details.publicKey);
@@ -51,7 +55,11 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new clientPB.NodeDetailsMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const details = await nodeManager.requestNodeDetails(
           call.request.getName() as NodeId,
         );
@@ -77,7 +85,11 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         // Validate the passed node ID and host
         const validNodeId = nodesUtils.isNodeId(call.request.getId());
         if (!validNodeId) {
@@ -108,7 +120,11 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new clientPB.StatusMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const status = await nodeManager.pingNode(
           call.request.getName() as NodeId,
         );
@@ -142,7 +158,11 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new clientPB.NodeAddressMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const nodeId = call.request.getName() as NodeId;
         const address = await nodeManager.findNode(nodeId);
         response.setId(nodeId);

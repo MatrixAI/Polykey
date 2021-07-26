@@ -1,7 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -11,19 +10,14 @@ const commandGetCert = binUtils.createCommand('cert', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandGetCert.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
-  }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
   }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
@@ -36,11 +30,15 @@ commandGetCert.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const response = await grpcClient.certsGet(
+    const pCall = grpcClient.certsGet(
       emptyMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    const response = await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
@@ -64,7 +62,7 @@ commandGetCert.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
+    await client.stop();
     options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;

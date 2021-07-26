@@ -200,7 +200,7 @@ describe('CLI Nodes', () => {
       expect(res!.ip).toEqual(host);
       expect(res!.port).toEqual(port);
     }, 40000);
-    test.only('Should fail to add the node (invalid node ID).', async () => {
+    test('Should fail to add the node (invalid node ID).', async () => {
       const host = '0.0.0.0';
       const port = 55555;
       const commands = genCommands(['add', node1.id, host, port.toString()]);
@@ -212,7 +212,7 @@ describe('CLI Nodes', () => {
       const res = await polykeyAgent.nodes.getNode(node1.id);
       expect(res).toBeUndefined();
     });
-    test.only('Should fail to add the node (invalid IP address).', async () => {
+    test('Should fail to add the node (invalid IP address).', async () => {
       const host = '0';
       const port = 55555;
       const commands = genCommands(['add', node3.id, host, port.toString()]);

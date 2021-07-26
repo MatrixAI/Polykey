@@ -67,7 +67,7 @@ commandReadNotifications.action(async (options) => {
 
     const response = await grpcClient.notificationsRead(
       notificationDisplayMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
     const notifications = JSON.parse(response.getMessages());
 
@@ -110,7 +110,7 @@ commandReadNotifications.action(async (options) => {
       );
     }
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

@@ -1,12 +1,11 @@
 import type { NodeId } from './nodes/types';
-import type { SessionToken } from './session/types';
 import type { FileSystem, LockConfig } from './types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
 
 import * as utils from './utils';
-import { Session } from './session';
+import { Session } from './sessions';
 import { Lockfile } from './lockfile';
 import { ErrorPolykey } from './errors';
 import { GRPCClientClient } from './client';
@@ -108,11 +107,8 @@ class PolykeyClient {
 
     await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
 
-    // Attempt to read token from fs
-    const token = await this.session.readToken();
-    if (token) {
-      this.session.start({ token: token as SessionToken });
-    }
+    // Attempt to read token from fs and start session.
+    await this.session.start();
   }
 
   public async stop() {

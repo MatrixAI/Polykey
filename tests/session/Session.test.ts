@@ -1,4 +1,4 @@
-import type { SessionToken } from '@/session/types';
+import type { SessionToken } from '@/sessions/types';
 
 import fs from 'fs';
 import os from 'os';
@@ -7,7 +7,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import * as utils from '@/utils';
 
-import { Session } from '@/session';
+import { Session } from '@/sessions';
 
 describe('Session is', () => {
   const logger = new Logger('SessionManager', LogLevel.WARN, [

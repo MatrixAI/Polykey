@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { parseId } from './utils';
@@ -47,10 +47,14 @@ commandTrustGestalts.action(async (id, options) => {
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(nodeId);
       setActionMessage.setNode(nodeMessage);
-      await grpcClient.gestaltsSetActionByNode(
+      const pCall = grpcClient.gestaltsSetActionByNode(
         setActionMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
+      pCall.call.on('metadata', (meta) => {
+        clientUtils.refreshSession(meta, client.session);
+      });
+      await pCall;
     } else {
       //  Setting by Identity
       const providerMessage = new clientPB.ProviderMessage();
@@ -59,7 +63,7 @@ commandTrustGestalts.action(async (id, options) => {
       setActionMessage.setIdentity(providerMessage);
       await grpcClient.gestaltsSetActionByIdentity(
         setActionMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
     }
 
@@ -85,7 +89,7 @@ commandTrustGestalts.action(async (id, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

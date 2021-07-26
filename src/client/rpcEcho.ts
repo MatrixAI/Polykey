@@ -1,10 +1,10 @@
+import type { SessionManager } from '../sessions';
+
 import * as utils from './utils';
 import * as errors from '../errors';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
-
-import { SessionManager } from '../session';
 
 const createEchoRPC = ({
   sessionManager,
@@ -17,7 +17,6 @@ const createEchoRPC = ({
       callback: grpc.sendUnaryData<clientPB.EchoMessage>,
     ): Promise<void> => {
       const response = new clientPB.EchoMessage();
-
       const action = async (response: clientPB.EchoMessage) => {
         const message = call.request.getChallenge();
         if (message === 'ThrowAnError') {
@@ -28,8 +27,12 @@ const createEchoRPC = ({
       };
 
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
         await action(response);
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);

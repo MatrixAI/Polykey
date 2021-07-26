@@ -1,8 +1,9 @@
-import type { SessionToken } from './types';
 import type { FileSystem } from '../types';
+import type { SessionToken, SessionCredentials } from './types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
+import lockfile from 'proper-lockfile';
 
 import * as utils from '../utils';
 import * as grpc from '@grpc/grpc-js';
@@ -42,10 +43,17 @@ class Session {
   /**
    * Starts the session, given a Claim/token.
    */
-  public async start({ token }: { token: SessionToken }) {
-    this.logger.info('Starting Session');
-    this._token = token;
-    this.logger.info('Started Session');
+  public async start({ token }: { token?: SessionToken } = {}) {
+    if (!token) {
+      token = await this.readToken();
+    }
+    if (token) {
+      this.logger.debug('DEBUG');
+      this.logger.info('Starting Session');
+      this._token = token;
+      await this.writeToken();
+      this.logger.info('Started Session');
+    }
   }
 
   public async stop() {
@@ -66,9 +74,9 @@ class Session {
    * @throws ErrorSessionNotStarted when the session has not started.
    * @returns Promise of a grpc.CallOption with the credentials field.
    */
-  public async createJWTCallCredentials(): Promise<Partial<grpc.CallOptions>> {
+  public async createCallCredentials(): Promise<SessionCredentials> {
     if (!this.token || this.token === '') {
-      return {};
+      return {} as SessionCredentials;
     }
     return {
       credentials: grpc.CallCredentials.createFromMetadataGenerator(
@@ -78,19 +86,20 @@ class Session {
           callback(null, meta);
         },
       ),
-    };
+    } as SessionCredentials;
   }
 
   /**
    * Attempts to read the token in the sessionFile
    * @returns the token, or undefined if token is not found
    */
-  public async readToken(): Promise<string | undefined> {
+  public async readToken(): Promise<SessionToken | undefined> {
     try {
       this.logger.info('Reading session token');
       const token = await this.fs.promises.readFile(this.sessionFile);
-      return token.toString();
+      return token.toString() as SessionToken;
     } catch (err) {
+      this.logger.info('No session token found');
       return;
     }
   }
@@ -106,7 +115,22 @@ class Session {
     }
     this.logger.info(`Writing token to ${this.sessionFile}`);
     await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
+
+    try {
+      if (await lockfile.check(this.sessionFile, { fs: this.fs })) {
+        return;
+      }
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        await this.fs.promises.writeFile(this.sessionFile, this._token);
+        return;
+      }
+      throw err;
+    }
+
+    await lockfile.lock(this.sessionFile);
     await this.fs.promises.writeFile(this.sessionFile, this._token);
+    await lockfile.unlock(this.sessionFile);
   }
 
   /**
@@ -119,6 +143,14 @@ class Session {
     } catch (err) {
       return;
     }
+  }
+
+  /**
+   * Update, and write this session's SessionToken
+   */
+  public async refresh(token: SessionToken) {
+    this._token = token;
+    await this.writeToken();
   }
 }
 

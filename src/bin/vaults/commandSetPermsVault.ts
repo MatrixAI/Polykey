@@ -5,21 +5,22 @@ import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
 
-const commandRenameVault = binUtils.createCommand('rename', {
-  description: 'Renames an existing vault',
+const commandVaultShare = binUtils.createCommand('share', {
+  description: {
+    description: 'Sets the permissions of a vault for a node',
+    args: {
+      vaultName: 'Name or ID of vault to share',
+      node: 'Id of the node to set permissions for',
+    },
+  },
+
   nodePath: true,
   verbose: true,
   format: true,
 });
-commandRenameVault.requiredOption(
-  '-vn, --vault-name <vaultName>',
-  '(required) Name of the vault to be renamed',
-);
-commandRenameVault.requiredOption(
-  '-nn, --new-name <newName>',
-  '(required) New name for the vault',
-);
-commandRenameVault.action(async (options) => {
+
+commandVaultShare.arguments('<vaultName> <nodeId>');
+commandVaultShare.action(async (vaultName, nodeId, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -27,51 +28,45 @@ commandRenameVault.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.nodePath) {
-    clientConfig['nodePath'] = options.nodePath;
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
+
   const vaultMessage = new clientPB.VaultMessage();
-  const vaultRenameMessage = new clientPB.VaultRenameMessage();
-  vaultRenameMessage.setVault(vaultMessage);
+  const nodeMessage = new clientPB.NodeMessage();
+  const setVaultPermsMessage = new clientPB.SetVaultPermMessage();
+  setVaultPermsMessage.setVault(vaultMessage);
+  setVaultPermsMessage.setNode(nodeMessage);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setName(options.vaultName);
-    vaultRenameMessage.setNewname(options.newName);
+    vaultMessage.setName(vaultName);
+    nodeMessage.setName(nodeId);
 
-    const pCall = grpcClient.vaultsRename(
-      vaultRenameMessage,
+    const pCall = grpcClient.vaultsSetPerms(
+      setVaultPermsMessage,
       await client.session.createCallCredentials(),
     );
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
 
-    const responseMessage = await pCall;
-    if (responseMessage.getId()) {
-      process.stdout.write(
-        binUtils.outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: [
-            `Renamed vault: ${vaultMessage.getName()} to ${vaultRenameMessage.getNewname()}`,
-          ],
-        }),
-      );
-    } else {
-      process.stdout.write(
-        binUtils.outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to rename vault: ${vaultMessage.getName()}`],
-        }),
-      );
-    }
+    await pCall;
+
+    process.stdout.write(
+      binUtils.outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data: [
+          `Shared Vault: ${setVaultPermsMessage
+            .getVault()
+            ?.getName()} to: ${setVaultPermsMessage.getNode()?.getName()}`,
+        ],
+      }),
+    );
   } catch (err) {
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
@@ -95,4 +90,4 @@ commandRenameVault.action(async (options) => {
   }
 });
 
-export default commandRenameVault;
+export default commandVaultShare;

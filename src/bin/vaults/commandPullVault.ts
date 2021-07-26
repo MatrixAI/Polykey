@@ -1,7 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -11,7 +10,6 @@ const commandPullVault = binUtils.createCommand('pull', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandPullVault.requiredOption(
   '-ni, --node-id <nodeId>',
@@ -22,8 +20,6 @@ commandPullVault.requiredOption(
   '(required) Name of the vault to be pulled',
 );
 commandPullVault.action(async (options) => {
-  const meta = new grpc.Metadata();
-
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -34,33 +30,39 @@ commandPullVault.action(async (options) => {
   if (options.nodePath) {
     clientConfig['nodePath'] = options.nodePath;
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setId(options.nodeId);
+  const nodeMessage = new clientPB.NodeMessage();
+  const vaultPullMessage = new clientPB.VaultPullMessage();
+  vaultPullMessage.setVault(vaultMessage);
+  vaultPullMessage.setNode(nodeMessage);
+
+  nodeMessage.setName(options.nodeId);
   vaultMessage.setName(options.vaultName);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.vaultsPull(
-      vaultMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+    const pCall = grpcClient.vaultsPull(
+      vaultPullMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Pull Vault: ${vaultMessage.getName()} from Node: ${vaultMessage.getId()} successful`,
+          `Pull Vault: ${vaultMessage.getName()} from Node: ${nodeMessage.getName()} successful`,
         ],
       }),
     );
@@ -80,8 +82,7 @@ commandPullVault.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

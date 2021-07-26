@@ -35,7 +35,7 @@ commandClearNotifications.action(async (options) => {
 
     await grpcClient.notificationsClear(
       emptyMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
 
     process.stdout.write(
@@ -60,7 +60,7 @@ commandClearNotifications.action(async (options) => {
       );
     }
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

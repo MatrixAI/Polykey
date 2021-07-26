@@ -1,8 +1,7 @@
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -12,23 +11,18 @@ const commandChangePassword = binUtils.createCommand('password', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandChangePassword.requiredOption(
   '-pp, --password-path <passwordPath>',
   '(required) Path to the file containing the new password',
 );
 commandChangePassword.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
-  }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
   }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
@@ -45,11 +39,15 @@ commandChangePassword.action(async (options) => {
     });
     passwordMessage.setPassword(password);
 
-    await grpcClient.keysChangePassword(
+    const pCall = grpcClient.keysChangePassword(
       passwordMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
@@ -73,8 +71,7 @@ commandChangePassword.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

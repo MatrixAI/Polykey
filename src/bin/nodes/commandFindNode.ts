@@ -44,7 +44,7 @@ commandFindNode.action(async (node, options) => {
     try {
       const res = await grpcClient.nodesFind(
         nodeMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
       result.success = true;
       result.id = res.getId();
@@ -92,7 +92,7 @@ commandFindNode.action(async (node, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

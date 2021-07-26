@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { parseId } from './utils';
@@ -43,11 +43,15 @@ commandTrustGestalts.action(async (id, options) => {
       //Getting by Node.
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(nodeId);
-      const test = await grpcClient.gestaltsGetActionsByNode(
+      const pCall = grpcClient.gestaltsGetActionsByNode(
         nodeMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
-      actions = test.getActionList();
+      pCall.call.on('metadata', (meta) => {
+        clientUtils.refreshSession(meta, client.session);
+      });
+      const res = await pCall;
+      actions = res.getActionList();
     } else {
       //Getting by Identity
       const providerMessage = new clientPB.ProviderMessage();
@@ -55,7 +59,7 @@ commandTrustGestalts.action(async (id, options) => {
       providerMessage.setMessage(identityId!);
       const test = await grpcClient.gestaltsGetActionsByIdentity(
         providerMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
       actions = test.getActionList();
     }
@@ -82,7 +86,7 @@ commandTrustGestalts.action(async (id, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

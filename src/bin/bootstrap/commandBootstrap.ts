@@ -87,15 +87,15 @@ commandBootstrapAgent.action(async (options) => {
     );
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
-      process.stderr.write(`${err.message}\n`);
+      process.stderr.write(`${err.description}\n`);
     }
     if (err instanceof errors.ErrorGRPCServerNotStarted) {
-      process.stderr.write(`${err.message}\n`);
+      process.stderr.write(`${err.description}\n`);
     } else {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+          data: ['Error:', err.description],
         }),
       );
     }

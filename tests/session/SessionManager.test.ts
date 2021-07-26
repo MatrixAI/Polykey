@@ -5,9 +5,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { DB } from '@/db';
 import { KeyManager } from '@/keys';
-import { SessionManager } from '@/session';
+import { SessionManager } from '@/sessions';
 
-describe('Sessions', () => {
+describe('SessionManager', () => {
   const logger = new Logger('SessionManager', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -44,7 +44,7 @@ describe('Sessions', () => {
     });
     await keyManager.start({ password: 'password' });
     await db.start({ keyPair: keyManager.getRootKeyPair() });
-    await sessionManager.start({ bits: 4069 });
+    await sessionManager.start({ bits: 4096 });
   });
 
   afterEach(async () => {
@@ -60,15 +60,15 @@ describe('Sessions', () => {
   });
 
   test('starts and stops', async () => {
-    await sessionManager.start({ bits: 4069 });
+    await sessionManager.start({ bits: 4096 });
     expect(sessionManager.started).toBe(true);
     await sessionManager.stop();
     expect(sessionManager.started).toBe(false);
   });
   test('can generate and verify JWT Token', async () => {
-    await sessionManager.start({ bits: 4069 });
-    const claim = await sessionManager.generateJWTToken();
-    const result = await sessionManager.verifyJWTToken(claim);
+    await sessionManager.start({ bits: 4096 });
+    const claim = await sessionManager.generateToken();
+    const result = await sessionManager.verifyToken(claim);
     await sessionManager.stop();
     expect(result.payload.token).toBeTruthy();
   });

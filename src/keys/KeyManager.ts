@@ -13,6 +13,7 @@ import Logger from '@matrixai/logger';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as utils from '../utils';
+import * as dbErrors from '../db/errors';
 
 /**
  * Manage Root Keys and Root Certificates
@@ -282,6 +283,8 @@ class KeyManager {
       throw new keysErrors.ErrorKeyManagerNotStarted();
     }
     this.logger.info('Renewing root key pair');
+    const dbKeyPath = path.join(path.dirname(this.keysPath), 'db', 'db_key');
+    const keysDbKeyPlain = await this.readDBKey(dbKeyPath);
     const rootKeyPair = await this.generateKeyPair(bits);
     const now = new Date();
     const rootCert = keysUtils.generateCertificate(
@@ -314,6 +317,7 @@ class KeyManager {
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
+      this.writeDBKey(rootKeyPair, keysDbKeyPlain, dbKeyPath),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
@@ -335,6 +339,8 @@ class KeyManager {
       throw new keysErrors.ErrorKeyManagerNotStarted();
     }
     this.logger.info('Resetting root key pair');
+    const dbKeyPath = path.join(path.dirname(this.keysPath), 'db', 'db_key');
+    const keysDbKeyPlain = await this.readDBKey(dbKeyPath);
     const rootKeyPair = await this.generateKeyPair(bits);
     const rootCert = keysUtils.generateCertificate(
       rootKeyPair.publicKey,
@@ -349,6 +355,7 @@ class KeyManager {
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
+      this.writeDBKey(rootKeyPair, keysDbKeyPlain, dbKeyPath),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
@@ -500,6 +507,54 @@ class KeyManager {
       ]);
     } catch (e) {
       throw new keysErrors.ErrorRootKeysWrite(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+  }
+
+  protected async readDBKey(dbKeyPath: string): Promise<Buffer> {
+    this.logger.info(`Reading ${dbKeyPath}`);
+    let keysDbKeyCipher;
+    try {
+      keysDbKeyCipher = await this.fs.promises.readFile(dbKeyPath);
+    } catch (e) {
+      throw new dbErrors.ErrorDBKeyRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    let keysDbKeyPlain;
+    try {
+      keysDbKeyPlain = keysUtils.decryptWithPrivateKey(
+        this.rootKeyPair.privateKey,
+        keysDbKeyCipher,
+      );
+    } catch (e) {
+      throw new dbErrors.ErrorDBKeyParse(e.message);
+    }
+    return keysDbKeyPlain;
+  }
+
+  protected async writeDBKey(
+    keyPair: KeyPair,
+    dbKey: Buffer,
+    dbKeyPath: string,
+  ): Promise<void> {
+    const keysDbKeyCipher = keysUtils.encryptWithPublicKey(
+      keyPair.publicKey,
+      dbKey,
+    );
+    this.logger.info(`Writing ${dbKeyPath}`);
+    try {
+      await this.fs.promises.writeFile(`${dbKeyPath}.tmp`, keysDbKeyCipher);
+      await this.fs.promises.rename(`${dbKeyPath}.tmp`, dbKeyPath);
+    } catch (e) {
+      throw new dbErrors.ErrorDBKeyWrite(e.message, {
         errno: e.errno,
         syscall: e.syscall,
         code: e.code,

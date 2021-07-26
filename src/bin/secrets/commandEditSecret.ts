@@ -2,8 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import { execSync } from 'child_process';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -16,14 +15,12 @@ const commandEditSecret = binUtils.createCommand('edit', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandEditSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
   '(required) Path to the secret to be edited, specified as <vaultName>:<secretPath>',
 );
 commandEditSecret.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -31,16 +28,13 @@ commandEditSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const secretMessage = new clientPB.SecretSpecificMessage();
-  const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
+  const secretEditMessage = new clientPB.SecretEditMessage();
+  const secretMessage = new clientPB.SecretMessage();
   const vaultMessage = new clientPB.VaultMessage();
 
   try {
@@ -54,12 +48,20 @@ commandEditSecret.action(async (options) => {
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
     vaultMessage.setName(vaultName);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(secretName);
+    secretMessage.setVault(vaultMessage);
+    secretMessage.setName(secretName);
+    secretEditMessage.setSecret(secretMessage);
 
-    const pCall = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
+    const pCall = grpcClient.vaultsGetSecret(
+      secretEditMessage,
+      await client.session.createCallCredentials(),
+    );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+    const response = await pCall;
 
-    const secretContent = pCall.getName();
+    const secretContent = response.getName();
 
     // Linux
     const tmpDir = fs.mkdtempSync(`${os.tmpdir}/pksecret`);
@@ -71,12 +73,11 @@ commandEditSecret.action(async (options) => {
 
     const content = fs.readFileSync(tmpFile, { encoding: 'utf-8' });
 
-    secretMessage.setVault(vaultSpecificMessage);
+    secretMessage.setVault(vaultMessage);
     secretMessage.setContent(content);
     await grpcClient.vaultsEditSecret(
-      secretMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      secretEditMessage,
+      await client.session.createCallCredentials(),
     );
 
     fs.rmdirSync(tmpDir, { recursive: true });
@@ -109,8 +110,7 @@ commandEditSecret.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

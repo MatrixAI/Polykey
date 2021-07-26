@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import * as utils from '../../utils';
@@ -37,8 +37,11 @@ commandListGestalts.action(async (options) => {
 
     const res = grpcClient.gestaltsList(
       emptyMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    res.stream.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
 
     for await (const val of res) {
       const gestalt = JSON.parse(val.getName());
@@ -63,7 +66,7 @@ commandListGestalts.action(async (options) => {
       nodeMessage.setName(newGestalt.nodes[0].id);
       const actionsMessage = await grpcClient.gestaltsGetActionsByNode(
         nodeMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
       const actionList = actionsMessage.getActionList();
       if (actionList.length === 0) newGestalt.permissions = null;

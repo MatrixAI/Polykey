@@ -63,21 +63,21 @@ export namespace EchoMessage {
     }
 }
 
-export class JWTTokenMessage extends jspb.Message { 
+export class SessionTokenMessage extends jspb.Message { 
     getToken(): string;
-    setToken(value: string): JWTTokenMessage;
+    setToken(value: string): SessionTokenMessage;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): JWTTokenMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: JWTTokenMessage): JWTTokenMessage.AsObject;
+    toObject(includeInstance?: boolean): SessionTokenMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: SessionTokenMessage): SessionTokenMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: JWTTokenMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): JWTTokenMessage;
-    static deserializeBinaryFromReader(message: JWTTokenMessage, reader: jspb.BinaryReader): JWTTokenMessage;
+    static serializeBinaryToWriter(message: SessionTokenMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): SessionTokenMessage;
+    static deserializeBinaryFromReader(message: SessionTokenMessage, reader: jspb.BinaryReader): SessionTokenMessage;
 }
 
-export namespace JWTTokenMessage {
+export namespace SessionTokenMessage {
     export type AsObject = {
         token: string,
     }
@@ -219,6 +219,35 @@ export class VaultPullMessage extends jspb.Message {
 }
 
 export namespace VaultPullMessage {
+    export type AsObject = {
+        vault?: VaultMessage.AsObject,
+        node?: NodeMessage.AsObject,
+    }
+}
+
+export class VaultCloneMessage extends jspb.Message { 
+
+    hasVault(): boolean;
+    clearVault(): void;
+    getVault(): VaultMessage | undefined;
+    setVault(value?: VaultMessage): VaultCloneMessage;
+
+    hasNode(): boolean;
+    clearNode(): void;
+    getNode(): NodeMessage | undefined;
+    setNode(value?: NodeMessage): VaultCloneMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultCloneMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultCloneMessage): VaultCloneMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultCloneMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultCloneMessage;
+    static deserializeBinaryFromReader(message: VaultCloneMessage, reader: jspb.BinaryReader): VaultCloneMessage;
+}
+
+export namespace VaultCloneMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
         node?: NodeMessage.AsObject,

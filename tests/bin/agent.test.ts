@@ -1,4 +1,4 @@
-import type { SessionToken } from '@/session/types';
+import type { SessionToken } from '@/sessions/types';
 
 import os from 'os';
 import path from 'path';
@@ -8,7 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as utils from '@/utils';
 import * as testUtils from './utils';
 import * as agentUtils from '@/agent/utils';
-import * as sessionErrors from '@/session/errors';
+import * as sessionErrors from '@/sessions/errors';
 
 import PolykeyAgent from '@/PolykeyAgent';
 
@@ -18,6 +18,7 @@ let dataDir: string;
 let nodePath: string;
 let passwordFile: string;
 const passwordFileExitCode = 64;
+const noJWTFailCode = 77;
 const password = 'password';
 const logger = new Logger('AgentServerTest', LogLevel.WARN, [
   new StreamHandler(),
@@ -97,28 +98,6 @@ describe('CLI agent', () => {
 
       await firstAgent.stop();
     });
-    // test('Foreground should clean up if externally killed.', async () => {
-    //   //can't await this, it never completes while running.
-    //   const agent = testUtils.cli(
-    //     ['agent', 'start', '-np', nodePath, '--password-file', passwordFile],
-    //     '.',
-    //   );
-    //   await utils.sleep(20000);
-    //   await expect(
-    //     agentUtils.checkAgentRunning(nodePath),
-    //   ).resolves.toBeTruthy();
-
-    //   const lock = await Lockfile.parseLock(
-    //     fs,
-    //     path.join(nodePath, 'agent-lock.json'),
-    //   );
-    //   process.kill(lock.pid);
-    //   await agent; //Waiting for agent to finish running.
-    //   await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
-
-    //   const files = await fs.promises.readdir(nodePath);
-    //   expect(files.includes('agent-lock.json')).toBeFalsy();
-    // });
 
     jest.setTimeout(80000);
     test('Background should Spawn an agent in the background.', async () => {
@@ -245,10 +224,31 @@ describe('CLI agent', () => {
       expect(result4).toBe(0);
       await utils.sleep(2000);
 
+      await testUtils.pk([
+        'agent',
+        'unlock',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+      ]);
+
       await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
 
       files = await fs.promises.readdir(nodePath);
       expect(files.includes('agent-lock.json')).toBeFalsy();
+    });
+    test('should fail if session is not running.', async () => {
+      const agent = new PolykeyAgent({
+        nodePath: nodePath,
+        logger: logger,
+      });
+      await agent.start({ password });
+
+      // Authorize session
+
+      const result = await testUtils.pk(['agent', 'stop', '-np', nodePath]);
+      expect(result).toBe(noJWTFailCode);
     });
   });
 
@@ -306,9 +306,7 @@ describe('CLI agent', () => {
         { encoding: 'utf-8' },
       );
 
-      const verify = await agent.sessions.verifyJWTToken(
-        content as SessionToken,
-      );
+      const verify = await agent.sessions.verifyToken(content as SessionToken);
       expect(verify).toBeTruthy();
 
       await agent.stop();
@@ -360,8 +358,8 @@ describe('CLI agent', () => {
       );
 
       await expect(
-        agent.sessions.verifyJWTToken(content as SessionToken),
-      ).rejects.toThrow(sessionErrors.ErrorSessionJWTTokenInvalid);
+        agent.sessions.verifyToken(content as SessionToken),
+      ).rejects.toThrow(sessionErrors.ErrorSessionTokenInvalid);
 
       await agent.stop();
     });
@@ -418,7 +416,7 @@ describe('CLI agent', () => {
     test('should cause old tokens to fail verification', async () => {
       await agent.start({ password });
 
-      const token = await agent.sessions.generateJWTToken();
+      const token = await agent.sessions.generateToken();
 
       await testUtils.pk([
         'agent',
@@ -439,8 +437,8 @@ describe('CLI agent', () => {
       ]);
       expect(result).toBe(0);
 
-      await expect(agent.sessions.verifyJWTToken(token)).rejects.toThrow(
-        sessionErrors.ErrorSessionJWTTokenInvalid,
+      await expect(agent.sessions.verifyToken(token)).rejects.toThrow(
+        sessionErrors.ErrorSessionTokenInvalid,
       );
 
       await agent.stop();

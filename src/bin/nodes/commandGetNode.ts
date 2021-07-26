@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 
@@ -38,17 +38,27 @@ commandGetNode.action(async (node, options) => {
       //getting specific node.
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setName(node);
-      res = await grpcClient.nodesGetDetails(
+      const pCall = grpcClient.nodesGetDetails(
         nodeMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
+      pCall.call.on('metadata', (meta) => {
+        clientUtils.refreshSession(meta, client.session);
+      });
+
+      res = await pCall;
     } else {
       //Getting keynode.
       const emptyMessage = new clientPB.EmptyMessage();
-      res = await grpcClient.nodesGetLocalDetails(
+      const pCall = grpcClient.nodesGetLocalDetails(
         emptyMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
+      pCall.call.on('metadata', (meta) => {
+        clientUtils.refreshSession(meta, client.session);
+      });
+
+      res = await pCall;
     }
     //Output here depends on the format of the response.
     let output: string[] | any = [];
@@ -84,7 +94,7 @@ commandGetNode.action(async (node, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 
