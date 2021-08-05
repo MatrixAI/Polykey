@@ -372,35 +372,35 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
-  public tokensPut(...args) {
+  public identitiesPutToken(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
-      this.client.tokensPut,
+      this.client.identitiesPutToken,
     )(...args);
   }
 
-  public tokensGet(...args) {
+  public identitiesGetToken(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.TokenMessage>(
       this.client,
-      this.client.tokensGet,
+      this.client.identitiesGetToken,
     )(...args);
   }
 
-  public tokensDelete(...args) {
+  public identitiesDeleteToken(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
-      this.client.tokensDelete,
+      this.client.identitiesDeleteToken,
     )(...args);
   }
 
-  public providersGet(...args) {
+  public identitiesGetProviders(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
       this.client,
-      this.client.providersGet,
+      this.client.identitiesGetProviders,
     )(...args);
   }
 

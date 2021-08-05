@@ -44,7 +44,7 @@ commandGetNode.action(async (options) => {
     tokenMessage.setProvider(providerMessage);
     tokenMessage.setToken(options.tokenData);
 
-    await grpcClient.tokensPut(tokenMessage);
+    await grpcClient.identitiesPutToken(tokenMessage);
 
     process.stdout.write(
       outputFormatter({

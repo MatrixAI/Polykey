@@ -41,10 +41,10 @@ interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
     vaultsShare: IClientService_IVaultsShare;
     vaultsPermissions: IClientService_IVaultsPermissions;
     identitiesAuthenticate: IClientService_IIdentitiesAuthenticate;
-    tokensPut: IClientService_ITokensPut;
-    tokensGet: IClientService_ITokensGet;
-    tokensDelete: IClientService_ITokensDelete;
-    providersGet: IClientService_IProvidersGet;
+    identitiesPutToken: IClientService_IIdentitiesPutToken;
+    identitiesGetToken: IClientService_IIdentitiesGetToken;
+    identitiesDeleteToken: IClientService_IIdentitiesDeleteToken;
+    identitiesGetProviders: IClientService_IIdentitiesGetProviders;
     identitiesGetConnectedInfos: IClientService_IIdentitiesGetConnectedInfos;
     identitiesGetInfo: IClientService_IIdentitiesGetInfo;
     identitiesAugmentKeynode: IClientService_IIdentitiesAugmentKeynode;
@@ -361,8 +361,8 @@ interface IClientService_IIdentitiesAuthenticate extends grpc.MethodDefinition<C
     responseSerialize: grpc.serialize<Client_pb.ProviderMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.ProviderMessage>;
 }
-interface IClientService_ITokensPut extends grpc.MethodDefinition<Client_pb.TokenSpecificMessage, Client_pb.EmptyMessage> {
-    path: "/clientInterface.Client/TokensPut";
+interface IClientService_IIdentitiesPutToken extends grpc.MethodDefinition<Client_pb.TokenSpecificMessage, Client_pb.EmptyMessage> {
+    path: "/clientInterface.Client/IdentitiesPutToken";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.TokenSpecificMessage>;
@@ -370,8 +370,8 @@ interface IClientService_ITokensPut extends grpc.MethodDefinition<Client_pb.Toke
     responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
 }
-interface IClientService_ITokensGet extends grpc.MethodDefinition<Client_pb.ProviderMessage, Client_pb.TokenMessage> {
-    path: "/clientInterface.Client/TokensGet";
+interface IClientService_IIdentitiesGetToken extends grpc.MethodDefinition<Client_pb.ProviderMessage, Client_pb.TokenMessage> {
+    path: "/clientInterface.Client/IdentitiesGetToken";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.ProviderMessage>;
@@ -379,8 +379,8 @@ interface IClientService_ITokensGet extends grpc.MethodDefinition<Client_pb.Prov
     responseSerialize: grpc.serialize<Client_pb.TokenMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.TokenMessage>;
 }
-interface IClientService_ITokensDelete extends grpc.MethodDefinition<Client_pb.ProviderMessage, Client_pb.EmptyMessage> {
-    path: "/clientInterface.Client/TokensDelete";
+interface IClientService_IIdentitiesDeleteToken extends grpc.MethodDefinition<Client_pb.ProviderMessage, Client_pb.EmptyMessage> {
+    path: "/clientInterface.Client/IdentitiesDeleteToken";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.ProviderMessage>;
@@ -388,8 +388,8 @@ interface IClientService_ITokensDelete extends grpc.MethodDefinition<Client_pb.P
     responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
 }
-interface IClientService_IProvidersGet extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.ProviderMessage> {
-    path: "/clientInterface.Client/ProvidersGet";
+interface IClientService_IIdentitiesGetProviders extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.ProviderMessage> {
+    path: "/clientInterface.Client/IdentitiesGetProviders";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
@@ -587,10 +587,10 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     vaultsShare: grpc.handleUnaryCall<Client_pb.ShareMessage, Client_pb.EmptyMessage>;
     vaultsPermissions: grpc.handleServerStreamingCall<Client_pb.ShareMessage, Client_pb.PermissionMessage>;
     identitiesAuthenticate: grpc.handleServerStreamingCall<Client_pb.ProviderMessage, Client_pb.ProviderMessage>;
-    tokensPut: grpc.handleUnaryCall<Client_pb.TokenSpecificMessage, Client_pb.EmptyMessage>;
-    tokensGet: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.TokenMessage>;
-    tokensDelete: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.EmptyMessage>;
-    providersGet: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.ProviderMessage>;
+    identitiesPutToken: grpc.handleUnaryCall<Client_pb.TokenSpecificMessage, Client_pb.EmptyMessage>;
+    identitiesGetToken: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.TokenMessage>;
+    identitiesDeleteToken: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.EmptyMessage>;
+    identitiesGetProviders: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.ProviderMessage>;
     identitiesGetConnectedInfos: grpc.handleServerStreamingCall<Client_pb.ProviderSearchMessage, Client_pb.IdentityInfoMessage>;
     identitiesGetInfo: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.ProviderMessage>;
     identitiesAugmentKeynode: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.EmptyMessage>;
@@ -703,18 +703,18 @@ export interface IClientClient {
     vaultsPermissions(request: Client_pb.ShareMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
-    tokensPut(request: Client_pb.TokenSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    tokensPut(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    tokensPut(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    tokensGet(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
-    tokensGet(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
-    tokensGet(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
-    tokensDelete(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    tokensDelete(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    tokensDelete(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    providersGet(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
-    providersGet(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
-    providersGet(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
+    identitiesPutToken(request: Client_pb.TokenSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    identitiesPutToken(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    identitiesPutToken(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    identitiesGetToken(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
+    identitiesGetToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
+    identitiesGetToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
+    identitiesDeleteToken(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    identitiesDeleteToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    identitiesDeleteToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    identitiesGetProviders(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
+    identitiesGetProviders(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
+    identitiesGetProviders(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     identitiesGetConnectedInfos(request: Client_pb.ProviderSearchMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.IdentityInfoMessage>;
     identitiesGetConnectedInfos(request: Client_pb.ProviderSearchMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.IdentityInfoMessage>;
     identitiesGetInfo(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
@@ -860,18 +860,18 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public vaultsPermissions(request: Client_pb.ShareMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
-    public tokensPut(request: Client_pb.TokenSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public tokensPut(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public tokensPut(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public tokensGet(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
-    public tokensGet(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
-    public tokensGet(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
-    public tokensDelete(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public tokensDelete(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public tokensDelete(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public providersGet(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
-    public providersGet(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
-    public providersGet(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
+    public identitiesPutToken(request: Client_pb.TokenSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public identitiesPutToken(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public identitiesPutToken(request: Client_pb.TokenSpecificMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public identitiesGetToken(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
+    public identitiesGetToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
+    public identitiesGetToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.TokenMessage) => void): grpc.ClientUnaryCall;
+    public identitiesDeleteToken(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public identitiesDeleteToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public identitiesDeleteToken(request: Client_pb.ProviderMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public identitiesGetProviders(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
+    public identitiesGetProviders(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
+    public identitiesGetProviders(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;
     public identitiesGetConnectedInfos(request: Client_pb.ProviderSearchMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.IdentityInfoMessage>;
     public identitiesGetConnectedInfos(request: Client_pb.ProviderSearchMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.IdentityInfoMessage>;
     public identitiesGetInfo(request: Client_pb.ProviderMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.ProviderMessage) => void): grpc.ClientUnaryCall;

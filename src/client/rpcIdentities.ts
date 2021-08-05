@@ -66,7 +66,7 @@ const createIdentitiesRPC = ({
         await genWritable.throw(err);
       }
     },
-    tokensPut: async (
+    identitiesPutToken: async (
       call: grpc.ServerUnaryCall<
         clientPB.TokenSpecificMessage,
         clientPB.EmptyMessage
@@ -87,7 +87,7 @@ const createIdentitiesRPC = ({
       }
       callback(null, response);
     },
-    tokensGet: async (
+    identitiesGetToken: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.TokenMessage
@@ -107,7 +107,7 @@ const createIdentitiesRPC = ({
       }
       callback(null, response);
     },
-    tokensDelete: async (
+    identitiesDeleteToken: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.EmptyMessage
@@ -126,7 +126,7 @@ const createIdentitiesRPC = ({
       }
       callback(null, response);
     },
-    providersGet: async (
+    identitiesGetProviders: async (
       call: grpc.ServerUnaryCall<
         clientPB.EmptyMessage,
         clientPB.ProviderMessage

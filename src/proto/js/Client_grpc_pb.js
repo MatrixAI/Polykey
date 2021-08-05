@@ -683,8 +683,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_ProviderMessage,
     responseDeserialize: deserialize_clientInterface_ProviderMessage,
   },
-  tokensPut: {
-    path: '/clientInterface.Client/TokensPut',
+  identitiesPutToken: {
+    path: '/clientInterface.Client/IdentitiesPutToken',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.TokenSpecificMessage,
@@ -694,8 +694,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  tokensGet: {
-    path: '/clientInterface.Client/TokensGet',
+  identitiesGetToken: {
+    path: '/clientInterface.Client/IdentitiesGetToken',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -705,8 +705,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_TokenMessage,
     responseDeserialize: deserialize_clientInterface_TokenMessage,
   },
-  tokensDelete: {
-    path: '/clientInterface.Client/TokensDelete',
+  identitiesDeleteToken: {
+    path: '/clientInterface.Client/IdentitiesDeleteToken',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -716,8 +716,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  providersGet: {
-    path: '/clientInterface.Client/ProvidersGet',
+  identitiesGetProviders: {
+    path: '/clientInterface.Client/IdentitiesGetProviders',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.EmptyMessage,

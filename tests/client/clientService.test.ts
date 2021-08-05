@@ -1058,17 +1058,17 @@ describe('Client service', () => {
     test('token manipulation for providers', async () => {
       const putToken = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,
-        client.tokensPut,
+        client.identitiesPutToken,
       );
 
       const getTokens = grpcUtils.promisifyUnaryCall<clientPB.TokenMessage>(
         client,
-        client.tokensGet,
+        client.identitiesGetToken,
       );
 
       const delToken = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,
-        client.tokensDelete,
+        client.identitiesDeleteToken,
       );
       const providerId = 'test-provider' as ProviderId;
       const identityId = 'test-user' as IdentityId;
@@ -1099,7 +1099,7 @@ describe('Client service', () => {
       const providersGet =
         grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
           client,
-          client.providersGet,
+          client.identitiesGetProviders,
         );
 
       const emptyMessage = new clientPB.EmptyMessage();
