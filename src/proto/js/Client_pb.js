@@ -1237,32 +1237,6 @@ proto.clientInterface.EchoMessage.prototype.setChallenge = function(value) {
 
 
 
-/**
- * Oneof group definitions for this message. Each group defines the field
- * numbers belonging to that group. When of these fields' value is set, all
- * other fields in the group are cleared. During deserialization, if multiple
- * fields are encountered for a group, only the last value seen will be kept.
- * @private {!Array<!Array<number>>}
- * @const
- */
-proto.clientInterface.VaultMessage.oneofGroups_ = [[1,2]];
-
-/**
- * @enum {number}
- */
-proto.clientInterface.VaultMessage.NameoridCase = {
-  NAMEORID_NOT_SET: 0,
-  NAME: 1,
-  ID: 2
-};
-
-/**
- * @return {proto.clientInterface.VaultMessage.NameoridCase}
- */
-proto.clientInterface.VaultMessage.prototype.getNameoridCase = function() {
-  return /** @type {proto.clientInterface.VaultMessage.NameoridCase} */(jspb.Message.computeOneofCase(this, proto.clientInterface.VaultMessage.oneofGroups_[0]));
-};
-
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {

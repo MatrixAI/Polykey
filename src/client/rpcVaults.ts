@@ -1,4 +1,4 @@
-import type { VaultAction } from '../vaults/types';
+import type { VaultAction, VaultId } from '../vaults/types';
 import type { NodeId } from '../nodes/types';
 
 import * as grpc from '@grpc/grpc-js';
@@ -90,7 +90,7 @@ const createVaultRPC = ({
       try {
         await utils.verifyToken(call.metadata, sessionManager);
         const name = call.request.getName();
-        const id = await await utils.parseVaultInput(name, vaultManager);
+        const id = await utils.parseVaultInput(name, vaultManager);
         const result = await vaultManager.deleteVault(id);
         response.setSuccess(result);
         callback(null, response);
@@ -121,22 +121,21 @@ const createVaultRPC = ({
         // vault name
         const name = vaultMessage.getName();
         // node id
-        const id = nodeMessage.getName();
-        // const vaultsList = await gitManager.scanNodeVaults(id);
-        // let vault, vaultId;
-        // for (const vaults in vaultsList) {
-        //   vault = vaultsList[vaults].split('\t');
-        //   if (vault[1] === name) {
-        //     vaultId = vault[0];
-        //   }
-        // }
-        // try {
-        //   await vaultManager.pullVault(vaultId, id);
-        // } catch (err) {
-        //   if (err instanceof errors.ErrorVaultUnlinked) {
-        //     await vaultManager.cloneVault(vaultId, id);
-        //   }
-        // }
+        const id = nodeMessage.getName() as NodeId;
+        const vaultsList = await vaultManager.scanVaults(id);
+        let vaultId;
+        for (const vaults of vaultsList) {
+          if (vaults.name === name) {
+            vaultId = vaults.id;
+          }
+        }
+        try {
+          await vaultManager.pullVault(vaultId, id);
+        } catch (err) {
+          if (err instanceof errors.ErrorVaultUnlinked) {
+            await vaultManager.cloneVault(vaultId, id);
+          }
+        }
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -146,21 +145,22 @@ const createVaultRPC = ({
     vaultsScan: async (
       call: grpc.ServerWritableStream<
         clientPB.NodeMessage,
-        clientPB.VaultMessage
+        clientPB.VaultListMessage
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      const nodeId = call.request.getName();
+      const nodeId = call.request.getName() as NodeId;
 
       try {
         await utils.verifyToken(call.metadata, sessionManager);
-        // const vaults: Array<string> = await gitManager.scanNodeVaults(nodeId);
-        // let vaultMessage: clientPB.VaultMessage;
-        // for (const vault of vaults) {
-        //   vaultMessage = new clientPB.VaultMessage();
-        //   vaultMessage.setName(vault);
-        //   await genWritable.next(vaultMessage);
-        // }
+        const vaults = await vaultManager.scanVaults(nodeId);
+        let vaultListMessage: clientPB.VaultListMessage;
+        for (const vault of vaults) {
+          vaultListMessage = new clientPB.VaultListMessage();
+          vaultListMessage.setName(vault.name);
+          vaultListMessage.setId(vault.id);
+          await genWritable.next(vaultListMessage);
+        }
         await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);
@@ -416,7 +416,7 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        const node = nodeMessage.getName();
+        const node = nodeMessage.getName() as NodeId;
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -446,7 +446,7 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        const node = nodeMessage.getName();
+        const node = nodeMessage.getName() as NodeId;
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           callback({ code: grpc.status.NOT_FOUND }, null);
@@ -477,7 +477,7 @@ const createVaultRPC = ({
           await genWritable.throw({ code: grpc.status.NOT_FOUND });
           return;
         }
-        const node = nodeMessage.getName();
+        const node = nodeMessage.getName() as NodeId;
         const vaultMessage = call.request.getVault();
         if (!vaultMessage) {
           await genWritable.throw({ code: grpc.status.NOT_FOUND });

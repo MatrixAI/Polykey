@@ -2,7 +2,6 @@ import type {
   Refs,
   RefsAdResponse,
   Ack,
-  Packfile,
   BufferEncoding,
   Identity,
   Pack,

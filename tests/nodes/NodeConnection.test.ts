@@ -134,16 +134,6 @@ describe('NodeConnection', () => {
       acl: serverACL,
       logger: logger,
     });
-    serverVaultManager = new VaultManager({
-      vaultsPath: serverVaultsPath,
-      keyManager: serverKeyManager,
-      nodeManager: serverNodeManager,
-      db: serverDb,
-      acl: serverACL,
-      gestaltGraph: serverGestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
     // Only needed to pass into nodeManager constructor - won't be forwarding calls
     // so no need to start
     const serverFwdProxy = new ForwardProxy({
@@ -156,6 +146,16 @@ describe('NodeConnection', () => {
       keyManager: serverKeyManager,
       fwdProxy: serverFwdProxy,
       revProxy: revProxy,
+      fs: fs,
+      logger: logger,
+    });
+    serverVaultManager = new VaultManager({
+      vaultsPath: serverVaultsPath,
+      keyManager: serverKeyManager,
+      nodeManager: serverNodeManager,
+      db: serverDb,
+      acl: serverACL,
+      gestaltGraph: serverGestaltGraph,
       fs: fs,
       logger: logger,
     });
@@ -471,6 +471,65 @@ describe('NodeConnection', () => {
         signature,
       ),
     ).rejects.toThrow(grpcErrors.ErrorGRPCConnection);
+
+    await conn.stop();
+    await revProxy.closeConnection(
+      fwdProxy.getEgressHost(),
+      fwdProxy.getEgressPort(),
+    );
+  });
+
+  test('scans the servers vaults', async () => {
+    const vault1 = await serverVaultManager.createVault('Vault1');
+    const vault2 = await serverVaultManager.createVault('Vault2');
+    const vault3 = await serverVaultManager.createVault('Vault3');
+    const vault4 = await serverVaultManager.createVault('Vault4');
+    const vault5 = await serverVaultManager.createVault('Vault5');
+
+    await serverGestaltGraph.setNode({
+      id: sourceNodeId,
+      chain: {},
+    });
+
+    const conn = new NodeConnection({
+      sourceNodeId: sourceNodeId,
+      targetNodeId: targetNodeId,
+      targetHost: targetHost,
+      targetPort: targetPort,
+      forwardProxy: fwdProxy,
+      keyManager: clientKeyManager,
+      logger: logger,
+    });
+    await conn.start({});
+    await revProxy.openConnection(sourceHost, sourcePort);
+
+    const vaultList: string[] = [];
+
+    let vaults = await conn.scanVaults();
+
+    expect(vaults.sort()).toStrictEqual(vaultList.sort());
+
+    await serverVaultManager.setVaultPermissions(sourceNodeId, vault1.vaultId);
+    await serverVaultManager.setVaultPermissions(sourceNodeId, vault2.vaultId);
+    await serverVaultManager.setVaultPermissions(sourceNodeId, vault3.vaultId);
+
+    vaults = await conn.scanVaults();
+
+    vaultList.push(`${vault1.vaultName}\t${vault1.vaultId}`);
+    vaultList.push(`${vault2.vaultName}\t${vault2.vaultId}`);
+    vaultList.push(`${vault3.vaultName}\t${vault3.vaultId}`);
+
+    expect(vaults.sort()).toStrictEqual(vaultList.sort());
+
+    await serverVaultManager.setVaultPermissions(sourceNodeId, vault4.vaultId);
+    await serverVaultManager.setVaultPermissions(sourceNodeId, vault5.vaultId);
+
+    vaults = await conn.scanVaults();
+
+    vaultList.push(`${vault4.vaultName}\t${vault4.vaultId}`);
+    vaultList.push(`${vault5.vaultName}\t${vault5.vaultId}`);
+
+    expect(vaults.sort()).toStrictEqual(vaultList.sort());
 
     await conn.stop();
     await revProxy.closeConnection(

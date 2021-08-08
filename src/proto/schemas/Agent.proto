@@ -8,7 +8,7 @@ service Agent {
 
   rpc GetGitInfo (InfoRequest) returns (stream PackChunk) {};
   rpc GetGitPack(stream PackChunk) returns (stream PackChunk) {};
-  rpc ScanVaults (NodeIdMessage) returns (stream PackChunk) {};
+  rpc ScanVaults (NodeIdMessage) returns (stream VaultListMessage) {};
 
   rpc GetNodeDetails (EmptyMessage) returns (NodeDetailsMessage) {}
   rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
@@ -31,28 +31,22 @@ message EchoMessage {
 // Info Request
 
 message InfoRequest {
-  string vault_name = 1;
-}
-
-message InfoResponse {
-  string vault_name = 1;
-  bytes body = 2;
+  string id = 1;
 }
 
 // Pack Request
 
 message PackRequest {
-  string vault_name = 1;
-  bytes body = 2;
-}
-
-message PackResponse {
-  string vault_name = 1;
+  string id = 1;
   bytes body = 2;
 }
 
 message PackChunk {
   bytes chunk = 1;
+}
+
+message VaultListMessage {
+  bytes vault = 1;
 }
 
 message ConnectionMessage {

@@ -10,6 +10,7 @@ import Logger from '@matrixai/logger';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as keysUtils from '../keys/utils';
+import * as vaultsUtils from '../vaults/utils';
 import { NodeAddressMessage } from '../proto/js/Agent_pb';
 import { agentPB, GRPCClientAgent } from '../agent';
 import { ForwardProxy, utils as networkUtils } from '../network';
@@ -296,6 +297,18 @@ class NodeConnection {
         } as ClaimEncoded;
       });
     return chainData;
+  }
+
+  /**
+   * Retrieves all the vaults for a peers node
+   */
+  public async scanVaults(): Promise<Array<string>> {
+    // Create the handler for git to scan from
+    const gitRequest = await vaultsUtils.constructGitHandler(
+      this.client,
+      this.localNodeId,
+    );
+    return await gitRequest.scanVaults();
   }
 }
 

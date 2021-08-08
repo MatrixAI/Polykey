@@ -48,14 +48,14 @@ interface IAgentService_IGetGitPack extends grpc.MethodDefinition<Agent_pb.PackC
     responseSerialize: grpc.serialize<Agent_pb.PackChunk>;
     responseDeserialize: grpc.deserialize<Agent_pb.PackChunk>;
 }
-interface IAgentService_IScanVaults extends grpc.MethodDefinition<Agent_pb.NodeIdMessage, Agent_pb.PackChunk> {
+interface IAgentService_IScanVaults extends grpc.MethodDefinition<Agent_pb.NodeIdMessage, Agent_pb.VaultListMessage> {
     path: "/agentInterface.Agent/ScanVaults";
     requestStream: false;
     responseStream: true;
     requestSerialize: grpc.serialize<Agent_pb.NodeIdMessage>;
     requestDeserialize: grpc.deserialize<Agent_pb.NodeIdMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.PackChunk>;
-    responseDeserialize: grpc.deserialize<Agent_pb.PackChunk>;
+    responseSerialize: grpc.serialize<Agent_pb.VaultListMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.VaultListMessage>;
 }
 interface IAgentService_IGetNodeDetails extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.NodeDetailsMessage> {
     path: "/agentInterface.Agent/GetNodeDetails";
@@ -127,7 +127,7 @@ export interface IAgentServer extends grpc.UntypedServiceImplementation {
     echo: grpc.handleUnaryCall<Agent_pb.EchoMessage, Agent_pb.EchoMessage>;
     getGitInfo: grpc.handleServerStreamingCall<Agent_pb.InfoRequest, Agent_pb.PackChunk>;
     getGitPack: grpc.handleBidiStreamingCall<Agent_pb.PackChunk, Agent_pb.PackChunk>;
-    scanVaults: grpc.handleServerStreamingCall<Agent_pb.NodeIdMessage, Agent_pb.PackChunk>;
+    scanVaults: grpc.handleServerStreamingCall<Agent_pb.NodeIdMessage, Agent_pb.VaultListMessage>;
     getNodeDetails: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.NodeDetailsMessage>;
     getClosestLocalNodes: grpc.handleUnaryCall<Agent_pb.NodeIdMessage, Agent_pb.NodeTableMessage>;
     getClaims: grpc.handleUnaryCall<Agent_pb.ClaimTypeMessage, Agent_pb.ClaimsMessage>;
@@ -146,8 +146,8 @@ export interface IAgentClient {
     getGitPack(): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     getGitPack(options: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     getGitPack(metadata: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
-    scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
-    scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
+    scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
+    scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
     getNodeDetails(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
@@ -180,8 +180,8 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public getGitInfo(request: Agent_pb.InfoRequest, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
     public getGitPack(options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     public getGitPack(metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
-    public scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
-    public scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.PackChunk>;
+    public scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
+    public scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
     public getNodeDetails(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     public getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     public getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;

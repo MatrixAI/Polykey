@@ -15,6 +15,7 @@ import { GestaltGraph } from '@/gestalts';
 import { agentPB, GRPCClientAgent } from '@/agent';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { DB } from '@/db';
+import { NotificationsManager } from '@/notifications';
 
 import * as testUtils from './utils';
 
@@ -43,6 +44,7 @@ describe('GRPC agent', () => {
   let acl: ACL;
   let gestaltGraph: GestaltGraph;
   let db: DB;
+  let notificationsManager: NotificationsManager;
 
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
@@ -103,6 +105,15 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
+    notificationsManager = new NotificationsManager({
+      acl: acl,
+      db: db,
+      nodeManager: nodeManager,
+      keyManager: keyManager,
+      messageCap: 5,
+      logger: logger,
+    });
+
     vaultManager = new VaultManager({
       vaultsPath: vaultsPath,
       keyManager: keyManager,
@@ -119,13 +130,14 @@ describe('GRPC agent', () => {
     await acl.start();
     await gestaltGraph.start();
     await nodeManager.start({ nodeId: 'NODEID' as NodeId });
+    await notificationsManager.start();
     await vaultManager.start({});
 
     [server, port] = await testUtils.openTestAgentServer({
-      keyManager,
       vaultManager,
       nodeManager,
       sigchain,
+      notificationsManager,
     });
 
     client = await testUtils.openTestAgentClient(port);
@@ -134,8 +146,9 @@ describe('GRPC agent', () => {
     await testUtils.closeTestAgentClient(client);
     await testUtils.closeTestAgentServer(server);
 
-    await nodeManager.stop();
     await vaultManager.stop();
+    await notificationsManager.stop();
+    await nodeManager.stop();
     await gestaltGraph.stop();
     await acl.stop();
     await db.stop();
@@ -176,7 +189,7 @@ describe('GRPC agent', () => {
     const response = client.scanVaults(NodeIdMessage);
     const data: string[] = [];
     for await (const resp of response) {
-      const chunk = resp.getChunk_asU8();
+      const chunk = resp.getVault_asU8();
       data.push(Buffer.from(chunk).toString());
     }
     expect(data).toStrictEqual([]);
@@ -184,10 +197,10 @@ describe('GRPC agent', () => {
     const response2 = client.scanVaults(NodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {
-      const chunk = resp.getChunk_asU8();
+      const chunk = resp.getVault_asU8();
       data2.push(Buffer.from(chunk).toString());
     }
-    expect(data2).toStrictEqual([`${vault.vaultId}\tTestAgentVault`]);
+    expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
     await vaultManager.deleteVault(vault.vaultId);
   });
 });

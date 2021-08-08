@@ -94,7 +94,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsScan(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultMessage>(
+    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
       this.client,
       this.client.vaultsScan,
     )(...args);

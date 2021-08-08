@@ -1,7 +1,8 @@
 import type { NodeId, NodeAddress, NodeInfo } from '@/nodes/types';
-import { ProviderId, IdentityId, IdentityInfo } from '@/identities/types';
+import type { ProviderId, IdentityId, IdentityInfo } from '@/identities/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
+import type { VaultId } from '@/vaults/types';
 
 import os from 'os';
 import path from 'path';
@@ -18,6 +19,7 @@ import { DB } from '@/db';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
 import { AgentService, createAgentService } from '@/agent';
+import { NotificationsManager } from '@/notifications';
 import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
 
 import { errors as vaultErrors } from '@/vaults';
@@ -174,9 +176,9 @@ describe('VaultManager is', () => {
     const theVault = await vaultManager.getVault(vault.vaultId);
 
     expect(vault).toBe(theVault);
-    await expect(vaultManager.getVault('DoesNotExist')).rejects.toThrow(
-      vaultErrors.ErrorVaultUndefined,
-    );
+    await expect(
+      vaultManager.getVault('DoesNotExist' as VaultId),
+    ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
 
     await vaultManager.stop();
   });
@@ -187,7 +189,7 @@ describe('VaultManager is', () => {
     expect(result).toBe(true);
     await expect(vaultManager.getVault(vault.vaultId)).resolves.toBe(vault);
     await expect(
-      vaultManager.renameVault('DoesNotExist', 'DNE'),
+      vaultManager.renameVault('DoesNotExist' as VaultId, 'DNE'),
     ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
     await vaultManager.stop();
   });
@@ -235,7 +237,7 @@ describe('VaultManager is', () => {
     const vault2 = await vaultManager.createVault('MyOtherTestVault');
     const noNode = await vaultManager.getDefaultNode(vault1.vaultId);
     expect(noNode).toBeUndefined();
-    await vaultManager.setDefaultNode(vault1.vaultId, 'abc');
+    await vaultManager.setDefaultNode(vault1.vaultId, 'abc' as NodeId);
     const node = await vaultManager.getDefaultNode(vault1.vaultId);
     const noNode2 = await vaultManager.getDefaultNode(vault2.vaultId);
     expect(node).toBe('abc');
@@ -286,7 +288,7 @@ describe('VaultManager is', () => {
 
     await vaultManager.start({});
     const vault = await vaultManager.createVault('Test');
-    await vaultManager.setVaultPermissions('123', vault.vaultId);
+    await vaultManager.setVaultPermissions('123' as NodeId, vault.vaultId);
     let record = await vaultManager.getVaultPermissions(vault.vaultId);
     expect(record).not.toBeUndefined();
     expect(record['123']['pull']).toBeNull();
@@ -294,14 +296,14 @@ describe('VaultManager is', () => {
     expect(record['678']).toBeUndefined();
     expect(record['890']).toBeUndefined();
 
-    await vaultManager.unsetVaultPermissions('345', vault.vaultId);
+    await vaultManager.unsetVaultPermissions('345' as NodeId, vault.vaultId);
     record = await vaultManager.getVaultPermissions(vault.vaultId);
     expect(record).not.toBeUndefined();
     expect(record['123']['pull']).toBeUndefined();
     expect(record['345']['pull']).toBeUndefined();
 
     await gestaltGraph.unlinkNodeAndNode(node1.id, node2.id);
-    await vaultManager.setVaultPermissions('345', vault.vaultId);
+    await vaultManager.setVaultPermissions('345' as NodeId, vault.vaultId);
     record = await vaultManager.getVaultPermissions(vault.vaultId);
     expect(record).not.toBeUndefined();
     expect(record['123']['pull']).toBeUndefined();
@@ -357,7 +359,7 @@ describe('VaultManager is', () => {
       await vaultManager.createVault(vaultName);
     }
     const vaults = await vaultManager.listVaults();
-    let vaultId: string = '';
+    let vaultId: VaultId = '' as VaultId;
     for (const v of vaults) {
       if (v.name === 'Vault1') {
         vaultId = v.id;
@@ -465,6 +467,8 @@ describe('VaultManager is', () => {
     let targetNodeManager: NodeManager, altNodeManager: NodeManager;
     let targetVaultManager: VaultManager, altVaultManager: VaultManager;
     let targetSigchain: Sigchain, altSigchain: Sigchain;
+    let targetNotificationsManager: NotificationsManager,
+      altNotificationsManager: NotificationsManager;
 
     let targetNodeId: NodeId, altNodeId: NodeId;
     let targetKeyPairPem: KeyPairPem, altKeyPairPem: KeyPairPem;
@@ -540,6 +544,15 @@ describe('VaultManager is', () => {
         logger: logger,
       });
       await targetACL.start();
+      targetNotificationsManager = new NotificationsManager({
+        acl: targetACL,
+        db: targetDb,
+        nodeManager: targetNodeManager,
+        keyManager: targetKeyManager,
+        messageCap: 5,
+        logger: logger,
+      });
+      await targetNotificationsManager.start();
       targetGestaltGraph = new GestaltGraph({
         db: targetDb,
         acl: targetACL,
@@ -561,6 +574,7 @@ describe('VaultManager is', () => {
         vaultManager: targetVaultManager,
         nodeManager: targetNodeManager,
         sigchain: targetSigchain,
+        notificationsManager: targetNotificationsManager,
       });
       targetServer = new GRPCServer({
         services: [[AgentService, targetAgentService]],
@@ -632,6 +646,15 @@ describe('VaultManager is', () => {
         logger: logger,
       });
       await altACL.start();
+      altNotificationsManager = new NotificationsManager({
+        acl: altACL,
+        db: altDb,
+        nodeManager: altNodeManager,
+        keyManager: altKeyManager,
+        messageCap: 5,
+        logger: logger,
+      });
+      await altNotificationsManager.start();
       altGestaltGraph = new GestaltGraph({
         db: altDb,
         acl: altACL,
@@ -653,6 +676,7 @@ describe('VaultManager is', () => {
         vaultManager: altVaultManager,
         nodeManager: altNodeManager,
         sigchain: altSigchain,
+        notificationsManager: altNotificationsManager,
       });
       altServer = new GRPCServer({
         services: [[AgentService, altAgentService]],
@@ -696,6 +720,7 @@ describe('VaultManager is', () => {
       await targetServer.stop();
       await targetVaultManager.stop();
       await targetGestaltGraph.stop();
+      await targetNotificationsManager.stop();
       await targetACL.stop();
       await targetDb.stop();
       await targetNodeManager.stop();
@@ -707,6 +732,7 @@ describe('VaultManager is', () => {
       await altServer.stop();
       await altVaultManager.stop();
       await altGestaltGraph.stop();
+      await altNotificationsManager.stop();
       await altACL.stop();
       await altDb.stop();
       await altNodeManager.stop();
@@ -721,260 +747,284 @@ describe('VaultManager is', () => {
       await altFwdProxy.stop();
     });
 
-    test('clone and pull vaults', async () => {
-      await vaultManager.start({});
-      const vault = await targetVaultManager.createVault('MyFirstVault');
-      await targetVaultManager.setVaultPermissions(
-        nodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      const names: string[] = [];
-      for (let i = 0; i < 10; i++) {
-        const name = 'secret ' + i.toString();
-        names.push(name);
-        const content = 'Success?';
-        await vault.addSecret(name, content);
-      }
-      await nodeManager.setNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await nodeManager.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await revProxy.openConnection(sourceHost, sourcePort);
-      await vaultManager.cloneVault(vault.vaultId, targetNodeId);
-      const vaultsList = await vaultManager.listVaults();
-      expect(vaultsList[0].name).toStrictEqual('MyFirstVault');
-      await expect(vaultManager.getDefaultNode(vaultsList[0].id)).resolves.toBe(
-        targetNodeId,
-      );
-      const clonedVault = await vaultManager.getVault(vaultsList[0].id);
-      expect(await clonedVault.getSecret('secret 9')).toStrictEqual('Success?');
-      expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
-        names.sort(),
-      );
-      for (let i = 10; i < 20; i++) {
-        const name = 'secret ' + i.toString();
-        names.push(name);
-        const content = 'Second Success?';
-        await vault.addSecret(name, content);
-      }
-      await vaultManager.pullVault(clonedVault.vaultId, targetNodeId);
-      expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
-        names.sort(),
-      );
-      expect(await clonedVault.getSecret('secret 19')).toStrictEqual(
-        'Second Success?',
-      );
-    });
-    test('reject clone and pull ops when permissions are not set', async () => {
-      await vaultManager.start({});
-      const vault = await targetVaultManager.createVault('MyFirstVault');
-      await vault.addSecret('MyFirstSecret', 'Success?');
-      await nodeManager.setNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await nodeManager.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await revProxy.openConnection(sourceHost, sourcePort);
-      await expect(
-        vaultManager.cloneVault(vault.vaultId, targetNodeId),
-      ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
-      const vaultsList = await vaultManager.listVaults();
-      expect(vaultsList).toStrictEqual([]);
-      await targetVaultManager.setVaultPermissions(
-        nodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      await vaultManager.cloneVault(vault.vaultId, targetNodeId);
-      const vaultList = await vaultManager.listVaults();
-      await targetVaultManager.unsetVaultPermissions(
-        nodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      vault.addSecret('MySecondSecret', 'SecondSuccess?');
-      await expect(
-        vaultManager.pullVault(vaultList[0].id, targetNodeId),
-      ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
-      const list = await vaultManager.listVaults();
-      const clonedVault = await vaultManager.getVault(list[0].id);
-      expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
-        ['MyFirstSecret'].sort(),
-      );
-      await vaultManager.stop();
-    });
-    test('handle vault conflicts', async () => {
-      await vaultManager.start({});
-      const vault = await targetVaultManager.createVault('MyFirstVault');
-      await targetVaultManager.setVaultPermissions(
-        nodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      const names: string[] = [];
-      for (let i = 0; i < 10; i++) {
-        const name = 'secret ' + i.toString();
-        names.push(name);
-        const content = 'Success?';
-        await vault.addSecret(name, content);
-      }
-      await vault.mkdir('dir', { recursive: true });
-      await nodeManager.setNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await nodeManager.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await revProxy.openConnection(sourceHost, sourcePort);
-      await vaultManager.cloneVault(vault.vaultId, targetNodeId);
-      const vaultList = await vaultManager.listVaults();
-      const clonedVault = await vaultManager.getVault(vaultList[0].id);
-      await clonedVault.renameSecret('secret 9', 'secret 10');
-      await vault.renameSecret('secret 9', 'causing merge conflict');
-      await expect(vaultManager.pullVault(clonedVault.vaultId)).rejects.toThrow(
-        vaultErrors.ErrorVaultMergeConflict,
-      );
-    });
-    test('clone and pull from a default node', async () => {
-      await vaultManager.start({});
-      const vault = await targetVaultManager.createVault('MyFirstVault');
-      await targetVaultManager.setVaultPermissions(
-        altNodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      await targetVaultManager.setVaultPermissions(
-        nodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      const names: string[] = [];
-      for (let i = 0; i < 10; i++) {
-        const name = 'secret ' + i.toString();
-        names.push(name);
-        const content = 'Success?';
-        await vault.addSecret(name, content);
-      }
-      await altNodeManager.setNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await altNodeManager.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await revProxy.openConnection(altHost, altPort);
-      await altVaultManager.cloneVault(vault.vaultId, targetNodeId);
-      const altVaultsList = await altVaultManager.listVaults();
-      expect(altVaultsList[0].name).toStrictEqual('MyFirstVault');
-      await nodeManager.setNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await nodeManager.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await revProxy.openConnection(sourceHost, sourcePort);
-      await vaultManager.cloneVault(vault.vaultId, targetNodeId);
-      await altVaultManager.setVaultPermissions(
-        nodeManager.getNodeId(),
-        altVaultsList[0].id,
-      );
-      const vaultsList = await vaultManager.listVaults();
-      expect(vaultsList[0].name).toStrictEqual('MyFirstVault');
-      const clonedVault = await vaultManager.getVault(vaultsList[0].id);
-      const altClonedVault = await altVaultManager.getVault(
-        altVaultsList[0].id,
-      );
-      await altClonedVault.updateSecret('secret 9', 'this is new');
-      await nodeManager.setNode(altNodeId, {
-        ip: altHostIn,
-        port: altPortIn,
-      } as NodeAddress);
-      await nodeManager.createConnectionToNode(altNodeId, {
-        ip: altHostIn,
-        port: altPortIn,
-      } as NodeAddress);
-      await altRevProxy.openConnection(sourceHost, sourcePort);
-      await vaultManager.pullVault(clonedVault.vaultId, altNodeId);
-      expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
-        'this is new',
-      );
-      await altClonedVault.addSecret('secret 10', 'default pull?');
-      await vaultManager.pullVault(clonedVault.vaultId);
-      expect(await clonedVault.getSecret('secret 10')).toStrictEqual(
-        'default pull?',
-      );
-    });
-    test('clone and pull within a system of 3 nodes', async () => {
-      await vaultManager.start({});
-      const vault = await targetVaultManager.createVault('MyFirstVault');
-      await targetVaultManager.setVaultPermissions(
-        altNodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      await targetVaultManager.setVaultPermissions(
-        nodeManager.getNodeId(),
-        vault.vaultId,
-      );
-      const names: string[] = [];
-      for (let i = 0; i < 10; i++) {
-        const name = 'secret ' + i.toString();
-        names.push(name);
-        const content = 'Success?';
-        await vault.addSecret(name, content);
-      }
-      await altNodeManager.setNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await altNodeManager.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await revProxy.openConnection(altHost, altPort);
-      await altVaultManager.cloneVault(vault.vaultId, targetNodeId);
-      const altVaultsList = await altVaultManager.listVaults();
-      expect(altVaultsList[0].name).toStrictEqual('MyFirstVault');
-      await nodeManager.setNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await nodeManager.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
-      await revProxy.openConnection(sourceHost, sourcePort);
-      await vaultManager.cloneVault(vault.vaultId, targetNodeId);
-      await altVaultManager.setVaultPermissions(
-        nodeManager.getNodeId(),
-        altVaultsList[0].id,
-      );
-      const vaultsList = await vaultManager.listVaults();
-      expect(vaultsList[0].name).toStrictEqual('MyFirstVault');
-      const clonedVault = await vaultManager.getVault(vaultsList[0].id);
-      const altClonedVault = await altVaultManager.getVault(
-        altVaultsList[0].id,
-      );
-      await altClonedVault.updateSecret('secret 9', 'this is new');
-      await nodeManager.setNode(altNodeId, {
-        ip: altHostIn,
-        port: altPortIn,
-      } as NodeAddress);
-      await nodeManager.createConnectionToNode(altNodeId, {
-        ip: altHostIn,
-        port: altPortIn,
-      } as NodeAddress);
-      await altRevProxy.openConnection(sourceHost, sourcePort);
-      await vaultManager.pullVault(clonedVault.vaultId, altNodeId);
-      expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
-        'this is new',
-      );
-    });
+    test(
+      'clone and pull vaults',
+      async () => {
+        await vaultManager.start({});
+        await vaultManager.createVault('MyFirstVault');
+        await vaultManager.createVault('MyFirstVault copy');
+        const vault = await targetVaultManager.createVault('MyFirstVault');
+        await targetVaultManager.setVaultPermissions(
+          nodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        const names: string[] = [];
+        for (let i = 0; i < 10; i++) {
+          const name = 'secret ' + i.toString();
+          names.push(name);
+          const content = 'Success?';
+          await vault.addSecret(name, content);
+        }
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await nodeManager.createConnectionToNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await revProxy.openConnection(sourceHost, sourcePort);
+        await vaultManager.cloneVault(vault.vaultId, targetNodeId);
+        const vaultsList = await vaultManager.listVaults();
+        expect(vaultsList[2].name).toStrictEqual('MyFirstVault copy copy');
+        await expect(
+          vaultManager.getDefaultNode(vaultsList[2].id),
+        ).resolves.toBe(targetNodeId);
+        const clonedVault = await vaultManager.getVault(vaultsList[2].id);
+        expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
+          'Success?',
+        );
+        expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
+          names.sort(),
+        );
+        for (let i = 10; i < 20; i++) {
+          const name = 'secret ' + i.toString();
+          names.push(name);
+          const content = 'Second Success?';
+          await vault.addSecret(name, content);
+        }
+        await vaultManager.pullVault(clonedVault.vaultId, targetNodeId);
+        expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
+          names.sort(),
+        );
+        expect(await clonedVault.getSecret('secret 19')).toStrictEqual(
+          'Second Success?',
+        );
+      },
+      global.defaultTimeout * 2,
+    );
+    test(
+      'reject clone and pull ops when permissions are not set',
+      async () => {
+        await vaultManager.start({});
+        const vault = await targetVaultManager.createVault('MyFirstVault');
+        await vault.addSecret('MyFirstSecret', 'Success?');
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await nodeManager.createConnectionToNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await revProxy.openConnection(sourceHost, sourcePort);
+        await expect(
+          vaultManager.cloneVault(vault.vaultId, targetNodeId),
+        ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
+        const vaultsList = await vaultManager.listVaults();
+        expect(vaultsList).toStrictEqual([]);
+        await targetVaultManager.setVaultPermissions(
+          nodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        await vaultManager.cloneVault(vault.vaultId, targetNodeId);
+        const vaultList = await vaultManager.listVaults();
+        await targetVaultManager.unsetVaultPermissions(
+          nodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        vault.addSecret('MySecondSecret', 'SecondSuccess?');
+        await expect(
+          vaultManager.pullVault(vaultList[0].id, targetNodeId),
+        ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
+        const list = await vaultManager.listVaults();
+        const clonedVault = await vaultManager.getVault(list[0].id);
+        expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
+          ['MyFirstSecret'].sort(),
+        );
+        await vaultManager.stop();
+      },
+      global.defaultTimeout * 2,
+    );
+    test(
+      'handle vault conflicts',
+      async () => {
+        await vaultManager.start({});
+        const vault = await targetVaultManager.createVault('MyFirstVault');
+        await targetVaultManager.setVaultPermissions(
+          nodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        const names: string[] = [];
+        for (let i = 0; i < 10; i++) {
+          const name = 'secret ' + i.toString();
+          names.push(name);
+          const content = 'Success?';
+          await vault.addSecret(name, content);
+        }
+        await vault.mkdir('dir', { recursive: true });
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await nodeManager.createConnectionToNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await revProxy.openConnection(sourceHost, sourcePort);
+        await vaultManager.cloneVault(vault.vaultId, targetNodeId);
+        const vaultList = await vaultManager.listVaults();
+        const clonedVault = await vaultManager.getVault(vaultList[0].id);
+        await clonedVault.renameSecret('secret 9', 'secret 10');
+        await vault.renameSecret('secret 9', 'causing merge conflict');
+        await expect(
+          vaultManager.pullVault(clonedVault.vaultId),
+        ).rejects.toThrow(vaultErrors.ErrorVaultMergeConflict);
+      },
+      global.defaultTimeout * 2,
+    );
+    test(
+      'clone and pull from a default node',
+      async () => {
+        await vaultManager.start({});
+        const vault = await targetVaultManager.createVault('MyFirstVault');
+        await targetVaultManager.setVaultPermissions(
+          altNodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        await targetVaultManager.setVaultPermissions(
+          nodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        const names: string[] = [];
+        for (let i = 0; i < 10; i++) {
+          const name = 'secret ' + i.toString();
+          names.push(name);
+          const content = 'Success?';
+          await vault.addSecret(name, content);
+        }
+        await altNodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await altNodeManager.createConnectionToNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await revProxy.openConnection(altHost, altPort);
+        await altVaultManager.cloneVault(vault.vaultId, targetNodeId);
+        const altVaultsList = await altVaultManager.listVaults();
+        expect(altVaultsList[0].name).toStrictEqual('MyFirstVault');
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await nodeManager.createConnectionToNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await revProxy.openConnection(sourceHost, sourcePort);
+        await vaultManager.cloneVault(vault.vaultId, targetNodeId);
+        await altVaultManager.setVaultPermissions(
+          nodeManager.getNodeId(),
+          altVaultsList[0].id,
+        );
+        const vaultsList = await vaultManager.listVaults();
+        expect(vaultsList[0].name).toStrictEqual('MyFirstVault');
+        const clonedVault = await vaultManager.getVault(vaultsList[0].id);
+        const altClonedVault = await altVaultManager.getVault(
+          altVaultsList[0].id,
+        );
+        await altClonedVault.updateSecret('secret 9', 'this is new');
+        await nodeManager.setNode(altNodeId, {
+          ip: altHostIn,
+          port: altPortIn,
+        } as NodeAddress);
+        await nodeManager.createConnectionToNode(altNodeId, {
+          ip: altHostIn,
+          port: altPortIn,
+        } as NodeAddress);
+        await altRevProxy.openConnection(sourceHost, sourcePort);
+        await vaultManager.pullVault(clonedVault.vaultId, altNodeId);
+        expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
+          'this is new',
+        );
+        await altClonedVault.addSecret('secret 10', 'default pull?');
+        await vaultManager.pullVault(clonedVault.vaultId);
+        expect(await clonedVault.getSecret('secret 10')).toStrictEqual(
+          'default pull?',
+        );
+      },
+      global.defaultTimeout * 2,
+    );
+    test(
+      'clone and pull within a system of 3 nodes',
+      async () => {
+        await vaultManager.start({});
+        const vault = await targetVaultManager.createVault('MyFirstVault');
+        await targetVaultManager.setVaultPermissions(
+          altNodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        await targetVaultManager.setVaultPermissions(
+          nodeManager.getNodeId(),
+          vault.vaultId,
+        );
+        const names: string[] = [];
+        for (let i = 0; i < 10; i++) {
+          const name = 'secret ' + i.toString();
+          names.push(name);
+          const content = 'Success?';
+          await vault.addSecret(name, content);
+        }
+        await altNodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await altNodeManager.createConnectionToNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await revProxy.openConnection(altHost, altPort);
+        await altVaultManager.cloneVault(vault.vaultId, targetNodeId);
+        const altVaultsList = await altVaultManager.listVaults();
+        expect(altVaultsList[0].name).toStrictEqual('MyFirstVault');
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await nodeManager.createConnectionToNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await revProxy.openConnection(sourceHost, sourcePort);
+        await vaultManager.cloneVault(vault.vaultId, targetNodeId);
+        await altVaultManager.setVaultPermissions(
+          nodeManager.getNodeId(),
+          altVaultsList[0].id,
+        );
+        const vaultsList = await vaultManager.listVaults();
+        expect(vaultsList[0].name).toStrictEqual('MyFirstVault');
+        const clonedVault = await vaultManager.getVault(vaultsList[0].id);
+        const altClonedVault = await altVaultManager.getVault(
+          altVaultsList[0].id,
+        );
+        await altClonedVault.updateSecret('secret 9', 'this is new');
+        await nodeManager.setNode(altNodeId, {
+          ip: altHostIn,
+          port: altPortIn,
+        } as NodeAddress);
+        await nodeManager.createConnectionToNode(altNodeId, {
+          ip: altHostIn,
+          port: altPortIn,
+        } as NodeAddress);
+        await altRevProxy.openConnection(sourceHost, sourcePort);
+        await vaultManager.pullVault(clonedVault.vaultId, altNodeId);
+        expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
+          'this is new',
+        );
+      },
+      global.defaultTimeout * 2,
+    );
   });
 });

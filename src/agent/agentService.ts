@@ -1,5 +1,6 @@
 import type { NodeId } from '../nodes/types';
 import type { ClaimId } from '../claims/types';
+import type { VaultId } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '../utils';
@@ -46,7 +47,7 @@ function createAgentService({
       const genWritable = grpcUtils.generatorWritable(call);
 
       const request = call.request;
-      const vaultId = request.getVaultName();
+      const vaultId = request.getId() as VaultId;
 
       const response = new agentPB.PackChunk();
       const vault = await vaultManager.getVault(vaultId);
@@ -75,7 +76,7 @@ function createAgentService({
         const body = Buffer.concat(clientBodyBuffers);
 
         const meta = call.metadata;
-        const vaultId = meta.get('vault-name').pop()?.toString();
+        const vaultId = meta.get('vault-id').pop()?.toString() as VaultId;
         if (!vaultId) throw new ErrorGRPC('vault-name not in metadata.');
         const vault = await vaultManager.getVault(vaultId);
 
@@ -109,23 +110,29 @@ function createAgentService({
       });
     },
     scanVaults: async (
-      call: grpc.ServerWritableStream<agentPB.NodeIdMessage, agentPB.PackChunk>,
+      call: grpc.ServerWritableStream<
+        agentPB.NodeIdMessage,
+        agentPB.VaultListMessage
+      >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      const response = new agentPB.PackChunk();
-      const id = call.request.getNodeid();
+      const response = new agentPB.VaultListMessage();
+      const id = call.request.getNodeid() as NodeId;
+      try {
+        const listResponse = vaultManager.handleVaultNamesRequest(id);
 
-      const listResponse = vaultManager.handleVaultNamesRequest(id);
-
-      for await (const byte of listResponse) {
-        if (byte !== null) {
-          response.setChunk(byte);
-          await genWritable.next(response);
-        } else {
-          await genWritable.next(null);
+        for await (const vault of listResponse) {
+          if (vault !== null) {
+            response.setVault(vault);
+            await genWritable.next(response);
+          } else {
+            await genWritable.next(null);
+          }
         }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
       }
-      await genWritable.next(null);
     },
     getNodeDetails: async (
       call: grpc.ServerUnaryCall<
@@ -284,8 +291,8 @@ function createAgentService({
     ): Promise<void> => {
       const response = new agentPB.PermissionMessage();
       try {
-        const nodeId = call.request.getNodeid();
-        const vaultId = call.request.getVaultid();
+        const nodeId = call.request.getNodeid() as NodeId;
+        const vaultId = call.request.getVaultid() as VaultId;
         const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
         if (result[nodeId] === undefined) {
           response.setPermission(false);

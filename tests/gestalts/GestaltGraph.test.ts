@@ -51,7 +51,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -81,7 +81,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {},
       },
     };
@@ -124,7 +124,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -132,7 +132,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {},
       },
     };
@@ -169,7 +169,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -177,7 +177,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {},
       },
     };
@@ -216,7 +216,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -231,7 +231,7 @@ describe('GestaltGraph', () => {
     };
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'node',
@@ -278,7 +278,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {
           [gestaltsUtils.keyFromIdentity(
@@ -299,7 +299,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -353,7 +353,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -380,7 +380,7 @@ describe('GestaltGraph', () => {
     };
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'node',
@@ -396,7 +396,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -460,7 +460,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -469,7 +469,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {},
       },
     };
@@ -494,7 +494,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -522,7 +522,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {},
       },
     };
@@ -543,7 +543,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -576,7 +576,7 @@ describe('GestaltGraph', () => {
     // 2 new nodes should have the same permission
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -591,7 +591,7 @@ describe('GestaltGraph', () => {
     };
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'node',
@@ -628,14 +628,14 @@ describe('GestaltGraph', () => {
     // 2 existing nodes will have a joined permission
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
     };
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -646,7 +646,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.setGestaltActionByNode(nodeInfo2.id, 'scan');
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -661,7 +661,7 @@ describe('GestaltGraph', () => {
     };
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'node',
@@ -697,7 +697,7 @@ describe('GestaltGraph', () => {
     // node 1 exists, but node 2 is new
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -706,7 +706,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.setGestaltActionByNode(nodeInfo1.id, 'notify');
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -721,7 +721,7 @@ describe('GestaltGraph', () => {
     };
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'node',
@@ -745,7 +745,7 @@ describe('GestaltGraph', () => {
     // node 3 is new and linking to node 2 which is now exists
     const nodeInfo3Linked: NodeInfo = {
       id: 'zzz' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -780,7 +780,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {
           [gestaltsUtils.keyFromIdentity(
@@ -801,7 +801,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -849,7 +849,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -857,7 +857,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {},
       },
     };
@@ -866,7 +866,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.setGestaltActionByNode(nodeInfo.id, 'notify');
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {
           [gestaltsUtils.keyFromIdentity(
@@ -887,7 +887,7 @@ describe('GestaltGraph', () => {
     const identityInfoLinked: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -914,7 +914,7 @@ describe('GestaltGraph', () => {
     expect(actions1).toEqual(actions2);
     const nodeInfo2: NodeInfo = {
       id: 'def' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -933,7 +933,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.setGestaltActionByNode(nodeInfo2.id, 'notify');
     const nodeInfo2Linked: NodeInfo = {
       id: 'def' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {
           [gestaltsUtils.keyFromIdentity(
@@ -954,7 +954,7 @@ describe('GestaltGraph', () => {
     const identityInfoLinkedAgain: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -1004,7 +1004,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {},
       },
@@ -1012,7 +1012,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.setNode(nodeInfo);
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {
           [gestaltsUtils.keyFromIdentity(
@@ -1033,7 +1033,7 @@ describe('GestaltGraph', () => {
     const identityInfoLinked: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -1092,14 +1092,14 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {},
       },
     };
     await gestaltGraph.setIdentity(identityInfo);
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {
           [gestaltsUtils.keyFromIdentity(
@@ -1120,7 +1120,7 @@ describe('GestaltGraph', () => {
     const identityInfoLinked: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -1170,7 +1170,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -1185,7 +1185,7 @@ describe('GestaltGraph', () => {
     };
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'node',
@@ -1236,7 +1236,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {},
         identities: {
           [gestaltsUtils.keyFromIdentity(
@@ -1257,7 +1257,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      links: {
+      claims: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'identity',
@@ -1311,7 +1311,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
             type: 'node',
@@ -1326,7 +1326,7 @@ describe('GestaltGraph', () => {
     };
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      links: {
+      chain: {
         nodes: {
           [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
             type: 'node',

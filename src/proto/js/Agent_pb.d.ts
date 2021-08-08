@@ -44,8 +44,8 @@ export namespace EchoMessage {
 }
 
 export class InfoRequest extends jspb.Message { 
-    getVaultName(): string;
-    setVaultName(value: string): InfoRequest;
+    getId(): string;
+    setId(value: string): InfoRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InfoRequest.AsObject;
@@ -59,38 +59,13 @@ export class InfoRequest extends jspb.Message {
 
 export namespace InfoRequest {
     export type AsObject = {
-        vaultName: string,
-    }
-}
-
-export class InfoResponse extends jspb.Message { 
-    getVaultName(): string;
-    setVaultName(value: string): InfoResponse;
-    getBody(): Uint8Array | string;
-    getBody_asU8(): Uint8Array;
-    getBody_asB64(): string;
-    setBody(value: Uint8Array | string): InfoResponse;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): InfoResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: InfoResponse): InfoResponse.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: InfoResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): InfoResponse;
-    static deserializeBinaryFromReader(message: InfoResponse, reader: jspb.BinaryReader): InfoResponse;
-}
-
-export namespace InfoResponse {
-    export type AsObject = {
-        vaultName: string,
-        body: Uint8Array | string,
+        id: string,
     }
 }
 
 export class PackRequest extends jspb.Message { 
-    getVaultName(): string;
-    setVaultName(value: string): PackRequest;
+    getId(): string;
+    setId(value: string): PackRequest;
     getBody(): Uint8Array | string;
     getBody_asU8(): Uint8Array;
     getBody_asB64(): string;
@@ -108,32 +83,7 @@ export class PackRequest extends jspb.Message {
 
 export namespace PackRequest {
     export type AsObject = {
-        vaultName: string,
-        body: Uint8Array | string,
-    }
-}
-
-export class PackResponse extends jspb.Message { 
-    getVaultName(): string;
-    setVaultName(value: string): PackResponse;
-    getBody(): Uint8Array | string;
-    getBody_asU8(): Uint8Array;
-    getBody_asB64(): string;
-    setBody(value: Uint8Array | string): PackResponse;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PackResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: PackResponse): PackResponse.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PackResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PackResponse;
-    static deserializeBinaryFromReader(message: PackResponse, reader: jspb.BinaryReader): PackResponse;
-}
-
-export namespace PackResponse {
-    export type AsObject = {
-        vaultName: string,
+        id: string,
         body: Uint8Array | string,
     }
 }
@@ -157,6 +107,28 @@ export class PackChunk extends jspb.Message {
 export namespace PackChunk {
     export type AsObject = {
         chunk: Uint8Array | string,
+    }
+}
+
+export class VaultListMessage extends jspb.Message { 
+    getVault(): Uint8Array | string;
+    getVault_asU8(): Uint8Array;
+    getVault_asB64(): string;
+    setVault(value: Uint8Array | string): VaultListMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultListMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultListMessage): VaultListMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultListMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultListMessage;
+    static deserializeBinaryFromReader(message: VaultListMessage, reader: jspb.BinaryReader): VaultListMessage;
+}
+
+export namespace VaultListMessage {
+    export type AsObject = {
+        vault: Uint8Array | string,
     }
 }
 

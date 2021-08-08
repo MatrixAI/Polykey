@@ -46,7 +46,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   public scanVaults(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
-    return grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+    return grpcUtils.promisifyReadableStreamCall<agentPB.VaultListMessage>(
       this.client,
       this.client.scanVaults,
     )(...args);

@@ -1,5 +1,14 @@
 import type { FileSystem } from '../types';
-import type { FileChanges } from './types';
+import type {
+  FileChanges,
+  VaultKey,
+  VaultName,
+  VaultId,
+  SecretName,
+  SecretList,
+  FileOptions,
+} from './types';
+import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
 
 import fs from 'fs';
@@ -15,13 +24,13 @@ import { GitRequest } from '../git';
 import * as utils from '../utils';
 import { utils as gitUtils } from '../git';
 import * as vaultsUtils from './utils';
-import { errors as vaultErrors } from './';
+import { errors as vaultsErrors } from './';
 
 class Vault {
   public readonly baseDir: string;
-  public readonly vaultId: string;
+  public readonly vaultId: VaultId;
 
-  public vaultName: string;
+  public vaultName: VaultName;
   protected fs: FileSystem;
   protected efs: EncryptedFS;
   protected lock: Mutex = new Mutex();
@@ -36,8 +45,8 @@ class Vault {
     fs,
     logger,
   }: {
-    vaultId: string;
-    vaultName: string;
+    vaultId: VaultId;
+    vaultName: VaultName;
     baseDir: string;
     fs: FileSystem;
     logger?: Logger;
@@ -54,18 +63,18 @@ class Vault {
     return this._started;
   }
 
-  public setWorkerManager(workerManager: WorkerManager) {
+  public setWorkerManager(workerManager: WorkerManager): void {
     this.workerManager = workerManager;
     this.efs.setWorkerManager(workerManager);
   }
 
-  public unsetWorkerManager() {
+  public unsetWorkerManager(): void {
     delete this.workerManager;
     this.efs.unsetWorkerManager();
   }
 
   // TODO: Once EFS is updated, pass `this.fs` into EFS constructor
-  public async start({ key }: { key: Buffer }) {
+  public async start({ key }: { key: VaultKey }): Promise<void> {
     const efs = new EncryptedFS(key, fs, this.baseDir);
     this.efs = efs;
     const exists = utils.promisify(this.efs.exists).bind(this.efs);
@@ -106,7 +115,7 @@ class Vault {
     }
   }
 
-  public async stop() {
+  public async stop(): Promise<void> {
     const release = await this.lock.acquire();
     try {
       await fs.promises.rmdir(this.baseDir, { recursive: true });
@@ -121,7 +130,7 @@ class Vault {
    *
    * @param newVaultName name to change to
    */
-  public async renameVault(newVaultName: string): Promise<void> {
+  public async renameVault(newVaultName: VaultName): Promise<void> {
     this.vaultName = newVaultName;
   }
 
@@ -147,7 +156,7 @@ class Vault {
    * @returns true if the secret exists in the vault directory
    */
   public async addSecret(
-    secretName: string,
+    secretName: SecretName,
     content: string,
   ): Promise<boolean> {
     const release = await this.lock.acquire();
@@ -157,17 +166,17 @@ class Vault {
     try {
       // Throw an error if the vault is not initialised
       if (!(await exists('.git'))) {
-        throw new vaultErrors.ErrorVaultUninitialised(
+        throw new vaultsErrors.ErrorVaultUninitialised(
           `${this.vaultName} has not been initialised\nVaultId: ${this.vaultId}`,
         );
         // Throw an error if the secret exists
       } else if (await exists(secretName)) {
-        throw new vaultErrors.ErrorSecretDefined(
+        throw new vaultsErrors.ErrorSecretDefined(
           `${secretName} already exists, try updating instead`,
         );
         // Throw an error if the secret contains a '.git' dir
       } else if (path.basename(secretName) === '.git') {
-        throw new vaultErrors.ErrorGitFile(
+        throw new vaultsErrors.ErrorGitFile(
           '.git files cannot be added to a vault',
         );
       }
@@ -208,7 +217,7 @@ class Vault {
    * @param content content of the secret to update
    */
   public async updateSecret(
-    secretName: string,
+    secretName: SecretName,
     content: string,
   ): Promise<void> {
     const release = await this.lock.acquire();
@@ -217,7 +226,7 @@ class Vault {
     try {
       // Throw error if secret does not exist
       if (!(await exists(secretName))) {
-        throw new vaultErrors.ErrorSecretUndefined(
+        throw new vaultsErrors.ErrorSecretUndefined(
           'Secret does not exist, try adding it instead.',
         );
       }
@@ -246,8 +255,8 @@ class Vault {
    * @return true if the new secret name exists in the directory
    */
   public async renameSecret(
-    currSecretName: string,
-    newSecretName: string,
+    currSecretName: SecretName,
+    newSecretName: SecretName,
   ): Promise<boolean> {
     const release = await this.lock.acquire();
     const exists = utils.promisify(this.efs.exists).bind(this.efs);
@@ -258,21 +267,21 @@ class Vault {
         path.basename(currSecretName) === '.git' ||
         path.basename(newSecretName) === '.git'
       ) {
-        throw new vaultErrors.ErrorGitFile(
+        throw new vaultsErrors.ErrorGitFile(
           'Cannot rename a file to or from .git',
         );
       }
 
       // Throw an error if the old secret does not exist
       if (!(await exists(currSecretName))) {
-        throw new vaultErrors.ErrorSecretUndefined(
+        throw new vaultsErrors.ErrorSecretUndefined(
           `${currSecretName} does not exist`,
         );
       }
 
       // Throw an error if the new name already exists
       if (await exists(newSecretName)) {
-        throw new vaultErrors.ErrorSecretDefined(
+        throw new vaultsErrors.ErrorSecretDefined(
           `${newSecretName} already exists`,
         );
       }
@@ -311,14 +320,14 @@ class Vault {
    * @param secretName name of secret including the path.
    * @returns Buffer or string representing the contents of the secret
    */
-  public async getSecret(secretName: string): Promise<string> {
+  public async getSecret(secretName: SecretName): Promise<string> {
     const release = await this.lock.acquire();
     const readFile = utils.promisify(this.efs.readFile).bind(this.efs);
     try {
       return (await readFile(secretName)).toString();
     } catch (err) {
       if (err.code === 'ENOENT') {
-        throw new vaultErrors.ErrorSecretUndefined(
+        throw new vaultsErrors.ErrorSecretUndefined(
           `Secret with name: ${secretName} does not exist`,
         );
       }
@@ -339,8 +348,8 @@ class Vault {
    * @returns true if the secret no longer exists in the vault directory
    */
   public async deleteSecret(
-    secretName: string,
-    { recursive = false }: { recursive?: boolean },
+    secretName: SecretName,
+    fileOptions?: FileOptions,
   ): Promise<boolean> {
     const release = await this.lock.acquire();
     const stat = utils.promisify(this.efs.stat).bind(this.efs);
@@ -350,11 +359,12 @@ class Vault {
     try {
       // Throw error if trying to remove '.git' file
       if (path.basename(secretName) === '.git') {
-        throw new vaultErrors.ErrorGitFile('Cannot remove .git');
+        throw new vaultsErrors.ErrorGitFile('Cannot remove .git');
       }
       // Handle if secret is a directory
       if ((await stat(secretName)).isDirectory()) {
-        if (recursive) {
+        if (fileOptions?.recursive) {
+          // Remove the specified directory
           await rmdir(secretName, { recursive: true });
           this.logger.info(`Deleted directory at '${secretName}}'`);
           await this.commitChanges(
@@ -368,7 +378,7 @@ class Vault {
           );
           // Throw error if not recursively deleting a directory
         } else {
-          throw new vaultErrors.ErrorRecursive(
+          throw new vaultsErrors.ErrorRecursive(
             'delete a vault directory must be recursive',
           );
         }
@@ -387,7 +397,7 @@ class Vault {
         );
         // Throw error if secret doesn't exist
       } else {
-        throw new vaultErrors.ErrorSecretUndefined(
+        throw new vaultsErrors.ErrorSecretUndefined(
           'path: ' + secretName + ' does not exist in vault',
         );
       }
@@ -409,14 +419,25 @@ class Vault {
    * @returns true if the dir exists in the vault directory
    */
   public async mkdir(
-    dirPath: string,
-    { recursive = false }: { recursive?: boolean },
+    dirPath: SecretName,
+    fileOptions?: FileOptions,
   ): Promise<boolean> {
     const release = await this.lock.acquire();
     const mkdir = utils.promisify(this.efs.mkdir).bind(this.efs);
     const exists = utils.promisify(this.efs.exists).bind(this.efs);
     try {
-      await mkdir(dirPath, { recursive: recursive });
+      // Create the specified directory
+      const recursive = fileOptions?.recursive ?? false;
+      try {
+        await mkdir(dirPath, { recursive: recursive });
+      } catch (err) {
+        if (err.code === 'ENOENT' && !recursive) {
+          throw new vaultsErrors.ErrorRecursive(
+            `Could not create directory '${dirPath}' without recursive option`,
+          );
+        }
+      }
+      this.logger.info(`Created secret directory at '${dirPath}'`);
       if (await exists(dirPath)) {
         return true;
       }
@@ -434,7 +455,7 @@ class Vault {
    * @throws ErrorGitFile if the secret added is a .git file
    * @param secretDirectory on disk path to directory of secrets to be added
    */
-  public async addSecretDirectory(secretDirectory: string): Promise<void> {
+  public async addSecretDirectory(secretDirectory: SecretName): Promise<void> {
     const release = await this.lock.acquire();
     const commitList: FileChanges = [];
     const absoluteDirPath = path.resolve(secretDirectory);
@@ -454,12 +475,12 @@ class Vault {
         const content = await fs.promises.readFile(secretPath);
         // Throw error if the '.git' file is nonexistent
         if (!(await exists('.git'))) {
-          throw new vaultErrors.ErrorVaultUninitialised(
+          throw new vaultsErrors.ErrorVaultUninitialised(
             `${this.vaultName} has not been initialised\nVaultId: ${this.vaultId}`,
           );
           // Throw error if trying to add '.git' file
         } else if (secretName === '.git') {
-          throw new vaultErrors.ErrorGitFile(
+          throw new vaultsErrors.ErrorGitFile(
             '`.git files cannot be added to a vault',
           );
           // If existing path exists, write secret
@@ -510,8 +531,8 @@ class Vault {
    *
    * @returns a list of the curent secrets
    */
-  public async listSecrets(): Promise<Array<string>> {
-    const secrets: Array<string> = [];
+  public async listSecrets(): Promise<SecretList> {
+    const secrets: SecretList = [];
     for await (const secret of vaultsUtils.readdirRecursivelyEFS(
       this.efs,
       '',
@@ -527,8 +548,8 @@ class Vault {
    */
   public async cloneVault(
     gitHandler: GitRequest,
-    vaultKey: Buffer,
-    nodeId: string,
+    vaultKey: VaultKey,
+    nodeId: NodeId,
   ): Promise<void> {
     const efs = new EncryptedFS(vaultKey, fs, this.baseDir);
     this.efs = efs;
@@ -559,7 +580,7 @@ class Vault {
    */
   public async pullVault(
     gitHandler: GitRequest,
-    nodeId: string,
+    nodeId: NodeId,
   ): Promise<void> {
     // Throw an error if merge conflicts occur
     try {
@@ -578,7 +599,7 @@ class Vault {
       });
     } catch (err) {
       if (err instanceof git.Errors.MergeNotSupportedError) {
-        throw new vaultErrors.ErrorVaultMergeConflict(
+        throw new vaultsErrors.ErrorVaultMergeConflict(
           'Merge Conflicts are not supported yet',
         );
       }
@@ -612,7 +633,7 @@ class Vault {
    * @param body body of pack request
    * @returns Two streams used to send the pack response
    */
-  public async handlePackRequest(body: Buffer) {
+  public async handlePackRequest(body: Buffer): Promise<PassThrough[]> {
     if (body.toString().slice(4, 8) == 'want') {
       const wantedObjectId = body.toString().slice(9, 49);
       const packResult = await gitUtils.packObjects(this.efs, '.git', [
@@ -641,10 +662,11 @@ class Vault {
    * @param message description of change
    * @returns a commit message
    */
-  private async commitChanges(
+  protected async commitChanges(
     fileChanges: FileChanges,
     message: string,
-  ): Promise<string> {
+  ): Promise<void> {
+    // Obtain each file change
     for (const fileChange of fileChanges) {
       if (fileChange.action == 'removed') {
         await git.remove({
@@ -661,7 +683,8 @@ class Vault {
       }
     }
 
-    return await git.commit({
+    // Commit the changes made
+    await git.commit({
       fs: this.efs,
       dir: '',
       author: {

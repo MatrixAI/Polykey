@@ -1,6 +1,13 @@
 import type { DB } from '../db';
 import type { DBLevel, DBOp } from '../db/types';
-import type { VaultId, Vaults, VaultAction } from './types';
+import type {
+  VaultId,
+  Vaults,
+  VaultName,
+  VaultMap,
+  VaultPermissions,
+  VaultKey,
+} from './types';
 import type { FileSystem } from '../types';
 import type { WorkerManager } from '../workers';
 import type { NodeId } from '../nodes/types';
@@ -19,8 +26,8 @@ import { GitRequest } from '../git';
 import { agentPB } from '../agent';
 
 import * as utils from '../utils';
-import { utils as vaultUtils } from './';
-import { errors as vaultErrors } from './';
+import { utils as vaultsUtils } from './';
+import { errors as vaultsErrors } from './';
 import * as keysErrors from '../keys/errors';
 import * as gitErrors from '../git/errors';
 import * as nodesErrors from '../nodes/errors';
@@ -46,7 +53,7 @@ class VaultManager {
   protected vaultsNodesDbDomain: Array<string> = [this.vaultsDbDomain, 'nodes'];
   protected vaultsDb: DBLevel<string>;
   protected vaultsKeysDb: DBLevel<VaultId>;
-  protected vaultsNamesDb: DBLevel<string>;
+  protected vaultsNamesDb: DBLevel<VaultName>;
   protected vaultsNodesDb: DBLevel<VaultId>;
   protected lock: Mutex = new Mutex();
 
@@ -116,26 +123,26 @@ class VaultManager {
     return this.lock.isLocked();
   }
 
-  public setWorkerManager(workerManager: WorkerManager) {
+  public setWorkerManager(workerManager: WorkerManager): void {
     this.workerManager = workerManager;
     for (const vaultId in this.vaults) {
       this.vaults[vaultId].setWorkerManager(workerManager);
     }
   }
 
-  public unsetWorkerManager() {
+  public unsetWorkerManager(): void {
     delete this.workerManager;
     for (const vaultId in this.vaults) {
       this.vaults[vaultId].unsetWorkerManager();
     }
   }
 
-  public async start({ fresh = false }: { fresh?: boolean }) {
+  public async start({ fresh = false }: { fresh?: boolean }): Promise<void> {
     if (!this.keyManager.started) {
       throw new keysErrors.ErrorKeyManagerNotStarted();
     } else if (!this.db.started) {
       throw new dbErrors.ErrorDBNotStarted();
-    } else if (!(await this.nodeManager.started())) {
+    } else if (!this.nodeManager.started) {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
     } else if (!this.acl.started) {
       throw new aclErrors.ErrorACLNotStarted();
@@ -172,7 +179,7 @@ class VaultManager {
     this._started = true;
   }
 
-  public async stop() {
+  public async stop(): Promise<void> {
     this.logger.info('Stopping Vault Manager');
     this._started = false;
     this.logger.info('Stopped Vault Manager');
@@ -214,7 +221,7 @@ class VaultManager {
    * @param vaultName Name of the new vault
    * @returns The newly created vault object
    */
-  public async createVault(vaultName: string): Promise<Vault> {
+  public async createVault(vaultName: VaultName): Promise<Vault> {
     // Generate a unique vault Id
     const vaultId = await this.generateVaultId();
 
@@ -229,8 +236,8 @@ class VaultManager {
     });
 
     // Generate the key and store the vault in memory and on disk
-    const key = await vaultUtils.generateVaultKey();
-    await this.createVaultOps(vaultName, vaultId as VaultId, key);
+    const key = await vaultsUtils.generateVaultKey();
+    await this.createVaultOps(vaultName, vaultId, key);
     await vault.start({ key: key });
     this.vaults[vaultId] = vault;
     return vault;
@@ -243,7 +250,8 @@ class VaultManager {
    * @param vaultId Id of vault
    * @returns a vault instance.
    */
-  public async getVault(vaultId: string): Promise<Vault> {
+  public async getVault(vaultId: VaultId): Promise<Vault> {
+    // If the vault does not already exist in the memory map, set up the vault
     if (!this.vaults[vaultId]) {
       await this.setupVault(vaultId);
     }
@@ -261,8 +269,8 @@ class VaultManager {
    * @returns true if success
    */
   public async renameVault(
-    vaultId: string,
-    newVaultName: string,
+    vaultId: VaultId,
+    newVaultName: VaultName,
   ): Promise<boolean> {
     if (!this.vaults[vaultId]) {
       await this.setupVault(vaultId);
@@ -278,7 +286,8 @@ class VaultManager {
    *
    * @returns the stats of the vault directory
    */
-  public async vaultStats(vaultId: string): Promise<fs.Stats> {
+  public async vaultStats(vaultId: VaultId): Promise<fs.Stats> {
+    // If the vault does not already exist in the memory map, set up the vault
     if (!this.vaults[vaultId]) {
       await this.setupVault(vaultId);
     }
@@ -295,7 +304,7 @@ class VaultManager {
    * @param vaultId Id of vault to be deleted
    * @returns true if successful delete, false if vault path still exists
    */
-  public async deleteVault(vaultId: string): Promise<boolean> {
+  public async deleteVault(vaultId: VaultId): Promise<boolean> {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
         if (!this.vaults[vaultId]) {
@@ -304,12 +313,16 @@ class VaultManager {
         await this.vaults[vaultId].stop();
         const vaultPath = this.vaults[vaultId].baseDir;
         this.logger.info(`Removed vault directory at '${vaultPath}'`);
-        if (await vaultUtils.fileExists(this.fs, vaultPath)) {
+        if (await vaultsUtils.fileExists(this.fs, vaultPath)) {
           return false;
         }
         const name = this.vaults[vaultId].vaultName;
         await this.deleteVaultOps(name);
-        await this.acl.unsetVaultPerms(vaultId as VaultId);
+
+        // Remove vault permissions from the database
+        await this.acl.unsetVaultPerms(vaultId);
+
+        // Remove vault from in memory map
         delete this.vaults[vaultId];
         return true;
       });
@@ -321,12 +334,13 @@ class VaultManager {
    *
    * @returns Array of VaultName and VaultIds managed currently by the vault manager
    */
-  public async listVaults(): Promise<Array<{ name: string; id: string }>> {
-    const vaults: Array<{ name: string; id: string }> = [];
+  public async listVaults(): Promise<VaultMap> {
+    const vaults: VaultMap = [];
+    // Read all vault objects from the database
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const id = (o as any).value;
       const name = (o as any).key as string;
-      const vaultId = this.db.unserializeDecrypt<VaultId>(id) as string;
+      const vaultId = this.db.unserializeDecrypt<VaultId>(id);
       vaults.push({
         name: name,
         id: vaultId,
@@ -340,7 +354,7 @@ class VaultManager {
    * @param vaultName The Vault name
    * @returns the id that matches the given vault name. undefined if nothing is found
    */
-  public async getVaultId(vaultName: string): Promise<string | undefined> {
+  public async getVaultId(vaultName: VaultName): Promise<VaultId | undefined> {
     return await this.getVaultIdByVaultName(vaultName);
   }
 
@@ -349,14 +363,13 @@ class VaultManager {
    *
    * @returns Array of VaultName and VaultIds managed currently by the vault manager
    */
-  public async scanVaults(
-    nodeId: string,
-  ): Promise<Array<{ name: string; id: string }>> {
+  public async scanVaults(nodeId: NodeId): Promise<VaultMap> {
     return await this.acl._transaction(async () => {
       const vaults = await this.listVaults();
-      const scan: Array<{ name: string; id: string }> = [];
+      const scan: VaultMap = [];
       for (const vault of vaults) {
-        const list = await this.acl.getVaultPerm(vault.id as VaultId);
+        // Check if the vault has valid permissions
+        const list = await this.acl.getVaultPerm(vault.id);
         if (list[nodeId]) {
           if (list[nodeId].vaults[vault.id]['pull'] !== undefined) {
             scan.push(vault);
@@ -374,11 +387,12 @@ class VaultManager {
    * @param vaultId Id of vault
    * @param linkVault Id of the cloned vault
    */
-  public async setDefaultNode(vaultId: string, nodeId: string): Promise<void> {
+  public async setDefaultNode(vaultId: VaultId, nodeId: NodeId): Promise<void> {
+    // If the vault does not already exist in the memory map, set up the vault
     if (!this.vaults[vaultId]) {
       await this.setupVault(vaultId);
     }
-    await this.setVaultNodebyVaultId(vaultId as VaultId, nodeId);
+    await this.setVaultNodebyVaultId(vaultId, nodeId);
   }
 
   /**
@@ -388,8 +402,8 @@ class VaultManager {
    * @param vaultId Id of vault that has been cloned
    * @returns instance of the vault that is linked to the cloned vault
    */
-  public async getDefaultNode(vaultId: string): Promise<string | undefined> {
-    return await this.getVaultNodeByVaultId(vaultId as VaultId);
+  public async getDefaultNode(vaultId: VaultId): Promise<NodeId | undefined> {
+    return await this.getVaultNodeByVaultId(vaultId);
   }
 
   /**
@@ -401,20 +415,19 @@ class VaultManager {
    * @param vaultId Id of the vault to set permissions for
    */
   public async setVaultPermissions(
-    nodeId: string,
-    vaultId: string,
+    nodeId: NodeId,
+    vaultId: VaultId,
   ): Promise<void> {
     return await this.gestaltGraph._transaction(async () => {
       return await this.acl._transaction(async () => {
-        const gestalt = await this.gestaltGraph.getGestaltByNode(
-          nodeId as NodeId,
-        );
+        // Obtain the gestalt from the provided node
+        const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
         if (!gestalt) {
           throw new gestaltErrors.ErrorGestaltsGraphNodeIdMissing();
         }
         const nodes = gestalt?.nodes;
         for (const node in nodes) {
-          await this.setVaultAction([nodes[node].id], vaultId as VaultId);
+          await this.setVaultAction([nodes[node].id], vaultId);
         }
       });
     });
@@ -429,20 +442,19 @@ class VaultManager {
    * @param vaultId Id of the vault to unset permissions for
    */
   public async unsetVaultPermissions(
-    nodeId: string,
-    vaultId: string,
+    nodeId: NodeId,
+    vaultId: VaultId,
   ): Promise<void> {
     return await this.gestaltGraph._transaction(async () => {
       return await this.acl._transaction(async () => {
-        const gestalt = await this.gestaltGraph.getGestaltByNode(
-          nodeId as NodeId,
-        );
+        // Obtain the gestalt from the provided node
+        const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
         if (!gestalt) {
           return;
         }
         const nodes = gestalt?.nodes;
         for (const node in nodes) {
-          await this.unsetVaultAction([nodes[node].id], vaultId as VaultId);
+          await this.unsetVaultAction([nodes[node].id], vaultId);
         }
       });
     });
@@ -456,12 +468,15 @@ class VaultManager {
    * @returns a record of the permissions for the vault
    */
   public async getVaultPermissions(
-    vaultId: string,
-    nodeId?: string,
-  ): Promise<Record<NodeId, VaultAction>> {
+    vaultId: VaultId,
+    nodeId?: NodeId,
+  ): Promise<VaultPermissions> {
     return await this.acl._transaction(async () => {
-      const record: Record<NodeId, VaultAction> = {};
-      const perms = await this.acl.getVaultPerm(vaultId as VaultId);
+      const record: VaultPermissions = {};
+      // Get the permissions for the provided vault
+      const perms = await this.acl.getVaultPerm(vaultId);
+
+      // Set the return message based on the permissions for a node
       for (const node in perms) {
         if (nodeId && nodeId === node) {
           record[node] = perms[node].vaults[vaultId];
@@ -484,20 +499,20 @@ class VaultManager {
    * @param vaultId Id of remote vault
    * @param nodeId identifier of node to clone from
    */
-  public async cloneVault(vaultId: string, nodeId: string): Promise<void> {
+  public async cloneVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
     // Create a connection to the specified node
-    const nodeAddress = await this.nodeManager.getNode(nodeId as NodeId);
+    const nodeAddress = await this.nodeManager.getNode(nodeId);
     if (!nodeAddress) {
       throw new nodesErrors.ErrorNodeConnectionNotExist(
         'Node does not exist in node store',
       );
     }
-    this.nodeManager.createConnectionToNode(nodeId as NodeId, nodeAddress);
-    const client = this.nodeManager.getClient(nodeId as NodeId);
+    this.nodeManager.createConnectionToNode(nodeId, nodeAddress);
+    const client = this.nodeManager.getClient(nodeId);
 
     // Compile the vault Id
     const id =
-      vaultUtils.splitVaultId(vaultId) +
+      vaultsUtils.splitVaultId(vaultId) +
       ':' +
       nodeId.replace(new RegExp(/[\/]/g), '');
 
@@ -511,25 +526,35 @@ class VaultManager {
     }
 
     // Create the handler for git to clone from
-    const gitRequest = await vaultUtils.constructGitHandler(
+    const gitRequest = await vaultsUtils.constructGitHandler(
       client,
       this.nodeManager.getNodeId(),
     );
 
     // Search for the given vault Id and return the name
     const list = await gitRequest.scanVaults();
-    let vaultName = vaultUtils.searchVaultName(list, vaultId);
-    if (await this.getVaultId(vaultName)) {
-      this.logger.warn(
-        `'${vaultName}' already exists, cloned into '${vaultName} copy'`,
-      );
-      vaultName += ' copy';
+    let vaultName = vaultsUtils.searchVaultName(list, vaultId);
+
+    // Add ' copy' until the vault name is unique
+    let valid = false;
+    while (!valid) {
+      if (await this.getVaultId(vaultName)) {
+        this.logger.warn(
+          `'${vaultName}' already exists, cloned into '${vaultName} copy'`,
+        );
+        // Add an extra string to avoid conflicts
+        vaultName += ' copy';
+      } else {
+        valid = true;
+      }
     }
     await this.cloneVaultOps(gitRequest, vaultName, vaultId, nodeId);
     await this.setDefaultNode(
-      vaultUtils.splitVaultId(vaultId) +
+      (vaultsUtils.splitVaultId(vaultId) +
         ':' +
-        this.nodeManager.getNodeId().replace(new RegExp(/[\/]/g), ''),
+        this.nodeManager
+          .getNodeId()
+          .replace(new RegExp(/[\/]/g), '')) as VaultId,
       nodeId,
     );
   }
@@ -545,30 +570,31 @@ class VaultManager {
    * @param vaultId Id of vault
    * @param nodeId identifier of node to clone from
    */
-  public async pullVault(vaultId: string, nodeId?: string): Promise<void> {
+  public async pullVault(vaultId: VaultId, nodeId?: NodeId): Promise<void> {
     let node = nodeId;
     if (!nodeId) {
       node = await this.getDefaultNode(vaultId);
     }
     if (!node) {
-      throw new vaultErrors.ErrorVaultUnlinked(
+      throw new vaultsErrors.ErrorVaultUnlinked(
         'Vault Id has not been cloned from remote repository',
       );
     }
-    const nodeAddress = await this.nodeManager.getNode(node as NodeId);
+
+    // Create a connection to the specified node
+    const nodeAddress = await this.nodeManager.getNode(node);
     if (!nodeAddress) {
       throw new nodesErrors.ErrorNodeConnectionNotExist(
         'Node does not exist in node store',
       );
     }
-    this.nodeManager.createConnectionToNode(node as NodeId, nodeAddress);
-    const client = this.nodeManager.getClient(node as NodeId);
+    this.nodeManager.createConnectionToNode(node, nodeAddress);
+    const client = this.nodeManager.getClient(node);
 
     // Compile the vault Id
-    const id =
-      vaultUtils.splitVaultId(vaultId) +
+    const id = (vaultsUtils.splitVaultId(vaultId) +
       ':' +
-      node.replace(new RegExp(/[\/]/g), '');
+      node.replace(new RegExp(/[\/]/g), '')) as VaultId;
 
     // Send a message to the connected agent to see if the pull can occur
     const vaultPermMessage = new agentPB.VaultPermMessage();
@@ -580,17 +606,22 @@ class VaultManager {
     }
 
     // Create the handler for git to pull from
-    const gitRequest = await vaultUtils.constructGitHandler(
+    const gitRequest = await vaultsUtils.constructGitHandler(
       client,
       this.nodeManager.getNodeId(),
     );
 
     const list = await gitRequest.scanVaults();
 
-    vaultUtils.searchVaultName(list, id);
+    vaultsUtils.searchVaultName(list, id);
 
     const vault = await this.getVault(vaultId);
-    await vault.pullVault(gitRequest, node.replace(new RegExp(/[\/]/g), ''));
+    await vault.pullVault(
+      gitRequest,
+      node.replace(new RegExp(/[\/]/g), '') as NodeId,
+    );
+
+    // Set the default pulling node to the specified node Id
     await this.setDefaultNode(vaultId, node);
   }
 
@@ -598,11 +629,12 @@ class VaultManager {
    * Returns a generator that yields the names of the vaults
    */
   public async *handleVaultNamesRequest(
-    nodeId: string,
+    nodeId: NodeId,
   ): AsyncGenerator<Uint8Array> {
     const vaults = await this.scanVaults(nodeId);
     for (const vault in vaults) {
-      yield Buffer.from(`${vaults[vault].id}\t${vaults[vault].name}`);
+      // Yield each vault Id and name
+      yield Buffer.from(`${vaults[vault].name}\t${vaults[vault].id}`);
     }
   }
 
@@ -611,24 +643,25 @@ class VaultManager {
    * Generates a vault Id that is unique
    * @throws If a unique Id cannot be made after 50 attempts
    */
-  private async generateVaultId(): Promise<string> {
-    let vaultId = vaultUtils.generateVaultId(this.nodeManager.getNodeId());
+  protected async generateVaultId(): Promise<VaultId> {
+    // While the vault Id is not unique, generate a new Id
+    let vaultId = vaultsUtils.generateVaultId(this.nodeManager.getNodeId());
     let i = 0;
     while (1) {
       try {
         await this.getVault(vaultId);
       } catch (e) {
-        if (e instanceof vaultErrors.ErrorVaultUndefined) {
+        if (e instanceof vaultsErrors.ErrorVaultUndefined) {
           break;
         }
       }
       i++;
       if (i > 50) {
-        throw new vaultErrors.ErrorCreateVaultId(
+        throw new vaultsErrors.ErrorCreateVaultId(
           'Could not create a unique vaultId after 50 attempts',
         );
       }
-      vaultId = vaultUtils.generateVaultId(this.nodeManager.getNodeId());
+      vaultId = vaultsUtils.generateVaultId(this.nodeManager.getNodeId());
     }
     return vaultId;
   }
@@ -640,17 +673,18 @@ class VaultManager {
    * @param vaultName Name of the new vault
    * @returns The newly created vault object
    */
-  private async cloneVaultOps(
+  protected async cloneVaultOps(
     gitHandler: GitRequest,
-    vaultName: string,
-    vaultId: string,
-    nodeId: string,
+    vaultName: VaultName,
+    vaultId: VaultId,
+    nodeId: NodeId,
   ): Promise<void> {
-    // Create the Vault instance and path
-    const newVaultId =
-      vaultUtils.splitVaultId(vaultId) +
+    // Compile the new vaultId with the current node Id appended
+    const newVaultId = (vaultsUtils.splitVaultId(vaultId) +
       ':' +
-      this.nodeManager.getNodeId().replace(new RegExp(/[\/]/g), '');
+      this.nodeManager.getNodeId().replace(new RegExp(/[\/]/g), '')) as VaultId;
+
+    // Create the Vault instance and path
     await this.fs.promises.mkdir(path.join(this.vaultsPath, newVaultId));
     const vault = new Vault({
       vaultId: newVaultId,
@@ -661,89 +695,23 @@ class VaultManager {
     });
 
     // Generate the key and store the vault in memory and on disk
-    const key = await vaultUtils.generateVaultKey();
-    await this.createVaultOps(vaultName, newVaultId as VaultId, key);
+    const key = await vaultsUtils.generateVaultKey();
+    await this.createVaultOps(vaultName, newVaultId, key);
     this.vaults[newVaultId] = vault;
     await vault.cloneVault(
       gitHandler,
       key,
-      nodeId.replace(new RegExp(/[\/]/g), ''),
+      nodeId.replace(new RegExp(/[\/]/g), '') as NodeId,
     );
-  }
-
-  /**
-   * Gets the vault id for a given vault name
-   */
-  private async getVaultIdByVaultName(
-    vaultName: string,
-  ): Promise<VaultId | undefined> {
-    return await this._transaction(async () => {
-      const vaultId = await this.db.get<VaultId>(
-        this.vaultsNamesDbDomain,
-        vaultName,
-      );
-      if (vaultId == null) {
-        return;
-      }
-      return vaultId.replace(/"/g, '') as VaultId;
-    });
-  }
-
-  /**
-   * Gets the vault key for a given vault id
-   */
-  private async getVaultKeyByVaultId(
-    vaultId: VaultId,
-  ): Promise<Buffer | undefined> {
-    return await this._transaction(async () => {
-      const vaultKey = await this.db.get<Buffer>(
-        this.vaultsKeysDbDomain,
-        vaultId,
-      );
-      if (vaultKey == null) {
-        return;
-      }
-      return vaultKey;
-    });
-  }
-
-  /**
-   * Gets the vault link for a given vault id
-   */
-  private async getVaultNodeByVaultId(
-    vaultId: VaultId,
-  ): Promise<string | undefined> {
-    return await this._transaction(async () => {
-      const vaultLink = await this.db.get<string>(
-        this.vaultsNodesDbDomain,
-        vaultId,
-      );
-      if (vaultLink == null) {
-        return;
-      }
-      return vaultLink.replace(/"/g, '');
-    });
-  }
-
-  /**
-   * Sets the default node Id to pull from for a vault Id
-   */
-  private async setVaultNodebyVaultId(
-    vaultId: VaultId,
-    vaultNode: string,
-  ): Promise<void> {
-    await this._transaction(async () => {
-      await this.db.put(this.vaultsNodesDbDomain, vaultId, vaultNode);
-    });
   }
 
   /**
    * Renames an existing vault name to a new vault name
    * If the existing vault name doesn't exist, nothing will change
    */
-  private async renameVaultOps(
-    vaultName: string,
-    newVaultName: string,
+  protected async renameVaultOps(
+    vaultName: VaultName,
+    newVaultName: VaultName,
   ): Promise<void> {
     await this._transaction(async () => {
       const vaultId = await this.db.get<VaultId>(
@@ -773,10 +741,10 @@ class VaultManager {
   /**
    * Puts a new vault and the vault Id into the db
    */
-  private async createVaultOps(
-    vaultName: string,
+  protected async createVaultOps(
+    vaultName: VaultName,
     vaultId: VaultId,
-    vaultKey: Buffer,
+    vaultKey: VaultKey,
   ): Promise<void> {
     await this._transaction(async () => {
       const existingId = await this.db.get<VaultId>(
@@ -784,7 +752,7 @@ class VaultManager {
         vaultName,
       );
       if (existingId) {
-        throw new vaultErrors.ErrorVaultDefined(
+        throw new vaultsErrors.ErrorVaultDefined(
           'Vault Name already exists in Polykey, specify a new Vault Name',
         );
       }
@@ -810,7 +778,7 @@ class VaultManager {
    * Deletes a vault using an existing vault name
    * If the existing vault name doesn't exist, nothing will change
    */
-  private async deleteVaultOps(vaultName: string): Promise<void> {
+  protected async deleteVaultOps(vaultName: VaultName): Promise<void> {
     await this._transaction(async () => {
       const vaultId = await this.db.get<VaultId>(
         this.vaultsNamesDbDomain,
@@ -840,25 +808,27 @@ class VaultManager {
     });
   }
 
-  private async setupVault(vaultId: string) {
+  protected async setupVault(vaultId: VaultId) {
     return await this._transaction(async () => {
-      let vaultName: string = '';
+      let vaultName: VaultName = '';
 
       for await (const o of this.vaultsNamesDb.createReadStream({})) {
         const vId = (o as any).value;
-        const name = (o as any).key as string;
-        const id = this.db.unserializeDecrypt<VaultId>(vId) as string;
+        const name = (o as any).key as VaultName;
+        const id = this.db.unserializeDecrypt<VaultId>(vId);
         if (vaultId === id) {
           vaultName = name;
           break;
         }
       }
       if (vaultName === '') {
-        throw new vaultErrors.ErrorVaultUndefined();
+        throw new vaultsErrors.ErrorVaultUndefined();
       }
-      const vaultKey = await this.getVaultKeyByVaultId(vaultId as VaultId);
+
+      // Obtain the vault key from the database
+      const vaultKey = await this.getVaultKeyByVaultId(vaultId);
       if (!vaultKey) {
-        throw new vaultErrors.ErrorVaultUndefined();
+        throw new vaultsErrors.ErrorVaultUndefined();
       }
       this.vaults[vaultId] = new Vault({
         vaultId: vaultId,
@@ -872,36 +842,94 @@ class VaultManager {
   }
 
   /**
+   * Gets the vault id for a given vault name
+   */
+  protected async getVaultIdByVaultName(
+    vaultName: VaultName,
+  ): Promise<VaultId | undefined> {
+    return await this._transaction(async () => {
+      const vaultId = await this.db.get<VaultId>(
+        this.vaultsNamesDbDomain,
+        vaultName,
+      );
+      if (vaultId == null) {
+        return;
+      }
+      return vaultId.replace(/"/g, '') as VaultId;
+    });
+  }
+
+  /**
+   * Gets the vault key for a given vault id
+   */
+  protected async getVaultKeyByVaultId(
+    vaultId: VaultId,
+  ): Promise<VaultKey | undefined> {
+    return await this._transaction(async () => {
+      const vaultKey = await this.db.get<VaultKey>(
+        this.vaultsKeysDbDomain,
+        vaultId,
+      );
+      if (vaultKey == null) {
+        return;
+      }
+      return vaultKey;
+    });
+  }
+
+  /**
+   * Gets the vault link for a given vault id
+   */
+  protected async getVaultNodeByVaultId(
+    vaultId: VaultId,
+  ): Promise<NodeId | undefined> {
+    return await this._transaction(async () => {
+      const vaultLink = await this.db.get<NodeId>(
+        this.vaultsNodesDbDomain,
+        vaultId,
+      );
+      if (vaultLink == null) {
+        return;
+      }
+      return vaultLink.replace(/"/g, '') as NodeId;
+    });
+  }
+
+  /**
+   * Sets the default node Id to pull from for a vault Id
+   */
+  protected async setVaultNodebyVaultId(
+    vaultId: VaultId,
+    vaultNode: NodeId,
+  ): Promise<void> {
+    await this._transaction(async () => {
+      await this.db.put(this.vaultsNodesDbDomain, vaultId, vaultNode);
+    });
+  }
+
+  /**
    * Gives pulling permissions for a vault to one or more nodes
    *
    * @param nodeIds Id(s) of the nodes to share with
    * @param vaultId Id of the vault that the permissions are for
    */
-  private async setVaultAction(
-    nodeIds: string[],
-    vaultId: string,
+  protected async setVaultAction(
+    nodeIds: NodeId[],
+    vaultId: VaultId,
   ): Promise<void> {
     return await this.acl._transaction(async () => {
       for (const nodeId of nodeIds) {
         try {
-          await this.acl.setVaultAction(
-            vaultId as VaultId,
-            nodeId as NodeId,
-            'pull',
-          );
+          await this.acl.setVaultAction(vaultId, nodeId, 'pull');
         } catch (err) {
           if (err instanceof aclErrors.ErrorACLNodeIdMissing) {
-            await this.acl.setNodePerm(nodeId as NodeId, {
+            await this.acl.setNodePerm(nodeId, {
               gestalt: {
                 notify: null,
               },
               vaults: {},
             });
-            await this.acl.setVaultAction(
-              vaultId as VaultId,
-              nodeId as NodeId,
-              'pull',
-            );
+            await this.acl.setVaultAction(vaultId, nodeId, 'pull');
           }
         }
       }
@@ -914,18 +942,14 @@ class VaultManager {
    * @param nodeIds Id(s) of the nodes to remove permissions from
    * @param vaultId Id of the vault that the permissions are for
    */
-  private async unsetVaultAction(
-    nodeIds: string[],
-    vaultId: string,
+  protected async unsetVaultAction(
+    nodeIds: NodeId[],
+    vaultId: VaultId,
   ): Promise<void> {
     return await this.acl._transaction(async () => {
       for (const nodeId of nodeIds) {
         try {
-          await this.acl.unsetVaultAction(
-            vaultId as VaultId,
-            nodeId as NodeId,
-            'pull',
-          );
+          await this.acl.unsetVaultAction(vaultId, nodeId, 'pull');
         } catch (err) {
           if (err instanceof aclErrors.ErrorACLNodeIdMissing) {
             return;

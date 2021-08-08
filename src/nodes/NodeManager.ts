@@ -506,6 +506,29 @@ class NodeManager {
     // network search) - if we can't locate it from either, we throw an exception
     return address;
   }
+
+  /**
+   * Retrieves all the vaults for a peers node
+   */
+  public async scanNodeVaults(nodeId: string): Promise<Array<string>> {
+    // Create a connection to the specified node
+    const nodeAddress = await this.getNode(nodeId as NodeId);
+    if (!nodeAddress) {
+      // Throw an error if node is not recognised
+      throw new nodesErrors.ErrorNodeConnectionNotExist(
+        'Node does not exist in node store',
+      );
+    }
+
+    // Create a connection to another node
+    const connection = await this.createConnectionToNode(
+      nodeId as NodeId,
+      nodeAddress,
+    );
+
+    // Scan the vaults of the node over the connection
+    return await connection.scanVaults();
+  }
 }
 
 export default NodeManager;

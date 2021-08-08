@@ -41,7 +41,7 @@ service Client {
   rpc VaultsMkdir(VaultMkdirMessage) returns (StatusMessage) {};
   rpc VaultsStat(VaultMessage) returns (StatMessage) {};
   rpc VaultsPull(VaultPullMessage) returns (StatusMessage) {};
-  rpc VaultsScan(NodeMessage) returns (stream VaultMessage) {};
+  rpc VaultsScan(NodeMessage) returns (stream VaultListMessage) {};
   rpc VaultsDeleteSecret(SecretMessage) returns (StatusMessage) {};
   rpc VaultsEditSecret(SecretEditMessage) returns (StatusMessage) {};
   rpc VaultsGetSecret(SecretMessage) returns (SecretMessage) {};

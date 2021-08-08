@@ -147,6 +147,17 @@ function deserialize_agentInterface_RelayMessage(buffer_arg) {
   return Agent_pb.RelayMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_VaultListMessage(arg) {
+  if (!(arg instanceof Agent_pb.VaultListMessage)) {
+    throw new Error('Expected argument of type agentInterface.VaultListMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_VaultListMessage(buffer_arg) {
+  return Agent_pb.VaultListMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_VaultPermMessage(arg) {
   if (!(arg instanceof Agent_pb.VaultPermMessage)) {
     throw new Error('Expected argument of type agentInterface.VaultPermMessage');
@@ -198,11 +209,11 @@ var AgentService = exports.AgentService = {
     requestStream: false,
     responseStream: true,
     requestType: Agent_pb.NodeIdMessage,
-    responseType: Agent_pb.PackChunk,
+    responseType: Agent_pb.VaultListMessage,
     requestSerialize: serialize_agentInterface_NodeIdMessage,
     requestDeserialize: deserialize_agentInterface_NodeIdMessage,
-    responseSerialize: serialize_agentInterface_PackChunk,
-    responseDeserialize: deserialize_agentInterface_PackChunk,
+    responseSerialize: serialize_agentInterface_VaultListMessage,
+    responseDeserialize: deserialize_agentInterface_VaultListMessage,
   },
   getNodeDetails: {
     path: '/agentInterface.Agent/GetNodeDetails',

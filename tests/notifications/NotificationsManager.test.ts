@@ -10,7 +10,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@/db';
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
-import { GitBackend } from '@/git';
 import { GRPCServer } from '@/grpc';
 import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
@@ -44,7 +43,6 @@ describe('NotificationsManager', () => {
   let receiverKeyManager: KeyManager;
   let receiverVaultManager: VaultManager;
   let receiverNodeManager: NodeManager;
-  let receiverGitBackend: GitBackend;
   let receiverSigchain: Sigchain;
   let receiverACL: ACL;
   let receiverGestaltGraph: GestaltGraph;
@@ -105,15 +103,6 @@ describe('NotificationsManager', () => {
       acl: receiverACL,
       logger: logger,
     });
-    receiverVaultManager = new VaultManager({
-      vaultsPath: receiverVaultsPath,
-      keyManager: receiverKeyManager,
-      db: receiverDb,
-      acl: receiverACL,
-      gestaltGraph: receiverGestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
     // won't be used so don't need to start
     const receiverFwdProxy = new ForwardProxy({
       authToken: '',
@@ -128,17 +117,22 @@ describe('NotificationsManager', () => {
       fs: fs,
       logger: logger,
     });
+    receiverVaultManager = new VaultManager({
+      vaultsPath: receiverVaultsPath,
+      keyManager: receiverKeyManager,
+      nodeManager: receiverNodeManager,
+      db: receiverDb,
+      acl: receiverACL,
+      gestaltGraph: receiverGestaltGraph,
+      fs: fs,
+      logger: logger,
+    });
     receiverNotificationsManager = new NotificationsManager({
       acl: receiverACL,
       db: receiverDb,
       nodeManager: receiverNodeManager,
       keyManager: receiverKeyManager,
       messageCap: 5,
-      logger: logger,
-    });
-    receiverGitBackend = new GitBackend({
-      getVault: receiverVaultManager.getVault.bind(receiverVaultManager),
-      getVaultNames: receiverVaultManager.scanVaults.bind(receiverVaultManager),
       logger: logger,
     });
     await receiverKeyManager.start({ password: 'password' });
@@ -154,14 +148,13 @@ describe('NotificationsManager', () => {
     await receiverSigchain.start();
     await receiverGestaltGraph.start();
     await receiverGestaltGraph.setNode(node);
-    await receiverVaultManager.start({});
     await receiverNodeManager.start({ nodeId: receiverNodeId });
     await receiverNotificationsManager.start();
+    await receiverVaultManager.start({});
 
     agentService = createAgentService({
       vaultManager: receiverVaultManager,
       nodeManager: receiverNodeManager,
-      gitBackend: receiverGitBackend,
       sigchain: receiverSigchain,
       notificationsManager: receiverNotificationsManager,
     });

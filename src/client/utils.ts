@@ -1,4 +1,5 @@
 import type { SessionToken } from '../session/types';
+import type { VaultId } from '../vaults/types';
 
 import fs from 'fs';
 import * as grpc from '@grpc/grpc-js';
@@ -56,12 +57,12 @@ async function passwordFromMetadata(
 async function parseVaultInput(
   input: string,
   vaultManager: VaultManager,
-): Promise<string> {
+): Promise<VaultId> {
   const id = await vaultManager.getVaultId(input);
   if (id) {
     return id;
   } else {
-    return input;
+    return input as VaultId;
   }
 }
 

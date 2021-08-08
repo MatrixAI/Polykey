@@ -1,5 +1,6 @@
 import type Vault from './Vault';
 import type { Opaque } from '../types';
+import type { NodeId } from '@/nodes/types';
 
 /**
  * Randomly generated vault ID for each new vault
@@ -13,6 +14,14 @@ type VaultAction = 'clone' | 'pull';
 
 type VaultKey = Buffer;
 
+type VaultName = string;
+
+type VaultList = string[];
+
+type SecretName = string;
+
+type SecretList = string[];
+
 /**
  * map vaultId -> Vault
  */
@@ -20,13 +29,12 @@ type Vaults = {
   [vaultId: string]: Vault;
 };
 
-type NodePermissions = {
-  canPull: boolean;
-};
+type VaultMap = Array<{
+  id: VaultId;
+  name: VaultName;
+}>;
 
-type ACL = {
-  [key: string]: NodePermissions;
-};
+type VaultPermissions = Record<NodeId, VaultAction>;
 
 type FileChange = {
   fileName: string;
@@ -34,6 +42,10 @@ type FileChange = {
 };
 
 type FileChanges = Array<FileChange>;
+
+type FileOptions = {
+  recursive?: boolean;
+};
 
 type VaultMapOp_ =
   | {
@@ -66,11 +78,16 @@ export type {
   VaultId,
   VaultAction,
   VaultKey,
+  VaultName,
+  VaultList,
+  VaultMap,
   Vaults,
-  NodePermissions,
-  ACL,
+  VaultPermissions,
   FileChange,
   FileChanges,
   VaultMapOp,
   VaultActions,
+  SecretName,
+  SecretList,
+  FileOptions,
 };
