@@ -16,7 +16,7 @@ import { GestaltGraph } from './gestalts';
 import { Sigchain } from './sigchain';
 import { ACL } from './acl';
 import { DB } from './db';
-import Discovery from './discovery/Discovery';
+import { Discovery } from './discovery';
 import { WorkerManager } from './workers';
 import { SessionManager } from './session';
 import { certNodeId } from './network/utils';

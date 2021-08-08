@@ -52,19 +52,11 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
-  public getRootCertificate(...args) {
+  public getNodeDetails(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<agentPB.CertificateMessage>(
+    return grpcUtils.promisifyUnaryCall<agentPB.NodeDetailsMessage>(
       this.client,
-      this.client.getRootCertificate,
-    )(...args);
-  }
-
-  public requestCertificateSigning(...args) {
-    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<agentPB.CertificateMessage>(
-      this.client,
-      this.client.requestCertificateSigning,
+      this.client.getNodeDetails,
     )(...args);
   }
 
@@ -89,14 +81,6 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     return grpcUtils.promisifyUnaryCall<agentPB.ChainDataMessage>(
       this.client,
       this.client.getChainData,
-    )(...args);
-  }
-
-  public synchronizeDHT(...args) {
-    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<agentPB.NodeTableMessage>(
-      this.client,
-      this.client.synchronizeDHT,
     )(...args);
   }
 

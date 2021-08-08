@@ -125,6 +125,28 @@ function deserialize_clientInterface_KeyPairMessage(buffer_arg) {
   return Client_pb.KeyPairMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_NodeAddressMessage(arg) {
+  if (!(arg instanceof Client_pb.NodeAddressMessage)) {
+    throw new Error('Expected argument of type clientInterface.NodeAddressMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_NodeAddressMessage(buffer_arg) {
+  return Client_pb.NodeAddressMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_clientInterface_NodeDetailsMessage(arg) {
+  if (!(arg instanceof Client_pb.NodeDetailsMessage)) {
+    throw new Error('Expected argument of type clientInterface.NodeDetailsMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_NodeDetailsMessage(buffer_arg) {
+  return Client_pb.NodeDetailsMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_NodeMessage(arg) {
   if (!(arg instanceof Client_pb.NodeMessage)) {
     throw new Error('Expected argument of type clientInterface.NodeMessage');
@@ -361,16 +383,71 @@ sessionRequestJWT: {
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
   // Nodes
-nodesList: {
-    path: '/clientInterface.Client/NodesList',
+nodesGetLocalDetails: {
+    path: '/clientInterface.Client/NodesGetLocalDetails',
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestType: Client_pb.EmptyMessage,
-    responseType: Client_pb.NodeMessage,
+    responseType: Client_pb.NodeDetailsMessage,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_clientInterface_NodeMessage,
-    responseDeserialize: deserialize_clientInterface_NodeMessage,
+    responseSerialize: serialize_clientInterface_NodeDetailsMessage,
+    responseDeserialize: deserialize_clientInterface_NodeDetailsMessage,
+  },
+  nodesGetDetails: {
+    path: '/clientInterface.Client/NodesGetDetails',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.NodeMessage,
+    responseType: Client_pb.NodeDetailsMessage,
+    requestSerialize: serialize_clientInterface_NodeMessage,
+    requestDeserialize: deserialize_clientInterface_NodeMessage,
+    responseSerialize: serialize_clientInterface_NodeDetailsMessage,
+    responseDeserialize: deserialize_clientInterface_NodeDetailsMessage,
+  },
+  nodesAdd: {
+    path: '/clientInterface.Client/NodesAdd',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.NodeAddressMessage,
+    responseType: Client_pb.EmptyMessage,
+    requestSerialize: serialize_clientInterface_NodeAddressMessage,
+    requestDeserialize: deserialize_clientInterface_NodeAddressMessage,
+    responseSerialize: serialize_clientInterface_EmptyMessage,
+    responseDeserialize: deserialize_clientInterface_EmptyMessage,
+  },
+  nodesPing: {
+    path: '/clientInterface.Client/NodesPing',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.NodeMessage,
+    responseType: Client_pb.StatusMessage,
+    requestSerialize: serialize_clientInterface_NodeMessage,
+    requestDeserialize: deserialize_clientInterface_NodeMessage,
+    responseSerialize: serialize_clientInterface_StatusMessage,
+    responseDeserialize: deserialize_clientInterface_StatusMessage,
+  },
+  nodesClaim: {
+    path: '/clientInterface.Client/NodesClaim',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.NodeMessage,
+    responseType: Client_pb.StatusMessage,
+    requestSerialize: serialize_clientInterface_NodeMessage,
+    requestDeserialize: deserialize_clientInterface_NodeMessage,
+    responseSerialize: serialize_clientInterface_StatusMessage,
+    responseDeserialize: deserialize_clientInterface_StatusMessage,
+  },
+  nodesFind: {
+    path: '/clientInterface.Client/NodesFind',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.NodeMessage,
+    responseType: Client_pb.NodeAddressMessage,
+    requestSerialize: serialize_clientInterface_NodeMessage,
+    requestDeserialize: deserialize_clientInterface_NodeMessage,
+    responseSerialize: serialize_clientInterface_NodeAddressMessage,
+    responseDeserialize: deserialize_clientInterface_NodeAddressMessage,
   },
   // Keys
 keysRootKeyPair: {

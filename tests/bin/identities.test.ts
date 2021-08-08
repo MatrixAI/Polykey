@@ -574,7 +574,7 @@ describe('CLI Identities', () => {
     //TODO: This should actually test discovery.
     // But I'm not sure how I can set up a test for his.
     // right now we just assume it works by it failing the way we expect.
-    // Since there are no actual links to chase up then it fails with a ErrorNodeGraphEmptyShortlist.
+    // Since there are no actual links to chase up then it fails with a ErrorNodeGraphEmptyDatabase.
 
     test('Should start discovery by Node', async () => {
       const commands = ['identities', 'discover', '-np', nodePath, node1.id];

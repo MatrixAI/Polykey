@@ -1,9 +1,9 @@
 import { clientPB } from '../../client';
 import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import PolykeyClient from '@/PolykeyClient';
-import { errors } from '@/grpc';
-import * as utils from '@/utils';
+import PolykeyClient from '../../PolykeyClient';
+import { errors } from '../../grpc';
+import * as utils from '../../utils';
 
 const commandAugmentKeynode = createCommand('authenticate', {
   description: {

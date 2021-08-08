@@ -3,7 +3,7 @@
 import fs from 'fs';
 import prompts from 'prompts';
 // import { pki } from 'node-forge';
-import { errors } from '@/grpc';
+import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 // import PolykeyAgent from '../../PolykeyAgent';
 // import { priv } from '../../certs/bootstrap.polykey.io.key';

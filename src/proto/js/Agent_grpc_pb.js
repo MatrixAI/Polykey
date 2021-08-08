@@ -4,17 +4,6 @@
 var grpc = require('@grpc/grpc-js');
 var Agent_pb = require('./Agent_pb.js');
 
-function serialize_agentInterface_CertificateMessage(arg) {
-  if (!(arg instanceof Agent_pb.CertificateMessage)) {
-    throw new Error('Expected argument of type agentInterface.CertificateMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_CertificateMessage(buffer_arg) {
-  return Agent_pb.CertificateMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_agentInterface_ChainDataMessage(arg) {
   if (!(arg instanceof Agent_pb.ChainDataMessage)) {
     throw new Error('Expected argument of type agentInterface.ChainDataMessage');
@@ -79,6 +68,17 @@ function serialize_agentInterface_InfoRequest(arg) {
 
 function deserialize_agentInterface_InfoRequest(buffer_arg) {
   return Agent_pb.InfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_agentInterface_NodeDetailsMessage(arg) {
+  if (!(arg instanceof Agent_pb.NodeDetailsMessage)) {
+    throw new Error('Expected argument of type agentInterface.NodeDetailsMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NodeDetailsMessage(buffer_arg) {
+  return Agent_pb.NodeDetailsMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_agentInterface_NodeIdMessage(arg) {
@@ -193,27 +193,16 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_PackChunk,
     responseDeserialize: deserialize_agentInterface_PackChunk,
   },
-  getRootCertificate: {
-    path: '/agentInterface.Agent/GetRootCertificate',
+  getNodeDetails: {
+    path: '/agentInterface.Agent/GetNodeDetails',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.EmptyMessage,
-    responseType: Agent_pb.CertificateMessage,
+    responseType: Agent_pb.NodeDetailsMessage,
     requestSerialize: serialize_agentInterface_EmptyMessage,
     requestDeserialize: deserialize_agentInterface_EmptyMessage,
-    responseSerialize: serialize_agentInterface_CertificateMessage,
-    responseDeserialize: deserialize_agentInterface_CertificateMessage,
-  },
-  requestCertificateSigning: {
-    path: '/agentInterface.Agent/RequestCertificateSigning',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.CertificateMessage,
-    responseType: Agent_pb.CertificateMessage,
-    requestSerialize: serialize_agentInterface_CertificateMessage,
-    requestDeserialize: deserialize_agentInterface_CertificateMessage,
-    responseSerialize: serialize_agentInterface_CertificateMessage,
-    responseDeserialize: deserialize_agentInterface_CertificateMessage,
+    responseSerialize: serialize_agentInterface_NodeDetailsMessage,
+    responseDeserialize: deserialize_agentInterface_NodeDetailsMessage,
   },
   getClosestLocalNodes: {
     path: '/agentInterface.Agent/GetClosestLocalNodes',
@@ -247,17 +236,6 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_EmptyMessage,
     responseSerialize: serialize_agentInterface_ChainDataMessage,
     responseDeserialize: deserialize_agentInterface_ChainDataMessage,
-  },
-  synchronizeDHT: {
-    path: '/agentInterface.Agent/SynchronizeDHT',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.EmptyMessage,
-    responseType: Agent_pb.NodeTableMessage,
-    requestSerialize: serialize_agentInterface_EmptyMessage,
-    requestDeserialize: deserialize_agentInterface_EmptyMessage,
-    responseSerialize: serialize_agentInterface_NodeTableMessage,
-    responseDeserialize: deserialize_agentInterface_NodeTableMessage,
   },
   sendHolePunchMessage: {
     path: '/agentInterface.Agent/SendHolePunchMessage',

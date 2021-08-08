@@ -28,6 +28,7 @@ const createEchoRPC = ({
       };
 
       try {
+        console.log('Echo meta: ', call.metadata);
         await utils.verifyToken(call.metadata, sessionManager);
         await action(response);
         callback(null, response);

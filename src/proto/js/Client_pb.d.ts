@@ -331,6 +331,58 @@ export namespace NodeMessage {
     }
 }
 
+export class NodeAddressMessage extends jspb.Message { 
+    getId(): string;
+    setId(value: string): NodeAddressMessage;
+    getHost(): string;
+    setHost(value: string): NodeAddressMessage;
+    getPort(): number;
+    setPort(value: number): NodeAddressMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeAddressMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeAddressMessage): NodeAddressMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeAddressMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeAddressMessage;
+    static deserializeBinaryFromReader(message: NodeAddressMessage, reader: jspb.BinaryReader): NodeAddressMessage;
+}
+
+export namespace NodeAddressMessage {
+    export type AsObject = {
+        id: string,
+        host: string,
+        port: number,
+    }
+}
+
+export class NodeDetailsMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeDetailsMessage;
+    getPublicKey(): string;
+    setPublicKey(value: string): NodeDetailsMessage;
+    getNodeAddress(): string;
+    setNodeAddress(value: string): NodeDetailsMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeDetailsMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeDetailsMessage): NodeDetailsMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeDetailsMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeDetailsMessage;
+    static deserializeBinaryFromReader(message: NodeDetailsMessage, reader: jspb.BinaryReader): NodeDetailsMessage;
+}
+
+export namespace NodeDetailsMessage {
+    export type AsObject = {
+        nodeId: string,
+        publicKey: string,
+        nodeAddress: string,
+    }
+}
+
 export class CryptoMessage extends jspb.Message { 
     getData(): string;
     setData(value: string): CryptoMessage;

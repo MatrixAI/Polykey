@@ -10,7 +10,7 @@ import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
 
 import canonicalize from 'canonicalize';
-import { ErrorGestaltsInvalidAction } from '@/gestalts/errors';
+import { ErrorGestaltsInvalidAction } from './errors';
 
 /**
  * Construct GestaltKey from GestaltId

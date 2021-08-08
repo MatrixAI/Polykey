@@ -404,6 +404,54 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
+  public nodesGetLocalDetails(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
+      this.client,
+      this.client.nodesGetLocalDetails,
+    )(...args);
+  }
+
+  public nodesGetDetails(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
+      this.client,
+      this.client.nodesGetDetails,
+    )(...args);
+  }
+
+  public nodesAdd(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.nodesAdd,
+    )(...args);
+  }
+
+  public nodesPing(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.nodesPing,
+    )(...args);
+  }
+
+  public nodesClaim(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.nodesClaim,
+    )(...args);
+  }
+
+  public nodesFind(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
+      this.client,
+      this.client.nodesFind,
+    )(...args);
+  }
+
   public identitiesAuthenticate(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.ProviderMessage>(

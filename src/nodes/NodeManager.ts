@@ -3,8 +3,14 @@ import type { PublicKeyPem } from '../keys/types';
 import type { Sigchain } from '../sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
 import type { ClaimId } from '../claims/types';
-import type { NodeId, NodeAddress, NodeData, NodeBucket } from '../nodes/types';
-import type { Host, Port } from '../network/types';
+import type {
+  NodeId,
+  NodeDetails,
+  NodeAddress,
+  NodeData,
+  NodeBucket,
+} from '../nodes/types';
+import type { Host, Port, Address } from '../network/types';
 import type { FileSystem, Timer } from '../types';
 import type { DB } from '../db';
 
@@ -15,6 +21,7 @@ import * as nodesErrors from './errors';
 import * as dbErrors from '../db/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
+import * as networkUtils from '../network/utils';
 import { ForwardProxy, ReverseProxy } from '../network';
 import { GRPCClientAgent } from '../agent';
 import * as agentPB from '../proto/js/Agent_pb';
@@ -74,6 +81,10 @@ class NodeManager {
     this.revProxy = revProxy;
   }
 
+  get started(): boolean {
+    return this._started;
+  }
+
   public async start({
     nodeId,
     brokerNodes = {},
@@ -83,40 +94,35 @@ class NodeManager {
     brokerNodes?: NodeBucket;
     fresh?: boolean;
   }) {
-    this.logger.info('Starting Node Manager');
-    this._started = true;
-    if (!this.db.started) {
-      throw new dbErrors.ErrorDBNotStarted();
+    try {
+      this.logger.info('Starting Node Manager');
+      if (!this.db.started) {
+        throw new dbErrors.ErrorDBNotStarted();
+      }
+      this._started = true;
+      this.nodeId = nodeId;
+      // establish and start connections to the brokers
+      for (const brokerId in brokerNodes) {
+        await this.createConnectionToBroker(
+          brokerId as NodeId,
+          brokerNodes[brokerId].address,
+        );
+      }
+      await this.nodeGraph.start({
+        nodeId: nodeId,
+        // brokerNodes: brokerNodes,
+      });
+      this.logger.info('Started Node Manager');
+    } catch (e) {
+      this._started = false;
+      throw e;
     }
-    this.nodeId = nodeId;
-    // establish and start connections to the brokers
-    for (const brokerId in brokerNodes) {
-      await this.createConnectionToBroker(
-        brokerId as NodeId,
-        brokerNodes[brokerId].address,
-      );
-    }
-    await this.nodeGraph.start({
-      nodeId: nodeId,
-      // brokerNodes: brokerNodes,
-    });
-    this.logger.info('Started Node Manager');
-  }
-
-  /**
-   * Checks to see whether or not the current NodeManager instance has been started.
-   *
-   * Checks for: _started, nodeGraph and revProxy
-   * @returns true if all nodeManager components have been constructed
-   */
-  public async started(): Promise<boolean> {
-    if (this._started && this.nodeGraph && this.revProxy) {
-      return true;
-    }
-    return false;
   }
 
   public async stop() {
+    if (!this._started) {
+      return;
+    }
     this.logger.info('Stopping Node Manager');
     this._started = false;
     for (const [, conn] of this.connections) {
@@ -149,8 +155,57 @@ class NodeManager {
     }
   }
 
+  /**
+   * Determines whether a node in the Polykey network is online.
+   * @return true if online, false if offline
+   */
+  public async pingNode(targetNodeId: NodeId): Promise<boolean> {
+    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
+    try {
+      // Attempt to create a connection
+      await this.createConnectionToNode(targetNodeId, targetAddress);
+      // If the connection had already existed, check that it's still active
+      if (
+        !this.fwdProxy.getConnectionInfoByIngress(
+          targetAddress.ip,
+          targetAddress.port,
+        )
+      ) {
+        return false;
+      }
+    } catch (e) {
+      // If the connection request times out, then return false
+      if (e.data.code == 'UTP_ETIMEDOUT') {
+        return false;
+      }
+      // Throw any other error back up the callstack
+      throw e;
+    }
+    return true;
+  }
+
   public getNodeId(): NodeId {
     return this.nodeGraph.getNodeId();
+  }
+
+  public getNodeDetails(): NodeDetails {
+    return {
+      id: this.getNodeId(),
+      publicKey: this.keyManager.getRootKeyPairPem().publicKey,
+      address: networkUtils.buildAddress(
+        this.revProxy.getIngressHost(),
+        this.revProxy.getIngressPort(),
+      ),
+    } as NodeDetails;
+  }
+
+  public async requestNodeDetails(targetNodeId: NodeId): Promise<NodeDetails> {
+    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
+    const connection: NodeConnection = await this.createConnectionToNode(
+      targetNodeId,
+      targetAddress,
+    );
+    return await connection.getNodeDetails();
   }
 
   /**
@@ -257,15 +312,6 @@ class NodeManager {
   }
 
   /**
-   * Forwards a received hole punch message on.
-   */
-  // public async relayHolePunchMessage(
-  //   message: agentPB.RelayMessage,
-  // ): Promise<void> {
-  //   await this.nodeGraph.relayHolePunchMessage(message);
-  // }
-
-  /**
    * Forwards a received hole punch message on to the target.
    * The node is assumed to be known, and a connection to the node is also assumed
    * to have already been established (as right now, this will only be called by
@@ -287,22 +333,6 @@ class NodeManager {
       Buffer.from(message.getSignature()),
     );
   }
-
-  /**
-   * Treat this node as the client.
-   * Attempt to create a unidirectional connection to another node (server).
-   * @param targetNodeId node ID of the node (server) to connect to
-   * @param targetNodeAddress address (host and port) of node to connect to
-   */
-  // public async createConnectionToNode(
-  //   targetNodeId: NodeId,
-  //   targetNodeAddress: NodeAddress,
-  // ): Promise<void> {
-  //   await this.nodeGraph.createConnectionToNode(
-  //     targetNodeId,
-  //     targetNodeAddress,
-  //   );
-  // }
 
   public getConnectionToNode(targetNodeId: NodeId): NodeConnection {
     const conn = this.connections.get(targetNodeId);

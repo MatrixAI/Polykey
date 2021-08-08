@@ -12,7 +12,12 @@ interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
     agentStop: IClientService_IAgentStop;
     sessionRequestJWT: IClientService_ISessionRequestJWT;
     sessionChangeKey: IClientService_ISessionChangeKey;
-    nodesList: IClientService_INodesList;
+    nodesGetLocalDetails: IClientService_INodesGetLocalDetails;
+    nodesGetDetails: IClientService_INodesGetDetails;
+    nodesAdd: IClientService_INodesAdd;
+    nodesPing: IClientService_INodesPing;
+    nodesClaim: IClientService_INodesClaim;
+    nodesFind: IClientService_INodesFind;
     keysRootKeyPair: IClientService_IKeysRootKeyPair;
     keysResetKeyPair: IClientService_IKeysResetKeyPair;
     keysRenewKeyPair: IClientService_IKeysRenewKeyPair;
@@ -100,14 +105,59 @@ interface IClientService_ISessionChangeKey extends grpc.MethodDefinition<Client_
     responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
 }
-interface IClientService_INodesList extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.NodeMessage> {
-    path: "/clientInterface.Client/NodesList";
+interface IClientService_INodesGetLocalDetails extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.NodeDetailsMessage> {
+    path: "/clientInterface.Client/NodesGetLocalDetails";
     requestStream: false;
-    responseStream: true;
+    responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
-    responseSerialize: grpc.serialize<Client_pb.NodeMessage>;
-    responseDeserialize: grpc.deserialize<Client_pb.NodeMessage>;
+    responseSerialize: grpc.serialize<Client_pb.NodeDetailsMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.NodeDetailsMessage>;
+}
+interface IClientService_INodesGetDetails extends grpc.MethodDefinition<Client_pb.NodeMessage, Client_pb.NodeDetailsMessage> {
+    path: "/clientInterface.Client/NodesGetDetails";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.NodeMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NodeMessage>;
+    responseSerialize: grpc.serialize<Client_pb.NodeDetailsMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.NodeDetailsMessage>;
+}
+interface IClientService_INodesAdd extends grpc.MethodDefinition<Client_pb.NodeAddressMessage, Client_pb.EmptyMessage> {
+    path: "/clientInterface.Client/NodesAdd";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.NodeAddressMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NodeAddressMessage>;
+    responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+}
+interface IClientService_INodesPing extends grpc.MethodDefinition<Client_pb.NodeMessage, Client_pb.StatusMessage> {
+    path: "/clientInterface.Client/NodesPing";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.NodeMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NodeMessage>;
+    responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
+}
+interface IClientService_INodesClaim extends grpc.MethodDefinition<Client_pb.NodeMessage, Client_pb.StatusMessage> {
+    path: "/clientInterface.Client/NodesClaim";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.NodeMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NodeMessage>;
+    responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
+}
+interface IClientService_INodesFind extends grpc.MethodDefinition<Client_pb.NodeMessage, Client_pb.NodeAddressMessage> {
+    path: "/clientInterface.Client/NodesFind";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.NodeMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NodeMessage>;
+    responseSerialize: grpc.serialize<Client_pb.NodeAddressMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.NodeAddressMessage>;
 }
 interface IClientService_IKeysRootKeyPair extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.KeyPairMessage> {
     path: "/clientInterface.Client/KeysRootKeyPair";
@@ -558,7 +608,12 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     agentStop: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.EmptyMessage>;
     sessionRequestJWT: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.JWTTokenMessage>;
     sessionChangeKey: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.StatusMessage>;
-    nodesList: grpc.handleServerStreamingCall<Client_pb.EmptyMessage, Client_pb.NodeMessage>;
+    nodesGetLocalDetails: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.NodeDetailsMessage>;
+    nodesGetDetails: grpc.handleUnaryCall<Client_pb.NodeMessage, Client_pb.NodeDetailsMessage>;
+    nodesAdd: grpc.handleUnaryCall<Client_pb.NodeAddressMessage, Client_pb.EmptyMessage>;
+    nodesPing: grpc.handleUnaryCall<Client_pb.NodeMessage, Client_pb.StatusMessage>;
+    nodesClaim: grpc.handleUnaryCall<Client_pb.NodeMessage, Client_pb.StatusMessage>;
+    nodesFind: grpc.handleUnaryCall<Client_pb.NodeMessage, Client_pb.NodeAddressMessage>;
     keysRootKeyPair: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.KeyPairMessage>;
     keysResetKeyPair: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.EmptyMessage>;
     keysRenewKeyPair: grpc.handleUnaryCall<Client_pb.KeyMessage, Client_pb.EmptyMessage>;
@@ -623,8 +678,24 @@ export interface IClientClient {
     sessionChangeKey(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    nodesList(request: Client_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
-    nodesList(request: Client_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
+    nodesGetLocalDetails(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    nodesGetDetails(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    nodesGetDetails(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    nodesGetDetails(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    nodesAdd(request: Client_pb.NodeAddressMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    nodesAdd(request: Client_pb.NodeAddressMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    nodesAdd(request: Client_pb.NodeAddressMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    nodesPing(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    nodesPing(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    nodesPing(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    nodesClaim(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    nodesClaim(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    nodesClaim(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    nodesFind(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeAddressMessage) => void): grpc.ClientUnaryCall;
+    nodesFind(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeAddressMessage) => void): grpc.ClientUnaryCall;
+    nodesFind(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeAddressMessage) => void): grpc.ClientUnaryCall;
     keysRootKeyPair(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
@@ -780,8 +851,24 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public sessionChangeKey(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public nodesList(request: Client_pb.EmptyMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
-    public nodesList(request: Client_pb.EmptyMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.NodeMessage>;
+    public nodesGetLocalDetails(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    public nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    public nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    public nodesGetDetails(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    public nodesGetDetails(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    public nodesGetDetails(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
+    public nodesAdd(request: Client_pb.NodeAddressMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public nodesAdd(request: Client_pb.NodeAddressMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public nodesAdd(request: Client_pb.NodeAddressMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public nodesPing(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public nodesPing(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public nodesPing(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public nodesClaim(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public nodesClaim(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public nodesClaim(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public nodesFind(request: Client_pb.NodeMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeAddressMessage) => void): grpc.ClientUnaryCall;
+    public nodesFind(request: Client_pb.NodeMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeAddressMessage) => void): grpc.ClientUnaryCall;
+    public nodesFind(request: Client_pb.NodeMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeAddressMessage) => void): grpc.ClientUnaryCall;
     public keysRootKeyPair(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     public keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;
     public keysRootKeyPair(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.KeyPairMessage) => void): grpc.ClientUnaryCall;

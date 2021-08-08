@@ -13,7 +13,7 @@ class ErrorNodeGraphNodeIdMissing extends ErrorNodes {}
 
 class ErrorNodeGraphSelfConnect extends ErrorNodes {}
 
-class ErrorNodeGraphEmptyShortlist extends ErrorNodes {}
+class ErrorNodeGraphEmptyDatabase extends ErrorNodes {}
 
 class ErrorNodeGraphInvalidBucketIndex extends ErrorNodes {}
 
@@ -25,6 +25,16 @@ class ErrorNodeConnectionInfoNotExist extends ErrorNodes {}
 
 class ErrorNodeConnectionPublicKeyNotFound extends ErrorNodes {}
 
+class ErrorInvalidNodeId extends ErrorNodes {
+  description: string = 'Invalid node ID.';
+  exitCode: number = 64;
+}
+
+class ErrorInvalidHost extends ErrorNodes {
+  description: string = 'Invalid IP address.';
+  exitCode: number = 64;
+}
+
 export {
   ErrorNodes,
   ErrorNodeManagerNotStarted,
@@ -32,10 +42,12 @@ export {
   ErrorNodeGraphNodeNotFound,
   ErrorNodeGraphNodeIdMissing,
   ErrorNodeGraphSelfConnect,
-  ErrorNodeGraphEmptyShortlist,
+  ErrorNodeGraphEmptyDatabase,
   ErrorNodeGraphInvalidBucketIndex,
   ErrorNodeConnectionNotStarted,
   ErrorNodeConnectionNotExist,
   ErrorNodeConnectionInfoNotExist,
   ErrorNodeConnectionPublicKeyNotFound,
+  ErrorInvalidNodeId,
+  ErrorInvalidHost,
 };

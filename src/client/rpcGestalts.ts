@@ -8,7 +8,7 @@ import type Discovery from '../discovery/Discovery';
 
 import * as grpc from '@grpc/grpc-js';
 import * as clientPB from '../proto/js/Client_pb';
-import { checkGestaltAction } from '../gestalts/utils';
+import { checkGestaltAction, validGestaltAction } from '../gestalts/utils';
 import * as utils from '../client/utils';
 import * as grpcUtils from '../grpc/utils';
 import * as errors from '../errors';

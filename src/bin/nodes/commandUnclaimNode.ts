@@ -4,21 +4,19 @@ import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 
-const commandAddNode = createCommand('add', {
+const commandUnclaimNode = createCommand('claim', {
   description: {
-    description: 'Manually add a node to the node graph',
+    description: 'Unclaim a node, removes a link between to the node.',
     args: {
       node: 'Id of the node.',
-      host: 'Ip Address of node',
-      port: 'Port of node',
     },
   },
   nodePath: true,
   verbose: true,
   format: true,
 });
-commandAddNode.arguments('<node> <host> <port>');
-commandAddNode.action(async (node, host, port, options) => {
+commandUnclaimNode.arguments('<node>');
+commandUnclaimNode.action(async (node, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -31,31 +29,22 @@ commandAddNode.action(async (node, host, port, options) => {
   }
 
   const client = new PolykeyClient(clientConfig);
+
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const nodeAddressMessage = new clientPB.NodeAddressMessage();
-    nodeAddressMessage.setId(node);
-    nodeAddressMessage.setHost(host);
-    nodeAddressMessage.setPort(port);
-
-    const result = { success: false, message: '' };
-
-    await grpcClient.nodesAdd(
-      nodeAddressMessage,
-      await client.session.createJWTCallCredentials(),
-    );
-    result.success = true;
-    result.message = 'Added node.';
-
-    let output: any = result;
-    if (options.format === 'human') output = [result.message];
+    //Claiming the node.
+    //FIXME: Placeholder, not currently supported.
+    // const nodeMessage = new clientPB.NodeMessage();
+    // nodeMessage.setName(node);
+    // const res = await grpcClient.nodesAdd(nodeMessage);
+    // console.log(JSON.stringify(res.toObject()));
 
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: output,
+        data: [`/*TODO*/ write an output.`],
       }),
     );
   } catch (err) {
@@ -78,4 +67,4 @@ commandAddNode.action(async (node, host, port, options) => {
   }
 });
 
-export default commandAddNode;
+export default commandUnclaimNode;

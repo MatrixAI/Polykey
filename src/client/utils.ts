@@ -74,4 +74,14 @@ async function verifyToken(
   await sessionManager.verifyJWTToken(token as SessionToken);
 }
 
-export { checkPassword, parseVaultInput, passwordFromMetadata, verifyToken };
+function createMetadata(): grpc.Metadata {
+  return new grpc.Metadata();
+}
+
+export {
+  checkPassword,
+  parseVaultInput,
+  passwordFromMetadata,
+  verifyToken,
+  createMetadata,
+};
