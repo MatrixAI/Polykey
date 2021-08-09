@@ -8,9 +8,10 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
 import * as grpc from '@grpc/grpc-js';
 
+import TestProvider from '../identities/TestProvider';
+import { PolykeyAgent } from '@';
 import { clientPB } from '@/client';
 import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
@@ -20,12 +21,12 @@ import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
 import { GitManager } from '@/git';
 import { KeyManager, utils as keyUtils } from '@/keys';
-import { ClientClient } from '@/proto/js/Client_grpc_pb';
+import { NotificationsManager } from '@/notifications';
+import { GithubProvider } from '@/identities/providers';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import { DB } from '@/db';
-import { PolykeyAgent } from '@';
+import { ClientClient } from '@/proto/js/Client_grpc_pb';
 
-import * as utils from '@/utils';
 import * as testKeynodeUtils from '../utils';
 import * as testUtils from './utils';
 import * as grpcUtils from '@/grpc/utils';
@@ -33,8 +34,7 @@ import * as gestaltsUtils from '@/gestalts/utils';
 import * as polykeyErrors from '@/errors';
 import * as vaultErrors from '@/vaults/errors';
 import * as nodesErrors from '@/nodes/errors';
-import { GithubProvider } from '../../src/identities/providers';
-import TestProvider from '../identities/TestProvider';
+
 
 describe('Client service', () => {
   const logger = new Logger('ClientServerTest', LogLevel.WARN, [
@@ -57,6 +57,7 @@ describe('Client service', () => {
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
+  let notificationsManager: NotificationsManager;
   let sigchain: Sigchain;
   let acl: ACL;
   let db: DB;
@@ -157,6 +158,14 @@ describe('Client service', () => {
     identitiesManager = new IdentitiesManager({
       db: db,
       logger: logger,
+    });
+
+    notificationsManager = new NotificationsManager({
+      acl,
+      db,
+      nodeManager,
+      keyManager,
+      logger,
     });
 
     gitManager = new GitManager({
@@ -1575,7 +1584,7 @@ describe('Client service', () => {
         client,
         client.nodesAdd,
       );
-      const nodeId = 'nodeId1';
+      const nodeId = 'A'.repeat(43) + '=';
       const host = '127.0.0.1';
       const port = 11111;
       const nodeAddressMessage = new clientPB.NodeAddressMessage();
@@ -1705,5 +1714,149 @@ describe('Client service', () => {
       },
       global.defaultTimeout * 3,
     );
+  });
+  //Notifications
+  describe('Notifications RPC', () => {
+    test('can send notifications.', async () => {
+      // Set up a remote node receiver and add its details to agent
+      const receiver = await testKeynodeUtils.setupRemoteKeynode({ logger });
+      await receiver.acl.setNodePerm(node1.id, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, receiver);
+
+      const notificationsSend =
+        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+          client,
+          client.notificationsSend,
+        );
+
+      const notificationInfoMessage = new clientPB.NotificationInfoMessage();
+      notificationInfoMessage.setReceiverId(receiver.nodes.getNodeId());
+      notificationInfoMessage.setMessage('msg');
+
+      // Send notification returns nothing - check remote node received messages
+      await notificationsSend(notificationInfoMessage, callCredentials);
+      const notifs = await receiver.notifications.readNotifications();
+      expect(notifs).toEqual(['msg']);
+      await testKeynodeUtils.cleanupRemoteKeynode(receiver);
+    }, global.defaultTimeout * 3);
+    test('should read all notifications.', async () => {
+      // Set up a remote node sender
+      const sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
+      await sender.nodes.setNode(node1.id, {
+        ip: polykeyAgent.revProxy.getIngressHost(),
+        port: polykeyAgent.revProxy.getIngressPort(),
+      } as NodeAddress);
+      await polykeyAgent.acl.setNodePerm(sender.nodes.getNodeId(), {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+      await sender.notifications.sendNotification(node1.id, 'msg1');
+      await sender.notifications.sendNotification(node1.id, 'msg2');
+      await sender.notifications.sendNotification(node1.id, 'msg3');
+
+      const notificationsRead =
+        grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+          client,
+          client.notificationsRead,
+        );
+
+      const notificationDisplayMessage =
+        new clientPB.NotificationDisplayMessage();
+      const numberMessage = new clientPB.NumberMessage();
+      numberMessage.setAll('all');
+      notificationDisplayMessage.setUnread(false);
+      notificationDisplayMessage.setNumber(numberMessage);
+      notificationDisplayMessage.setOrder('newest');
+
+      // Check the read call
+      const response = await notificationsRead(
+        notificationDisplayMessage,
+        callCredentials,
+      );
+      expect(response.getMessages()).toContain('msg1');
+      expect(response.getMessages()).toContain('msg2');
+      expect(response.getMessages()).toContain('msg3');
+      await testKeynodeUtils.cleanupRemoteKeynode(sender);
+    }, global.defaultTimeout * 3);
+    test('should read a single notification.', async () => {
+      // Set up a remote node sender
+      const sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
+      await sender.nodes.setNode(node1.id, {
+        ip: polykeyAgent.revProxy.getIngressHost(),
+        port: polykeyAgent.revProxy.getIngressPort(),
+      } as NodeAddress);
+      await polykeyAgent.acl.setNodePerm(sender.nodes.getNodeId(), {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+
+      await sender.notifications.sendNotification(node1.id, 'msg1');
+      await sender.notifications.sendNotification(node1.id, 'msg2');
+      await sender.notifications.sendNotification(node1.id, 'msg3');
+
+      const notificationsRead =
+        grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+          client,
+          client.notificationsRead,
+        );
+
+      const notificationDisplayMessage =
+        new clientPB.NotificationDisplayMessage();
+      const numberMessage = new clientPB.NumberMessage();
+      numberMessage.setNumber(1);
+      notificationDisplayMessage.setUnread(false);
+      notificationDisplayMessage.setNumber(numberMessage);
+      notificationDisplayMessage.setOrder('newest');
+
+      // Check the read call
+      const response = await notificationsRead(
+        notificationDisplayMessage,
+        callCredentials,
+      );
+      expect(response.getMessages()).not.toContain('msg1');
+      expect(response.getMessages()).not.toContain('msg2');
+      expect(response.getMessages()).toContain('msg3');
+      await testKeynodeUtils.cleanupRemoteKeynode(sender);
+    }, global.defaultTimeout * 3);
+    test('should clear all notifications.', async () => {
+      // Set up a remote node sender
+      const sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
+      await sender.nodes.setNode(node1.id, {
+        ip: polykeyAgent.revProxy.getIngressHost(),
+        port: polykeyAgent.revProxy.getIngressPort(),
+      } as NodeAddress);
+      await polykeyAgent.acl.setNodePerm(sender.nodes.getNodeId(), {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+
+      await sender.notifications.sendNotification(node1.id, 'msg1');
+      await sender.notifications.sendNotification(node1.id, 'msg2');
+
+      const notificationsClear =
+        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+          client,
+          client.notificationsClear,
+        );
+
+      const emptyMessage = new clientPB.EmptyMessage();
+      await notificationsClear(emptyMessage, callCredentials);
+
+      // Call read notifications to check there are none
+      const notifs = await polykeyAgent.notifications.readNotifications();
+      expect(notifs).toEqual([]);
+      await testKeynodeUtils.cleanupRemoteKeynode(sender);
+    }, global.defaultTimeout * 3);
   });
 });

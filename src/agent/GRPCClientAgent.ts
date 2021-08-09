@@ -92,6 +92,14 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
+  public notificationsSend(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<agentPB.NotificationMessage>(
+      this.client,
+      this.client.notificationsSend,
+    )(...args);
+  }
+
   public checkVaultPermissions(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.PermissionMessage>(

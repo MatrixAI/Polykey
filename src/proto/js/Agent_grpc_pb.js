@@ -103,6 +103,17 @@ function deserialize_agentInterface_NodeTableMessage(buffer_arg) {
   return Agent_pb.NodeTableMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_NotificationMessage(arg) {
+  if (!(arg instanceof Agent_pb.NotificationMessage)) {
+    throw new Error('Expected argument of type agentInterface.NotificationMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_NotificationMessage(buffer_arg) {
+  return Agent_pb.NotificationMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_PackChunk(arg) {
   if (!(arg instanceof Agent_pb.PackChunk)) {
     throw new Error('Expected argument of type agentInterface.PackChunk');
@@ -245,6 +256,17 @@ var AgentService = exports.AgentService = {
     responseType: Agent_pb.EmptyMessage,
     requestSerialize: serialize_agentInterface_RelayMessage,
     requestDeserialize: deserialize_agentInterface_RelayMessage,
+    responseSerialize: serialize_agentInterface_EmptyMessage,
+    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  notificationsSend: {
+    path: '/agentInterface.Agent/NotificationsSend',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.NotificationMessage,
+    responseType: Agent_pb.EmptyMessage,
+    requestSerialize: serialize_agentInterface_NotificationMessage,
+    requestDeserialize: deserialize_agentInterface_NotificationMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },

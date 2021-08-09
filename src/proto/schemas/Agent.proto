@@ -17,6 +17,8 @@ service Agent {
 
   rpc SendHolePunchMessage (RelayMessage) returns (EmptyMessage) {}
 
+  rpc NotificationsSend (NotificationMessage) returns (EmptyMessage) {}
+
   rpc checkVaultPermisssions (VaultPermMessage) returns (PermissionMessage) {}
 }
 
@@ -65,6 +67,10 @@ message RelayMessage {
   string targetId = 2;
   string egressAddress = 3;
   string signature = 4;
+}
+
+message NotificationMessage {
+  string content = 1;
 }
 
 message NodeIdMessage {

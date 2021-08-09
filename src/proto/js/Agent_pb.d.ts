@@ -218,6 +218,26 @@ export namespace RelayMessage {
     }
 }
 
+export class NotificationMessage extends jspb.Message { 
+    getContent(): string;
+    setContent(value: string): NotificationMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NotificationMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationMessage): NotificationMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NotificationMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationMessage;
+    static deserializeBinaryFromReader(message: NotificationMessage, reader: jspb.BinaryReader): NotificationMessage;
+}
+
+export namespace NotificationMessage {
+    export type AsObject = {
+        content: string,
+    }
+}
+
 export class NodeIdMessage extends jspb.Message { 
     getNodeid(): string;
     setNodeid(value: string): NodeIdMessage;

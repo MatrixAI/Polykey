@@ -77,6 +77,11 @@ service Client {
   rpc GestaltsUnsetActionByIdentity(SetActionsMessage) returns (EmptyMessage) {};
 
   rpc GestaltSync(stream GestaltMessage) returns (stream GestaltMessage) {};
+
+  // Notifications
+  rpc NotificationsSend(NotificationInfoMessage) returns (EmptyMessage) {};
+  rpc NotificationsRead(NotificationDisplayMessage) returns (NotificationListMessage) {};
+  rpc NotificationsClear(EmptyMessage) returns (EmptyMessage) {};
 }
 
 message EmptyMessage {}
@@ -242,4 +247,27 @@ message SetActionsMessage {
     ProviderMessage identity = 2;
   }
   string action = 3;
+}
+
+// Notifications
+message NotificationInfoMessage {
+  string receiver_id = 1;
+  string message = 2;
+}
+
+message NotificationDisplayMessage {
+  bool unread = 1;
+  NumberMessage number = 2;
+  string order = 3;
+}
+
+message NotificationListMessage {
+  string messages = 1;
+}
+
+message NumberMessage {
+  oneof number_or_all {
+    int32 number = 1;
+    string all = 2;
+  }
 }

@@ -729,3 +729,113 @@ export namespace SetActionsMessage {
     }
 
 }
+
+export class NotificationInfoMessage extends jspb.Message { 
+    getReceiverId(): string;
+    setReceiverId(value: string): NotificationInfoMessage;
+    getMessage(): string;
+    setMessage(value: string): NotificationInfoMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NotificationInfoMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationInfoMessage): NotificationInfoMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NotificationInfoMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationInfoMessage;
+    static deserializeBinaryFromReader(message: NotificationInfoMessage, reader: jspb.BinaryReader): NotificationInfoMessage;
+}
+
+export namespace NotificationInfoMessage {
+    export type AsObject = {
+        receiverId: string,
+        message: string,
+    }
+}
+
+export class NotificationDisplayMessage extends jspb.Message { 
+    getUnread(): boolean;
+    setUnread(value: boolean): NotificationDisplayMessage;
+
+    hasNumber(): boolean;
+    clearNumber(): void;
+    getNumber(): NumberMessage | undefined;
+    setNumber(value?: NumberMessage): NotificationDisplayMessage;
+    getOrder(): string;
+    setOrder(value: string): NotificationDisplayMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NotificationDisplayMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationDisplayMessage): NotificationDisplayMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NotificationDisplayMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationDisplayMessage;
+    static deserializeBinaryFromReader(message: NotificationDisplayMessage, reader: jspb.BinaryReader): NotificationDisplayMessage;
+}
+
+export namespace NotificationDisplayMessage {
+    export type AsObject = {
+        unread: boolean,
+        number?: NumberMessage.AsObject,
+        order: string,
+    }
+}
+
+export class NotificationListMessage extends jspb.Message { 
+    getMessages(): string;
+    setMessages(value: string): NotificationListMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NotificationListMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationListMessage): NotificationListMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NotificationListMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationListMessage;
+    static deserializeBinaryFromReader(message: NotificationListMessage, reader: jspb.BinaryReader): NotificationListMessage;
+}
+
+export namespace NotificationListMessage {
+    export type AsObject = {
+        messages: string,
+    }
+}
+
+export class NumberMessage extends jspb.Message { 
+
+    hasNumber(): boolean;
+    clearNumber(): void;
+    getNumber(): number;
+    setNumber(value: number): NumberMessage;
+
+    hasAll(): boolean;
+    clearAll(): void;
+    getAll(): string;
+    setAll(value: string): NumberMessage;
+
+    getNumberOrAllCase(): NumberMessage.NumberOrAllCase;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NumberMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NumberMessage): NumberMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NumberMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NumberMessage;
+    static deserializeBinaryFromReader(message: NumberMessage, reader: jspb.BinaryReader): NumberMessage;
+}
+
+export namespace NumberMessage {
+    export type AsObject = {
+        number: number,
+        all: string,
+    }
+
+    export enum NumberOrAllCase {
+        NUMBER_OR_ALL_NOT_SET = 0,
+        NUMBER = 1,
+        ALL = 2,
+    }
+
+}

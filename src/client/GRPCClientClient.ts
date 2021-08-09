@@ -483,6 +483,30 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
       this.client.identitiesAugmentKeynode,
     )(...args);
   }
+
+  public notificationsSend(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.notificationsSend,
+    )(...args);
+  }
+
+  public notificationsRead(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+      this.client,
+      this.client.notificationsRead,
+    )(...args);
+  }
+
+  public notificationsClear(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      this.client,
+      this.client.notificationsClear,
+    )(...args);
+  }
 }
 
 export default GRPCClientClient;

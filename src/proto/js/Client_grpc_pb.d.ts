@@ -67,6 +67,9 @@ interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
     gestaltsUnsetActionByNode: IClientService_IGestaltsUnsetActionByNode;
     gestaltsUnsetActionByIdentity: IClientService_IGestaltsUnsetActionByIdentity;
     gestaltSync: IClientService_IGestaltSync;
+    notificationsSend: IClientService_INotificationsSend;
+    notificationsRead: IClientService_INotificationsRead;
+    notificationsClear: IClientService_INotificationsClear;
 }
 
 interface IClientService_IEcho extends grpc.MethodDefinition<Client_pb.EchoMessage, Client_pb.EchoMessage> {
@@ -600,6 +603,33 @@ interface IClientService_IGestaltSync extends grpc.MethodDefinition<Client_pb.Ge
     responseSerialize: grpc.serialize<Client_pb.GestaltMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.GestaltMessage>;
 }
+interface IClientService_INotificationsSend extends grpc.MethodDefinition<Client_pb.NotificationInfoMessage, Client_pb.EmptyMessage> {
+    path: "/clientInterface.Client/NotificationsSend";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.NotificationInfoMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NotificationInfoMessage>;
+    responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+}
+interface IClientService_INotificationsRead extends grpc.MethodDefinition<Client_pb.NotificationDisplayMessage, Client_pb.NotificationListMessage> {
+    path: "/clientInterface.Client/NotificationsRead";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.NotificationDisplayMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.NotificationDisplayMessage>;
+    responseSerialize: grpc.serialize<Client_pb.NotificationListMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.NotificationListMessage>;
+}
+interface IClientService_INotificationsClear extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.EmptyMessage> {
+    path: "/clientInterface.Client/NotificationsClear";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+    responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+}
 
 export const ClientService: IClientService;
 
@@ -663,6 +693,9 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     gestaltsUnsetActionByNode: grpc.handleUnaryCall<Client_pb.SetActionsMessage, Client_pb.EmptyMessage>;
     gestaltsUnsetActionByIdentity: grpc.handleUnaryCall<Client_pb.SetActionsMessage, Client_pb.EmptyMessage>;
     gestaltSync: grpc.handleBidiStreamingCall<Client_pb.GestaltMessage, Client_pb.GestaltMessage>;
+    notificationsSend: grpc.handleUnaryCall<Client_pb.NotificationInfoMessage, Client_pb.EmptyMessage>;
+    notificationsRead: grpc.handleUnaryCall<Client_pb.NotificationDisplayMessage, Client_pb.NotificationListMessage>;
+    notificationsClear: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.EmptyMessage>;
 }
 
 export interface IClientClient {
@@ -835,6 +868,15 @@ export interface IClientClient {
     gestaltSync(): grpc.ClientDuplexStream<Client_pb.GestaltMessage, Client_pb.GestaltMessage>;
     gestaltSync(options: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Client_pb.GestaltMessage, Client_pb.GestaltMessage>;
     gestaltSync(metadata: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Client_pb.GestaltMessage, Client_pb.GestaltMessage>;
+    notificationsSend(request: Client_pb.NotificationInfoMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsSend(request: Client_pb.NotificationInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsSend(request: Client_pb.NotificationInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsRead(request: Client_pb.NotificationDisplayMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NotificationListMessage) => void): grpc.ClientUnaryCall;
+    notificationsRead(request: Client_pb.NotificationDisplayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NotificationListMessage) => void): grpc.ClientUnaryCall;
+    notificationsRead(request: Client_pb.NotificationDisplayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NotificationListMessage) => void): grpc.ClientUnaryCall;
+    notificationsClear(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsClear(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    notificationsClear(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }
 
 export class ClientClient extends grpc.Client implements IClientClient {
@@ -1007,4 +1049,13 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public gestaltsUnsetActionByIdentity(request: Client_pb.SetActionsMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public gestaltSync(options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Client_pb.GestaltMessage, Client_pb.GestaltMessage>;
     public gestaltSync(metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Client_pb.GestaltMessage, Client_pb.GestaltMessage>;
+    public notificationsSend(request: Client_pb.NotificationInfoMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsSend(request: Client_pb.NotificationInfoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsSend(request: Client_pb.NotificationInfoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsRead(request: Client_pb.NotificationDisplayMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NotificationListMessage) => void): grpc.ClientUnaryCall;
+    public notificationsRead(request: Client_pb.NotificationDisplayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NotificationListMessage) => void): grpc.ClientUnaryCall;
+    public notificationsRead(request: Client_pb.NotificationDisplayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NotificationListMessage) => void): grpc.ClientUnaryCall;
+    public notificationsClear(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsClear(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public notificationsClear(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
 }

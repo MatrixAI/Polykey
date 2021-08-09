@@ -1,5 +1,6 @@
 import type { NodeId } from '../nodes/types';
 import type { ClaimId } from '../claims/types';
+
 import * as grpc from '@grpc/grpc-js';
 import { GitBackend } from '../git';
 import { promisify } from '../utils';
@@ -7,12 +8,13 @@ import * as networkUtils from '../network/utils';
 import { NodeManager } from '../nodes';
 import { VaultManager } from '../vaults';
 import { Sigchain } from '../sigchain';
+import { NotificationsManager } from '../notifications';
 import { ErrorGRPC } from '../grpc/errors';
 import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
 
 import * as agentPB from '../proto/js/Agent_pb';
 import * as grpcUtils from '../grpc/utils';
-import * as claimsUtils from '../claims/utils';
+import * as notificationsUtils from '../notifications/utils';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -23,12 +25,13 @@ function createAgentService({
   vaultManager,
   nodeManager,
   gitBackend,
-  sigchain,
+  notificationsManager,
 }: {
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   gitBackend: GitBackend;
   sigchain: Sigchain;
+  notificationsManager: NotificationsManager;
 }): IAgentServer {
   const agentService: IAgentServer = {
     echo: async (
@@ -253,6 +256,24 @@ function createAgentService({
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
+      callback(null, response);
+    },
+    notificationsSend: async (
+      call: grpc.ServerUnaryCall<
+        agentPB.NotificationMessage,
+        agentPB.EmptyMessage
+      >,
+      callback: grpc.sendUnaryData<agentPB.EmptyMessage>,
+    ): Promise<void> => {
+      const response = new agentPB.EmptyMessage();
+      try {
+        const jwt = call.request.getContent();
+        const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
+        await notificationsManager.receiveNotification(notification);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
+      }
+
       callback(null, response);
     },
     checkVaultPermisssions: async (
