@@ -78,6 +78,13 @@ async function verifyToken(
   await sessionManager.verifyJWTToken(token as SessionToken);
 }
 
+/**
+ * This allows us to create a grpc.MetaData() object without explicitly importing `@grpc/grpc-js`.
+ *
+ * ### Note:
+ * creating metadata using `new grpc.MetaData()` prevents the metadata traversing the GRPC connection.
+ * So use this instead.
+ */
 function createMetadata(): grpc.Metadata {
   return new grpc.Metadata();
 }
