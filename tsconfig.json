@@ -13,7 +13,6 @@
     "module": "CommonJS",
     "target": "ES2020",
     "baseUrl": "./src",
-    "skipLibCheck": true,
     "paths": {
       "@": ["index"],
       "@/*": ["*"]

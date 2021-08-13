@@ -169,14 +169,14 @@ describe('GRPC agent', () => {
   test('can check permissions', async () => {
     const vault = await vaultManager.createVault('TestAgentVault');
     await gestaltGraph.setNode(node1);
-    await vaultManager.setVaultPermissions('12345', vault.vaultId);
-    await vaultManager.unsetVaultPermissions('12345', vault.vaultId);
+    await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
+    await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
     const vaultPermMessage = new agentPB.VaultPermMessage();
     vaultPermMessage.setNodeid('12345');
     vaultPermMessage.setVaultid(vault.vaultId);
     const response = await client.checkVaultPermissions(vaultPermMessage);
     expect(response.getPermission()).toBeFalsy();
-    await vaultManager.setVaultPermissions('12345', vault.vaultId);
+    await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     const response2 = await client.checkVaultPermissions(vaultPermMessage);
     expect(response2.getPermission()).toBeTruthy();
     await vaultManager.deleteVault(vault.vaultId);
@@ -193,7 +193,7 @@ describe('GRPC agent', () => {
       data.push(Buffer.from(chunk).toString());
     }
     expect(data).toStrictEqual([]);
-    await vaultManager.setVaultPermissions('12345', vault.vaultId);
+    await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     const response2 = client.scanVaults(NodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {

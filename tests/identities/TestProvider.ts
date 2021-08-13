@@ -10,6 +10,7 @@ import type { IdentityClaim, IdentityClaimId } from '@/identities/types';
 import type { NodeId } from '@/nodes/types';
 
 import { Provider, errors as identitiesErrors } from '@/identities';
+import { createClaim, decodeClaim } from '@/claims/utils';
 
 class TestProvider extends Provider {
   public readonly id = 'test-provider' as ProviderId;
@@ -30,14 +31,33 @@ class TestProvider extends Provider {
         email: 'test_user2@test.com',
       },
     };
+    // this.links = {
+    //   test_link: JSON.stringify({
+    //     type: 'identity',
+    //     node: 'nodeid' as NodeId,
+    //     provider: this.id,
+    //     identity: 'test_link' as IdentityId,
+    //     timestamp: 1618650105,
+    //     signature: 'somesignature',
+    //   }),
+    // };
     this.links = {
       test_link: JSON.stringify({
-        type: 'identity',
-        node: 'nodeid' as NodeId,
-        provider: this.id,
-        identity: 'test_link' as IdentityId,
-        timestamp: 1618650105,
-        signature: 'somesignature',
+        payload: {
+          hPrev: null,
+          seq: 1,
+          data: {
+            type: 'identity',
+            node: 'nodeId' as NodeId,
+            provider: this.id,
+            identity: 'test_user' as IdentityId,
+          },
+          iat: 1618203162,
+        },
+        signatures: {
+          nodeId: 'nodeidSignature',
+          test_user: 'test_userSignature',
+        },
       }),
     };
     this.userLinks = {
@@ -45,6 +65,27 @@ class TestProvider extends Provider {
     };
     this.userTokens = {
       abc123: 'test_user' as IdentityId,
+    };
+  }
+
+  public async overrideLinks(nodeId: NodeId, privateKey: string) {
+    const claim = await createClaim({
+      data: {
+        type: 'identity',
+        node: nodeId,
+        provider: this.id,
+        identity: 'test_user' as IdentityId,
+      },
+      hPrev: null,
+      kid: nodeId,
+      privateKey,
+      seq: 1,
+    });
+
+    const claimJson = decodeClaim(claim);
+
+    this.links = {
+      test_link: JSON.stringify(claimJson),
     };
   }
 

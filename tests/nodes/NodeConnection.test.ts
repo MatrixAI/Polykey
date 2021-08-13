@@ -196,7 +196,7 @@ describe('NodeConnection', () => {
       serverPort: server.getPort(),
       tlsConfig: revTLSConfig,
     });
-  }, 60000);
+  }, global.polykeyStartupTimeout);
 
   beforeEach(async () => {
     // Client setup

@@ -702,6 +702,7 @@ async function read(
     );
   } catch (err) {
     if (err.code === 'ENOENT') {
+      // empty
     }
   }
   const source = path.join('objects', oid.slice(0, 2), oid.slice(2));

@@ -85,9 +85,10 @@ const createNodesRPC = ({
      * node and a remote node.
      */
     nodesClaim: async (
-      call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.StatusMessage>,
-      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      _call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.StatusMessage>,
+      _callback: grpc.sendUnaryData<clientPB.StatusMessage>,
     ): Promise<void> => {
+      // change _call to call when implemented, same for callback.
       throw Error('Not implemented, placeholder');
     },
     /**

@@ -1,8 +1,8 @@
 import { createCommand } from '../utils';
-import commandEcho from './commandEcho';
+import echo from './echo';
 
 const commandEchoes = createCommand('echoes');
 commandEchoes.description('echo things');
-commandEchoes.addCommand(commandEcho);
+commandEchoes.addCommand(echo);
 
 export default commandEchoes;

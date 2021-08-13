@@ -141,7 +141,7 @@ describe('NodeManager', () => {
 
       await testUtils.cleanupRemoteKeynode(server);
     },
-    global.defaultTimeout * 9,
+    global.failedConnectionTimeout * 2,
   ); // ping needs to timeout (takes 20 seconds + setup + pulldown)
   test('finds node (local)', async () => {
     // Case 1: node already exists in the local node graph (no contact required)
@@ -176,35 +176,35 @@ describe('NodeManager', () => {
 
       await testUtils.cleanupRemoteKeynode(server);
     },
-    global.defaultTimeout * 5,
-  ),
-    test(
-      'cannot find node (contacts remote node)',
-      async () => {
-        // Case 3: node exhausts all contacts and cannot find node
-        const nodeId = 'unfindableNode' as NodeId;
-        const server = await testUtils.setupRemoteKeynode({ logger: logger });
-        await nodeManager.setNode(server.nodes.getNodeId(), {
-          ip: server.revProxy.getIngressHost(),
-          port: server.revProxy.getIngressPort(),
-        } as NodeAddress);
-        // Add a dummy node to the server node graph database
-        // Server will not be able to connect to this node (the only node in its
-        // database), and will therefore not be able to locate the node.
-        await server.nodes.setNode(
-          'dummyNode' as NodeId,
-          {
-            ip: '127.0.0.2' as Host,
-            port: 22222 as Port,
-          } as NodeAddress,
-        );
-        // So unfindableNode cannot be found
-        await expect(nodeManager.findNode(nodeId)).rejects.toThrowError(
-          nodesErrors.ErrorNodeGraphNodeNotFound,
-        );
+    global.polykeyStartupTimeout,
+  );
+  test(
+    'cannot find node (contacts remote node)',
+    async () => {
+      // Case 3: node exhausts all contacts and cannot find node
+      const nodeId = 'unfindableNode' as NodeId;
+      const server = await testUtils.setupRemoteKeynode({ logger: logger });
+      await nodeManager.setNode(server.nodes.getNodeId(), {
+        ip: server.revProxy.getIngressHost(),
+        port: server.revProxy.getIngressPort(),
+      } as NodeAddress);
+      // Add a dummy node to the server node graph database
+      // Server will not be able to connect to this node (the only node in its
+      // database), and will therefore not be able to locate the node.
+      await server.nodes.setNode(
+        'dummyNode' as NodeId,
+        {
+          ip: '127.0.0.2' as Host,
+          port: 22222 as Port,
+        } as NodeAddress,
+      );
+      // So unfindableNode cannot be found
+      await expect(nodeManager.findNode(nodeId)).rejects.toThrowError(
+        nodesErrors.ErrorNodeGraphNodeNotFound,
+      );
 
-        await testUtils.cleanupRemoteKeynode(server);
-      },
-      global.defaultTimeout * 5,
-    );
+      await testUtils.cleanupRemoteKeynode(server);
+    },
+    global.failedConnectionTimeout,
+  );
 });

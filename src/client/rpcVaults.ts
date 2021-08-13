@@ -6,7 +6,6 @@ import type { VaultManager, Vault } from '../vaults';
 import * as utils from './utils';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
-import * as errors from './../vaults/errors';
 import * as clientPB from '../proto/js/Client_pb';
 
 const createVaultRPC = ({

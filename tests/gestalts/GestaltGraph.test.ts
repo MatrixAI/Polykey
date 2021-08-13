@@ -1,11 +1,21 @@
 import type { NodeId, NodeInfo } from '@/nodes/types';
-import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
+import type {
+  IdentityClaimId,
+  IdentityId,
+  IdentityInfo,
+  IdentityClaims,
+  ProviderId,
+  IdentityClaim,
+} from '@/identities/types';
+import type { Claim, SignatureData } from '@/claims/types';
+import type { ChainData } from '@/sigchain/types';
 
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GestaltGraph, utils as gestaltsUtils } from '@/gestalts';
+import { utils as claimsUtils } from '@/claims';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
 import { DB } from '@/db';
@@ -18,6 +28,16 @@ describe('GestaltGraph', () => {
   let keyManager: KeyManager;
   let db: DB;
   let acl: ACL;
+
+  // abc <--> dee claims:
+  const abcDeeSignatures: Record<NodeId, SignatureData> = {};
+  let nodeClaimAbcToDee: Claim;
+  let nodeClaimDeeToAbc: Claim;
+  // abc <--> GitHub claims:
+  const abcSignature: Record<NodeId, SignatureData> = {};
+  let identityClaimAbcToGH: Claim;
+  let identityClaimGHToAbc: IdentityClaim;
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -32,6 +52,71 @@ describe('GestaltGraph', () => {
     });
     acl = new ACL({ db, logger });
     await acl.start();
+
+    // Initialise some dummy claims:
+    abcDeeSignatures['abc'] = 'abcSignature';
+    abcDeeSignatures['dee'] = 'deeSignature';
+    // Node claim on node abc: abc -> dee
+    nodeClaimAbcToDee = {
+      payload: {
+        hPrev: null,
+        seq: 1,
+        data: {
+          type: 'node',
+          node1: 'abc' as NodeId,
+          node2: 'dee' as NodeId,
+        },
+        iat: 1618203162,
+      },
+      signatures: abcDeeSignatures,
+    };
+    // Node claim on node dee: dee -> abc
+    nodeClaimDeeToAbc = {
+      payload: {
+        hPrev: null,
+        seq: 1,
+        data: {
+          type: 'node',
+          node1: 'dee' as NodeId,
+          node2: 'abc' as NodeId,
+        },
+        iat: 1618203162,
+      },
+      signatures: abcDeeSignatures,
+    };
+
+    abcSignature['abc'] = 'abcSignature';
+    // Identity claim on node abc: abc -> GitHub
+    identityClaimAbcToGH = {
+      payload: {
+        hPrev: null,
+        seq: 1,
+        data: {
+          type: 'identity',
+          node: 'abc' as NodeId,
+          provider: 'github.com' as ProviderId,
+          identity: 'abc' as IdentityId,
+        },
+        iat: 1618203162,
+      },
+      signatures: abcSignature,
+    };
+    // Identity claim on Github identity: GitHub -> abc
+    identityClaimGHToAbc = {
+      id: 'abcGistId' as IdentityClaimId,
+      payload: {
+        hPrev: null,
+        seq: 1,
+        data: {
+          type: 'identity',
+          node: 'abc' as NodeId,
+          provider: 'github.com' as ProviderId,
+          identity: 'abc' as IdentityId,
+        },
+        iat: 1618203162,
+      },
+      signatures: abcSignature,
+    };
   });
   afterEach(async () => {
     await acl.stop();
@@ -51,10 +136,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     const gestalt = await gestaltGraph.getGestaltByNode(nodeInfo.id);
@@ -81,9 +163,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setIdentity(identityInfo);
     const gestalt = await gestaltGraph.getGestaltByIdentity(
@@ -124,17 +204,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     await gestaltGraph.setIdentity(identityInfo);
@@ -169,17 +244,12 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     await gestaltGraph.setIdentity(identityInfo);
@@ -214,35 +284,21 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'abc',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo1Chain,
     };
+    // NodeInfo on node 'dee'. Contains claims:
+    // dee -> abc
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'node',
-            node1: 'dee',
-            node2: 'abc',
-            timestamp: 1618203162,
-            id: 'link2',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo2Chain,
     };
     await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
     const gestaltNode1 = await gestaltGraph.getGestaltByNode(nodeInfo1.id);
@@ -276,42 +332,22 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> GitHub
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link1',
-            signature: 'testsignature',
-          },
-        },
-      },
+      chain: nodeInfo1Chain,
     };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub -> abc
+    const identityInfoClaims: IdentityClaims = {};
+    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-            signature: 'testsignature',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
     const gestaltNode = await gestaltGraph.getGestaltByNode(nodeInfo.id);
@@ -351,63 +387,33 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    // abc -> GitHub
+    const nodeInfo1Chain: Record<IdentityClaimId, Claim> = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    identityClaimAbcToGH.payload.seq = 2;
+    nodeInfo1Chain[claimsUtils.numToLexiString(2)] = identityClaimAbcToGH;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'abc',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link2',
-          },
-        },
-      },
+      chain: nodeInfo1Chain,
     };
+    // NodeInfo on node 'dee'. Contains claims:
+    // dee -> abc
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'node',
-            node1: 'dee',
-            node2: 'abc',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo2Chain,
     };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub -> abc
+    const identityInfoClaims: IdentityClaims = {};
+    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(nodeInfo1, identityInfo);
     await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
@@ -460,18 +466,13 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setIdentity(identityInfo);
     const gestalts = await gestaltGraph.getGestalts();
@@ -494,10 +495,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     expect(await acl.getNodePerm(nodeInfo.id)).toBeUndefined();
     await gestaltGraph.setNode(nodeInfo);
@@ -522,9 +520,7 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setIdentity(identityInfo);
     const actions = await gestaltGraph.getGestaltActionsByIdentity(
@@ -543,10 +539,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     await gestaltGraph.setGestaltActionByNode(nodeInfo.id, 'notify');
@@ -574,35 +567,21 @@ describe('GestaltGraph', () => {
     });
     await gestaltGraph.start();
     // 2 new nodes should have the same permission
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'abc',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo1Chain,
     };
+    // NodeInfo on node 'dee'. Contains claims:
+    // dee -> abc
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'node',
-            node1: 'dee',
-            node2: 'abc',
-            timestamp: 1618203162,
-            id: 'link2',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo2Chain,
     };
     await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
     let actions1, actions2;
@@ -628,51 +607,31 @@ describe('GestaltGraph', () => {
     // 2 existing nodes will have a joined permission
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo1);
     await gestaltGraph.setNode(nodeInfo2);
     await gestaltGraph.setGestaltActionByNode(nodeInfo1.id, 'notify');
     await gestaltGraph.setGestaltActionByNode(nodeInfo2.id, 'scan');
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'abc',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo1Chain,
     };
+    // NodeInfo on node 'dee'. Contains claims:
+    // dee -> abc
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'node',
-            node1: 'dee',
-            node2: 'abc',
-            timestamp: 1618203162,
-            id: 'link2',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo2Chain,
     };
     await gestaltGraph.linkNodeAndNode(nodeInfo1Linked, nodeInfo2Linked);
     const actions1 = await gestaltGraph.getGestaltActionsByNode(
@@ -697,42 +656,25 @@ describe('GestaltGraph', () => {
     // node 1 exists, but node 2 is new
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo1);
     await gestaltGraph.setGestaltActionByNode(nodeInfo1.id, 'notify');
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'abc',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo1Chain,
     };
+    // NodeInfo on node 'dee'. Contains claims:
+    // dee -> abc
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'node',
-            node1: 'dee',
-            node2: 'abc',
-            timestamp: 1618203162,
-            id: 'link2',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo2Chain,
     };
     await gestaltGraph.linkNodeAndNode(nodeInfo1Linked, nodeInfo2Linked);
     let actions1, actions2;
@@ -743,20 +685,30 @@ describe('GestaltGraph', () => {
     expect(actions1).toEqual({ notify: null });
     expect(actions1).toEqual(actions2);
     // node 3 is new and linking to node 2 which is now exists
+    const zzzDeeSignatures: Record<NodeId, SignatureData> = {};
+    zzzDeeSignatures['zzz'] = 'zzzSignature';
+    zzzDeeSignatures['dee'] = 'deeSignature';
+    // Node claim on node abc: abc -> dee
+    const nodeClaimZzzToDee: Claim = {
+      payload: {
+        hPrev: null,
+        seq: 1,
+        data: {
+          type: 'node',
+          node1: 'zzz' as NodeId,
+          node2: 'dee' as NodeId,
+        },
+        iat: 1618203162,
+      },
+      signatures: zzzDeeSignatures,
+    };
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    const nodeInfo3Chain: ChainData = {};
+    nodeInfo3Chain[claimsUtils.numToLexiString(1)] = nodeClaimZzzToDee;
     const nodeInfo3Linked: NodeInfo = {
       id: 'zzz' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'zzz',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link3',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo3Chain,
     };
     await gestaltGraph.linkNodeAndNode(nodeInfo3Linked, nodeInfo2Linked);
     actions1 = await gestaltGraph.getGestaltActionsByNode(nodeInfo1Linked.id);
@@ -778,42 +730,22 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> GitHub
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link1',
-            signature: 'testsignature',
-          },
-        },
-      },
+      chain: nodeInfo1Chain,
     };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub -> abc
+    const identityInfoClaims: IdentityClaims = {};
+    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-            signature: 'testsignature',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
     let actions1, actions2;
@@ -849,57 +781,32 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setNode(nodeInfo);
     await gestaltGraph.setIdentity(identityInfo);
     await gestaltGraph.setGestaltActionByNode(nodeInfo.id, 'notify');
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> GitHub
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link1',
-            signature: 'testsignature',
-          },
-        },
-      },
+      chain: nodeInfo1Chain,
     };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub -> abc
+    const identityInfoClaims: IdentityClaims = {};
+    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
     const identityInfoLinked: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-            signature: 'testsignature',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(nodeInfoLinked, identityInfoLinked);
     let actions1, actions2;
@@ -914,10 +821,7 @@ describe('GestaltGraph', () => {
     expect(actions1).toEqual(actions2);
     const nodeInfo2: NodeInfo = {
       id: 'def' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo2);
     await gestaltGraph.unsetGestaltActionByIdentity(
@@ -931,51 +835,59 @@ describe('GestaltGraph', () => {
       'scan',
     );
     await gestaltGraph.setGestaltActionByNode(nodeInfo2.id, 'notify');
+
+    const defSignature: Record<NodeId, SignatureData> = {};
+    defSignature['def'] = 'defSignature';
+    // Identity claim on node abc: def -> GitHub
+    const identityClaimDefToGH: Claim = {
+      payload: {
+        hPrev: null,
+        seq: 1,
+        data: {
+          type: 'identity',
+          node: 'def' as NodeId,
+          provider: 'github.com' as ProviderId,
+          identity: 'abc' as IdentityId,
+        },
+        iat: 1618203162,
+      },
+      signatures: defSignature,
+    };
+    // NodeInfo on node 'def'. Contains claims:
+    // def -> GitHub (abc)
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimDefToGH;
     const nodeInfo2Linked: NodeInfo = {
       id: 'def' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'def' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link2',
-            signature: 'testsignature',
-          },
-        },
-      },
+      chain: nodeInfo2Chain,
     };
+
+    // Identity claim on Github identity: GitHub -> def
+    const identityClaimGHToDef = {
+      id: 'abcGistId2' as IdentityClaimId,
+      payload: {
+        hPrev: null,
+        seq: 2,
+        data: {
+          type: 'identity',
+          node: 'def' as NodeId,
+          provider: 'github.com' as ProviderId,
+          identity: 'abc' as IdentityId,
+        },
+        iat: 1618203162,
+      },
+      signatures: defSignature,
+    };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub (abc) -> abc
+    // GitHub (abc) -> def
+    const identityInfoClaimsAgain: IdentityClaims = {};
+    identityInfoClaimsAgain['abcGistId'] = identityClaimGHToAbc;
+    identityInfoClaimsAgain['abcGistId2'] = identityClaimGHToDef;
     const identityInfoLinkedAgain: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-            signature: 'testsignature',
-          },
-          [gestaltsUtils.keyFromNode('def' as NodeId)]: {
-            type: 'identity',
-            node: 'def' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc2',
-            signature: 'testsignature',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(
       nodeInfo2Linked,
@@ -1004,48 +916,25 @@ describe('GestaltGraph', () => {
     await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {},
-      },
+      chain: {},
     };
     await gestaltGraph.setNode(nodeInfo);
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> GitHub
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link1',
-            signature: 'testsignature',
-          },
-        },
-      },
+      chain: nodeInfo1Chain,
     };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub -> abc
+    const identityInfoClaims: IdentityClaims = {};
+    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
     const identityInfoLinked: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-            signature: 'testsignature',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(nodeInfoLinked, identityInfoLinked);
     let actions1, actions2;
@@ -1092,47 +981,25 @@ describe('GestaltGraph', () => {
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {},
-      },
+      claims: {},
     };
     await gestaltGraph.setIdentity(identityInfo);
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> GitHub
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link1',
-            signature: 'testsignature',
-          },
-        },
-      },
+      chain: nodeInfo1Chain,
     };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub -> abc
+    const identityInfoClaims: IdentityClaims = {};
+    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
     const identityInfoLinked: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-            signature: 'testsignature',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(nodeInfoLinked, identityInfoLinked);
     let actions1, actions2;
@@ -1168,35 +1035,21 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'abc',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo1Chain,
     };
+    // NodeInfo on node 'dee'. Contains claims:
+    // dee -> abc
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'node',
-            node1: 'dee',
-            node2: 'abc',
-            timestamp: 1618203162,
-            id: 'link2',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo2Chain,
     };
     await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
     await gestaltGraph.setGestaltActionByNode(nodeInfo1.id, 'scan');
@@ -1234,42 +1087,22 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> GitHub
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {},
-        identities: {
-          [gestaltsUtils.keyFromIdentity(
-            'github.com' as ProviderId,
-            'abc' as IdentityId,
-          )]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'link1',
-            signature: 'testsignature',
-          },
-        },
-      },
+      chain: nodeInfo1Chain,
     };
+    // IdentityInfo on identity from GitHub. Contains claims:
+    // GitHub -> abc
+    const identityInfoClaims: IdentityClaims = {};
+    identityInfoClaims['abcGistId'] = identityClaimGHToAbc;
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
-      claims: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'identity',
-            node: 'abc' as NodeId,
-            provider: 'github.com' as ProviderId,
-            identity: 'abc' as IdentityId,
-            timestamp: 1618203162,
-            id: 'abc',
-            signature: 'testsignature',
-          },
-        },
-      },
+      claims: identityInfoClaims,
     };
     await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
     await gestaltGraph.setGestaltActionByIdentity(
@@ -1309,35 +1142,21 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
+    // NodeInfo on node 'abc'. Contains claims:
+    // abc -> dee
+    const nodeInfo1Chain: ChainData = {};
+    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('dee' as NodeId)]: {
-            type: 'node',
-            node1: 'abc',
-            node2: 'dee',
-            timestamp: 1618203162,
-            id: 'link1',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo1Chain,
     };
+    // NodeInfo on node 'dee'. Contains claims:
+    // dee -> abc
+    const nodeInfo2Chain: ChainData = {};
+    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
-      chain: {
-        nodes: {
-          [gestaltsUtils.keyFromNode('abc' as NodeId)]: {
-            type: 'node',
-            node1: 'dee',
-            node2: 'abc',
-            timestamp: 1618203162,
-            id: 'link2',
-          },
-        },
-        identities: {},
-      },
+      chain: nodeInfo2Chain,
     };
     await gestaltGraph.linkNodeAndNode(nodeInfo1, nodeInfo2);
     await gestaltGraph.setGestaltActionByNode(nodeInfo1.id, 'scan');

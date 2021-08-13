@@ -14,7 +14,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { sleep } from '@/utils';
 
-describe('utils', () => {
+describe('Claims utils', () => {
   const logger = new Logger('Claims Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);

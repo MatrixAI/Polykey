@@ -60,24 +60,31 @@ describe('agent utils', () => {
       });
     });
 
-    jest.setTimeout(30000);
-    test('Should spawn an agent in the background.', async () => {
-      await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
-      const pid = await agentUtils.spawnBackgroundAgent(nodePath, password);
-      expect(typeof pid).toBe('number'); //Returns a number.
-      expect(pid > 0).toBeTruthy(); // non-zero
-      await utils.sleep(1000);
-      await expect(
-        agentUtils.checkAgentRunning(nodePath),
-      ).resolves.toBeTruthy(); //Check that it is running.
-      process.kill(pid);
+    test(
+      'Should spawn an agent in the background.',
+      async () => {
+        await expect(
+          agentUtils.checkAgentRunning(nodePath),
+        ).resolves.toBeFalsy();
+        const pid = await agentUtils.spawnBackgroundAgent(nodePath, password);
+        expect(typeof pid).toBe('number'); //Returns a number.
+        expect(pid > 0).toBeTruthy(); // non-zero
+        await utils.sleep(1000);
+        await expect(
+          agentUtils.checkAgentRunning(nodePath),
+        ).resolves.toBeTruthy(); //Check that it is running.
+        process.kill(pid);
 
-      await utils.sleep(1000);
-      //removed lockfile, stopped gracefully.
-      const agentLock = await fs.promises.readdir(nodePath);
-      expect(agentLock.includes('agent-lock.json')).toBeFalsy();
-      await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy(); //Check that it stopped.
-    });
+        await utils.sleep(1000);
+        //removed lockfile, stopped gracefully.
+        const agentLock = await fs.promises.readdir(nodePath);
+        expect(agentLock.includes('agent-lock.json')).toBeFalsy();
+        await expect(
+          agentUtils.checkAgentRunning(nodePath),
+        ).resolves.toBeFalsy(); //Check that it stopped.
+      },
+      global.polykeyStartupTimeout,
+    );
     test('Should throw error if agent already running.', async () => {
       const agent = new PolykeyAgent({
         nodePath: nodePath,

@@ -11,7 +11,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 
 import TestProvider from '../identities/TestProvider';
-import { PolykeyAgent } from '@';
+import { PolykeyAgent, PolykeyClient } from '@';
 import { clientPB } from '@/client';
 import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
@@ -33,8 +33,25 @@ import * as gestaltsUtils from '@/gestalts/utils';
 import * as polykeyErrors from '@/errors';
 import * as vaultErrors from '@/vaults/errors';
 import * as nodesErrors from '@/nodes/errors';
+import internal from 'stream';
+import * as agentUtils from '@/agent/utils';
 import { sleep } from '@/utils';
+import { ErrorSessionTokenInvalid } from '@/errors';
+import { checkAgentRunning } from '@/agent/utils';
 
+/**
+ * This test file has been optimised to use only one instance of PolykeyAgent where posible.
+ * Setting up the PolykeyAgent has been done in a beforeAll block.
+ * Keep this in mind when adding or editing tests.
+ * Any side effects need to be undone when the test has completed.
+ * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
+ *
+ * - left over state can cause a test to fail in certain cases.
+ * - left over state can cause similar tests to succeed when they should fail.
+ * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
+ * - when in doubt test each modified or added test on it's own as well as the whole file.
+ * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
+ */
 describe('Client service', () => {
   const logger = new Logger('ClientServerTest', LogLevel.WARN, [
     new StreamHandler(),
@@ -69,11 +86,32 @@ describe('Client service', () => {
   let callCredentials: SessionCredentials;
 
   //node and identity infos.
-  let token;
-  let testToken;
+  const token = {
+    providerId: 'github.com' as ProviderId,
+    identityId: 'tegefaulkes' as IdentityId,
+    tokenData: {
+      accessToken: 'Oauth token here, DO NOT COMMIT.',
+    },
+  };
+  const testToken = {
+    providerId: 'test-provider' as ProviderId,
+    identityId: 'test_user' as IdentityId,
+    tokenData: {
+      accessToken: 'abc123',
+    },
+  };
+  const node2: NodeInfo = {
+    id: 'NodeIdABC' as NodeId,
+    chain: {},
+  };
+  const identity1: IdentityInfo = {
+    providerId: 'github.com' as ProviderId,
+    identityId: 'IdentityIdABC' as IdentityId,
+    claims: {},
+  };
   let node1: NodeInfo;
-  let node2: NodeInfo;
-  let identity1: IdentityInfo;
+
+  const password = 'password';
 
   async function createGestaltState() {
     await gestaltGraph.setNode(node1);
@@ -82,7 +120,7 @@ describe('Client service', () => {
     await gestaltGraph.linkNodeAndIdentity(node2, identity1);
   }
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -98,102 +136,24 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    revProxy = new ReverseProxy({
-      logger: logger,
-    });
-
-    keyManager = new KeyManager({
-      keysPath,
-      fs: fs,
-      logger: logger,
-    });
-
-    db = new DB({
-      dbPath: dbPath,
-      fs: fs,
-      logger: logger,
-    });
-
-    acl = new ACL({
-      db: db,
-      logger: logger,
-    });
-
-    sigchain = new Sigchain({
-      keyManager: keyManager,
-      db: db,
-      logger: logger,
-    });
-
-    gestaltGraph = new GestaltGraph({
-      db: db,
-      acl: acl,
-      logger: logger,
-    });
-
-    nodeManager = new NodeManager({
-      db: db,
-      sigchain: sigchain,
-      keyManager: keyManager,
-      fwdProxy: fwdProxy,
-      revProxy: revProxy,
-      fs: fs,
-      logger: logger,
-    });
-
-    vaultManager = new VaultManager({
-      vaultsPath: vaultsPath,
-      keyManager: keyManager,
-      nodeManager: nodeManager,
-      db: db,
-      acl: acl,
-      gestaltGraph: gestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
-
-    notificationsManager = new NotificationsManager({
-      acl,
-      db,
-      nodeManager,
-      keyManager,
-      logger,
-    });
-
-    identitiesManager = new IdentitiesManager({
-      db: db,
-      logger: logger,
-    });
-
     polykeyAgent = new PolykeyAgent({
       nodePath: dataDir,
-      keyManager: keyManager,
-      vaultManager: vaultManager,
-      nodeManager: nodeManager,
-      gestaltGraph: gestaltGraph,
-      identitiesManager: identitiesManager,
-      acl: acl,
-      db: db,
-      fwdProxy: fwdProxy,
-      revProxy: revProxy,
-      fs: fs,
-      logger: logger,
+      logger,
+      fwdProxy,
     });
 
-    await polykeyAgent.start({ password: 'password' });
-    await polykeyAgent.keys.start({ password: 'password' });
-    await polykeyAgent.db.start({ keyPair: keyManager.getRootKeyPair() });
-    await polykeyAgent.acl.start();
-    await polykeyAgent.sigchain.start();
-    await polykeyAgent.vaults.start({});
-    await polykeyAgent.nodes.start({ nodeId: nodeId });
-    await polykeyAgent.identities.start();
-    await polykeyAgent.gestalts.start();
-    await polykeyAgent.sessions.start({ bits: 4096 });
+    await polykeyAgent.start({ password });
+    keyManager = polykeyAgent.keys;
+    nodeManager = polykeyAgent.nodes;
+    vaultManager = polykeyAgent.vaults;
+    gestaltGraph = polykeyAgent.gestalts;
+    identitiesManager = polykeyAgent.identities;
+    notificationsManager = polykeyAgent.notifications;
+    sigchain = polykeyAgent.sigchain;
+    acl = polykeyAgent.acl;
+    db = polykeyAgent.db;
 
     //adding provider.
-    const githubProvider = new GithubProvider({ clientId: 'abc', logger });
-    identitiesManager.registerProvider(githubProvider);
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
 
@@ -207,39 +167,12 @@ describe('Client service', () => {
     nodeId = networkUtils.certNodeId(cert);
 
     //Filling in infos.
-    token = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'tegefaulkes' as IdentityId,
-      tokenData: {
-        accessToken: 'Oauth token here, DO NOT COMMIT.',
-      },
-    };
-    testToken = {
-      providerId: 'test-provider' as ProviderId,
-      identityId: 'test_user' as IdentityId,
-      tokenData: {
-        accessToken: 'abc123',
-      },
-    };
-
-    node2 = {
-      id: 'NodeIdABC' as NodeId,
-      chain: {},
-    };
     node1 = {
       id: nodeId,
       chain: {},
     };
-    identity1 = {
-      providerId: 'github.com' as ProviderId,
-      identityId: 'IdentityIdABC' as IdentityId,
-      claims: {},
-    };
-    const sessionToken = await polykeyAgent.sessions.generateToken();
-    callCredentials = testUtils.createCallCredentials(sessionToken);
-  });
-
-  afterEach(async () => {
+  }, global.polykeyStartupTimeout);
+  afterAll(async () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
@@ -249,10 +182,11 @@ describe('Client service', () => {
       force: true,
       recursive: true,
     });
-  });
-
-  afterAll(async () => {
     await fs.promises.rm(passwordFile);
+  });
+  beforeEach(async () => {
+    const sessionToken = await polykeyAgent.sessions.generateToken();
+    callCredentials = testUtils.createCallCredentials(sessionToken);
   });
 
   test('can echo', async () => {
@@ -269,27 +203,106 @@ describe('Client service', () => {
     m.setChallenge('ThrowAnError');
     await expect(echo(m)).rejects.toThrow(polykeyErrors.ErrorPolykey);
   });
-  test('can request JWT', async () => {
-    const requestJWT =
-      grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
+  describe('sessions', () => {
+    test('can request a session', async () => {
+      const requestJWT =
+        grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
+          client,
+          client.sessionUnlock,
+        );
+
+      const meta = new grpc.Metadata();
+      meta.set('passwordFile', passwordFile);
+
+      const emptyMessage = new clientPB.EmptyMessage();
+
+      const res = await requestJWT(emptyMessage, meta);
+      expect(typeof res.getToken()).toBe('string');
+      const result = await polykeyAgent.sessions.verifyToken(
+        res.getToken() as SessionToken,
+      );
+      expect(result).toBeTruthy();
+    });
+    // refresh seems odd to me. It provides a new token to the client.
+    // I don't know how I can force this to happen to test it. needs digging.
+    test.todo('can refresh session');
+    test.todo('actions over GRPC refresh the session'); // How do I even test this?
+    test('session can lock all', async () => {
+      //Starts off unlocked.
+
+      const echo = grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
         client,
-        client.sessionUnlock,
+        client.echo,
       );
 
-    const meta = new grpc.Metadata();
-    meta.set('passwordFile', passwordFile);
+      // checking that session is working.
+      const echoMessage = new clientPB.EchoMessage();
+      echoMessage.setChallenge('Hello');
+      const res = await echo(echoMessage, callCredentials);
+      expect(res.getChallenge()).toBe('Hello');
 
-    const emptyMessage = new clientPB.EmptyMessage();
+      //locking the session.
+      const sessionLockAll = grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
+        client,
+        client.sessionLockAll,
+      );
 
-    const res = await requestJWT(emptyMessage, meta);
-    expect(typeof res.getToken()).toBe('string');
-    const result = await polykeyAgent.sessions.verifyToken(
-      res.getToken() as SessionToken,
+      const emptyMessage = new clientPB.EmptyMessage();
+      await sessionLockAll(emptyMessage, callCredentials);
+
+      //Should reject the session token.
+      await expect(echo(echoMessage, callCredentials)).rejects.toThrow(
+        ErrorSessionTokenInvalid,
+      );
+    });
+  });
+  describe('agent', () => {
+    test(
+      'stop',
+      async () => {
+        //starting agent
+        const newNodePath = path.join(dataDir, 'newAgent');
+        const agent = new PolykeyAgent({
+          nodePath: newNodePath,
+          logger,
+        });
+
+        await agent.start({
+          password,
+        });
+        const sessionToken = await agent.sessions.generateToken();
+        callCredentials = testUtils.createCallCredentials(sessionToken);
+
+        const newClient = new PolykeyClient({
+          nodePath: newNodePath,
+          logger,
+        });
+        await newClient.start({});
+
+        const emptyMessage = new clientPB.EmptyMessage();
+        await newClient.grpcClient.agentStop(emptyMessage, callCredentials);
+        await sleep(10000);
+
+        expect(await agentUtils.checkAgentRunning(newNodePath)).toBeFalsy();
+        await newClient.stop();
+      },
+      global.polykeyStartupTimeout + 10000,
     );
-    expect(result).toBeTruthy();
   });
   describe('vaults', () => {
-    test('can get vaults', async () => {
+    async function cleanVault(vaultName: string) {
+      const vaultID = await vaultManager.getVaultId(vaultName);
+      if (vaultID === undefined) return;
+      await vaultManager.deleteVault(vaultID);
+    }
+
+    async function cleanVaultList(vaultList: Array<string>) {
+      for (const vaultName of vaultList) {
+        await cleanVault(vaultName);
+      }
+    }
+
+    test('should get vaults', async () => {
       const listVaults =
         grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
           client,
@@ -310,8 +323,10 @@ describe('Client service', () => {
       }
 
       expect(names.sort()).toStrictEqual(vaultList.sort());
+
+      await cleanVaultList(vaultList);
     });
-    test('can create vault', async () => {
+    test('should create vault', async () => {
       const createVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
         client,
         client.vaultsCreate,
@@ -324,8 +339,10 @@ describe('Client service', () => {
       const vault = (await vaultManager.listVaults()).pop();
       expect(vault?.name).toBe('NewVault');
       expect(vault?.id).toBe(vaultId.getId());
+
+      await cleanVault('NewVault');
     });
-    test('can delete vaults', async () => {
+    test('should delete vaults', async () => {
       const deleteVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
         client,
         client.vaultsDelete,
@@ -356,8 +373,10 @@ describe('Client service', () => {
       await expect(deleteVault(vaultMessage, callCredentials)).rejects.toThrow(
         vaultErrors.ErrorVaultUndefined,
       );
+
+      await cleanVaultList(vaultList);
     });
-    test('can rename vaults', async () => {
+    test('should rename vaults', async () => {
       const renameVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
         client,
         client.vaultsRename,
@@ -376,8 +395,10 @@ describe('Client service', () => {
 
       const name = (await vaultManager.listVaults()).pop()?.name;
       expect(name).toBe('MyRenamedVault');
+
+      await cleanVault('MyRenamedVault');
     });
-    test('can get stats for vaults', async () => {
+    test('should get stats for vaults', async () => {
       const statsVault = grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
         client,
         client.vaultsStat,
@@ -402,14 +423,16 @@ describe('Client service', () => {
       expect(stats2).toBe(
         JSON.stringify(await vaultManager.vaultStats(vault2.vaultId)),
       );
+
+      await cleanVaultList(['MyFirstVault', 'MySecondVault']);
     });
-    test('can make a directory in a vault', async () => {
+    test('should make a directory in a vault', async () => {
       const mkdirVault = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,
         client.vaultsMkdir,
       );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault('MySecondVault');
       const dirPath = 'dir/dir1/dir2';
 
       const vaultMkdirMessage = new clientPB.VaultMkdirMessage();
@@ -424,7 +447,7 @@ describe('Client service', () => {
         fs.promises.readdir(path.join(dataDir, 'vaults', vault.vaultId)),
       ).resolves.toContain(`dir.data`);
     });
-    test('can list secrets in a vault', async () => {
+    test('should list secrets in a vault', async () => {
       const listSecretsVault =
         grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
           client,
@@ -456,8 +479,10 @@ describe('Client service', () => {
       }
 
       expect(names.sort()).toStrictEqual(secretList.sort());
+
+      await cleanVault('MyFirstVault');
     });
-    test('can delete secrets in a vault', async () => {
+    test('should delete secrets in a vault', async () => {
       const deleteSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -491,8 +516,10 @@ describe('Client service', () => {
       expect((await vault.listSecrets()).sort()).toStrictEqual(
         secretList2.sort(),
       );
+
+      await cleanVault('MyFirstVault');
     });
-    test('can edit secrets in a vault', async () => {
+    test('should edit secrets in a vault', async () => {
       const editSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -527,8 +554,10 @@ describe('Client service', () => {
       expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
         'content-change',
       );
+
+      await cleanVault('MyFirstVault');
     });
-    test('can get secrets in a vault', async () => {
+    test('should get secrets in a vault', async () => {
       const getSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
           client,
@@ -558,8 +587,10 @@ describe('Client service', () => {
       const response = await getSecretVault(secretMessage, callCredentials);
 
       expect(response.getContent()).toStrictEqual('Secret1');
+
+      await cleanVault('MyFirstVault');
     });
-    test('can rename secrets in a vault', async () => {
+    test('should rename secrets in a vault', async () => {
       const renameSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -606,8 +637,10 @@ describe('Client service', () => {
       expect((await vault.listSecrets()).sort()).toStrictEqual(
         secretList2.sort(),
       );
+
+      await cleanVault('MyFirstVault');
     });
-    test('can add secrets in a vault', async () => {
+    test('should add secrets in a vault', async () => {
       const newSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -630,8 +663,10 @@ describe('Client service', () => {
       expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
         'secret-content',
       );
+
+      await cleanVault('MyFirstVault');
     });
-    test('can add a directory of secrets in a vault', async () => {
+    test('should add a directory of secrets in a vault', async () => {
       const newDirSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -666,8 +701,10 @@ describe('Client service', () => {
 
       // remove temp directory
       await fs.promises.rmdir(tmpDir, { recursive: true });
+
+      await cleanVault('MyFirstVault');
     });
-    test('can add permissions to a vault', async () => {
+    test('should add permissions to a vault', async () => {
       const vaultsSetPerms =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -695,8 +732,10 @@ describe('Client service', () => {
       const stringResult = JSON.stringify(result);
       expect(stringResult).toContain(node2.id);
       expect(stringResult).toContain('pull');
+
+      await cleanVault('vault1');
     });
-    test('can remove permissions to a vault', async () => {
+    test('should remove permissions to a vault', async () => {
       const vaultsUnsetPerms =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -725,8 +764,10 @@ describe('Client service', () => {
       const stringResult = JSON.stringify(result);
       expect(stringResult).toContain(node2.id);
       expect(stringResult.includes('pull')).toBeFalsy();
+
+      await cleanVault('vault1');
     });
-    test('can get permissions to a vault', async () => {
+    test('should get permissions to a vault', async () => {
       const vaultsPermissions =
         grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
           client,
@@ -758,10 +799,12 @@ describe('Client service', () => {
       const resultsString = JSON.stringify(results);
       expect(resultsString).toContain(node2.id);
       expect(resultsString).toContain('pull');
+
+      await cleanVault('vault1');
     });
   });
   describe('keys', () => {
-    test('can get root keypair', async () => {
+    test('should get root keypair', async () => {
       const getRootKeyPair =
         grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
           client,
@@ -777,7 +820,7 @@ describe('Client service', () => {
       expect(key.getPrivate()).toBe(keyPair.privateKey);
       expect(key.getPublic()).toBe(keyPair.publicKey);
     });
-    test('can reset root keypair', async () => {
+    test('should reset root keypair', async () => {
       const getRootKeyPair =
         grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
           client,
@@ -805,7 +848,7 @@ describe('Client service', () => {
       expect(key.getPrivate()).not.toBe(keyPair.privateKey);
       expect(key.getPublic()).not.toBe(keyPair.publicKey);
     });
-    test('can renew root keypair', async () => {
+    test('should renew root keypair', async () => {
       const renewKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,
         client.keysRenewKeyPair,
@@ -823,7 +866,7 @@ describe('Client service', () => {
       expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
       expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
     });
-    test('can encrypt and decrypt with root keypair', async () => {
+    test('should encrypt and decrypt with root keypair', async () => {
       const encryptWithKeyPair =
         grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
           client,
@@ -853,7 +896,7 @@ describe('Client service', () => {
 
       expect(plainText_.getData()).toBe(plainText.toString());
     });
-    test('can encrypt and decrypt with root keypair', async () => {
+    test('should encrypt and decrypt with root keypair', async () => {
       const signWithKeyPair =
         grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
           client,
@@ -878,12 +921,13 @@ describe('Client service', () => {
 
       expect(signed.getSuccess()).toBe(true);
     });
-    test('can change password', async () => {
+    test('should change password', async () => {
       const changePasswordKeys =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
           client.keysChangePassword,
         );
+      const nodeId = polykeyAgent.nodes.getNodeId();
 
       const passwordMessage = new clientPB.PasswordMessage();
       passwordMessage.setPassword('newpassword');
@@ -897,8 +941,20 @@ describe('Client service', () => {
       await expect(
         keyManager.start({ password: 'password' }),
       ).rejects.toThrow();
+
+      await keyManager.start({ password: 'newpassword' });
+      await nodeManager.start({ nodeId });
+      await vaultManager.start({});
+
+      await keyManager.changeRootKeyPassword('password');
+      await nodeManager.stop();
+      await vaultManager.stop();
+      await keyManager.stop();
+      await keyManager.start({ password: 'password' });
+      await nodeManager.start({ nodeId });
+      await vaultManager.start({});
     });
-    test('can get the root certificate and chains', async () => {
+    test('should get the root certificate and chains', async () => {
       const getCerts =
         grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
           client,
@@ -929,7 +985,7 @@ describe('Client service', () => {
     });
   });
   describe('identities', () => {
-    test('can Authenticate an identity.', async () => {
+    test('should Authenticate an identity.', async () => {
       const identitiesAuthenticate =
         grpcUtils.promisifyReadableStreamCall<clientPB.ProviderMessage>(
           client,
@@ -956,7 +1012,7 @@ describe('Client service', () => {
 
       expect((await gen.next()).done).toBeTruthy();
     });
-    test('token manipulation for providers', async () => {
+    test('should manipulate tokens for providers', async () => {
       const putToken = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,
         client.identitiesPutToken,
@@ -996,7 +1052,7 @@ describe('Client service', () => {
       const tokenData__ = await getTokens(mp, callCredentials);
       expect(tokenData__.getToken()).toBe('');
     });
-    test('can list providers.', async () => {
+    test('should list providers.', async () => {
       const providersGet =
         grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
           client,
@@ -1005,10 +1061,10 @@ describe('Client service', () => {
 
       const emptyMessage = new clientPB.EmptyMessage();
       const test = await providersGet(emptyMessage, callCredentials);
-      expect(test.getId()).toContain('github.com');
+      // expect(test.getId()).toContain('github.com');
       expect(test.getId()).toContain('test-provider');
     });
-    test('can list connected Identities.', async () => {
+    test('should list connected Identities.', async () => {
       const identitiesGetConnectedInfos =
         grpcUtils.promisifyReadableStreamCall<clientPB.IdentityInfoMessage>(
           client,
@@ -1041,7 +1097,7 @@ describe('Client service', () => {
       expect(output).toContain('test_user2');
       expect(output).toContain('test_user2@test.com');
     });
-    test('can get identity info.', async () => {
+    test('should get identity info.', async () => {
       const identitiesGetInfo =
         grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
           client,
@@ -1064,7 +1120,7 @@ describe('Client service', () => {
       expect(providerMessage.getId()).toBe(testToken.providerId);
       expect(providerMessage.getMessage()).toBe(testToken.identityId);
     });
-    test('Can augment a keynode.', async () => {
+    test('should augment a keynode.', async () => {
       const identitiesAugmentKeynode =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1090,7 +1146,7 @@ describe('Client service', () => {
     });
   });
   describe('gestalts', () => {
-    test('getting all gestalts', async () => {
+    test('should get all gestalts', async () => {
       const listGestalts =
         grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
           client,
@@ -1113,11 +1169,19 @@ describe('Client service', () => {
         identity1.identityId,
       );
       const nodeGestalt = await gestaltGraph.getGestaltByNode(node2.id);
-      expect(gestalts).toContainEqual(identityGestalt);
-      expect(gestalts).toContainEqual(nodeGestalt);
+      const gestaltsString = JSON.stringify(gestalts);
+      expect(gestaltsString).toContain(identity1.providerId);
+      expect(gestaltsString).toContain(identity1.identityId);
+      expect(gestaltsString).toContain(node2.id);
       expect(gestalts).toHaveLength(2);
+
+      await gestaltGraph.unsetNode(node2.id);
+      await gestaltGraph.unsetIdentity(
+        identity1.providerId,
+        identity1.identityId,
+      );
     });
-    test('setting independent node and identity gestalts', async () => {
+    test('should set independent node and identity gestalts', async () => {
       await gestaltGraph.setNode(node2);
       await gestaltGraph.setIdentity(identity1);
       const gestaltNode = await gestaltGraph.getGestaltByNode(node2.id);
@@ -1141,7 +1205,7 @@ describe('Client service', () => {
         identities: { [gkIdentity]: identity1 },
       });
     });
-    test('can get gestalt from Node.', async () => {
+    test('should get gestalt from Node.', async () => {
       const gestaltsGetNode =
         grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
           client,
@@ -1160,7 +1224,7 @@ describe('Client service', () => {
       expect(jsonString).toContain('github.com'); // Contains github provider.
       expect(jsonString).toContain('NodeIdABC'); // Contains NodeId.
     });
-    test('can get gestalt from identity.', async () => {
+    test('should get gestalt from identity.', async () => {
       const gestaltsGetIdentity =
         grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
           client,
@@ -1178,34 +1242,7 @@ describe('Client service', () => {
       expect(jsonString).toContain('github.com'); // Contains github provider.
       expect(jsonString).toContain('NodeIdABC'); // Contains NodeId.
     });
-    test('can get all gestalts', async () => {
-      const listGestalts =
-        grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
-          client,
-          client.gestaltsList,
-        );
-
-      await gestaltGraph.setNode(node2);
-      await gestaltGraph.setIdentity(identity1);
-
-      const m = new clientPB.EmptyMessage();
-
-      const res = listGestalts(m, callCredentials);
-
-      const gestalts: Array<string> = [];
-      for await (const val of res) {
-        gestalts.push(JSON.parse(val.getName()));
-      }
-      const identityGestalt = await gestaltGraph.getGestaltByIdentity(
-        identity1.providerId,
-        identity1.identityId,
-      );
-      const nodeGestalt = await gestaltGraph.getGestaltByNode(node2.id);
-      expect(gestalts).toContainEqual(identityGestalt);
-      expect(gestalts).toContainEqual(nodeGestalt);
-      expect(gestalts).toHaveLength(2);
-    });
-    test('can set/unset a gestalt Node.', async () => {
+    test('should set/unset a gestalt Node.', async () => {
       const gestaltsSetNode =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1234,7 +1271,7 @@ describe('Client service', () => {
       expect(resString2).toContain(node1.id);
       expect(resString2.includes(node2.id)).toBeFalsy();
     });
-    test('can set/unset a gestalt Identity.', async () => {
+    test('should set/unset a gestalt Identity.', async () => {
       const gestaltsSetIdentity =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1267,7 +1304,7 @@ describe('Client service', () => {
       expect(resString2.includes(identity1.providerId)).toBeFalsy();
       expect(resString2.includes(identity1.identityId)).toBeFalsy();
     });
-    test('can discover gestalt via Node.', async () => {
+    test('should discover gestalt via Node.', async () => {
       const gestaltsDiscoverNode =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1281,7 +1318,7 @@ describe('Client service', () => {
         gestaltsDiscoverNode(nodeMessage, callCredentials),
       ).rejects.toThrow(nodesErrors.ErrorNodeGraphEmptyDatabase);
     });
-    test('can discover gestalt via Identity.', async () => {
+    test('should discover gestalt via Identity.', async () => {
       const gestaltsDiscoverIdentity =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1512,7 +1549,23 @@ describe('Client service', () => {
     });
   });
   describe('Nodes RPC', () => {
-    test('can add a node', async () => {
+    let server: PolykeyAgent;
+    let server2: PolykeyAgent;
+    beforeAll(async () => {
+      server = await testKeynodeUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
+      server2 = await testKeynodeUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server2);
+    }, global.polykeyStartupTimeout * 2);
+    afterAll(async () => {
+      await testKeynodeUtils.cleanupRemoteKeynode(server);
+      await testKeynodeUtils.cleanupRemoteKeynode(server2);
+    });
+    test('should add a node', async () => {
       const nodesAdd = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,
         client.nodesAdd,
@@ -1532,43 +1585,38 @@ describe('Client service', () => {
       expect(nodeAddress.ip).toBe(host);
       expect(nodeAddress.port).toBe(port);
     });
-    test('can ping a node (online + offline)', async () => {
-      const server = await testKeynodeUtils.setupRemoteKeynode({
-        logger: logger,
-      });
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
-      const serverNodeId = server.nodes.getNodeId();
-      await server.stop();
+    test(
+      'should ping a node (online + offline)',
+      async () => {
+        const serverNodeId = server2.nodes.getNodeId();
+        await server2.stop();
 
-      // Case 1: cannot establish new connection, so offline
-      const nodesPing = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
-        client,
-        client.nodesPing,
-      );
-      const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName(serverNodeId);
-      const res1 = await nodesPing(nodeMessage, callCredentials);
-      expect(res1.getSuccess()).toEqual(false);
-      // Case 2: can establish new connection, so online
-      await server.start({ password: 'password' });
-      // Update the details (changed because we started again)
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
-      const res2 = await nodesPing(nodeMessage, callCredentials);
-      expect(res2.getSuccess()).toEqual(true);
-      // Case 3: pre-existing connection no longer active, so offline
-      await server.stop();
-      // Give time for the ping buffers to send and wait for timeout on
-      // existing connection
-      await sleep(30000);
-      const res3 = await nodesPing(nodeMessage, callCredentials);
-      expect(res3.getSuccess()).toEqual(false);
+        // Case 1: cannot establish new connection, so offline
+        const nodesPing = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+          client,
+          client.nodesPing,
+        );
+        const nodeMessage = new clientPB.NodeMessage();
+        nodeMessage.setName(serverNodeId);
+        const res1 = await nodesPing(nodeMessage, callCredentials);
+        expect(res1.getSuccess()).toEqual(false);
 
-      await testKeynodeUtils.cleanupRemoteKeynode(server);
-    }, global.defaultTimeout * 8); // ping needs to timeout, so longer test timeout required
-    // test('can claim a node', async () => {
-    //   fail('Claiming a node not implemented.');
-    // });
-    test('can find a node (local)', async () => {
+        // Case 2: can establish new connection, so online
+        await server2.start({ password: 'password' });
+        // Update the details (changed because we started again)
+        await testKeynodeUtils.addRemoteDetails(polykeyAgent, server2);
+        const res2 = await nodesPing(nodeMessage, callCredentials);
+        expect(res2.getSuccess()).toEqual(true);
+        // Case 3: pre-existing connection no longer active, so offline
+        await server2.stop();
+        await sleep(30000);
+        expect(await checkAgentRunning(server2.nodePath)).toBeFalsy();
+        const res3 = await nodesPing(nodeMessage, callCredentials);
+        expect(res3.getSuccess()).toEqual(false);
+      },
+      global.failedConnectionTimeout * 2,
+    ); // ping needs to timeout, so longer test timeout required
+    test('should find a node (local)', async () => {
       const nodesFind =
         grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
           client,
@@ -1589,11 +1637,7 @@ describe('Client service', () => {
       expect(res.getHost()).toEqual(nodeAddress.ip);
       expect(res.getPort()).toEqual(nodeAddress.port);
     });
-    test('can find a node (contacts remote node)', async () => {
-      const server = await testKeynodeUtils.setupRemoteKeynode({
-        logger: logger,
-      });
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
+    test('should find a node (contacts remote node)', async () => {
       // Case 2: node can be found on the remote node
       const nodeId = 'nodeId' as NodeId;
       const nodeAddress: NodeAddress = {
@@ -1612,22 +1656,16 @@ describe('Client service', () => {
       expect(res.getId()).toEqual(nodeId);
       expect(res.getHost()).toEqual(nodeAddress.ip);
       expect(res.getPort()).toEqual(nodeAddress.port);
-
-      await testKeynodeUtils.cleanupRemoteKeynode(server);
     });
     test(
-      'cannot find a node (contacts remote node)',
+      'should fail to find a node (contacts remote node)',
       async () => {
-        const server = await testKeynodeUtils.setupRemoteKeynode({
-          logger: logger,
-        });
-        await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
         // Case 3: node exhausts all contacts and cannot find node
         const nodeId = 'unfindableNode' as NodeId;
         // Add a single dummy node to the server node graph database
         // Server will not be able to connect to this node (the only node in its
         // database), and will therefore not be able to locate the node.
-        server.nodes.setNode(
+        await server.nodes.setNode(
           'dummyNode' as NodeId,
           {
             ip: '127.0.0.2' as Host,
@@ -1645,170 +1683,136 @@ describe('Client service', () => {
         await expect(nodesFind(nodeMessage, callCredentials)).rejects.toThrow(
           nodesErrors.ErrorNodeGraphNodeNotFound,
         );
-
-        await testKeynodeUtils.cleanupRemoteKeynode(server);
       },
-      global.defaultTimeout * 3,
+      global.failedConnectionTimeout * 2,
     );
   });
-  //Notifications
   describe('Notifications RPC', () => {
-    test(
-      'can send notifications.',
-      async () => {
-        // Set up a remote node receiver and add its details to agent
-        const receiver = await testKeynodeUtils.setupRemoteKeynode({ logger });
-        await receiver.acl.setNodePerm(node1.id, {
-          gestalt: {
-            notify: null,
-          },
-          vaults: {},
-        });
-        await testKeynodeUtils.addRemoteDetails(polykeyAgent, receiver);
+    let receiver: PolykeyAgent;
+    let sender: PolykeyAgent;
+    beforeAll(async () => {
+      receiver = await testKeynodeUtils.setupRemoteKeynode({ logger });
+      sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
 
-        const notificationsSend =
-          grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-            client,
-            client.notificationsSend,
-          );
+      await sender.nodes.setNode(node1.id, {
+        ip: polykeyAgent.revProxy.getIngressHost(),
+        port: polykeyAgent.revProxy.getIngressPort(),
+      } as NodeAddress);
+      await receiver.acl.setNodePerm(node1.id, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+      await polykeyAgent.acl.setNodePerm(sender.nodes.getNodeId(), {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+    }, global.polykeyStartupTimeout * 2);
+    afterAll(async () => {
+      await testKeynodeUtils.cleanupRemoteKeynode(receiver);
+      await testKeynodeUtils.cleanupRemoteKeynode(sender);
+    });
+    afterEach(async () => {
+      await receiver.notifications.clearNotifications();
+      await sender.notifications.clearNotifications();
+    });
+    test('should send notifications.', async () => {
+      // Set up a remote node receiver and add its details to agent
 
-        const notificationInfoMessage = new clientPB.NotificationInfoMessage();
-        notificationInfoMessage.setReceiverId(receiver.nodes.getNodeId());
-        notificationInfoMessage.setMessage('msg');
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, receiver);
 
-        // Send notification returns nothing - check remote node received messages
-        await notificationsSend(notificationInfoMessage, callCredentials);
-        const notifs = await receiver.notifications.readNotifications();
-        expect(notifs).toEqual(['msg']);
-        await testKeynodeUtils.cleanupRemoteKeynode(receiver);
-      },
-      global.defaultTimeout * 3,
-    );
-    test(
-      'should read all notifications.',
-      async () => {
-        // Set up a remote node sender
-        const sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
-        await sender.nodes.setNode(node1.id, {
-          ip: polykeyAgent.revProxy.getIngressHost(),
-          port: polykeyAgent.revProxy.getIngressPort(),
-        } as NodeAddress);
-        await polykeyAgent.acl.setNodePerm(sender.nodes.getNodeId(), {
-          gestalt: {
-            notify: null,
-          },
-          vaults: {},
-        });
-        await sender.notifications.sendNotification(node1.id, 'msg1');
-        await sender.notifications.sendNotification(node1.id, 'msg2');
-        await sender.notifications.sendNotification(node1.id, 'msg3');
-
-        const notificationsRead =
-          grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
-            client,
-            client.notificationsRead,
-          );
-
-        const notificationDisplayMessage =
-          new clientPB.NotificationDisplayMessage();
-        const numberMessage = new clientPB.NumberMessage();
-        numberMessage.setAll('all');
-        notificationDisplayMessage.setUnread(false);
-        notificationDisplayMessage.setNumber(numberMessage);
-        notificationDisplayMessage.setOrder('newest');
-
-        // Check the read call
-        const response = await notificationsRead(
-          notificationDisplayMessage,
-          callCredentials,
+      const notificationsSend =
+        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+          client,
+          client.notificationsSend,
         );
-        expect(response.getMessages()).toContain('msg1');
-        expect(response.getMessages()).toContain('msg2');
-        expect(response.getMessages()).toContain('msg3');
-        await testKeynodeUtils.cleanupRemoteKeynode(sender);
-      },
-      global.defaultTimeout * 3,
-    );
-    test(
-      'should read a single notification.',
-      async () => {
-        // Set up a remote node sender
-        const sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
-        await sender.nodes.setNode(node1.id, {
-          ip: polykeyAgent.revProxy.getIngressHost(),
-          port: polykeyAgent.revProxy.getIngressPort(),
-        } as NodeAddress);
-        await polykeyAgent.acl.setNodePerm(sender.nodes.getNodeId(), {
-          gestalt: {
-            notify: null,
-          },
-          vaults: {},
-        });
 
-        await sender.notifications.sendNotification(node1.id, 'msg1');
-        await sender.notifications.sendNotification(node1.id, 'msg2');
-        await sender.notifications.sendNotification(node1.id, 'msg3');
+      const notificationInfoMessage = new clientPB.NotificationInfoMessage();
+      notificationInfoMessage.setReceiverId(receiver.nodes.getNodeId());
+      notificationInfoMessage.setMessage('msg');
 
-        const notificationsRead =
-          grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
-            client,
-            client.notificationsRead,
-          );
+      // Send notification returns nothing - check remote node received messages
+      await notificationsSend(notificationInfoMessage, callCredentials);
+      const notifs = await receiver.notifications.readNotifications();
+      expect(notifs).toEqual(['msg']);
+    });
+    test('should read all notifications.', async () => {
+      // Set up a remote node sender
 
-        const notificationDisplayMessage =
-          new clientPB.NotificationDisplayMessage();
-        const numberMessage = new clientPB.NumberMessage();
-        numberMessage.setNumber(1);
-        notificationDisplayMessage.setUnread(false);
-        notificationDisplayMessage.setNumber(numberMessage);
-        notificationDisplayMessage.setOrder('newest');
+      await sender.notifications.sendNotification(node1.id, 'msg1');
+      await sender.notifications.sendNotification(node1.id, 'msg2');
+      await sender.notifications.sendNotification(node1.id, 'msg3');
 
-        // Check the read call
-        const response = await notificationsRead(
-          notificationDisplayMessage,
-          callCredentials,
+      const notificationsRead =
+        grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+          client,
+          client.notificationsRead,
         );
-        expect(response.getMessages()).not.toContain('msg1');
-        expect(response.getMessages()).not.toContain('msg2');
-        expect(response.getMessages()).toContain('msg3');
-        await testKeynodeUtils.cleanupRemoteKeynode(sender);
-      },
-      global.defaultTimeout * 3,
-    );
-    test(
-      'should clear all notifications.',
-      async () => {
-        // Set up a remote node sender
-        const sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
-        await sender.nodes.setNode(node1.id, {
-          ip: polykeyAgent.revProxy.getIngressHost(),
-          port: polykeyAgent.revProxy.getIngressPort(),
-        } as NodeAddress);
-        await polykeyAgent.acl.setNodePerm(sender.nodes.getNodeId(), {
-          gestalt: {
-            notify: null,
-          },
-          vaults: {},
-        });
 
-        await sender.notifications.sendNotification(node1.id, 'msg1');
-        await sender.notifications.sendNotification(node1.id, 'msg2');
+      const notificationDisplayMessage =
+        new clientPB.NotificationDisplayMessage();
+      const numberMessage = new clientPB.NumberMessage();
+      numberMessage.setAll('all');
+      notificationDisplayMessage.setUnread(false);
+      notificationDisplayMessage.setNumber(numberMessage);
+      notificationDisplayMessage.setOrder('newest');
 
-        const notificationsClear =
-          grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
-            client,
-            client.notificationsClear,
-          );
+      // Check the read call
+      const response = await notificationsRead(
+        notificationDisplayMessage,
+        callCredentials,
+      );
+      expect(response.getMessages()).toContain('msg1');
+      expect(response.getMessages()).toContain('msg2');
+      expect(response.getMessages()).toContain('msg3');
+    });
+    test('should read a single notification.', async () => {
+      await sender.notifications.sendNotification(node1.id, 'msg1');
+      await sender.notifications.sendNotification(node1.id, 'msg2');
+      await sender.notifications.sendNotification(node1.id, 'msg3');
 
-        const emptyMessage = new clientPB.EmptyMessage();
-        await notificationsClear(emptyMessage, callCredentials);
+      const notificationsRead =
+        grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+          client,
+          client.notificationsRead,
+        );
 
-        // Call read notifications to check there are none
-        const notifs = await polykeyAgent.notifications.readNotifications();
-        expect(notifs).toEqual([]);
-        await testKeynodeUtils.cleanupRemoteKeynode(sender);
-      },
-      global.defaultTimeout * 3,
-    );
+      const notificationDisplayMessage =
+        new clientPB.NotificationDisplayMessage();
+      const numberMessage = new clientPB.NumberMessage();
+      numberMessage.setNumber(1);
+      notificationDisplayMessage.setUnread(false);
+      notificationDisplayMessage.setNumber(numberMessage);
+      notificationDisplayMessage.setOrder('newest');
+
+      // Check the read call
+      const response = await notificationsRead(
+        notificationDisplayMessage,
+        callCredentials,
+      );
+      expect(response.getMessages()).not.toContain('msg1');
+      expect(response.getMessages()).not.toContain('msg2');
+      expect(response.getMessages()).toContain('msg3');
+    });
+    test('should clear all notifications.', async () => {
+      await sender.notifications.sendNotification(node1.id, 'msg1');
+      await sender.notifications.sendNotification(node1.id, 'msg2');
+
+      const notificationsClear =
+        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+          client,
+          client.notificationsClear,
+        );
+
+      const emptyMessage = new clientPB.EmptyMessage();
+      await notificationsClear(emptyMessage, callCredentials);
+
+      // Call read notifications to check there are none
+      const notifs = await polykeyAgent.notifications.readNotifications();
+      expect(notifs).toEqual([]);
+    });
   });
 });

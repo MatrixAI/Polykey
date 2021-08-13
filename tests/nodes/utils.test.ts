@@ -1,7 +1,7 @@
 import type { NodeId } from '@/nodes/types';
 import * as nodesUtils from '@/nodes/utils';
 
-describe('utils', () => {
+describe('Nodes utils', () => {
   test('basic distance calculation', async () => {
     const nodeId1 = 'ABC' as NodeId;
     const nodeId2 = 'xyz' as NodeId;

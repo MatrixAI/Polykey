@@ -12,14 +12,14 @@ import fromKeyLike from 'jose/jwk/from_key_like';
 import * as keysUtils from '../../src/keys/utils';
 import * as notificationUtils from '../../src/notifications/utils';
 
-describe('utils', () => {
+describe('Notifications utils', () => {
   test('generates notification ids', async () => {
     const id1 = notificationUtils.generateNotifId() as NotificationId;
     const id2 = notificationUtils.generateNotifId() as NotificationId;
     expect(id1 < id2).toBeTruthy();
   });
   test('signs notifications', async () => {
-    const notif: Notification = {
+    const notification: Notification = {
       senderId: 'nodeId' as NodeId,
       message: 'msg',
       isRead: false,
@@ -30,12 +30,12 @@ describe('utils', () => {
       createPublicKey(keyPairPem.publicKey),
     );
 
-    const signedNotif = await notificationUtils.signNotification(
-      notif,
+    const signedNotification = await notificationUtils.signNotification(
+      notification,
       keyPairPem,
     );
     const { payload, protectedHeader } = await jwtVerify(
-      signedNotif,
+      signedNotification,
       EmbeddedJWK,
       {},
     );
@@ -45,7 +45,7 @@ describe('utils', () => {
     expect(protectedHeader.jwk).toEqual(jwkPublicKey);
   });
   test('verifies and decodes signed notifications', async () => {
-    const notif: Notification = {
+    const notification: Notification = {
       senderId: 'nodeId' as NodeId,
       message: 'msg',
       isRead: false,
@@ -53,15 +53,15 @@ describe('utils', () => {
     const keyPair = await keysUtils.generateKeyPair(4096);
     const keyPairPem = keysUtils.keyPairToPem(keyPair);
 
-    const signedNotif = await notificationUtils.signNotification(
-      notif,
+    const signedNotification = await notificationUtils.signNotification(
+      notification,
       keyPairPem,
     );
-    const decodedNotif = await notificationUtils.verifyAndDecodeNotif(
-      signedNotif,
+    const decodedNotification = await notificationUtils.verifyAndDecodeNotif(
+      signedNotification,
     );
-    expect(decodedNotif.senderId).toEqual('nodeId');
-    expect(decodedNotif.message).toEqual('msg');
-    expect(decodedNotif.isRead).toBeFalsy();
+    expect(decodedNotification.senderId).toEqual('nodeId');
+    expect(decodedNotification.message).toEqual('msg');
+    expect(decodedNotification.isRead).toBeFalsy();
   });
 });

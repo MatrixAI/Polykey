@@ -24,7 +24,9 @@ class ErrorPolykey extends CustomError {
 
 class ErrorUndefinedBehaviour extends ErrorPolykey {}
 
-export { ErrorPolykey, ErrorUndefinedBehaviour };
+class ErrorStateVersionMismatch extends ErrorPolykey {}
+
+export { ErrorPolykey, ErrorUndefinedBehaviour, ErrorStateVersionMismatch };
 
 /**
  * Recursively export all domain-level error classes

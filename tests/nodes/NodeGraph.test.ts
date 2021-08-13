@@ -413,25 +413,25 @@ describe('NodeGraph', () => {
     expect(buckets).toContainEqual({
       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab: {
         address: { ip: '1.1.1.1', port: 1111 },
-        lastUpdated: expect.any(Date),
+        lastUpdated: expect.any(String),
       },
     });
     // Bucket 2 (multiple nodes in 1 bucket):
     expect(buckets).toContainEqual({
       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaad: {
         address: { ip: '21.21.21.21', port: 2222 },
-        lastUpdated: expect.any(Date),
+        lastUpdated: expect.any(String),
       },
       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaae: {
         address: { ip: '22.22.22.22', port: 2222 },
-        lastUpdated: expect.any(Date),
+        lastUpdated: expect.any(String),
       },
     });
     // Bucket 351:
     expect(buckets).toContainEqual({
       ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ: {
         address: { ip: '351.351.351.351', port: 351 },
-        lastUpdated: expect.any(Date),
+        lastUpdated: expect.any(String),
       },
     });
 

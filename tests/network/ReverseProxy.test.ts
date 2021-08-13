@@ -14,43 +14,45 @@ import {
 import * as keysUtils from '@/keys/utils';
 import { promisify, promise, timerStart, timerStop, sleep } from '@/utils';
 
-function server(end: boolean = false) {
-  const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
-  const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
-    promise<void>();
-  const server = net.createServer((conn) => {
-    resolveServerConnP();
-    conn.once('close', () => {
-      resolveServerConnClosedP();
-    });
-    if (end) {
-      conn.end();
-      conn.destroy();
-    }
-  });
-  const serverClose = promisify(server.close).bind(server);
-  const serverListen = promisify(server.listen).bind(server);
-  const serverHost = () => {
-    return (server.address() as AddressInfo).address as Host;
-  };
-  const serverPort = () => {
-    return (server.address() as AddressInfo).port as Port;
-  };
-  return {
-    serverListen,
-    serverClose,
-    serverConnP,
-    serverConnClosedP,
-    serverHost,
-    serverPort,
-  };
-}
-
 describe('ReverseProxy', () => {
   const logger = new Logger('ReverseProxy Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let keyPairPem: KeyPairPem, certPem: string;
+
+  // helper functions
+  function server(end: boolean = false) {
+    const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
+    const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
+      promise<void>();
+    const server = net.createServer((conn) => {
+      resolveServerConnP();
+      conn.once('close', () => {
+        resolveServerConnClosedP();
+      });
+      if (end) {
+        conn.end();
+        conn.destroy();
+      }
+    });
+    const serverClose = promisify(server.close).bind(server);
+    const serverListen = promisify(server.listen).bind(server);
+    const serverHost = () => {
+      return (server.address() as AddressInfo).address as Host;
+    };
+    const serverPort = () => {
+      return (server.address() as AddressInfo).port as Port;
+    };
+    return {
+      serverListen,
+      serverClose,
+      serverConnP,
+      serverConnClosedP,
+      serverHost,
+      serverPort,
+    };
+  }
+
   beforeAll(async () => {
     const keyPair = await keysUtils.generateKeyPair(4096);
     keyPairPem = keysUtils.keyPairToPem(keyPair);
@@ -347,87 +349,82 @@ describe('ReverseProxy', () => {
     await revProxy.stop();
     await serverClose();
   });
-  test(
-    'connect timeout due to hanging client',
-    async () => {
-      // connConnectTime will affect ErrorConnectionComposeTimeout during compose
-      // connTimeoutTime will affect ErrorConnectionTimeout which is needed
-      // because failing to connect to the open connection
-      // doesn't automatically mean the connection is destroyed
-      const revProxy = new ReverseProxy({
-        connConnectTime: 3000,
-        connTimeoutTime: 3000,
-        logger: logger,
-      });
-      const {
-        serverListen,
-        serverClose,
-        serverConnP,
-        serverConnClosedP,
-        serverHost,
-        serverPort,
-      } = server();
-      await serverListen(0);
-      await revProxy.start({
-        ingressHost: '127.0.0.1' as Host,
-        serverHost: serverHost(),
-        serverPort: serverPort(),
-        tlsConfig: {
-          keyPrivatePem: keyPairPem.privateKey,
-          certChainPem: certPem,
-        },
-      });
-      const ingressHost = revProxy.getIngressHost();
-      const ingressPort = revProxy.getIngressPort();
-      const utpSocket = UTP();
-      const handleMessage = async (data: Buffer) => {
-        const msg = networkUtils.unserializeNetworkMessage(data);
-        if (msg.type === 'ping') {
-          await send(networkUtils.pongBuffer);
-        }
-      };
-      utpSocket.on('message', handleMessage);
-      const send = async (data: Buffer) => {
-        const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
-        await utpSocketSend(data, 0, data.byteLength, ingressPort, ingressHost);
-      };
-      const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
-      await utpSocketBind(0, '127.0.0.1');
-      const utpSocketPort = utpSocket.address().port;
-      await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
-      expect(revProxy.getConnectionCount()).toBe(1);
-      // this retries multiple times
-      const utpConn = utpSocket.connect(ingressPort, ingressHost);
-      utpConn.setTimeout(2000, () => {
-        utpConn.emit('error', new Error('TIMED OUT'));
-      });
-      const { p: utpConnClosedP, resolveP: resolveUtpConnClosedP } =
-        promise<void>();
-      const { p: utpConnErrorP, rejectP: rejectUtpConnErrorP } =
-        promise<void>();
-      utpConn.on('error', (e) => {
-        rejectUtpConnErrorP(e);
-        utpConn.destroy();
-      });
-      utpConn.on('close', () => {
-        resolveUtpConnClosedP();
-      });
-      // the client connection times out
-      await expect(utpConnErrorP).rejects.toThrow(/TIMED OUT/);
-      await utpConnClosedP;
-      // wait for the open connection to timeout
-      await sleep(3000);
-      expect(revProxy.getConnectionCount()).toBe(0);
-      await expect(serverConnP).resolves.toBeUndefined();
-      await expect(serverConnClosedP).resolves.toBeUndefined();
-      utpSocket.off('message', handleMessage);
-      utpSocket.close();
-      utpSocket.unref();
-      await revProxy.stop();
-      await serverClose();
-    },
-    global.defaultTimeout * 2,
-  );
+  test('connect timeout due to hanging client', async () => {
+    // connConnectTime will affect ErrorConnectionComposeTimeout during compose
+    // connTimeoutTime will affect ErrorConnectionTimeout which is needed
+    // because failing to connect to the open connection
+    // doesn't automatically mean the connection is destroyed
+    const revProxy = new ReverseProxy({
+      connConnectTime: 3000,
+      connTimeoutTime: 3000,
+      logger: logger,
+    });
+    const {
+      serverListen,
+      serverClose,
+      serverConnP,
+      serverConnClosedP,
+      serverHost,
+      serverPort,
+    } = server();
+    await serverListen(0);
+    await revProxy.start({
+      ingressHost: '127.0.0.1' as Host,
+      serverHost: serverHost(),
+      serverPort: serverPort(),
+      tlsConfig: {
+        keyPrivatePem: keyPairPem.privateKey,
+        certChainPem: certPem,
+      },
+    });
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
+    const utpSocket = UTP();
+    const handleMessage = async (data: Buffer) => {
+      const msg = networkUtils.unserializeNetworkMessage(data);
+      if (msg.type === 'ping') {
+        await send(networkUtils.pongBuffer);
+      }
+    };
+    utpSocket.on('message', handleMessage);
+    const send = async (data: Buffer) => {
+      const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
+      await utpSocketSend(data, 0, data.byteLength, ingressPort, ingressHost);
+    };
+    const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
+    await utpSocketBind(0, '127.0.0.1');
+    const utpSocketPort = utpSocket.address().port;
+    await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
+    expect(revProxy.getConnectionCount()).toBe(1);
+    // this retries multiple times
+    const utpConn = utpSocket.connect(ingressPort, ingressHost);
+    utpConn.setTimeout(2000, () => {
+      utpConn.emit('error', new Error('TIMED OUT'));
+    });
+    const { p: utpConnClosedP, resolveP: resolveUtpConnClosedP } =
+      promise<void>();
+    const { p: utpConnErrorP, rejectP: rejectUtpConnErrorP } = promise<void>();
+    utpConn.on('error', (e) => {
+      rejectUtpConnErrorP(e);
+      utpConn.destroy();
+    });
+    utpConn.on('close', () => {
+      resolveUtpConnClosedP();
+    });
+    // the client connection times out
+    await expect(utpConnErrorP).rejects.toThrow(/TIMED OUT/);
+    await utpConnClosedP;
+    // wait for the open connection to timeout
+    await sleep(3000);
+    expect(revProxy.getConnectionCount()).toBe(0);
+    await expect(serverConnP).resolves.toBeUndefined();
+    await expect(serverConnClosedP).resolves.toBeUndefined();
+    utpSocket.off('message', handleMessage);
+    utpSocket.close();
+    utpSocket.unref();
+    await revProxy.stop();
+    await serverClose();
+  });
   test('connect fails due to missing client certificates', async () => {
     // connConnectTime will affect ErrorConnectionComposeTimeout during compose
     // connTimeoutTime will affect ErrorConnectionTimeout which is needed
