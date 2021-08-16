@@ -8,15 +8,12 @@ in
     nativeBuildInputs = [
       nodejs
       nodePackages.node2nix
-      utils.pkg
-      python3
       grpc-tools
       grpcurl
+      utils.pkg
     ];
     PKG_CACHE_PATH = utils.pkgCachePath;
     PKG_IGNORE_TAG = 1;
-    # ensure that native modules are built from source
-    npm_config_build_from_source = "true";
     shellHook = ''
       echo 'Entering js-polykey'
       set -o allexport

@@ -4,8 +4,13 @@
 
 let
   utils = callPackage ./utils.nix {};
-  name = "${builtins.replaceStrings ["/" "@"] ["_" ""] utils.node2nixDev.packageName}-${utils.node2nixDev.version}";
-  drv = runCommandNoCC name {} ''
+  drv = runCommandNoCC
+    "${utils.basename}-${utils.node2nixDev.version}"
+    {
+      version = utils.node2nixDev.version;
+      packageName = utils.node2nixDev.packageName;
+    }
+    ''
     mkdir -p $out/lib/node_modules/${utils.node2nixDev.packageName}
     # copy only the dist
     cp -r ${utils.node2nixDev}/lib/node_modules/${utils.node2nixDev.packageName}/dist $out/lib/node_modules/${utils.node2nixDev.packageName}/
