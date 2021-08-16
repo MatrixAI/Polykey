@@ -1,3 +1,0 @@
-// class Send {
-//   constructor(){}
-// }
