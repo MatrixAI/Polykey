@@ -1,7 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -12,15 +11,12 @@ const commandScanVaults = binUtils.createCommand('scan', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandScanVaults.requiredOption(
   '-ni, --node-id <nodeId>',
   '(required) Id of the node to be scanned',
 );
 commandScanVaults.action(async (options) => {
-  const meta = new grpc.Metadata();
-
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -30,9 +26,6 @@ commandScanVaults.action(async (options) => {
   }
   if (options.nodePath) {
     clientConfig['nodePath'] = options.nodePath;
-  }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
   }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
@@ -49,9 +42,11 @@ commandScanVaults.action(async (options) => {
     const data: Array<string> = [];
     const vaultListGenerator = grpcClient.vaultsScan(
       nodeMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    vaultListGenerator.stream.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
     for await (const vault of vaultListGenerator) {
       data.push(`${vault.getName()}`);
     }
@@ -77,8 +72,7 @@ commandScanVaults.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

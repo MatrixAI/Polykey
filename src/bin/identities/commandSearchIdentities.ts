@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import * as utils from '../../utils';
@@ -37,10 +37,14 @@ commandTrustGestalts.action(async (providerId, options) => {
     const providerMessage = new clientPB.ProviderMessage();
     providerMessage.setId(providerId);
 
-    const res = await grpcClient.identitiesGetInfo(
+    const pCall = grpcClient.identitiesGetInfo(
       providerMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+    const res = await pCall;
 
     process.stdout.write(
       outputFormatter({
@@ -64,7 +68,7 @@ commandTrustGestalts.action(async (providerId, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

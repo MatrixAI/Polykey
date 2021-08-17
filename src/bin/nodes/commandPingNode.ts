@@ -44,7 +44,7 @@ commandGetNode.action(async (node, options) => {
     try {
       statusMessage = await grpcClient.nodesPing(
         nodeMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
     } catch (err) {
       if (err instanceof ErrorNodeGraphNodeNotFound) {
@@ -92,7 +92,7 @@ commandGetNode.action(async (node, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

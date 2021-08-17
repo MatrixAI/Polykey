@@ -10,8 +10,9 @@ import * as Client_pb from "./Client_pb";
 interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
     echo: IClientService_IEcho;
     agentStop: IClientService_IAgentStop;
-    sessionRequestJWT: IClientService_ISessionRequestJWT;
-    sessionChangeKey: IClientService_ISessionChangeKey;
+    sessionUnlock: IClientService_ISessionUnlock;
+    sessionRefresh: IClientService_ISessionRefresh;
+    sessionLockAll: IClientService_ISessionLockAll;
     nodesGetLocalDetails: IClientService_INodesGetLocalDetails;
     nodesGetDetails: IClientService_INodesGetDetails;
     nodesAdd: IClientService_INodesAdd;
@@ -36,6 +37,7 @@ interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
     vaultsMkdir: IClientService_IVaultsMkdir;
     vaultsStat: IClientService_IVaultsStat;
     vaultsPull: IClientService_IVaultsPull;
+    vaultsClone: IClientService_IVaultsClone;
     vaultsScan: IClientService_IVaultsScan;
     vaultsDeleteSecret: IClientService_IVaultsDeleteSecret;
     vaultsEditSecret: IClientService_IVaultsEditSecret;
@@ -91,17 +93,26 @@ interface IClientService_IAgentStop extends grpc.MethodDefinition<Client_pb.Empt
     responseSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
 }
-interface IClientService_ISessionRequestJWT extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.JWTTokenMessage> {
-    path: "/clientInterface.Client/SessionRequestJWT";
+interface IClientService_ISessionUnlock extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.SessionTokenMessage> {
+    path: "/clientInterface.Client/SessionUnlock";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
     requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
-    responseSerialize: grpc.serialize<Client_pb.JWTTokenMessage>;
-    responseDeserialize: grpc.deserialize<Client_pb.JWTTokenMessage>;
+    responseSerialize: grpc.serialize<Client_pb.SessionTokenMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.SessionTokenMessage>;
 }
-interface IClientService_ISessionChangeKey extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.StatusMessage> {
-    path: "/clientInterface.Client/SessionChangeKey";
+interface IClientService_ISessionRefresh extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.SessionTokenMessage> {
+    path: "/clientInterface.Client/SessionRefresh";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.EmptyMessage>;
+    responseSerialize: grpc.serialize<Client_pb.SessionTokenMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.SessionTokenMessage>;
+}
+interface IClientService_ISessionLockAll extends grpc.MethodDefinition<Client_pb.EmptyMessage, Client_pb.StatusMessage> {
+    path: "/clientInterface.Client/SessionLockAll";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.EmptyMessage>;
@@ -322,6 +333,15 @@ interface IClientService_IVaultsPull extends grpc.MethodDefinition<Client_pb.Vau
     responseStream: false;
     requestSerialize: grpc.serialize<Client_pb.VaultPullMessage>;
     requestDeserialize: grpc.deserialize<Client_pb.VaultPullMessage>;
+    responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
+}
+interface IClientService_IVaultsClone extends grpc.MethodDefinition<Client_pb.VaultCloneMessage, Client_pb.StatusMessage> {
+    path: "/clientInterface.Client/VaultsClone";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.VaultCloneMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.VaultCloneMessage>;
     responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
 }
@@ -646,8 +666,9 @@ export const ClientService: IClientService;
 export interface IClientServer extends grpc.UntypedServiceImplementation {
     echo: grpc.handleUnaryCall<Client_pb.EchoMessage, Client_pb.EchoMessage>;
     agentStop: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.EmptyMessage>;
-    sessionRequestJWT: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.JWTTokenMessage>;
-    sessionChangeKey: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.StatusMessage>;
+    sessionUnlock: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.SessionTokenMessage>;
+    sessionRefresh: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.SessionTokenMessage>;
+    sessionLockAll: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.StatusMessage>;
     nodesGetLocalDetails: grpc.handleUnaryCall<Client_pb.EmptyMessage, Client_pb.NodeDetailsMessage>;
     nodesGetDetails: grpc.handleUnaryCall<Client_pb.NodeMessage, Client_pb.NodeDetailsMessage>;
     nodesAdd: grpc.handleUnaryCall<Client_pb.NodeAddressMessage, Client_pb.EmptyMessage>;
@@ -672,6 +693,7 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     vaultsMkdir: grpc.handleUnaryCall<Client_pb.VaultMkdirMessage, Client_pb.StatusMessage>;
     vaultsStat: grpc.handleUnaryCall<Client_pb.VaultMessage, Client_pb.StatMessage>;
     vaultsPull: grpc.handleUnaryCall<Client_pb.VaultPullMessage, Client_pb.StatusMessage>;
+    vaultsClone: grpc.handleUnaryCall<Client_pb.VaultCloneMessage, Client_pb.StatusMessage>;
     vaultsScan: grpc.handleServerStreamingCall<Client_pb.NodeMessage, Client_pb.VaultListMessage>;
     vaultsDeleteSecret: grpc.handleUnaryCall<Client_pb.SecretMessage, Client_pb.StatusMessage>;
     vaultsEditSecret: grpc.handleUnaryCall<Client_pb.SecretEditMessage, Client_pb.StatusMessage>;
@@ -716,12 +738,15 @@ export interface IClientClient {
     agentStop(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    sessionRequestJWT(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
-    sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
-    sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
-    sessionChangeKey(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    sessionUnlock(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionUnlock(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionUnlock(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionRefresh(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionRefresh(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionRefresh(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    sessionLockAll(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    sessionLockAll(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    sessionLockAll(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     nodesGetLocalDetails(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
@@ -791,6 +816,9 @@ export interface IClientClient {
     vaultsPull(request: Client_pb.VaultPullMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsPull(request: Client_pb.VaultPullMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsPull(request: Client_pb.VaultPullMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsClone(request: Client_pb.VaultCloneMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsClone(request: Client_pb.VaultCloneMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsClone(request: Client_pb.VaultCloneMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsScan(request: Client_pb.NodeMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultListMessage>;
     vaultsScan(request: Client_pb.NodeMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultListMessage>;
     vaultsDeleteSecret(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
@@ -901,12 +929,15 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public agentStop(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public agentStop(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
-    public sessionRequestJWT(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
-    public sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
-    public sessionRequestJWT(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.JWTTokenMessage) => void): grpc.ClientUnaryCall;
-    public sessionChangeKey(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public sessionChangeKey(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public sessionUnlock(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionUnlock(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionUnlock(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionRefresh(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionRefresh(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionRefresh(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SessionTokenMessage) => void): grpc.ClientUnaryCall;
+    public sessionLockAll(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public sessionLockAll(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public sessionLockAll(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public nodesGetLocalDetails(request: Client_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     public nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     public nodesGetLocalDetails(request: Client_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
@@ -976,6 +1007,9 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public vaultsPull(request: Client_pb.VaultPullMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsPull(request: Client_pb.VaultPullMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsPull(request: Client_pb.VaultPullMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsClone(request: Client_pb.VaultCloneMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsClone(request: Client_pb.VaultCloneMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsClone(request: Client_pb.VaultCloneMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsScan(request: Client_pb.NodeMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultListMessage>;
     public vaultsScan(request: Client_pb.NodeMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultListMessage>;
     public vaultsDeleteSecret(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;

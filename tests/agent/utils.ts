@@ -20,7 +20,7 @@ async function openTestAgentServer({
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   sigchain: Sigchain;
-  notificationsManager: NotificationsManager
+  notificationsManager: NotificationsManager;
 }) {
   const agentService: IAgentServer = createAgentService({
     vaultManager,

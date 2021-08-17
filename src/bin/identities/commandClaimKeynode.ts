@@ -1,4 +1,4 @@
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
@@ -44,10 +44,14 @@ commandClaimKeynode.action(async (providerId, identitiyId, options) => {
     providerMessage.setMessage(identitiyId);
 
     //sending message.
-    await grpcClient.identitiesAugmentKeynode(
+    const pCall = grpcClient.identitiesAugmentKeynode(
       providerMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+    await pCall;
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
@@ -64,7 +68,7 @@ commandClaimKeynode.action(async (providerId, identitiyId, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

@@ -1,17 +1,19 @@
-import type { Gestalt, GestaltAction } from '../gestalts/types';
-import type { NodeId, NodeInfo } from '../nodes/types';
-import type { IdentityId, IdentityInfo, ProviderId } from '../identities/types';
-import type { GestaltGraph } from '../gestalts';
 import type { NodeManager } from '../nodes';
-import type { SessionManager } from '../session';
-import type Discovery from '../discovery/Discovery';
+import type { Discovery } from '../discovery';
+import type { GestaltGraph } from '../gestalts';
+import type { SessionManager } from '../sessions';
+import type { NodeId, NodeInfo } from '../nodes/types';
+import type { Gestalt, GestaltAction } from '../gestalts/types';
+import type { IdentityId, IdentityInfo, ProviderId } from '../identities/types';
 
-import * as grpc from '@grpc/grpc-js';
-import * as clientPB from '../proto/js/Client_pb';
-import { checkGestaltAction, validGestaltAction } from '../gestalts/utils';
-import * as utils from '../client/utils';
-import * as grpcUtils from '../grpc/utils';
+import * as utils from './utils';
 import * as errors from '../errors';
+import * as grpc from '@grpc/grpc-js';
+
+import { checkGestaltAction, validGestaltAction } from '../gestalts/utils';
+
+import * as grpcUtils from '../grpc/utils';
+import * as clientPB from '../proto/js/Client_pb';
 
 const createGestaltsRPC = ({
   gestaltGraph,
@@ -31,7 +33,11 @@ const createGestaltsRPC = ({
     ): Promise<void> => {
       const response = new clientPB.GestaltMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const gestalt = await gestaltGraph.getGestaltByNode(
           call.request.getName() as NodeId,
         );
@@ -52,7 +58,11 @@ const createGestaltsRPC = ({
     ): Promise<void> => {
       const response = new clientPB.GestaltMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const gestalt = await gestaltGraph.getGestaltByIdentity(
           call.request.getId() as ProviderId,
           call.request.getMessage() as IdentityId,
@@ -74,7 +84,11 @@ const createGestaltsRPC = ({
       const genWritable = grpcUtils.generatorWritable(call);
       let gestaltMessage: clientPB.GestaltMessage;
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const certs: Array<Gestalt> = await gestaltGraph.getGestalts();
         for (const cert of certs) {
           gestaltMessage = new clientPB.GestaltMessage();
@@ -95,7 +109,11 @@ const createGestaltsRPC = ({
     ): Promise<void> => {
       const info = call.request;
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         // constructing node info:
         const nodeInfo: NodeInfo = {
           id: info.getName() as NodeId,
@@ -129,7 +147,11 @@ const createGestaltsRPC = ({
     ): Promise<void> => {
       const info = call.request;
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         //constructing identity info.
         const identityInfo: IdentityInfo = {
           providerId: info.getProvider() as ProviderId,
@@ -166,7 +188,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const emptyMessage = new clientPB.EmptyMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         //constructing identity info.
         const gen = discovery.discoverGestaltByNode(info.getName() as NodeId);
         for await (const val of gen) {
@@ -186,7 +212,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const emptyMessage = new clientPB.EmptyMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         //constructing identity info.
         const gen = discovery.discoverGestaltByIdentity(
           info.getId() as ProviderId,
@@ -206,7 +236,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const response = new clientPB.ActionsMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const result = await gestaltGraph.getGestaltActionsByNode(
           info.getName() as NodeId,
         );
@@ -233,7 +267,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const response = new clientPB.ActionsMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const providerId = info.getId() as ProviderId;
         const identityId = info.getMessage() as IdentityId;
         const result = await gestaltGraph.getGestaltActionsByIdentity(
@@ -263,7 +301,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         //checking
         switch (info.getNodeOrProviderCase()) {
           default:
@@ -297,7 +339,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         //checking
         switch (info.getNodeOrProviderCase()) {
           default:
@@ -336,7 +382,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         //checking
         switch (info.getNodeOrProviderCase()) {
           default:
@@ -370,7 +420,11 @@ const createGestaltsRPC = ({
       const info = call.request;
       const response = new clientPB.EmptyMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         //checking
         switch (info.getNodeOrProviderCase()) {
           default:

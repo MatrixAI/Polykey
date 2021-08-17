@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { parseId } from './utils';
@@ -54,10 +54,14 @@ commandAllowGestalts.action(async (id, permissions, options) => {
       setActionMessage.setNode(nodeMessage);
       name = `${nodeId}`;
       //Trusting
-      await grpcClient.gestaltsUnsetActionByNode(
+      const pCall = grpcClient.gestaltsUnsetActionByNode(
         setActionMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
+      pCall.call.on('metadata', (meta) => {
+        clientUtils.refreshSession(meta, client.session);
+      });
+      await pCall;
     } else {
       //  Setting by Identity
       const providerMessage = new clientPB.ProviderMessage();
@@ -68,7 +72,7 @@ commandAllowGestalts.action(async (id, permissions, options) => {
       //Trusting.
       await grpcClient.gestaltsUnsetActionByIdentity(
         setActionMessage,
-        await client.session.createJWTCallCredentials(),
+        await client.session.createCallCredentials(),
       );
     }
 

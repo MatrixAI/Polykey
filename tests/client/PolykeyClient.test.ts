@@ -67,7 +67,7 @@ describe('GRPCClientClient', () => {
     client = pkClient.grpcClient;
     await client.start({});
 
-    const token = await polykeyAgent.sessions.generateJWTToken();
+    const token = await polykeyAgent.sessions.generateToken();
     callCredentials = {
       credentials: grpc.CallCredentials.createFromMetadataGenerator(
         (_params, callback) => {

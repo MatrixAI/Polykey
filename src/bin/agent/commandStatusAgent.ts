@@ -7,13 +7,8 @@ const commandStatusAgent = binUtils.createCommand('status', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandStatusAgent.action(async (options) => {
-  const nodePath = options.nodePath
-    ? options.nodePath
-    : utils.getDefaultNodePath();
-
   const message = (await checkAgentRunning(options.nodePath))
     ? 'online'
     : 'offline';
@@ -35,7 +30,6 @@ commandStatusAgent.action(async (options) => {
     );
     throw err;
   } finally {
-    options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

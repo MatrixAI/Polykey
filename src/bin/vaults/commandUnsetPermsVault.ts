@@ -1,7 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -10,21 +9,18 @@ const commandVaultShare = binUtils.createCommand('unshare', {
   description: {
     description: 'Sets the permissions of a vault for Node Ids',
     args: {
-      vaultName: 'Name or ID of vault to share',
-      nodesList: 'List of nodes share to',
+      vaultName: 'Name or ID of vault to unshare',
+      node: 'Id of the node to unset permissions for',
     },
   },
 
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 
-commandVaultShare.arguments('<vaultName> [nodesList...]');
-commandVaultShare.action(async (vaultName, nodesList, options) => {
-  const meta = new grpc.Metadata();
-
+commandVaultShare.arguments('<vaultName> <nodeId>');
+commandVaultShare.action(async (vaultName, nodeId, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -32,35 +28,42 @@ commandVaultShare.action(async (vaultName, nodesList, options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
 
-  const shareMessage = new clientPB.ShareMessage();
-  shareMessage.setName(vaultName);
-  shareMessage.setId(JSON.stringify(nodesList));
-  shareMessage.setSet(true);
+  const unsetVaultPermsMessage = new clientPB.UnsetVaultPermMessage();
+  const vaultMessage = new clientPB.VaultMessage();
+  const nodeMessage = new clientPB.NodeMessage();
+  unsetVaultPermsMessage.setVault(vaultMessage);
+  unsetVaultPermsMessage.setNode(nodeMessage);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.vaultsShare(
-      shareMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+    vaultMessage.setName(vaultName);
+    nodeMessage.setName(nodeId);
+
+    const pCall = grpcClient.vaultsUnsetPerms(
+      unsetVaultPermsMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Shared Vault: ${shareMessage.getName()} to: ${shareMessage.getId()}`,
+          `Unshared Vault: ${unsetVaultPermsMessage
+            .getVault()
+            ?.getName()} to: ${unsetVaultPermsMessage.getNode()?.getName()}`,
         ],
       }),
     );
@@ -81,7 +84,6 @@ commandVaultShare.action(async (vaultName, nodesList, options) => {
     }
   } finally {
     await client.stop();
-    options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

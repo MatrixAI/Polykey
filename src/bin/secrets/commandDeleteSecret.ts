@@ -1,6 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -13,14 +12,12 @@ const commandDeleteSecret = binUtils.createCommand('delete', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandDeleteSecret.requiredOption(
   '-sp --secret-path <secretPath>',
   '(required) Path to the secret to be deleted, specified as <vaultName>:<secretPath>',
 );
 commandDeleteSecret.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -28,16 +25,13 @@ commandDeleteSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
   const vaultMessage = new clientPB.VaultMessage();
+  const secretMessage = new clientPB.SecretMessage();
 
   try {
     await client.start({});
@@ -50,14 +44,16 @@ commandDeleteSecret.action(async (options) => {
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
     vaultMessage.setName(vaultName);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(secretName);
+    secretMessage.setVault(vaultMessage);
+    secretMessage.setName(secretName);
 
     const pCall = grpcClient.vaultsDeleteSecret(
-      vaultSpecificMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      secretMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {
@@ -65,7 +61,7 @@ commandDeleteSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getName()} successfully deleted`,
+            `Secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()} successfully deleted`,
           ],
         }),
       );
@@ -74,7 +70,7 @@ commandDeleteSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to delete secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getId()}`,
+            `Failed to delete secret: ${secretMessage.getName()} in vault: ${vaultMessage.getId()}`,
           ],
         }),
       );
@@ -96,8 +92,7 @@ commandDeleteSecret.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

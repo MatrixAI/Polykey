@@ -9,8 +9,9 @@ service Client {
   rpc AgentStop(EmptyMessage) returns (EmptyMessage) {};
 
   // Session
-  rpc SessionRequestJWT (EmptyMessage) returns (JWTTokenMessage) {};
-  rpc SessionChangeKey (EmptyMessage) returns (StatusMessage) {};
+  rpc SessionUnlock (EmptyMessage) returns (SessionTokenMessage) {};
+  rpc SessionRefresh (EmptyMessage) returns (SessionTokenMessage) {};
+  rpc SessionLockAll (EmptyMessage) returns (StatusMessage) {};
 
   // Nodes
   rpc NodesGetLocalDetails(EmptyMessage) returns (NodeDetailsMessage) {};
@@ -41,6 +42,7 @@ service Client {
   rpc VaultsMkdir(VaultMkdirMessage) returns (StatusMessage) {};
   rpc VaultsStat(VaultMessage) returns (StatMessage) {};
   rpc VaultsPull(VaultPullMessage) returns (StatusMessage) {};
+  rpc VaultsClone(VaultCloneMessage) returns (StatusMessage) {};
   rpc VaultsScan(NodeMessage) returns (stream VaultListMessage) {};
   rpc VaultsDeleteSecret(SecretMessage) returns (StatusMessage) {};
   rpc VaultsEditSecret(SecretEditMessage) returns (StatusMessage) {};
@@ -97,7 +99,7 @@ message EchoMessage {
 
 // Session
 
-message JWTTokenMessage {
+message SessionTokenMessage {
   string token = 1;
 }
 
@@ -126,6 +128,11 @@ message VaultMkdirMessage {
 }
 
 message VaultPullMessage {
+  VaultMessage vault = 1;
+  NodeMessage node = 2;
+}
+
+message VaultCloneMessage {
   VaultMessage vault = 1;
   NodeMessage node = 2;
 }

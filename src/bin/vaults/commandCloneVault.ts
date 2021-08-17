@@ -1,30 +1,25 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
 
-const commandVaultShare = binUtils.createCommand('share', {
-  description: {
-    description: 'Sets the permissions of a vault for Node Ids',
-    args: {
-      vaultName: 'Name or ID of vault to share',
-      nodesList: 'List of nodes share to',
-    },
-  },
-
+const commandCloneVault = binUtils.createCommand('clone', {
+  description: 'Clones a vault from another node',
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
-
-commandVaultShare.arguments('<vaultName> [nodesList...]');
-commandVaultShare.action(async (vaultName, nodesList, options) => {
-  const meta = new grpc.Metadata();
-
+commandCloneVault.requiredOption(
+  '-ni, --node-id <nodeId>',
+  '(required) Id of the node to clone the vault from',
+);
+commandCloneVault.requiredOption(
+  '-vi, --vault-id <vaultId>',
+  '(required) Id of the vault to be cloned',
+);
+commandCloneVault.action(async (options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -32,35 +27,42 @@ commandVaultShare.action(async (vaultName, nodesList, options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
+  if (options.nodePath) {
+    clientConfig['nodePath'] = options.nodePath;
   }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
+  const vaultMessage = new clientPB.VaultMessage();
+  const nodeMessage = new clientPB.NodeMessage();
+  const vaultCloneMessage = new clientPB.VaultCloneMessage();
+  vaultCloneMessage.setVault(vaultMessage);
+  vaultCloneMessage.setNode(nodeMessage);
 
-  const shareMessage = new clientPB.ShareMessage();
-  shareMessage.setName(vaultName);
-  shareMessage.setId(JSON.stringify(nodesList));
-  shareMessage.setSet(false);
+  nodeMessage.setName(options.nodeId);
+  vaultMessage.setId(options.vaultId);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.vaultsShare(
-      shareMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+    const pCall = grpcClient.vaultsClone(
+      vaultCloneMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Shared Vault: ${shareMessage.getName()} to: ${shareMessage.getId()}`,
+          `Clone Vault: ${vaultMessage.getName()} from Node: ${nodeMessage.getName()} successful`,
         ],
       }),
     );
@@ -81,11 +83,10 @@ commandVaultShare.action(async (vaultName, nodesList, options) => {
     }
   } finally {
     await client.stop();
-    options.passwordFile = undefined;
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;
   }
 });
 
-export default commandVaultShare;
+export default commandCloneVault;

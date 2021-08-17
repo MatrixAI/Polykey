@@ -1,6 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -12,14 +11,12 @@ const commandNewDir = binUtils.createCommand('mkdir', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandNewDir.requiredOption(
   '-sp, --secret-path <secretPath>',
   '(required) Path of the directory to create, specified as <vaultName>:<secretPath>',
 );
 commandNewDir.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -27,15 +24,12 @@ commandNewDir.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
+  const vaultMkdirMessage = new clientPB.VaultMkdirMessage();
   const vaultMessage = new clientPB.VaultMessage();
 
   try {
@@ -51,20 +45,24 @@ commandNewDir.action(async (options) => {
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
     vaultMessage.setName(vaultName);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(secretName);
+    vaultMkdirMessage.setVault(vaultMessage);
+    vaultMkdirMessage.setDirname(secretName);
 
-    await grpcClient.vaultsMkdir(
-      vaultSpecificMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+    const pCall = grpcClient.vaultsMkdir(
+      vaultMkdirMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Directory: ${vaultSpecificMessage.getName()} created inside vault: ${vaultMessage.getName()}`,
+          `Directory: ${vaultMkdirMessage.getDirname()} created inside vault: ${vaultMessage.getName()}`,
         ],
       }),
     );
@@ -85,8 +83,7 @@ commandNewDir.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

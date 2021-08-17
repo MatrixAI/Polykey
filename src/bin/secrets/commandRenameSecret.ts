@@ -1,6 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -12,7 +11,6 @@ const commandRenameSecret = binUtils.createCommand('rename', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandRenameSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
@@ -23,7 +21,6 @@ commandRenameSecret.requiredOption(
   '(required) New name for the secret',
 );
 commandRenameSecret.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -31,18 +28,16 @@ commandRenameSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const vaultSpecificMessage = new clientPB.SecretRenameMessage();
   const vaultMessage = new clientPB.VaultMessage();
-  const oldSecretMessage = new clientPB.SecretMessage();
-  const newSecretMessage = new clientPB.SecretMessage();
+  const secretMessage = new clientPB.SecretMessage();
+  const secretRenameMessage = new clientPB.SecretRenameMessage();
+  secretMessage.setVault(vaultMessage);
+  secretRenameMessage.setOldsecret(secretMessage);
 
   try {
     await client.start({});
@@ -55,19 +50,18 @@ commandRenameSecret.action(async (options) => {
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
     vaultMessage.setName(vaultName);
-    vaultSpecificMessage.setVault(vaultMessage);
 
-    oldSecretMessage.setName(secretName);
-    vaultSpecificMessage.setOldname(oldSecretMessage);
+    secretMessage.setName(secretName);
 
-    newSecretMessage.setName(options.secretName);
-    vaultSpecificMessage.setNewname(newSecretMessage);
+    secretRenameMessage.setNewname(options.secretName);
 
     const pCall = grpcClient.vaultsRenameSecret(
-      vaultSpecificMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      secretRenameMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
 
     const responseMessage = await pCall;
     if (responseMessage.getSuccess()) {
@@ -75,7 +69,7 @@ commandRenameSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Renamed secret: ${oldSecretMessage.getName()} in vault: ${vaultMessage.getName()} to ${newSecretMessage.getName()}`,
+            `Renamed secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()} to ${secretRenameMessage.getNewname()}`,
           ],
         }),
       );
@@ -104,8 +98,7 @@ commandRenameSecret.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

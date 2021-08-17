@@ -1,7 +1,6 @@
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -13,7 +12,6 @@ const commandUpdateSecret = binUtils.createCommand('update', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandUpdateSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
@@ -24,7 +22,6 @@ commandUpdateSecret.requiredOption(
   '(required) Path to the file containing the updated secret content',
 );
 commandUpdateSecret.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -32,17 +29,16 @@ commandUpdateSecret.action(async (options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const secretMessage = new clientPB.SecretSpecificMessage();
-  const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
   const vaultMessage = new clientPB.VaultMessage();
+  const secretMessage = new clientPB.SecretMessage();
+  const secretEditMessage = new clientPB.SecretEditMessage();
+  secretMessage.setVault(vaultMessage);
+  secretEditMessage.setSecret(secretMessage);
 
   try {
     await client.start({});
@@ -55,25 +51,27 @@ commandUpdateSecret.action(async (options) => {
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
     vaultMessage.setName(vaultName);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(secretName);
+    secretMessage.setName(secretName);
 
     const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
 
-    secretMessage.setVault(vaultSpecificMessage);
     secretMessage.setContent(content);
 
-    await grpcClient.vaultsEditSecret(
-      secretMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+    const pCall = grpcClient.vaultsEditSecret(
+      secretEditMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Updated secret: ${vaultSpecificMessage.getName()} in vault: ${vaultMessage.getName()}`,
+          `Updated secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()}`,
         ],
       }),
     );
@@ -94,8 +92,7 @@ commandUpdateSecret.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

@@ -1,11 +1,8 @@
-import type { SessionToken } from '../../session/types';
-
-import * as grpc from '@grpc/grpc-js';
-import { clientPB, errors as clientErrors } from '../../client';
-import * as binUtils from '../utils';
-import { createCommand, outputFormatter } from '../utils';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+
+import { createCommand, outputFormatter } from '../utils';
+import { clientPB, utils as clientUtils } from '../../client';
 
 const commandEcho = createCommand('echo', {
   description: {
@@ -42,8 +39,11 @@ commandEcho.action(async (text, options) => {
 
     const pCall = grpcClient.echo(
       echoMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
 
     const responseMessage = await pCall;
     process.stdout.write(
@@ -53,12 +53,6 @@ commandEcho.action(async (text, options) => {
       }),
     );
   } catch (e) {
-    /**
-     * The password check needs a grpc request...
-     */
-    // if (e instanceof clientErrors.ErrorClientJWTTokenNotProvided) {
-    //   binUtils.requestPassword() -> needs to send grpc request...
-    // }
     process.stderr.write(
       outputFormatter({
         // If set as --format json, we would expect output to be in JSON. But,
@@ -70,7 +64,7 @@ commandEcho.action(async (text, options) => {
     );
     throw e;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

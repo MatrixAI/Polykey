@@ -11,9 +11,13 @@ class ErrorSessionNotStarted extends ErrorSession {
 
 class ErrorReadingPrivateKey extends ErrorSession {}
 
-class ErrorSessionJWTTokenInvalid extends ErrorSession {
+class ErrorSessionTokenInvalid extends ErrorSession {
   description: string = 'Invalid JWT Token, please reauthenticate.';
   exitCode: number = 65;
+}
+
+class ErrorSessionTokenNotFound extends ErrorSession {
+  description: string = 'Token not found or provided';
 }
 
 export {
@@ -21,5 +25,6 @@ export {
   ErrorSessionManagerNotStarted,
   ErrorSessionNotStarted,
   ErrorReadingPrivateKey,
-  ErrorSessionJWTTokenInvalid,
+  ErrorSessionTokenInvalid,
+  ErrorSessionTokenNotFound,
 };

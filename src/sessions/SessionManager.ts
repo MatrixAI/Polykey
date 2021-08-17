@@ -1,20 +1,22 @@
 import type { SessionToken } from './types';
 
+import * as grpc from '@grpc/grpc-js';
 import * as sessionErrors from './errors';
+import * as clientErrors from '../client/errors';
 
 import Logger from '@matrixai/logger';
 
 import { DB } from '../db';
 import { Mutex } from 'async-mutex';
-import { SignJWT } from 'jose/jwt/sign';
-import { jwtVerify } from 'jose/jwt/verify';
 import { utils as keyUtils } from '../keys';
-import { generateUserToken } from '../utils';
 import { ErrorKeyManagerNotStarted } from '../errors';
 import { createPrivateKey, createPublicKey } from 'crypto';
 
+import * as sessionUtils from './utils';
+
 /**
- * Manages the 'Session' in polykey
+ * This class is created in the PolykeyAgent, and is responsible for the verification
+ * of session tokens
  */
 class SessionManager {
   private _started: boolean;
@@ -98,16 +100,16 @@ class SessionManager {
 
   /**
    * Generates a JWT token based on the private key in the db
-   * @param input refer to https://github.com/panva/jose/blob/cdce59a340b87b681a003ca28a9116c1f11d3f12/docs/classes/jwt_sign.signjwt.md#setexpirationtime
+   * @param expiry refer to https://github.com/panva/jose/blob/cdce59a340b87b681a003ca28a9116c1f11d3f12/docs/classes/jwt_sign.signjwt.md#setexpirationtime
    * @returns
    */
-  public async generateJWTToken(input: string | number = '1h') {
+  public async generateToken(expiry: string | number = '1h') {
     return await this._transaction(async () => {
       if (!this.started) {
         throw new sessionErrors.ErrorSessionManagerNotStarted();
       }
       const payload = {
-        token: await generateUserToken(),
+        token: await sessionUtils.generateRandomPayload(),
       };
       const privateKeyPem = await this._db.get<string>(
         [this.constructor.name],
@@ -116,24 +118,37 @@ class SessionManager {
       if (!privateKeyPem) {
         throw new sessionErrors.ErrorReadingPrivateKey();
       }
-      const claim = await new SignJWT(payload)
-        .setProtectedHeader({ alg: 'RS256' })
-        .setIssuedAt()
-        .setExpirationTime(input)
-        .sign(createPrivateKey(privateKeyPem));
-      return claim as SessionToken;
+      return await sessionUtils.createSessionToken(
+        payload,
+        expiry,
+        createPrivateKey(privateKeyPem),
+      );
     });
   }
 
   /**
-   * Verifies a JWT Token based on the public key derived from the private key
+   * Verifies token stored in a grpc.Metadata object, stored under the
+   * 'Authorization' tag, in the form "Bearer: <token>"
+   * @param meta Metadata from grpc call
+   */
+  public async verifyMetadataToken(meta: grpc.Metadata) {
+    const auth = meta.get('Authorization').pop();
+    if (!auth) {
+      throw new clientErrors.ErrorClientJWTTokenNotProvided();
+    }
+    const token = auth.toString().split(' ')[1];
+    await this.verifyToken(token as SessionToken);
+  }
+
+  /**
+   * Verifies a Token based on the public key derived from the private key
    * in the db
-   * @throws ErrorSessionJWTTokenInvalid
+   * @throws ErrorSessionTokenInvalid
    * @throws ErrorSessionManaagerNotStarted
    * @param claim
    * @returns
    */
-  public async verifyJWTToken(claim: SessionToken) {
+  public async verifyToken(claim: SessionToken) {
     return await this._transaction(async () => {
       if (!this.started) {
         throw new sessionErrors.ErrorSessionManagerNotStarted();
@@ -151,9 +166,9 @@ class SessionManager {
 
       const jwtPublicKey = createPublicKey(keyUtils.publicKeyToPem(publicKey));
       try {
-        return await jwtVerify(claim, jwtPublicKey);
+        return await sessionUtils.verifySessionToken(claim, jwtPublicKey);
       } catch (err) {
-        throw new sessionErrors.ErrorSessionJWTTokenInvalid();
+        throw new sessionErrors.ErrorSessionTokenInvalid();
       }
     });
   }
@@ -174,7 +189,7 @@ class SessionManager {
    * This does not ensure atomicity of the underlying database
    * Database atomicity still depends on the underlying operation
    */
-  public async transaction<T>(
+  protected async transaction<T>(
     f: (SessionManager: SessionManager) => Promise<T>,
   ): Promise<T> {
     const release = await this.lock.acquire();
@@ -189,7 +204,7 @@ class SessionManager {
    * Transaction wrapper that will not lock if the operation was executed
    * within a transaction context
    */
-  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
+  protected async _transaction<T>(f: () => Promise<T>): Promise<T> {
     if (this.lock.isLocked()) {
       return await f();
     } else {

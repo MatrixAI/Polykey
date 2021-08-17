@@ -63,7 +63,7 @@ commandUnclaimNode.action(async (node, options) => {
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

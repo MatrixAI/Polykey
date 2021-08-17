@@ -1,6 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -12,7 +11,6 @@ const commandGetSecret = binUtils.createCommand('get', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandGetSecret.requiredOption(
   '-sp, --secret-path <secretPath>',
@@ -23,16 +21,12 @@ commandGetSecret.option(
   'Wrap the secret in an environment variable declaration',
 );
 commandGetSecret.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
-  }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
   }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
@@ -41,7 +35,7 @@ commandGetSecret.action(async (options) => {
   const isEnv: boolean = options.env ?? false;
 
   const client = new PolykeyClient(clientConfig);
-  const vaultSpecificMessage = new clientPB.VaultSpecificMessage();
+  const secretMessage = new clientPB.SecretMessage();
   const vaultMessage = new clientPB.VaultMessage();
 
   try {
@@ -55,14 +49,16 @@ commandGetSecret.action(async (options) => {
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
     vaultMessage.setName(vaultName);
-    vaultSpecificMessage.setVault(vaultMessage);
-    vaultSpecificMessage.setName(secretName);
+    secretMessage.setVault(vaultMessage);
+    secretMessage.setName(secretName);
 
     const pCall = grpcClient.vaultsGetSecret(
-      vaultSpecificMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      secretMessage,
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
 
     const responseMessage = await pCall;
     if (isEnv) {
@@ -70,7 +66,7 @@ commandGetSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Export ${vaultSpecificMessage
+            `Export ${secretMessage
               .getName()
               .toUpperCase()
               .replace('-', '_')}='${responseMessage.getName()}`,
@@ -81,9 +77,7 @@ commandGetSecret.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [
-            `${vaultSpecificMessage.getName()}:\t\t${responseMessage.getName()}`,
-          ],
+          data: [`${secretMessage.getName()}:\t\t${responseMessage.getName()}`],
         }),
       );
     }
@@ -104,8 +98,7 @@ commandGetSecret.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

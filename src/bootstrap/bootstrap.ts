@@ -60,18 +60,22 @@ async function bootstrapPolykeyState(
     password: password,
   });
   await polykeyAgent.db.start({ keyPair: polykeyAgent.keys.getRootKeyPair() });
-  await polykeyAgent.vaults.start({});
   const cert = polykeyAgent.keys.getRootCert();
   const nodeId = networkUtils.certNodeId(cert);
   await polykeyAgent.nodes.start({
     nodeId: nodeId,
   });
+  await polykeyAgent.acl.start();
+  await polykeyAgent.gestalts.start();
+  await polykeyAgent.vaults.start({});
   await polykeyAgent.identities.start();
 
   // Stopping
   await polykeyAgent.identities.stop();
-  await polykeyAgent.nodes.stop();
   await polykeyAgent.vaults.stop();
+  await polykeyAgent.gestalts.stop();
+  await polykeyAgent.acl.stop();
+  await polykeyAgent.nodes.stop();
   await polykeyAgent.db.stop();
   await polykeyAgent.keys.stop();
 }

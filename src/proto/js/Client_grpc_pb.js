@@ -103,17 +103,6 @@ function deserialize_clientInterface_IdentityInfoMessage(buffer_arg) {
   return Client_pb.IdentityInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_clientInterface_JWTTokenMessage(arg) {
-  if (!(arg instanceof Client_pb.JWTTokenMessage)) {
-    throw new Error('Expected argument of type clientInterface.JWTTokenMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_clientInterface_JWTTokenMessage(buffer_arg) {
-  return Client_pb.JWTTokenMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_clientInterface_KeyMessage(arg) {
   if (!(arg instanceof Client_pb.KeyMessage)) {
     throw new Error('Expected argument of type clientInterface.KeyMessage');
@@ -290,6 +279,17 @@ function deserialize_clientInterface_SecretRenameMessage(buffer_arg) {
   return Client_pb.SecretRenameMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_SessionTokenMessage(arg) {
+  if (!(arg instanceof Client_pb.SessionTokenMessage)) {
+    throw new Error('Expected argument of type clientInterface.SessionTokenMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_SessionTokenMessage(buffer_arg) {
+  return Client_pb.SessionTokenMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_SetActionsMessage(arg) {
   if (!(arg instanceof Client_pb.SetActionsMessage)) {
     throw new Error('Expected argument of type clientInterface.SetActionsMessage');
@@ -365,6 +365,17 @@ function serialize_clientInterface_UnsetVaultPermMessage(arg) {
 
 function deserialize_clientInterface_UnsetVaultPermMessage(buffer_arg) {
   return Client_pb.UnsetVaultPermMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_clientInterface_VaultCloneMessage(arg) {
+  if (!(arg instanceof Client_pb.VaultCloneMessage)) {
+    throw new Error('Expected argument of type clientInterface.VaultCloneMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_VaultCloneMessage(buffer_arg) {
+  return Client_pb.VaultCloneMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_clientInterface_VaultListMessage(arg) {
@@ -448,19 +459,30 @@ agentStop: {
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
   // Session
-sessionRequestJWT: {
-    path: '/clientInterface.Client/SessionRequestJWT',
+sessionUnlock: {
+    path: '/clientInterface.Client/SessionUnlock',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.EmptyMessage,
-    responseType: Client_pb.JWTTokenMessage,
+    responseType: Client_pb.SessionTokenMessage,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_clientInterface_JWTTokenMessage,
-    responseDeserialize: deserialize_clientInterface_JWTTokenMessage,
+    responseSerialize: serialize_clientInterface_SessionTokenMessage,
+    responseDeserialize: deserialize_clientInterface_SessionTokenMessage,
   },
-  sessionChangeKey: {
-    path: '/clientInterface.Client/SessionChangeKey',
+  sessionRefresh: {
+    path: '/clientInterface.Client/SessionRefresh',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.EmptyMessage,
+    responseType: Client_pb.SessionTokenMessage,
+    requestSerialize: serialize_clientInterface_EmptyMessage,
+    requestDeserialize: deserialize_clientInterface_EmptyMessage,
+    responseSerialize: serialize_clientInterface_SessionTokenMessage,
+    responseDeserialize: deserialize_clientInterface_SessionTokenMessage,
+  },
+  sessionLockAll: {
+    path: '/clientInterface.Client/SessionLockAll',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.EmptyMessage,
@@ -734,6 +756,17 @@ vaultsList: {
     responseType: Client_pb.StatusMessage,
     requestSerialize: serialize_clientInterface_VaultPullMessage,
     requestDeserialize: deserialize_clientInterface_VaultPullMessage,
+    responseSerialize: serialize_clientInterface_StatusMessage,
+    responseDeserialize: deserialize_clientInterface_StatusMessage,
+  },
+  vaultsClone: {
+    path: '/clientInterface.Client/VaultsClone',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.VaultCloneMessage,
+    responseType: Client_pb.StatusMessage,
+    requestSerialize: serialize_clientInterface_VaultCloneMessage,
+    requestDeserialize: deserialize_clientInterface_VaultCloneMessage,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },

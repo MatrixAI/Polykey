@@ -36,19 +36,27 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
-  public sessionRequestJWT(...args) {
+  public sessionUnlock(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.JWTTokenMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
       this.client,
-      this.client.sessionRequestJWT,
+      this.client.sessionUnlock,
     )(...args);
   }
 
-  public sessionChangeKey(...args) {
+  public sessionRefresh(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
+      this.client,
+      this.client.sessionRefresh,
+    )(...args);
+  }
+
+  public sessionLockAll(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
-      this.client.sessionChangeKey,
+      this.client.sessionLockAll,
     )(...args);
   }
 
@@ -62,7 +70,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsCreate(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
       this.client,
       this.client.vaultsCreate,
     )(...args);
@@ -70,7 +78,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsRename(...args) {
     if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
       this.client,
       this.client.vaultsRename,
     )(...args);
@@ -84,9 +92,17 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
+  public vaultsClone(...args) {
+    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      this.client,
+      this.client.vaultsClone,
+    )(...args);
+  }
+
   public vaultsPull(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsPull,
     )(...args);
@@ -102,7 +118,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsSetPerms(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.SetVaultPermMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsSetPerms,
     )(...args);
@@ -110,7 +126,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsUnsetPerms(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.UnsetVaultPermMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsUnsetPerms,
     )(...args);
@@ -158,7 +174,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public vaultsEditSecret(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsEditSecret,
     )(...args);

@@ -4,7 +4,7 @@ import { CustomError } from 'ts-custom-error';
 
 class ErrorPolykey extends CustomError {
   data: POJO;
-  description: string = 'Polykey error';
+  description: string = `${this.constructor.name}: Polykey error`;
   exitCode: number = 1;
   constructor(message: string = '', data: POJO = {}) {
     super(message);
@@ -33,7 +33,7 @@ export { ErrorPolykey, ErrorUndefinedBehaviour };
  */
 export * from './acl/errors';
 export * from './db/errors';
-export * from './session/errors';
+export * from './sessions/errors';
 export * from './keys/errors';
 export * from './vaults/errors';
 export * from './git/errors';

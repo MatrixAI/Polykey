@@ -1,8 +1,7 @@
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -12,23 +11,18 @@ const commandSignKeys = binUtils.createCommand('sign', {
   nodePath: true,
   verbose: true,
   format: true,
-  passwordFile: true,
 });
 commandSignKeys.requiredOption(
   '-fp, --file-path <filePath>',
   '(required) Path to the file to be signed, file must be binary encoded',
 );
 commandSignKeys.action(async (options) => {
-  const meta = new grpc.Metadata();
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
-  }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
   }
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
@@ -47,11 +41,15 @@ commandSignKeys.action(async (options) => {
 
     cryptoMessage.setData(data);
 
-    const response = await grpcClient.keysSign(
+    const pCall = grpcClient.keysSign(
       cryptoMessage,
-      meta,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+
+    const response = await pCall;
 
     process.stdout.write(
       binUtils.outputFormatter({
@@ -75,8 +73,7 @@ commandSignKeys.action(async (options) => {
       throw err;
     }
   } finally {
-    client.stop();
-    options.passwordFile = undefined;
+    await client.stop();
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;

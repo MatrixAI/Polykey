@@ -42,7 +42,7 @@ commandSendNotification.action(async (nodeId, message, options) => {
 
     await grpcClient.notificationsSend(
       notificationInfoMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
 
     process.stdout.write(
@@ -69,7 +69,7 @@ commandSendNotification.action(async (nodeId, message, options) => {
       );
     }
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

@@ -1,58 +1,10 @@
-import type { SessionToken } from '../session/types';
 import type { VaultId } from '../vaults/types';
+import type { Session } from '../sessions';
+import type { VaultManager } from '../vaults';
+import type { SessionToken } from '../sessions/types';
 
-import fs from 'fs';
 import * as grpc from '@grpc/grpc-js';
-
-import * as clientErrors from './errors';
-
-import { VaultManager } from '../vaults';
-import { SessionManager } from '../session';
-import { KeyManager, utils as keyUtils, errors as keyErrors } from '../keys';
-
-async function checkPassword(
-  password: string,
-  keyManager: KeyManager,
-): Promise<void> {
-  let privateKeyPem;
-  try {
-    privateKeyPem = await fs.promises.readFile(keyManager.rootKeyPath, {
-      encoding: 'utf8',
-    });
-  } catch (e) {
-    throw new keyErrors.ErrorRootKeysRead(e.message, {
-      errno: e.errno,
-      syscall: e.syscall,
-      code: e.code,
-      path: e.path,
-    });
-  }
-  try {
-    keyUtils.decryptPrivateKey(privateKeyPem, password);
-  } catch (e) {
-    throw new clientErrors.ErrorPassword('Incorrect Password');
-  }
-}
-
-async function passwordFromMetadata(
-  meta: grpc.Metadata,
-): Promise<string | undefined> {
-  let password: string | undefined;
-
-  // Read password file to get password
-  const passwordFile = meta.get('passwordFile').pop();
-  if (passwordFile) {
-    password = await fs.promises.readFile(passwordFile, { encoding: 'utf-8' });
-    password = password.trim();
-  }
-
-  // If password is set explicitly use it
-  const metaPassword = meta.get('password').pop();
-  if (metaPassword) {
-    password = metaPassword.toString().trim();
-  }
-  return password;
-}
+import * as clientErrors from '../client/errors';
 
 async function parseVaultInput(
   input: string,
@@ -66,21 +18,39 @@ async function parseVaultInput(
   }
 }
 
-async function verifyToken(
-  meta: grpc.Metadata,
-  sessionManager: SessionManager,
-) {
+/**
+ * Gets Session token from metadata
+ * @param meta
+ * @returns
+ */
+function getToken(meta: grpc.Metadata): SessionToken {
   const auth = meta.get('Authorization').pop();
   if (!auth) {
     throw new clientErrors.ErrorClientJWTTokenNotProvided();
   }
   const token = auth.toString().split(' ')[1];
-  await sessionManager.verifyJWTToken(token as SessionToken);
+  return token as SessionToken;
 }
 
-export {
-  checkPassword,
-  parseVaultInput,
-  passwordFromMetadata,
-  verifyToken,
-};
+/**
+ * Refresh the client session.
+ */
+async function refreshSession(
+  meta: grpc.Metadata,
+  session: Session,
+): Promise<void> {
+  const auth = meta.get('Authorization').pop();
+  if (!auth) {
+    return;
+  }
+  const token = auth.toString().split(' ')[1];
+  await session.refresh(token as SessionToken);
+}
+
+function createMetaTokenResponse(token: SessionToken): grpc.Metadata {
+  const meta = new grpc.Metadata();
+  meta.set('Authorization', `Bearer: ${token}`);
+  return meta;
+}
+
+export { parseVaultInput, getToken, refreshSession, createMetaTokenResponse };

@@ -1,5 +1,5 @@
 import type { NodeId } from '../nodes/types';
-import type { SessionManager } from '../session';
+import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 
 import * as grpc from '@grpc/grpc-js';
@@ -23,7 +23,11 @@ const createNotificationsRPC = ({
       callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
     ): Promise<void> => {
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const receivingId = call.request.getReceiverId() as NodeId;
         const message = call.request.getMessage();
         await notificationsManager.sendNotification(receivingId, message);
@@ -42,7 +46,11 @@ const createNotificationsRPC = ({
     ): Promise<void> => {
       const response = new clientPB.NotificationListMessage();
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         const unread = call.request.getUnread();
 
         const numberField = call.request.getNumber();
@@ -77,7 +85,11 @@ const createNotificationsRPC = ({
       callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
     ): Promise<void> => {
       try {
-        await utils.verifyToken(call.metadata, sessionManager);
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
         await notificationsManager.clearNotifications();
       } catch (err) {
         callback(grpcUtils.fromError(err), null);

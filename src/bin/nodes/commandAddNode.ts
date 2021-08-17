@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 
@@ -42,10 +42,15 @@ commandAddNode.action(async (node, host, port, options) => {
 
     const result = { success: false, message: '' };
 
-    await grpcClient.nodesAdd(
+    const pCall = grpcClient.nodesAdd(
       nodeAddressMessage,
-      await client.session.createJWTCallCredentials(),
+      await client.session.createCallCredentials(),
     );
+    pCall.call.on('metadata', (meta) => {
+      clientUtils.refreshSession(meta, client.session);
+    });
+    await pCall;
+
     result.success = true;
     result.message = 'Added node.';
 
@@ -60,21 +65,21 @@ commandAddNode.action(async (node, host, port, options) => {
     );
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
-      process.stderr.write(`${err.message}\n`);
+      process.stderr.write(`${err.description}\n`);
     }
     if (err instanceof errors.ErrorGRPCServerNotStarted) {
-      process.stderr.write(`${err.message}\n`);
+      process.stderr.write(`${err.description}\n`);
     } else {
       process.stdout.write(
         outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
+          data: ['Error:', err.description],
         }),
       );
     }
     throw err;
   } finally {
-    client.stop();
+    await client.stop();
   }
 });
 

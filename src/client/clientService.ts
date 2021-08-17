@@ -1,3 +1,12 @@
+import type { KeyManager } from '../keys';
+import type { VaultManager } from '../vaults';
+import type { NodeManager } from '../nodes';
+import type { IdentitiesManager } from '../identities';
+import type { GestaltGraph } from '../gestalts';
+import type { SessionManager } from '../sessions';
+import { NotificationsManager } from '../notifications';
+import { Discovery } from '../discovery';
+
 import { promisify } from 'util';
 import * as grpc from '@grpc/grpc-js';
 
@@ -15,48 +24,69 @@ import createIdentitiesRPC from './rpcIdentities';
 import { PolykeyAgent } from '../';
 import * as grpcUtils from '../grpc/utils';
 import createNotificationsRPC from './rpcNotifications';
+import * as utils from './utils';
 
 /**
  * Creates the client service for use with a GRPCServer
  * @param domains An object representing all the domains / managers the client server uses.
  * @returns an IClientServer object
  */
-function createClientService({ polykeyAgent }: { polykeyAgent: PolykeyAgent }) {
+function createClientService({
+  polykeyAgent,
+  keyManager,
+  vaultManager,
+  nodeManager,
+  identitiesManager,
+  gestaltGraph,
+  sessionManager,
+  notificationsManager,
+  discovery,
+}: {
+  polykeyAgent: PolykeyAgent;
+  keyManager: KeyManager;
+  vaultManager: VaultManager;
+  nodeManager: NodeManager;
+  identitiesManager: IdentitiesManager;
+  gestaltGraph: GestaltGraph;
+  sessionManager: SessionManager;
+  notificationsManager: NotificationsManager;
+  discovery: Discovery;
+}) {
   const clientService: IClientServer = {
     ...createEchoRPC({
-      sessionManager: polykeyAgent.sessions,
+      sessionManager,
     }),
     ...createSessionRPC({
-      sessionManager: polykeyAgent.sessions,
-      keyManager: polykeyAgent.keys,
+      sessionManager,
+      keyManager,
     }),
     ...createVaultRPC({
-      vaultManager: polykeyAgent.vaults,
-      sessionManager: polykeyAgent.sessions,
+      vaultManager,
+      sessionManager,
     }),
     ...createKeysRPC({
-      keyManager: polykeyAgent.keys,
-      sessionManager: polykeyAgent.sessions,
+      keyManager,
+      sessionManager,
     }),
     ...createIdentitiesRPC({
-      identitiesManager: polykeyAgent.identities,
-      gestaltGraph: polykeyAgent.gestalts,
-      nodeManager: polykeyAgent.nodes,
-      sessionManager: polykeyAgent.sessions,
+      identitiesManager,
+      gestaltGraph,
+      nodeManager,
+      sessionManager,
     }),
     ...createGestaltRPC({
-      gestaltGraph: polykeyAgent.gestalts,
-      nodeManager: polykeyAgent.nodes,
-      sessionManager: polykeyAgent.sessions,
-      discovery: polykeyAgent.discovery,
+      gestaltGraph,
+      nodeManager,
+      sessionManager,
+      discovery,
     }),
     ...createNodesRPC({
-      nodeManager: polykeyAgent.nodes,
-      sessionManager: polykeyAgent.sessions,
+      nodeManager,
+      sessionManager,
     }),
     ...createNotificationsRPC({
-      notificationsManager: polykeyAgent.notifications,
-      sessionManager: polykeyAgent.sessions,
+      notificationsManager,
+      sessionManager,
     }),
     nodesList: async (
       call: grpc.ServerWritableStream<
@@ -92,6 +122,7 @@ function createClientService({ polykeyAgent }: { polykeyAgent: PolykeyAgent }) {
       callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
     ): Promise<void> => {
       try {
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
         const response = new clientPB.EmptyMessage();
         setTimeout(async () => {
           await polykeyAgent.stop();
