@@ -6,12 +6,6 @@ import type { PublicKeyPem } from '../keys/types';
 
 type NodeId = Opaque<'NodeId', string>;
 
-type NodeDetails = {
-  id: NodeId;
-  publicKey: PublicKeyPem;
-  address: Address;
-};
-
 type NodeAddress = {
   ip: Host;
   port: Port;
@@ -74,7 +68,6 @@ type NodeGraphOp =
 
 export type {
   NodeId,
-  NodeDetails,
   NodeAddress,
   NodeData,
   NodeClaim,

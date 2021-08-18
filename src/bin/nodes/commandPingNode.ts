@@ -3,8 +3,17 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
-import * as ErrorsBin from '../errors';
 import { ErrorNodeGraphNodeNotFound } from '../../errors';
+import { ErrorCLI } from '../errors';
+
+/**
+ * This exists to re-contextualize any errors or results as a `ping failed` result and not an actual error with the command.
+ * this also ensures that a failure to ping results in an exit code of 1.
+ */
+class ErrorNodePingFailed extends ErrorCLI {
+  description: string = 'Node was not online or not found.';
+  exitCode: number = 1;
+}
 
 const commandGetNode = createCommand('ping', {
   description: {
@@ -48,7 +57,7 @@ commandGetNode.action(async (node, options) => {
       );
     } catch (err) {
       if (err instanceof ErrorNodeGraphNodeNotFound) {
-        error = new ErrorsBin.ErrorPingNodeFailed(
+        error = new ErrorNodePingFailed(
           `Failed to resolve node ID ${node} to an address.`,
         );
       } else {
@@ -59,7 +68,7 @@ commandGetNode.action(async (node, options) => {
     const status = { success: false, message: '' };
     status.success = statusMessage ? statusMessage.getSuccess() : false;
     if (!status.success && !error)
-      error = new ErrorsBin.ErrorPingNodeFailed('No response received');
+      error = new ErrorNodePingFailed('No response received');
 
     //Constructing message.
     if (status.success) status.message = 'Node is Active.';
@@ -78,8 +87,8 @@ commandGetNode.action(async (node, options) => {
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
-    } else if (err instanceof ErrorsBin.ErrorPingNodeFailed) {
-      // Do nothing.
+    } else if (err instanceof ErrorNodePingFailed) {
+      // Do nothing, It's printed above already.
     } else if (err instanceof errors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
     } else {

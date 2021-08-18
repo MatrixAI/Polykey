@@ -344,6 +344,9 @@ class NodeGraph {
   // this might be better to stream this directly to where it is being used
   // cause the subsequent functions are using this
   public async getAllBuckets(): Promise<Array<NodeBucket>> {
+    if (!this._started) {
+      throw new nodeErrors.ErrorNodeGraphNotStarted();
+    }
     return await this._transaction(async () => {
       const buckets: Array<NodeBucket> = [];
       const vals: Array<string | Buffer> = [];
@@ -376,6 +379,9 @@ class NodeGraph {
     targetNodeId: NodeId,
     numClosest: number = this.maxNodesPerBucket,
   ): Promise<Array<NodeData>> {
+    if (!this._started) {
+      throw new nodeErrors.ErrorNodeGraphNotStarted();
+    }
     // Retrieve all nodes from buckets in database
     const buckets = await this.getAllBuckets();
     // Iterate over all of the nodes in each bucket
@@ -421,6 +427,9 @@ class NodeGraph {
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
   ): Promise<NodeAddress | undefined> {
+    if (!this._started) {
+      throw new nodeErrors.ErrorNodeGraphNotStarted();
+    }
     let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)

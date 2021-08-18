@@ -70,17 +70,6 @@ function deserialize_agentInterface_InfoRequest(buffer_arg) {
   return Agent_pb.InfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_NodeDetailsMessage(arg) {
-  if (!(arg instanceof Agent_pb.NodeDetailsMessage)) {
-    throw new Error('Expected argument of type agentInterface.NodeDetailsMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_NodeDetailsMessage(buffer_arg) {
-  return Agent_pb.NodeDetailsMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_agentInterface_NodeIdMessage(arg) {
   if (!(arg instanceof Agent_pb.NodeIdMessage)) {
     throw new Error('Expected argument of type agentInterface.NodeIdMessage');
@@ -214,17 +203,6 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_NodeIdMessage,
     responseSerialize: serialize_agentInterface_VaultListMessage,
     responseDeserialize: deserialize_agentInterface_VaultListMessage,
-  },
-  getNodeDetails: {
-    path: '/agentInterface.Agent/GetNodeDetails',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.EmptyMessage,
-    responseType: Agent_pb.NodeDetailsMessage,
-    requestSerialize: serialize_agentInterface_EmptyMessage,
-    requestDeserialize: deserialize_agentInterface_EmptyMessage,
-    responseSerialize: serialize_agentInterface_NodeDetailsMessage,
-    responseDeserialize: deserialize_agentInterface_NodeDetailsMessage,
   },
   getClosestLocalNodes: {
     path: '/agentInterface.Agent/GetClosestLocalNodes',

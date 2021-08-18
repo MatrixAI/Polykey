@@ -97,17 +97,6 @@ describe('NodeManager', () => {
     });
   });
 
-  test('gets node details', async () => {
-    const details = nodeManager.getNodeDetails();
-    expect(details.id).toBe(nodeId);
-    expect(details.publicKey).toBe(keyPairPem.publicKey);
-    expect(details.address).toBe(
-      networkUtils.buildAddress(
-        revProxy.getIngressHost(),
-        revProxy.getIngressPort(),
-      ),
-    );
-  });
   test(
     'pings node',
     async () => {

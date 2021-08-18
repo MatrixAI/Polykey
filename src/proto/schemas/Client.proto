@@ -14,8 +14,6 @@ service Client {
   rpc SessionLockAll (EmptyMessage) returns (StatusMessage) {};
 
   // Nodes
-  rpc NodesGetLocalDetails(EmptyMessage) returns (NodeDetailsMessage) {};
-  rpc NodesGetDetails(NodeMessage) returns (NodeDetailsMessage) {};
   rpc NodesAdd(NodeAddressMessage) returns (EmptyMessage) {};
   rpc NodesPing(NodeMessage) returns (StatusMessage) {};
   rpc NodesClaim(NodeMessage) returns (StatusMessage) {};
@@ -191,17 +189,6 @@ message NodeAddressMessage {
   string id = 1;
   string host = 2;
   int32 port = 3;
-}
-
-message NodeDetailsMessage {
-  // This is a hash of the public key that uniquely identifies the node
-  string node_id = 1;
-
-  // public key of the node (root key)
-  string public_key = 2;
-
-  // host:port of node
-  string node_address = 3;
 }
 
 // Keys

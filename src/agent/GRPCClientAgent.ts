@@ -52,14 +52,6 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
-  public getNodeDetails(...args) {
-    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<agentPB.NodeDetailsMessage>(
-      this.client,
-      this.client.getNodeDetails,
-    )(...args);
-  }
-
   public getClosestLocalNodes(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.NodeTableMessage>(

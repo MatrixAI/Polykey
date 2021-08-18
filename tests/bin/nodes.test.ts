@@ -96,34 +96,6 @@ describe('CLI Nodes', () => {
   //     fail("finish test.");
   //   });
   // });
-  describe('commandGetNode', () => {
-    test('Should get a node by nodeId.', async () => {
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, remote);
-
-      const commands = genCommands(['get', remoteNode.id]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0);
-      const details = await polykeyAgent.nodes.requestNodeDetails(
-        remoteNode.id,
-      );
-      expect(result.stdout).toContain(details.id);
-      expect(result.stdout).toContain(details.address);
-      expect(result.stdout).toContain(details.publicKey);
-    }, 40000);
-    test(
-      'Should get the local node.',
-      async () => {
-        const commands = genCommands(['get']);
-        const result = await testUtils.pkWithStdio(commands);
-        expect(result.code).toBe(0); //Succeeds.
-        const details = polykeyAgent.nodes.getNodeDetails();
-        expect(result.stdout).toContain(details.id);
-        expect(result.stdout).toContain(details.address);
-        expect(result.stdout).toContain(details.publicKey);
-      },
-      global.defaultTimeout * 3,
-    );
-  });
   describe('commandPingNode', () => {
     test('Should return success with live node.', async () => {
       await testKeynodeUtils.addRemoteDetails(polykeyAgent, remote);

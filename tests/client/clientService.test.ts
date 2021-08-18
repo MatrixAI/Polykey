@@ -1511,41 +1511,6 @@ describe('Client service', () => {
     });
   });
   describe('Nodes RPC', () => {
-    test('can get local node details', async () => {
-      const nodesGetLocalDetails =
-        grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
-          client,
-          client.nodesGetLocalDetails,
-        );
-
-      const emptyMessage = new clientPB.EmptyMessage();
-      const res = await nodesGetLocalDetails(emptyMessage, callCredentials);
-      const details = polykeyAgent.nodes.getNodeDetails();
-      expect(res.getNodeId()).toEqual(details.id);
-      expect(res.getNodeAddress()).toEqual(details.address);
-      expect(res.getPublicKey()).toEqual(details.publicKey);
-    });
-    test('can get remote node details', async () => {
-      const server = await testKeynodeUtils.setupRemoteKeynode({
-        logger: logger,
-      });
-      // Add remote node's details to local node
-      await testKeynodeUtils.addRemoteDetails(polykeyAgent, server);
-
-      const nodesGetDetails =
-        grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
-          client,
-          client.nodesGetDetails,
-        );
-      const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName(server.nodes.getNodeId());
-      const res = await nodesGetDetails(nodeMessage, callCredentials);
-      const details = server.nodes.getNodeDetails();
-      expect(res.getNodeId()).toEqual(details.id);
-      expect(res.getNodeAddress()).toEqual(details.address);
-      expect(res.getPublicKey()).toEqual(details.publicKey);
-      await testKeynodeUtils.cleanupRemoteKeynode(server);
-    });
     test('can add a node', async () => {
       const nodesAdd = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,

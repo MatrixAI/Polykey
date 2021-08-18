@@ -1,4 +1,4 @@
-import type { NodeId, NodeDetails, NodeData } from './types';
+import type { NodeId, NodeData } from './types';
 import type { Host, Port, ProxyConfig } from '../network/types';
 import type { KeyManager } from '../keys';
 import type { SignedNotification } from '../notifications/types';
@@ -76,6 +76,10 @@ class NodeConnection {
     });
   }
 
+  get started(): boolean {
+    return this._started;
+  }
+
   /**
    * Initialises and starts the connection (via the fwdProxy).
    *
@@ -103,25 +107,27 @@ class NodeConnection {
     // 3. Relay the egress port to the broker/s (such that they can inform the other node)
     // 4. Start sending hole-punching packets to other node (done in openConnection())
     // Done in parallel
-    await Promise.all([
-      this.fwdProxy.openConnection(
-        this.targetNodeId,
-        this.ingressHost,
-        this.ingressPort,
-      ),
-      brokerConnections.forEach((conn: NodeConnection) => {
-        conn.sendHolePunchMessage(
-          this.localNodeId,
+    try {
+      await Promise.all([
+        this.fwdProxy.openConnection(
           this.targetNodeId,
-          egressAddress,
-          signature,
-        );
-      }),
-    ]).catch(async (e) => {
+          this.ingressHost,
+          this.ingressPort,
+        ),
+        Array.from(brokerConnections, ([_, conn]) =>
+          conn.sendHolePunchMessage(
+            this.localNodeId,
+            this.targetNodeId,
+            egressAddress,
+            signature,
+          ),
+        ),
+      ]);
+    } catch (e) {
       await this.stop();
       // If we catch an error, re-throw it to handle it.
       throw e;
-    });
+    }
     // 5. When finished, you have a connection to other node
     // Then you can create/start the GRPCClient, and perform the request
     await this.client.start({});
@@ -158,22 +164,6 @@ class NodeConnection {
   }
 
   /**
-   * Performs a GRPC request to retrieve the node details of the target node.
-   */
-  public async getNodeDetails(): Promise<NodeDetails> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeConnectionNotStarted();
-    }
-    const emptyMessage = new agentPB.EmptyMessage();
-    const response = await this.client.getNodeDetails(emptyMessage);
-    return {
-      id: response.getNodeId(),
-      publicKey: response.getPublicKey(),
-      address: response.getNodeAddress(),
-    } as NodeDetails;
-  }
-
-  /**
    * Finds the public key of a corresponding node ID, from the certificate chain
    * of the node at the end of this connection.
    * Because a keynode's root key can be refreshed, its node ID can also change.
@@ -181,6 +171,9 @@ class NodeConnection {
    * found in the certificate chain.
    */
   public getExpectedPublicKey(expectedNodeId: NodeId): PublicKeyPem | null {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
+    }
     const certificates = this.getRootCertChain();
     let publicKey: PublicKeyPem | null = null;
     for (const cert of certificates) {
@@ -259,6 +252,9 @@ class NodeConnection {
    * Performs a GRPC request to send a notification to the target.
    */
   public async sendNotification(message: SignedNotification): Promise<void> {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
+    }
     const notificationMsg = new agentPB.NotificationMessage();
     notificationMsg.setContent(message);
     await this.client.notificationsSend(notificationMsg);
@@ -303,6 +299,9 @@ class NodeConnection {
    * Retrieves all the vaults for a peers node
    */
   public async scanVaults(): Promise<Array<string>> {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
+    }
     // Create the handler for git to scan from
     const gitRequest = await vaultsUtils.constructGitHandler(
       this.client,

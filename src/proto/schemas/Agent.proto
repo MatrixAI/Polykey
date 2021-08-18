@@ -10,7 +10,6 @@ service Agent {
   rpc GetGitPack(stream PackChunk) returns (stream PackChunk) {};
   rpc ScanVaults (NodeIdMessage) returns (stream VaultListMessage) {};
 
-  rpc GetNodeDetails (EmptyMessage) returns (NodeDetailsMessage) {}
   rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
   rpc GetClaims (ClaimTypeMessage) returns (ClaimsMessage) {}
   rpc GetChainData (EmptyMessage) returns (ChainDataMessage) {}
@@ -69,17 +68,6 @@ message NotificationMessage {
 
 message NodeIdMessage {
   string nodeId = 1;
-}
-
-message NodeDetailsMessage {
-  // This is a hash of the public key that uniquely identifies the node
-  string node_id = 1;
-
-  // public key of the node (root key)
-  string public_key = 2;
-
-  // host:port of node
-  string node_address = 3;
 }
 
 message NodeAddressMessage {

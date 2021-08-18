@@ -18,60 +18,6 @@ const createNodesRPC = ({
 }) => {
   return {
     /**
-     * Gets the details of the local keynode.
-     */
-    nodesGetLocalDetails: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.EmptyMessage,
-        clientPB.NodeDetailsMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.NodeDetailsMessage>,
-    ): Promise<void> => {
-      const response = new clientPB.NodeDetailsMessage();
-      try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
-        const details = nodeManager.getNodeDetails();
-        response.setNodeId(details.id);
-        response.setPublicKey(details.publicKey);
-        response.setNodeAddress(details.address);
-      } catch (err) {
-        callback(grpcUtils.fromError(err), response);
-      }
-      callback(null, response);
-    },
-    /**
-     * Gets the details of a remote node.
-     */
-    nodesGetDetails: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.NodeMessage,
-        clientPB.NodeDetailsMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.NodeDetailsMessage>,
-    ): Promise<void> => {
-      const response = new clientPB.NodeDetailsMessage();
-      try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
-        const details = await nodeManager.requestNodeDetails(
-          call.request.getName() as NodeId,
-        );
-        response.setNodeId(details.id);
-        response.setPublicKey(details.publicKey);
-        response.setNodeAddress(details.address);
-      } catch (err) {
-        callback(grpcUtils.fromError(err), response);
-      }
-      callback(null, response);
-    },
-    /**
      * Adds a node ID -> node address mapping into the buckets database.
      * This is an unrestricted add: no validity checks are made for the correctness
      * of the passed ID or host/port.

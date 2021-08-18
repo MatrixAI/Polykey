@@ -136,17 +136,6 @@ function deserialize_clientInterface_NodeAddressMessage(buffer_arg) {
   return Client_pb.NodeAddressMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_clientInterface_NodeDetailsMessage(arg) {
-  if (!(arg instanceof Client_pb.NodeDetailsMessage)) {
-    throw new Error('Expected argument of type clientInterface.NodeDetailsMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_clientInterface_NodeDetailsMessage(buffer_arg) {
-  return Client_pb.NodeDetailsMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_clientInterface_NodeMessage(arg) {
   if (!(arg instanceof Client_pb.NodeMessage)) {
     throw new Error('Expected argument of type clientInterface.NodeMessage');
@@ -493,29 +482,7 @@ sessionUnlock: {
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
   // Nodes
-nodesGetLocalDetails: {
-    path: '/clientInterface.Client/NodesGetLocalDetails',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.EmptyMessage,
-    responseType: Client_pb.NodeDetailsMessage,
-    requestSerialize: serialize_clientInterface_EmptyMessage,
-    requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_clientInterface_NodeDetailsMessage,
-    responseDeserialize: deserialize_clientInterface_NodeDetailsMessage,
-  },
-  nodesGetDetails: {
-    path: '/clientInterface.Client/NodesGetDetails',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.NodeMessage,
-    responseType: Client_pb.NodeDetailsMessage,
-    requestSerialize: serialize_clientInterface_NodeMessage,
-    requestDeserialize: deserialize_clientInterface_NodeMessage,
-    responseSerialize: serialize_clientInterface_NodeDetailsMessage,
-    responseDeserialize: deserialize_clientInterface_NodeDetailsMessage,
-  },
-  nodesAdd: {
+nodesAdd: {
     path: '/clientInterface.Client/NodesAdd',
     requestStream: false,
     responseStream: false,
