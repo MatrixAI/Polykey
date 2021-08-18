@@ -118,7 +118,7 @@ export class VaultMessage extends jspb.Message {
     getId(): string;
     setId(value: string): VaultMessage;
 
-    getNameOrIdCase(): VaultMessage.NameOrIdCase;
+    getNameoridCase(): VaultMessage.NameoridCase;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultMessage.AsObject;
@@ -136,7 +136,7 @@ export namespace VaultMessage {
         id: string,
     }
 
-    export enum NameOrIdCase {
+    export enum NameoridCase {
         NAMEORID_NOT_SET = 0,
         NAME = 1,
         ID = 2,
@@ -531,32 +531,6 @@ export namespace NodeAddressMessage {
         id: string,
         host: string,
         port: number,
-    }
-}
-
-export class NodeDetailsMessage extends jspb.Message { 
-    getNodeId(): string;
-    setNodeId(value: string): NodeDetailsMessage;
-    getPublicKey(): string;
-    setPublicKey(value: string): NodeDetailsMessage;
-    getNodeAddress(): string;
-    setNodeAddress(value: string): NodeDetailsMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NodeDetailsMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NodeDetailsMessage): NodeDetailsMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NodeDetailsMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NodeDetailsMessage;
-    static deserializeBinaryFromReader(message: NodeDetailsMessage, reader: jspb.BinaryReader): NodeDetailsMessage;
-}
-
-export namespace NodeDetailsMessage {
-    export type AsObject = {
-        nodeId: string,
-        publicKey: string,
-        nodeAddress: string,
     }
 }
 

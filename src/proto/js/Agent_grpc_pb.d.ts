@@ -12,7 +12,6 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     getGitInfo: IAgentService_IGetGitInfo;
     getGitPack: IAgentService_IGetGitPack;
     scanVaults: IAgentService_IScanVaults;
-    getNodeDetails: IAgentService_IGetNodeDetails;
     getClosestLocalNodes: IAgentService_IGetClosestLocalNodes;
     getClaims: IAgentService_IGetClaims;
     getChainData: IAgentService_IGetChainData;
@@ -56,15 +55,6 @@ interface IAgentService_IScanVaults extends grpc.MethodDefinition<Agent_pb.NodeI
     requestDeserialize: grpc.deserialize<Agent_pb.NodeIdMessage>;
     responseSerialize: grpc.serialize<Agent_pb.VaultListMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.VaultListMessage>;
-}
-interface IAgentService_IGetNodeDetails extends grpc.MethodDefinition<Agent_pb.EmptyMessage, Agent_pb.NodeDetailsMessage> {
-    path: "/agentInterface.Agent/GetNodeDetails";
-    requestStream: false;
-    responseStream: false;
-    requestSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
-    requestDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
-    responseSerialize: grpc.serialize<Agent_pb.NodeDetailsMessage>;
-    responseDeserialize: grpc.deserialize<Agent_pb.NodeDetailsMessage>;
 }
 interface IAgentService_IGetClosestLocalNodes extends grpc.MethodDefinition<Agent_pb.NodeIdMessage, Agent_pb.NodeTableMessage> {
     path: "/agentInterface.Agent/GetClosestLocalNodes";
@@ -128,7 +118,6 @@ export interface IAgentServer extends grpc.UntypedServiceImplementation {
     getGitInfo: grpc.handleServerStreamingCall<Agent_pb.InfoRequest, Agent_pb.PackChunk>;
     getGitPack: grpc.handleBidiStreamingCall<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     scanVaults: grpc.handleServerStreamingCall<Agent_pb.NodeIdMessage, Agent_pb.VaultListMessage>;
-    getNodeDetails: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.NodeDetailsMessage>;
     getClosestLocalNodes: grpc.handleUnaryCall<Agent_pb.NodeIdMessage, Agent_pb.NodeTableMessage>;
     getClaims: grpc.handleUnaryCall<Agent_pb.ClaimTypeMessage, Agent_pb.ClaimsMessage>;
     getChainData: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.ChainDataMessage>;
@@ -148,9 +137,6 @@ export interface IAgentClient {
     getGitPack(metadata: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
     scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
-    getNodeDetails(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
-    getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
-    getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     getClosestLocalNodes(request: Agent_pb.NodeIdMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
@@ -182,9 +168,6 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public getGitPack(metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.PackChunk, Agent_pb.PackChunk>;
     public scanVaults(request: Agent_pb.NodeIdMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
     public scanVaults(request: Agent_pb.NodeIdMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Agent_pb.VaultListMessage>;
-    public getNodeDetails(request: Agent_pb.EmptyMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
-    public getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
-    public getNodeDetails(request: Agent_pb.EmptyMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeDetailsMessage) => void): grpc.ClientUnaryCall;
     public getClosestLocalNodes(request: Agent_pb.NodeIdMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;
     public getClosestLocalNodes(request: Agent_pb.NodeIdMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.NodeTableMessage) => void): grpc.ClientUnaryCall;

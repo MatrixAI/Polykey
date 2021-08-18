@@ -428,22 +428,6 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
-  public nodesGetLocalDetails(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
-      this.client,
-      this.client.nodesGetLocalDetails,
-    )(...args);
-  }
-
-  public nodesGetDetails(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.NodeDetailsMessage>(
-      this.client,
-      this.client.nodesGetDetails,
-    )(...args);
-  }
-
   public nodesAdd(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(

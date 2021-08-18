@@ -134,24 +134,6 @@ function createAgentService({
         await genWritable.throw(err);
       }
     },
-    getNodeDetails: async (
-      call: grpc.ServerUnaryCall<
-        agentPB.EmptyMessage,
-        agentPB.NodeDetailsMessage
-      >,
-      callback: grpc.sendUnaryData<agentPB.NodeDetailsMessage>,
-    ): Promise<void> => {
-      const response = new agentPB.NodeDetailsMessage();
-      try {
-        const details = nodeManager.getNodeDetails();
-        response.setNodeId(details.id);
-        response.setPublicKey(details.publicKey);
-        response.setNodeAddress(details.address);
-      } catch (err) {
-        callback(grpcUtils.fromError(err), response);
-      }
-      callback(null, response);
-    },
     /**
      * Retrieves the local nodes (i.e. from the current node) that are closest
      * to some provided node ID.

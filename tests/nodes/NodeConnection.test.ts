@@ -26,7 +26,6 @@ describe('NodeConnection', () => {
     id: 'NodeId' as NodeId,
     chain: {},
   };
-  jest.setTimeout(50000);
   const logger = new Logger('NodeConnection Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -197,7 +196,7 @@ describe('NodeConnection', () => {
       serverPort: server.getPort(),
       tlsConfig: revTLSConfig,
     });
-  });
+  }, 60000);
 
   beforeEach(async () => {
     // Client setup
@@ -259,35 +258,6 @@ describe('NodeConnection', () => {
     ).toBeTruthy();
     expect(fwdProxy.getConnectionCount()).toBe(1);
     expect(revProxy.getConnectionCount()).toBe(initialNumConnections + 1);
-
-    await conn.stop();
-    await revProxy.closeConnection(
-      fwdProxy.getEgressHost(),
-      fwdProxy.getEgressPort(),
-    );
-  });
-
-  test('receives node details of connected target', async () => {
-    const conn = new NodeConnection({
-      sourceNodeId: sourceNodeId,
-      targetNodeId: targetNodeId,
-      targetHost: targetHost,
-      targetPort: targetPort,
-      forwardProxy: fwdProxy,
-      keyManager: clientKeyManager,
-      logger: logger,
-    });
-    await conn.start({});
-    await revProxy.openConnection(sourceHost, sourcePort);
-
-    const details = await conn.getNodeDetails();
-    expect(details.id).toBe(targetNodeId);
-    expect(details.publicKey).toBe(
-      serverKeyManager.getRootKeyPairPem().publicKey,
-    );
-    expect(details.address).toBe(
-      networkUtils.buildAddress(targetHost, targetPort),
-    );
 
     await conn.stop();
     await revProxy.closeConnection(

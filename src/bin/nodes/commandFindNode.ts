@@ -5,8 +5,17 @@ import { clientPB } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { ErrorNodeGraphNodeNotFound } from '../../errors';
-import { ErrorFindNodeFailed } from '@/bin/errors';
+import { ErrorCLI } from '../errors';
 import { buildAddress } from '../../network/utils';
+
+/**
+ * This exists to re-contextualize any errors or results as a `failure to find node` result and not an actual error with the command.
+ * this also ensures that a failure to ping results in an exit code of 1.
+ */
+class ErrorNodeFindFailed extends ErrorCLI {
+  description: string = 'Failed to find the node in the DHT';
+  exitCode: number = 1;
+}
 
 const commandFindNode = createCommand('find', {
   description: {
@@ -74,13 +83,13 @@ commandFindNode.action(async (node, options) => {
       }),
     );
     //Like ping it should error when failing to find node for automation reasons.
-    if (!result.success) throw new ErrorFindNodeFailed(result.message);
+    if (!result.success) throw new ErrorNodeFindFailed(result.message);
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     } else if (err instanceof errors.ErrorGRPCServerNotStarted) {
       process.stderr.write(`${err.message}\n`);
-    } else if (err instanceof ErrorFindNodeFailed) {
+    } else if (err instanceof ErrorNodeFindFailed) {
       //Do nothing, error already printed in stdout.
     } else {
       process.stdout.write(
