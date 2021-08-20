@@ -199,17 +199,13 @@ class NodeManager {
     }
     const targetAddress: NodeAddress = await this.findNode(targetNodeId);
     try {
-      // Attempt to create a connection
-      await this.createConnectionToNode(targetNodeId, targetAddress);
-      // If the connection had already existed, check that it's still active
-      if (
-        !this.fwdProxy.getConnectionInfoByIngress(
-          targetAddress.ip,
-          targetAddress.port,
-        )
-      ) {
-        return false;
-      }
+      // Attempt to open a connection via the forward proxy
+      // i.e. no NodeConnection object created (no need for GRPCClient)
+      await this.fwdProxy.openConnection(
+        targetNodeId,
+        targetAddress.ip,
+        targetAddress.port
+      );
     } catch (e) {
       // If the connection request times out, then return false
       if (e instanceof networkErrors.ErrorConnectionStart) {

@@ -33,9 +33,10 @@ import * as gestaltsUtils from '@/gestalts/utils';
 import * as polykeyErrors from '@/errors';
 import * as vaultErrors from '@/vaults/errors';
 import * as nodesErrors from '@/nodes/errors';
+import { sleep } from '@/utils';
 
 describe('Client service', () => {
-  const logger = new Logger('ClientServerTest', LogLevel.WARN, [
+  const logger = new Logger('ClientServerTest', LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
   let client: ClientClient;
@@ -1556,11 +1557,14 @@ describe('Client service', () => {
       expect(res2.getSuccess()).toEqual(true);
       // Case 3: pre-existing connection no longer active, so offline
       await server.stop();
+      // Give time for the ping buffers to send and wait for timeout on
+      // existing connection
+      await sleep(30000);
       const res3 = await nodesPing(nodeMessage, callCredentials);
       expect(res3.getSuccess()).toEqual(false);
 
       await testKeynodeUtils.cleanupRemoteKeynode(server);
-    }, 50000); // ping needs to timeout, so longer test timeout required
+    }, global.defaultTimeout * 8); // ping needs to timeout, so longer test timeout required
     // test('can claim a node', async () => {
     //   fail('Claiming a node not implemented.');
     // });

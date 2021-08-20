@@ -15,7 +15,7 @@ class ErrorNodePingFailed extends ErrorCLI {
   exitCode: number = 1;
 }
 
-const commandGetNode = createCommand('ping', {
+const commandPingNode = createCommand('ping', {
   description: {
     description: "Pings a node to check if it's online",
     args: {
@@ -26,8 +26,8 @@ const commandGetNode = createCommand('ping', {
   verbose: true,
   format: true,
 });
-commandGetNode.arguments('<node>');
-commandGetNode.action(async (node, options) => {
+commandPingNode.arguments('<node>');
+commandPingNode.action(async (node, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -105,4 +105,4 @@ commandGetNode.action(async (node, options) => {
   }
 });
 
-export default commandGetNode;
+export default commandPingNode;

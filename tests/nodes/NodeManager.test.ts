@@ -11,6 +11,7 @@ import { KeyManager, utils as keysUtils } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import { Sigchain } from '@/sigchain';
+import { sleep } from '@/utils';
 import * as testUtils from '../utils';
 import * as nodesErrors from '@/nodes/errors';
 import { DB } from '@/db';
@@ -130,6 +131,9 @@ describe('NodeManager', () => {
       expect(active2).toBe(true);
       // Turn server node offline again
       await server.stop();
+      // Give time for the ping buffers to send and wait for timeout on
+      // existing connection
+      await sleep(30000);
       // Check if active
       // Case 3: pre-existing connection no longer active, so offline
       const active3 = await nodeManager.pingNode(serverNodeId);
@@ -137,7 +141,7 @@ describe('NodeManager', () => {
 
       await testUtils.cleanupRemoteKeynode(server);
     },
-    global.defaultTimeout * 5,
+    global.defaultTimeout * 9,
   ); // ping needs to timeout (takes 20 seconds + setup + pulldown)
   test('finds node (local)', async () => {
     // Case 1: node already exists in the local node graph (no contact required)
