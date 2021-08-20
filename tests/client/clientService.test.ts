@@ -36,7 +36,7 @@ import * as nodesErrors from '@/nodes/errors';
 import { sleep } from '@/utils';
 
 describe('Client service', () => {
-  const logger = new Logger('ClientServerTest', LogLevel.DEBUG, [
+  const logger = new Logger('ClientServerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let client: ClientClient;
