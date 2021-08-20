@@ -1,6 +1,5 @@
 import { createCommand } from '../utils';
 // import commandClaimNode from './commandClaimNode';
-import commandGetNode from './commandGetNode';
 import commandPingNode from './commandPingNode';
 // import commandUnclaimNode from "./commandUnclaimNode";
 import commandAddNode from './commandAddNode';
@@ -10,7 +9,6 @@ const commandNodes = createCommand('node');
 commandNodes.description('nodes commands');
 // commandNodes.addCommand(commandClaimNode);
 // commandNodes.addCommand(commandUnclaimNode);
-commandNodes.addCommand(commandGetNode);
 commandNodes.addCommand(commandPingNode);
 commandNodes.addCommand(commandAddNode);
 commandNodes.addCommand(commandFindNode);
