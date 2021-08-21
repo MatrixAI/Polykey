@@ -89,7 +89,7 @@ function searchVaultName(vaultList: VaultList, vaultId: VaultId): VaultName {
       break;
     }
   }
-  if (!vaultName) {
+  if (vaultName == null) {
     throw new vaultErrors.ErrorRemoteVaultUndefined(
       `${vaultId} does not exist on connected node`,
     );
@@ -126,7 +126,7 @@ async function* requestInfo(
 ): AsyncGenerator<Uint8Array> {
   const request = new agentPB.InfoRequest();
   request.setId(vaultId);
-  const response = client.getGitInfo(request);
+  const response = client.vaultsGitInfoGet(request);
 
   for await (const resp of response) {
     yield resp.getChunk_asU8();
@@ -150,7 +150,7 @@ async function* requestPack(
   const meta = new grpc.Metadata();
   meta.set('vault-id', vaultId);
 
-  const stream = client.getGitPack(meta);
+  const stream = client.vaultsGitPackGet(meta);
   const write = promisify(stream.write).bind(stream);
 
   stream.on('data', (d) => {
@@ -178,8 +178,8 @@ async function requestVaultNames(
   nodeId: NodeId,
 ): Promise<string[]> {
   const request = new agentPB.NodeIdMessage();
-  request.setNodeid(nodeId);
-  const vaultList = client.scanVaults(request);
+  request.setNodeId(nodeId);
+  const vaultList = client.vaultsScan(request);
   const data: VaultList = [];
   for await (const vault of vaultList) {
     const vaultMessage = vault.getVault_asU8();

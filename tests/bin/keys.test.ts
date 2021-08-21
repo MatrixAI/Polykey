@@ -6,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as utils from './utils';
 
 import { PolykeyAgent } from '@';
-import { commands } from 'commander';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.

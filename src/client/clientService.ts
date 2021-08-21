@@ -76,7 +76,6 @@ function createClientService({
     }),
     ...createGestaltRPC({
       gestaltGraph,
-      nodeManager,
       sessionManager,
       discovery,
     }),
@@ -96,25 +95,9 @@ function createClientService({
     ): Promise<void> => {
       // call.request // PROCESS THE REQEUST MESSAGE
       const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName('some node name');
+      nodeMessage.setNodeId('some node name');
       const write = promisify(call.write).bind(call);
       await write(nodeMessage);
-      call.end();
-    },
-    gestaltSync: async (
-      call: grpc.ServerDuplexStream<
-        clientPB.GestaltMessage,
-        clientPB.GestaltMessage
-      >,
-    ): Promise<void> => {
-      // it is readable
-      // and writable
-      // AT THE SAME TIME!
-      // that means you can do a dual wrap
-      const gestaltMessage = new clientPB.GestaltMessage();
-      gestaltMessage.setName('some gestalt name');
-      const write = promisify(call.write).bind(call);
-      await write(gestaltMessage);
       call.end();
     },
     agentStop: async (

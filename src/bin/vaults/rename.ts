@@ -43,24 +43,21 @@ rename.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setName(options.vaultName);
-    vaultRenameMessage.setNewname(options.newName);
+    vaultMessage.setVaultName(options.vaultName);
+    vaultRenameMessage.setNewName(options.newName);
 
-    const pCall = grpcClient.vaultsRename(
-      vaultRenameMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsRename(vaultRenameMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
 
     const responseMessage = await pCall;
-    if (responseMessage.getId()) {
+    if (responseMessage.getVaultId()) {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Renamed vault: ${vaultMessage.getName()} to ${vaultRenameMessage.getNewname()}`,
+            `Renamed vault: ${vaultMessage.getVaultName()} to ${vaultRenameMessage.getNewName()}`,
           ],
         }),
       );
@@ -68,7 +65,7 @@ rename.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to rename vault: ${vaultMessage.getName()}`],
+          data: [`Failed to rename vault: ${vaultMessage.getVaultName()}`],
         }),
       );
     }

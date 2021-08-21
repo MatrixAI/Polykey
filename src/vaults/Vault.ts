@@ -634,7 +634,7 @@ class Vault {
    * @returns Two streams used to send the pack response
    */
   public async handlePackRequest(body: Buffer): Promise<PassThrough[]> {
-    if (body.toString().slice(4, 8) == 'want') {
+    if (body.toString().slice(4, 8) === 'want') {
       const wantedObjectId = body.toString().slice(9, 49);
       const packResult = await gitUtils.packObjects(this.efs, '.git', [
         wantedObjectId,
@@ -668,7 +668,7 @@ class Vault {
   ): Promise<void> {
     // Obtain each file change
     for (const fileChange of fileChanges) {
-      if (fileChange.action == 'removed') {
+      if (fileChange.action === 'removed') {
         await git.remove({
           fs: this.efs,
           dir: '',

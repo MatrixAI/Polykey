@@ -33,10 +33,7 @@ clear.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.notificationsClear(
-      emptyMessage,
-      await client.session.createCallCredentials(),
-    );
+    await grpcClient.notificationsClear(emptyMessage);
 
     process.stdout.write(
       outputFormatter({

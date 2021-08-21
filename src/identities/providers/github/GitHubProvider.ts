@@ -145,7 +145,7 @@ class GitHubProvider extends Provider {
     } finally {
       clearTimeout(pollTimer);
     }
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderAuthentication(
         `Provider authentication flow timed out`,
       );
@@ -208,7 +208,7 @@ class GitHubProvider extends Provider {
     identityId: IdentityId,
   ): Promise<IdentityData | undefined> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
@@ -260,7 +260,7 @@ class GitHubProvider extends Provider {
     searchTerms: Array<string> = [],
   ): AsyncGenerator<IdentityData> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
@@ -363,7 +363,7 @@ class GitHubProvider extends Provider {
     identityClaim: Claim, // give claim we want to publush
   ): Promise<IdentityClaim> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
@@ -422,7 +422,7 @@ class GitHubProvider extends Provider {
     claimId: IdentityClaimId,
   ): Promise<IdentityClaim | undefined> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
@@ -462,7 +462,7 @@ class GitHubProvider extends Provider {
       return;
     }
     const linkClaim = this.parseClaim(linkClaimData);
-    if (!linkClaim) {
+    if (linkClaim == null) {
       return;
     }
     return {
@@ -499,7 +499,7 @@ class GitHubProvider extends Provider {
       const claimIds = await this.extractClaimIds(data);
       for (const claimId of claimIds) {
         const claim = await this.getClaim(authIdentityId, claimId);
-        if (claim) {
+        if (claim != null) {
           yield claim;
         }
       }
@@ -517,7 +517,7 @@ class GitHubProvider extends Provider {
     tokenData: TokenData,
   ): Request {
     let headers = options.headers;
-    if (!headers) {
+    if (headers == null) {
       headers = new Headers();
     }
     headers.set('Accept', 'application/vnd.github.v3+json');
@@ -565,9 +565,9 @@ class GitHubProvider extends Provider {
       .children('ul')
       .each((_, ele) => {
         const claim = $('li > a', ele).first().attr('href');
-        if (claim) {
+        if (claim != null) {
           const matches = claim.match(/\/.+?\/(.+)/);
-          if (matches) {
+          if (matches != null) {
             const claimId = matches[1];
             claimIds.push(claimId as IdentityClaimId);
           }

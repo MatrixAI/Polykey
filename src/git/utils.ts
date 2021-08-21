@@ -228,7 +228,7 @@ async function resolve(
       (
         await readFile(path.join(gitdir, ref), { encoding: 'utf8' })
       ).toString() || packedMap[ref];
-    if (sha) {
+    if (sha != null) {
       return resolve(fs, gitdir, sha.trim(), depth);
     }
   }
@@ -438,7 +438,7 @@ async function log(
     // eslint-disable-next-line
     while (true) {
       const Commit = tips.pop();
-      if (!Commit) {
+      if (Commit == null) {
         throw new gitErrors.ErrorCommit('Commit history invalid');
       }
       const commit = Commit.commit;
@@ -581,7 +581,7 @@ function parseHeaders(commit: string): {
 function parseAuthor(author: string): Identity {
   const identity = author.match(new RegExp(/^(.*) <(.*)> (.*) (.*)$/));
   let name: string, email: string, timestamp: number, offset: number;
-  if (identity) {
+  if (identity != null) {
     name = identity[1];
     email = identity[2];
     timestamp = Number(identity[3]);
@@ -599,7 +599,7 @@ function parseAuthor(author: string): Identity {
 
 function parseTimezoneOffset(offset: string): number {
   const matches = offset.match(/(\+|-)(\d\d)(\d\d)/);
-  if (!matches)
+  if (matches == null)
     throw new gitErrors.ErrorCommit('No timezone found on commit object');
   const sign = matches[1];
   const hours = matches[2];
@@ -707,7 +707,7 @@ async function read(
   }
   const source = path.join('objects', oid.slice(0, 2), oid.slice(2));
   // Check to see if it's in a packfile.
-  if (!file) {
+  if (file == null) {
     // Curry the current read method so that the packfile un-deltification
     // process can acquire external ref-deltas.
     const getExternalRefDelta = (oid: string) => read(fs, gitdir, oid);
@@ -718,7 +718,7 @@ async function read(
       const indexFile = path.join(gitdir, 'objects', 'pack', filename);
       const idx = await readFile(indexFile);
       const p = fromIdx(idx, getExternalRefDelta);
-      if (!p) {
+      if (p == null) {
         break;
       }
       // const p = PackfileCache[filename];
@@ -739,7 +739,7 @@ async function read(
     }
   }
   // Check to see if it's in shallow commits.
-  if (!file) {
+  if (file == null) {
     try {
       const text: string = await readFile(path.join(gitdir, 'shallow'), {
         encoding: 'utf8',
@@ -795,7 +795,7 @@ async function readPack(
   oid: string,
 ): Promise<DeflatedObject | WrappedObject | RawObject> {
   const start = p.offsets.get(oid);
-  if (!start) {
+  if (start == null) {
     if (p.getExternalRefDelta) {
       return p.getExternalRefDelta(oid);
     } else {
@@ -863,7 +863,7 @@ async function readSlice(
       `Packfile told us object would have length ${length} but it had length ${object.byteLength}`,
     );
   }
-  if (base) {
+  if (base != null) {
     object = Buffer.from(applyDelta(object, base));
   }
   return { oid: oid, type: type, format: 'content', object: object };
@@ -1071,7 +1071,7 @@ async function pack(
 ): Promise<PassThrough> {
   const hash = createHash('sha1');
   function write(chunk: Buffer | string, enc?: BufferEncoding): void {
-    if (enc) {
+    if (enc != null) {
       outputStream.write(chunk, enc);
     } else {
       outputStream.write(chunk);

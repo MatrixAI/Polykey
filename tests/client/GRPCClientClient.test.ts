@@ -14,6 +14,7 @@ import { utils as networkUtils } from '@/network';
 import { PolykeyAgent } from '@';
 
 import * as testUtils from './utils';
+import { Session } from '@/sessions';
 
 describe('GRPCClientClient', () => {
   const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
@@ -25,6 +26,7 @@ describe('GRPCClientClient', () => {
 
   let polykeyAgent: PolykeyAgent;
   let dataDir: string;
+  let nodePath: string;
   let callCredentials: Partial<grpc.CallOptions>;
 
   let nodeId: NodeId;
@@ -37,19 +39,19 @@ describe('GRPCClientClient', () => {
       keyPair.privateKey,
       86400,
     );
-    nodeId = networkUtils.certNodeId(cert);
+    // nodeId = networkUtils.certNodeId(cert);
 
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-
+    nodePath = path.join(dataDir, 'node');
     polykeyAgent = new PolykeyAgent({
-      nodePath: dataDir,
+      nodePath,
       logger: logger,
     });
 
     await polykeyAgent.start({ password: 'password ' });
-
+    nodeId = polykeyAgent.nodes.getNodeId();
     [server, port] = await testUtils.openTestClientServer({
       polykeyAgent,
     });
@@ -60,20 +62,12 @@ describe('GRPCClientClient', () => {
       port: port as Port,
       logger: logger,
     });
-
-    await client.start({});
-
+    const clientPath = path.join(nodePath, 'client');
+    const session = new Session({ clientPath });
     const token = await polykeyAgent.sessions.generateToken();
-    callCredentials = {
-      credentials: grpc.CallCredentials.createFromMetadataGenerator(
-        (_params, callback) => {
-          const meta = new grpc.Metadata();
-          meta.add('Authorization', `Bearer: ${token}`);
-          callback(null, meta);
-        },
-      ),
-    };
-  });
+    await session.start({ token });
+    await client.start({ timeout: 10000, session });
+  }, global.polykeyStartupTimeout * 3);
   afterEach(async () => {
     await client.stop();
     await testUtils.closeTestClientServer(server);
@@ -88,7 +82,7 @@ describe('GRPCClientClient', () => {
   test('echo', async () => {
     const echoMessage = new clientPB.EchoMessage();
     echoMessage.setChallenge('yes');
-    const response = await client.echo(echoMessage, callCredentials);
+    const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
   });
 });

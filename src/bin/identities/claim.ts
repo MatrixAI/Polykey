@@ -40,14 +40,11 @@ claim.action(async (providerId, identitiyId, options) => {
 
     //constructing message.
     const providerMessage = new clientPB.ProviderMessage();
-    providerMessage.setId(providerId);
+    providerMessage.setProviderId(providerId);
     providerMessage.setMessage(identitiyId);
 
     //sending message.
-    const pCall = grpcClient.identitiesAugmentKeynode(
-      providerMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.identitiesClaim(providerMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

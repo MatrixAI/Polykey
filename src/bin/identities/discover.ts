@@ -43,20 +43,14 @@ commandTrustGestalts.action(async (id, options) => {
     if (nodeId) {
       // Discovery by Node.
       const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName(nodeId);
-      await grpcClient.gestaltsDiscoverNode(
-        nodeMessage,
-        await client.session.createCallCredentials(),
-      );
+      nodeMessage.setNodeId(nodeId);
+      await grpcClient.gestaltsDiscoveryByNode(nodeMessage);
     } else {
       //  Discovery by Identity
       const providerMessage = new clientPB.ProviderMessage();
-      providerMessage.setId(providerId!);
+      providerMessage.setProviderId(providerId!);
       providerMessage.setMessage(identityId!);
-      const pCall = grpcClient.gestaltsDiscoverIdentity(
-        providerMessage,
-        await client.session.createCallCredentials(),
-      );
+      const pCall = grpcClient.gestaltsDiscoveryByIdentity(providerMessage);
       pCall.call.on('metadata', (meta) => {
         clientUtils.refreshSession(meta, client.session);
       });

@@ -14,7 +14,7 @@ const createKeysRPC = ({
   sessionManager: SessionManager;
 }) => {
   return {
-    keysRootKeyPair: async (
+    keysKeyPairRoot: async (
       call: grpc.ServerUnaryCall<
         clientPB.EmptyMessage,
         clientPB.KeyPairMessage
@@ -32,7 +32,7 @@ const createKeysRPC = ({
       }
       callback(null, response);
     },
-    keysResetKeyPair: async (
+    keysKeyPairReset: async (
       call: grpc.ServerUnaryCall<clientPB.KeyMessage, clientPB.EmptyMessage>,
       callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
     ): Promise<void> => {
@@ -49,7 +49,7 @@ const createKeysRPC = ({
       }
       callback(null, response);
     },
-    keysRenewKeyPair: async (
+    keysKeyPairRenew: async (
       call: grpc.ServerUnaryCall<clientPB.KeyMessage, clientPB.EmptyMessage>,
       callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
     ): Promise<void> => {
@@ -159,7 +159,7 @@ const createKeysRPC = ({
       }
       callback(null, response);
     },
-    keysChangePassword: async (
+    keysPasswordChange: async (
       call: grpc.ServerUnaryCall<
         clientPB.PasswordMessage,
         clientPB.EmptyMessage
@@ -179,7 +179,7 @@ const createKeysRPC = ({
       }
       callback(null, response);
     },
-    certsGet: async (
+    keysCertsGet: async (
       call: grpc.ServerUnaryCall<
         clientPB.EmptyMessage,
         clientPB.CertificateMessage
@@ -200,7 +200,7 @@ const createKeysRPC = ({
       }
       callback(null, response);
     },
-    certsChainGet: async (
+    keysCertsChainGet: async (
       call: grpc.ServerWritableStream<
         clientPB.EmptyMessage,
         clientPB.CertificateMessage

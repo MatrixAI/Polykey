@@ -116,7 +116,7 @@ function promisifyGrpc<t1, t2>(
   return (request: t1): Promise<t2> => {
     return new Promise<t2>((resolve, reject) => {
       function customCallback(error: grpc.ServiceError, response: t2) {
-        if (error) {
+        if (error != null) {
           return reject(error);
         }
         return resolve(response);

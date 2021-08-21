@@ -41,10 +41,7 @@ renew.action(async (options) => {
     });
     keyMessage.setName(password);
 
-    const pCall = grpcClient.keysRenewKeyPair(
-      keyMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysKeyPairRenew(keyMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

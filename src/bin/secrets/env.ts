@@ -75,18 +75,15 @@ env.action(async (options, command) => {
     const grpcClient = client.grpcClient;
 
     for (const obj of parsedPathList) {
-      vaultMessage.setName(obj.vaultName);
-      secretMessage.setName(obj.secretName);
-      const pCall = grpcClient.vaultsGetSecret(
-        secretMessage,
-        await client.session.createCallCredentials(),
-      );
+      vaultMessage.setVaultName(obj.vaultName);
+      secretMessage.setSecretName(obj.secretName);
+      const pCall = grpcClient.vaultsSecretsGet(secretMessage);
       pCall.call.on('metadata', (meta) => {
         clientUtils.refreshSession(meta, client.session);
       });
 
       const res = await pCall;
-      const secret = res.getName();
+      const secret = res.getSecretName();
       secretEnv[obj.variableName] = secret;
     }
 
@@ -113,7 +110,7 @@ env.action(async (options, command) => {
     });
 
     shell.on('close', (code) => {
-      if (code != 0) {
+      if (code !== 0) {
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',

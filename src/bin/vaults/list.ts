@@ -32,15 +32,12 @@ list.action(async (options) => {
     const grpcClient = client.grpcClient;
 
     const data: Array<string> = [];
-    const vaultListGenerator = grpcClient.vaultsList(
-      emptyMessage,
-      await client.session.createCallCredentials(),
-    );
+    const vaultListGenerator = grpcClient.vaultsList(emptyMessage);
     vaultListGenerator.stream.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
     for await (const vault of vaultListGenerator) {
-      data.push(`${vault.getName()}:\t\t${vault.getId()}`);
+      data.push(`${vault.getVaultName()}:\t\t${vault.getVaultId()}`);
     }
     process.stdout.write(
       binUtils.outputFormatter({

@@ -44,13 +44,10 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setName(vaultName);
-    nodeMessage.setName(nodeId);
+    vaultMessage.setVaultName(vaultName);
+    nodeMessage.setNodeId(nodeId);
 
-    const pCall = grpcClient.vaultsSetPerms(
-      setVaultPermsMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsPermissionsSet(setVaultPermsMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -63,7 +60,9 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
         data: [
           `Shared Vault: ${setVaultPermsMessage
             .getVault()
-            ?.getName()} to: ${setVaultPermsMessage.getNode()?.getName()}`,
+            ?.getVaultName()} to: ${setVaultPermsMessage
+            .getNode()
+            ?.getNodeId()}`,
         ],
       }),
     );

@@ -160,7 +160,8 @@ function deserialize_agentInterface_VaultPermMessage(buffer_arg) {
 
 
 var AgentService = exports.AgentService = {
-  echo: {
+  // Echo
+echo: {
     path: '/agentInterface.Agent/Echo',
     requestStream: false,
     responseStream: false,
@@ -171,8 +172,9 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EchoMessage,
     responseDeserialize: deserialize_agentInterface_EchoMessage,
   },
-  getGitInfo: {
-    path: '/agentInterface.Agent/GetGitInfo',
+  // Vaults
+vaultsGitInfoGet: {
+    path: '/agentInterface.Agent/VaultsGitInfoGet',
     requestStream: false,
     responseStream: true,
     requestType: Agent_pb.InfoRequest,
@@ -182,8 +184,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_PackChunk,
     responseDeserialize: deserialize_agentInterface_PackChunk,
   },
-  getGitPack: {
-    path: '/agentInterface.Agent/GetGitPack',
+  vaultsGitPackGet: {
+    path: '/agentInterface.Agent/VaultsGitPackGet',
     requestStream: true,
     responseStream: true,
     requestType: Agent_pb.PackChunk,
@@ -193,8 +195,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_PackChunk,
     responseDeserialize: deserialize_agentInterface_PackChunk,
   },
-  scanVaults: {
-    path: '/agentInterface.Agent/ScanVaults',
+  vaultsScan: {
+    path: '/agentInterface.Agent/VaultsScan',
     requestStream: false,
     responseStream: true,
     requestType: Agent_pb.NodeIdMessage,
@@ -204,8 +206,20 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_VaultListMessage,
     responseDeserialize: deserialize_agentInterface_VaultListMessage,
   },
-  getClosestLocalNodes: {
-    path: '/agentInterface.Agent/GetClosestLocalNodes',
+  vaultsPermisssionsCheck: {
+    path: '/agentInterface.Agent/VaultsPermisssionsCheck',
+    requestStream: false,
+    responseStream: false,
+    requestType: Agent_pb.VaultPermMessage,
+    responseType: Agent_pb.PermissionMessage,
+    requestSerialize: serialize_agentInterface_VaultPermMessage,
+    requestDeserialize: deserialize_agentInterface_VaultPermMessage,
+    responseSerialize: serialize_agentInterface_PermissionMessage,
+    responseDeserialize: deserialize_agentInterface_PermissionMessage,
+  },
+  // Nodes
+nodesClosestLocalNodesGet: {
+    path: '/agentInterface.Agent/NodesClosestLocalNodesGet',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.NodeIdMessage,
@@ -215,8 +229,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_NodeTableMessage,
     responseDeserialize: deserialize_agentInterface_NodeTableMessage,
   },
-  getClaims: {
-    path: '/agentInterface.Agent/GetClaims',
+  nodesClaimsGet: {
+    path: '/agentInterface.Agent/NodesClaimsGet',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.ClaimTypeMessage,
@@ -226,8 +240,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_ClaimsMessage,
     responseDeserialize: deserialize_agentInterface_ClaimsMessage,
   },
-  getChainData: {
-    path: '/agentInterface.Agent/GetChainData',
+  nodesChainDataGet: {
+    path: '/agentInterface.Agent/NodesChainDataGet',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.EmptyMessage,
@@ -237,8 +251,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_ChainDataMessage,
     responseDeserialize: deserialize_agentInterface_ChainDataMessage,
   },
-  sendHolePunchMessage: {
-    path: '/agentInterface.Agent/SendHolePunchMessage',
+  nodesHolePunchMessageSend: {
+    path: '/agentInterface.Agent/NodesHolePunchMessageSend',
     requestStream: false,
     responseStream: false,
     requestType: Agent_pb.RelayMessage,
@@ -248,7 +262,8 @@ var AgentService = exports.AgentService = {
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
   },
-  notificationsSend: {
+  // Notifications
+notificationsSend: {
     path: '/agentInterface.Agent/NotificationsSend',
     requestStream: false,
     responseStream: false,
@@ -258,17 +273,6 @@ var AgentService = exports.AgentService = {
     requestDeserialize: deserialize_agentInterface_NotificationMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
-  },
-  checkVaultPermisssions: {
-    path: '/agentInterface.Agent/checkVaultPermisssions',
-    requestStream: false,
-    responseStream: false,
-    requestType: Agent_pb.VaultPermMessage,
-    responseType: Agent_pb.PermissionMessage,
-    requestSerialize: serialize_agentInterface_VaultPermMessage,
-    requestDeserialize: deserialize_agentInterface_VaultPermMessage,
-    responseSerialize: serialize_agentInterface_PermissionMessage,
-    responseDeserialize: deserialize_agentInterface_PermissionMessage,
   },
 };
 

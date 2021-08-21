@@ -241,7 +241,7 @@ class NodeManager {
     const publicKey = connection.getExpectedPublicKey(
       targetNodeId,
     ) as PublicKeyPem;
-    if (!publicKey) {
+    if (!publicKey == null) {
       throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
     }
     return publicKey;
@@ -293,7 +293,7 @@ class NodeManager {
     for (const c in verifiedChainData) {
       const claimId = c as ClaimId;
       const payload = verifiedChainData[claimId].payload;
-      if (payload.data.type == 'node') {
+      if (payload.data.type === 'node') {
         const endNodeId = payload.data.node2;
         let endPublicKey: PublicKeyPem;
         // If the claim points back to our own node, don't attempt to connect
@@ -364,14 +364,14 @@ class NodeManager {
     if (!this._started) {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
     }
-    const conn = this.connections.get(message.getTargetid() as NodeId);
+    const conn = this.connections.get(message.getTargetId() as NodeId);
     if (conn === undefined) {
       throw new nodesErrors.ErrorNodeConnectionNotExist();
     }
     await conn.sendHolePunchMessage(
-      message.getSrcid() as NodeId,
-      message.getTargetid() as NodeId,
-      message.getEgressaddress(),
+      message.getSrcId() as NodeId,
+      message.getTargetId() as NodeId,
+      message.getEgressAddress(),
       Buffer.from(message.getSignature()),
     );
   }
@@ -396,7 +396,7 @@ class NodeManager {
 
   public getConnectionToNode(targetNodeId: NodeId): NodeConnection {
     const conn = this.connections.get(targetNodeId);
-    if (conn) {
+    if (conn != null) {
       return conn;
     } else {
       throw new nodesErrors.ErrorNodeConnectionNotExist();
@@ -420,13 +420,13 @@ class NodeManager {
     }
     return await this._transaction(async () => {
       // Throw error if trying to connect to self
-      if (targetNodeId == this.nodeId) {
+      if (targetNodeId === this.nodeId) {
         throw new nodesErrors.ErrorNodeGraphSelfConnect();
       }
       // Attempt to get an existing connection
       const existingConnection: NodeConnection | undefined =
         this.connections.get(targetNodeId);
-      if (existingConnection) {
+      if (existingConnection != null) {
         return existingConnection;
       }
       // Otherwise, create a new connection
@@ -465,12 +465,12 @@ class NodeManager {
     }
     return await this._transaction(async () => {
       // Throw error if trying to connect to self
-      if (brokerNodeId == this.nodeId) {
+      if (brokerNodeId === this.nodeId) {
         throw new nodesErrors.ErrorNodeGraphSelfConnect();
       }
       // Attempt to get an existing connection
       const existingConnection = this.brokerNodeConnections.get(brokerNodeId);
-      if (existingConnection) {
+      if (existingConnection != null) {
         return existingConnection;
       }
       const brokerConnection = new NodeConnection({
@@ -530,7 +530,7 @@ class NodeManager {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
     }
     const conn = this.connections.get(targetNodeId);
-    if (conn) {
+    if (conn != null) {
       return conn.getClient();
     } else {
       throw new nodesErrors.ErrorNodeConnectionNotExist();
@@ -582,7 +582,7 @@ class NodeManager {
     }
     // Create a connection to the specified node
     const nodeAddress = await this.getNode(nodeId as NodeId);
-    if (!nodeAddress) {
+    if (nodeAddress == null) {
       // Throw an error if node is not recognised
       throw new nodesErrors.ErrorNodeConnectionNotExist(
         'Node does not exist in node store',

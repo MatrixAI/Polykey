@@ -4,70 +4,77 @@ package agentInterface;
 
 service Agent {
 
+  // Echo
   rpc Echo(EchoMessage) returns (EchoMessage) {};
 
-  rpc GetGitInfo (InfoRequest) returns (stream PackChunk) {};
-  rpc GetGitPack(stream PackChunk) returns (stream PackChunk) {};
-  rpc ScanVaults (NodeIdMessage) returns (stream VaultListMessage) {};
+  // Vaults
+  rpc VaultsGitInfoGet (InfoRequest) returns (stream PackChunk) {};
+  rpc VaultsGitPackGet(stream PackChunk) returns (stream PackChunk) {};
+  rpc VaultsScan (NodeIdMessage) returns (stream VaultListMessage) {};
+  rpc VaultsPermisssionsCheck (VaultPermMessage) returns (PermissionMessage) {}
 
-  rpc GetClosestLocalNodes (NodeIdMessage) returns (NodeTableMessage) {}
-  rpc GetClaims (ClaimTypeMessage) returns (ClaimsMessage) {}
-  rpc GetChainData (EmptyMessage) returns (ChainDataMessage) {}
+  // Nodes
+  rpc NodesClosestLocalNodesGet (NodeIdMessage) returns (NodeTableMessage) {}
+  rpc NodesClaimsGet (ClaimTypeMessage) returns (ClaimsMessage) {}
+  rpc NodesChainDataGet (EmptyMessage) returns (ChainDataMessage) {}
+  rpc NodesHolePunchMessageSend (RelayMessage) returns (EmptyMessage) {}
 
-  rpc SendHolePunchMessage (RelayMessage) returns (EmptyMessage) {}
-
+  // Notifications
   rpc NotificationsSend (NotificationMessage) returns (EmptyMessage) {}
-
-  rpc checkVaultPermisssions (VaultPermMessage) returns (PermissionMessage) {}
 }
 
 message EmptyMessage {}
 
+// Echo messages
 message EchoMessage {
   string challenge = 1;
 }
 
-// Info Request
-
+// Vaults messages
 message InfoRequest {
   string id = 1;
-}
-
-// Pack Request
-
-message PackRequest {
-  string id = 1;
-  bytes body = 2;
 }
 
 message PackChunk {
   bytes chunk = 1;
 }
 
+message PackRequest {
+  string id = 1;
+  bytes body = 2;
+}
+
 message VaultListMessage {
   bytes vault = 1;
 }
 
+message VaultPermMessage {
+  string node_id = 1;
+  string vault_id = 2;
+}
+
+message PermissionMessage {
+  bool permission = 1;
+}
+
+//Shared messages
+message NodeIdMessage {
+  string node_id = 1;
+}
+
+//Nodes messages
 message ConnectionMessage {
-  string aId = 1;
-  string bId = 2;
-  string aIp = 3;
-  string bIp = 4;
+  string a_id = 1;
+  string b_id = 2;
+  string a_ip = 3;
+  string b_ip = 4;
 }
 
 message RelayMessage {
-  string srcId = 1;
-  string targetId = 2;
-  string egressAddress = 3;
+  string src_id = 1;
+  string target_id = 2;
+  string egress_address = 3;
   string signature = 4;
-}
-
-message NotificationMessage {
-  string content = 1;
-}
-
-message NodeIdMessage {
-  string nodeId = 1;
 }
 
 message NodeAddressMessage {
@@ -76,21 +83,12 @@ message NodeAddressMessage {
 }
 
 message NodeTableMessage {
-  map<string, NodeAddressMessage> nodeTable = 1;
-}
-
-message VaultPermMessage {
-  string nodeId = 1;
-  string vaultId = 2;
-}
-
-message PermissionMessage {
-  bool permission = 1;
+  map<string, NodeAddressMessage> node_table = 1;
 }
 
 // The specific ClaimType of Claims to get
 message ClaimTypeMessage {
-  string claimType = 1;
+  string claim_type = 1;
 }
 
 // A list of base64url encoded claims
@@ -100,7 +98,7 @@ message ClaimsMessage {
 
 // A map of ClaimId -> ClaimEncoded
 message ChainDataMessage {
-  map<string, ClaimMessage> chainData = 1;
+  map<string, ClaimMessage> chain_data = 1;
 }
 
 // The components of a ClaimEncoded type (i.e. a GeneralJWS) for GRPC transport
@@ -112,4 +110,9 @@ message ClaimMessage {
 message SignatureMessage {
   string signature = 1; // base64 encoded
   string header = 2;    // base64 encoded ('protected' field in GeneralJWS)
+}
+
+// Notification messages
+message NotificationMessage {
+  string content = 1;
 }

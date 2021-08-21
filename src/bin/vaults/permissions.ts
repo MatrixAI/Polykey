@@ -34,10 +34,10 @@ permissions.action(async (vaultName, nodeId, options) => {
   const client = new PolykeyClient(clientConfig);
 
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setName(vaultName);
+  vaultMessage.setVaultName(vaultName);
 
-  const nodeMessage = new clientPB.VaultMessage();
-  nodeMessage.setId(nodeId);
+  const nodeMessage = new clientPB.NodeMessage();
+  nodeMessage.setNodeId(nodeId);
 
   const getVaultMessage = new clientPB.GetVaultPermMessage();
   getVaultMessage.setVault(vaultMessage);
@@ -48,15 +48,12 @@ permissions.action(async (vaultName, nodeId, options) => {
     const grpcClient = client.grpcClient;
 
     const data: Array<string> = [];
-    const permListGenerator = grpcClient.vaultPermissions(
-      getVaultMessage,
-      await client.session.createCallCredentials(),
-    );
+    const permListGenerator = grpcClient.vaultPermissions(getVaultMessage);
     permListGenerator.stream.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
     for await (const perm of permListGenerator) {
-      data.push(`${perm.getId()}:\t\t${perm.getAction()}`);
+      data.push(`${perm.getNodeId()}:\t\t${perm.getAction()}`);
     }
 
     process.stdout.write(

@@ -40,10 +40,7 @@ reset.action(async (options) => {
     });
     keyMessage.setName(password);
 
-    const pCall = grpcClient.keysResetKeyPair(
-      keyMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysKeyPairReset(keyMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

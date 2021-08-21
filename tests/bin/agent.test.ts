@@ -15,9 +15,22 @@ import PolykeyAgent from '@/PolykeyAgent';
 import { Lockfile } from '@/lockfile';
 import { sleep } from '@/utils';
 
+async function poll(
+  timeout: number,
+  condition: () => Promise<boolean>,
+  delay: number = 1000,
+) {
+  const timeProgress = 0;
+  while (timeProgress < timeout) {
+    if (await condition()) break;
+  }
+  expect(await condition()).toBeTruthy();
+}
+
 describe('CLI agent', () => {
   const passwordFileExitCode = 64;
   const noJWTFailCode = 77;
+  const invalidJWTFailCode = 65;
   const password = 'password';
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
@@ -77,10 +90,10 @@ describe('CLI agent', () => {
             ],
             '.',
           );
-          await utils.sleep(25000);
-          expect(
-            await agentUtils.checkAgentRunning(foregroundNodePath),
-          ).toBeTruthy();
+
+          await poll(global.polykeyStartupTimeout * 1.5, async () => {
+            return await agentUtils.checkAgentRunning(foregroundNodePath);
+          });
 
           const result5 = await testUtils.cli(
             ['agent', 'status', '-np', foregroundNodePath],
@@ -96,15 +109,18 @@ describe('CLI agent', () => {
           );
           process.kill(lock.pid);
           await agent; //Waiting for agent to finish running.
-          await sleep(5000);
-          expect(
-            await agentUtils.checkAgentRunning(foregroundNodePath),
-          ).toBeFalsy();
+          await poll(global.polykeyStartupTimeout, async () => {
+            const test = await agentUtils.checkAgentRunning(foregroundNodePath);
+            return !test;
+          });
 
-          const files = await fs.promises.readdir(foregroundNodePath);
-          expect(files.includes('agent-lock.json')).toBeFalsy();
+          await poll(global.polykeyStartupTimeout, async () => {
+            const files = await fs.promises.readdir(foregroundNodePath);
+            const test = files.includes('agent-lock.json');
+            return !test;
+          });
         },
-        global.polykeyStartupTimeout * 2,
+        global.polykeyStartupTimeout * 5,
       );
       test('should fail to start if an agent is already running at the path', async () => {
         //can't await this, it never completes while running.
@@ -138,26 +154,28 @@ describe('CLI agent', () => {
           const result = await testUtils.pkWithStdio(commands);
           expect(result.code).toBe(0);
 
-          await utils.sleep(2000);
-          expect(
-            await agentUtils.checkAgentRunning(backgroundNodePath),
-          ).toBeTruthy();
+          await poll(global.polykeyStartupTimeout * 1.5, async () => {
+            return await agentUtils.checkAgentRunning(backgroundNodePath);
+          });
 
           const lock = await Lockfile.parseLock(
             fs,
             path.join(backgroundNodePath, 'agent-lock.json'),
           );
           process.kill(lock.pid);
-          await utils.sleep(2000);
-          expect(
-            await agentUtils.checkAgentRunning(backgroundNodePath),
-          ).toBeFalsy();
+          await poll(global.polykeyStartupTimeout, async () => {
+            const test = await agentUtils.checkAgentRunning(backgroundNodePath);
+            return !test;
+          });
 
           //Checking that the lockfile was removed.
-          const files = await fs.promises.readdir(backgroundNodePath);
-          expect(files.includes('agent-lock.json')).toBeFalsy();
+          await poll(global.polykeyStartupTimeout, async () => {
+            const files = await fs.promises.readdir(foregroundNodePath);
+            const test = files.includes('agent-lock.json');
+            return !test;
+          });
         },
-        global.polykeyStartupTimeout,
+        global.polykeyStartupTimeout * 4,
       );
       test('Should fail to start if an agent is already running at the path', async () => {
         const commands = [
@@ -357,7 +375,7 @@ describe('CLI agent', () => {
           '--password-file',
           passwordFile,
         ]);
-        expect(result.code).toBe(77);
+        expect(result.code).toBe(noJWTFailCode);
       });
       test('cause old sessions to fail when locking all sessions', async () => {
         const token = await activeAgent.sessions.generateToken();

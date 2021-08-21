@@ -7,11 +7,13 @@ import base58 from 'bs58';
 
 import { SignJWT } from 'jose/jwt/sign';
 import { jwtVerify } from 'jose/jwt/verify';
-import { KeyManager, utils as keyUtils, errors as keyErrors } from '../keys';
+import { errors as keyErrors, KeyManager, utils as keyUtils } from '../keys';
 
 import * as grpc from '@grpc/grpc-js';
 import * as keysUtils from '../keys/utils';
 import * as clientErrors from '../client/errors';
+import { PasswordMessage } from '../proto/js/Client_pb';
+import PasswordOrFileCase = PasswordMessage.PasswordOrFileCase;
 
 async function generateRandomPayload() {
   const bytes = await keysUtils.getRandomBytes(32);
@@ -49,17 +51,44 @@ async function passwordFromMetadata(
 
   // Read password file to get password
   const passwordFile = meta.get('passwordFile').pop();
-  if (passwordFile) {
+  if (passwordFile != null) {
     password = await fs.promises.readFile(passwordFile, { encoding: 'utf-8' });
     password = password.trim();
   }
 
   // If password is set explicitly use it
   const metaPassword = meta.get('password').pop();
-  if (metaPassword) {
+  if (metaPassword != null) {
     password = metaPassword.toString().trim();
   }
   return password;
+}
+async function passwordFromPasswordMessage(
+  passwordMessage: PasswordMessage,
+): Promise<string | undefined> {
+  switch (passwordMessage.getPasswordOrFileCase()) {
+    // If password is set explicitly use it
+    case PasswordOrFileCase.PASSWORD: {
+      let password = passwordMessage.getPassword();
+      password = password.trim();
+      return password;
+    }
+
+    case PasswordOrFileCase.PASSWORD_FILE: {
+      // Read password file to get password
+      const passwordFile = passwordMessage.getPasswordFile();
+      let password = await fs.promises.readFile(passwordFile, {
+        encoding: 'utf-8',
+      });
+      password = password.trim();
+      return password;
+    }
+
+    case PasswordOrFileCase.PASSWORD_OR_FILE_NOT_SET:
+    default:
+      //None set.
+      return undefined;
+  }
 }
 
 async function createSessionToken(
@@ -85,6 +114,7 @@ export {
   generateRandomPayload,
   checkPassword,
   passwordFromMetadata,
+  passwordFromPasswordMessage,
   createSessionToken,
   verifySessionToken,
 };

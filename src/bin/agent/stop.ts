@@ -33,10 +33,7 @@ stop.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.agentStop(
-      emptyMessage,
-      await client.session.createCallCredentials(),
-    );
+    await grpcClient.agentStop(emptyMessage);
 
     process.stdout.write(
       binUtils.outputFormatter({

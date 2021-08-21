@@ -37,7 +37,7 @@ const createNodesRPC = ({
         );
         call.sendMetadata(responseMeta);
         // Validate the passed node ID and host
-        const validNodeId = nodesUtils.isNodeId(call.request.getId());
+        const validNodeId = nodesUtils.isNodeId(call.request.getNodeId());
         if (!validNodeId) {
           throw new nodesErrors.ErrorInvalidNodeId();
         }
@@ -46,7 +46,7 @@ const createNodesRPC = ({
           throw new nodesErrors.ErrorInvalidHost();
         }
         await nodeManager.setNode(
-          call.request.getId() as NodeId,
+          call.request.getNodeId() as NodeId,
           {
             ip: call.request.getHost(),
             port: call.request.getPort(),
@@ -72,7 +72,7 @@ const createNodesRPC = ({
         );
         call.sendMetadata(responseMeta);
         const status = await nodeManager.pingNode(
-          call.request.getName() as NodeId,
+          call.request.getNodeId() as NodeId,
         );
         response.setSuccess(status);
       } catch (err) {
@@ -110,9 +110,9 @@ const createNodesRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const nodeId = call.request.getName() as NodeId;
+        const nodeId = call.request.getNodeId() as NodeId;
         const address = await nodeManager.findNode(nodeId);
-        response.setId(nodeId);
+        response.setNodeId(nodeId);
         response.setHost(address.ip);
         response.setPort(address.port);
       } catch (err) {

@@ -39,10 +39,7 @@ password.action(async (options) => {
     });
     passwordMessage.setPassword(password);
 
-    const pCall = grpcClient.keysChangePassword(
-      passwordMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysPasswordChange(passwordMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

@@ -41,17 +41,14 @@ clone.action(async (options) => {
   vaultCloneMessage.setVault(vaultMessage);
   vaultCloneMessage.setNode(nodeMessage);
 
-  nodeMessage.setName(options.nodeId);
-  vaultMessage.setId(options.vaultId);
+  nodeMessage.setNodeId(options.nodeId);
+  vaultMessage.setVaultId(options.vaultId);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.vaultsClone(
-      vaultCloneMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsClone(vaultCloneMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -62,7 +59,7 @@ clone.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Clone Vault: ${vaultMessage.getName()} from Node: ${nodeMessage.getName()} successful`,
+          `Clone Vault: ${vaultMessage.getVaultName()} from Node: ${nodeMessage.getNodeId()} successful`,
         ],
       }),
     );

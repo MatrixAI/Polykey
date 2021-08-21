@@ -3,6 +3,7 @@ import PolykeyClient from '../../PolykeyClient';
 import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
+
 import * as grpcErrors from '../../grpc/errors';
 
 const stat = binUtils.createCommand('stat', {
@@ -29,16 +30,13 @@ stat.action(async (options) => {
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setName(options.vaultName);
+  vaultMessage.setVaultName(options.vaultName);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.vaultsStat(
-      vaultMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsStat(vaultMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -48,7 +46,9 @@ stat.action(async (options) => {
     process.stdout.write(
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [`${vaultMessage.getId()}:\t\t${responseMessage.getStats()}`],
+        data: [
+          `${vaultMessage.getVaultId()}:\t\t${responseMessage.getStats()}`,
+        ],
       }),
     );
   } catch (err) {

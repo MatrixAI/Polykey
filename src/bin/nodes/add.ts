@@ -36,16 +36,13 @@ add.action(async (node, host, port, options) => {
     const grpcClient = client.grpcClient;
 
     const nodeAddressMessage = new clientPB.NodeAddressMessage();
-    nodeAddressMessage.setId(node);
+    nodeAddressMessage.setNodeId(node);
     nodeAddressMessage.setHost(host);
     nodeAddressMessage.setPort(port);
 
     const result = { success: false, message: '' };
 
-    const pCall = grpcClient.nodesAdd(
-      nodeAddressMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.nodesAdd(nodeAddressMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

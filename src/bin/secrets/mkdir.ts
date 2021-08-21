@@ -44,14 +44,11 @@ mkdir.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setName(vaultName);
+    vaultMessage.setVaultName(vaultName);
     vaultMkdirMessage.setVault(vaultMessage);
-    vaultMkdirMessage.setDirname(secretName);
+    vaultMkdirMessage.setDirName(secretName);
 
-    const pCall = grpcClient.vaultsMkdir(
-      vaultMkdirMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsMkdir(vaultMkdirMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -62,7 +59,7 @@ mkdir.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Directory: ${vaultMkdirMessage.getDirname()} created inside vault: ${vaultMessage.getName()}`,
+          `Directory: ${vaultMkdirMessage.getDirName()} created inside vault: ${vaultMessage.getVaultName()}`,
         ],
       }),
     );

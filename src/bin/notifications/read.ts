@@ -67,7 +67,6 @@ read.action(async (options) => {
 
     const response = await grpcClient.notificationsRead(
       notificationDisplayMessage,
-      await client.session.createCallCredentials(),
     );
     const notifications = JSON.parse(response.getMessages());
 

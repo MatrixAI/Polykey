@@ -59,6 +59,17 @@ function deserialize_clientInterface_EmptyMessage(buffer_arg) {
   return Client_pb.EmptyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_GestaltGraphMessage(arg) {
+  if (!(arg instanceof Client_pb.GestaltGraphMessage)) {
+    throw new Error('Expected argument of type clientInterface.GestaltGraphMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_GestaltGraphMessage(buffer_arg) {
+  return Client_pb.GestaltGraphMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_GestaltMessage(arg) {
   if (!(arg instanceof Client_pb.GestaltMessage)) {
     throw new Error('Expected argument of type clientInterface.GestaltMessage');
@@ -68,17 +79,6 @@ function serialize_clientInterface_GestaltMessage(arg) {
 
 function deserialize_clientInterface_GestaltMessage(buffer_arg) {
   return Client_pb.GestaltMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_clientInterface_GestaltTrustMessage(arg) {
-  if (!(arg instanceof Client_pb.GestaltTrustMessage)) {
-    throw new Error('Expected argument of type clientInterface.GestaltTrustMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_clientInterface_GestaltTrustMessage(buffer_arg) {
-  return Client_pb.GestaltTrustMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_clientInterface_GetVaultPermMessage(arg) {
@@ -452,10 +452,10 @@ sessionUnlock: {
     path: '/clientInterface.Client/SessionUnlock',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.EmptyMessage,
+    requestType: Client_pb.PasswordMessage,
     responseType: Client_pb.SessionTokenMessage,
-    requestSerialize: serialize_clientInterface_EmptyMessage,
-    requestDeserialize: deserialize_clientInterface_EmptyMessage,
+    requestSerialize: serialize_clientInterface_PasswordMessage,
+    requestDeserialize: deserialize_clientInterface_PasswordMessage,
     responseSerialize: serialize_clientInterface_SessionTokenMessage,
     responseDeserialize: deserialize_clientInterface_SessionTokenMessage,
   },
@@ -527,8 +527,8 @@ nodesAdd: {
     responseDeserialize: deserialize_clientInterface_NodeAddressMessage,
   },
   // Keys
-keysRootKeyPair: {
-    path: '/clientInterface.Client/KeysRootKeyPair',
+keysKeyPairRoot: {
+    path: '/clientInterface.Client/KeysKeyPairRoot',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.EmptyMessage,
@@ -538,8 +538,8 @@ keysRootKeyPair: {
     responseSerialize: serialize_clientInterface_KeyPairMessage,
     responseDeserialize: deserialize_clientInterface_KeyPairMessage,
   },
-  keysResetKeyPair: {
-    path: '/clientInterface.Client/KeysResetKeyPair',
+  keysKeyPairReset: {
+    path: '/clientInterface.Client/KeysKeyPairReset',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.KeyMessage,
@@ -549,8 +549,8 @@ keysRootKeyPair: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  keysRenewKeyPair: {
-    path: '/clientInterface.Client/KeysRenewKeyPair',
+  keysKeyPairRenew: {
+    path: '/clientInterface.Client/KeysKeyPairRenew',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.KeyMessage,
@@ -604,8 +604,8 @@ keysRootKeyPair: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  keysChangePassword: {
-    path: '/clientInterface.Client/KeysChangePassword',
+  keysPasswordChange: {
+    path: '/clientInterface.Client/KeysPasswordChange',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.PasswordMessage,
@@ -615,8 +615,8 @@ keysRootKeyPair: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  certsGet: {
-    path: '/clientInterface.Client/CertsGet',
+  keysCertsGet: {
+    path: '/clientInterface.Client/KeysCertsGet',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.EmptyMessage,
@@ -626,8 +626,8 @@ keysRootKeyPair: {
     responseSerialize: serialize_clientInterface_CertificateMessage,
     responseDeserialize: deserialize_clientInterface_CertificateMessage,
   },
-  certsChainGet: {
-    path: '/clientInterface.Client/CertsChainGet',
+  keysCertsChainGet: {
+    path: '/clientInterface.Client/KeysCertsChainGet',
     requestStream: false,
     responseStream: true,
     requestType: Client_pb.EmptyMessage,
@@ -682,39 +682,6 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  vaultsListSecrets: {
-    path: '/clientInterface.Client/VaultsListSecrets',
-    requestStream: false,
-    responseStream: true,
-    requestType: Client_pb.VaultMessage,
-    responseType: Client_pb.SecretMessage,
-    requestSerialize: serialize_clientInterface_VaultMessage,
-    requestDeserialize: deserialize_clientInterface_VaultMessage,
-    responseSerialize: serialize_clientInterface_SecretMessage,
-    responseDeserialize: deserialize_clientInterface_SecretMessage,
-  },
-  vaultsMkdir: {
-    path: '/clientInterface.Client/VaultsMkdir',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.VaultMkdirMessage,
-    responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_clientInterface_VaultMkdirMessage,
-    requestDeserialize: deserialize_clientInterface_VaultMkdirMessage,
-    responseSerialize: serialize_clientInterface_StatusMessage,
-    responseDeserialize: deserialize_clientInterface_StatusMessage,
-  },
-  vaultsStat: {
-    path: '/clientInterface.Client/VaultsStat',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.VaultMessage,
-    responseType: Client_pb.StatMessage,
-    requestSerialize: serialize_clientInterface_VaultMessage,
-    requestDeserialize: deserialize_clientInterface_VaultMessage,
-    responseSerialize: serialize_clientInterface_StatMessage,
-    responseDeserialize: deserialize_clientInterface_StatMessage,
-  },
   vaultsPull: {
     path: '/clientInterface.Client/VaultsPull',
     requestStream: false,
@@ -748,8 +715,41 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_VaultListMessage,
     responseDeserialize: deserialize_clientInterface_VaultListMessage,
   },
-  vaultsDeleteSecret: {
-    path: '/clientInterface.Client/VaultsDeleteSecret',
+  vaultsSecretsList: {
+    path: '/clientInterface.Client/VaultsSecretsList',
+    requestStream: false,
+    responseStream: true,
+    requestType: Client_pb.VaultMessage,
+    responseType: Client_pb.SecretMessage,
+    requestSerialize: serialize_clientInterface_VaultMessage,
+    requestDeserialize: deserialize_clientInterface_VaultMessage,
+    responseSerialize: serialize_clientInterface_SecretMessage,
+    responseDeserialize: deserialize_clientInterface_SecretMessage,
+  },
+  vaultsSecretsMkdir: {
+    path: '/clientInterface.Client/VaultsSecretsMkdir',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.VaultMkdirMessage,
+    responseType: Client_pb.StatusMessage,
+    requestSerialize: serialize_clientInterface_VaultMkdirMessage,
+    requestDeserialize: deserialize_clientInterface_VaultMkdirMessage,
+    responseSerialize: serialize_clientInterface_StatusMessage,
+    responseDeserialize: deserialize_clientInterface_StatusMessage,
+  },
+  vaultsSecretsStat: {
+    path: '/clientInterface.Client/VaultsSecretsStat',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.VaultMessage,
+    responseType: Client_pb.StatMessage,
+    requestSerialize: serialize_clientInterface_VaultMessage,
+    requestDeserialize: deserialize_clientInterface_VaultMessage,
+    responseSerialize: serialize_clientInterface_StatMessage,
+    responseDeserialize: deserialize_clientInterface_StatMessage,
+  },
+  vaultsSecretsDelete: {
+    path: '/clientInterface.Client/VaultsSecretsDelete',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SecretMessage,
@@ -759,8 +759,8 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  vaultsEditSecret: {
-    path: '/clientInterface.Client/VaultsEditSecret',
+  vaultsSecretsEdit: {
+    path: '/clientInterface.Client/VaultsSecretsEdit',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SecretEditMessage,
@@ -770,8 +770,8 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  vaultsGetSecret: {
-    path: '/clientInterface.Client/VaultsGetSecret',
+  vaultsSecretsGet: {
+    path: '/clientInterface.Client/VaultsSecretsGet',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SecretMessage,
@@ -781,8 +781,8 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_SecretMessage,
     responseDeserialize: deserialize_clientInterface_SecretMessage,
   },
-  vaultsRenameSecret: {
-    path: '/clientInterface.Client/VaultsRenameSecret',
+  vaultsSecretsRename: {
+    path: '/clientInterface.Client/VaultsSecretsRename',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SecretRenameMessage,
@@ -792,8 +792,8 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  vaultsNewSecret: {
-    path: '/clientInterface.Client/VaultsNewSecret',
+  vaultsSecretsNew: {
+    path: '/clientInterface.Client/VaultsSecretsNew',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SecretMessage,
@@ -803,8 +803,8 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  vaultsNewDirSecret: {
-    path: '/clientInterface.Client/VaultsNewDirSecret',
+  vaultsSecretsNewDir: {
+    path: '/clientInterface.Client/VaultsSecretsNewDir',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SecretDirectoryMessage,
@@ -814,8 +814,8 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  vaultsSetPerms: {
-    path: '/clientInterface.Client/VaultsSetPerms',
+  vaultsPermissionsSet: {
+    path: '/clientInterface.Client/VaultsPermissionsSet',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SetVaultPermMessage,
@@ -825,8 +825,8 @@ vaultsList: {
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
-  vaultsUnsetPerms: {
-    path: '/clientInterface.Client/VaultsUnsetPerms',
+  vaultsPermissionsUnset: {
+    path: '/clientInterface.Client/VaultsPermissionsUnset',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.UnsetVaultPermMessage,
@@ -859,8 +859,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_ProviderMessage,
     responseDeserialize: deserialize_clientInterface_ProviderMessage,
   },
-  identitiesPutToken: {
-    path: '/clientInterface.Client/IdentitiesPutToken',
+  identitiesTokenPut: {
+    path: '/clientInterface.Client/IdentitiesTokenPut',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.TokenSpecificMessage,
@@ -870,8 +870,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  identitiesGetToken: {
-    path: '/clientInterface.Client/IdentitiesGetToken',
+  identitiesTokenGet: {
+    path: '/clientInterface.Client/IdentitiesTokenGet',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -881,8 +881,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_TokenMessage,
     responseDeserialize: deserialize_clientInterface_TokenMessage,
   },
-  identitiesDeleteToken: {
-    path: '/clientInterface.Client/IdentitiesDeleteToken',
+  identitiesTokenDelete: {
+    path: '/clientInterface.Client/IdentitiesTokenDelete',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -892,8 +892,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  identitiesGetProviders: {
-    path: '/clientInterface.Client/IdentitiesGetProviders',
+  identitiesProvidersList: {
+    path: '/clientInterface.Client/IdentitiesProvidersList',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.EmptyMessage,
@@ -903,19 +903,8 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_ProviderMessage,
     responseDeserialize: deserialize_clientInterface_ProviderMessage,
   },
-  identitiesGetConnectedInfos: {
-    path: '/clientInterface.Client/IdentitiesGetConnectedInfos',
-    requestStream: false,
-    responseStream: true,
-    requestType: Client_pb.ProviderSearchMessage,
-    responseType: Client_pb.IdentityInfoMessage,
-    requestSerialize: serialize_clientInterface_ProviderSearchMessage,
-    requestDeserialize: deserialize_clientInterface_ProviderSearchMessage,
-    responseSerialize: serialize_clientInterface_IdentityInfoMessage,
-    responseDeserialize: deserialize_clientInterface_IdentityInfoMessage,
-  },
-  identitiesGetInfo: {
-    path: '/clientInterface.Client/IdentitiesGetInfo',
+  identitiesInfoGet: {
+    path: '/clientInterface.Client/IdentitiesInfoGet',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -925,8 +914,19 @@ identitiesAuthenticate: {
     responseSerialize: serialize_clientInterface_ProviderMessage,
     responseDeserialize: deserialize_clientInterface_ProviderMessage,
   },
-  identitiesAugmentKeynode: {
-    path: '/clientInterface.Client/IdentitiesAugmentKeynode',
+  identitiesInfoGetConnected: {
+    path: '/clientInterface.Client/IdentitiesInfoGetConnected',
+    requestStream: false,
+    responseStream: true,
+    requestType: Client_pb.ProviderSearchMessage,
+    responseType: Client_pb.IdentityInfoMessage,
+    requestSerialize: serialize_clientInterface_ProviderSearchMessage,
+    requestDeserialize: deserialize_clientInterface_ProviderSearchMessage,
+    responseSerialize: serialize_clientInterface_IdentityInfoMessage,
+    responseDeserialize: deserialize_clientInterface_IdentityInfoMessage,
+  },
+  identitiesClaim: {
+    path: '/clientInterface.Client/IdentitiesClaim',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -937,30 +937,8 @@ identitiesAuthenticate: {
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
   // Gestalts
-gestaltsGetNode: {
-    path: '/clientInterface.Client/GestaltsGetNode',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.NodeMessage,
-    responseType: Client_pb.GestaltMessage,
-    requestSerialize: serialize_clientInterface_NodeMessage,
-    requestDeserialize: deserialize_clientInterface_NodeMessage,
-    responseSerialize: serialize_clientInterface_GestaltMessage,
-    responseDeserialize: deserialize_clientInterface_GestaltMessage,
-  },
-  gestaltsGetIdentity: {
-    path: '/clientInterface.Client/GestaltsGetIdentity',
-    requestStream: false,
-    responseStream: false,
-    requestType: Client_pb.ProviderMessage,
-    responseType: Client_pb.GestaltMessage,
-    requestSerialize: serialize_clientInterface_ProviderMessage,
-    requestDeserialize: deserialize_clientInterface_ProviderMessage,
-    responseSerialize: serialize_clientInterface_GestaltMessage,
-    responseDeserialize: deserialize_clientInterface_GestaltMessage,
-  },
-  gestaltsList: {
-    path: '/clientInterface.Client/GestaltsList',
+gestaltsGestaltList: {
+    path: '/clientInterface.Client/GestaltsGestaltList',
     requestStream: false,
     responseStream: true,
     requestType: Client_pb.EmptyMessage,
@@ -970,30 +948,30 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_GestaltMessage,
     responseDeserialize: deserialize_clientInterface_GestaltMessage,
   },
-  gestaltsSetNode: {
-    path: '/clientInterface.Client/GestaltsSetNode',
+  gestaltsGestaltGetByNode: {
+    path: '/clientInterface.Client/GestaltsGestaltGetByNode',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.GestaltTrustMessage,
-    responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_clientInterface_GestaltTrustMessage,
-    requestDeserialize: deserialize_clientInterface_GestaltTrustMessage,
-    responseSerialize: serialize_clientInterface_EmptyMessage,
-    responseDeserialize: deserialize_clientInterface_EmptyMessage,
+    requestType: Client_pb.NodeMessage,
+    responseType: Client_pb.GestaltGraphMessage,
+    requestSerialize: serialize_clientInterface_NodeMessage,
+    requestDeserialize: deserialize_clientInterface_NodeMessage,
+    responseSerialize: serialize_clientInterface_GestaltGraphMessage,
+    responseDeserialize: deserialize_clientInterface_GestaltGraphMessage,
   },
-  gestaltsSetIdentity: {
-    path: '/clientInterface.Client/GestaltsSetIdentity',
+  gestaltsGestaltGetByIdentity: {
+    path: '/clientInterface.Client/GestaltsGestaltGetByIdentity',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.GestaltTrustMessage,
-    responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_clientInterface_GestaltTrustMessage,
-    requestDeserialize: deserialize_clientInterface_GestaltTrustMessage,
-    responseSerialize: serialize_clientInterface_EmptyMessage,
-    responseDeserialize: deserialize_clientInterface_EmptyMessage,
+    requestType: Client_pb.ProviderMessage,
+    responseType: Client_pb.GestaltGraphMessage,
+    requestSerialize: serialize_clientInterface_ProviderMessage,
+    requestDeserialize: deserialize_clientInterface_ProviderMessage,
+    responseSerialize: serialize_clientInterface_GestaltGraphMessage,
+    responseDeserialize: deserialize_clientInterface_GestaltGraphMessage,
   },
-  gestaltsDiscoverNode: {
-    path: '/clientInterface.Client/GestaltsDiscoverNode',
+  gestaltsDiscoveryByNode: {
+    path: '/clientInterface.Client/GestaltsDiscoveryByNode',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.NodeMessage,
@@ -1003,8 +981,8 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  gestaltsDiscoverIdentity: {
-    path: '/clientInterface.Client/GestaltsDiscoverIdentity',
+  gestaltsDiscoveryByIdentity: {
+    path: '/clientInterface.Client/GestaltsDiscoveryByIdentity',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -1014,8 +992,8 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  gestaltsGetActionsByNode: {
-    path: '/clientInterface.Client/GestaltsGetActionsByNode',
+  gestaltsActionsGetByNode: {
+    path: '/clientInterface.Client/GestaltsActionsGetByNode',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.NodeMessage,
@@ -1025,8 +1003,8 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_ActionsMessage,
     responseDeserialize: deserialize_clientInterface_ActionsMessage,
   },
-  gestaltsGetActionsByIdentity: {
-    path: '/clientInterface.Client/GestaltsGetActionsByIdentity',
+  gestaltsActionsGetByIdentity: {
+    path: '/clientInterface.Client/GestaltsActionsGetByIdentity',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.ProviderMessage,
@@ -1036,8 +1014,8 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_ActionsMessage,
     responseDeserialize: deserialize_clientInterface_ActionsMessage,
   },
-  gestaltsSetActionByNode: {
-    path: '/clientInterface.Client/GestaltsSetActionByNode',
+  gestaltsActionsSetByNode: {
+    path: '/clientInterface.Client/GestaltsActionsSetByNode',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SetActionsMessage,
@@ -1047,8 +1025,8 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  gestaltsSetActionByIdentity: {
-    path: '/clientInterface.Client/GestaltsSetActionByIdentity',
+  gestaltsActionsSetByIdentity: {
+    path: '/clientInterface.Client/GestaltsActionsSetByIdentity',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SetActionsMessage,
@@ -1058,8 +1036,8 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  gestaltsUnsetActionByNode: {
-    path: '/clientInterface.Client/GestaltsUnsetActionByNode',
+  gestaltsActionsUnsetByNode: {
+    path: '/clientInterface.Client/GestaltsActionsUnsetByNode',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SetActionsMessage,
@@ -1069,8 +1047,8 @@ gestaltsGetNode: {
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
-  gestaltsUnsetActionByIdentity: {
-    path: '/clientInterface.Client/GestaltsUnsetActionByIdentity',
+  gestaltsActionsUnsetByIdentity: {
+    path: '/clientInterface.Client/GestaltsActionsUnsetByIdentity',
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.SetActionsMessage,
@@ -1079,17 +1057,6 @@ gestaltsGetNode: {
     requestDeserialize: deserialize_clientInterface_SetActionsMessage,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
-  },
-  gestaltSync: {
-    path: '/clientInterface.Client/GestaltSync',
-    requestStream: true,
-    responseStream: true,
-    requestType: Client_pb.GestaltMessage,
-    responseType: Client_pb.GestaltMessage,
-    requestSerialize: serialize_clientInterface_GestaltMessage,
-    requestDeserialize: deserialize_clientInterface_GestaltMessage,
-    responseSerialize: serialize_clientInterface_GestaltMessage,
-    responseDeserialize: deserialize_clientInterface_GestaltMessage,
   },
   // Notifications
 notificationsSend: {

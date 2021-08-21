@@ -43,14 +43,11 @@ deleteSecret.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setName(vaultName);
+    vaultMessage.setVaultName(vaultName);
     secretMessage.setVault(vaultMessage);
-    secretMessage.setName(secretName);
+    secretMessage.setSecretName(secretName);
 
-    const pCall = grpcClient.vaultsDeleteSecret(
-      secretMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsDelete(secretMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -61,7 +58,7 @@ deleteSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()} successfully deleted`,
+            `Secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()} successfully deleted`,
           ],
         }),
       );
@@ -70,7 +67,7 @@ deleteSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to delete secret: ${secretMessage.getName()} in vault: ${vaultMessage.getId()}`,
+            `Failed to delete secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
           ],
         }),
       );

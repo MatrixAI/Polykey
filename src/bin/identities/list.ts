@@ -35,10 +35,7 @@ list.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const res = grpcClient.gestaltsList(
-      emptyMessage,
-      await client.session.createCallCredentials(),
-    );
+    const res = grpcClient.gestaltsGestaltList(emptyMessage);
     res.stream.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -63,10 +60,9 @@ list.action(async (options) => {
       }
       //Getting the permissions for the gestalt.
       const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName(newGestalt.nodes[0].id);
-      const actionsMessage = await grpcClient.gestaltsGetActionsByNode(
+      nodeMessage.setNodeId(newGestalt.nodes[0].id);
+      const actionsMessage = await grpcClient.gestaltsActionsGetByNode(
         nodeMessage,
-        await client.session.createCallCredentials(),
       );
       const actionList = actionsMessage.getActionList();
       if (actionList.length === 0) newGestalt.permissions = null;

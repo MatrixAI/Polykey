@@ -37,7 +37,7 @@ rename.action(async (options) => {
   const secretMessage = new clientPB.SecretMessage();
   const secretRenameMessage = new clientPB.SecretRenameMessage();
   secretMessage.setVault(vaultMessage);
-  secretRenameMessage.setOldsecret(secretMessage);
+  secretRenameMessage.setOldSecret(secretMessage);
 
   try {
     await client.start({});
@@ -49,16 +49,13 @@ rename.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setName(vaultName);
+    vaultMessage.setVaultName(vaultName);
 
-    secretMessage.setName(secretName);
+    secretMessage.setSecretName(secretName);
 
-    secretRenameMessage.setNewname(options.secretName);
+    secretRenameMessage.setNewName(options.secretName);
 
-    const pCall = grpcClient.vaultsRenameSecret(
-      secretRenameMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsRename(secretRenameMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -69,7 +66,7 @@ rename.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Renamed secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()} to ${secretRenameMessage.getNewname()}`,
+            `Renamed secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()} to ${secretRenameMessage.getNewName()}`,
           ],
         }),
       );
@@ -77,7 +74,7 @@ rename.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to renamed secret: ${vaultMessage.getName()}`],
+          data: [`Failed to renamed secret: ${vaultMessage.getVaultName()}`],
         }),
       );
     }

@@ -702,7 +702,7 @@ describe('VaultManager is', () => {
         serverPort: altServer.getPort(),
         tlsConfig: altRevTLSConfig,
       });
-    });
+    }, global.polykeyStartupTimeout * 2);
 
     afterEach(async () => {
       await revProxy.closeConnection(altHost, altPort);

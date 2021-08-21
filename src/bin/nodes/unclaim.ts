@@ -36,7 +36,7 @@ unclaim.action(async (node, options) => {
 
     const echoMessage = new clientPB.EchoMessage();
     echoMessage.setChallenge('Hello world!');
-    grpcClient.echo(echoMessage, await client.session.createCallCredentials());
+    grpcClient.echo(echoMessage);
 
     //Claiming the node.
     //FIXME: Placeholder, not currently supported.

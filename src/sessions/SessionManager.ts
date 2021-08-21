@@ -115,7 +115,7 @@ class SessionManager {
         [this.constructor.name],
         'privateKey',
       );
-      if (!privateKeyPem) {
+      if (privateKeyPem == null) {
         throw new sessionErrors.ErrorReadingPrivateKey();
       }
       return await sessionUtils.createSessionToken(
@@ -133,7 +133,7 @@ class SessionManager {
    */
   public async verifyMetadataToken(meta: grpc.Metadata) {
     const auth = meta.get('Authorization').pop();
-    if (!auth) {
+    if (auth == null) {
       throw new clientErrors.ErrorClientJWTTokenNotProvided();
     }
     const token = auth.toString().split(' ')[1];
@@ -158,7 +158,7 @@ class SessionManager {
         [this.constructor.name],
         'privateKey',
       );
-      if (!privateKeyPem) {
+      if (privateKeyPem == null) {
         throw new sessionErrors.ErrorReadingPrivateKey();
       }
       const privateKey = keyUtils.privateKeyFromPem(privateKeyPem);

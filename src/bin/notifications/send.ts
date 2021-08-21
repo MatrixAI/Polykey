@@ -40,10 +40,7 @@ send.action(async (nodeId, message, options) => {
     notificationInfoMessage.setReceiverId(nodeId);
     notificationInfoMessage.setMessage(message);
 
-    await grpcClient.notificationsSend(
-      notificationInfoMessage,
-      await client.session.createCallCredentials(),
-    );
+    await grpcClient.notificationsSend(notificationInfoMessage);
 
     process.stdout.write(
       outputFormatter({

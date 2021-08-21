@@ -156,7 +156,7 @@ class GestaltGraph {
         const queue = [gK];
         while (true) {
           const vertex = queue.shift();
-          if (!vertex) {
+          if (vertex == null) {
             gestalts.push(gestalt);
             break;
           }
@@ -255,7 +255,7 @@ class GestaltGraph {
       identityKey,
     );
     const ops: Array<DBOp> = [];
-    if (!identityKeyKeys) {
+    if (identityKeyKeys == null) {
       return ops;
     }
     ops.push({
@@ -867,7 +867,7 @@ class GestaltGraph {
           nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
           break;
         }
-        if (!nodeId) {
+        if (nodeId == null) {
           return;
         }
         const perm = await this.acl.getNodePerm(nodeId);
@@ -926,7 +926,7 @@ class GestaltGraph {
           break;
         }
         // if there are no linked nodes, this cannot proceed
-        if (!nodeId) {
+        if (nodeId == null) {
           throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         }
         await this.acl.setNodeAction(nodeId, action);
@@ -981,7 +981,7 @@ class GestaltGraph {
           break;
         }
         // if there are no linked nodes, this cannot proceed
-        if (!nodeId) {
+        if (nodeId == null) {
           throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         }
         await this.acl.unsetNodeAction(nodeId, action);
@@ -1004,14 +1004,14 @@ class GestaltGraph {
       const visited = new Set<GestaltKey>();
       while (true) {
         const vertex = queue.shift();
-        if (!vertex) {
+        if (vertex == null) {
           break;
         }
         const vertexKeys = await this.db.get<GestaltKeySet>(
           this.graphMatrixDbDomain,
           vertex,
         );
-        if (!vertexKeys) {
+        if (vertexKeys == null) {
           return;
         }
         const gId = gestaltsUtils.ungestaltKey(vertex);
@@ -1057,14 +1057,14 @@ class GestaltGraph {
     }
     while (true) {
       const vertex = queue.shift();
-      if (!vertex) {
+      if (vertex == null) {
         break;
       }
       const vertexKeys = await this.db.get<GestaltKeySet>(
         this.graphMatrixDbDomain,
         vertex,
       );
-      if (!vertexKeys) {
+      if (vertexKeys == null) {
         break;
       }
       const gId = gestaltsUtils.ungestaltKey(vertex);

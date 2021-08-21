@@ -9,7 +9,7 @@ service Client {
   rpc AgentStop(EmptyMessage) returns (EmptyMessage) {};
 
   // Session
-  rpc SessionUnlock (EmptyMessage) returns (SessionTokenMessage) {};
+  rpc SessionUnlock (PasswordMessage) returns (SessionTokenMessage) {};
   rpc SessionRefresh (EmptyMessage) returns (SessionTokenMessage) {};
   rpc SessionLockAll (EmptyMessage) returns (StatusMessage) {};
 
@@ -20,64 +20,60 @@ service Client {
   rpc NodesFind(NodeMessage) returns (NodeAddressMessage) {};
 
   // Keys
-  rpc KeysRootKeyPair (EmptyMessage) returns (KeyPairMessage) {};
-  rpc KeysResetKeyPair (KeyMessage) returns (EmptyMessage) {};
-  rpc KeysRenewKeyPair (KeyMessage) returns (EmptyMessage) {};
+  rpc KeysKeyPairRoot (EmptyMessage) returns (KeyPairMessage) {};
+  rpc KeysKeyPairReset (KeyMessage) returns (EmptyMessage) {};
+  rpc KeysKeyPairRenew (KeyMessage) returns (EmptyMessage) {};
   rpc KeysEncrypt (CryptoMessage) returns (CryptoMessage) {};
   rpc KeysDecrypt (CryptoMessage) returns (CryptoMessage) {};
   rpc KeysSign (CryptoMessage) returns (CryptoMessage) {};
   rpc KeysVerify (CryptoMessage) returns (StatusMessage) {};
-  rpc KeysChangePassword (PasswordMessage) returns (EmptyMessage) {};
-  rpc CertsGet (EmptyMessage) returns (CertificateMessage) {};
-  rpc CertsChainGet (EmptyMessage) returns (stream CertificateMessage) {};
+  rpc KeysPasswordChange (PasswordMessage) returns (EmptyMessage) {};
+  rpc KeysCertsGet (EmptyMessage) returns (CertificateMessage) {};
+  rpc KeysCertsChainGet (EmptyMessage) returns (stream CertificateMessage) {};
 
   // Vaults
   rpc VaultsList(EmptyMessage) returns (stream VaultListMessage) {};
   rpc VaultsCreate(VaultMessage) returns (VaultMessage) {};
   rpc VaultsRename(VaultRenameMessage) returns (VaultMessage) {};
   rpc VaultsDelete(VaultMessage) returns (StatusMessage) {};
-  rpc VaultsListSecrets(VaultMessage) returns (stream SecretMessage) {};
-  rpc VaultsMkdir(VaultMkdirMessage) returns (StatusMessage) {};
-  rpc VaultsStat(VaultMessage) returns (StatMessage) {};
   rpc VaultsPull(VaultPullMessage) returns (StatusMessage) {};
   rpc VaultsClone(VaultCloneMessage) returns (StatusMessage) {};
   rpc VaultsScan(NodeMessage) returns (stream VaultListMessage) {};
-  rpc VaultsDeleteSecret(SecretMessage) returns (StatusMessage) {};
-  rpc VaultsEditSecret(SecretEditMessage) returns (StatusMessage) {};
-  rpc VaultsGetSecret(SecretMessage) returns (SecretMessage) {};
-  rpc VaultsRenameSecret(SecretRenameMessage) returns (StatusMessage) {};
-  rpc VaultsNewSecret(SecretMessage) returns (StatusMessage) {};
-  rpc VaultsNewDirSecret(SecretDirectoryMessage) returns (StatusMessage) {};
-  rpc VaultsSetPerms(SetVaultPermMessage) returns (StatusMessage) {};
-  rpc VaultsUnsetPerms(UnsetVaultPermMessage) returns (StatusMessage) {}
+  rpc VaultsSecretsList(VaultMessage) returns (stream SecretMessage) {};
+  rpc VaultsSecretsMkdir(VaultMkdirMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsStat(VaultMessage) returns (StatMessage) {};
+  rpc VaultsSecretsDelete(SecretMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsEdit(SecretEditMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsGet(SecretMessage) returns (SecretMessage) {};
+  rpc VaultsSecretsRename(SecretRenameMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsNew(SecretMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsNewDir(SecretDirectoryMessage) returns (StatusMessage) {};
+  rpc VaultsPermissionsSet(SetVaultPermMessage) returns (StatusMessage) {};
+  rpc VaultsPermissionsUnset(UnsetVaultPermMessage) returns (StatusMessage) {}
   rpc VaultsPermissions(GetVaultPermMessage) returns (stream PermissionMessage) {};
 
   // Identities
   rpc IdentitiesAuthenticate(ProviderMessage) returns (stream ProviderMessage) {};
-  rpc IdentitiesPutToken(TokenSpecificMessage) returns (EmptyMessage) {};
-  rpc IdentitiesGetToken(ProviderMessage) returns (TokenMessage) {};
-  rpc IdentitiesDeleteToken(ProviderMessage) returns (EmptyMessage) {};
-  rpc IdentitiesGetProviders(EmptyMessage) returns (ProviderMessage) {};
-  rpc IdentitiesGetConnectedInfos(ProviderSearchMessage) returns (stream IdentityInfoMessage) {}; // Returns a list of connected identities.
-  rpc IdentitiesGetInfo(ProviderMessage) returns (ProviderMessage) {}; // Gets current Gestalt probably? placeholder, used to return IdentityInfo
-  rpc IdentitiesAugmentKeynode(ProviderMessage) returns (EmptyMessage) {}; //Augmenting, throws error if fail.
+  rpc IdentitiesTokenPut(TokenSpecificMessage) returns (EmptyMessage) {};
+  rpc IdentitiesTokenGet(ProviderMessage) returns (TokenMessage) {};
+  rpc IdentitiesTokenDelete(ProviderMessage) returns (EmptyMessage) {};
+  rpc IdentitiesProvidersList(EmptyMessage) returns (ProviderMessage) {};
+  rpc IdentitiesInfoGet(ProviderMessage) returns (ProviderMessage) {};
+  rpc IdentitiesInfoGetConnected(ProviderSearchMessage) returns (stream IdentityInfoMessage) {};
+  rpc IdentitiesClaim(ProviderMessage) returns (EmptyMessage) {};
 
   // Gestalts
-  rpc GestaltsGetNode(NodeMessage) returns (GestaltMessage) {};  //Returns gestalt from node id
-  rpc GestaltsGetIdentity(ProviderMessage) returns (GestaltMessage) {}; //Returns gestalt from identity id
-  rpc GestaltsList(EmptyMessage) returns (stream GestaltMessage) {};  //list of all known gestalts
-  rpc GestaltsSetNode(GestaltTrustMessage) returns (EmptyMessage) {}; // creating a link betweeen nodes
-  rpc GestaltsSetIdentity(GestaltTrustMessage) returns (EmptyMessage) {}; // creating a link between identity and node?
-  rpc GestaltsDiscoverNode(NodeMessage) returns (EmptyMessage) {}; //finds 3rd party gestalt from nodeID
-  rpc GestaltsDiscoverIdentity(ProviderMessage) returns (EmptyMessage) {}; // Finds 3rd party gestalt from identity
-  rpc GestaltsGetActionsByNode(NodeMessage) returns (ActionsMessage) {};
-  rpc GestaltsGetActionsByIdentity(ProviderMessage) returns (ActionsMessage) {};
-  rpc GestaltsSetActionByNode(SetActionsMessage) returns (EmptyMessage) {};
-  rpc GestaltsSetActionByIdentity(SetActionsMessage) returns (EmptyMessage) {};
-  rpc GestaltsUnsetActionByNode(SetActionsMessage) returns (EmptyMessage) {};
-  rpc GestaltsUnsetActionByIdentity(SetActionsMessage) returns (EmptyMessage) {};
-
-  rpc GestaltSync(stream GestaltMessage) returns (stream GestaltMessage) {};
+  rpc GestaltsGestaltList(EmptyMessage) returns (stream GestaltMessage) {};
+  rpc GestaltsGestaltGetByNode(NodeMessage) returns (GestaltGraphMessage) {};
+  rpc GestaltsGestaltGetByIdentity(ProviderMessage) returns (GestaltGraphMessage) {};
+  rpc GestaltsDiscoveryByNode(NodeMessage) returns (EmptyMessage) {};
+  rpc GestaltsDiscoveryByIdentity(ProviderMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsGetByNode(NodeMessage) returns (ActionsMessage) {};
+  rpc GestaltsActionsGetByIdentity(ProviderMessage) returns (ActionsMessage) {};
+  rpc GestaltsActionsSetByNode(SetActionsMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsSetByIdentity(SetActionsMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsUnsetByNode(SetActionsMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsUnsetByIdentity(SetActionsMessage) returns (EmptyMessage) {};
 
   // Notifications
   rpc NotificationsSend(NotificationInfoMessage) returns (EmptyMessage) {};
@@ -97,6 +93,13 @@ message EchoMessage {
 
 // Session
 
+message PasswordMessage {
+  oneof password_or_file{
+    string password = 1;
+    string password_file = 2;
+  }
+}
+
 message SessionTokenMessage {
   string token = 1;
 }
@@ -104,25 +107,25 @@ message SessionTokenMessage {
 // Vaults
 
 message VaultListMessage {
-  string name = 1;
-  string id = 2;
+  string vault_name = 1;
+  string vault_id = 2;
 }
 
 message VaultMessage {
-  oneof nameOrId {
-    string name = 1;
-    string id = 2;
+  oneof name_or_Id {
+    string vault_name = 1;
+    string vault_id = 2;
   }
 }
 
 message VaultRenameMessage {
   VaultMessage vault = 1;
-  string newName = 2;
+  string new_name = 2;
 }
 
 message VaultMkdirMessage {
   VaultMessage vault = 1;
-  string dirName = 2;
+  string dir_name = 2;
 }
 
 message VaultPullMessage {
@@ -136,14 +139,14 @@ message VaultCloneMessage {
 }
 
 message SecretRenameMessage {
-  SecretMessage oldSecret = 1;
-  string newName = 2;
+  SecretMessage old_secret = 1;
+  string new_name = 2;
 }
 
 message SecretMessage {
   VaultMessage vault = 1;
-  string name = 2;
-  string content = 3;
+  string secret_name = 2;
+  string secret_content = 3;
 }
 
 message SecretEditMessage {
@@ -152,7 +155,7 @@ message SecretEditMessage {
 
 message SecretDirectoryMessage {
   VaultMessage vault = 1;
-  string secretDirectory = 2;
+  string secret_directory = 2;
 }
 
 message StatMessage {
@@ -175,18 +178,18 @@ message GetVaultPermMessage {
 }
 
 message PermissionMessage {
-  string id = 1;
+  string node_id = 1;
   string action = 2;
 }
 
 // Nodes
 
 message NodeMessage {
-  string name = 1;
+  string node_id = 1;
 }
 
 message NodeAddressMessage {
-  string id = 1;
+  string node_id = 1;
   string host = 2;
   int32 port = 3;
 }
@@ -212,14 +215,11 @@ message CertificateMessage {
   string cert = 1;
 }
 
-message PasswordMessage {
-  string password = 1;
-}
 
 // Identities
 
 message ProviderMessage {
-  string id = 1;
+  string provider_id = 1;
   string message = 2;
 }
 
@@ -248,6 +248,10 @@ message IdentityInfoMessage {
 
 message GestaltMessage {
   string name = 1;
+}
+
+message GestaltGraphMessage {
+  string gestalt_graph = 1;
 }
 
 message GestaltTrustMessage {

@@ -1,10 +1,9 @@
-import type { NodeManager } from '../nodes';
 import type { Discovery } from '../discovery';
 import type { GestaltGraph } from '../gestalts';
 import type { SessionManager } from '../sessions';
-import type { NodeId, NodeInfo } from '../nodes/types';
+import type { NodeId } from '../nodes/types';
 import type { Gestalt, GestaltAction } from '../gestalts/types';
-import type { IdentityId, IdentityInfo, ProviderId } from '../identities/types';
+import type { IdentityId, ProviderId } from '../identities/types';
 
 import * as utils from './utils';
 import * as errors from '../errors';
@@ -17,21 +16,22 @@ import * as clientPB from '../proto/js/Client_pb';
 
 const createGestaltsRPC = ({
   gestaltGraph,
-  nodeManager,
   sessionManager,
   discovery,
 }: {
   gestaltGraph: GestaltGraph;
-  nodeManager: NodeManager;
   sessionManager: SessionManager;
   discovery: Discovery;
 }) => {
   return {
-    gestaltsGetNode: async (
-      call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.GestaltMessage>,
-      callback: grpc.sendUnaryData<clientPB.GestaltMessage>,
+    gestaltsGestaltGetByNode: async (
+      call: grpc.ServerUnaryCall<
+        clientPB.NodeMessage,
+        clientPB.GestaltGraphMessage
+      >,
+      callback: grpc.sendUnaryData<clientPB.GestaltGraphMessage>,
     ): Promise<void> => {
-      const response = new clientPB.GestaltMessage();
+      const response = new clientPB.GestaltGraphMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -39,24 +39,24 @@ const createGestaltsRPC = ({
         );
         call.sendMetadata(responseMeta);
         const gestalt = await gestaltGraph.getGestaltByNode(
-          call.request.getName() as NodeId,
+          call.request.getNodeId() as NodeId,
         );
-        if (gestalt) {
-          response.setName(JSON.stringify(gestalt));
+        if (gestalt != null) {
+          response.setGestaltGraph(JSON.stringify(gestalt));
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
-    gestaltsGetIdentity: async (
+    gestaltsGestaltGetByIdentity: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
-        clientPB.GestaltMessage
+        clientPB.GestaltGraphMessage
       >,
-      callback: grpc.sendUnaryData<clientPB.GestaltMessage>,
+      callback: grpc.sendUnaryData<clientPB.GestaltGraphMessage>,
     ): Promise<void> => {
-      const response = new clientPB.GestaltMessage();
+      const response = new clientPB.GestaltGraphMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -64,18 +64,18 @@ const createGestaltsRPC = ({
         );
         call.sendMetadata(responseMeta);
         const gestalt = await gestaltGraph.getGestaltByIdentity(
-          call.request.getId() as ProviderId,
+          call.request.getProviderId() as ProviderId,
           call.request.getMessage() as IdentityId,
         );
-        if (gestalt) {
-          response.setName(JSON.stringify(gestalt));
+        if (gestalt != null) {
+          response.setGestaltGraph(JSON.stringify(gestalt));
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
-    gestaltsList: async (
+    gestaltsGestaltList: async (
       call: grpc.ServerWritableStream<
         clientPB.EmptyMessage,
         clientPB.GestaltMessage
@@ -100,88 +100,7 @@ const createGestaltsRPC = ({
         await genWritable.throw(err);
       }
     },
-    gestaltsSetNode: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.GestaltTrustMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
-    ): Promise<void> => {
-      const info = call.request;
-      try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
-        // constructing node info:
-        const nodeInfo: NodeInfo = {
-          id: info.getName() as NodeId,
-          chain: {},
-        };
-        const nodeId = nodeManager.getNodeId();
-        const keyNodeInfo: NodeInfo = {
-          id: nodeId,
-          chain: {},
-        };
-        if (info.getSet()) {
-          //linking to keynode.
-          await gestaltGraph.setNode(nodeInfo);
-          await gestaltGraph.linkNodeAndNode(nodeInfo, keyNodeInfo);
-        } else {
-          //Unlinking from keynode.
-          await gestaltGraph.unlinkNodeAndNode(nodeId, nodeInfo.id);
-        }
-      } catch (err) {
-        callback(grpcUtils.fromError(err), null);
-      }
-      const emptyMessage = new clientPB.EmptyMessage();
-      callback(null, emptyMessage);
-    },
-    gestaltsSetIdentity: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.GestaltTrustMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
-    ): Promise<void> => {
-      const info = call.request;
-      try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
-        //constructing identity info.
-        const identityInfo: IdentityInfo = {
-          providerId: info.getProvider() as ProviderId,
-          identityId: info.getName() as IdentityId,
-          claims: {},
-        };
-        const nodeId = nodeManager.getNodeId();
-        if (info.getSet()) {
-          //linking to keynode.
-          await gestaltGraph.setIdentity(identityInfo);
-          const nodeInfo: NodeInfo = {
-            id: nodeId,
-            chain: {},
-          };
-          await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
-        } else {
-          //Unlinking from keynode.
-          await gestaltGraph.unlinkNodeAndIdentity(
-            nodeId,
-            identityInfo.providerId,
-            identityInfo.identityId,
-          );
-        }
-      } catch (err) {
-        callback(grpcUtils.fromError(err), null);
-      }
-      const emptyMessage = new clientPB.EmptyMessage();
-      callback(null, emptyMessage);
-    },
-    gestaltsDiscoverNode: async (
+    gestaltsDiscoveryByNode: async (
       call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.EmptyMessage>,
       callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
     ): Promise<void> => {
@@ -194,7 +113,7 @@ const createGestaltsRPC = ({
         );
         call.sendMetadata(responseMeta);
         //constructing identity info.
-        const gen = discovery.discoverGestaltByNode(info.getName() as NodeId);
+        const gen = discovery.discoverGestaltByNode(info.getNodeId() as NodeId);
         for await (const _ of gen) {
           // empty
         }
@@ -203,7 +122,7 @@ const createGestaltsRPC = ({
       }
       callback(null, emptyMessage);
     },
-    gestaltsDiscoverIdentity: async (
+    gestaltsDiscoveryByIdentity: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.EmptyMessage
@@ -220,7 +139,7 @@ const createGestaltsRPC = ({
         call.sendMetadata(responseMeta);
         //constructing identity info.
         const gen = discovery.discoverGestaltByIdentity(
-          info.getId() as ProviderId,
+          info.getProviderId() as ProviderId,
           info.getMessage() as IdentityId,
         );
         for await (const _ of gen) {
@@ -231,7 +150,7 @@ const createGestaltsRPC = ({
       }
       callback(null, emptyMessage);
     },
-    gestaltsGetActionsByNode: async (
+    gestaltsActionsGetByNode: async (
       call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.ActionsMessage>,
       callback: grpc.sendUnaryData<clientPB.ActionsMessage>,
     ): Promise<void> => {
@@ -244,9 +163,9 @@ const createGestaltsRPC = ({
         );
         call.sendMetadata(responseMeta);
         const result = await gestaltGraph.getGestaltActionsByNode(
-          info.getName() as NodeId,
+          info.getNodeId() as NodeId,
         );
-        if (result == undefined) {
+        if (result == null) {
           // Node doesn't exist, so no permissions. might throw error instead TBD.
           response.setActionList([]);
         } else {
@@ -259,7 +178,7 @@ const createGestaltsRPC = ({
       }
       callback(null, response);
     },
-    gestaltsGetActionsByIdentity: async (
+    gestaltsActionsGetByIdentity: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.ActionsMessage
@@ -274,13 +193,13 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const providerId = info.getId() as ProviderId;
+        const providerId = info.getProviderId() as ProviderId;
         const identityId = info.getMessage() as IdentityId;
         const result = await gestaltGraph.getGestaltActionsByIdentity(
           providerId,
           identityId,
         );
-        if (result == undefined) {
+        if (result == null) {
           // Node doesn't exist, so no permissions. might throw error instead TBD.
           response.setActionList([]);
         } else {
@@ -293,7 +212,7 @@ const createGestaltsRPC = ({
       }
       callback(null, response);
     },
-    gestaltsSetActionByNode: async (
+    gestaltsActionsSetByNode: async (
       call: grpc.ServerUnaryCall<
         clientPB.SetActionsMessage,
         clientPB.EmptyMessage
@@ -324,14 +243,14 @@ const createGestaltsRPC = ({
         //Setting the action.
         const action = info.getAction() as GestaltAction;
         checkGestaltAction(action);
-        const nodeId = info.getNode()?.getName() as NodeId;
+        const nodeId = info.getNode()?.getNodeId() as NodeId;
         await gestaltGraph.setGestaltActionByNode(nodeId, action);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
       callback(null, response);
     },
-    gestaltsSetActionByIdentity: async (
+    gestaltsActionsSetByIdentity: async (
       call: grpc.ServerUnaryCall<
         clientPB.SetActionsMessage,
         clientPB.EmptyMessage
@@ -362,7 +281,7 @@ const createGestaltsRPC = ({
         //Setting the action.
         const action = info.getAction() as GestaltAction;
         checkGestaltAction(action);
-        const providerId = info.getIdentity()?.getId() as ProviderId;
+        const providerId = info.getIdentity()?.getProviderId() as ProviderId;
         const identityId = info.getIdentity()?.getMessage() as IdentityId;
         await gestaltGraph.setGestaltActionByIdentity(
           providerId,
@@ -374,7 +293,7 @@ const createGestaltsRPC = ({
       }
       callback(null, response);
     },
-    gestaltsUnsetActionByNode: async (
+    gestaltsActionsUnsetByNode: async (
       call: grpc.ServerUnaryCall<
         clientPB.SetActionsMessage,
         clientPB.EmptyMessage
@@ -405,14 +324,14 @@ const createGestaltsRPC = ({
         //Setting the action.
         const action = info.getAction() as GestaltAction;
         checkGestaltAction(action);
-        const nodeId = info.getNode()?.getName() as NodeId;
+        const nodeId = info.getNode()?.getNodeId() as NodeId;
         await gestaltGraph.unsetGestaltActionByNode(nodeId, action);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
       callback(null, response);
     },
-    gestaltsUnsetActionByIdentity: async (
+    gestaltsActionsUnsetByIdentity: async (
       call: grpc.ServerUnaryCall<
         clientPB.SetActionsMessage,
         clientPB.EmptyMessage
@@ -443,7 +362,7 @@ const createGestaltsRPC = ({
         //Setting the action.
         const action = info.getAction() as GestaltAction;
         checkGestaltAction(action);
-        const providerId = info.getIdentity()?.getId() as ProviderId;
+        const providerId = info.getIdentity()?.getProviderId() as ProviderId;
         const identityId = info.getIdentity()?.getMessage() as IdentityId;
         await gestaltGraph.unsetGestaltActionByIdentity(
           providerId,

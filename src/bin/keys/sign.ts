@@ -41,10 +41,7 @@ sign.action(async (options) => {
 
     cryptoMessage.setData(data);
 
-    const pCall = grpcClient.keysSign(
-      cryptoMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysSign(cryptoMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

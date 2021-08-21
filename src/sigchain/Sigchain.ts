@@ -180,7 +180,7 @@ class Sigchain {
   }): Promise<ClaimEncoded> {
     // Get kid from the claim data
     let kid: NodeId;
-    if (data.type == 'node') {
+    if (data.type === 'node') {
       kid = data.node1;
     } else {
       kid = data.node;
@@ -206,7 +206,7 @@ class Sigchain {
       const newSequenceNumber = prevSequenceNumber + 1;
       // 2. Hash of previous claim:
       let hashPrevious;
-      if (prevSequenceNumber == 0) {
+      if (prevSequenceNumber === 0) {
         // If no other claims, then set as null
         hashPrevious = null;
       } else {
@@ -273,7 +273,7 @@ class Sigchain {
         const data = (o as any).value;
         const claim = this.db.unserializeDecrypt<ClaimEncoded>(data);
         const decodedClaim = claimsUtils.decodeClaim(claim);
-        if (decodedClaim.payload.data.type == claimType) {
+        if (decodedClaim.payload.data.type === claimType) {
           relevantClaims.push(claim);
         }
       }
@@ -294,7 +294,7 @@ class Sigchain {
       );
       // Should never be reached: getSigchainDb() has a check whether sigchain
       // has been started (where the sequence number is initialised)
-      if (sequenceNumber == undefined) {
+      if (sequenceNumber === undefined) {
         throw new sigchainErrors.ErrorSigchainSequenceNumUndefined();
       }
       return sequenceNumber;
@@ -315,7 +315,7 @@ class Sigchain {
         this.sigchainClaimsDbDomain,
         claimsUtils.numToLexiString(sequenceNumber) as ClaimId,
       );
-      if (claim == undefined) {
+      if (claim == null) {
         throw new sigchainErrors.ErrorSigchainClaimUndefined();
       }
       return claim;

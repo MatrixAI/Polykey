@@ -408,7 +408,7 @@ class ForwardProxy {
     const bearerAuthToken = networkUtils.toAuthToken(this.authToken);
     return (
       request.headers['proxy-authorization'] !== undefined &&
-      request.headers['proxy-authorization'] == bearerAuthToken
+      request.headers['proxy-authorization'] === bearerAuthToken
     );
   }
 

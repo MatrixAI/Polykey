@@ -41,10 +41,7 @@ decrypt.action(async (options) => {
 
     cryptoMessage.setData(cipherText);
 
-    const pCall = grpcClient.keysDecrypt(
-      cryptoMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysDecrypt(cryptoMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

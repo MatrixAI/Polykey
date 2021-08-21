@@ -86,6 +86,9 @@ class PolykeyClient {
       throw new ErrorPolykey('Could not parse Polykey Lockfile.');
     }
 
+    // Attempt to read token from fs and start session.
+    await this.session.start();
+
     // create a new GRPCClientClient
     this._grpcClient = new GRPCClientClient({
       nodeId: lock.nodeId as NodeId,
@@ -96,6 +99,7 @@ class PolykeyClient {
 
     await this.grpcClient.start({
       timeout: timeout ?? 30000,
+      session: this.session,
     });
 
     if (!host && !lock.host) {
@@ -106,9 +110,6 @@ class PolykeyClient {
     }
 
     await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
-
-    // Attempt to read token from fs and start session.
-    await this.session.start();
   }
 
   public async stop() {

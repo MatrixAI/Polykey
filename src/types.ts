@@ -69,6 +69,11 @@ type LockConfig = {
   clientPort?: number | undefined;
 } & POJO;
 
+type Initial<T extends any[]> = T extends [...infer Head, any] ? Head : any[];
+type InitialParameters<T extends (...args: any) => any> = Initial<
+  Parameters<T>
+>;
+
 export {
   POJO,
   Opaque,
@@ -78,4 +83,6 @@ export {
   Timer,
   FileSystem,
   LockConfig,
+  Initial,
+  InitialParameters,
 };

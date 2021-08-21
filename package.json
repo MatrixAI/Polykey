@@ -61,7 +61,6 @@
     "postbuild": "cp -fR src/proto dist",
     "ts-node": "ts-node -r tsconfig-paths/register",
     "test": "jest",
-    "test-sequential": "jest --runInBand",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
     "docs": "typedoc --out ./docs src && touch ./docs/.nojekyll",

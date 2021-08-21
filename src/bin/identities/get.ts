@@ -40,16 +40,13 @@ get.action(async (id, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    let res: clientPB.GestaltMessage;
+    let res: clientPB.GestaltGraphMessage;
 
     if (nodeId) {
       //getting from node.
       const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName(nodeId);
-      const pCall = grpcClient.gestaltsGetNode(
-        nodeMessage,
-        await client.session.createCallCredentials(),
-      );
+      nodeMessage.setNodeId(nodeId);
+      const pCall = grpcClient.gestaltsGestaltGetByNode(nodeMessage);
       pCall.call.on('metadata', (meta) => {
         clientUtils.refreshSession(meta, client.session);
       });
@@ -57,18 +54,15 @@ get.action(async (id, options) => {
     } else {
       //Getting from identity.
       const providerMessage = new clientPB.ProviderMessage();
-      providerMessage.setId(providerId!);
+      providerMessage.setProviderId(providerId!);
       providerMessage.setMessage(identityId!);
-      const pCall = grpcClient.gestaltsGetIdentitiy(
-        providerMessage,
-        await client.session.createCallCredentials(),
-      );
+      const pCall = grpcClient.gestaltsGestaltGetByIdentity(providerMessage);
       pCall.call.on('metadata', (meta) => {
         clientUtils.refreshSession(meta, client.session);
       });
       res = await pCall;
     }
-    const gestalt = JSON.parse(res.getName());
+    const gestalt = JSON.parse(res.getGestaltGraph());
     let output: any = gestalt;
 
     if (options.format !== 'json') {

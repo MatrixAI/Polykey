@@ -30,16 +30,13 @@ deleteVault.action(async (options) => {
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setName(options.vaultName);
+  vaultMessage.setVaultName(options.vaultName);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.vaultsDelete(
-      vaultMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsDelete(vaultMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -49,14 +46,14 @@ deleteVault.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Vault: ${vaultMessage.getId()} deleted successfully`],
+          data: [`Vault: ${vaultMessage.getVaultId()} deleted successfully`],
         }),
       );
     } else {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to delete vault: ${vaultMessage.getId()}`],
+          data: [`Failed to delete vault: ${vaultMessage.getVaultId()}`],
         }),
       );
     }

@@ -12,6 +12,8 @@ import * as grpcErrors from './errors';
 import { utils as keysUtils } from '../keys';
 import { utils as networkUtils, errors as networkErrors } from '../network';
 import { promisify } from '../utils';
+import * as grpc from '@grpc/grpc-js';
+import { Session } from '../sessions';
 
 abstract class GRPCClient<T extends Client> {
   public readonly nodeId: NodeId;
@@ -57,6 +59,8 @@ abstract class GRPCClient<T extends Client> {
   public async start({
     clientConstructor,
     tlsConfig,
+    secure,
+    session,
     timeout = Infinity,
   }: {
     clientConstructor: new (
@@ -65,6 +69,8 @@ abstract class GRPCClient<T extends Client> {
       options?: ClientOptions,
     ) => T;
     tlsConfig?: TLSConfig;
+    secure?: boolean;
+    session?: Session;
     timeout?: number;
   }): Promise<void> {
     if (this._started) {
@@ -74,13 +80,33 @@ abstract class GRPCClient<T extends Client> {
     this.logger.info(`Starting GRPC Client connecting to ${address}`);
     let clientCredentials;
     if (tlsConfig == null) {
-      clientCredentials = grpcUtils.clientInsecureCredentials();
+      clientCredentials = grpc.ChannelCredentials.createInsecure();
+      if (secure) {
+        // Creaing secure SSL credentials.
+        clientCredentials = grpc.ChannelCredentials.createSsl();
+        // @ts-ignore hack for undocumented property
+        const connectionOptions = clientCredentials.connectionOptions;
+        // disable default certificate path validation logic
+        // polykey has custom certificate path validation logic
+        connectionOptions['rejectUnauthorized'] = false;
+      }
     } else {
       clientCredentials = grpcUtils.clientSecureCredentials(
         tlsConfig.keyPrivatePem,
         tlsConfig.certChainPem,
       );
     }
+    //Add on call credentials
+    if (session != null) {
+      const callCredentials = grpc.credentials.createFromMetadataGenerator(
+        session.sessionMetadataGenerator.bind(session),
+      );
+      clientCredentials = grpc.credentials.combineChannelCredentials(
+        clientCredentials,
+        callCredentials,
+      );
+    }
+
     const clientOptions: ClientOptions = {
       // prevents complaints with having an ip address as the server name
       'grpc.ssl_target_name_override': this.nodeId,
