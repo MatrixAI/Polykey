@@ -26,6 +26,8 @@ import { IAgentServer } from './proto/js/Agent_grpc_pb';
 import { IClientServer } from './proto/js/Client_grpc_pb';
 import { createAgentService, AgentService } from './agent';
 import { createClientService, ClientService } from './client';
+import { GithubProvider } from './identities/providers';
+import config from './config';
 
 class Polykey {
   public readonly nodePath: string;
@@ -240,6 +242,13 @@ class Polykey {
       ],
       logger: this.logger,
     });
+
+    // Registering providers.
+    const githubProvider = new GithubProvider({
+      clientId: config.providers['github.com'].clientId,
+      logger: this.logger.getChild('GithubProvider'),
+    });
+    this.identities.registerProvider(githubProvider);
   }
 
   /**

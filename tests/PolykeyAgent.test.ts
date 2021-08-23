@@ -4,6 +4,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as utils from '@/utils';
+import config from '@/config';
 
 describe('Polykey', () => {
   const logger = new Logger('PolykeyAgent Test', LogLevel.WARN, [
@@ -55,5 +56,17 @@ describe('Polykey', () => {
     expect(nodePathContents).toContain('nodes');
     expect(nodePathContents).toContain('identities');
     await fs.promises.rm(dataDir, { force: true, recursive: true });
+  });
+  test('GithubProvider is registered', async () => {
+    const providerId = 'github.com';
+    const nodePath = `${dataDir}/polykey`;
+    const pk = new PolykeyAgent({ nodePath, logger });
+    const providers = pk.identities.getProviders();
+    // exists
+    expect(providers[providerId]).toBeTruthy();
+    // matches clientID in config.
+    expect(providers[providerId].clientId).toEqual(
+      config.providers[providerId].clientId,
+    );
   });
 });
