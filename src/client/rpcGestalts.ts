@@ -10,7 +10,7 @@ import * as utils from './utils';
 import * as errors from '../errors';
 import * as grpc from '@grpc/grpc-js';
 
-import { checkGestaltAction, validGestaltAction } from '../gestalts/utils';
+import { checkGestaltAction } from '../gestalts/utils';
 
 import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
@@ -195,7 +195,8 @@ const createGestaltsRPC = ({
         call.sendMetadata(responseMeta);
         //constructing identity info.
         const gen = discovery.discoverGestaltByNode(info.getName() as NodeId);
-        for await (const val of gen) {
+        for await (const _ of gen) {
+          // empty
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -222,7 +223,8 @@ const createGestaltsRPC = ({
           info.getId() as ProviderId,
           info.getMessage() as IdentityId,
         );
-        for await (const val of gen) {
+        for await (const _ of gen) {
+          // empty
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), null);

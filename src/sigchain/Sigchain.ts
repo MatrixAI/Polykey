@@ -321,6 +321,18 @@ class Sigchain {
       return claim;
     });
   }
+
+  public async clearDB() {
+    this.sigchainDb.clear();
+
+    await this._transaction(async () => {
+      await this.db.put(
+        this.sigchainMetadataDbDomain,
+        this.sequenceNumberKey,
+        0,
+      );
+    });
+  }
 }
 
 export default Sigchain;

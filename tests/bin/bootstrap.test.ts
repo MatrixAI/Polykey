@@ -6,11 +6,11 @@ import { checkKeynodeState } from '@/bootstrap';
 
 import * as utils from './utils';
 
-let dataDir: string;
-let passwordFile: string;
-let nodePath: string;
-
 describe('CLI bootstrap', () => {
+  let dataDir: string;
+  let passwordFile: string;
+  let nodePath: string;
+
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -19,7 +19,6 @@ describe('CLI bootstrap', () => {
     nodePath = path.join(dataDir, 'testnode');
     await fs.promises.writeFile(passwordFile, 'password');
   });
-
   afterEach(async () => {
     await fs.promises.rm(dataDir, {
       force: true,
@@ -27,65 +26,71 @@ describe('CLI bootstrap', () => {
     });
   });
 
-  test("Should create state if directory doesn't exist.", async () => {
-    const result = await utils.pk([
+  test("Should create keynode state if directory doesn't exist.", async () => {
+    const result = await utils.pkWithStdio([
       'bootstrap',
       '-np',
       nodePath,
       '--password-file',
       passwordFile,
     ]);
-    expect(result).toBe(0);
-
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('Polykey bootstrapped at Node Path:');
+    expect(result.stdout).toContain(nodePath);
     expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
   });
-  test('Should create state if directory is empty.', async () => {
+  test('Should create keynode state if directory is empty.', async () => {
     await fs.promises.mkdir(nodePath);
-    const result = await utils.pk([
+    const result = await utils.pkWithStdio([
       'bootstrap',
       '-np',
       nodePath,
       '--password-file',
       passwordFile,
     ]);
-    expect(result).toBe(0);
-
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('Polykey bootstrapped at Node Path:');
+    expect(result.stdout).toContain(nodePath);
     expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
   });
-  test('Should fail if keynode exists.', async () => {
-    const result = await utils.pk([
+  test('Should fail to create keynode state if keynode exists.', async () => {
+    const result = await utils.pkWithStdio([
       'bootstrap',
       '-np',
       nodePath,
       '--password-file',
       passwordFile,
     ]);
-    expect(result === 0).toBeTruthy();
+    expect(result.code).toBe(0);
     expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
 
-    const result2 = await utils.pk([
+    //Should fail here.
+    const result2 = await utils.pkWithStdio([
       'bootstrap',
       '-np',
       nodePath,
       '--password-file',
       passwordFile,
     ]);
-    expect(result2 === 0).toBeFalsy();
-
+    expect(result2.code).not.toBe(0);
+    expect(result2.stdout).toContain('Error:');
+    expect(result2.stdout).toContain('Files already exist at node path');
     expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
   });
-  test('Should fail if files exists.', async () => {
+  test('Should fail to create keynode state if other files exists.', async () => {
     await fs.promises.mkdir(path.join(nodePath, 'NOTAKEYNODEDIR'), {
       recursive: true,
     });
-    const result = await utils.pk([
+    const result = await utils.pkWithStdio([
       'bootstrap',
       '-np',
       nodePath,
       '--password-file',
       passwordFile,
     ]);
-    expect(result === 0).toBeFalsy();
+    expect(result.code).not.toBe(0);
+    expect(result.stdout).toContain('Error:');
+    expect(result.stdout).toContain('Files already exist at node path');
     expect(await checkKeynodeState(nodePath)).toBe('OTHER_EXISTS');
   });
 });

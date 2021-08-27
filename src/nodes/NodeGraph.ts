@@ -517,6 +517,10 @@ class NodeGraph {
     }
     return foundAddress;
   }
+
+  public clearDB() {
+    this.nodeGraphDb.clear();
+  }
 }
 
 export default NodeGraph;

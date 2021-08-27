@@ -1,16 +1,16 @@
 import { createCommand } from '../utils';
+import ping from './ping';
 // import commandClaimNode from './commandClaimNode';
-import commandPingNode from './commandPingNode';
 // import commandUnclaimNode from "./commandUnclaimNode";
-import commandAddNode from './commandAddNode';
-import commandFindNode from './commandFindNode';
+import add from './add';
+import find from './find';
 
 const commandNodes = createCommand('node');
 commandNodes.description('nodes commands');
 // commandNodes.addCommand(commandClaimNode);
 // commandNodes.addCommand(commandUnclaimNode);
-commandNodes.addCommand(commandPingNode);
-commandNodes.addCommand(commandAddNode);
-commandNodes.addCommand(commandFindNode);
+commandNodes.addCommand(ping);
+commandNodes.addCommand(add);
+commandNodes.addCommand(find);
 
 export default commandNodes;

@@ -28,6 +28,7 @@ import { createAgentService, AgentService } from './agent';
 import { createClientService, ClientService } from './client';
 import { GithubProvider } from './identities/providers';
 import config from './config';
+import { ErrorStateVersionMismatch } from './errors';
 
 class Polykey {
   public readonly nodePath: string;
@@ -297,6 +298,36 @@ class Polykey {
       }
     }
 
+    // checking the state version
+    // reading the contents of the file
+    const versionFilePath = path.join(this.nodePath, 'versionFile');
+    let versionInfo;
+    try {
+      const versionFileContents = await this.fs.promises.readFile(
+        versionFilePath,
+      );
+      versionInfo = JSON.parse(versionFileContents.toString());
+    } catch (err) {
+      this.logger.info(`Failed to open version file: ${err.message}`);
+    }
+    if (versionInfo) {
+      // checking state version
+      if (versionInfo.stateVersion !== config.stateVersion) {
+        throw new ErrorStateVersionMismatch(
+          `The agent state version of ${config.stateVersion} does not match the keynode state version of ${versionInfo.stateVersion}`,
+        );
+      }
+      // checking version
+      if (versionInfo.version !== config.version) {
+        this.logger.info(
+          `The version of the Agent ${config.version} does not match the version of the keynode ${versionInfo.version}`,
+        );
+      }
+    }
+    // writing current version info.
+    await this.fs.promises.writeFile(versionFilePath, JSON.stringify(config));
+
+    // starting modules
     await this.workers.start();
     this.keys.setWorkerManager(this.workers);
     await this.keys.start({

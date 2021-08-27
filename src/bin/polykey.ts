@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import process from 'process';
-import commandBootstrap from './bootstrap';
+import bootstrap from './bootstrap';
 import commandAgent from './agent';
 import commandVaults from './vaults';
 import commandSecrets from './secrets';
@@ -18,7 +18,7 @@ async function main(argv = process.argv): Promise<number> {
   rootCommand.version('0.0.41');
   rootCommand.enablePositionalOptions();
   rootCommand.exitOverride();
-  rootCommand.addCommand(commandBootstrap);
+  rootCommand.addCommand(bootstrap);
   rootCommand.addCommand(commandAgent);
   rootCommand.addCommand(commandVaults);
   rootCommand.addCommand(commandSecrets);

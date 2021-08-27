@@ -1,12 +1,12 @@
-import commandSendNotification from './commandSendNotification';
-import commandReadNotifications from './commandReadNotifications';
-import commandClearNotifications from './commandClearNotifications';
+import send from './send';
+import read from './read';
+import clear from './clear';
 import { createCommand } from '../utils';
 
 const commandNotifications = createCommand('notifications');
 commandNotifications.description('notifications commands');
-commandNotifications.addCommand(commandSendNotification);
-commandNotifications.addCommand(commandReadNotifications);
-commandNotifications.addCommand(commandClearNotifications);
+commandNotifications.addCommand(send);
+commandNotifications.addCommand(read);
+commandNotifications.addCommand(clear);
 
 export default commandNotifications;

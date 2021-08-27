@@ -8,8 +8,8 @@ import { createPublicKey, createPrivateKey } from 'crypto';
 import { SignJWT } from 'jose/jwt/sign';
 import { fromKeyLike } from 'jose/jwk/from_key_like';
 
+const timestamp = mlts();
 function generateNotifId(): string {
-  const timestamp = mlts();
   return timestamp();
 }
 

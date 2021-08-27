@@ -8,25 +8,42 @@ import * as utils from './utils';
 import * as testUtils from './utils';
 import { PolykeyAgent } from '@';
 
-const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
-  new StreamHandler(),
-]);
-let senderDataDir: string, receiverDataDir: string;
-let senderNodePath: string, receiverNodePath: string;
-let senderPasswordFile: string, receiverPasswordFile: string;
-let senderPolykeyAgent: PolykeyAgent, receiverPolykeyAgent: PolykeyAgent;
-let senderNodeId: NodeId, receiverNodeId: NodeId;
-
-function genCommandsSender(options: Array<string>) {
-  return ['notifications', ...options, '-np', senderNodePath];
-}
-
-function genCommandsReceiver(options: Array<string>) {
-  return ['notifications', ...options, '-np', receiverNodePath];
-}
-
+/**
+ * This test file has been optimised to use only one instance of PolykeyAgent where posible.
+ * Setting up the PolykeyAgent has been done in a beforeAll block.
+ * Keep this in mind when adding or editing tests.
+ * Any side effects need to be undone when the test has completed.
+ * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
+ *
+ * - left over state can cause a test to fail in certain cases.
+ * - left over state can cause similar tests to succeed when they should fail.
+ * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
+ * - when in doubt test each modified or added test on it's own as well as the whole file.
+ * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
+ */
 describe('CLI Notifications', () => {
-  beforeEach(async () => {
+  const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
+  let senderDataDir: string, receiverDataDir: string;
+  let senderNodePath: string, receiverNodePath: string;
+  let senderPasswordFile: string, receiverPasswordFile: string;
+  let senderPolykeyAgent: PolykeyAgent, receiverPolykeyAgent: PolykeyAgent;
+  let senderNodeId: NodeId, receiverNodeId: NodeId;
+
+  // constants
+  const noJWTFailCode = 77;
+
+  // helper functions
+  function genCommandsSender(options: Array<string>) {
+    return ['notifications', ...options, '-np', senderNodePath];
+  }
+
+  function genCommandsReceiver(options: Array<string>) {
+    return ['notifications', ...options, '-np', receiverNodePath];
+  }
+
+  beforeAll(async () => {
     senderDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -78,12 +95,15 @@ describe('CLI Notifications', () => {
       receiverPasswordFile,
     ]);
     await receiverPolykeyAgent.notifications.clearNotifications();
-  });
-  afterEach(async () => {
+  }, global.polykeyStartupTimeout);
+  afterAll(async () => {
     await senderPolykeyAgent.stop();
     await receiverPolykeyAgent.stop();
     await fs.promises.rmdir(senderDataDir, { recursive: true });
     await fs.promises.rmdir(receiverDataDir, { recursive: true });
+  });
+  afterEach(async () => {
+    await receiverPolykeyAgent.notifications.clearNotifications();
   });
 
   describe('commandSendNotification', () => {

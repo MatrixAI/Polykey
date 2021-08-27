@@ -204,7 +204,7 @@ class NodeManager {
       await this.fwdProxy.openConnection(
         targetNodeId,
         targetAddress.ip,
-        targetAddress.port
+        targetAddress.port,
       );
     } catch (e) {
       // If the connection request times out, then return false
@@ -295,16 +295,21 @@ class NodeManager {
       const payload = verifiedChainData[claimId].payload;
       if (payload.data.type == 'node') {
         const endNodeId = payload.data.node2;
-        const endAddress: NodeAddress = await this.findNode(endNodeId);
-        const endConnection: NodeConnection = await this.createConnectionToNode(
-          endNodeId,
-          endAddress,
-        );
-        const endPublicKey = endConnection.getExpectedPublicKey(
-          targetNodeId,
-        ) as PublicKeyPem;
-        if (!endPublicKey) {
-          throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
+        let endPublicKey: PublicKeyPem;
+        // If the claim points back to our own node, don't attempt to connect
+        if (endNodeId === this.nodeId) {
+          endPublicKey = this.keyManager.getRootKeyPairPem().publicKey;
+          // Otherwise, get the public key from the root cert chain (by connection)
+        } else {
+          const endAddress: NodeAddress = await this.findNode(endNodeId);
+          const endConnection: NodeConnection =
+            await this.createConnectionToNode(endNodeId, endAddress);
+          endPublicKey = endConnection.getExpectedPublicKey(
+            endNodeId,
+          ) as PublicKeyPem;
+          if (!endPublicKey) {
+            throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
+          }
         }
         const verified = await claimsUtils.verifyClaimSignature(
           unverifiedChainData[claimId],
@@ -592,6 +597,10 @@ class NodeManager {
 
     // Scan the vaults of the node over the connection
     return await connection.scanVaults();
+  }
+
+  public clearDB() {
+    this.nodeGraph.clearDB();
   }
 }
 

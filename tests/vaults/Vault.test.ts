@@ -480,54 +480,50 @@ describe('Vault is', () => {
       recursive: true,
     });
   });
-  test(
-    'adding a directory of 100 secrets with some secrets already existing',
-    async () => {
-      const secretDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'secret-directory-'),
+  test('adding a directory of 100 secrets with some secrets already existing', async () => {
+    const secretDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'secret-directory-'),
+    );
+    const secretDirName = path.basename(secretDir);
+    for (let i = 0; i < 50; i++) {
+      const name = 'secret ' + i.toString();
+      const content = 'this is secret ' + i.toString();
+      await fs.promises.writeFile(
+        path.join(secretDir, name),
+        Buffer.from(content),
       );
-      const secretDirName = path.basename(secretDir);
-      for (let i = 0; i < 50; i++) {
-        const name = 'secret ' + i.toString();
-        const content = 'this is secret ' + i.toString();
-        await fs.promises.writeFile(
-          path.join(secretDir, name),
-          Buffer.from(content),
-        );
-      }
-      await vault.start({ key });
-      await vault.mkdir(secretDirName, { recursive: false });
-      await vault.addSecret(
-        path.join(secretDirName, 'secret 8'),
-        'secret-content',
-      );
-      await vault.addSecret(
-        path.join(secretDirName, 'secret 9'),
-        'secret-content',
-      );
-      await vault.addSecretDirectory(secretDir);
+    }
+    await vault.start({ key });
+    await vault.mkdir(secretDirName, { recursive: false });
+    await vault.addSecret(
+      path.join(secretDirName, 'secret 8'),
+      'secret-content',
+    );
+    await vault.addSecret(
+      path.join(secretDirName, 'secret 9'),
+      'secret-content',
+    );
+    await vault.addSecretDirectory(secretDir);
 
-      for (let j = 0; j < 8; j++) {
-        await expect(
-          fs.promises.readdir(
-            path.join(dataDir, vaultId, `${secretDirName}.data`),
-          ),
-        ).resolves.toContain('secret ' + j.toString() + '.data');
-      }
+    for (let j = 0; j < 8; j++) {
       await expect(
-        vault.getSecret(path.join(secretDirName, 'secret 8')),
-      ).resolves.toStrictEqual('this is secret 8');
-      await expect(
-        vault.getSecret(path.join(secretDirName, 'secret 9')),
-      ).resolves.toStrictEqual('this is secret 9');
-      await vault.stop();
-      await fs.promises.rm(secretDir, {
-        force: true,
-        recursive: true,
-      });
-    },
-    global.defaultTimeout * 2,
-  );
+        fs.promises.readdir(
+          path.join(dataDir, vaultId, `${secretDirName}.data`),
+        ),
+      ).resolves.toContain('secret ' + j.toString() + '.data');
+    }
+    await expect(
+      vault.getSecret(path.join(secretDirName, 'secret 8')),
+    ).resolves.toStrictEqual('this is secret 8');
+    await expect(
+      vault.getSecret(path.join(secretDirName, 'secret 9')),
+    ).resolves.toStrictEqual('this is secret 9');
+    await vault.stop();
+    await fs.promises.rm(secretDir, {
+      force: true,
+      recursive: true,
+    });
+  });
   test('able to persist data across multiple vault objects', async () => {
     await vault.start({ key });
     await vault.addSecret('secret-1', 'secret-content');

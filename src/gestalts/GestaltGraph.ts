@@ -1081,6 +1081,10 @@ class GestaltGraph {
     }
     return [visited, visitedNodes, visitedIdentities];
   }
+
+  public async clearDB() {
+    await this.graphDb.clear();
+  }
 }
 
 export default GestaltGraph;

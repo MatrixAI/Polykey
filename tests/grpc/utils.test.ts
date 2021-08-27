@@ -7,12 +7,12 @@ import * as utils from './utils';
 
 const logger = new Logger('utils test', LogLevel.INFO, [new StreamHandler()]);
 
-describe('utils', () => {
+describe('GRPC utils', () => {
   let client: TestClient, server: grpc.Server, port: number;
   beforeAll(async () => {
     [server, port] = await utils.openTestServer();
     client = await utils.openTestClient(port);
-  });
+  }, global.polykeyStartupTimeout);
   afterAll(async () => {
     utils.closeTestClient(client);
     setTimeout(() => {

@@ -10,7 +10,7 @@ import * as utils from '@/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 
-describe('utils', () => {
+describe('Vaults utils', () => {
   let dataDir: string;
 
   beforeEach(async () => {
@@ -102,13 +102,13 @@ describe('utils', () => {
 
 // test('vaultIds are alphanumeric', async () => {
 //   const id1 = utils.generateVaultId('abc');
-
+//
 //   expect(isAlphaNumeric(id1)).toBe(true);
 // });
-
+//
 // function isAlphaNumeric(str) {
 //   let code, i, len;
-
+//
 //   for (i = 0, len = str.length; i < len; i++) {
 //     code = str.charCodeAt(i);
 //     if (

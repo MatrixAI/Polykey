@@ -173,7 +173,7 @@ describe('NotificationsManager', () => {
       serverPort: server.getPort(),
       tlsConfig: revTLSConfig,
     });
-  });
+  }, global.polykeyStartupTimeout);
 
   beforeEach(async () => {
     senderDataDir = await fs.promises.mkdtemp(
@@ -230,7 +230,7 @@ describe('NotificationsManager', () => {
 
     await receiverNotificationsManager.clearNotifications();
     expect(await receiverNotificationsManager.readNotifications()).toEqual([]);
-  });
+  }, global.polykeyStartupTimeout);
 
   afterEach(async () => {
     await fs.promises.rm(senderDataDir, {

@@ -3,7 +3,7 @@ import type { AddressInfo } from 'net';
 import http from 'http';
 import * as httpUtils from '@/http/utils';
 
-describe('utils', () => {
+describe('Http utils', () => {
   test('termination of http server', async () => {
     const server = http.createServer();
     const terminate = httpUtils.terminatingHttpServer(server);

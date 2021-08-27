@@ -13,435 +13,478 @@ import * as sessionErrors from '@/sessions/errors';
 import PolykeyAgent from '@/PolykeyAgent';
 
 import { Lockfile } from '@/lockfile';
-
-let dataDir: string;
-let nodePath: string;
-let passwordFile: string;
-const passwordFileExitCode = 64;
-const noJWTFailCode = 77;
-const password = 'password';
-const logger = new Logger('AgentServerTest', LogLevel.WARN, [
-  new StreamHandler(),
-]);
+import { sleep } from '@/utils';
 
 describe('CLI agent', () => {
-  describe('Agent start', () => {
-    beforeEach(async () => {
+  const passwordFileExitCode = 64;
+  const noJWTFailCode = 77;
+  const password = 'password';
+  const logger = new Logger('AgentServerTest', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
+
+  describe('Agent start, status and stop', () => {
+    let dataDir: string;
+    let foregroundNodePath: string;
+    let backgroundNodePath: string;
+    let callCredentials;
+
+    let inactiveNodePath: string;
+    let activeNodePath: string;
+    let activeNode: PolykeyAgent;
+    let passwordFile: string;
+
+    beforeAll(async () => {
       dataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
       passwordFile = path.join(dataDir, 'passwordFile');
-      nodePath = path.join(dataDir, 'testnode');
-      await fs.promises.writeFile(passwordFile, 'password');
-    });
+      foregroundNodePath = path.join(dataDir, 'foreground');
+      backgroundNodePath = path.join(dataDir, 'background');
+      activeNodePath = path.join(dataDir, 'foregroundActive');
+      inactiveNodePath = path.join(dataDir, 'inactiveNode');
 
-    afterEach(async () => {
+      await fs.promises.writeFile(passwordFile, password);
+      const logger = new Logger('Agent Test', LogLevel.WARN, [
+        new StreamHandler(),
+      ]);
+
+      activeNode = new PolykeyAgent({
+        nodePath: activeNodePath,
+        logger,
+      });
+      await activeNode.start({ password });
+    });
+    afterAll(async () => {
+      await activeNode.stop();
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,
       });
     });
+    describe('Starting the agent in the foreground', () => {
+      test(
+        'should start the agent and clean up the lockfile when a kill signal is received',
+        async () => {
+          const agent = testUtils.cli(
+            [
+              'agent',
+              'start',
+              '-np',
+              foregroundNodePath,
+              '--password-file',
+              passwordFile,
+            ],
+            '.',
+          );
+          await utils.sleep(25000);
+          expect(
+            await agentUtils.checkAgentRunning(foregroundNodePath),
+          ).toBeTruthy();
 
-    jest.setTimeout(40000);
-    test('Foreground should start the agent.', async () => {
-      await testUtils.pk([
-        'agent',
-        'start',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-      ]);
-      await utils.sleep(2000);
-      await expect(
-        agentUtils.checkAgentRunning(nodePath),
-      ).resolves.toBeTruthy();
+          const result5 = await testUtils.cli(
+            ['agent', 'status', '-np', foregroundNodePath],
+            '.',
+          );
+          expect(result5.code).toBe(0);
+          expect(result5.stdout).toContain('online');
 
-      const result5 = await testUtils.cli(
-        ['agent', 'status', '-np', nodePath],
-        '.',
+          //Kill externally.
+          const lock = await Lockfile.parseLock(
+            fs,
+            path.join(foregroundNodePath, 'agent-lock.json'),
+          );
+          process.kill(lock.pid);
+          await agent; //Waiting for agent to finish running.
+          await sleep(5000);
+          expect(
+            await agentUtils.checkAgentRunning(foregroundNodePath),
+          ).toBeFalsy();
+
+          const files = await fs.promises.readdir(foregroundNodePath);
+          expect(files.includes('agent-lock.json')).toBeFalsy();
+        },
+        global.polykeyStartupTimeout * 2,
       );
-      expect(result5.code).toBe(0);
-      expect(result5.stdout).toContain('online');
+      test('should fail to start if an agent is already running at the path', async () => {
+        //can't await this, it never completes while running.
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'start',
+          '-np',
+          activeNodePath,
+          '--password-file',
+          passwordFile,
+        ]);
 
-      await testUtils.pk(['agent', 'stop', '-np', nodePath]);
-      await utils.sleep(2000);
-
-      const result6 = await testUtils.cli(
-        ['agent', 'status', '-np', nodePath],
-        '.',
-      );
-      expect(result6.code).toBe(0);
-      expect(result6.stdout).toContain('offline');
-    });
-    test('Foreground should fail if agent already running.', async () => {
-      const firstAgent = new PolykeyAgent({
-        nodePath: nodePath,
-        logger: logger,
+        expect(result.code).toBe(1);
       });
-      await firstAgent.start({ password });
-      await expect(
-        agentUtils.checkAgentRunning(nodePath),
-      ).resolves.toBeTruthy();
-
-      //can't await this, it never completes while running.
-      const result = await testUtils.pk([
-        'agent',
-        'start',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-      ]);
-
-      expect(result).toBe(1);
-
-      await firstAgent.stop();
     });
+    describe('Starting the agent in the background', () => {
+      test(
+        'should start the agent and clean up the lockfile when a kill signal is received',
+        async () => {
+          const commands = [
+            'agent',
+            'start',
+            '-b',
+            '-np',
+            backgroundNodePath,
+            '--password-file',
+            passwordFile,
+          ];
 
-    jest.setTimeout(80000);
-    test('Background should Spawn an agent in the background.', async () => {
-      const commands = [
-        'agent',
-        'start',
-        '-b',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-      ];
+          // We can await this since it should finish after spawning the background agent.
+          const result = await testUtils.pkWithStdio(commands);
+          expect(result.code).toBe(0);
 
-      // We can await this since it should finish after spawning the background agent.
-      const result = await testUtils.pk(commands);
-      expect(result).toBe(0);
+          await utils.sleep(2000);
+          expect(
+            await agentUtils.checkAgentRunning(backgroundNodePath),
+          ).toBeTruthy();
 
-      await utils.sleep(2000);
-      await expect(
-        agentUtils.checkAgentRunning(nodePath),
-      ).resolves.toBeTruthy();
+          const lock = await Lockfile.parseLock(
+            fs,
+            path.join(backgroundNodePath, 'agent-lock.json'),
+          );
+          process.kill(lock.pid);
+          await utils.sleep(2000);
+          expect(
+            await agentUtils.checkAgentRunning(backgroundNodePath),
+          ).toBeFalsy();
 
-      await testUtils.pk(['agent', 'stop', '-np', nodePath]);
-      await utils.sleep(2000);
-    });
-    test('Background should fail if agent already running.', async () => {
-      //Starting the agent.
-      const agent = new PolykeyAgent({
-        nodePath: nodePath,
-        logger: logger,
-      });
-      await agent.start({ password });
-      await expect(
-        agentUtils.checkAgentRunning(nodePath),
-      ).resolves.toBeTruthy();
-
-      const commands = [
-        'agent',
-        'start',
-        '-b',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-      ];
-      // We can await this since it should finish after spawning the background agent.
-      const result = await testUtils.pk(commands);
-      expect(result).toBe(1);
-
-      await agent.stop();
-    });
-    test('Background should clean up if externally killed.', async () => {
-      //Starting the agent.
-      const commands = [
-        'agent',
-        'start',
-        '-b',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-      ];
-      // We can await this since it should finish after spawning the background agent.
-      const result = await testUtils.cli(commands, '.');
-      expect(result.code).toBe(0);
-      await expect(
-        agentUtils.checkAgentRunning(nodePath),
-      ).resolves.toBeTruthy();
-
-      // Killing the process.
-      await utils.sleep(10000);
-      const lock = await Lockfile.parseLock(
-        fs,
-        path.join(nodePath, 'agent-lock.json'),
+          //Checking that the lockfile was removed.
+          const files = await fs.promises.readdir(backgroundNodePath);
+          expect(files.includes('agent-lock.json')).toBeFalsy();
+        },
+        global.polykeyStartupTimeout,
       );
-      process.kill(lock.pid);
-      await utils.sleep(5000);
-      await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
+      test('Should fail to start if an agent is already running at the path', async () => {
+        const commands = [
+          'agent',
+          'start',
+          '-b',
+          '-np',
+          activeNodePath,
+          '--password-file',
+          passwordFile,
+        ];
+        // We can await this since it should finish after spawning the background agent.
+        const result = await testUtils.pkWithStdio(commands);
+        expect(result.code).toBe(1);
+      });
+    });
 
-      //Checking that the lockfile was removed.
-      const files = await fs.promises.readdir(nodePath);
-      expect(files.includes('agent-lock.json')).toBeFalsy();
+    describe('getting agent status', () => {
+      test('should get the status of an online agent', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'status',
+          '-np',
+          activeNodePath,
+        ]);
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('online');
+      });
+      test('should get the status of an offline agent', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'status',
+          '-np',
+          inactiveNodePath,
+        ]);
+        expect(result.code).toBe(0);
+        expect(result.stdout).toContain('offline');
+      });
+      // How should we handle the case of a path not being a keynode?
+      test.todo('should fail to get the status of an non-existent agent');
+    });
+    describe('Stopping the agent.', () => {
+      test('should fail to stop if agent not running', async () => {
+        // Stopping the agent.
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'stop',
+          '-np',
+          inactiveNodePath,
+        ]);
+        expect(result.code).toBe(64);
+      });
+      test('should fail to stop if session is not started', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'stop',
+          '-np',
+          activeNodePath,
+        ]);
+        expect(result.code).toBe(noJWTFailCode);
+      });
+      test('should clean up the lockfile and stop', async () => {
+        // Starting session
+        await testUtils.pkWithStdio([
+          'agent',
+          'unlock',
+          '-np',
+          activeNodePath,
+          '--password-file',
+          passwordFile,
+        ]);
+
+        // Stopping the agent.
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'stop',
+          '-np',
+          activeNodePath,
+        ]);
+        expect(result.code).toBe(0);
+        await utils.sleep(2000);
+        expect(await agentUtils.checkAgentRunning(activeNodePath)).toBeFalsy();
+        const files = await fs.promises.readdir(activeNodePath);
+        expect(files.includes('agent-lock.json')).toBeFalsy();
+      });
     });
   });
-
-  describe('Agent stop', () => {
-    beforeEach(async () => {
-      dataDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'polykey-test-'),
-      );
-      passwordFile = path.join(dataDir, 'passwordFile');
-      nodePath = path.join(dataDir, 'testnode');
-      await fs.promises.writeFile(passwordFile, 'password');
-    });
-
-    afterEach(async () => {
-      await fs.promises.rm(dataDir, {
-        force: true,
-        recursive: true,
-      });
-    });
-
-    test('should fail if agent not running.', async () => {
-      await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
-
-      // Stopping the agent.
-      const result = await testUtils.pk(['agent', 'stop', '-np', nodePath]);
-      expect(result).toBe(64);
-      await utils.sleep(1500);
-
-      await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
-    });
-    test('should clean up when stopping agent', async () => {
-      const agent = new PolykeyAgent({
-        nodePath: nodePath,
-        logger: logger,
-      });
-      await agent.start({ password });
-      let files = await fs.promises.readdir(nodePath);
-      expect(files.includes('agent-lock.json')).toBeTruthy();
-
-      // Stopping the agent.
-      const result4 = await testUtils.pk(['agent', 'stop', '-np', nodePath]);
-      expect(result4).toBe(0);
-      await utils.sleep(2000);
-
-      await testUtils.pk([
-        'agent',
-        'unlock',
-        '-np',
-        dataDir,
-        '--password-file',
-        passwordFile,
-      ]);
-
-      await expect(agentUtils.checkAgentRunning(nodePath)).resolves.toBeFalsy();
-
-      files = await fs.promises.readdir(nodePath);
-      expect(files.includes('agent-lock.json')).toBeFalsy();
-    });
-    test('should fail if session is not running.', async () => {
-      const agent = new PolykeyAgent({
-        nodePath: nodePath,
-        logger: logger,
-      });
-      await agent.start({ password });
-
-      // Authorize session
-
-      const result = await testUtils.pk(['agent', 'stop', '-np', nodePath]);
-      expect(result).toBe(noJWTFailCode);
-    });
-  });
-
-  describe('Agent unlock', () => {
+  describe('Agent Sessions', () => {
     let dataDir: string;
     let passwordFile: string;
-    let agent: PolykeyAgent;
+    let activeAgentPath: string;
+    let inactiveAgentPath: string;
+    let activeAgent: PolykeyAgent;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
       dataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
       passwordFile = path.join(dataDir, 'passwordFile');
+      activeAgentPath = path.join(dataDir, 'ActiveAgent');
+      inactiveAgentPath = path.join(dataDir, 'InactiveAgent');
       await fs.promises.writeFile(passwordFile, password);
 
-      agent = new PolykeyAgent({
-        nodePath: dataDir,
+      activeAgent = new PolykeyAgent({
+        nodePath: activeAgentPath,
         logger: logger,
       });
-    });
-
-    afterEach(async () => {
+      await activeAgent.start({ password });
+    }, global.polykeyStartupTimeout);
+    afterAll(async () => {
+      await activeAgent.stop();
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,
       });
     });
 
-    test('should fail if agent not running.', async () => {
-      const result = await testUtils.pk([
-        'agent',
-        'unlock',
-        '-np',
-        dataDir,
-        '--password-file',
-        passwordFile,
-      ]);
-      expect(result).toBe(64);
-    });
-    test('should provide the token to the client and store the token', async () => {
-      await agent.start({ password });
+    describe('Sessions should', () => {
+      afterEach(async () => {
+        await testUtils.pkWithStdio(['agent', 'lock', '-np', activeAgentPath]);
+      });
 
-      const result = await testUtils.pk([
-        'agent',
-        'unlock',
-        '-np',
-        dataDir,
-        '--password-file',
-        passwordFile,
-      ]);
-      expect(result).toBe(0);
+      test('fail to unlock session if agent is not running', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'unlock',
+          '-np',
+          inactiveAgentPath,
+          '--password-file',
+          passwordFile,
+        ]);
+        expect(result.code).toBe(64);
+      });
+      test('provide the token to the client and store the token', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'unlock',
+          '-np',
+          activeAgentPath,
+          '--password-file',
+          passwordFile,
+        ]);
+        expect(result.code).toBe(0);
 
-      const content = await fs.promises.readFile(
-        path.join(dataDir, 'client', 'token'),
-        { encoding: 'utf-8' },
-      );
+        const content = await fs.promises.readFile(
+          path.join(activeAgentPath, 'client', 'token'),
+          { encoding: 'utf-8' },
+        );
 
-      const verify = await agent.sessions.verifyToken(content as SessionToken);
-      expect(verify).toBeTruthy();
+        const verify = await activeAgent.sessions.verifyToken(
+          content as SessionToken,
+        );
+        expect(verify).toBeTruthy();
+      });
+      test('fail to lock session if agent is not running', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'lock',
+          '-np',
+          inactiveAgentPath,
+        ]);
+        expect(result.code).toBe(64);
+      });
+      test('remove the token from the client and delete the token when locking session', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'lock',
+          '-np',
+          activeAgentPath,
+        ]);
+        expect(result.code).toBe(0);
 
-      await agent.stop();
-    });
-    // test('should fail if password file is not provided', async () => {
-    //   const result = await testUtils.pk(['agent', 'unlock', '-np', dataDir]);
-    //   expect(result).toBe(passwordFileExitCode);
-    // });
-  });
+        const content = await fs.promises.readFile(
+          path.join(activeAgentPath, 'client', 'token'),
+          { encoding: 'utf-8' },
+        );
 
-  describe('Agent lock', () => {
-    let dataDir: string;
-    let passwordFile: string;
-    let agent: PolykeyAgent;
+        await expect(
+          activeAgent.sessions.verifyToken(content as SessionToken),
+        ).rejects.toThrow(sessionErrors.ErrorSessionTokenInvalid);
+      });
+      test('fail to lock all sessions if agent not running', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'lockall',
+          '-np',
+          inactiveAgentPath,
+        ]);
+        expect(result.code).toBe(64);
+      });
+      test('fail to lock all sessions if session has not been unlocked', async () => {
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'lockall',
+          '-np',
+          activeAgentPath,
+          '--password-file',
+          passwordFile,
+        ]);
+        expect(result.code).toBe(77);
+      });
+      test('cause old sessions to fail when locking all sessions', async () => {
+        const token = await activeAgent.sessions.generateToken();
 
-    beforeEach(async () => {
-      dataDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'polykey-test-'),
-      );
-      passwordFile = path.join(dataDir, 'passwordFile');
-      await fs.promises.writeFile(passwordFile, password);
+        await testUtils.pkWithStdio([
+          'agent',
+          'unlock',
+          '-np',
+          activeAgentPath,
+          '--password-file',
+          passwordFile,
+        ]);
 
-      agent = new PolykeyAgent({
-        nodePath: dataDir,
-        logger: logger,
+        const result = await testUtils.pkWithStdio([
+          'agent',
+          'lockall',
+          '-np',
+          activeAgentPath,
+          '--password-file',
+          passwordFile,
+        ]);
+        expect(result.code).toBe(0);
+
+        await expect(activeAgent.sessions.verifyToken(token)).rejects.toThrow(
+          sessionErrors.ErrorSessionTokenInvalid,
+        );
       });
     });
+    describe('Bin commands should fail when session is locked.', () => {
+      let dummyPath: string;
+      const agentCommands = ['agent stop'];
+      const identitiesCommands = [
+        'identities allow nodeId notify',
+        'identities disallow nodeId notify',
+        'identities perms nodeId',
+        'identities trust nodeId',
+        'identities untrust nodeId',
+        'identities claim providerId identityId',
+        'identities authenticate providerId identityId',
+        'identities get nodeId',
+        'identities list',
+        'identities search providerId',
+      ];
+      const keysCommands = [
+        'keys certchain',
+        'keys cert',
+        'keys root',
+        'keys encrypt -fp filePath', //Fix this, filePath needs to be valid.
+        'keys decrypt -fp filePath',
+        'keys sign -fp filePath',
+        'keys verify -fp filePath -sp sigPath',
+        'keys renew -pp passPath',
+        'keys reset -pp passPath',
+        'keys password -pp passPath',
+      ];
+      const nodesCommands = [
+        'node ping nodeId',
+        'node find nodeId',
+        'node add nodeId 0.0.0.0 55555',
+      ];
+      const notificationCommands = [
+        'notifications clear',
+        'notifications read',
+        'notifications send nodeId msg1',
+      ];
+      const secretsCommands = [
+        'secrets create -sp vaultName:secretPath -fp filePath',
+        'secrets rm -sp vaultName:secretPath',
+        'secrets get -sp vaultName:secretPath',
+        'secrets ls -vn vaultName',
+        'secrets mkdir -sp vaultName:secretPath',
+        'secrets rename -sp vaultName:secretPath -sn secretName',
+        'secrets update -sp vaultName:secretPath -fp secretPath',
+        'secrets dir -vn vaultName -dp directory',
+      ];
+      const vaultCommands = [
+        'vaults list',
+        'vaults create -vn vaultName',
+        'vaults rename -vn vaultName -nn vaultName',
+        'vaults delete -vn vaultName',
+        'vaults stat -vn vaultName',
+        'vaults share vaultName nodeId',
+        'vaults unshare vaultName nodeId',
+        'vaults perms vaultName',
+        'vaults clone -ni nodeId -vi vaultId',
+        'vaults pull -vn vaultName -ni nodeId',
+        'vaults scan -ni nodeId',
+      ];
 
-    afterEach(async () => {
-      await fs.promises.rm(dataDir, {
-        force: true,
-        recursive: true,
+      const commands = [
+        ['Agent', agentCommands],
+        ['Identity', identitiesCommands],
+        ['Key', keysCommands],
+        ['Node', nodesCommands],
+        ['Notification', notificationCommands],
+        ['Secret', secretsCommands],
+        ['Vault', vaultCommands],
+      ];
+
+      function generateCommand(commandString: string) {
+        const command = commandString
+          .replace(/filePath/g, dummyPath)
+          .replace(/sigPath/g, dummyPath)
+          .replace(/passPath/g, dummyPath)
+          .replace(/secretPath/g, dummyPath)
+          .split(' ');
+        const nodePath = ['-np', activeAgentPath];
+        return [...command, ...nodePath];
+      }
+
+      describe.each(commands)('%s commands', (name, commands) => {
+        beforeAll(async () => {
+          await testUtils.pkWithStdio([
+            'agent',
+            'lock',
+            '-np',
+            activeAgentPath,
+          ]);
+          dummyPath = path.join(dataDir, 'dummy');
+          await fs.promises.writeFile(dummyPath, 'dummy');
+        });
+        test.each([...commands])('%p', async (commandString) => {
+          const command = generateCommand(commandString);
+          const result = await testUtils.pkWithStdio(command);
+          expect(result.code).toBe(noJWTFailCode);
+        });
       });
-    });
-
-    test('should fail if agent not running.', async () => {
-      const result = await testUtils.pk(['agent', 'lock', '-np', dataDir]);
-      expect(result).toBe(64);
-    });
-    test('should remove the token from the client and delete the token', async () => {
-      await agent.start({ password });
-
-      const result = await testUtils.pk(['agent', 'lock', '-np', dataDir]);
-      expect(result).toBe(0);
-
-      const content = await fs.promises.readFile(
-        path.join(dataDir, 'client', 'token'),
-        { encoding: 'utf-8' },
-      );
-
-      await expect(
-        agent.sessions.verifyToken(content as SessionToken),
-      ).rejects.toThrow(sessionErrors.ErrorSessionTokenInvalid);
-
-      await agent.stop();
-    });
-    test('should fail if password file is not provided', async () => {
-      const result = await testUtils.pk(['agent', 'lock', '-np', dataDir]);
-      expect(result).toBe(passwordFileExitCode);
-    });
-  });
-
-  describe('Agent lockall', () => {
-    let dataDir: string;
-    let passwordFile: string;
-    let agent: PolykeyAgent;
-
-    beforeEach(async () => {
-      dataDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'polykey-test-'),
-      );
-      passwordFile = path.join(dataDir, 'passwordFile');
-      await fs.promises.writeFile(passwordFile, password);
-
-      agent = new PolykeyAgent({
-        nodePath: dataDir,
-        logger: logger,
-      });
-    });
-
-    afterEach(async () => {
-      await fs.promises.rm(dataDir, {
-        force: true,
-        recursive: true,
-      });
-    });
-
-    test('should fail if agent not running.', async () => {
-      const result = await testUtils.pk(['agent', 'lockall', '-np', dataDir]);
-      expect(result).toBe(64);
-    });
-    test('should fail without a token', async () => {
-      await agent.start({ password });
-
-      const result = await testUtils.pk([
-        'agent',
-        'lockall',
-        '-np',
-        dataDir,
-        '--password-file',
-        passwordFile,
-      ]);
-      expect(result).toBe(77);
-
-      await agent.stop();
-    });
-    test('should cause old tokens to fail verification', async () => {
-      await agent.start({ password });
-
-      const token = await agent.sessions.generateToken();
-
-      await testUtils.pk([
-        'agent',
-        'unlock',
-        '-np',
-        dataDir,
-        '--password-file',
-        passwordFile,
-      ]);
-
-      const result = await testUtils.pk([
-        'agent',
-        'lockall',
-        '-np',
-        dataDir,
-        '--password-file',
-        passwordFile,
-      ]);
-      expect(result).toBe(0);
-
-      await expect(agent.sessions.verifyToken(token)).rejects.toThrow(
-        sessionErrors.ErrorSessionTokenInvalid,
-      );
-
-      await agent.stop();
     });
   });
 });

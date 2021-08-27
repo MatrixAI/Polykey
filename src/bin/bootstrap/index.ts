@@ -1,3 +1,3 @@
-import commandBootstrap from './commandBootstrap';
+import bootstrap from './bootstrap';
 
-export default commandBootstrap;
+export default bootstrap;

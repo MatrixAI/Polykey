@@ -18,6 +18,7 @@ import * as claimsUtils from '../claims/utils';
 import { errors as identitiesErrors } from '../identities';
 import { errors as nodesErrors } from '../nodes';
 import { errors as gestaltsErrors } from '../gestalts';
+import { ChainData } from '@/sigchain/types';
 
 class Discovery {
   protected gestaltGraph: GestaltGraph;
@@ -116,10 +117,24 @@ class Discovery {
         //  If cannot create connection, then throw some kind of exception
         //  User display = "Cannot crawl gestalt graph. Please try again later"
 
-        // Get the verified chain data of this node (contains all cryptolinks)
-        const vertexChainData = await this.nodeManager.requestChainData(
-          vertexGId.nodeId,
-        );
+        // The sigchain data of the vertex (containing all cryptolinks)
+        let vertexChainData: ChainData = {};
+        // If the vertex we've found is our own node, we simply get our own chain
+        if (vertexGId.nodeId === this.nodeManager.getNodeId()) {
+          const vertexChainDataEncoded = await this.nodeManager.getChainData();
+          // Decode all our claims - no need to verify (on our own sigchain)
+          for (const c in vertexChainDataEncoded) {
+            const claimId = c as ClaimId;
+            vertexChainData[claimId] = claimsUtils.decodeClaim(
+              vertexChainDataEncoded[claimId],
+            );
+          }
+          // Otherwise, request the verified chain data from the node
+        } else {
+          vertexChainData = await this.nodeManager.requestChainData(
+            vertexGId.nodeId,
+          );
+        }
 
         // TODO: for now, the chain data is treated as a 'disjoint' set of
         // cryptolink claims from a node to another node/identity
@@ -192,6 +207,8 @@ class Discovery {
             }
           }
         }
+        // Add this node vertex to the visited
+        visitedVertices.add(gestaltsUtils.keyFromNode(vertexGId.nodeId));
       } else if (vertexGId.type == 'identity') {
         // If the next vertex is an identity, perform a social discovery
         // Firstly get the identity info of this identity
@@ -234,6 +251,13 @@ class Discovery {
             vertexQueue.push(linkedVertexGK);
           }
         }
+        // Add this identity vertex to the visited
+        visitedVertices.add(
+          gestaltsUtils.keyFromIdentity(
+            vertexGId.providerId,
+            vertexGId.identityId,
+          ),
+        );
       }
       yield;
     }

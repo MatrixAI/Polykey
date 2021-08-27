@@ -8,7 +8,7 @@ function identityString(
 }
 
 function isIdentitystring(input: string): boolean {
-  const re = /^[a-zA-Z]+\.com:[a-zA-Z]+$/;
+  const re = /^.*:.*$/; // Fix this.
   return re.test(input);
 }
 

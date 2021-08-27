@@ -7,19 +7,23 @@ import { createClientService } from '@/client';
 import PolykeyClient from '@/PolykeyClient';
 import { promisify } from '@/utils';
 import { SessionCredentials, SessionToken } from '@/sessions/types';
-import PolykeyAgent from '@/PolykeyAgent';
+import { PolykeyAgent } from '@';
 
-async function openTestClientServer({ polykeyAgent }: { polykeyAgent: PolykeyAgent }) {
+async function openTestClientServer({
+  polykeyAgent,
+}: {
+  polykeyAgent: PolykeyAgent;
+}) {
   const clientService: IClientServer = createClientService({
     polykeyAgent,
-    discovery: polykeyAgent.discovery,
-    gestaltGraph: polykeyAgent.gestalts,
-    identitiesManager: polykeyAgent.identities,
     keyManager: polykeyAgent.keys,
+    vaultManager: polykeyAgent.vaults,
     nodeManager: polykeyAgent.nodes,
-    notificationsManager: polykeyAgent.notifications,
+    identitiesManager: polykeyAgent.identities,
+    gestaltGraph: polykeyAgent.gestalts,
     sessionManager: polykeyAgent.sessions,
-    vaultManager: polykeyAgent.vaults
+    notificationsManager: polykeyAgent.notifications,
+    discovery: polykeyAgent.discovery,
   });
 
   const server = new grpc.Server();
