@@ -5,16 +5,24 @@ import type { SessionToken } from '../sessions/types';
 
 import * as grpc from '@grpc/grpc-js';
 import * as clientErrors from '../client/errors';
+import { VaultMessage } from '../proto/js/Client_pb';
 
 async function parseVaultInput(
-  input: string,
+  vaultMessage: VaultMessage,
   vaultManager: VaultManager,
 ): Promise<VaultId> {
-  const id = await vaultManager.getVaultId(input);
-  if (id) {
-    return id;
-  } else {
-    return input as VaultId;
+  switch (vaultMessage.getNameOrIdCase()) {
+    case VaultMessage.NameOrIdCase.VAULT_NAME: {
+      return (await vaultManager.getVaultId(
+        vaultMessage.getVaultName(),
+      )) as VaultId;
+    }
+    case VaultMessage.NameOrIdCase.VAULT_ID: {
+      return vaultMessage.getVaultId() as VaultId;
+    }
+    case VaultMessage.NameOrIdCase.NAME_OR_ID_NOT_SET:
+    default:
+      return '' as VaultId;
   }
 }
 
@@ -25,7 +33,7 @@ async function parseVaultInput(
  */
 function getToken(meta: grpc.Metadata): SessionToken {
   const auth = meta.get('Authorization').pop();
-  if (!auth) {
+  if (auth == null) {
     throw new clientErrors.ErrorClientJWTTokenNotProvided();
   }
   const token = auth.toString().split(' ')[1];
@@ -40,10 +48,10 @@ async function refreshSession(
   session: Session,
 ): Promise<void> {
   const auth = meta.get('Authorization').pop();
-  if (!auth) {
+  if (auth == null) {
     return;
   }
-  const token = auth.toString().split(' ')[1];
+  const token = auth.toString().split('Bearer: ')[1];
   await session.refresh(token as SessionToken);
 }
 

@@ -132,16 +132,14 @@ describe('GRPC agent', () => {
     await nodeManager.start({ nodeId: 'NODEID' as NodeId });
     await notificationsManager.start();
     await vaultManager.start({});
-
     [server, port] = await testUtils.openTestAgentServer({
       vaultManager,
       nodeManager,
       sigchain,
       notificationsManager,
     });
-
     client = await testUtils.openTestAgentClient(port);
-  });
+  }, global.polykeyStartupTimeout);
   afterEach(async () => {
     await testUtils.closeTestAgentClient(client);
     await testUtils.closeTestAgentServer(server);
@@ -172,12 +170,12 @@ describe('GRPC agent', () => {
     await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
     const vaultPermMessage = new agentPB.VaultPermMessage();
-    vaultPermMessage.setNodeid('12345');
-    vaultPermMessage.setVaultid(vault.vaultId);
-    const response = await client.checkVaultPermissions(vaultPermMessage);
+    vaultPermMessage.setNodeId('12345');
+    vaultPermMessage.setVaultId(vault.vaultId);
+    const response = await client.vaultsPermisssionsCheck(vaultPermMessage);
     expect(response.getPermission()).toBeFalsy();
     await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = await client.checkVaultPermissions(vaultPermMessage);
+    const response2 = await client.vaultsPermisssionsCheck(vaultPermMessage);
     expect(response2.getPermission()).toBeTruthy();
     await vaultManager.deleteVault(vault.vaultId);
   });
@@ -185,8 +183,8 @@ describe('GRPC agent', () => {
     const vault = await vaultManager.createVault('TestAgentVault');
     await gestaltGraph.setNode(node1);
     const NodeIdMessage = new agentPB.NodeIdMessage();
-    NodeIdMessage.setNodeid('12345');
-    const response = client.scanVaults(NodeIdMessage);
+    NodeIdMessage.setNodeId('12345');
+    const response = client.vaultsScan(NodeIdMessage);
     const data: string[] = [];
     for await (const resp of response) {
       const chunk = resp.getVault_asU8();
@@ -194,7 +192,7 @@ describe('GRPC agent', () => {
     }
     expect(data).toStrictEqual([]);
     await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = client.scanVaults(NodeIdMessage);
+    const response2 = client.vaultsScan(NodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {
       const chunk = resp.getVault_asU8();
@@ -202,5 +200,13 @@ describe('GRPC agent', () => {
     }
     expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
     await vaultManager.deleteVault(vault.vaultId);
+  });
+  test('Can connect over insecure connection.', async () => {
+    const echoMessage = new agentPB.EchoMessage();
+    echoMessage.setChallenge('yes');
+    await client.echo(echoMessage);
+    const response = await client.echo(echoMessage);
+    expect(response.getChallenge()).toBe('yes');
+    expect(client.secured).toBeFalsy();
   });
 });

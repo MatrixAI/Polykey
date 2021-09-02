@@ -3,14 +3,14 @@ import PolykeyAgent from '../PolykeyAgent';
 let polykeyAgent: PolykeyAgent;
 
 async function handle(signal) {
-  console.log(`Caught ${signal}...`);
-  console.log('stopping polykeyAgent...');
+  process.stdout.write(`Caught ${signal}...`);
+  process.stdout.write('stopping polykeyAgent...');
   try {
     await polykeyAgent.stop();
   } catch (e) {
-    console.error('Failed to stop agent.', e);
+    process.stderr.write('Failed to stop agent.', e);
   }
-  console.log('exiting...');
+  process.stdout.write('exiting...');
   process.exit(1);
 }
 

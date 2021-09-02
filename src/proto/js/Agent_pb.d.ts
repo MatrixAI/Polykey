@@ -63,6 +63,28 @@ export namespace InfoRequest {
     }
 }
 
+export class PackChunk extends jspb.Message { 
+    getChunk(): Uint8Array | string;
+    getChunk_asU8(): Uint8Array;
+    getChunk_asB64(): string;
+    setChunk(value: Uint8Array | string): PackChunk;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackChunk.AsObject;
+    static toObject(includeInstance: boolean, msg: PackChunk): PackChunk.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackChunk, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackChunk;
+    static deserializeBinaryFromReader(message: PackChunk, reader: jspb.BinaryReader): PackChunk;
+}
+
+export namespace PackChunk {
+    export type AsObject = {
+        chunk: Uint8Array | string,
+    }
+}
+
 export class PackRequest extends jspb.Message { 
     getId(): string;
     setId(value: string): PackRequest;
@@ -88,28 +110,6 @@ export namespace PackRequest {
     }
 }
 
-export class PackChunk extends jspb.Message { 
-    getChunk(): Uint8Array | string;
-    getChunk_asU8(): Uint8Array;
-    getChunk_asB64(): string;
-    setChunk(value: Uint8Array | string): PackChunk;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PackChunk.AsObject;
-    static toObject(includeInstance: boolean, msg: PackChunk): PackChunk.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PackChunk, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PackChunk;
-    static deserializeBinaryFromReader(message: PackChunk, reader: jspb.BinaryReader): PackChunk;
-}
-
-export namespace PackChunk {
-    export type AsObject = {
-        chunk: Uint8Array | string,
-    }
-}
-
 export class VaultListMessage extends jspb.Message { 
     getVault(): Uint8Array | string;
     getVault_asU8(): Uint8Array;
@@ -132,15 +132,78 @@ export namespace VaultListMessage {
     }
 }
 
+export class VaultPermMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): VaultPermMessage;
+    getVaultId(): string;
+    setVaultId(value: string): VaultPermMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultPermMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultPermMessage): VaultPermMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultPermMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultPermMessage;
+    static deserializeBinaryFromReader(message: VaultPermMessage, reader: jspb.BinaryReader): VaultPermMessage;
+}
+
+export namespace VaultPermMessage {
+    export type AsObject = {
+        nodeId: string,
+        vaultId: string,
+    }
+}
+
+export class PermissionMessage extends jspb.Message { 
+    getPermission(): boolean;
+    setPermission(value: boolean): PermissionMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PermissionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PermissionMessage): PermissionMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PermissionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PermissionMessage;
+    static deserializeBinaryFromReader(message: PermissionMessage, reader: jspb.BinaryReader): PermissionMessage;
+}
+
+export namespace PermissionMessage {
+    export type AsObject = {
+        permission: boolean,
+    }
+}
+
+export class NodeIdMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeIdMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeIdMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeIdMessage): NodeIdMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeIdMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeIdMessage;
+    static deserializeBinaryFromReader(message: NodeIdMessage, reader: jspb.BinaryReader): NodeIdMessage;
+}
+
+export namespace NodeIdMessage {
+    export type AsObject = {
+        nodeId: string,
+    }
+}
+
 export class ConnectionMessage extends jspb.Message { 
-    getAid(): string;
-    setAid(value: string): ConnectionMessage;
-    getBid(): string;
-    setBid(value: string): ConnectionMessage;
-    getAip(): string;
-    setAip(value: string): ConnectionMessage;
-    getBip(): string;
-    setBip(value: string): ConnectionMessage;
+    getAId(): string;
+    setAId(value: string): ConnectionMessage;
+    getBId(): string;
+    setBId(value: string): ConnectionMessage;
+    getAIp(): string;
+    setAIp(value: string): ConnectionMessage;
+    getBIp(): string;
+    setBIp(value: string): ConnectionMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConnectionMessage.AsObject;
@@ -154,20 +217,20 @@ export class ConnectionMessage extends jspb.Message {
 
 export namespace ConnectionMessage {
     export type AsObject = {
-        aid: string,
-        bid: string,
-        aip: string,
-        bip: string,
+        aId: string,
+        bId: string,
+        aIp: string,
+        bIp: string,
     }
 }
 
 export class RelayMessage extends jspb.Message { 
-    getSrcid(): string;
-    setSrcid(value: string): RelayMessage;
-    getTargetid(): string;
-    setTargetid(value: string): RelayMessage;
-    getEgressaddress(): string;
-    setEgressaddress(value: string): RelayMessage;
+    getSrcId(): string;
+    setSrcId(value: string): RelayMessage;
+    getTargetId(): string;
+    setTargetId(value: string): RelayMessage;
+    getEgressAddress(): string;
+    setEgressAddress(value: string): RelayMessage;
     getSignature(): string;
     setSignature(value: string): RelayMessage;
 
@@ -183,50 +246,10 @@ export class RelayMessage extends jspb.Message {
 
 export namespace RelayMessage {
     export type AsObject = {
-        srcid: string,
-        targetid: string,
-        egressaddress: string,
+        srcId: string,
+        targetId: string,
+        egressAddress: string,
         signature: string,
-    }
-}
-
-export class NotificationMessage extends jspb.Message { 
-    getContent(): string;
-    setContent(value: string): NotificationMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NotificationMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NotificationMessage): NotificationMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NotificationMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NotificationMessage;
-    static deserializeBinaryFromReader(message: NotificationMessage, reader: jspb.BinaryReader): NotificationMessage;
-}
-
-export namespace NotificationMessage {
-    export type AsObject = {
-        content: string,
-    }
-}
-
-export class NodeIdMessage extends jspb.Message { 
-    getNodeid(): string;
-    setNodeid(value: string): NodeIdMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NodeIdMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NodeIdMessage): NodeIdMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NodeIdMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NodeIdMessage;
-    static deserializeBinaryFromReader(message: NodeIdMessage, reader: jspb.BinaryReader): NodeIdMessage;
-}
-
-export namespace NodeIdMessage {
-    export type AsObject = {
-        nodeid: string,
     }
 }
 
@@ -255,8 +278,8 @@ export namespace NodeAddressMessage {
 
 export class NodeTableMessage extends jspb.Message { 
 
-    getNodetableMap(): jspb.Map<string, NodeAddressMessage>;
-    clearNodetableMap(): void;
+    getNodeTableMap(): jspb.Map<string, NodeAddressMessage>;
+    clearNodeTableMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NodeTableMessage.AsObject;
@@ -271,56 +294,13 @@ export class NodeTableMessage extends jspb.Message {
 export namespace NodeTableMessage {
     export type AsObject = {
 
-        nodetableMap: Array<[string, NodeAddressMessage.AsObject]>,
-    }
-}
-
-export class VaultPermMessage extends jspb.Message { 
-    getNodeid(): string;
-    setNodeid(value: string): VaultPermMessage;
-    getVaultid(): string;
-    setVaultid(value: string): VaultPermMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): VaultPermMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: VaultPermMessage): VaultPermMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: VaultPermMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): VaultPermMessage;
-    static deserializeBinaryFromReader(message: VaultPermMessage, reader: jspb.BinaryReader): VaultPermMessage;
-}
-
-export namespace VaultPermMessage {
-    export type AsObject = {
-        nodeid: string,
-        vaultid: string,
-    }
-}
-
-export class PermissionMessage extends jspb.Message { 
-    getPermission(): boolean;
-    setPermission(value: boolean): PermissionMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PermissionMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: PermissionMessage): PermissionMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PermissionMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PermissionMessage;
-    static deserializeBinaryFromReader(message: PermissionMessage, reader: jspb.BinaryReader): PermissionMessage;
-}
-
-export namespace PermissionMessage {
-    export type AsObject = {
-        permission: boolean,
+        nodeTableMap: Array<[string, NodeAddressMessage.AsObject]>,
     }
 }
 
 export class ClaimTypeMessage extends jspb.Message { 
-    getClaimtype(): string;
-    setClaimtype(value: string): ClaimTypeMessage;
+    getClaimType(): string;
+    setClaimType(value: string): ClaimTypeMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ClaimTypeMessage.AsObject;
@@ -334,7 +314,7 @@ export class ClaimTypeMessage extends jspb.Message {
 
 export namespace ClaimTypeMessage {
     export type AsObject = {
-        claimtype: string,
+        claimType: string,
     }
 }
 
@@ -362,8 +342,8 @@ export namespace ClaimsMessage {
 
 export class ChainDataMessage extends jspb.Message { 
 
-    getChaindataMap(): jspb.Map<string, ClaimMessage>;
-    clearChaindataMap(): void;
+    getChainDataMap(): jspb.Map<string, ClaimMessage>;
+    clearChainDataMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ChainDataMessage.AsObject;
@@ -378,7 +358,7 @@ export class ChainDataMessage extends jspb.Message {
 export namespace ChainDataMessage {
     export type AsObject = {
 
-        chaindataMap: Array<[string, ClaimMessage.AsObject]>,
+        chainDataMap: Array<[string, ClaimMessage.AsObject]>,
     }
 }
 
@@ -427,5 +407,25 @@ export namespace SignatureMessage {
     export type AsObject = {
         signature: string,
         header: string,
+    }
+}
+
+export class NotificationMessage extends jspb.Message { 
+    getContent(): string;
+    setContent(value: string): NotificationMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NotificationMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationMessage): NotificationMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NotificationMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationMessage;
+    static deserializeBinaryFromReader(message: NotificationMessage, reader: jspb.BinaryReader): NotificationMessage;
+}
+
+export namespace NotificationMessage {
+    export type AsObject = {
+        content: string,
     }
 }

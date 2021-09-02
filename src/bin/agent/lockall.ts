@@ -35,10 +35,7 @@ lockall.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    await grpcClient.sessionLockAll(
-      m,
-      await client.session.createCallCredentials(),
-    );
+    await grpcClient.sessionLockAll(m);
 
     process.stdout.write('Locked all clients');
   } catch (err) {

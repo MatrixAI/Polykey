@@ -268,19 +268,21 @@ describe('CLI Nodes', () => {
       expect(res).toBeTruthy();
       expect(res!.ip).toEqual(host);
       expect(res!.port).toEqual(port);
+      await sleep(100);
     });
     test(
       'Should fail to add the node (invalid node ID)',
       async () => {
         const host = '0.0.0.0';
         const port = 55555;
-        const commands = genCommands(['add', node1.id, host, port.toString()]);
+        const invalidId = 'INVALIDID' as NodeId;
+        const commands = genCommands(['add', invalidId, host, port.toString()]);
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).not.toBe(0);
         expect(result.stdout).toContain('Invalid node ID.');
 
-        //Checking if node was added.
-        const res = await polykeyAgent.nodes.getNode(node1.id);
+        // Checking if node was added.
+        const res = await polykeyAgent.nodes.getNode(invalidId);
         expect(res).toBeUndefined();
       },
       global.failedConnectionTimeout,
@@ -288,7 +290,7 @@ describe('CLI Nodes', () => {
     test(
       'Should fail to add the node (invalid IP address)',
       async () => {
-        const host = '0';
+        const host = 'asdfghdsgh';
         const port = 55555;
         const commands = genCommands(['add', node2.id, host, port.toString()]);
         const result = await testUtils.pkWithStdio(commands);

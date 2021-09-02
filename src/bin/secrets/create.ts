@@ -51,14 +51,11 @@ create.action(async (options) => {
 
     const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
 
-    vaultMessage.setName(vaultName);
-    secretMessage.setName(secretName);
-    secretMessage.setContent(content);
+    vaultMessage.setVaultName(vaultName);
+    secretMessage.setSecretName(secretName);
+    secretMessage.setSecretContent(content);
 
-    const pCall = grpcClient.vaultsNewSecret(
-      secretMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsNew(secretMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -69,7 +66,7 @@ create.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${secretMessage.getName()} successfully created in vault: ${vaultMessage.getName()}`,
+            `Secret: ${secretMessage.getSecretName()} successfully created in vault: ${vaultMessage.getVaultName()}`,
           ],
         }),
       );
@@ -78,7 +75,7 @@ create.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to create secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()}`,
+            `Failed to create secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
           ],
         }),
       );

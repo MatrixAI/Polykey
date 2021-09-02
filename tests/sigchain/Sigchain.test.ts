@@ -229,7 +229,7 @@ describe('Sigchain', () => {
     // Add 30 claims
     for (let i = 1; i <= 30; i++) {
       // If even, add a node link
-      if (i % 2 == 0) {
+      if (i % 2 === 0) {
         const nodeLink: ClaimData = {
           type: 'node',
           node1: srcNodeId,
@@ -312,7 +312,7 @@ describe('Sigchain', () => {
       const expected: Claim = {
         payload: {
           hPrev:
-            expectedSeqNum == 1
+            expectedSeqNum === 1
               ? null
               : claimsUtils.hashClaim(await sigchain.getClaim(seqNum - 1)),
           seq: expectedSeqNum,

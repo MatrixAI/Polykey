@@ -63,6 +63,44 @@ export namespace EchoMessage {
     }
 }
 
+export class PasswordMessage extends jspb.Message { 
+
+    hasPassword(): boolean;
+    clearPassword(): void;
+    getPassword(): string;
+    setPassword(value: string): PasswordMessage;
+
+    hasPasswordFile(): boolean;
+    clearPasswordFile(): void;
+    getPasswordFile(): string;
+    setPasswordFile(value: string): PasswordMessage;
+
+    getPasswordOrFileCase(): PasswordMessage.PasswordOrFileCase;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PasswordMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: PasswordMessage): PasswordMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PasswordMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PasswordMessage;
+    static deserializeBinaryFromReader(message: PasswordMessage, reader: jspb.BinaryReader): PasswordMessage;
+}
+
+export namespace PasswordMessage {
+    export type AsObject = {
+        password: string,
+        passwordFile: string,
+    }
+
+    export enum PasswordOrFileCase {
+        PASSWORD_OR_FILE_NOT_SET = 0,
+        PASSWORD = 1,
+        PASSWORD_FILE = 2,
+    }
+
+}
+
 export class SessionTokenMessage extends jspb.Message { 
     getToken(): string;
     setToken(value: string): SessionTokenMessage;
@@ -84,10 +122,10 @@ export namespace SessionTokenMessage {
 }
 
 export class VaultListMessage extends jspb.Message { 
-    getName(): string;
-    setName(value: string): VaultListMessage;
-    getId(): string;
-    setId(value: string): VaultListMessage;
+    getVaultName(): string;
+    setVaultName(value: string): VaultListMessage;
+    getVaultId(): string;
+    setVaultId(value: string): VaultListMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultListMessage.AsObject;
@@ -101,24 +139,24 @@ export class VaultListMessage extends jspb.Message {
 
 export namespace VaultListMessage {
     export type AsObject = {
-        name: string,
-        id: string,
+        vaultName: string,
+        vaultId: string,
     }
 }
 
 export class VaultMessage extends jspb.Message { 
 
-    hasName(): boolean;
-    clearName(): void;
-    getName(): string;
-    setName(value: string): VaultMessage;
+    hasVaultName(): boolean;
+    clearVaultName(): void;
+    getVaultName(): string;
+    setVaultName(value: string): VaultMessage;
 
-    hasId(): boolean;
-    clearId(): void;
-    getId(): string;
-    setId(value: string): VaultMessage;
+    hasVaultId(): boolean;
+    clearVaultId(): void;
+    getVaultId(): string;
+    setVaultId(value: string): VaultMessage;
 
-    getNameoridCase(): VaultMessage.NameoridCase;
+    getNameOrIdCase(): VaultMessage.NameOrIdCase;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultMessage.AsObject;
@@ -132,14 +170,14 @@ export class VaultMessage extends jspb.Message {
 
 export namespace VaultMessage {
     export type AsObject = {
-        name: string,
-        id: string,
+        vaultName: string,
+        vaultId: string,
     }
 
-    export enum NameoridCase {
-        NAMEORID_NOT_SET = 0,
-        NAME = 1,
-        ID = 2,
+    export enum NameOrIdCase {
+        NAME_OR_ID_NOT_SET = 0,
+        VAULT_NAME = 1,
+        VAULT_ID = 2,
     }
 
 }
@@ -150,8 +188,8 @@ export class VaultRenameMessage extends jspb.Message {
     clearVault(): void;
     getVault(): VaultMessage | undefined;
     setVault(value?: VaultMessage): VaultRenameMessage;
-    getNewname(): string;
-    setNewname(value: string): VaultRenameMessage;
+    getNewName(): string;
+    setNewName(value: string): VaultRenameMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultRenameMessage.AsObject;
@@ -166,7 +204,7 @@ export class VaultRenameMessage extends jspb.Message {
 export namespace VaultRenameMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
-        newname: string,
+        newName: string,
     }
 }
 
@@ -176,8 +214,8 @@ export class VaultMkdirMessage extends jspb.Message {
     clearVault(): void;
     getVault(): VaultMessage | undefined;
     setVault(value?: VaultMessage): VaultMkdirMessage;
-    getDirname(): string;
-    setDirname(value: string): VaultMkdirMessage;
+    getDirName(): string;
+    setDirName(value: string): VaultMkdirMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultMkdirMessage.AsObject;
@@ -192,7 +230,7 @@ export class VaultMkdirMessage extends jspb.Message {
 export namespace VaultMkdirMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
-        dirname: string,
+        dirName: string,
     }
 }
 
@@ -256,12 +294,12 @@ export namespace VaultCloneMessage {
 
 export class SecretRenameMessage extends jspb.Message { 
 
-    hasOldsecret(): boolean;
-    clearOldsecret(): void;
-    getOldsecret(): SecretMessage | undefined;
-    setOldsecret(value?: SecretMessage): SecretRenameMessage;
-    getNewname(): string;
-    setNewname(value: string): SecretRenameMessage;
+    hasOldSecret(): boolean;
+    clearOldSecret(): void;
+    getOldSecret(): SecretMessage | undefined;
+    setOldSecret(value?: SecretMessage): SecretRenameMessage;
+    getNewName(): string;
+    setNewName(value: string): SecretRenameMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SecretRenameMessage.AsObject;
@@ -275,8 +313,8 @@ export class SecretRenameMessage extends jspb.Message {
 
 export namespace SecretRenameMessage {
     export type AsObject = {
-        oldsecret?: SecretMessage.AsObject,
-        newname: string,
+        oldSecret?: SecretMessage.AsObject,
+        newName: string,
     }
 }
 
@@ -286,10 +324,10 @@ export class SecretMessage extends jspb.Message {
     clearVault(): void;
     getVault(): VaultMessage | undefined;
     setVault(value?: VaultMessage): SecretMessage;
-    getName(): string;
-    setName(value: string): SecretMessage;
-    getContent(): string;
-    setContent(value: string): SecretMessage;
+    getSecretName(): string;
+    setSecretName(value: string): SecretMessage;
+    getSecretContent(): string;
+    setSecretContent(value: string): SecretMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SecretMessage.AsObject;
@@ -304,8 +342,8 @@ export class SecretMessage extends jspb.Message {
 export namespace SecretMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
-        name: string,
-        content: string,
+        secretName: string,
+        secretContent: string,
     }
 }
 
@@ -338,8 +376,8 @@ export class SecretDirectoryMessage extends jspb.Message {
     clearVault(): void;
     getVault(): VaultMessage | undefined;
     setVault(value?: VaultMessage): SecretDirectoryMessage;
-    getSecretdirectory(): string;
-    setSecretdirectory(value: string): SecretDirectoryMessage;
+    getSecretDirectory(): string;
+    setSecretDirectory(value: string): SecretDirectoryMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SecretDirectoryMessage.AsObject;
@@ -354,7 +392,7 @@ export class SecretDirectoryMessage extends jspb.Message {
 export namespace SecretDirectoryMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
-        secretdirectory: string,
+        secretDirectory: string,
     }
 }
 
@@ -466,8 +504,8 @@ export namespace GetVaultPermMessage {
 }
 
 export class PermissionMessage extends jspb.Message { 
-    getId(): string;
-    setId(value: string): PermissionMessage;
+    getNodeId(): string;
+    setNodeId(value: string): PermissionMessage;
     getAction(): string;
     setAction(value: string): PermissionMessage;
 
@@ -483,14 +521,14 @@ export class PermissionMessage extends jspb.Message {
 
 export namespace PermissionMessage {
     export type AsObject = {
-        id: string,
+        nodeId: string,
         action: string,
     }
 }
 
 export class NodeMessage extends jspb.Message { 
-    getName(): string;
-    setName(value: string): NodeMessage;
+    getNodeId(): string;
+    setNodeId(value: string): NodeMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): NodeMessage.AsObject;
@@ -504,13 +542,13 @@ export class NodeMessage extends jspb.Message {
 
 export namespace NodeMessage {
     export type AsObject = {
-        name: string,
+        nodeId: string,
     }
 }
 
 export class NodeAddressMessage extends jspb.Message { 
-    getId(): string;
-    setId(value: string): NodeAddressMessage;
+    getNodeId(): string;
+    setNodeId(value: string): NodeAddressMessage;
     getHost(): string;
     setHost(value: string): NodeAddressMessage;
     getPort(): number;
@@ -528,7 +566,7 @@ export class NodeAddressMessage extends jspb.Message {
 
 export namespace NodeAddressMessage {
     export type AsObject = {
-        id: string,
+        nodeId: string,
         host: string,
         port: number,
     }
@@ -623,29 +661,9 @@ export namespace CertificateMessage {
     }
 }
 
-export class PasswordMessage extends jspb.Message { 
-    getPassword(): string;
-    setPassword(value: string): PasswordMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): PasswordMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: PasswordMessage): PasswordMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: PasswordMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): PasswordMessage;
-    static deserializeBinaryFromReader(message: PasswordMessage, reader: jspb.BinaryReader): PasswordMessage;
-}
-
-export namespace PasswordMessage {
-    export type AsObject = {
-        password: string,
-    }
-}
-
 export class ProviderMessage extends jspb.Message { 
-    getId(): string;
-    setId(value: string): ProviderMessage;
+    getProviderId(): string;
+    setProviderId(value: string): ProviderMessage;
     getMessage(): string;
     setMessage(value: string): ProviderMessage;
 
@@ -661,7 +679,7 @@ export class ProviderMessage extends jspb.Message {
 
 export namespace ProviderMessage {
     export type AsObject = {
-        id: string,
+        providerId: string,
         message: string,
     }
 }
@@ -789,6 +807,26 @@ export class GestaltMessage extends jspb.Message {
 export namespace GestaltMessage {
     export type AsObject = {
         name: string,
+    }
+}
+
+export class GestaltGraphMessage extends jspb.Message { 
+    getGestaltGraph(): string;
+    setGestaltGraph(value: string): GestaltGraphMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GestaltGraphMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GestaltGraphMessage): GestaltGraphMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GestaltGraphMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GestaltGraphMessage;
+    static deserializeBinaryFromReader(message: GestaltGraphMessage, reader: jspb.BinaryReader): GestaltGraphMessage;
+}
+
+export namespace GestaltGraphMessage {
+    export type AsObject = {
+        gestaltGraph: string,
     }
 }
 

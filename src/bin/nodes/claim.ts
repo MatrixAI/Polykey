@@ -36,11 +36,8 @@ claim.action(async (node, options) => {
 
     //Claiming the node.
     const nodeMessage = new clientPB.NodeMessage();
-    nodeMessage.setName(node);
-    const pCall = grpcClient.nodesClaim(
-      nodeMessage,
-      await client.session.createCallCredentials(),
-    );
+    nodeMessage.setNodeId(node);
+    const pCall = grpcClient.nodesClaim(nodeMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

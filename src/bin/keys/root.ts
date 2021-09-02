@@ -31,10 +31,7 @@ root.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.keysRootKeyPair(
-      emptyMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysKeyPairRoot(emptyMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

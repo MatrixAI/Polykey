@@ -35,12 +35,9 @@ commandTrustGestalts.action(async (providerId, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
     const providerMessage = new clientPB.ProviderMessage();
-    providerMessage.setId(providerId);
+    providerMessage.setProviderId(providerId);
 
-    const pCall = grpcClient.identitiesGetInfo(
-      providerMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.identitiesInfoGet(providerMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -49,7 +46,7 @@ commandTrustGestalts.action(async (providerId, options) => {
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [`Found identity: ${res.getId()}:${res.getMessage()}`],
+        data: [`Found identity: ${res.getProviderId()}:${res.getMessage()}`],
       }),
     );
   } catch (err) {

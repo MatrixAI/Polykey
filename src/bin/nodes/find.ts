@@ -47,16 +47,13 @@ find.action(async (node, options) => {
     const grpcClient = client.grpcClient;
 
     const nodeMessage = new clientPB.NodeMessage();
-    nodeMessage.setName(node);
+    nodeMessage.setNodeId(node);
 
     const result = { success: false, message: '', id: '', host: '', port: 0 };
     try {
-      const res = await grpcClient.nodesFind(
-        nodeMessage,
-        await client.session.createCallCredentials(),
-      );
+      const res = await grpcClient.nodesFind(nodeMessage);
       result.success = true;
-      result.id = res.getId();
+      result.id = res.getNodeId();
       result.host = res.getHost();
       result.port = res.getPort();
       result.message = `Found node at ${buildAddress(

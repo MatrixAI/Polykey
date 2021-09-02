@@ -102,12 +102,12 @@ class Discovery {
     while (true) {
       // Get the next vertex discovered to be in the gestalt
       const vertex = vertexQueue.shift();
-      if (!vertex) {
+      if (vertex == null) {
         break;
       }
 
       const vertexGId = gestaltsUtils.ungestaltKey(vertex);
-      if (vertexGId.type == 'node') {
+      if (vertexGId.type === 'node') {
         // If the next vertex is a node, find its cryptolinks
         // const linkInfos = await this.nodeManager.getCryptolinks(nodeInfo.id);
         //  need some public API to:
@@ -156,7 +156,7 @@ class Discovery {
           const claim: Claim = vertexChainData[claimId as ClaimId];
 
           // If the claim is to a node
-          if (claim.payload.data.type == 'node') {
+          if (claim.payload.data.type === 'node') {
             // Get the chain data of the linked node
             const linkedVertexNodeId = claim.payload.data.node2;
             const linkedVertexChainData =
@@ -180,7 +180,7 @@ class Discovery {
           }
 
           // If the claim is to an identity
-          if (claim.payload.data.type == 'identity') {
+          if (claim.payload.data.type === 'identity') {
             // Attempt to get the identity info on the identity provider
             const identityInfo = await this.getIdentityInfo(
               claim.payload.data.provider,
@@ -188,7 +188,7 @@ class Discovery {
               claim.payload.data.identity,
             );
             // If we can't get identity info, simply skip this claim
-            if (!identityInfo) {
+            if (identityInfo == null) {
               continue;
             }
             // Link the node to the found identity info
@@ -209,7 +209,7 @@ class Discovery {
         }
         // Add this node vertex to the visited
         visitedVertices.add(gestaltsUtils.keyFromNode(vertexGId.nodeId));
-      } else if (vertexGId.type == 'identity') {
+      } else if (vertexGId.type === 'identity') {
         // If the next vertex is an identity, perform a social discovery
         // Firstly get the identity info of this identity
         const vertexIdentityInfo = await this.getIdentityInfo(
@@ -218,7 +218,7 @@ class Discovery {
           vertexGId.identityId,
         );
         // If we don't have identity info, simply skip this vertex
-        if (!vertexIdentityInfo) {
+        if (vertexIdentityInfo == null) {
           continue;
         }
 
@@ -277,13 +277,13 @@ class Discovery {
   ): Promise<IdentityInfo | undefined> {
     const provider = this.identitiesManager.getProvider(providerId);
     // If we don't have this provider, no identity info to find
-    if (!provider) {
+    if (provider == null) {
       return undefined;
     }
     // Get the identity data
     const identityData = await provider.getIdentityData(identityId, identityId);
     // If we don't have identity data, no identity info to find
-    if (!identityData) {
+    if (identityData == null) {
       return undefined;
     }
     // Get and verify the identity claims

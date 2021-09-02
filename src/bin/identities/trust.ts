@@ -45,12 +45,9 @@ trust.action(async (id, options) => {
     if (nodeId) {
       // Setting by Node.
       const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setName(nodeId);
+      nodeMessage.setNodeId(nodeId);
       setActionMessage.setNode(nodeMessage);
-      const pCall = grpcClient.gestaltsSetActionByNode(
-        setActionMessage,
-        await client.session.createCallCredentials(),
-      );
+      const pCall = grpcClient.gestaltsActionsSetByNode(setActionMessage);
       pCall.call.on('metadata', (meta) => {
         clientUtils.refreshSession(meta, client.session);
       });
@@ -58,13 +55,10 @@ trust.action(async (id, options) => {
     } else {
       //  Setting by Identity
       const providerMessage = new clientPB.ProviderMessage();
-      providerMessage.setId(providerId!);
+      providerMessage.setProviderId(providerId!);
       providerMessage.setMessage(identityId!);
       setActionMessage.setIdentity(providerMessage);
-      await grpcClient.gestaltsSetActionByIdentity(
-        setActionMessage,
-        await client.session.createCallCredentials(),
-      );
+      await grpcClient.gestaltsActionsSetByIdentity(setActionMessage);
     }
 
     process.stdout.write(

@@ -47,14 +47,11 @@ ping.action(async (node, options) => {
 
     //Pinging a specific node.
     const nodeMessage = new clientPB.NodeMessage();
-    nodeMessage.setName(node);
+    nodeMessage.setNodeId(node);
     let statusMessage;
     let error;
     try {
-      statusMessage = await grpcClient.nodesPing(
-        nodeMessage,
-        await client.session.createCallCredentials(),
-      );
+      statusMessage = await grpcClient.nodesPing(nodeMessage);
     } catch (err) {
       if (err instanceof ErrorNodeGraphNodeNotFound) {
         error = new ErrorNodePingFailed(
@@ -83,7 +80,7 @@ ping.action(async (node, options) => {
       }),
     );
 
-    if (error) throw error;
+    if (error != null) throw error;
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);

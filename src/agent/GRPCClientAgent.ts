@@ -31,56 +31,56 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
-  public getGitInfo(...args) {
+  public vaultsGitInfoGet(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
       this.client,
-      this.client.getGitInfo,
+      this.client.vaultsGitInfoGet,
     )(...args);
   }
 
-  public getGitPack(...args) {
+  public vaultsGitPackGet(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
-    return this.client.getGitPack(...args);
+    return this.client.vaultsGitPackGet(...args);
   }
 
-  public scanVaults(...args) {
+  public vaultsScan(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<agentPB.VaultListMessage>(
       this.client,
-      this.client.scanVaults,
+      this.client.vaultsScan,
     )(...args);
   }
 
-  public getClosestLocalNodes(...args) {
+  public nodesClosestLocalNodesGet(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.NodeTableMessage>(
       this.client,
-      this.client.getClosestLocalNodes,
+      this.client.nodesClosestLocalNodesGet,
     )(...args);
   }
 
-  public getClaims(...args) {
+  public nodesClaimsGet(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.ClaimsMessage>(
       this.client,
-      this.client.getClaims,
+      this.client.nodesClaimsGet,
     )(...args);
   }
 
-  public getChainData(...args) {
+  public nodesChainDataGet(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.ChainDataMessage>(
       this.client,
-      this.client.getChainData,
+      this.client.nodesChainDataGet,
     )(...args);
   }
 
-  public sendHolePunchMessage(...args) {
+  public nodesHolePunchMessageSend(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.EmptyMessage>(
       this.client,
-      this.client.sendHolePunchMessage,
+      this.client.nodesHolePunchMessageSend,
     )(...args);
   }
 
@@ -92,11 +92,11 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     )(...args);
   }
 
-  public checkVaultPermissions(...args) {
+  public vaultsPermisssionsCheck(...args) {
     if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
     return grpcUtils.promisifyUnaryCall<agentPB.PermissionMessage>(
       this.client,
-      this.client.checkVaultPermisssions,
+      this.client.vaultsPermisssionsCheck,
     )(...args);
   }
 }

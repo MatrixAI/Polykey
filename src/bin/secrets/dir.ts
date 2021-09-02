@@ -39,14 +39,11 @@ dir.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setName(options.vaultName);
+    vaultMessage.setVaultName(options.vaultName);
     secretDirectoryMessage.setVault(vaultMessage);
-    secretDirectoryMessage.setSecretdirectory(options.directoryPath);
+    secretDirectoryMessage.setSecretDirectory(options.directoryPath);
 
-    const pCall = grpcClient.vaultsNewDirSecret(
-      secretDirectoryMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsNewDir(secretDirectoryMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -57,7 +54,7 @@ dir.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Secret directory added to vault: ${secretDirectoryMessage.getSecretdirectory()}`,
+          `Secret directory added to vault: ${secretDirectoryMessage.getSecretDirectory()}`,
         ],
       }),
     );

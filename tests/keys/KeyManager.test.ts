@@ -256,43 +256,47 @@ describe('KeyManager', () => {
 
     await keyManager.stop();
   });
-  test('order of certificate chain should be leaf to root', async () => {
-    const keysPath = `${dataDir}/keys`;
-    const dbPath = `${dataDir}/db`;
-    const keyManager = new KeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
-    const db = new DB({ dbPath, logger });
-    const rootKeyPair1 = keyManager.getRootKeyPair();
-    const rootCertPem1 = keyManager.getRootCertPem();
-    await sleep(2000); // let's just make sure there is time diff
-    // renew root key pair takes time
-    await db.start({ keyPair: rootKeyPair1 });
-    await keyManager.renewRootKeyPair('newpassword');
-    const rootCertPem2 = keyManager.getRootCertPem();
-    await sleep(2000); // let's just make sure there is time diff
-    // renew root key pair takes time
-    await keyManager.renewRootKeyPair('newnewpassword');
-    const rootCertPem3 = keyManager.getRootCertPem();
-    const rootCertChainPems = await keyManager.getRootCertChainPems();
-    const rootCertChainPem = await keyManager.getRootCertChainPem();
-    const rootCertChain = await keyManager.getRootCertChain();
-    // the order should be from leaf to root
-    expect(rootCertChainPems).toStrictEqual([
-      rootCertPem3,
-      rootCertPem2,
-      rootCertPem1,
-    ]);
-    expect(rootCertChainPem).toBe(
-      [rootCertPem3, rootCertPem2, rootCertPem1].join(''),
-    );
-    const rootCertChainPems_ = rootCertChain.map((c) => {
-      return keysUtils.certToPem(c);
-    });
-    expect(rootCertChainPems_).toStrictEqual([
-      rootCertPem3,
-      rootCertPem2,
-      rootCertPem1,
-    ]);
-    await keyManager.stop();
-  });
+  test(
+    'order of certificate chain should be leaf to root',
+    async () => {
+      const keysPath = `${dataDir}/keys`;
+      const dbPath = `${dataDir}/db`;
+      const keyManager = new KeyManager({ keysPath, logger });
+      await keyManager.start({ password: 'password' });
+      const db = new DB({ dbPath, logger });
+      const rootKeyPair1 = keyManager.getRootKeyPair();
+      const rootCertPem1 = keyManager.getRootCertPem();
+      await sleep(2000); // let's just make sure there is time diff
+      // renew root key pair takes time
+      await db.start({ keyPair: rootKeyPair1 });
+      await keyManager.renewRootKeyPair('newpassword');
+      const rootCertPem2 = keyManager.getRootCertPem();
+      await sleep(2000); // let's just make sure there is time diff
+      // renew root key pair takes time
+      await keyManager.renewRootKeyPair('newnewpassword');
+      const rootCertPem3 = keyManager.getRootCertPem();
+      const rootCertChainPems = await keyManager.getRootCertChainPems();
+      const rootCertChainPem = await keyManager.getRootCertChainPem();
+      const rootCertChain = await keyManager.getRootCertChain();
+      // the order should be from leaf to root
+      expect(rootCertChainPems).toStrictEqual([
+        rootCertPem3,
+        rootCertPem2,
+        rootCertPem1,
+      ]);
+      expect(rootCertChainPem).toBe(
+        [rootCertPem3, rootCertPem2, rootCertPem1].join(''),
+      );
+      const rootCertChainPems_ = rootCertChain.map((c) => {
+        return keysUtils.certToPem(c);
+      });
+      expect(rootCertChainPems_).toStrictEqual([
+        rootCertPem3,
+        rootCertPem2,
+        rootCertPem1,
+      ]);
+      await keyManager.stop();
+    },
+    global.defaultTimeout * 2 + 5000,
+  );
 });

@@ -63,7 +63,7 @@ function promisify<T>(f): (...args: any[]) => Promise<T> {
   return function <T>(...args): Promise<T> {
     return new Promise((resolve, reject) => {
       const callback = (error, ...values) => {
-        if (error) {
+        if (error != null) {
           return reject(error);
         }
         return resolve(values.length === 1 ? values[0] : values);

@@ -18,15 +18,17 @@ const createSessionRPC = ({
   return {
     sessionUnlock: async (
       call: grpc.ServerUnaryCall<
-        clientPB.EmptyMessage,
+        clientPB.PasswordMessage,
         clientPB.SessionTokenMessage
       >,
       callback: grpc.sendUnaryData<clientPB.SessionTokenMessage>,
     ): Promise<void> => {
       const response = new clientPB.SessionTokenMessage();
       try {
-        const password = await sessionUtils.passwordFromMetadata(call.metadata);
-        if (!password) {
+        const password = await sessionUtils.passwordFromPasswordMessage(
+          call.request,
+        );
+        if (password == null) {
           throw new clientErrors.ErrorClientPasswordNotProvided();
         }
         await sessionUtils.checkPassword(password, keyManager);

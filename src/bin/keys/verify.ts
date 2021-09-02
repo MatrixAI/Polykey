@@ -49,10 +49,7 @@ verify.action(async (options) => {
     cryptoMessage.setData(data);
     cryptoMessage.setSignature(signature);
 
-    const pCall = grpcClient.keysVerify(
-      cryptoMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysVerify(cryptoMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

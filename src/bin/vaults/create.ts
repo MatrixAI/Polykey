@@ -31,33 +31,30 @@ create.action(async (options) => {
 
   const client = new PolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setName(options.vaultName);
+  vaultMessage.setVaultName(options.vaultName);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.vaultsCreate(
-      vaultMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsCreate(vaultMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
 
     const responseMessage = await pCall;
-    if (responseMessage.getId()) {
+    if (responseMessage.getVaultId()) {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Vault ${vaultMessage.getName()} created successfully`],
+          data: [`Vault ${vaultMessage.getVaultName()} created successfully`],
         }),
       );
     } else {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to create vault: ${vaultMessage.getName()}.`],
+          data: [`Failed to create vault: ${vaultMessage.getVaultName()}.`],
         }),
       );
     }

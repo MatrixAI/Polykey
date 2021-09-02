@@ -97,7 +97,7 @@ async function spawnBackgroundAgent(
   });
 
   agentProcess.send(JSON.stringify(startOptions), (err: Error) => {
-    if (err) {
+    if (err != null) {
       agentProcess.kill('SIGTERM');
     } else {
       pid = agentProcess.pid;

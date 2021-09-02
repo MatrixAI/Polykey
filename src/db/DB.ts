@@ -72,7 +72,7 @@ class DB {
       const db = await new Promise<LevelDB<string, Buffer>>(
         (resolve, reject) => {
           const db = level(this.dbPath, { valueEncoding: 'binary' }, (e) => {
-            if (e) {
+            if (e != null) {
               reject(e);
             } else {
               resolve(db);

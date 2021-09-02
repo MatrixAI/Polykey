@@ -41,17 +41,14 @@ pull.action(async (options) => {
   vaultPullMessage.setVault(vaultMessage);
   vaultPullMessage.setNode(nodeMessage);
 
-  nodeMessage.setName(options.nodeId);
-  vaultMessage.setName(options.vaultName);
+  nodeMessage.setNodeId(options.nodeId);
+  vaultMessage.setVaultName(options.vaultName);
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.vaultsPull(
-      vaultPullMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsPull(vaultPullMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -62,7 +59,7 @@ pull.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Pull Vault: ${vaultMessage.getName()} from Node: ${nodeMessage.getName()} successful`,
+          `Pull Vault: ${vaultMessage.getVaultName()} from Node: ${nodeMessage.getNodeId()} successful`,
         ],
       }),
     );

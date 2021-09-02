@@ -36,7 +36,7 @@ class GitRequest {
     const u = new URL(url);
 
     // Parse request
-    if (method == 'GET') {
+    if (method === 'GET') {
       const match = u.pathname.match(/\/(.+)\/info\/refs$/);
       if (!match || /\.\./.test(match[1])) {
         throw new Error('Error');
@@ -54,7 +54,7 @@ class GitRequest {
         statusCode: 200,
         statusMessage: 'OK',
       };
-    } else if (method == 'POST') {
+    } else if (method === 'POST') {
       const match = u.pathname.match(/\/(.+)\/git-(.+)/);
       if (!match || /\.\./.test(match[1])) {
         throw new Error('Error');

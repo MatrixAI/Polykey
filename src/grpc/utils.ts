@@ -77,7 +77,7 @@ function serverSecureCredentials(
   certChainPem: CertificatePemChain,
 ): grpc.ServerCredentials {
   // this ensures that we get the client certificate
-  const checkClientCertificate = true;
+  const checkClientCertificate = false;
   const credentials = grpc.ServerCredentials.createSsl(
     null,
     [
@@ -89,10 +89,10 @@ function serverSecureCredentials(
     checkClientCertificate,
   );
   // @ts-ignore hack for undocumented property
-  const options = credentials.options;
+  credentials.options['rejectUnauthorized'] = false;
   // disable default certificate path validation logic
   // polykey has custom certificate path validation logic
-  options['rejectUnauthorized'] = false;
+  // options['rejectUnauthorized'] = false;
   return credentials;
 }
 
@@ -239,7 +239,7 @@ function promisifyUnaryCall<T>(
       rejectP = reject;
     });
     const callback = (error: ServiceError, ...values) => {
-      if (error) {
+      if (error != null) {
         return rejectP(toError(error));
       }
       return resolveP(values.length === 1 ? values[0] : values);
@@ -371,7 +371,7 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
       rejectP = reject;
     });
     const callback = (error, ...values) => {
-      if (error) {
+      if (error != null) {
         return rejectP(toError(error));
       }
       return resolveP(values.length === 1 ? values[0] : values);

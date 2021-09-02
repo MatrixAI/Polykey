@@ -35,19 +35,16 @@ list.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setName(options.vaultName);
+    vaultMessage.setVaultName(options.vaultName);
 
-    const secretListGenerator = grpcClient.vaultsListSecrets(
-      vaultMessage,
-      await client.session.createCallCredentials(),
-    );
+    const secretListGenerator = grpcClient.vaultsSecretsList(vaultMessage);
     secretListGenerator.stream.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
 
     const data: Array<string> = [];
     for await (const secret of secretListGenerator) {
-      data.push(`${secret.getName()}`);
+      data.push(`${secret.getSecretName()}`);
     }
 
     process.stdout.write(

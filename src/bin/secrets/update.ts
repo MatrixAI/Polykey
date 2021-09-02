@@ -50,17 +50,14 @@ update.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setName(vaultName);
-    secretMessage.setName(secretName);
+    vaultMessage.setVaultName(vaultName);
+    secretMessage.setSecretName(secretName);
 
     const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
 
-    secretMessage.setContent(content);
+    secretMessage.setSecretContent(content);
 
-    const pCall = grpcClient.vaultsEditSecret(
-      secretEditMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsEdit(secretEditMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -71,7 +68,7 @@ update.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Updated secret: ${secretMessage.getName()} in vault: ${vaultMessage.getName()}`,
+          `Updated secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
         ],
       }),
     );

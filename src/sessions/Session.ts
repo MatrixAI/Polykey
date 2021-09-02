@@ -44,10 +44,10 @@ class Session {
    * Starts the session, given a Claim/token.
    */
   public async start({ token }: { token?: SessionToken } = {}) {
-    if (!token) {
+    if (token == null) {
       token = await this.readToken();
     }
-    if (token) {
+    if (token != null) {
       this.logger.debug('DEBUG');
       this.logger.info('Starting Session');
       this._token = token;
@@ -69,22 +69,28 @@ class Session {
     return this._token;
   }
 
+  public sessionMetadataGenerator(_params, callback, _metadata?) {
+    const metadata = _metadata ?? new grpc.Metadata();
+    if (this.token) {
+      // Provides token if token exists.
+      metadata.add('Authorization', `Bearer: ${this.token}`);
+    }
+    callback(null, metadata);
+  }
+
   /**
    * Generates a grpc.CallOption using the token in this session.
    * @throws ErrorSessionNotStarted when the session has not started.
    * @returns Promise of a grpc.CallOption with the credentials field.
    */
+  // public async createCallCredentials(): Promise<Partial<grpc.CallOptions>> {
   public async createCallCredentials(): Promise<SessionCredentials> {
     if (!this.token || this.token === '') {
       return {} as SessionCredentials;
     }
     return {
       credentials: grpc.CallCredentials.createFromMetadataGenerator(
-        (_params, callback) => {
-          const meta = new grpc.Metadata();
-          meta.add('Authorization', `Bearer: ${this.token}`);
-          callback(null, meta);
-        },
+        this.sessionMetadataGenerator,
       ),
     } as SessionCredentials;
   }
@@ -109,9 +115,12 @@ class Session {
    */
   public async writeToken() {
     if (!this.token || this.token === '') {
-      throw new sessionErrors.ErrorSessionNotStarted(
-        'No token, cannot write to file.',
-      );
+      this.logger.info('No token provided, skipping writing token to file.');
+      return;
+      // Should just do nothing.
+      // throw new sessionErrors.ErrorSessionNotStarted(
+      //   'No token, cannot write to file.',
+      // );
     }
     this.logger.info(`Writing token to ${this.sessionFile}`);
     await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });

@@ -83,24 +83,29 @@ class GRPCServer {
           );
           this.logger.debug(`Receiving GRPC Client connecting from ${address}`);
           const clientCertChain = networkUtils.getCertificateChain(socket);
-          try {
-            networkUtils.verifyClientCertificateChain(clientCertChain);
+          if (clientCertChain.length === 0) {
+            // Client connected without providing certs.
             this.logger.debug(
-              `Received GRPC Client connecting from ${address}`,
+              `${address} connected without providing certificates`,
             );
-            this.clientCertChains.set(session, clientCertChain);
-          } catch (e) {
-            if (e instanceof networkErrors.ErrorCertChain) {
-              this.logger.debug(
-                `Failed GRPC client certificate verification connecting from ${address}`,
-              );
-              const e_ = new grpcErrors.ErrorGRPCServerVerification(
-                `${e.name}: ${e.message}`,
-                e.data,
-              );
-              session.destroy(e_, http2.constants.NGHTTP2_PROTOCOL_ERROR);
-            } else {
-              throw e;
+          } else {
+            try {
+              networkUtils.verifyClientCertificateChain(clientCertChain);
+              this.logger.debug(`Verified certificate from ${address}`);
+              this.clientCertChains.set(session, clientCertChain);
+            } catch (e) {
+              if (e instanceof networkErrors.ErrorCertChain) {
+                this.logger.debug(
+                  `Failed GRPC client certificate verification connecting from ${address}`,
+                );
+                const e_ = new grpcErrors.ErrorGRPCServerVerification(
+                  `${e.name}: ${e.message}`,
+                  e.data,
+                );
+                session.destroy(e_, http2.constants.NGHTTP2_PROTOCOL_ERROR);
+              } else {
+                throw e;
+              }
             }
           }
         });

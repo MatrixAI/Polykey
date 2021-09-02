@@ -103,7 +103,7 @@ async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
       }
       return 'KEYNODE_EXISTS'; // Should be a good initilized keynode.
     } else {
-      if (files.length != 0) {
+      if (files.length !== 0) {
         return 'OTHER_EXISTS'; // Bad structure, either malformed or not a keynode.
       } else {
         return 'EMPTY_DIRECTORY'; // Directy exists, but is empty, can make a keynode.

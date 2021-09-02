@@ -422,7 +422,7 @@ class VaultManager {
       return await this.acl._transaction(async () => {
         // Obtain the gestalt from the provided node
         const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
-        if (!gestalt) {
+        if (gestalt == null) {
           throw new gestaltErrors.ErrorGestaltsGraphNodeIdMissing();
         }
         const nodes = gestalt?.nodes;
@@ -449,7 +449,7 @@ class VaultManager {
       return await this.acl._transaction(async () => {
         // Obtain the gestalt from the provided node
         const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
-        if (!gestalt) {
+        if (gestalt == null) {
           return;
         }
         const nodes = gestalt?.nodes;
@@ -480,7 +480,7 @@ class VaultManager {
       for (const node in perms) {
         if (nodeId && nodeId === node) {
           record[node] = perms[node].vaults[vaultId];
-        } else if (!nodeId) {
+        } else if (nodeId == null) {
           record[node] = perms[node].vaults[vaultId];
         }
       }
@@ -502,7 +502,7 @@ class VaultManager {
   public async cloneVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
     // Create a connection to the specified node
     const nodeAddress = await this.nodeManager.getNode(nodeId);
-    if (!nodeAddress) {
+    if (nodeAddress == null) {
       throw new nodesErrors.ErrorNodeConnectionNotExist(
         'Node does not exist in node store',
       );
@@ -518,9 +518,9 @@ class VaultManager {
 
     // Send a message to the connected agent to see if the clone can occur
     const vaultPermMessage = new agentPB.VaultPermMessage();
-    vaultPermMessage.setNodeid(this.nodeManager.getNodeId());
-    vaultPermMessage.setVaultid(id);
-    const permission = await client.checkVaultPermissions(vaultPermMessage);
+    vaultPermMessage.setNodeId(this.nodeManager.getNodeId());
+    vaultPermMessage.setVaultId(id);
+    const permission = await client.vaultsPermisssionsCheck(vaultPermMessage);
     if (permission.getPermission() === false) {
       throw new gitErrors.ErrorGitPermissionDenied();
     }
@@ -572,10 +572,10 @@ class VaultManager {
    */
   public async pullVault(vaultId: VaultId, nodeId?: NodeId): Promise<void> {
     let node = nodeId;
-    if (!nodeId) {
+    if (nodeId == null) {
       node = await this.getDefaultNode(vaultId);
     }
-    if (!node) {
+    if (node == null) {
       throw new vaultsErrors.ErrorVaultUnlinked(
         'Vault Id has not been cloned from remote repository',
       );
@@ -583,7 +583,7 @@ class VaultManager {
 
     // Create a connection to the specified node
     const nodeAddress = await this.nodeManager.getNode(node);
-    if (!nodeAddress) {
+    if (nodeAddress == null) {
       throw new nodesErrors.ErrorNodeConnectionNotExist(
         'Node does not exist in node store',
       );
@@ -598,9 +598,9 @@ class VaultManager {
 
     // Send a message to the connected agent to see if the pull can occur
     const vaultPermMessage = new agentPB.VaultPermMessage();
-    vaultPermMessage.setNodeid(this.nodeManager.getNodeId());
-    vaultPermMessage.setVaultid(id);
-    const permission = await client.checkVaultPermissions(vaultPermMessage);
+    vaultPermMessage.setNodeId(this.nodeManager.getNodeId());
+    vaultPermMessage.setVaultId(id);
+    const permission = await client.vaultsPermisssionsCheck(vaultPermMessage);
     if (permission.getPermission() === false) {
       throw new gitErrors.ErrorGitPermissionDenied();
     }
@@ -718,7 +718,7 @@ class VaultManager {
         this.vaultsNamesDbDomain,
         vaultName,
       );
-      if (!vaultId) {
+      if (vaultId == null) {
         return;
       }
       const ops: Array<DBOp> = [
@@ -751,7 +751,7 @@ class VaultManager {
         this.vaultsNamesDbDomain,
         vaultName,
       );
-      if (existingId) {
+      if (existingId != null) {
         throw new vaultsErrors.ErrorVaultDefined(
           'Vault Name already exists in Polykey, specify a new Vault Name',
         );
@@ -827,7 +827,7 @@ class VaultManager {
 
       // Obtain the vault key from the database
       const vaultKey = await this.getVaultKeyByVaultId(vaultId);
-      if (!vaultKey) {
+      if (vaultKey == null) {
         throw new vaultsErrors.ErrorVaultUndefined();
       }
       this.vaults[vaultId] = new Vault({

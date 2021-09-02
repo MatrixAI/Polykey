@@ -157,7 +157,7 @@ class NodeConnection {
       this.ingressHost,
       this.ingressPort,
     );
-    if (!connInfo) {
+    if (connInfo == null) {
       throw new nodesErrors.ErrorNodeConnectionInfoNotExist();
     }
     return connInfo.certificates;
@@ -177,7 +177,7 @@ class NodeConnection {
     const certificates = this.getRootCertChain();
     let publicKey: PublicKeyPem | null = null;
     for (const cert of certificates) {
-      if (networkUtils.certNodeId(cert) == expectedNodeId) {
+      if (networkUtils.certNodeId(cert) === expectedNodeId) {
         publicKey = keysUtils.publicKeyToPem(
           cert.publicKey as PublicKey,
         ) as PublicKeyPem;
@@ -198,13 +198,13 @@ class NodeConnection {
     }
     // Construct the message
     const nodeIdMessage = new agentPB.NodeIdMessage();
-    nodeIdMessage.setNodeid(targetNodeId);
+    nodeIdMessage.setNodeId(targetNodeId);
     // Send through client
-    const response = await this.client.getClosestLocalNodes(nodeIdMessage);
+    const response = await this.client.nodesClosestLocalNodesGet(nodeIdMessage);
     const nodes: Array<NodeData> = [];
     // Loop over each map element (from the returned response) and populate nodes
     response
-      .getNodetableMap()
+      .getNodeTableMap()
       .forEach((address: NodeAddressMessage, nodeId: string) => {
         nodes.push({
           id: nodeId as NodeId,
@@ -241,11 +241,11 @@ class NodeConnection {
       throw new nodesErrors.ErrorNodeConnectionNotStarted();
     }
     const relayMsg = new agentPB.RelayMessage();
-    relayMsg.setSrcid(sourceNodeId);
-    relayMsg.setTargetid(targetNodeId);
-    relayMsg.setEgressaddress(egressAddress);
+    relayMsg.setSrcId(sourceNodeId);
+    relayMsg.setTargetId(targetNodeId);
+    relayMsg.setEgressAddress(egressAddress);
     relayMsg.setSignature(signature.toString());
-    await this.client.sendHolePunchMessage(relayMsg);
+    await this.client.nodesHolePunchMessageSend(relayMsg);
   }
 
   /**
@@ -272,10 +272,10 @@ class NodeConnection {
     }
     const chainData: ChainDataEncoded = {};
     const emptyMsg = new agentPB.EmptyMessage();
-    const response = await this.client.getChainData(emptyMsg);
+    const response = await this.client.nodesChainDataGet(emptyMsg);
     // Reconstruct each claim from the returned ChainDataMessage
     response
-      .getChaindataMap()
+      .getChainDataMap()
       .forEach((claimMsg: agentPB.ClaimMessage, id: string) => {
         const claimId = id as ClaimId;
         // Reconstruct the signatures array

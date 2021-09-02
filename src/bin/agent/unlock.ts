@@ -2,7 +2,6 @@ import type { SessionToken } from '../../sessions/types';
 
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
-import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../../grpc/errors';
 
 import PolykeyClient from '../../PolykeyClient';
@@ -20,7 +19,7 @@ const unlock = binUtils.createCommand('unlock', {
 });
 unlock.arguments('[password]');
 unlock.action(async (password, options) => {
-  const meta = new grpc.Metadata();
+  const sessionPasswordMessage = new clientPB.PasswordMessage();
 
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
@@ -29,31 +28,32 @@ unlock.action(async (password, options) => {
   if (options.verbose) {
     clientConfig['logger'].setLevel(LogLevel.DEBUG);
   }
-  if (options.passwordFile) {
-    meta.set('passwordFile', options.passwordFile);
-  }
+
   const nodePath = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
   clientConfig['nodePath'] = nodePath;
 
+  if (options.passwordFile) {
+    sessionPasswordMessage.setPasswordFile(options.passwordFile);
+  }
+
   if (password) {
-    meta.set('password', password);
+    sessionPasswordMessage.setPassword(password);
   }
 
   if (!password && !options.passwordFile) {
     const input = await binUtils.requestPassword();
-    meta.set('password', input);
+    sessionPasswordMessage.setPassword(input);
   }
 
   const client = new PolykeyClient(clientConfig);
-  const m = new clientPB.EmptyMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.sessionUnlock(m, meta);
+    const pCall = grpcClient.sessionUnlock(sessionPasswordMessage);
 
     const responseMessage = await pCall;
     const token: SessionToken = responseMessage.getToken() as SessionToken;

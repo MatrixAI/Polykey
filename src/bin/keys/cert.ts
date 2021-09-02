@@ -30,10 +30,7 @@ cert.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const pCall = grpcClient.certsGet(
-      emptyMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.keysCertsGet(emptyMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

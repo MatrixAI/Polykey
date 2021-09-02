@@ -40,14 +40,11 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
 
     //constructing message.
     const providerMessage = new clientPB.ProviderMessage();
-    providerMessage.setId(providerId);
+    providerMessage.setProviderId(providerId);
     providerMessage.setMessage(identitiyId);
 
     //sending message.
-    const gen = grpcClient.identitiesAuthenticate(
-      providerMessage,
-      await client.session.createCallCredentials(),
-    );
+    const gen = grpcClient.identitiesAuthenticate(providerMessage);
     gen.stream.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

@@ -8,12 +8,16 @@ import PolykeyClient from '@/PolykeyClient';
 import { promisify } from '@/utils';
 import { SessionCredentials, SessionToken } from '@/sessions/types';
 import { PolykeyAgent } from '@';
+import * as grpcUtils from '@/grpc/utils';
 
 async function openTestClientServer({
   polykeyAgent,
+  secure,
 }: {
   polykeyAgent: PolykeyAgent;
+  secure?: boolean;
 }) {
+  const _secure = secure ?? true;
   const clientService: IClientServer = createClientService({
     polykeyAgent,
     keyManager: polykeyAgent.keys,
@@ -26,13 +30,17 @@ async function openTestClientServer({
     discovery: polykeyAgent.discovery,
   });
 
+  const callCredentials = _secure
+    ? grpcUtils.serverSecureCredentials(
+        polykeyAgent.keys.getRootKeyPairPem().privateKey,
+        await polykeyAgent.keys.getRootCertChainPem(),
+      )
+    : grpcUtils.serverInsecureCredentials();
+
   const server = new grpc.Server();
   server.addService(ClientService, clientService);
   const bindAsync = promisify(server.bindAsync).bind(server);
-  const port = await bindAsync(
-    `127.0.0.1:0`,
-    grpc.ServerCredentials.createInsecure(),
-  );
+  const port = await bindAsync(`127.0.0.1:0`, callCredentials);
   server.start();
   return [server, port];
 }

@@ -31,10 +31,7 @@ certchain.action(async (options) => {
     const grpcClient = client.grpcClient;
 
     const data: Array<string> = [];
-    const certGenerator = grpcClient.certsChainGet(
-      emptyMessage,
-      await client.session.createCallCredentials(),
-    );
+    const certGenerator = grpcClient.keysCertsChainGet(emptyMessage);
     certGenerator.stream.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });

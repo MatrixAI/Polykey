@@ -439,7 +439,7 @@ class NodeGraph {
     );
     // If we have no nodes at all in our database (even after synchronising),
     // then we should throw an error. We aren't going to find any others.
-    if (shortlist.length == 0) {
+    if (shortlist.length === 0) {
       throw new nodeErrors.ErrorNodeGraphEmptyDatabase();
     }
     // Need to keep track of the nodes that have been contacted.
@@ -453,7 +453,7 @@ class NodeGraph {
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
       // If we have no nodes left in the shortlist, then stop
-      if (!nextNode) {
+      if (nextNode == null) {
         break;
       }
       // Skip if the node has already been contacted
@@ -482,7 +482,7 @@ class NodeGraph {
         if (contacted[nodeData.id]) {
           continue;
         }
-        if (nodeData.id == targetNodeId) {
+        if (nodeData.id === targetNodeId) {
           foundTarget = true;
           // Attempt to create a connection to the node. Will throw an error
           // (ErrorConnectionStart, from ConnectionForward) if the connection

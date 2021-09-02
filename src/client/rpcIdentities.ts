@@ -43,11 +43,11 @@ const createIdentitiesRPC = ({
         );
         call.sendMetadata(responseMeta);
         const provider = identitiesManager.getProvider(
-          call.request.getId() as ProviderId,
+          call.request.getProviderId() as ProviderId,
         );
         const authFlow = provider?.authenticate();
         const userCode = (await authFlow?.next())?.value;
-        if (typeof userCode != 'string') {
+        if (typeof userCode !== 'string') {
           throw new errors.ErrorProviderAuthentication(
             'userCode was not a string',
           );
@@ -57,7 +57,7 @@ const createIdentitiesRPC = ({
 
         //Wait to finish.
         const userName = (await authFlow?.next())?.value;
-        if (!userName)
+        if (userName == null)
           throw new errors.ErrorProviderAuthentication(
             'Failed to authenticate.',
           );
@@ -68,7 +68,7 @@ const createIdentitiesRPC = ({
         await genWritable.throw(err);
       }
     },
-    identitiesPutToken: async (
+    identitiesTokenPut: async (
       call: grpc.ServerUnaryCall<
         clientPB.TokenSpecificMessage,
         clientPB.EmptyMessage
@@ -84,7 +84,7 @@ const createIdentitiesRPC = ({
         call.sendMetadata(responseMeta);
         const provider = call.request.getProvider();
         await identitiesManager.putToken(
-          provider?.getId() as ProviderId,
+          provider?.getProviderId() as ProviderId,
           provider?.getMessage() as IdentityId,
           { accessToken: call.request.getToken() } as TokenData,
         );
@@ -93,7 +93,7 @@ const createIdentitiesRPC = ({
       }
       callback(null, response);
     },
-    identitiesGetToken: async (
+    identitiesTokenGet: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.TokenMessage
@@ -108,7 +108,7 @@ const createIdentitiesRPC = ({
         );
         call.sendMetadata(responseMeta);
         const tokens = await identitiesManager.getToken(
-          call.request.getId() as ProviderId,
+          call.request.getProviderId() as ProviderId,
           call.request.getMessage() as IdentityId,
         );
         response.setToken(JSON.stringify(tokens));
@@ -117,7 +117,7 @@ const createIdentitiesRPC = ({
       }
       callback(null, response);
     },
-    identitiesDeleteToken: async (
+    identitiesTokenDelete: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.EmptyMessage
@@ -132,7 +132,7 @@ const createIdentitiesRPC = ({
         );
         call.sendMetadata(responseMeta);
         await identitiesManager.delToken(
-          call.request.getId() as ProviderId,
+          call.request.getProviderId() as ProviderId,
           call.request.getMessage() as IdentityId,
         );
       } catch (err) {
@@ -140,7 +140,7 @@ const createIdentitiesRPC = ({
       }
       callback(null, response);
     },
-    identitiesGetProviders: async (
+    identitiesProvidersList: async (
       call: grpc.ServerUnaryCall<
         clientPB.EmptyMessage,
         clientPB.ProviderMessage
@@ -155,13 +155,13 @@ const createIdentitiesRPC = ({
         );
         call.sendMetadata(responseMeta);
         const providers = identitiesManager.getProviders();
-        response.setId(JSON.stringify(Object.keys(providers)));
+        response.setProviderId(JSON.stringify(Object.keys(providers)));
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
-    identitiesGetConnectedInfos: async (
+    identitiesInfoGetConnected: async (
       call: grpc.ServerWritableStream<
         clientPB.ProviderSearchMessage,
         clientPB.IdentityInfoMessage
@@ -174,12 +174,14 @@ const createIdentitiesRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const providerId = call.request.getProvider()?.getId() as ProviderId;
+        const providerId = call.request
+          .getProvider()
+          ?.getProviderId() as ProviderId;
         const identityId = call.request
           .getProvider()
           ?.getMessage() as IdentityId;
         const provider = identitiesManager.getProvider(providerId);
-        if (!provider)
+        if (provider == null)
           throw Error(
             `Provider id: ${providerId} is invalid or provider doesn't exist.`,
           );
@@ -192,7 +194,7 @@ const createIdentitiesRPC = ({
         for await (const identity of identities) {
           const identityInfoMessage = new clientPB.IdentityInfoMessage();
           const providerMessage = new clientPB.ProviderMessage();
-          providerMessage.setId(identity.providerId);
+          providerMessage.setProviderId(identity.providerId);
           providerMessage.setMessage(identity.identityId);
           identityInfoMessage.setProvider(providerMessage);
           identityInfoMessage.setName(identity.name ?? '');
@@ -208,7 +210,7 @@ const createIdentitiesRPC = ({
     /**
      * gets the first identityId of the local keynode.
      */
-    identitiesGetInfo: async (
+    identitiesInfoGet: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.ProviderMessage
@@ -223,12 +225,12 @@ const createIdentitiesRPC = ({
         call.sendMetadata(responseMeta);
         // Get's an identity out of all identities.
         const providerMessage = new clientPB.ProviderMessage();
-        const providerId = call.request.getId() as ProviderId;
+        const providerId = call.request.getProviderId() as ProviderId;
         const provider = identitiesManager.getProvider(providerId);
-        if (!provider) throw Error(`Invalid provider: ${providerId}`);
+        if (provider == null) throw Error(`Invalid provider: ${providerId}`);
         const identities = await provider.getAuthIdentityIds();
-        if (identities.length != 0) {
-          providerMessage.setId(providerId);
+        if (identities.length !== 0) {
+          providerMessage.setProviderId(providerId);
           providerMessage.setMessage(identities[0]);
         } else throw Error(`No identities found for provider: ${providerId}`);
         callback(null, providerMessage);
@@ -239,7 +241,7 @@ const createIdentitiesRPC = ({
     /**
      * Augments the keynode with a new identity.
      */
-    identitiesAugmentKeynode: async (
+    identitiesClaim: async (
       call: grpc.ServerUnaryCall<
         clientPB.ProviderMessage,
         clientPB.EmptyMessage
@@ -262,7 +264,7 @@ const createIdentitiesRPC = ({
           chain: {},
         };
         const identityInfo: IdentityInfo = {
-          providerId: info.getId() as ProviderId,
+          providerId: info.getProviderId() as ProviderId,
           identityId: info.getMessage() as IdentityId,
           claims: {},
         };

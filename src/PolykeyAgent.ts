@@ -47,9 +47,14 @@ class Polykey {
   public readonly discovery: Discovery;
 
   // GRPC
-  public readonly grpcServer: GRPCServer;
-  public readonly grpcHost: string;
-  public readonly grpcPort: number;
+  // Client server
+  public readonly clientGrpcServer: GRPCServer;
+  public readonly clientGrpcHost: string;
+  public readonly clientGrpcPort: number;
+  // Agent server
+  public readonly agentGrpcServer: GRPCServer;
+  public readonly agentGrpcHost: string;
+  public readonly agentGrpcPort: number;
 
   // Proxies
   public readonly fwdProxy: ForwardProxy;
@@ -70,8 +75,10 @@ class Polykey {
     acl,
     db,
     workerManager,
-    grpcHost,
-    grpcPort,
+    clientGrpcHost,
+    agentGrpcHost,
+    clientGrpcPort,
+    agentGrpcPort,
     fwdProxy,
     revProxy,
     authToken,
@@ -90,8 +97,10 @@ class Polykey {
     acl?: ACL;
     db?: DB;
     workerManager?: WorkerManager;
-    grpcHost?: string;
-    grpcPort?: number;
+    clientGrpcHost?: string;
+    agentGrpcHost?: string;
+    clientGrpcPort?: number;
+    agentGrpcPort?: number;
     fwdProxy?: ForwardProxy;
     revProxy?: ReverseProxy;
     authToken?: string;
@@ -99,8 +108,10 @@ class Polykey {
     logger?: Logger;
     discovery?: Discovery;
   } = {}) {
-    this.grpcHost = grpcHost ?? '127.0.0.1';
-    this.grpcPort = grpcPort ?? 0;
+    this.clientGrpcHost = clientGrpcHost ?? '127.0.0.1';
+    this.clientGrpcPort = clientGrpcPort ?? 0;
+    this.agentGrpcHost = agentGrpcHost ?? '127.0.0.1';
+    this.agentGrpcPort = agentGrpcPort ?? 0;
     this.logger = logger ?? new Logger('Polykey');
     this.fs = fs ?? require('fs');
     this.nodePath = path.resolve(nodePath ?? utils.getDefaultNodePath());
@@ -236,12 +247,15 @@ class Polykey {
     });
 
     // Create GRPC Server with the services just created.
-    this.grpcServer = new GRPCServer({
-      services: [
-        [ClientService, clientService],
-        [AgentService, agentService],
-      ],
-      logger: this.logger,
+    // Client server
+    this.clientGrpcServer = new GRPCServer({
+      services: [[ClientService, clientService]],
+      logger: this.logger.getChild('ClientServer'),
+    });
+    // Agent Server
+    this.agentGrpcServer = new GRPCServer({
+      services: [[AgentService, agentService]],
+      logger: this.logger.getChild('AgentServer'),
     });
 
     // Registering providers.
@@ -310,7 +324,7 @@ class Polykey {
     } catch (err) {
       this.logger.info(`Failed to open version file: ${err.message}`);
     }
-    if (versionInfo) {
+    if (versionInfo != null) {
       // checking state version
       if (versionInfo.stateVersion !== config.stateVersion) {
         throw new ErrorStateVersionMismatch(
@@ -361,9 +375,19 @@ class Polykey {
     await this.discovery.start();
 
     // GRPC Server
-    await this.grpcServer.start({
-      host: this.grpcHost as Host,
-      port: this.grpcPort as Port,
+    // Client server
+    await this.clientGrpcServer.start({
+      host: this.clientGrpcHost as Host,
+      port: this.clientGrpcPort as Port,
+      tlsConfig: {
+        keyPrivatePem: keyPrivatePem,
+        certChainPem: certChainPem,
+      },
+    });
+    // Agent server
+    await this.agentGrpcServer.start({
+      host: this.agentGrpcHost as Host,
+      port: this.agentGrpcPort as Port,
     });
 
     await this.fwdProxy.start({
@@ -374,8 +398,8 @@ class Polykey {
     });
 
     await this.revProxy.start({
-      serverHost: this.grpcHost as Host,
-      serverPort: this.grpcServer.getPort() as Port,
+      serverHost: this.agentGrpcHost as Host,
+      serverPort: this.agentGrpcServer.getPort() as Port,
       tlsConfig: {
         keyPrivatePem: keyPrivatePem,
         certChainPem: certChainPem,
@@ -383,8 +407,8 @@ class Polykey {
     });
 
     await this.lockfile.start({ nodeId });
-    await this.lockfile.updateLockfile('host', this.grpcHost);
-    await this.lockfile.updateLockfile('port', this.grpcServer.getPort());
+    await this.lockfile.updateLockfile('host', this.clientGrpcHost);
+    await this.lockfile.updateLockfile('port', this.clientGrpcServer.getPort());
     await this.lockfile.updateLockfile(
       'fwdProxyHost',
       this.fwdProxy.getProxyHost(),
@@ -436,7 +460,8 @@ class Polykey {
     await this.workers.stop();
 
     // Stop GRPC Server
-    await this.grpcServer.stop();
+    await this.clientGrpcServer.stop();
+    await this.agentGrpcServer.stop();
 
     this.logger.info('Stopped Polykey');
   }

@@ -88,7 +88,7 @@ function hashClaim(claim: ClaimEncoded): string {
   // Make the payload contents deterministic
   const canonicalizedClaim = canonicalize(claim);
   // Should never be reached, but just to be type safe (can return undefined)
-  if (!canonicalizedClaim) {
+  if (canonicalizedClaim == null) {
     throw new claimsErrors.ErrorClaimsUndefinedCanonicalizedClaim();
   }
   hash.update(canonicalizedClaim);

@@ -48,14 +48,11 @@ get.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setName(vaultName);
+    vaultMessage.setVaultName(vaultName);
     secretMessage.setVault(vaultMessage);
-    secretMessage.setName(secretName);
+    secretMessage.setSecretName(secretName);
 
-    const pCall = grpcClient.vaultsGetSecret(
-      secretMessage,
-      await client.session.createCallCredentials(),
-    );
+    const pCall = grpcClient.vaultsSecretsGet(secretMessage);
     pCall.call.on('metadata', (meta) => {
       clientUtils.refreshSession(meta, client.session);
     });
@@ -67,9 +64,9 @@ get.action(async (options) => {
           type: options.format === 'json' ? 'json' : 'list',
           data: [
             `Export ${secretMessage
-              .getName()
+              .getSecretName()
               .toUpperCase()
-              .replace('-', '_')}='${responseMessage.getName()}`,
+              .replace('-', '_')}='${responseMessage.getSecretName()}`,
           ],
         }),
       );
@@ -77,7 +74,9 @@ get.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`${secretMessage.getName()}:\t\t${responseMessage.getName()}`],
+          data: [
+            `${secretMessage.getSecretName()}:\t\t${responseMessage.getSecretName()}`,
+          ],
         }),
       );
     }

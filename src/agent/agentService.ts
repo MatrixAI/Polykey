@@ -41,7 +41,7 @@ function createAgentService({
       response.setChallenge(call.request.getChallenge());
       callback(null, response);
     },
-    getGitInfo: async (
+    vaultsGitInfoGet: async (
       call: grpc.ServerWritableStream<agentPB.InfoRequest, agentPB.PackChunk>,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
@@ -63,7 +63,7 @@ function createAgentService({
       }
       await genWritable.next(null);
     },
-    getGitPack: async (
+    vaultsGitPackGet: async (
       call: grpc.ServerDuplexStream<agentPB.PackChunk, agentPB.PackChunk>,
     ) => {
       const write = promisify(call.write).bind(call);
@@ -77,7 +77,7 @@ function createAgentService({
 
         const meta = call.metadata;
         const vaultId = meta.get('vault-id').pop()?.toString() as VaultId;
-        if (!vaultId) throw new ErrorGRPC('vault-name not in metadata.');
+        if (vaultId == null) throw new ErrorGRPC('vault-name not in metadata.');
         const vault = await vaultManager.getVault(vaultId);
 
         const response = new agentPB.PackChunk();
@@ -109,7 +109,7 @@ function createAgentService({
         call.end();
       });
     },
-    scanVaults: async (
+    vaultsScan: async (
       call: grpc.ServerWritableStream<
         agentPB.NodeIdMessage,
         agentPB.VaultListMessage
@@ -117,7 +117,7 @@ function createAgentService({
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       const response = new agentPB.VaultListMessage();
-      const id = call.request.getNodeid() as NodeId;
+      const id = call.request.getNodeId() as NodeId;
       try {
         const listResponse = vaultManager.handleVaultNamesRequest(id);
 
@@ -140,7 +140,7 @@ function createAgentService({
      * @param call call that encodes a nodeId representing the target search node.
      * @param callback
      */
-    getClosestLocalNodes: async (
+    nodesClosestLocalNodesGet: async (
       call: grpc.ServerUnaryCall<
         agentPB.NodeIdMessage,
         agentPB.NodeTableMessage
@@ -149,7 +149,7 @@ function createAgentService({
     ): Promise<void> => {
       const response = new agentPB.NodeTableMessage();
       try {
-        const targetNodeId = call.request.getNodeid() as NodeId;
+        const targetNodeId = call.request.getNodeId() as NodeId;
         // Get all local nodes that are closest to the target node from the request
         const closestNodes = await nodeManager.getClosestLocalNodes(
           targetNodeId,
@@ -159,7 +159,7 @@ function createAgentService({
           addressMessage.setIp(node.address.ip);
           addressMessage.setPort(node.address.port);
           // Add the node to the response's map (mapping of node ID -> node address)
-          response.getNodetableMap().set(node.id, addressMessage);
+          response.getNodeTableMap().set(node.id, addressMessage);
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -171,7 +171,7 @@ function createAgentService({
      * TODO: Currently not required. Will need to refactor once we filter on what
      * claims we desire from the sigchain (e.g. in discoverGestalt).
      */
-    getClaims: async (
+    nodesClaimsGet: async (
       call: grpc.ServerUnaryCall<
         agentPB.ClaimTypeMessage,
         agentPB.ClaimsMessage
@@ -187,7 +187,7 @@ function createAgentService({
     /**
      * Retrieves the ChainDataEncoded of this node.
      */
-    getChainData: async (
+    nodesChainDataGet: async (
       call: grpc.ServerUnaryCall<
         agentPB.EmptyMessage,
         agentPB.ChainDataMessage
@@ -213,14 +213,14 @@ function createAgentService({
             claimMessage.getSignaturesList().push(signature);
           }
           // Add the serialized claim
-          response.getChaindataMap().set(claimId, claimMessage);
+          response.getChainDataMap().set(claimId, claimMessage);
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
       callback(null, response);
     },
-    sendHolePunchMessage: async (
+    nodesHolePunchMessageSend: async (
       call: grpc.ServerUnaryCall<agentPB.RelayMessage, agentPB.EmptyMessage>,
       callback: grpc.sendUnaryData<agentPB.EmptyMessage>,
     ): Promise<void> => {
@@ -229,15 +229,17 @@ function createAgentService({
         // Firstly, check if this node is the desired node
         // If so, then we want to make this node start sending hole punching packets
         // back to the source node.
-        if (nodeManager.getNodeId() == (call.request.getTargetid() as NodeId)) {
+        if (
+          nodeManager.getNodeId() === (call.request.getTargetId() as NodeId)
+        ) {
           const [host, port] = networkUtils.parseAddress(
-            call.request.getEgressaddress(),
+            call.request.getEgressAddress(),
           );
           await nodeManager.openConnection(host, port);
           // Otherwise, find if node in table
           // If so, ask the nodemanager to relay to the node
         } else if (
-          await nodeManager.knowsNode(call.request.getSrcid() as NodeId)
+          await nodeManager.knowsNode(call.request.getSrcId() as NodeId)
         ) {
           nodeManager.relayHolePunchMessage(call.request);
         }
@@ -264,7 +266,7 @@ function createAgentService({
 
       callback(null, response);
     },
-    checkVaultPermisssions: async (
+    vaultsPermisssionsCheck: async (
       call: grpc.ServerUnaryCall<
         agentPB.VaultPermMessage,
         agentPB.PermissionMessage
@@ -273,8 +275,8 @@ function createAgentService({
     ): Promise<void> => {
       const response = new agentPB.PermissionMessage();
       try {
-        const nodeId = call.request.getNodeid() as NodeId;
-        const vaultId = call.request.getVaultid() as VaultId;
+        const nodeId = call.request.getNodeId() as NodeId;
+        const vaultId = call.request.getVaultId() as VaultId;
         const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
         if (result[nodeId] === undefined) {
           response.setPermission(false);
