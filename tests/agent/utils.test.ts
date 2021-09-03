@@ -6,7 +6,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 
 import * as agentUtils from '@/agent/utils';
-import * as utils from '@/utils';
+import { poll } from '../utils';
 
 describe('agent utils', () => {
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
@@ -69,21 +69,25 @@ describe('agent utils', () => {
         const pid = await agentUtils.spawnBackgroundAgent(nodePath, password);
         expect(typeof pid).toBe('number'); //Returns a number.
         expect(pid > 0).toBeTruthy(); // non-zero
-        await utils.sleep(1000);
-        await expect(
-          agentUtils.checkAgentRunning(nodePath),
-        ).resolves.toBeTruthy(); //Check that it is running.
+        await poll(global.polykeyStartupTimeout * 1.5, async () => {
+          return await agentUtils.checkAgentRunning(nodePath);
+        });
+        //Killing the agent.
         process.kill(pid);
 
-        await utils.sleep(1000);
-        //removed lockfile, stopped gracefully.
-        const agentLock = await fs.promises.readdir(nodePath);
-        expect(agentLock.includes('agent-lock.json')).toBeFalsy();
-        await expect(
-          agentUtils.checkAgentRunning(nodePath),
-        ).resolves.toBeFalsy(); //Check that it stopped.
+        // Polling for agent to stop.
+        await poll(global.polykeyStartupTimeout, async () => {
+          const test = await agentUtils.checkAgentRunning(nodePath);
+          return !test;
+        });
+        //Polling for removed lockfile.
+        await poll(global.polykeyStartupTimeout, async () => {
+          const agentLock = await fs.promises.readdir(nodePath);
+          const test = agentLock.includes('agent-lock.json');
+          return !test;
+        });
       },
-      global.polykeyStartupTimeout,
+      global.polykeyStartupTimeout * 3.5,
     );
     test('Should throw error if agent already running.', async () => {
       const agent = new PolykeyAgent({

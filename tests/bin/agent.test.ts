@@ -13,19 +13,7 @@ import * as sessionErrors from '@/sessions/errors';
 import PolykeyAgent from '@/PolykeyAgent';
 
 import { Lockfile } from '@/lockfile';
-import { sleep } from '@/utils';
-
-async function poll(
-  timeout: number,
-  condition: () => Promise<boolean>,
-  delay: number = 1000,
-) {
-  const timeProgress = 0;
-  while (timeProgress < timeout) {
-    if (await condition()) break;
-  }
-  expect(await condition()).toBeTruthy();
-}
+import { poll } from '../utils';
 
 describe('CLI agent', () => {
   const passwordFileExitCode = 64;
@@ -175,7 +163,7 @@ describe('CLI agent', () => {
             return !test;
           });
         },
-        global.polykeyStartupTimeout * 4,
+        global.polykeyStartupTimeout * 5,
       );
       test('Should fail to start if an agent is already running at the path', async () => {
         const commands = [

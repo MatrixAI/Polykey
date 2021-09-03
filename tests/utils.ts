@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger from '@matrixai/logger';
 import { PolykeyAgent } from '../src';
+import { sleep } from '@/utils';
 
 /**
  * Helper function to create a remote keynode to contact.
@@ -60,4 +61,18 @@ async function addRemoteDetails(
   } as NodeAddress);
 }
 
-export { setupRemoteKeynode, cleanupRemoteKeynode, addRemoteDetails };
+async function poll(
+  timeout: number,
+  condition: () => Promise<boolean>,
+  delay: number = 1000,
+) {
+  let timeProgress = 0;
+  while (timeProgress < timeout) {
+    if (await condition()) break;
+    await sleep(delay);
+    timeProgress += delay;
+  }
+  expect(await condition()).toBeTruthy();
+}
+
+export { setupRemoteKeynode, cleanupRemoteKeynode, addRemoteDetails, poll };
