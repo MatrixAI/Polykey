@@ -31,16 +31,6 @@ class TestProvider extends Provider {
         email: 'test_user2@test.com',
       },
     };
-    // this.links = {
-    //   test_link: JSON.stringify({
-    //     type: 'identity',
-    //     node: 'nodeid' as NodeId,
-    //     provider: this.id,
-    //     identity: 'test_link' as IdentityId,
-    //     timestamp: 1618650105,
-    //     signature: 'somesignature',
-    //   }),
-    // };
     this.links = {
       test_link: JSON.stringify({
         payload: {
