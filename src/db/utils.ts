@@ -1,10 +1,11 @@
+import type { DBDomain } from './types';
+
 import sublevelprefixer from 'sublevel-prefixer';
 import * as dbErrors from './errors';
-import { utils as keysUtils } from '../keys';
 
 const prefixer = sublevelprefixer('!');
 
-function domainPath(levels: Array<string>, key: string): string {
+function domainPath(levels: DBDomain, key: string | Buffer): string | Buffer {
   if (!levels.length) {
     return key;
   }
@@ -15,28 +16,23 @@ function domainPath(levels: Array<string>, key: string): string {
   return prefix;
 }
 
-function serializeEncrypt<T>(key: Buffer, value: T): Buffer {
-  return keysUtils.encryptWithKey(
-    key,
-    Buffer.from(JSON.stringify(value), 'utf-8'),
-  );
+function serialize<T>(value: T): Buffer {
+  return Buffer.from(JSON.stringify(value), 'utf-8');
 }
 
-function unserializeDecrypt<T>(key: Buffer, data: Buffer): T {
-  const value_ = keysUtils.decryptWithKey(key, data);
-  if (!value_) {
-    throw new dbErrors.ErrorDBDecrypt();
-  }
-  let value: T;
+function deserialize<T>(value_: Buffer): T {
   try {
-    value = JSON.parse(value_.toString('utf-8'));
+    return JSON.parse(value_.toString('utf-8'));
   } catch (e) {
     if (e instanceof SyntaxError) {
       throw new dbErrors.ErrorDBParse();
     }
     throw e;
   }
-  return value;
 }
 
-export { domainPath, serializeEncrypt, unserializeDecrypt };
+export {
+  domainPath,
+  serialize,
+  deserialize,
+};
