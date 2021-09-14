@@ -1,49 +1,105 @@
 import type { AbstractBatch } from 'abstract-leveldown';
 import type { LevelDB } from 'level';
-import type { DBLevel, DBOp } from './types';
+import type { MutexInterface } from 'async-mutex';
+import type { DBDomain, DBLevel, DBOps } from './types';
 import type { KeyPair, PrivateKey, PublicKey } from '../keys/types';
 import type { FileSystem } from '../types';
 
 import path from 'path';
 import level from 'level';
 import subleveldown from 'subleveldown';
+import { Transfer } from 'threads';
+import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import * as dbUtils from './utils';
 import * as dbErrors from './errors';
 import { utils as keysUtils } from '../keys';
+import { WorkerManager } from '../workers';
 import * as utils from '../utils';
 
 class DB {
+  public static async createDB({
+    dbPath,
+    lock = new Mutex(),
+    fs = require('fs'),
+    logger = new Logger(this.name),
+  }: {
+    dbPath: string;
+    lock?: MutexInterface;
+    fs?: FileSystem;
+    logger?: Logger;
+  }) {
+    const db = new DB({
+      dbKey,
+      dbPath,
+      lock,
+      fs,
+      logger,
+    });
+    await db.start();
+    return db;
+  }
+
   public readonly dbPath: string;
   public readonly dbKeyPath: string;
 
-  protected logger: Logger;
-  protected fs: FileSystem;
-  protected _db: LevelDB<string, Buffer>;
   protected dbKey: Buffer;
+  protected lock: MutexInterface;
+  protected fs: FileSystem;
+  protected logger: Logger;
+  protected workerManager?: WorkerManager;
+  protected _db: LevelDB<string | Buffer, Buffer>;
   protected _started: boolean = false;
+  protected _destroyed: boolean = false;
 
-  get db(): LevelDB<string, Buffer> {
+  // public constructor({
+  //   dbPath,
+  //   fs,
+  //   logger,
+  // }: {
+  //   dbPath: string;
+  //   fs?: FileSystem;
+  //   logger?: Logger;
+  // }) {
+  //   this.logger = logger ?? new Logger(this.constructor.name);
+  //   this.fs = fs ?? require('fs');
+  //   this.dbPath = path.join(dbPath, 'db');
+  //   this.dbKeyPath = path.join(dbPath, 'db_key');
+  // }
+
+  protected constructor({
+    dbPath,
+    lock,
+    fs,
+    logger,
+  }: {
+    dbPath: string;
+    lock: MutexInterface;
+    fs: FileSystem;
+    logger: Logger;
+  }) {
+    this.logger = logger;
+    this.dbPath = dbPath;
+    this.lock = lock;
+    this.fs = fs;
+    this.dbPath = path.join(dbPath, 'db');
+    this.dbKeyPath = path.join(dbPath, 'db_key');
+  }
+
+  get db(): LevelDB<string | Buffer, Buffer> {
     return this._db;
+  }
+
+  get locked(): boolean {
+    return this.lock.isLocked();
   }
 
   get started(): boolean {
     return this._started;
   }
 
-  public constructor({
-    dbPath,
-    fs,
-    logger,
-  }: {
-    dbPath: string;
-    fs?: FileSystem;
-    logger?: Logger;
-  }) {
-    this.logger = logger ?? new Logger(this.constructor.name);
-    this.fs = fs ?? require('fs');
-    this.dbPath = path.join(dbPath, 'db');
-    this.dbKeyPath = path.join(dbPath, 'db_key');
+  get destroyed(): boolean {
+    return this._destroyed;
   }
 
   public async start({
@@ -100,29 +156,73 @@ class DB {
     this.logger.info('Stopped DB');
   }
 
-  public async level<K>(
+  public setWorkerManager(workerManager: WorkerManager) {
+    this.workerManager = workerManager;
+  }
+
+  public unsetWorkerManager() {
+    delete this.workerManager;
+  }
+
+  public async level(
     domain: string,
-    dbLevel: DBLevel<any> = this.db,
-  ): Promise<DBLevel<K>> {
-    return await new Promise<DBLevel<K>>((resolve) => {
-      const dbLevelNew = subleveldown<K, Buffer>(dbLevel, domain, {
-        valueEncoding: 'binary',
-        open: (cb) => {
-          cb(undefined);
-          resolve(dbLevelNew);
-        },
+    dbLevel: DBLevel = this._db,
+  ): Promise<DBLevel> {
+    if (!this._started) {
+      throw new dbErrors.ErrorDBNotStarted();
+    }
+    try {
+      return new Promise<DBLevel>((resolve) => {
+        const dbLevelNew = subleveldown(dbLevel, domain, {
+          keyEncoding: 'binary',
+          valueEncoding: 'binary',
+          open: (cb) => {
+            cb(undefined);
+            resolve(dbLevelNew);
+          },
+        });
       });
-    });
+    } catch (e) {
+      if (e instanceof RangeError) {
+        // some domain prefixes will conflict with the separator
+        throw new dbErrors.ErrorDBLevelPrefix();
+      }
+      throw e;
+    }
+  }
+
+  public async count(
+    dbLevel: DBLevel = this._db
+  ): Promise<number> {
+    if (!this._started) {
+      throw new dbErrors.ErrorDBNotStarted();
+    }
+    let count = 0;
+    for await (const _ of dbLevel.createKeyStream()) {
+      count++;
+    }
+    return count;
   }
 
   public async get<T>(
-    domain: Array<string>,
-    key: string,
+    domain: DBDomain,
+    key: string | Buffer,
+    raw?: false,
+  ): Promise<T | undefined>;
+  public async get<T>(
+    domain: DBDomain,
+    key: string | Buffer,
+    raw: true,
+  ): Promise<Buffer | undefined>;
+  public async get<T>(
+    domain: DBDomain,
+    key: string | Buffer,
+    raw: boolean = false
   ): Promise<T | undefined> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
     }
-    let data: Buffer;
+    let data;
     try {
       data = await this._db.get(dbUtils.domainPath(domain, key));
     } catch (e) {
@@ -131,29 +231,45 @@ class DB {
       }
       throw e;
     }
-    return this.unserializeDecrypt<T>(data);
+    return this.deserializeDecrypt<T>(data, raw as any);
   }
 
-  public async put<T>(
-    domain: Array<string>,
-    key: string,
-    value: T,
+  public async put(
+    domain: DBDomain,
+    key: string | Buffer,
+    value: any,
+    raw?: false,
+  ): Promise<void>;
+  public async put(
+    domain: DBDomain,
+    key: string | Buffer,
+    value: Buffer,
+    raw: true,
+  ): Promise<void>;
+  public async put(
+    domain: DBDomain,
+    key: string | Buffer,
+    value: any,
+    raw: boolean = false
   ): Promise<void> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
     }
-    const data = this.serializeEncrypt<T>(value);
-    await this._db.put(dbUtils.domainPath(domain, key), data);
+    const data = await this.serializeEncrypt(value, raw as any);
+    return this._db.put(dbUtils.domainPath(domain, key), data);
   }
 
-  public async del(domain: Array<string>, key: string): Promise<void> {
+  public async del(
+    domain: DBDomain,
+    key: string
+  ): Promise<void> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
     }
-    await this._db.del(dbUtils.domainPath(domain, key));
+    return this._db.del(dbUtils.domainPath(domain, key));
   }
 
-  public async batch(ops: Array<DBOp>): Promise<void> {
+  public async batch(ops: Readonly<DBOps>): Promise<void> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
     }
@@ -165,7 +281,10 @@ class DB {
           key: dbUtils.domainPath(op.domain, op.key),
         });
       } else if (op.type === 'put') {
-        const data = this.serializeEncrypt(op.value);
+        const data = await this.serializeEncrypt(
+          op.value,
+          (op.raw === true) as any,
+        );
         ops_.push({
           type: op.type,
           key: dbUtils.domainPath(op.domain, op.key),
@@ -173,15 +292,77 @@ class DB {
         });
       }
     }
-    await this._db.batch(ops_);
+    return this._db.batch(ops_);
   }
 
-  public serializeEncrypt<T>(value: T): Buffer {
-    return dbUtils.serializeEncrypt(this.dbKey, value);
+  public async serializeEncrypt(value: any, raw: false): Promise<Buffer>;
+  public async serializeEncrypt(value: Buffer, raw: true): Promise<Buffer>;
+  public async serializeEncrypt(
+    value: any | Buffer,
+    raw: boolean
+  ): Promise<Buffer> {
+    const plainText: Buffer = raw
+      ? (value as Buffer)
+      : dbUtils.serialize(value);
+    if (this.workerManager != null) {
+      return this.workerManager.call(async (w) => {
+        const [
+          cipherBuf,
+          cipherOffset,
+          cipherLength,
+        ] = await w.encryptWithKey(
+          Transfer(this.dbKey.buffer),
+          this.dbKey.byteOffset,
+          this.dbKey.byteLength,
+          // @ts-ignore
+          Transfer(plainText.buffer),
+          plainText.byteOffset,
+          plainText.byteLength,
+        );
+        return Buffer.from(cipherBuf, cipherOffset, cipherLength);
+      });
+    } else {
+      return keysUtils.encryptWithKey(this.dbKey, plainText);
+    }
   }
 
-  public unserializeDecrypt<T>(data: Buffer): T {
-    return dbUtils.unserializeDecrypt(this.dbKey, data);
+  public async deserializeDecrypt<T>(
+    cipherText: Buffer,
+    raw: false,
+  ): Promise<T>;
+  public async deserializeDecrypt<T>(
+    cipherText: Buffer,
+    raw: true,
+  ): Promise<Buffer>;
+  public async deserializeDecrypt<T>(
+    cipherText: Buffer,
+    raw: boolean
+  ): Promise<T | Buffer> {
+    let plainText;
+    if (this.workerManager != null) {
+      plainText = await this.workerManager.call(async (w) => {
+        const decrypted = await w.decryptWithKey(
+          Transfer(this.dbKey.buffer),
+          this.dbKey.byteOffset,
+          this.dbKey.byteLength,
+          // @ts-ignore
+          Transfer(cipherText.buffer),
+          cipherText.byteOffset,
+          cipherText.byteLength,
+        );
+        if (decrypted != null) {
+          return Buffer.from(decrypted[0], decrypted[1], decrypted[2]);
+        } else {
+          return;
+        }
+      });
+    } else {
+      plainText = keysUtils.decryptWithKey(this.dbKey, cipherText);
+    }
+    if (plainText == null) {
+      throw new dbErrors.ErrorDBDecrypt();
+    }
+    return raw ? plainText : dbUtils.deserialize<T>(plainText);
   }
 
   protected async setupDbKey(

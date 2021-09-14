@@ -4,8 +4,7 @@
     "commonjs": true,
     "es6": true,
     "node": true,
-    "jest": true,
-    "jasmine": true
+    "jest": true
   },
   "parser": "@typescript-eslint/parser",
   "extends": [

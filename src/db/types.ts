@@ -1,16 +1,26 @@
 import type { AbstractLevelDOWN, AbstractIterator } from 'abstract-leveldown';
 import type { LevelUp } from 'levelup';
 
-type DBLevel<K> = LevelUp<
-  AbstractLevelDOWN<K, Buffer>,
-  AbstractIterator<K, Buffer>
+type DBDomain = Readonly<Array<string>>;
+
+type DBLevel = LevelUp<
+  AbstractLevelDOWN<string | Buffer, Buffer>,
+  AbstractIterator<Buffer, Buffer>
 >;
 
-type DBOp_ = {
-  domain: Array<string>;
-  key: string;
-  value: any;
-};
+type DBOp_ =
+  | {
+      domain: DBDomain;
+      key: string | Buffer;
+      value: any;
+      raw?: false;
+    }
+  | {
+      domain: DBDomain;
+      key: string | Buffer;
+      value: Buffer;
+      raw: true;
+    };
 
 type DBOp =
   | ({
@@ -18,6 +28,8 @@ type DBOp =
     } & DBOp_)
   | ({
       type: 'del';
-    } & Omit<DBOp_, 'value'>);
+    } & Omit<DBOp_, 'value' | 'raw'>);
 
-export type { DBLevel, DBOp };
+type DBOps = Array<DBOp>;
+
+export type { DBDomain, DBLevel, DBOp, DBOps };
