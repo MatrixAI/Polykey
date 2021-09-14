@@ -26,6 +26,17 @@
     "no-useless-catch": 1,
     "no-prototype-builtins": 1,
     "no-constant-condition": 0,
+    "no-useless-escape" : 0,
+    "no-console": "error",
+    "eqeqeq": ["error", "smart"],
+    "capitalized-comments": [
+      "warn",
+      "always",
+      {
+        "ignoreInlineComments": true,
+        "ignoreConsecutiveComments": true
+      }
+    ],
     "@typescript-eslint/no-namespace": 0,
     "@typescript-eslint/no-explicit-any": 0,
     "@typescript-eslint/explicit-module-boundary-types": 0,
@@ -36,8 +47,38 @@
     "@typescript-eslint/no-var-requires": 0,
     "@typescript-eslint/ban-ts-comment": 0,
     "@typescript-eslint/no-empty-function": 0,
-    "no-useless-escape" : 0,
-    "no-console": "error",
-    "eqeqeq": ["error", "smart"]
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "default",
+        "format": ["camelCase"],
+        "leadingUnderscore": "allow",
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "variable",
+        "format": ["camelCase", "UPPER_CASE"],
+        "leadingUnderscore": "allow",
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "parameter",
+        "format": ["camelCase"],
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "typeLike",
+        "format": ["PascalCase"],
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "objectLiteralProperty",
+        "format": null
+      },
+      {
+        "selector": "typeProperty",
+        "format": null
+      }
+    ]
   }
 }
