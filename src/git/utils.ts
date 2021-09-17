@@ -24,7 +24,6 @@ import Hash from 'sha.js/sha1';
 import { PassThrough } from 'readable-stream';
 import createHash from 'sha.js';
 
-import * as utils from '../utils';
 import * as vaultUtils from '../vaults/utils';
 import { errors as gitErrors } from './';
 
@@ -154,11 +153,10 @@ function textToPackedRefs(text: string): Refs {
 }
 
 async function packedRefs(fs: EncryptedFS, gitdir: string): Promise<Refs> {
-  const readFile = utils.promisify(fs.readFile).bind(fs);
-  const text = await readFile(path.join(gitdir, 'packed-refs'), {
+  const text = await fs.readFile(path.join(gitdir, 'packed-refs'), {
     encoding: 'utf8',
   });
-  const refs = textToPackedRefs(text);
+  const refs = textToPackedRefs(text.toString());
   return refs;
 }
 
@@ -203,7 +201,6 @@ async function resolve(
   ref: string,
   depth?: number,
 ): Promise<string> {
-  const readFile = utils.promisify(fs.readFile).bind(fs);
   if (depth !== undefined) {
     depth--;
     if (depth === -1) {
@@ -226,10 +223,10 @@ async function resolve(
   for (const ref of allpaths) {
     const sha =
       (
-        await readFile(path.join(gitdir, ref), { encoding: 'utf8' })
-      ).toString() || packedMap[ref];
+        await fs.readFile(path.join(gitdir, ref), { encoding: 'utf8' })
+      ).toString() || packedMap[ref]; // FIXME: not sure what is going on here.
     if (sha != null) {
-      return resolve(fs, gitdir, sha.trim(), depth);
+      return resolve(fs, gitdir, sha.trim(), depth); //FIXME: sha is string or config?
     }
   }
   throw new gitErrors.ErrorGitUndefinedRefs('Refs not found');
@@ -695,12 +692,10 @@ async function read(
   oid: string,
   format = 'content',
 ): Promise<DeflatedObject | WrappedObject | RawObject> {
-  const readFile = utils.promisify(fs.readFile).bind(fs);
-  const readdir = utils.promisify(fs.readdir).bind(fs);
   let file;
   // Look for it in the loose object directory.
   try {
-    file = await readFile(
+    file = await fs.readFile(
       path.join(gitdir, 'objects', oid.slice(0, 2), oid.slice(2)),
     );
   } catch (err) {
@@ -715,12 +710,13 @@ async function read(
     // process can acquire external ref-deltas.
     const getExternalRefDelta = (oid: string) => read(fs, gitdir, oid);
     // Iterate through all the .pack files
-    let list: Array<string> = await readdir(path.join(gitdir, '/objects/pack'));
-    list = list.filter((x: string) => x.endsWith('.idx'));
-    for (const filename of list) {
+    const list = await fs.readdir(path.join(gitdir, '/objects/pack'));
+    let stringList = list.map(x => {return x.toString();})
+    stringList = stringList.filter((x: string) => x.endsWith('.idx'));
+    for (const filename of stringList) {
       const indexFile = path.join(gitdir, 'objects', 'pack', filename);
-      const idx = await readFile(indexFile);
-      const p = fromIdx(idx, getExternalRefDelta);
+      const idx = await fs.readFile(indexFile);
+      const p = fromIdx(Buffer.from(idx), getExternalRefDelta);
       if (p == null) {
         break;
       }
@@ -730,8 +726,8 @@ async function read(
         // Make sure the packfile is loaded in memory
         if (!p.pack) {
           const packFile = indexFile.replace(/idx$/, 'pack');
-          const pack = await readFile(packFile);
-          p.pack = pack;
+          const pack = await fs.readFile(packFile);
+          p.pack = Buffer.from(pack);
         }
         // Get the resolved git object from the packfile
         const result = await readPack(p, oid);
@@ -744,9 +740,9 @@ async function read(
   // Check to see if it's in shallow commits.
   if (file == null) {
     try {
-      const text: string = await readFile(path.join(gitdir, 'shallow'), {
+      const text: string = (await fs.readFile(path.join(gitdir, 'shallow'), {
         encoding: 'utf8',
-      });
+      })).toString();
       if (text !== null && text.includes(oid)) {
         throw new gitErrors.ErrorGitReadObject(`ReadShallowObjectFail: ${oid}`);
       }

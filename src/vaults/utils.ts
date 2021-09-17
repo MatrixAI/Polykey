@@ -16,7 +16,6 @@ import * as agentPB from '../proto/js/Agent_pb';
 import { GRPCClientAgent } from '../agent';
 
 import * as keysUtils from '../keys/utils';
-import * as utils from '../utils';
 import { errors as vaultErrors } from './';
 
 async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
@@ -63,19 +62,17 @@ async function* readdirRecursivelyEFS(
   dir: string,
   dirs?: boolean,
 ) {
-  const readdir = utils.promisify(fs.readdir).bind(fs);
-  const stat = utils.promisify(fs.stat).bind(fs);
-  const dirents = await readdir(dir);
+  const dirents = await fs.readdir(dir);
   let secretPath: string;
   for (const dirent of dirents) {
-    const res = dirent;
+    const res = dirent.toString(); // makes string | buffer a string.
     secretPath = path.join(dir, res);
-    if ((await stat(secretPath)).isDirectory() && dirent !== '.git') {
+    if ((await fs.stat(secretPath)).isDirectory() && dirent !== '.git') {
       if (dirs === true) {
         yield secretPath;
       }
       yield* readdirRecursivelyEFS(fs, secretPath, dirs);
-    } else if ((await stat(secretPath)).isFile()) {
+    } else if ((await fs.stat(secretPath)).isFile()) {
       yield secretPath;
     }
   }
@@ -86,15 +83,14 @@ async function* readdirRecursivelyEFS2(
   dir: string,
   dirs?: boolean,
 ): AsyncGenerator<string> {
-  const readdir = utils.promisify(fs.readdir).bind(fs);
-  const dirents = await readdir(dir);
+  const dirents = await fs.readdir(dir);
   let secretPath: string;
   for (const dirent of dirents) {
-    const res = dirent;
+    const res = dirent.toString();
     secretPath = path.join(dir, res);
     if (dirent !== '.git') {
       try {
-        await readdir(secretPath);
+        await fs.readdir(secretPath);
         if (dirs === true) {
           yield secretPath;
         }
