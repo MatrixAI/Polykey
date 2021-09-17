@@ -53,7 +53,7 @@ class SessionManager {
       ) {
         const keyPair = await keyUtils.generateKeyPair(bits);
         this.logger.info('Putting keypair into DB');
-        await this._db.put<string>(
+        await this._db.put(
           [this.constructor.name],
           'privateKey',
           keyUtils.privateKeyToPem(keyPair.privateKey),
@@ -90,7 +90,7 @@ class SessionManager {
       }
       const keyPair = await keyUtils.generateKeyPair(this._bits);
       this.logger.info('Putting new keypair into DB');
-      await this._db.put<string>(
+      await this._db.put(
         [this.constructor.name],
         'privateKey',
         keyUtils.privateKeyToPem(keyPair.privateKey),

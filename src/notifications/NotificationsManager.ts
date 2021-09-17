@@ -34,8 +34,8 @@ class NotificationsManager {
     this.notificationsDomain,
     'messages',
   ];
-  protected notificationsDb: DBLevel<string>;
-  protected notificationsMessagesDb: DBLevel<NotificationId>;
+  protected notificationsDb: DBLevel;
+  protected notificationsMessagesDb: DBLevel;
   protected lock: Mutex = new Mutex();
   private _started: boolean = false;
 
@@ -85,11 +85,11 @@ class NotificationsManager {
         throw new dbErrors.ErrorDBNotStarted();
       }
       // sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
-      const notificationsDb = await this.db.level<string>(
+      const notificationsDb = await this.db.level(
         this.notificationsDomain,
       );
       // sub-sub-level stores NotificationId -> string (message)
-      const notificationsMessagesDb = await this.db.level<NotificationId>(
+      const notificationsMessagesDb = await this.db.level(
         this.notificationsMessagesDbDomain[1],
         notificationsDb,
       );
@@ -177,7 +177,7 @@ class NotificationsManager {
         );
         if (numMessages === undefined) {
           numMessages = 0;
-          await this.db.put<number>(
+          await this.db.put(
             this.notificationsDbDomain,
             this.MESSAGE_COUNT_KEY,
             0,
@@ -190,14 +190,14 @@ class NotificationsManager {
         }
         // Store the new notification in notificationsMessagesDb
         const notificationId = notificationsUtils.generateNotifId();
-        await this.db.put<Notification>(
+        await this.db.put(
           this.notificationsMessagesDbDomain,
           notificationId,
           notification,
         );
         // Number of messages += 1
         const newNumMessages = numMessages + 1;
-        await this.db.put<number>(
+        await this.db.put(
           this.notificationsDbDomain,
           this.MESSAGE_COUNT_KEY,
           newNumMessages,
@@ -288,7 +288,7 @@ class NotificationsManager {
         return undefined;
       }
       notification.isRead = true;
-      await this.db.put<Notification>(
+      await this.db.put(
         this.notificationsMessagesDbDomain,
         notificationId,
         notification,
@@ -305,7 +305,7 @@ class NotificationsManager {
       for await (const o of this.notificationsMessagesDb.createReadStream()) {
         const notifId = (o as any).key as NotificationId;
         const data = (o as any).value as Buffer;
-        const notif = this.db.unserializeDecrypt<Notification>(data);
+        const notif = await this.db.deserializeDecrypt<Notification>(data);
         if (type === 'all') {
           notificationIds.push(notifId);
         } else if (type === 'unread') {
@@ -325,7 +325,7 @@ class NotificationsManager {
       const notifications: Array<Notification> = [];
       for await (const v of this.notificationsMessagesDb.createValueStream()) {
         const data = v as Buffer;
-        const notification = this.db.unserializeDecrypt<Notification>(data);
+        const notification = await this.db.deserializeDecrypt<Notification>(data);
         if (type === 'all') {
           notifications.push(notification);
         } else if (type === 'unread') {
@@ -357,7 +357,7 @@ class NotificationsManager {
       }
 
       await this.db.del(this.notificationsMessagesDbDomain, messageId);
-      await this.db.put<number>(
+      await this.db.put(
         this.notificationsDbDomain,
         this.MESSAGE_COUNT_KEY,
         numMessages - 1,

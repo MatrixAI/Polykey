@@ -18,7 +18,7 @@ import { WorkerManager } from '../workers';
 import * as utils from '../utils';
 
 class DB {
-  public static async createDB({
+  public static createDB({
     dbPath,
     lock = new Mutex(),
     fs = require('fs'),
@@ -30,13 +30,13 @@ class DB {
     logger?: Logger;
   }) {
     const db = new DB({
-      dbKey,
       dbPath,
       lock,
       fs,
       logger,
     });
-    await db.start();
+    // Going to start this with the start stop pattern.
+    // await db.start({ keyPair: dbKey, bits, fresh });
     return db;
   }
 
@@ -328,6 +328,9 @@ class DB {
 
   public async deserializeDecrypt<T>(
     cipherText: Buffer,
+  ): Promise<T>;
+  public async deserializeDecrypt<T>(
+    cipherText: Buffer,
     raw: false,
   ): Promise<T>;
   public async deserializeDecrypt<T>(
@@ -336,7 +339,7 @@ class DB {
   ): Promise<Buffer>;
   public async deserializeDecrypt<T>(
     cipherText: Buffer,
-    raw: boolean
+    raw: boolean = false,
   ): Promise<T | Buffer> {
     let plainText;
     if (this.workerManager != null) {

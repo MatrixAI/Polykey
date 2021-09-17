@@ -34,7 +34,7 @@ class KeyManager {
   protected _started: boolean = false;
   protected workerManager?: WorkerManager;
 
-  constructor({
+  static createKeyManager({
     keysPath,
     fs,
     logger,
@@ -42,10 +42,27 @@ class KeyManager {
     keysPath: string;
     fs?: FileSystem;
     logger?: Logger;
+  }): KeyManager{
+    const logger_ = logger ?? new Logger(this.constructor.name);
+    const fs_ = fs ?? require('fs')
+
+    const keyManager_ = new KeyManager({ fs: fs_, logger: logger_, keysPath })
+    // await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
+    return keyManager_;
+  }
+
+  protected constructor({
+    keysPath,
+    fs,
+    logger,
+  }: {
+    keysPath: string;
+    fs: FileSystem;
+    logger: Logger;
   }) {
-    this.logger = logger ?? new Logger(this.constructor.name);
+    this.logger = logger;
     this.keysPath = keysPath;
-    this.fs = fs ?? require('fs');
+    this.fs = fs;
     this.rootPubPath = path.join(keysPath, 'root.pub');
     this.rootKeyPath = path.join(keysPath, 'root.key');
     this.rootCertPath = path.join(keysPath, 'root.crt');

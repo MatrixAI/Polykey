@@ -24,8 +24,8 @@ class IdentitiesManager {
     this.identitiesDbDomain,
     'tokens',
   ];
-  protected identitiesDb: DBLevel<string>;
-  protected identitiesTokensDb: DBLevel<ProviderId>;
+  protected identitiesDb: DBLevel;
+  protected identitiesTokensDb: DBLevel;
   protected lock: Mutex = new Mutex();
   protected providers: Map<ProviderId, Provider> = new Map();
   protected _started: boolean = false;
@@ -57,9 +57,9 @@ class IdentitiesManager {
       if (!this.db.started) {
         throw new dbErrors.ErrorDBNotStarted();
       }
-      const identitiesDb = await this.db.level<string>(this.identitiesDbDomain);
+      const identitiesDb = await this.db.level(this.identitiesDbDomain);
       // tokens stores ProviderId -> ProviderTokens
-      const identitiesTokensDb = await this.db.level<ProviderId>(
+      const identitiesTokensDb = await this.db.level(
         this.identitiesTokensDbDomain[1],
         identitiesDb,
       );

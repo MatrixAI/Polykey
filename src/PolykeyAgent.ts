@@ -140,14 +140,14 @@ class Polykey {
     });
     this.keys =
       keyManager ??
-      new KeyManager({
+      KeyManager.createKeyManager({
         keysPath,
         fs: this.fs,
         logger: this.logger.getChild('KeyManager'),
       });
     this.db =
       db ??
-      new DB({
+      DB.createDB({
         dbPath: dbPath,
         fs: this.fs,
         logger: this.logger,

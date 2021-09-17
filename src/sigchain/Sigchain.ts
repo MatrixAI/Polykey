@@ -34,13 +34,13 @@ class Sigchain {
     this.sigchainDbDomain,
     'metadata',
   ];
-  protected sigchainDb: DBLevel<string>;
+  protected sigchainDb: DBLevel;
   // ClaimId (the lexicographic integer of the sequence number)
   // -> ClaimEncoded (a JWS in General JSON Serialization)
-  protected sigchainClaimsDb: DBLevel<ClaimId>;
+  protected sigchainClaimsDb: DBLevel;
   // Sub-level database for numerical metadata to be persisted
   // e.g. "sequenceNumber" -> current sequence number
-  protected sigchainMetadataDb: DBLevel<string>;
+  protected sigchainMetadataDb: DBLevel;
   protected lock: Mutex = new Mutex();
   protected _started: boolean = false;
 
@@ -81,16 +81,16 @@ class Sigchain {
         throw new dbErrors.ErrorDBNotStarted();
       }
       // Top-level database for the sigchain domain
-      const sigchainDb = await this.db.level<string>(this.sigchainDbDomain);
+      const sigchainDb = await this.db.level(this.sigchainDbDomain);
       // ClaimId (the lexicographic integer of the sequence number)
       // -> ClaimEncoded (a JWS in General JSON Serialization)
-      const sigchainClaimsDb = await this.db.level<ClaimId>(
+      const sigchainClaimsDb = await this.db.level(
         this.sigchainClaimsDbDomain[1],
         sigchainDb,
       );
       // Sub-level database for numerical metadata to be persisted
       // e.g. "sequenceNumber" -> current sequence number
-      const sigchainMetadataDb = await this.db.level<string>(
+      const sigchainMetadataDb = await this.db.level(
         this.sigchainMetadataDbDomain[1],
         sigchainDb,
       );
@@ -297,7 +297,7 @@ class Sigchain {
       for await (const o of this.sigchainClaimsDb.createReadStream()) {
         const claimId = (o as any).key as ClaimId;
         const encryptedClaim = (o as any).value;
-        const claim = this.db.unserializeDecrypt<ClaimEncoded>(encryptedClaim);
+        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(encryptedClaim);
         chainData[claimId] = claim;
       }
       return chainData;
@@ -317,7 +317,7 @@ class Sigchain {
       const relevantClaims: Array<ClaimEncoded> = [];
       for await (const o of this.sigchainClaimsDb.createReadStream()) {
         const data = (o as any).value;
-        const claim = this.db.unserializeDecrypt<ClaimEncoded>(data);
+        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(data);
         const decodedClaim = claimsUtils.decodeClaim(claim);
         if (decodedClaim.payload.data.type === claimType) {
           relevantClaims.push(claim);

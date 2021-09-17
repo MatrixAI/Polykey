@@ -17,12 +17,6 @@ type SymRefs = {
   [key: string]: string;
 };
 
-type RefsAdResponse = {
-  capabilities: Array<string>;
-  refs: Refs;
-  symrefs: SymRefs;
-};
-
 type Ack = {
   oid: string;
 };
@@ -49,7 +43,7 @@ type PackIndex = {
   hashes: string[];
   offsets: Map<string, number>;
   packfileSha: string;
-  getExternalRefDelta: (
+  getExternalRefDelta?: (
     oid: string,
   ) => Promise<DeflatedObject | WrappedObject | RawObject>;
   pack?: Buffer;
@@ -69,7 +63,7 @@ type BufferEncoding =
 
 export type {
   Refs,
-  RefsAdResponse,
+  SymRefs,
   Ack,
   Packfile,
   BufferEncoding,
