@@ -1,4 +1,4 @@
-import type { NotificationId, Notification } from './types';
+import type { NotificationId, Notification, NotificationData } from './types';
 import type { ACL } from '../acl';
 import type { DB } from '../db';
 import type { KeyManager } from '../keys';
@@ -143,12 +143,13 @@ class NotificationsManager {
   }
 
   /**
-   * Send a notification
+   * Send a notification to another node
+   * The `data` parameter must match one of the NotificationData types outlined in ./types
    */
-  public async sendNotification(nodeId: NodeId, message: string) {
-    const notification: Notification = {
+  public async sendNotification(nodeId: NodeId, data: NotificationData) {
+    const notification = {
+      data: data,
       senderId: this.nodeManager.getNodeId(),
-      message: message,
       isRead: false,
     };
     const signedNotification = await notificationsUtils.signNotification(
@@ -216,30 +217,45 @@ class NotificationsManager {
     unread?: boolean;
     number?: number | 'all';
     order?: 'newest' | 'oldest';
-  } = {}): Promise<Array<string>> {
-    let notifications: Array<Record<NotificationId, Notification>>;
+  } = {}): Promise<Array<Notification>> {
+    let notificationIds: Array<NotificationId>;
     if (unread === true) {
-      notifications = await this.getNotifications('unread');
+      notificationIds = await this.getNotificationIds('unread');
     } else {
-      notifications = await this.getNotifications('all');
-    }
-
-    if (number === 'all' || number > notifications.length) {
-      number = notifications.length;
+      notificationIds = await this.getNotificationIds('all');
     }
 
     if (order === 'newest') {
-      notifications.reverse();
+      notificationIds.reverse();
     }
 
-    const readNotifications: Array<string> = [];
-    for (let i = 0; i < number; i++) {
-      const notifId = Object.keys(notifications[i])[0] as NotificationId;
-      const notifMsg = await this.readNotificationById(notifId);
-      readNotifications.push(notifMsg!);
+    if (number === 'all' || number > notificationIds.length) {
+      number = notificationIds.length;
+    }
+    notificationIds = notificationIds.slice(0, number);
+
+    const notifications: Array<Notification> = [];
+    for (const id of notificationIds) {
+      const notif = await this.readNotificationById(id);
+      notifications.push(notif!);
     }
 
-    return readNotifications;
+    return notifications;
+  }
+
+  /**
+   * Linearly searches for a GestaltInvite notification from the supplied NodeId.
+   * Returns the notification if found.
+   */
+  public async findGestaltInvite(
+    fromNode: NodeId,
+  ): Promise<Notification | undefined> {
+    const notifications = await this.getNotifications('all');
+    for (const notif of notifications) {
+      if (notif.data.type === 'GestaltInvite' && notif.senderId === fromNode) {
+        return notif;
+      }
+    }
   }
 
   /**
@@ -247,15 +263,14 @@ class NotificationsManager {
    */
   public async clearNotifications() {
     await this._transaction(async () => {
-      const notifications = await this.getNotifications('all');
+      const notificationIds = await this.getNotificationIds('all');
       const numMessages = await this.db.get<number>(
         this.notificationsDbDomain,
         this.MESSAGE_COUNT_KEY,
       );
       if (numMessages !== undefined) {
-        for (let i = 0; i < numMessages; i++) {
-          const notifId = Object.keys(notifications[i])[0] as NotificationId;
-          await this.removeNotification(notifId);
+        for (const id of notificationIds) {
+          await this.removeNotification(id);
         }
       }
     });
@@ -263,7 +278,7 @@ class NotificationsManager {
 
   private async readNotificationById(
     notificationId: NotificationId,
-  ): Promise<string | undefined> {
+  ): Promise<Notification | undefined> {
     return await this._transaction(async () => {
       const notification = await this.db.get<Notification>(
         this.notificationsMessagesDbDomain,
@@ -278,29 +293,43 @@ class NotificationsManager {
         notificationId,
         notification,
       );
-      return notification.message;
+      return notification;
     });
   }
 
-  private async getNotifications(
+  private async getNotificationIds(
     type: 'unread' | 'all',
-  ): Promise<Array<Record<NotificationId, Notification>>> {
+  ): Promise<Array<NotificationId>> {
     return await this._transaction(async () => {
-      const notifications: Array<Record<NotificationId, Notification>> = [];
+      const notificationIds: Array<NotificationId> = [];
       for await (const o of this.notificationsMessagesDb.createReadStream()) {
         const notifId = (o as any).key as NotificationId;
         const data = (o as any).value as Buffer;
         const notif = this.db.unserializeDecrypt<Notification>(data);
         if (type === 'all') {
-          const notification: Record<NotificationId, Notification> = {
-            [notifId]: notif,
-          };
-          notifications.push(notification);
+          notificationIds.push(notifId);
         } else if (type === 'unread') {
           if (notif.isRead === false) {
-            const notification: Record<NotificationId, Notification> = {
-              [notifId]: notif,
-            };
+            notificationIds.push(notifId);
+          }
+        }
+      }
+      return notificationIds;
+    });
+  }
+
+  private async getNotifications(
+    type: 'unread' | 'all',
+  ): Promise<Array<Notification>> {
+    return await this._transaction(async () => {
+      const notifications: Array<Notification> = [];
+      for await (const v of this.notificationsMessagesDb.createValueStream()) {
+        const data = v as Buffer;
+        const notification = this.db.unserializeDecrypt<Notification>(data);
+        if (type === 'all') {
+          notifications.push(notification);
+        } else if (type === 'unread') {
+          if (notification.isRead === false) {
             notifications.push(notification);
           }
         }
@@ -310,14 +339,11 @@ class NotificationsManager {
   }
 
   private async getOldestNotificationId(): Promise<NotificationId | undefined> {
-    const notifications = await this.getNotifications('all');
-    if (notifications.length === 0) {
+    const notificationIds = await this.getNotificationIds('all');
+    if (notificationIds.length === 0) {
       return undefined;
     }
-
-    const notifId = Object.keys(notifications[0])[0] as NotificationId;
-
-    return notifId;
+    return notificationIds[0];
   }
 
   private async removeNotification(messageId: NotificationId) {

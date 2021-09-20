@@ -1,4 +1,6 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
+import type { NotificationData } from '@/notifications/types';
+import type { VaultId } from '@/vaults/types';
 
 import os from 'os';
 import path from 'path';
@@ -95,7 +97,7 @@ describe('CLI Notifications', () => {
       receiverPasswordFile,
     ]);
     await receiverPolykeyAgent.notifications.clearNotifications();
-  }, global.polykeyStartupTimeout);
+  }, global.polykeyStartupTimeout * 2);
   afterAll(async () => {
     await senderPolykeyAgent.stop();
     await receiverPolykeyAgent.stop();
@@ -120,7 +122,10 @@ describe('CLI Notifications', () => {
       expect(result.stdout).toContain('msg');
       const notifications =
         await receiverPolykeyAgent.notifications.readNotifications();
-      expect(notifications).toContain('msg');
+      expect(notifications[0].data).toEqual({
+        type: 'General',
+        message: 'msg',
+      });
     });
     test('Should send notification without permission.', async () => {
       await receiverPolykeyAgent.acl.setNodePerm(senderNodeId, {
@@ -247,7 +252,7 @@ describe('CLI Notifications', () => {
       await testUtils.pkWithStdio(senderCommands1);
       await testUtils.pkWithStdio(senderCommands2);
       await testUtils.pkWithStdio(senderCommands3);
-      const receiverCommands = genCommandsReceiver(['read', '-n', '2']);
+      const receiverCommands = genCommandsReceiver(['read', '--number', '2']);
       const result = await testUtils.pkWithStdio(receiverCommands);
       expect(result.code).toBe(0);
       expect(result.stdout).not.toContain('msg1'); // oldest notification not included
@@ -281,11 +286,10 @@ describe('CLI Notifications', () => {
       await testUtils.pkWithStdio(senderCommands3);
       const receiverCommands = genCommandsReceiver([
         'read',
-        '-u',
-        'true',
-        '-n',
+        '--unread',
+        '--number',
         '1',
-        '-o',
+        '--order',
         'oldest',
       ]);
       const result1 = await testUtils.pkWithStdio(receiverCommands);
@@ -303,6 +307,48 @@ describe('CLI Notifications', () => {
       const result = await testUtils.pkWithStdio(receiverCommands);
       expect(result.code).toBe(0);
       expect(result.stdout).toEqual('No notifications to display\n');
+    });
+    test('Should read all types of notifications.', async () => {
+      await receiverPolykeyAgent.acl.setNodePerm(senderNodeId, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+      const notificationData1: NotificationData = {
+        type: 'General',
+        message: 'msg',
+      };
+      const notificationData2: NotificationData = {
+        type: 'GestaltInvite',
+      };
+      const notificationData3: NotificationData = {
+        type: 'VaultShare',
+        vaultId: 'vaultId' as VaultId,
+        vaultName: 'vaultName',
+        actions: {
+          clone: null,
+          pull: null,
+        },
+      };
+      await senderPolykeyAgent.notifications.sendNotification(
+        receiverNodeId,
+        notificationData1,
+      );
+      await senderPolykeyAgent.notifications.sendNotification(
+        receiverNodeId,
+        notificationData2,
+      );
+      await senderPolykeyAgent.notifications.sendNotification(
+        receiverNodeId,
+        notificationData3,
+      );
+      const commands = genCommandsReceiver(['read']);
+      const result = await testUtils.pkWithStdio(commands);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('Message from Keynode');
+      expect(result.stdout).toContain('invited you to join their Gestalt');
+      expect(result.stdout).toContain('shared their vault');
     });
   });
   describe('commandClearNotifications', () => {
