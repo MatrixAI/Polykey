@@ -9,8 +9,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 
 import { clientPB, GRPCClientClient } from '@/client';
-import { utils as keyUtils } from '@/keys';
-import { utils as networkUtils } from '@/network';
 import { PolykeyAgent } from '@';
 
 import * as testUtils from './utils';
@@ -27,20 +25,10 @@ describe('GRPCClientClient', () => {
   let polykeyAgent: PolykeyAgent;
   let dataDir: string;
   let nodePath: string;
-  let callCredentials: Partial<grpc.CallOptions>;
 
   let nodeId: NodeId;
 
   beforeEach(async () => {
-    const keyPair = await keyUtils.generateKeyPair(4096);
-    const cert = keyUtils.generateCertificate(
-      keyPair.publicKey,
-      keyPair.privateKey,
-      keyPair.privateKey,
-      86400,
-    );
-    // nodeId = networkUtils.certNodeId(cert);
-
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );

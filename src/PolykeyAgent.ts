@@ -51,10 +51,12 @@ class Polykey {
   public readonly clientGrpcServer: GRPCServer;
   public readonly clientGrpcHost: string;
   public readonly clientGrpcPort: number;
+  protected clientService: IClientServer;
   // Agent server
   public readonly agentGrpcServer: GRPCServer;
   public readonly agentGrpcHost: string;
   public readonly agentGrpcPort: number;
+  protected agentService: IAgentServer;
 
   // Proxies
   public readonly fwdProxy: ForwardProxy;
@@ -226,8 +228,18 @@ class Polykey {
       logger: logger,
     });
 
+    // Create GRPC Servers (services will be injected on start)
+    // Client server
+    this.clientGrpcServer = new GRPCServer({
+      logger: this.logger.getChild('ClientServer'),
+    });
+    // Agent Server
+    this.agentGrpcServer = new GRPCServer({
+      logger: this.logger.getChild('AgentServer'),
+    });
+
     // Get GRPC Services
-    const clientService: IClientServer = createClientService({
+    this.clientService = createClientService({
       polykeyAgent: this,
       discovery: this.discovery,
       gestaltGraph: this.gestalts,
@@ -237,25 +249,17 @@ class Polykey {
       notificationsManager: this.notifications,
       sessionManager: this.sessions,
       vaultManager: this.vaults,
+      fwdProxy: this.fwdProxy,
+      revProxy: this.revProxy,
+      grpcServer: this.clientGrpcServer,
     });
 
-    const agentService: IAgentServer = createAgentService({
+    this.agentService = createAgentService({
+      keyManager: this.keys,
       vaultManager: this.vaults,
       nodeManager: this.nodes,
       sigchain: this.sigchain,
       notificationsManager: this.notifications,
-    });
-
-    // Create GRPC Server with the services just created.
-    // Client server
-    this.clientGrpcServer = new GRPCServer({
-      services: [[ClientService, clientService]],
-      logger: this.logger.getChild('ClientServer'),
-    });
-    // Agent Server
-    this.agentGrpcServer = new GRPCServer({
-      services: [[AgentService, agentService]],
-      logger: this.logger.getChild('AgentServer'),
     });
 
     // Registering providers.
@@ -363,7 +367,7 @@ class Polykey {
     await this.acl.start({ fresh });
 
     await this.sigchain.start({ fresh });
-    await this.nodes.start({ nodeId, fresh });
+    await this.nodes.start({ fresh });
     await this.gestalts.start({ fresh });
     await this.vaults.start({ fresh });
     await this.identities.start({ fresh });
@@ -377,6 +381,7 @@ class Polykey {
     // GRPC Server
     // Client server
     await this.clientGrpcServer.start({
+      services: [[ClientService, this.clientService]],
       host: this.clientGrpcHost as Host,
       port: this.clientGrpcPort as Port,
       tlsConfig: {
@@ -386,6 +391,7 @@ class Polykey {
     });
     // Agent server
     await this.agentGrpcServer.start({
+      services: [[AgentService, this.agentService]],
       host: this.agentGrpcHost as Host,
       port: this.agentGrpcPort as Port,
     });

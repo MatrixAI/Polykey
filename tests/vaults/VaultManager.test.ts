@@ -1,7 +1,6 @@
 import type { NodeId, NodeAddress, NodeInfo } from '@/nodes/types';
 import type { ProviderId, IdentityId, IdentityInfo } from '@/identities/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { KeyPairPem, CertificatePem } from '@/keys/types';
 import type { VaultId } from '@/vaults/types';
 import type { ChainData } from '@/sigchain/types';
 
@@ -24,8 +23,6 @@ import { NotificationsManager } from '@/notifications';
 import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
 
 import { errors as vaultErrors } from '@/vaults';
-import * as keysUtils from '@/keys/utils';
-import { utils as networkUtils } from '@/network';
 import { errors as gitErrors } from '@/git';
 
 describe('VaultManager is', () => {
@@ -110,9 +107,7 @@ describe('VaultManager is', () => {
       fs: fs,
       logger: logger,
     });
-    await nodeManager.start({
-      nodeId: 'abc' as NodeId,
-    });
+    await nodeManager.start();
 
     acl = new ACL({
       db: db,
@@ -472,8 +467,6 @@ describe('VaultManager is', () => {
       altNotificationsManager: NotificationsManager;
 
     let targetNodeId: NodeId, altNodeId: NodeId;
-    let targetKeyPairPem: KeyPairPem, altKeyPairPem: KeyPairPem;
-    let targetCertPem: CertificatePem, altCertPem: CertificatePem;
     let revTLSConfig: TLSConfig, altRevTLSConfig: TLSConfig;
 
     let targetAgentService: IAgentServer, altAgentService: IAgentServer;
@@ -491,21 +484,6 @@ describe('VaultManager is', () => {
         id: nodeManager.getNodeId(),
         chain: { nodes: {}, identities: {} } as ChainData,
       };
-      const targetKeyPair = await keysUtils.generateKeyPair(4096);
-      targetKeyPairPem = keysUtils.keyPairToPem(targetKeyPair);
-      const targetCert = keysUtils.generateCertificate(
-        targetKeyPair.publicKey,
-        targetKeyPair.privateKey,
-        targetKeyPair.privateKey,
-        12332432423,
-      );
-
-      targetCertPem = keysUtils.certToPem(targetCert);
-      targetNodeId = networkUtils.certNodeId(targetCert);
-      revTLSConfig = {
-        keyPrivatePem: targetKeyPairPem.privateKey,
-        certChainPem: targetCertPem,
-      };
       targetDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
@@ -515,6 +493,11 @@ describe('VaultManager is', () => {
         logger: logger,
       });
       await targetKeyManager.start({ password: 'password' });
+      targetNodeId = targetKeyManager.getNodeId();
+      revTLSConfig = {
+        keyPrivatePem: targetKeyManager.getRootKeyPairPem().privateKey,
+        certChainPem: await targetKeyManager.getRootCertChainPem(),
+      };
       targetFwdProxy = new ForwardProxy({
         authToken: '',
         logger: logger,
@@ -539,7 +522,7 @@ describe('VaultManager is', () => {
         fs: fs,
         logger: logger,
       });
-      await targetNodeManager.start({ nodeId: targetNodeId });
+      await targetNodeManager.start();
       targetACL = new ACL({
         db: targetDb,
         logger: logger,
@@ -572,47 +555,38 @@ describe('VaultManager is', () => {
       });
       await targetVaultManager.start({});
       targetAgentService = createAgentService({
+        keyManager: targetKeyManager,
         vaultManager: targetVaultManager,
         nodeManager: targetNodeManager,
         sigchain: targetSigchain,
         notificationsManager: targetNotificationsManager,
       });
       targetServer = new GRPCServer({
-        services: [[AgentService, targetAgentService]],
         logger: logger,
       });
       await targetServer.start({
+        services: [[AgentService, targetAgentService]],
         host: targetHost,
       });
 
-      const altKeyPair = await keysUtils.generateKeyPair(4096);
-      altKeyPairPem = keysUtils.keyPairToPem(altKeyPair);
-      const altCert = keysUtils.generateCertificate(
-        altKeyPair.publicKey,
-        altKeyPair.privateKey,
-        altKeyPair.privateKey,
-        12332432423,
-      );
-
-      altCertPem = keysUtils.certToPem(altCert);
-      altNodeId = networkUtils.certNodeId(altCert);
       altDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
-      altRevTLSConfig = {
-        keyPrivatePem: altKeyPairPem.privateKey,
-        certChainPem: altCertPem,
-      };
-      await targetGestaltGraph.setNode({
-        id: altNodeId,
-        chain: {},
-      });
       altKeyManager = new KeyManager({
         keysPath: path.join(altDataDir, 'keys'),
         fs: fs,
         logger: logger,
       });
       await altKeyManager.start({ password: 'password' });
+      altNodeId = altKeyManager.getNodeId();
+      await targetGestaltGraph.setNode({
+        id: altNodeId,
+        chain: {},
+      });
+      altRevTLSConfig = {
+        keyPrivatePem: altKeyManager.getRootKeyPairPem().privateKey,
+        certChainPem: await altKeyManager.getRootCertChainPem(),
+      };
       await altFwdProxy.start({
         tlsConfig: {
           keyPrivatePem: altKeyManager.getRootKeyPairPem().privateKey,
@@ -641,7 +615,7 @@ describe('VaultManager is', () => {
         fs: fs,
         logger: logger,
       });
-      await altNodeManager.start({ nodeId: altNodeId });
+      await altNodeManager.start();
       altACL = new ACL({
         db: altDb,
         logger: logger,
@@ -674,16 +648,17 @@ describe('VaultManager is', () => {
       });
       await altVaultManager.start({});
       altAgentService = createAgentService({
+        keyManager: altKeyManager,
         vaultManager: altVaultManager,
         nodeManager: altNodeManager,
         sigchain: altSigchain,
         notificationsManager: altNotificationsManager,
       });
       altServer = new GRPCServer({
-        services: [[AgentService, altAgentService]],
         logger: logger,
       });
       await altServer.start({
+        services: [[AgentService, altAgentService]],
         host: altHostIn,
       });
 

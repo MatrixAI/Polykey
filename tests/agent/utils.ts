@@ -5,6 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { createAgentService, GRPCClientAgent, AgentService } from '@/agent';
 import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
+import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
 import { promisify } from '@/utils';
@@ -12,17 +13,20 @@ import { Sigchain } from '@/sigchain';
 import { NotificationsManager } from '@/notifications';
 
 async function openTestAgentServer({
+  keyManager,
   vaultManager,
   nodeManager,
   sigchain,
   notificationsManager,
 }: {
+  keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   sigchain: Sigchain;
   notificationsManager: NotificationsManager;
 }) {
   const agentService: IAgentServer = createAgentService({
+    keyManager,
     vaultManager,
     nodeManager,
     sigchain: sigchain,

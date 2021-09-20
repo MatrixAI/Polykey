@@ -13,7 +13,6 @@ describe('GRPCServer', () => {
   ]);
   test('starting and stopping the server', async () => {
     const server = new GRPCServer({
-      services: [[utils.TestService, utils.testService]],
       logger: logger,
     });
     const keyPair = await keysUtils.generateKeyPair(4096);
@@ -24,6 +23,7 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
+      services: [[utils.TestService, utils.testService]],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {
@@ -37,7 +37,6 @@ describe('GRPCServer', () => {
   });
   test('connecting to the server securely', async () => {
     const server = new GRPCServer({
-      services: [[utils.TestService, utils.testService]],
       logger: logger,
     });
     const serverKeyPair = await keysUtils.generateKeyPair(4096);
@@ -48,6 +47,7 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
+      services: [[utils.TestService, utils.testService]],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {
@@ -84,7 +84,6 @@ describe('GRPCServer', () => {
   });
   test('changing the private key and certificate on the fly', async () => {
     const server = new GRPCServer({
-      services: [[utils.TestService, utils.testService]],
       logger: logger,
     });
     const serverKeyPair1 = await keysUtils.generateKeyPair(4096);
@@ -95,6 +94,7 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
+      services: [[utils.TestService, utils.testService]],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {

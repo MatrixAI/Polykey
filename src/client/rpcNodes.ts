@@ -1,6 +1,8 @@
 import type { NodeManager } from '../nodes';
 import type { NodeAddress, NodeId } from '../nodes/types';
+import type { NotificationData } from '../notifications/types';
 import type { SessionManager } from '../sessions';
+import type { NotificationsManager } from '../notifications';
 
 import * as grpc from '@grpc/grpc-js';
 import * as clientPB from '../proto/js/Client_pb';
@@ -12,9 +14,11 @@ import * as nodesErrors from '../nodes/errors';
 const createNodesRPC = ({
   nodeManager,
   sessionManager,
+  notificationsManager,
 }: {
   nodeManager: NodeManager;
   sessionManager: SessionManager;
+  notificationsManager: NotificationsManager;
 }) => {
   return {
     /**
@@ -81,15 +85,46 @@ const createNodesRPC = ({
       callback(null, response);
     },
     /**
-     * Requests a node -> node cryptolink claim to be created between the local
-     * node and a remote node.
+     * Checks whether there is an existing Gestalt Invitation from the other node.
+     * If not, send an invitation, if so, create a cryptolink claim between the
+     * other node and host node.
      */
     nodesClaim: async (
-      _call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.StatusMessage>,
-      _callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      call: grpc.ServerUnaryCall<
+        clientPB.NodeClaimMessage,
+        clientPB.StatusMessage
+      >,
+      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
     ): Promise<void> => {
-      // change _call to call when implemented, same for callback.
-      throw Error('Not implemented, placeholder');
+      const response = new clientPB.StatusMessage();
+      try {
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+        const remoteNodeId = call.request.getNodeId() as NodeId;
+        const gestaltInvite = await notificationsManager.findGestaltInvite(
+          remoteNodeId,
+        );
+
+        // check first whether there is an existing gestalt invite from the remote node
+        // or if we want to force an invitation rather than a claim
+        if (gestaltInvite === undefined || call.request.getForceInvite()) {
+          const data = {
+            type: 'GestaltInvite',
+          } as NotificationData;
+          await notificationsManager.sendNotification(remoteNodeId, data);
+          response.setSuccess(false);
+        } else {
+          // there is an existing invitation, and we want to claim the node
+          await nodeManager.claimNode(remoteNodeId);
+          response.setSuccess(true);
+        }
+      } catch (err) {
+        callback(grpcUtils.fromError(err), response);
+      }
+      callback(null, response);
     },
     /**
      * Attempts to get the node address of a provided node ID (by contacting

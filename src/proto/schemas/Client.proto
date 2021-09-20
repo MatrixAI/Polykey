@@ -16,7 +16,7 @@ service Client {
   // Nodes
   rpc NodesAdd(NodeAddressMessage) returns (EmptyMessage) {};
   rpc NodesPing(NodeMessage) returns (StatusMessage) {};
-  rpc NodesClaim(NodeMessage) returns (StatusMessage) {};
+  rpc NodesClaim(NodeClaimMessage) returns (StatusMessage) {};
   rpc NodesFind(NodeMessage) returns (NodeAddressMessage) {};
 
   // Keys
@@ -76,8 +76,8 @@ service Client {
   rpc GestaltsActionsUnsetByIdentity(SetActionsMessage) returns (EmptyMessage) {};
 
   // Notifications
-  rpc NotificationsSend(NotificationInfoMessage) returns (EmptyMessage) {};
-  rpc NotificationsRead(NotificationDisplayMessage) returns (NotificationListMessage) {};
+  rpc NotificationsSend(NotificationsSendMessage) returns (EmptyMessage) {};
+  rpc NotificationsRead(NotificationsReadMessage) returns (NotificationsListMessage) {};
   rpc NotificationsClear(EmptyMessage) returns (EmptyMessage) {};
 }
 
@@ -194,6 +194,11 @@ message NodeAddressMessage {
   int32 port = 3;
 }
 
+message NodeClaimMessage {
+  string node_id = 1;
+  bool force_invite = 2;
+}
+
 // Keys
 
 message CryptoMessage {
@@ -274,24 +279,37 @@ message SetActionsMessage {
 }
 
 // Notifications
-message NotificationInfoMessage {
-  string receiver_id = 1;
-  string message = 2;
+message NotificationsMessage {
+  oneof data {
+    GeneralTypeMessage general = 1;
+    string gestalt_invite = 2;
+    VaultShareTypeMessage vault_share = 3;
+  };
+  string sender_id = 4;
+  bool is_read = 5;
 }
 
-message NotificationDisplayMessage {
+message NotificationsSendMessage {
+  string receiver_id = 1;
+  GeneralTypeMessage data = 2;
+}
+
+message NotificationsReadMessage {
   bool unread = 1;
-  NumberMessage number = 2;
+  string number = 2;
   string order = 3;
 }
 
-message NotificationListMessage {
-  string messages = 1;
+message NotificationsListMessage {
+  repeated NotificationsMessage notification = 1;
 }
 
-message NumberMessage {
-  oneof number_or_all {
-    int32 number = 1;
-    string all = 2;
-  }
+message GeneralTypeMessage {
+  string message = 1;
+}
+
+message VaultShareTypeMessage {
+  string vault_id = 1;
+  string vault_name = 2;
+  repeated string actions = 3;
 }

@@ -28,6 +28,9 @@ async function openTestClientServer({
     sessionManager: polykeyAgent.sessions,
     notificationsManager: polykeyAgent.notifications,
     discovery: polykeyAgent.discovery,
+    fwdProxy: polykeyAgent.fwdProxy,
+    revProxy: polykeyAgent.revProxy,
+    grpcServer: polykeyAgent.clientGrpcServer,
   });
 
   const callCredentials = _secure

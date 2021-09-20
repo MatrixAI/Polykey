@@ -1,20 +1,23 @@
+import type { PolykeyAgent } from '@';
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
-import type { CertificatePem, KeyPairPem } from '@/keys/types';
+import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
+import type { ClaimId } from '@/claims/types';
 
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
+import { DB } from '@/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { NodeManager } from '@/nodes';
-import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
+import { ForwardProxy, ReverseProxy } from '@/network';
 import { Sigchain } from '@/sigchain';
 import { sleep } from '@/utils';
 import * as testUtils from '../utils';
 import * as nodesErrors from '@/nodes/errors';
-import { DB } from '@/db';
+import * as claimsUtils from '@/claims/utils';
 
 describe('NodeManager', () => {
   const logger = new Logger('NodeManagerTest', LogLevel.WARN, [
@@ -33,7 +36,6 @@ describe('NodeManager', () => {
   let keyManager: KeyManager;
   let keyPairPem: KeyPairPem;
   let certPem: CertificatePem;
-  let nodeId: NodeId;
   let db: DB;
   let sigchain: Sigchain;
 
@@ -51,7 +53,6 @@ describe('NodeManager', () => {
     const cert = keyManager.getRootCert();
     keyPairPem = keyManager.getRootKeyPairPem();
     certPem = keysUtils.certToPem(cert);
-    nodeId = networkUtils.certNodeId(cert);
 
     await fwdProxy.start({
       tlsConfig: {
@@ -83,7 +84,7 @@ describe('NodeManager', () => {
       revProxy,
       logger,
     });
-    await nodeManager.start({ nodeId });
+    await nodeManager.start();
   });
   afterEach(async () => {
     await nodeManager.stop();
@@ -207,4 +208,153 @@ describe('NodeManager', () => {
     },
     global.failedConnectionTimeout,
   );
+  test('knows node (true and false case)', async () => {
+    // Known node
+    const nodeId1 = 'nodeId1' as NodeId;
+    const nodeAddress1: NodeAddress = {
+      ip: '127.0.0.1' as Host,
+      port: 11111 as Port,
+    };
+    await nodeManager.setNode(nodeId1, nodeAddress1);
+    expect(await nodeManager.knowsNode(nodeId1)).toBeTruthy();
+
+    // Unknown node
+    const nodeId2 = 'nodeId2' as NodeId;
+    expect(await nodeManager.knowsNode(nodeId2)).not.toBeTruthy();
+  });
+
+  describe('Cross signing claims', () => {
+    // These tests follow the following process (from the perspective of Y):
+    // 1. X -> sends notification (to start cross signing request) -> Y
+    // 2. X <- sends its intermediary signed claim <- Y
+    // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
+    // 4. X <- sends doubly signed claim (X's intermediary) <- Y
+    // We're unable to mock the actions of the server, but we can ensure the
+    // state on each side is as expected.
+
+    let x: PolykeyAgent;
+    let xNodeId: NodeId;
+    let xNodeAddress: NodeAddress;
+    let xPublicKey: PublicKeyPem;
+
+    let y: PolykeyAgent;
+    let yNodeId: NodeId;
+    let yNodeAddress: NodeAddress;
+    let yPublicKey: PublicKeyPem;
+
+    beforeAll(async () => {
+      x = await testUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+      xNodeId = x.nodes.getNodeId();
+      xNodeAddress = {
+        ip: x.revProxy.getIngressHost(),
+        port: x.revProxy.getIngressPort(),
+      };
+      xPublicKey = x.keys.getRootKeyPairPem().publicKey;
+
+      y = await testUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+      yNodeId = y.nodes.getNodeId();
+      yNodeAddress = {
+        ip: y.revProxy.getIngressHost(),
+        port: y.revProxy.getIngressPort(),
+      };
+      yPublicKey = y.keys.getRootKeyPairPem().publicKey;
+
+      await x.nodes.setNode(yNodeId, yNodeAddress);
+      await y.nodes.setNode(xNodeId, xNodeAddress);
+    });
+    afterAll(async () => {
+      await testUtils.cleanupRemoteKeynode(x);
+      await testUtils.cleanupRemoteKeynode(y);
+    });
+
+    // Make sure to remove any side-effects after each test
+    afterEach(async () => {
+      await x.sigchain.clearDB();
+      await y.sigchain.clearDB();
+    });
+
+    test('can successfully cross sign a claim', async () => {
+      // Make the call to initialise the cross-signing process:
+      // 2. X <- sends its intermediary signed claim <- Y
+      // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
+      // 4. X <- sends doubly signed claim (X's intermediary) <- Y
+      await y.nodes.claimNode(xNodeId);
+
+      // Check both sigchain locks are released
+      expect(x.sigchain.locked).toBe(false);
+      expect(y.sigchain.locked).toBe(false);
+
+      // Check X's sigchain state
+      const xChain = await x.sigchain.getChainData();
+      expect(Object.keys(xChain).length).toBe(1);
+      // Iterate just to be safe, but expected to only have this single claim
+      for (const c of Object.keys(xChain)) {
+        const claimId = c as ClaimId;
+        const claim = xChain[claimId];
+        const decoded = claimsUtils.decodeClaim(claim);
+        expect(decoded).toStrictEqual({
+          payload: {
+            hPrev: null,
+            seq: 1,
+            data: {
+              type: 'node',
+              node1: xNodeId,
+              node2: yNodeId,
+            },
+            iat: expect.any(Number),
+          },
+          signatures: expect.any(Object),
+        });
+        const signatureNodeIds = Object.keys(decoded.signatures) as NodeId[];
+        expect(signatureNodeIds.length).toBe(2);
+        // Verify the 2 signatures
+        expect(signatureNodeIds).toContain(xNodeId);
+        expect(await claimsUtils.verifyClaimSignature(claim, xPublicKey)).toBe(
+          true,
+        );
+        expect(signatureNodeIds).toContain(yNodeId);
+        expect(await claimsUtils.verifyClaimSignature(claim, yPublicKey)).toBe(
+          true,
+        );
+      }
+
+      // Check Y's sigchain state
+      const yChain = await y.sigchain.getChainData();
+      expect(Object.keys(yChain).length).toBe(1);
+      // Iterate just to be safe, but expected to only have this single claim
+      for (const c of Object.keys(yChain)) {
+        const claimId = c as ClaimId;
+        const claim = yChain[claimId];
+        const decoded = claimsUtils.decodeClaim(claim);
+        expect(decoded).toStrictEqual({
+          payload: {
+            hPrev: null,
+            seq: 1,
+            data: {
+              type: 'node',
+              node1: yNodeId,
+              node2: xNodeId,
+            },
+            iat: expect.any(Number),
+          },
+          signatures: expect.any(Object),
+        });
+        const signatureNodeIds = Object.keys(decoded.signatures) as NodeId[];
+        expect(signatureNodeIds.length).toBe(2);
+        // Verify the 2 signatures
+        expect(signatureNodeIds).toContain(xNodeId);
+        expect(await claimsUtils.verifyClaimSignature(claim, xPublicKey)).toBe(
+          true,
+        );
+        expect(signatureNodeIds).toContain(yNodeId);
+        expect(await claimsUtils.verifyClaimSignature(claim, yPublicKey)).toBe(
+          true,
+        );
+      }
+    });
+  });
 });

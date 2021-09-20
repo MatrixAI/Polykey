@@ -1,5 +1,9 @@
 import type { KeyManager } from '../keys';
+import type { NodeManager } from '../nodes';
 import type { SessionManager } from '../sessions';
+import type { ForwardProxy, ReverseProxy } from '../network';
+import type { TLSConfig } from '../network/types';
+import type { GRPCServer } from '../grpc';
 
 import * as utils from './utils';
 import * as grpc from '@grpc/grpc-js';
@@ -8,10 +12,18 @@ import * as clientPB from '../proto/js/Client_pb';
 
 const createKeysRPC = ({
   keyManager,
+  nodeManager,
   sessionManager,
+  fwdProxy,
+  revProxy,
+  grpcServer,
 }: {
   keyManager: KeyManager;
+  nodeManager: NodeManager;
   sessionManager: SessionManager;
+  fwdProxy: ForwardProxy;
+  revProxy: ReverseProxy;
+  grpcServer: GRPCServer;
 }) => {
   return {
     keysKeyPairRoot: async (
@@ -38,12 +50,25 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
-        await keyManager.resetRootKeyPair(call.request.getName());
+        // Lock the nodeManager - because we need to do a database refresh too
+        await nodeManager.transaction(async (nodeManager) => {
+          await sessionManager.verifyToken(utils.getToken(call.metadata));
+          const responseMeta = utils.createMetaTokenResponse(
+            await sessionManager.generateToken(),
+          );
+          call.sendMetadata(responseMeta);
+          await keyManager.resetRootKeyPair(call.request.getName());
+          // Reset the TLS config with new keypair + certificate
+          const tlsConfig: TLSConfig = {
+            keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
+            certChainPem: await keyManager.getRootCertChainPem(),
+          };
+          fwdProxy.setTLSConfig(tlsConfig);
+          revProxy.setTLSConfig(tlsConfig);
+          grpcServer.setTLSConfig(tlsConfig);
+          // Finally, refresh the node buckets
+          await nodeManager.refreshBuckets();
+        });
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
@@ -55,12 +80,25 @@ const createKeysRPC = ({
     ): Promise<void> => {
       const response = new clientPB.EmptyMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
-        await keyManager.renewRootKeyPair(call.request.getName());
+        // Lock the nodeManager - because we need to do a database refresh too
+        await nodeManager.transaction(async (nodeManager) => {
+          await sessionManager.verifyToken(utils.getToken(call.metadata));
+          const responseMeta = utils.createMetaTokenResponse(
+            await sessionManager.generateToken(),
+          );
+          call.sendMetadata(responseMeta);
+          await keyManager.renewRootKeyPair(call.request.getName());
+          // Reset the TLS config with new keypair + certificate
+          const tlsConfig: TLSConfig = {
+            keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
+            certChainPem: await keyManager.getRootCertChainPem(),
+          };
+          fwdProxy.setTLSConfig(tlsConfig);
+          revProxy.setTLSConfig(tlsConfig);
+          grpcServer.setTLSConfig(tlsConfig);
+          // Finally, refresh the node buckets
+          await nodeManager.refreshBuckets();
+        });
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }

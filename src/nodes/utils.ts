@@ -1,4 +1,4 @@
-import type { NodeId } from './types';
+import type { NodeId, NodeData } from './types';
 
 import { Validator } from 'ip-num';
 
@@ -75,7 +75,7 @@ function isValidHost(host: string): boolean {
  * Node ID to an array of 8-bit unsigned ints
  */
 function nodeIdToU8(id: string) {
-  const b = Buffer.from(id);
+  const b = Buffer.from(id, 'ascii');
   return new Uint8Array(
     b.buffer,
     b.byteOffset,
@@ -83,4 +83,24 @@ function nodeIdToU8(id: string) {
   );
 }
 
-export { calculateDistance, calculateBucketIndex, isNodeId, isValidHost };
+/**
+ * A sorting compareFn to sort an array of NodeData by increasing distance.
+ */
+function sortByDistance(a: NodeData, b: NodeData) {
+  if (a.distance > b.distance) {
+    return 1;
+  } else if (a.distance < b.distance) {
+    return -1;
+  } else {
+    return 0;
+  }
+}
+
+export {
+  calculateDistance,
+  calculateBucketIndex,
+  isNodeId,
+  isValidHost,
+  nodeIdToU8,
+  sortByDistance,
+};

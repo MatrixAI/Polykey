@@ -21,12 +21,12 @@ class GRPCServer {
   protected server: grpc.Server;
   protected clientCertChains: WeakMap<Http2Session, Array<Certificate>> =
     new WeakMap();
+  protected tlsConfig: TLSConfig;
   protected _secured: boolean = false;
   protected _started: boolean = false;
 
-  constructor({ services, logger }: { services: Services; logger?: Logger }) {
+  constructor({ logger }: { logger?: Logger }) {
     this.logger = logger ?? new Logger('GRPCServer');
-    this.services = services;
   }
 
   get started(): boolean {
@@ -38,10 +38,12 @@ class GRPCServer {
   }
 
   public async start({
+    services,
     host = '::' as Host,
     port = 0 as Port,
     tlsConfig,
   }: {
+    services: Services;
     host?: Host;
     port?: Port;
     tlsConfig?: TLSConfig;
@@ -49,6 +51,7 @@ class GRPCServer {
     if (this._started) {
       return;
     }
+    this.services = services;
     let address = networkUtils.buildAddress(host, port);
     this.logger.info(`Starting GRPC Server on ${address}`);
     let serverCredentials: ServerCredentials;
@@ -59,6 +62,7 @@ class GRPCServer {
         tlsConfig.keyPrivatePem,
         tlsConfig.certChainPem,
       );
+      this.tlsConfig = tlsConfig;
     }
     // grpc servers must be recreated after they are stopped
     const server = new grpc.Server();
@@ -180,6 +184,7 @@ class GRPCServer {
         cert: Buffer.from(tlsConfig.certChainPem, 'ascii'),
       });
     }
+    this.tlsConfig = tlsConfig;
     return;
   }
 

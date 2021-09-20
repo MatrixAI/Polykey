@@ -10,6 +10,7 @@ import { KeyManager } from '@/keys';
 import { DB } from '@/db';
 import { Sigchain } from '@/sigchain';
 import * as claimsUtils from '@/claims/utils';
+import * as sigchainErrors from '@/sigchain/errors';
 
 describe('Sigchain', () => {
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
@@ -177,6 +178,83 @@ describe('Sigchain', () => {
     expect(verifiedHash).toBe(true);
 
     await sigchain.stop();
+  });
+  test('adds an existing claim', async () => {
+    const sigchain = new Sigchain({ keyManager, db, logger });
+    await sigchain.start();
+    // Create a claim
+    // Firstly, check that we can add an existing claim if it's the first claim
+    // in the sigchain
+    const hPrev1 = await sigchain.getHashPrevious();
+    const seq1 = await sigchain.getSequenceNumber();
+    expect(hPrev1).toBeNull();
+    expect(seq1).toBe(0);
+    const claim1 = await claimsUtils.createClaim({
+      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      hPrev: hPrev1,
+      seq: seq1 + 1,
+      data: {
+        type: 'node',
+        node1: 'A' as NodeId,
+        node2: 'B' as NodeId,
+      },
+      kid: 'A' as NodeId,
+    });
+    await sigchain.addExistingClaim(claim1);
+    const hPrev2 = await sigchain.getHashPrevious();
+    const seq2 = await sigchain.getSequenceNumber();
+    expect(hPrev2).not.toBeNull();
+    expect(seq2).toBe(1);
+
+    // Now check we can add an additional claim after the first
+    const claim2 = await claimsUtils.createClaim({
+      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      hPrev: hPrev2,
+      seq: seq2 + 1,
+      data: {
+        type: 'node',
+        node1: 'A' as NodeId,
+        node2: 'C' as NodeId,
+      },
+      kid: 'A' as NodeId,
+    });
+    await sigchain.addExistingClaim(claim2);
+    const hPrev3 = await sigchain.getHashPrevious();
+    const seq3 = await sigchain.getSequenceNumber();
+    expect(hPrev3).not.toBeNull();
+    expect(seq3).toBe(2);
+
+    // Check a claim with an invalid hash will throw an exception
+    const claimInvalidHash = await claimsUtils.createClaim({
+      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      hPrev: 'invalidHash',
+      seq: seq3 + 1,
+      data: {
+        type: 'node',
+        node1: 'A' as NodeId,
+        node2: 'D' as NodeId,
+      },
+      kid: 'D' as NodeId,
+    });
+    await expect(sigchain.addExistingClaim(claimInvalidHash)).rejects.toThrow(
+      sigchainErrors.ErrorSigchainInvalidHash,
+    );
+
+    // Check a claim with an invalid sequence number will throw an exception
+    const claimInvalidSeqNum = await claimsUtils.createClaim({
+      privateKey: keyManager.getRootKeyPairPem().privateKey,
+      hPrev: hPrev3,
+      seq: 1,
+      data: {
+        type: 'node',
+        node1: 'A' as NodeId,
+        node2: 'D' as NodeId,
+      },
+      kid: 'D' as NodeId,
+    });
+    await expect(sigchain.addExistingClaim(claimInvalidSeqNum)).rejects.toThrow(
+      sigchainErrors.ErrorSigchainInvalidSequenceNum,
+    );
   });
   test('retrieves chain data', async () => {
     const sigchain = new Sigchain({ keyManager, db, logger });

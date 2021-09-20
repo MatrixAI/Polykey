@@ -7,6 +7,7 @@ import type {
 } from './types';
 import type { FileSystem } from '../types';
 import type { WorkerManager } from '../workers';
+import type { NodeId } from '../nodes/types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
@@ -14,6 +15,7 @@ import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as utils from '../utils';
 import * as dbErrors from '../db/errors';
+import * as networkUtils from '../network/utils';
 
 /**
  * Manage Root Keys and Root Certificates
@@ -162,6 +164,16 @@ class KeyManager {
     }
     const rootCertPems = await this.getRootCertChainPems();
     return rootCertPems.join('');
+  }
+
+  /**
+   * Gets the node ID from the root certificate.
+   */
+  public getNodeId(): NodeId {
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
+    }
+    return networkUtils.certNodeId(this.getRootCert());
   }
 
   public async encryptWithRootKeyPair(plainText: Buffer): Promise<Buffer> {

@@ -2,6 +2,7 @@ import type { ChainDataEncoded } from './types';
 import type {
   ClaimId,
   ClaimEncoded,
+  ClaimIntermediary,
   ClaimData,
   ClaimType,
 } from '../claims/types';
@@ -139,9 +140,7 @@ class Sigchain {
    * This does not ensure atomicity of the underlying database
    * Database atomicity still depends on the underlying operation
    */
-  public async transaction<T>(
-    f: (sigchain: Sigchain) => Promise<T>,
-  ): Promise<T> {
+  public async transaction<T>(f: (that: this) => Promise<T>): Promise<T> {
     const release = await this.lock.acquire();
     try {
       return await f(this);
@@ -200,23 +199,11 @@ class Sigchain {
    */
   public async addClaim(claimData: ClaimData): Promise<void> {
     await this._transaction(async () => {
-      // Compose the properties of the Claim payload
-      // 1. Sequence number:
       const prevSequenceNumber = await this.getSequenceNumber();
       const newSequenceNumber = prevSequenceNumber + 1;
-      // 2. Hash of previous claim:
-      let hashPrevious;
-      if (prevSequenceNumber === 0) {
-        // If no other claims, then set as null
-        hashPrevious = null;
-      } else {
-        // Otherwise, create a hash of the previous claim
-        const previousClaim = await this.getClaim(prevSequenceNumber);
-        hashPrevious = claimsUtils.hashClaim(previousClaim);
-      }
 
       const claim = await this.createClaim({
-        hPrev: hashPrevious,
+        hPrev: await this.getHashPrevious(),
         seq: newSequenceNumber,
         data: claimData,
       });
@@ -236,6 +223,65 @@ class Sigchain {
         },
       ];
       await this.db.batch(ops);
+    });
+  }
+
+  /**
+   * Appends an already created claim onto the sigchain.
+   * Checks that the sequence number and hash of previous claim are valid.
+   * Assumes that the signature/s have already been verified.
+   * Note: the usage of this function expects that the sigchain's mutex is
+   * acquired in order to execute. Otherwise, a race condition may occur, and
+   * an exception could be thrown.
+   */
+  public async addExistingClaim(claim: ClaimEncoded): Promise<void> {
+    await this._transaction(async () => {
+      const decodedClaim = claimsUtils.decodeClaim(claim);
+      const prevSequenceNumber = await this.getSequenceNumber();
+      const expectedSequenceNumber = prevSequenceNumber + 1;
+      // Ensure the sequence number and hash are correct before appending
+      if (decodedClaim.payload.seq !== expectedSequenceNumber) {
+        throw new sigchainErrors.ErrorSigchainInvalidSequenceNum();
+      }
+      if (decodedClaim.payload.hPrev !== (await this.getHashPrevious())) {
+        throw new sigchainErrors.ErrorSigchainInvalidHash();
+      }
+      const ops: Array<DBOp> = [
+        {
+          type: 'put',
+          domain: this.sigchainClaimsDbDomain,
+          key: claimsUtils.numToLexiString(expectedSequenceNumber) as ClaimId,
+          value: claim,
+        },
+        {
+          type: 'put',
+          domain: this.sigchainMetadataDbDomain,
+          key: this.sequenceNumberKey,
+          value: expectedSequenceNumber,
+        },
+      ];
+      await this.db.batch(ops);
+    });
+  }
+
+  /**
+   * Creates an intermediary claim (a claim that expects an additional signature
+   * from another keynode before being appended to the sigchain).
+   */
+  public async createIntermediaryClaim(
+    claimData: ClaimData,
+  ): Promise<ClaimIntermediary> {
+    return await this._transaction(async () => {
+      const claim = await this.createClaim({
+        hPrev: await this.getHashPrevious(),
+        seq: (await this.getSequenceNumber()) + 1,
+        data: claimData,
+      });
+      const intermediaryClaim: ClaimIntermediary = {
+        payload: claim.payload,
+        signature: claim.signatures[0],
+      };
+      return intermediaryClaim;
     });
   }
 
@@ -298,6 +344,23 @@ class Sigchain {
         throw new sigchainErrors.ErrorSigchainSequenceNumUndefined();
       }
       return sequenceNumber;
+    });
+  }
+
+  /**
+   * Helper function to compute the hash of the previous claim.
+   */
+  public async getHashPrevious(): Promise<string | null> {
+    return await this._transaction(async () => {
+      const prevSequenceNumber = await this.getSequenceNumber();
+      if (prevSequenceNumber === 0) {
+        // If no other claims, then null
+        return null;
+      } else {
+        // Otherwise, create a hash of the previous claim
+        const previousClaim = await this.getClaim(prevSequenceNumber);
+        return claimsUtils.hashClaim(previousClaim);
+      }
     });
   }
 

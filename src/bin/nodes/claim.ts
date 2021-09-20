@@ -3,20 +3,30 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
 
 const claim = createCommand('claim', {
   description: {
-    description: 'Make claim to a node, forms a link between to the node.',
+    description:
+      'Send a notification to another Keynode to invite it to join your Gestalt. \
+                  If an invitation from the Keynode to you already exists, this command will \
+                  trigger the claming process.',
     args: {
-      node: 'Id of the node.',
+      nodeId: 'Id of the Keynode to claim.',
+      forceInvite:
+        'Force a Gestalt Invite notification to be sent rather than a node claim',
     },
   },
   nodePath: true,
   verbose: true,
   format: true,
 });
-claim.arguments('<node>');
-claim.action(async (node, options) => {
+claim.arguments('<nodeId>');
+claim.option(
+  '-f, --force-invite',
+  '(optional) Flag to force a Gestalt Invitation to be sent rather than a node claim.',
+);
+claim.action(async (nodeId, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -35,21 +45,44 @@ claim.action(async (node, options) => {
     const grpcClient = client.grpcClient;
 
     //Claiming the node.
-    const nodeMessage = new clientPB.NodeMessage();
-    nodeMessage.setNodeId(node);
-    const pCall = grpcClient.nodesClaim(nodeMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const nodeClaimMessage = new clientPB.NodeClaimMessage();
+    nodeClaimMessage.setNodeId(nodeId);
+    if (options.forceInvite) {
+      nodeClaimMessage.setForceInvite(true);
+    } else {
+      nodeClaimMessage.setForceInvite(false);
+    }
+
+    const pCall = grpcClient.nodesClaim(nodeClaimMessage);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
+    const response = await pCall;
+    await p;
 
-    await pCall;
+    const claimed = response.getSuccess();
 
-    process.stdout.write(
-      outputFormatter({
-        type: options.format === 'json' ? 'json' : 'list',
-        data: [`Suceeded in claiming Node: ${node}`],
-      }),
-    );
+    if (claimed) {
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [
+            `Successfully generated a cryptolink claim on Keynode with ID ${nodeId}`,
+          ],
+        }),
+      );
+    } else {
+      process.stdout.write(
+        outputFormatter({
+          type: options.format === 'json' ? 'json' : 'list',
+          data: [
+            `Successfully sent Gestalt Invite notification to Keynode with ID ${nodeId}`,
+          ],
+        }),
+      );
+    }
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
@@ -67,6 +100,10 @@ claim.action(async (node, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
+    options.forceInvite = undefined;
   }
 });
 

@@ -1,13 +1,14 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { createCommand, outputFormatter } from '../utils';
 import { errors } from '../../grpc';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 
 const send = createCommand('send', {
   description: {
-    description: 'Sends a notification to another node',
+    description:
+      'Sends a general notification to another node containing a custom message',
     args: {
       nodeId: 'Id of the node to send notification to',
       message: 'Message to send in notification',
@@ -31,22 +32,32 @@ send.action(async (nodeId, message, options) => {
     : utils.getDefaultNodePath();
 
   const client = new PolykeyClient(clientConfig);
-  const notificationInfoMessage = new clientPB.NotificationInfoMessage();
+  const notificationsSendMessage = new clientPB.NotificationsSendMessage();
+  const generalMessage = new clientPB.GeneralTypeMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
+    generalMessage.setMessage(message);
+    notificationsSendMessage.setReceiverId(nodeId);
+    notificationsSendMessage.setData(generalMessage);
 
-    notificationInfoMessage.setReceiverId(nodeId);
-    notificationInfoMessage.setMessage(message);
-
-    await grpcClient.notificationsSend(notificationInfoMessage);
+    const pCall = grpcClient.notificationsSend(notificationsSendMessage);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
+    });
+    await pCall;
+    await p;
 
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Successsfully sent notification: "${notificationInfoMessage.getMessage()}" to Node with ID: ${notificationInfoMessage.getReceiverId()}`,
+          `Successsfully sent notification: "${notificationsSendMessage
+            .getData()
+            ?.getMessage()}" to Keynode with ID: ${notificationsSendMessage.getReceiverId()}`,
         ],
       }),
     );
@@ -67,6 +78,9 @@ send.action(async (nodeId, message, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodepath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

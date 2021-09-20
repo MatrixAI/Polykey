@@ -33,12 +33,15 @@ list.action(async (options) => {
 
     const data: Array<string> = [];
     const vaultListGenerator = grpcClient.vaultsList(emptyMessage);
-    vaultListGenerator.stream.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    vaultListGenerator.stream.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
     for await (const vault of vaultListGenerator) {
       data.push(`${vault.getVaultName()}:\t\t${vault.getVaultId()}`);
     }
+    await p;
     process.stdout.write(
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',

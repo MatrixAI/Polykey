@@ -53,11 +53,14 @@ get.action(async (options) => {
     secretMessage.setSecretName(secretName);
 
     const pCall = grpcClient.vaultsSecretsGet(secretMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     const responseMessage = await pCall;
+    await p;
     if (isEnv) {
       process.stdout.write(
         binUtils.outputFormatter({
@@ -101,6 +104,7 @@ get.action(async (options) => {
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;
+    options.env = undefined;
   }
 });
 

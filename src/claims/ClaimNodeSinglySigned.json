@@ -23,26 +23,21 @@
           "properties": {
             "type": {
               "type": "string",
-              "const": "identity"
+              "const": "node"
             },
-            "node": {
+            "node1": {
               "type": "string",
               "minLength": 1
             },
-            "provider": {
-              "type": "string",
-              "minLength": 1
-            },
-            "identity": {
+            "node2": {
               "type": "string",
               "minLength": 1
             }
           },
           "required": [
             "type",
-            "node",
-            "provider",
-            "identity"
+            "node1",
+            "node2"
           ]
         }
       },

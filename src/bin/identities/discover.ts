@@ -44,17 +44,27 @@ commandTrustGestalts.action(async (id, options) => {
       // Discovery by Node.
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setNodeId(nodeId);
-      await grpcClient.gestaltsDiscoveryByNode(nodeMessage);
+      const pCall = grpcClient.gestaltsDiscoveryByNode(nodeMessage);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
+      });
+      await pCall;
+      await p;
     } else {
       //  Discovery by Identity
       const providerMessage = new clientPB.ProviderMessage();
       providerMessage.setProviderId(providerId!);
       providerMessage.setMessage(identityId!);
       const pCall = grpcClient.gestaltsDiscoveryByIdentity(providerMessage);
-      pCall.call.on('metadata', (meta) => {
-        clientUtils.refreshSession(meta, client.session);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
       });
       await pCall;
+      await p;
     }
 
     process.stdout.write(
@@ -80,6 +90,9 @@ commandTrustGestalts.action(async (id, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

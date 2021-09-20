@@ -1,4 +1,10 @@
-import type { Claim, ClaimEncoded, ClaimData, SignatureData } from './types';
+import type {
+  Claim,
+  ClaimEncoded,
+  ClaimData,
+  SignatureData,
+  ClaimIntermediary,
+} from './types';
 import type { NodeId } from '../nodes/types';
 import type { PublicKeyPem, PrivateKeyPem } from '../keys/types';
 import type { POJO } from '../types';
@@ -9,8 +15,16 @@ import { generateKeyPair } from 'jose/util/generate_key_pair';
 import { decode } from 'jose/util/base64url';
 import { createPublicKey, createPrivateKey } from 'crypto';
 import { md } from 'node-forge';
+import { DefinedError } from 'ajv';
 import lexi from 'lexicographic-integer';
 import canonicalize from 'canonicalize';
+import { agentPB } from '../agent';
+
+import {
+  claimIdentityValidate,
+  claimNodeSinglySignedValidate,
+  claimNodeDoublySignedValidate,
+} from './schema';
 import * as claimsErrors from './errors';
 
 /**
@@ -56,9 +70,75 @@ async function createClaim({
   return signedClaim as ClaimEncoded;
 }
 
-// TODO: Potentially need a createUnsignedClaim function that returns a
-// claim = new GeneralSign(payload). This will be needed to sign the claim by
-// both nodes, when creating a node -> node claim.
+/**
+ * Helper function to deconstruct a created GeneralJWS (ClaimEncoded) object and 
+ * add a new signature to it.
+ */
+async function signExistingClaim({
+  claim,
+  privateKey,
+  kid,
+  alg = 'RS256',
+}: {
+  claim: ClaimEncoded;
+  privateKey: PrivateKeyPem;
+  kid: NodeId;
+  alg?: string;
+}): Promise<ClaimEncoded> {
+  const decodedClaim = await decodeClaim(claim);
+  // Reconstruct the claim with our own signature
+  // Make the payload contents deterministic
+  const canonicalizedPayload = canonicalize(decodedClaim.payload);
+  const byteEncoder = new TextEncoder();
+  const newClaim = new GeneralSign(byteEncoder.encode(canonicalizedPayload));
+  newClaim
+    .addSignature(await createPrivateKey(privateKey))
+    .setProtectedHeader({ alg: alg, kid: kid });
+  const signedClaim = await newClaim.sign();
+  // Add our signature to the existing claim
+  claim.signatures.push({
+    signature: signedClaim.signatures[0].signature,
+    protected: signedClaim.signatures[0].protected,
+  });
+  return claim;
+}
+
+/**
+ * Signs a received intermediary claim. Used for cross-signing process.
+ */
+async function signIntermediaryClaim({
+  claim,
+  privateKey,
+  signeeNodeId,
+  alg = 'RS256',
+}: {
+  claim: ClaimIntermediary;
+  privateKey: PrivateKeyPem;
+  signeeNodeId: NodeId;
+  alg?: string;
+}): Promise<ClaimEncoded> {
+  // Won't ever be undefined (at least in agentService), but for type safety
+  if (!claim.payload) {
+    throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
+  }
+  // Reconstuct the claim as a regular ClaimEncoded
+  const reconstructedClaim: ClaimEncoded = {
+    payload: claim.payload,
+    signatures: [
+      {
+        signature: claim.signature.signature,
+        protected: claim.signature.protected,
+      },
+    ],
+  };
+  const doublySignedClaim = await signExistingClaim({
+    claim: reconstructedClaim,
+    privateKey: privateKey,
+    kid: signeeNodeId,
+    alg: alg,
+  });
+  return doublySignedClaim;
+}
 
 /**
  * Converts a number to a lexicographic hex string (for use in createClaim).
@@ -137,7 +217,25 @@ function decodeClaim(claim: ClaimEncoded): Claim {
     },
     signatures: signatures,
   };
-  return decoded;
+
+  let validatedDecoded: Claim;
+  // Firstly, make sure our data field is defined
+  if (decoded.payload.data == null) {
+    throw new claimsErrors.ErrorClaimValidationFailed();
+  }
+  if (Object.keys(signatures).length === 1) {
+    if ('identity' in decoded.payload.data) {
+      validatedDecoded = validateIdentityClaim(decoded);
+    } else {
+      validatedDecoded = validateSinglySignedNodeClaim(decoded);
+    }
+  } else if (Object.keys(signatures).length === 2) {
+    validatedDecoded = validateDoublySignedNodeClaim(decoded);
+  } else {
+    throw new claimsErrors.ErrorClaimValidationFailed();
+  }
+
+  return validatedDecoded;
 }
 
 /**
@@ -222,6 +320,29 @@ async function verifyClaimSignature(
   }
 }
 
+async function verifyIntermediaryClaimSignature(
+  claim: ClaimIntermediary,
+  publicKey: PublicKeyPem,
+): Promise<boolean> {
+  // Reconstruct as ClaimEncoded
+  const reconstructedClaim: ClaimEncoded = {
+    payload: claim.payload,
+    signatures: [
+      {
+        protected: claim.signature.protected,
+        signature: claim.signature.signature,
+      },
+    ],
+  };
+  const jwkPublicKey = createPublicKey(publicKey);
+  try {
+    await generalVerify(reconstructedClaim as GeneralJWSInput, jwkPublicKey);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function verifyHashOfClaim(claim: ClaimEncoded, claimHash: string): boolean {
   const newHash = hashClaim(claim);
   if (newHash === claimHash) {
@@ -231,8 +352,147 @@ function verifyHashOfClaim(claim: ClaimEncoded, claimHash: string): boolean {
   }
 }
 
+/**
+ * JSON schema validator for identity claims
+ */
+function validateIdentityClaim(claim: Record<string, unknown>): Claim {
+  if (claimIdentityValidate(claim)) {
+    return claim as Claim;
+  } else {
+    for (const err of claimIdentityValidate.errors as DefinedError[]) {
+      if (err.keyword === 'minProperties' || err.keyword === 'maxProperties') {
+        throw new claimsErrors.ErrorSinglySignedClaimNumSignatures();
+      } else if (err.keyword === 'const') {
+        throw new claimsErrors.ErrorIdentitiesClaimType();
+      }
+    }
+    throw new claimsErrors.ErrorSinglySignedClaimValidationFailed();
+  }
+}
+
+/**
+ * JSON schema validator for singly-signed node claims
+ */
+function validateSinglySignedNodeClaim(claim: Record<string, unknown>): Claim {
+  if (claimNodeSinglySignedValidate(claim)) {
+    return claim as Claim;
+  } else {
+    for (const err of claimNodeSinglySignedValidate.errors as DefinedError[]) {
+      if (err.keyword === 'minProperties' || err.keyword === 'maxProperties') {
+        throw new claimsErrors.ErrorSinglySignedClaimNumSignatures();
+      } else if (err.keyword === 'const') {
+        throw new claimsErrors.ErrorNodesClaimType();
+      }
+    }
+    throw new claimsErrors.ErrorSinglySignedClaimValidationFailed();
+  }
+}
+
+/**
+ * JSON schema validator for doubly-signed node claims
+ */
+function validateDoublySignedNodeClaim(claim: Record<string, unknown>): Claim {
+  if (claimNodeDoublySignedValidate(claim)) {
+    return claim as Claim;
+  } else {
+    for (const err of claimNodeDoublySignedValidate.errors as DefinedError[]) {
+      if (err.keyword === 'minProperties' || err.keyword === 'maxProperties') {
+        throw new claimsErrors.ErrorDoublySignedClaimNumSignatures();
+      } else if (err.keyword === 'const') {
+        throw new claimsErrors.ErrorNodesClaimType();
+      }
+    }
+    throw new claimsErrors.ErrorDoublySignedClaimValidationFailed();
+  }
+}
+
+/**
+ * Constructs a CrossSignMessage (for GRPC transfer) from a singly-signed claim
+ * and/or a doubly-signed claim.
+ */
+function createCrossSignMessage({
+  singlySignedClaim = undefined,
+  doublySignedClaim = undefined,
+}: {
+  singlySignedClaim?: ClaimIntermediary;
+  doublySignedClaim?: ClaimEncoded;
+}): agentPB.CrossSignMessage {
+  const crossSignMessage = new agentPB.CrossSignMessage();
+  // Construct the singly signed claim message
+  if (singlySignedClaim != null) {
+    // Should never be reached, but for type safety
+    if (singlySignedClaim.payload == null) {
+      throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
+    }
+    const singlyMessage = new agentPB.ClaimIntermediaryMessage();
+    singlyMessage.setPayload(singlySignedClaim.payload);
+    const singlySignatureMessage = new agentPB.SignatureMessage();
+    singlySignatureMessage.setProtected(singlySignedClaim.signature.protected!);
+    singlySignatureMessage.setSignature(singlySignedClaim.signature.signature);
+    singlyMessage.setSignature(singlySignatureMessage);
+    crossSignMessage.setSinglySignedClaim(singlyMessage);
+  }
+  // Construct the doubly signed claim message
+  if (doublySignedClaim != null) {
+    // Should never be reached, but for type safety
+    if (doublySignedClaim.payload == null) {
+      throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
+    }
+    const doublyMessage = new agentPB.ClaimMessage();
+    doublyMessage.setPayload(doublySignedClaim.payload);
+    for (const s of doublySignedClaim.signatures) {
+      const signatureMessage = new agentPB.SignatureMessage();
+      signatureMessage.setProtected(s.protected!);
+      signatureMessage.setSignature(s.signature);
+      doublyMessage.getSignaturesList().push(signatureMessage);
+    }
+    crossSignMessage.setDoublySignedClaim(doublyMessage);
+  }
+  return crossSignMessage;
+}
+
+/**
+ * Reconstructs a ClaimIntermediary object from a ClaimIntermediaryMessage (i.e.
+ * after GRPC transport).
+ */
+function reconstructClaimIntermediary(
+  intermediaryMsg: agentPB.ClaimIntermediaryMessage,
+): ClaimIntermediary {
+  const signatureMsg = intermediaryMsg.getSignature();
+  if (signatureMsg == null) {
+    throw claimsErrors.ErrorUndefinedSignature;
+  }
+  const claim: ClaimIntermediary = {
+    payload: intermediaryMsg.getPayload(),
+    signature: {
+      protected: signatureMsg.getProtected(),
+      signature: signatureMsg.getSignature(),
+    },
+  };
+  return claim;
+}
+
+/**
+ * Reconstructs a ClaimEncoded object from a ClaimMessage (i.e. after GRPC
+ * transport).
+ */
+function reconstructClaimEncoded(claimMsg: agentPB.ClaimMessage): ClaimEncoded {
+  const claim: ClaimEncoded = {
+    payload: claimMsg.getPayload(),
+    signatures: claimMsg.getSignaturesList().map((signatureMsg) => {
+      return {
+        protected: signatureMsg.getProtected(),
+        signature: signatureMsg.getSignature(),
+      };
+    }),
+  };
+  return claim;
+}
+
 export {
   createClaim,
+  signExistingClaim,
+  signIntermediaryClaim,
   numToLexiString,
   lexiStringToNum,
   hashClaim,
@@ -240,5 +500,12 @@ export {
   decodeClaimHeader,
   encodeClaim,
   verifyClaimSignature,
+  verifyIntermediaryClaimSignature,
   verifyHashOfClaim,
+  validateIdentityClaim,
+  validateSinglySignedNodeClaim,
+  validateDoublySignedNodeClaim,
+  createCrossSignMessage,
+  reconstructClaimIntermediary,
+  reconstructClaimEncoded,
 };

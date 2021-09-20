@@ -16,6 +16,14 @@ describe('Nodes utils', () => {
       580712603552615871254922938026366898746236474117994508453962323311549813305031406163541800824496528232720n,
     );
   });
+  test('distance calculation with ASCII character', async () => {
+    const nodeId1 = 'KCquL2Z/nAr15YGloJe4nP6qKtcLnQiIBkU9GQVDZE8=' as NodeId;
+    const nodeId2 = 'ËCquL2Z/nAr15YGloJe4nP6qKtcLnQiIBkU9GQVDZE8=' as NodeId;
+    const distance = nodesUtils.calculateDistance(nodeId1, nodeId2);
+    expect(distance).toStrictEqual(
+      4586997231980143023221641790604173881593129978336562247475177678773845752176969616140037106220251373109248n,
+    );
+  });
   test('calculates correct first bucket (bucket 0)', async () => {
     // "1" XOR "0" = distance of 1
     // Therefore, bucket 0
@@ -33,7 +41,7 @@ describe('Nodes utils', () => {
     expect(bucketIndex).toBe(59);
   });
   test('calculates correct last bucket (bucket 351)', async () => {
-    // nodeId1 XOR nodeID2 = distance between 2^348 and 2^349
+    // nodeId1 XOR nodeID2 = distance between 2^351 and 2^352
     // Therefore, bucket 351 (last possible bucket)
     const nodeId1 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as NodeId;
     const nodeId2 = 'ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ' as NodeId;

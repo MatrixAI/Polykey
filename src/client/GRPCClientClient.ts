@@ -491,7 +491,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   public notificationsRead(...args) {
     if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.NotificationsListMessage>(
       this.client,
       this.client.notificationsRead,
     )(...args);

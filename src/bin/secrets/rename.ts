@@ -56,11 +56,14 @@ rename.action(async (options) => {
     secretRenameMessage.setNewName(options.secretName);
 
     const pCall = grpcClient.vaultsSecretsRename(secretRenameMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     const responseMessage = await pCall;
+    await p;
     if (responseMessage.getSuccess()) {
       process.stdout.write(
         binUtils.outputFormatter({

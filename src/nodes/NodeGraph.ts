@@ -14,8 +14,7 @@ import { Mutex } from 'async-mutex';
 import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
 import NodeManager from './NodeManager';
-import * as nodeUtils from './utils';
-import * as nodeErrors from './errors';
+import { utils as nodesUtils, errors as nodesErrors } from './';
 import { errors as dbErrors } from '../db';
 
 /**
@@ -33,7 +32,6 @@ class NodeGraph {
   protected logger: Logger;
   protected db: DB;
   protected nodeManager: NodeManager;
-  protected nodeId: NodeId;
   protected nodeGraphDbDomain: string = this.constructor.name;
   protected nodeGraphBucketsDbDomain: Array<string> = [
     this.nodeGraphDbDomain,
@@ -67,12 +65,10 @@ class NodeGraph {
   }
 
   public async start({
-    nodeId,
     fresh = false,
   }: {
-    nodeId: NodeId;
     fresh?: boolean;
-  }) {
+  } = {}) {
     try {
       this.logger.info('Starting Node Graph');
       this._started = true;
@@ -80,7 +76,7 @@ class NodeGraph {
         throw new dbErrors.ErrorDBNotStarted();
       }
       if (!this.nodeManager.started) {
-        throw new nodeErrors.ErrorNodeManagerNotStarted();
+        throw new nodesErrors.ErrorNodeManagerNotStarted();
       }
       const nodeGraphDb = await this.db.level<string>(this.nodeGraphDbDomain);
       // buckets stores NodeBucketIndex -> NodeBucket
@@ -91,7 +87,6 @@ class NodeGraph {
       if (fresh) {
         await nodeGraphDb.clear();
       }
-      this.nodeId = nodeId;
       this.nodeGraphDb = nodeGraphDb;
       this.nodeGraphBucketsDb = nodeGraphBucketsDb;
       // TODO: change these to seed nodes
@@ -99,7 +94,7 @@ class NodeGraph {
       // gets the k closest nodes from each broker
       // and adds each of them to the database
       for (const [, conn] of this.nodeManager.getBrokerNodeConnections()) {
-        const nodes = await conn.getClosestNodes(this.nodeId);
+        const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
         for (const n of nodes) {
           await this.nodeManager.createConnectionToNode(n.id, n.address);
           await this.setNode(n.id, n.address);
@@ -151,14 +146,14 @@ class NodeGraph {
 
   public getNodeId(): NodeId {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
-    return this.nodeId;
+    return this.nodeManager.getNodeId();
   }
 
   public async getNode(nodeId: NodeId): Promise<NodeAddress | undefined> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     return await this._transaction(async () => {
       const bucketIndex = this.getBucketIndex(nodeId);
@@ -175,7 +170,7 @@ class NodeGraph {
 
   public async getBucket(bucketIndex: number): Promise<NodeBucket | undefined> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     return await this._transaction(async () => {
       const bucket = await this.db.get<NodeBucket>(
@@ -201,7 +196,7 @@ class NodeGraph {
     nodeAddress: NodeAddress,
   ): Promise<void> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     return await this._transaction(async () => {
       const ops = await this.setNodeOps(nodeId, nodeAddress);
@@ -252,7 +247,7 @@ class NodeGraph {
     nodeAddress?: NodeAddress,
   ): Promise<void> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     return await this._transaction(async () => {
       const ops = await this.updateNodeOps(nodeId, nodeAddress);
@@ -282,14 +277,14 @@ class NodeGraph {
         value: bucket,
       });
     } else {
-      throw new nodeErrors.ErrorNodeGraphNodeIdMissing();
+      throw new nodesErrors.ErrorNodeGraphNodeIdMissing();
     }
     return ops;
   }
 
   public async unsetNode(nodeId: NodeId): Promise<void> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     return await this._transaction(async () => {
       const ops = await this.unsetNodeOps(nodeId);
@@ -331,8 +326,8 @@ class NodeGraph {
    * of buckets in leveldb is numerical order.
    */
   protected getBucketIndex(nodeId: NodeId): number {
-    const index = nodeUtils.calculateBucketIndex(
-      this.nodeId,
+    const index = nodesUtils.calculateBucketIndex(
+      this.getNodeId(),
       nodeId,
       this.nodeIdBits,
     );
@@ -345,7 +340,7 @@ class NodeGraph {
   // cause the subsequent functions are using this
   public async getAllBuckets(): Promise<Array<NodeBucket>> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     return await this._transaction(async () => {
       const buckets: Array<NodeBucket> = [];
@@ -359,6 +354,75 @@ class NodeGraph {
       }
       // console.log(vals);
       return buckets;
+    });
+  }
+
+  /**
+   * To be called on key renewal. Re-orders all nodes in all buckets with respect
+   * to the new node ID.
+   * NOTE: original nodes may be lost in this process. If they're redistributed
+   * to a newly full bucket, the least active nodes in the newly full bucket
+   * will be removed.
+   */
+  public async refreshBuckets(): Promise<void> {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
+    }
+    return await this._transaction(async () => {
+      const ops: Array<DBOp> = [];
+      // Get a local copy of all the buckets
+      const buckets = await this.getAllBuckets();
+      // Wrap as a batch operation. We want to rollback if we encounter any
+      // errors (such that we don't clear the DB without re-adding the nodes)
+      // 1. Delete every bucket
+      for await (const k of this.nodeGraphBucketsDb.createKeyStream()) {
+        const hexBucketIndex = k as string;
+        ops.push({
+          type: 'del',
+          domain: this.nodeGraphBucketsDbDomain,
+          key: hexBucketIndex,
+        });
+      }
+      const tempBuckets: Record<string, NodeBucket> = {};
+      // 2. Re-add all the nodes from all buckets
+      for (const b of buckets) {
+        for (const n of Object.keys(b)) {
+          const nodeId = n as NodeId;
+          const newIndex = this.getBucketIndex(nodeId).toString();
+          let expectedBucket = tempBuckets[newIndex];
+          // The following is moreorless copied from setNodeOps
+          if (expectedBucket == null) {
+            expectedBucket = {};
+          }
+          const bucketEntries = Object.entries(expectedBucket);
+          // Add the old node
+          expectedBucket[nodeId] = {
+            address: b[nodeId].address,
+            lastUpdated: b[nodeId].lastUpdated,
+          };
+          // If, with the old node added, we exceed the limit...
+          if (bucketEntries.length > this.maxNodesPerBucket) {
+            // Then, with the old node added, find the least active and remove
+            const leastActive = bucketEntries.reduce((prev, curr) => {
+              return prev[1].lastUpdated < curr[1].lastUpdated ? prev : curr;
+            });
+            delete expectedBucket[leastActive[0]];
+          }
+          // Add this reconstructed bucket (with old node) into the temp storage
+          tempBuckets[newIndex] = expectedBucket;
+        }
+      }
+      // Now that we've reconstructed all the buckets, perform batch operations
+      // on a bucket level (i.e. per bucket, instead of per node)
+      for (const bucketIndex in tempBuckets) {
+        ops.push({
+          type: 'put',
+          domain: this.nodeGraphBucketsDbDomain,
+          key: bucketIndex,
+          value: tempBuckets[bucketIndex],
+        });
+      }
+      await this.db.batch(ops);
     });
   }
 
@@ -380,7 +444,7 @@ class NodeGraph {
     numClosest: number = this.maxNodesPerBucket,
   ): Promise<Array<NodeData>> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     // Retrieve all nodes from buckets in database
     const buckets = await this.getAllBuckets();
@@ -392,20 +456,12 @@ class NodeGraph {
         distanceToNodes.push({
           id: nodeId,
           address: bucket[nodeId].address,
-          distance: nodeUtils.calculateDistance(nodeId, targetNodeId),
+          distance: nodesUtils.calculateDistance(nodeId, targetNodeId),
         });
       }
     });
     // Sort the array (based on the distance at index 1)
-    distanceToNodes.sort(function (a: NodeData, b: NodeData) {
-      if (a.distance > b.distance) {
-        return 1;
-      } else if (a.distance < b.distance) {
-        return -1;
-      } else {
-        return 0;
-      }
-    });
+    distanceToNodes.sort(nodesUtils.sortByDistance);
     // Return the closest k nodes (i.e. the first k), or all nodes if < k in array
     return distanceToNodes.slice(0, numClosest);
   }
@@ -428,7 +484,7 @@ class NodeGraph {
     targetNodeId: NodeId,
   ): Promise<NodeAddress | undefined> {
     if (!this._started) {
-      throw new nodeErrors.ErrorNodeGraphNotStarted();
+      throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
     let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
@@ -440,7 +496,7 @@ class NodeGraph {
     // If we have no nodes at all in our database (even after synchronising),
     // then we should throw an error. We aren't going to find any others.
     if (shortlist.length === 0) {
-      throw new nodeErrors.ErrorNodeGraphEmptyDatabase();
+      throw new nodesErrors.ErrorNodeGraphEmptyDatabase();
     }
     // Need to keep track of the nodes that have been contacted.
     // Not sufficient to simply check if there's already a pre-existing connection
@@ -518,8 +574,8 @@ class NodeGraph {
     return foundAddress;
   }
 
-  public clearDB() {
-    this.nodeGraphDb.clear();
+  public async clearDB() {
+    await this.nodeGraphDb.clear();
   }
 }
 

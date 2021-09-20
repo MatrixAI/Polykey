@@ -78,7 +78,8 @@
         ]
       },
       "required": [],
-      "minProperties": 1
+      "minProperties": 2,
+      "maxProperties": 2
     }
   },
   "required": [

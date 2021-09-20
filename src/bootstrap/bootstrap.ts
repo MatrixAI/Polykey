@@ -9,7 +9,6 @@ import PolykeyAgent from '../PolykeyAgent';
 import * as bootstrapErrors from './errors';
 import * as errors from '../errors';
 import * as utils from '../utils';
-import * as networkUtils from '../network/utils';
 import * as agentUtils from '../agent/utils';
 
 async function bootstrapPolykeyState(
@@ -60,11 +59,7 @@ async function bootstrapPolykeyState(
     password: password,
   });
   await polykeyAgent.db.start({ keyPair: polykeyAgent.keys.getRootKeyPair() });
-  const cert = polykeyAgent.keys.getRootCert();
-  const nodeId = networkUtils.certNodeId(cert);
-  await polykeyAgent.nodes.start({
-    nodeId: nodeId,
-  });
+  await polykeyAgent.nodes.start();
   await polykeyAgent.acl.start();
   await polykeyAgent.gestalts.start();
   await polykeyAgent.vaults.start({});

@@ -50,11 +50,14 @@ verify.action(async (options) => {
     cryptoMessage.setSignature(signature);
 
     const pCall = grpcClient.keysVerify(cryptoMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     const response = await pCall;
+    await p;
 
     process.stdout.write(
       binUtils.outputFormatter({

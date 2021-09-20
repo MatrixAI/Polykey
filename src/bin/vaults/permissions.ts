@@ -49,12 +49,15 @@ permissions.action(async (vaultName, nodeId, options) => {
 
     const data: Array<string> = [];
     const permListGenerator = grpcClient.vaultPermissions(getVaultMessage);
-    permListGenerator.stream.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    permListGenerator.stream.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
     for await (const perm of permListGenerator) {
       data.push(`${perm.getNodeId()}:\t\t${perm.getAction()}`);
     }
+    await p;
 
     process.stdout.write(
       binUtils.outputFormatter({

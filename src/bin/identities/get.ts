@@ -47,20 +47,26 @@ get.action(async (id, options) => {
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setNodeId(nodeId);
       const pCall = grpcClient.gestaltsGestaltGetByNode(nodeMessage);
-      pCall.call.on('metadata', (meta) => {
-        clientUtils.refreshSession(meta, client.session);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
       });
       res = await pCall;
+      await p;
     } else {
       //Getting from identity.
       const providerMessage = new clientPB.ProviderMessage();
       providerMessage.setProviderId(providerId!);
       providerMessage.setMessage(identityId!);
       const pCall = grpcClient.gestaltsGestaltGetByIdentity(providerMessage);
-      pCall.call.on('metadata', (meta) => {
-        clientUtils.refreshSession(meta, client.session);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
       });
       res = await pCall;
+      await p;
     }
     const gestalt = JSON.parse(res.getGestaltGraph());
     let output: any = gestalt;
@@ -103,6 +109,9 @@ get.action(async (id, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

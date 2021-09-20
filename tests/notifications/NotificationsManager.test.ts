@@ -1,6 +1,8 @@
 import type { NodeId, NodeInfo, NodeAddress } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
+import type { VaultActions, VaultId, VaultName } from '@/vaults/types';
+import type { NotificationData } from '@/notifications/types';
 
 import fs from 'fs';
 import os from 'os';
@@ -148,21 +150,22 @@ describe('NotificationsManager', () => {
     await receiverSigchain.start();
     await receiverGestaltGraph.start();
     await receiverGestaltGraph.setNode(node);
-    await receiverNodeManager.start({ nodeId: receiverNodeId });
+    await receiverNodeManager.start();
     await receiverNotificationsManager.start();
     await receiverVaultManager.start({});
 
     agentService = createAgentService({
+      keyManager: receiverKeyManager,
       vaultManager: receiverVaultManager,
       nodeManager: receiverNodeManager,
       sigchain: receiverSigchain,
       notificationsManager: receiverNotificationsManager,
     });
     server = new GRPCServer({
-      services: [[AgentService, agentService]],
       logger: logger,
     });
     await server.start({
+      services: [[AgentService, agentService]],
       host: receiverHost,
     });
 
@@ -222,7 +225,7 @@ describe('NotificationsManager', () => {
       egressHost: senderHost,
       egressPort: senderPort,
     });
-    await senderNodeManager.start({ nodeId: senderNodeId });
+    await senderNodeManager.start();
     await senderNodeManager.setNode(receiverNodeId, {
       ip: receiverHost,
       port: receiverPort,
@@ -270,6 +273,11 @@ describe('NotificationsManager', () => {
       keyManager: senderKeyManager,
       logger,
     });
+    const notificationData: NotificationData = {
+      type: 'General',
+      message: 'msg',
+    };
+    // can send with permissions
     await senderNotificationsManager.start({});
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {
@@ -277,12 +285,19 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
-    await senderNotificationsManager.sendNotification(receiverNodeId, 'msg');
+    // can send without permissions
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData,
+    );
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {},
       vaults: {},
     });
-    await senderNotificationsManager.sendNotification(receiverNodeId, 'msg');
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData,
+    );
     await senderNotificationsManager.stop();
   });
 
@@ -296,15 +311,24 @@ describe('NotificationsManager', () => {
     });
     await senderNotificationsManager.start({});
 
+    const notificationData: NotificationData = {
+      type: 'General',
+      message: 'msg',
+    };
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {
         notify: null,
       },
       vaults: {},
     });
-    await senderNotificationsManager.sendNotification(receiverNodeId, 'msg');
-    const msg = await receiverNotificationsManager.readNotifications();
-    expect(msg).toEqual(['msg']);
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData,
+    );
+    const notifs = await receiverNotificationsManager.readNotifications();
+    expect(notifs[0].data).toEqual(notificationData);
+    expect(notifs[0].senderId).toEqual(senderNodeId);
+    expect(notifs[0].isRead).toBeTruthy();
 
     await senderNotificationsManager.stop();
   });
@@ -319,14 +343,21 @@ describe('NotificationsManager', () => {
     });
     await senderNotificationsManager.start({});
 
+    const notificationData: NotificationData = {
+      type: 'General',
+      message: 'msg',
+    };
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {},
       vaults: {},
     });
 
-    await senderNotificationsManager.sendNotification(receiverNodeId, 'msg');
-    const msg = await receiverNotificationsManager.readNotifications();
-    expect(msg).toEqual([]);
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData,
+    );
+    const notifs = await receiverNotificationsManager.readNotifications();
+    expect(notifs).toEqual([]);
 
     await senderNotificationsManager.stop();
   });
@@ -341,17 +372,41 @@ describe('NotificationsManager', () => {
     });
     await senderNotificationsManager.start({});
 
+    const notificationData1: NotificationData = {
+      type: 'General',
+      message: 'msg1',
+    };
+    const notificationData2: NotificationData = {
+      type: 'General',
+      message: 'msg2',
+    };
+    const notificationData3: NotificationData = {
+      type: 'General',
+      message: 'msg3',
+    };
+
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {
         notify: null,
       },
       vaults: {},
     });
-    await senderNotificationsManager.sendNotification(receiverNodeId, 'msg1');
-    await senderNotificationsManager.sendNotification(receiverNodeId, 'msg2');
-    await senderNotificationsManager.sendNotification(receiverNodeId, 'msg3');
-    const msgs = await receiverNotificationsManager.readNotifications();
-    expect(msgs).toEqual(['msg3', 'msg2', 'msg1']);
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData1,
+    );
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData2,
+    );
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData3,
+    );
+    const notifs = await receiverNotificationsManager.readNotifications();
+    expect(notifs[0].data).toEqual(notificationData3);
+    expect(notifs[1].data).toEqual(notificationData2);
+    expect(notifs[2].data).toEqual(notificationData1);
 
     await senderNotificationsManager.stop();
   });
@@ -373,11 +428,106 @@ describe('NotificationsManager', () => {
       vaults: {},
     });
     for (let i = 0; i <= 5; i++) {
-      const msg = i.toString();
-      await senderNotificationsManager.sendNotification(receiverNodeId, msg);
+      const notificationData: NotificationData = {
+        type: 'General',
+        message: i.toString(),
+      };
+      await senderNotificationsManager.sendNotification(
+        receiverNodeId,
+        notificationData,
+      );
     }
-    const msgs = await receiverNotificationsManager.readNotifications();
-    expect(msgs).toEqual(['5', '4', '3', '2', '1']);
+    const notifs = await receiverNotificationsManager.readNotifications();
+    expect(notifs[0].data).toEqual({
+      type: 'General',
+      message: '5',
+    });
+    expect(notifs[1].data).toEqual({
+      type: 'General',
+      message: '4',
+    });
+    expect(notifs[2].data).toEqual({
+      type: 'General',
+      message: '3',
+    });
+    expect(notifs[3].data).toEqual({
+      type: 'General',
+      message: '2',
+    });
+    expect(notifs[4].data).toEqual({
+      type: 'General',
+      message: '1',
+    });
+
+    await senderNotificationsManager.stop();
+  });
+
+  test('can send and receive Gestalt Invite notifications', async () => {
+    const senderNotificationsManager = new NotificationsManager({
+      acl: senderACL,
+      db: senderDb,
+      nodeManager: senderNodeManager,
+      keyManager: senderKeyManager,
+      logger,
+    });
+    await senderNotificationsManager.start({});
+
+    const notificationData: NotificationData = {
+      type: 'GestaltInvite',
+    };
+    await receiverACL.setNodePerm(senderNodeId, {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData,
+    );
+    const notifs = await receiverNotificationsManager.readNotifications();
+    expect(notifs[0].data).toEqual(notificationData);
+    expect(notifs[0].senderId).toEqual(senderNodeId);
+    expect(notifs[0].isRead).toBeTruthy();
+
+    await senderNotificationsManager.stop();
+  });
+
+  test('can send and receive Vault Share notifications', async () => {
+    const senderNotificationsManager = new NotificationsManager({
+      acl: senderACL,
+      db: senderDb,
+      nodeManager: senderNodeManager,
+      keyManager: senderKeyManager,
+      logger,
+    });
+    await senderNotificationsManager.start({});
+
+    await receiverACL.setNodePerm(senderNodeId, {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+
+    const notificationData: NotificationData = {
+      type: 'VaultShare',
+      vaultId: 'vaultId' as VaultId,
+      vaultName: 'vaultName' as VaultName,
+      actions: {
+        clone: null,
+        pull: null,
+      } as VaultActions,
+    };
+
+    await senderNotificationsManager.sendNotification(
+      receiverNodeId,
+      notificationData,
+    );
+    const notifs = await receiverNotificationsManager.readNotifications();
+    expect(notifs[0].data).toEqual(notificationData);
+    expect(notifs[0].senderId).toEqual(senderNodeId);
+    expect(notifs[0].isRead).toBeTruthy();
 
     await senderNotificationsManager.stop();
   });

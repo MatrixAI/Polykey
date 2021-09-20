@@ -45,10 +45,13 @@ claim.action(async (providerId, identitiyId, options) => {
 
     //sending message.
     const pCall = grpcClient.identitiesClaim(providerMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
     await pCall;
+    await p;
   } catch (err) {
     if (err instanceof errors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
@@ -66,6 +69,9 @@ claim.action(async (providerId, identitiyId, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

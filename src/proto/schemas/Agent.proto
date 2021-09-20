@@ -18,6 +18,7 @@ service Agent {
   rpc NodesClaimsGet (ClaimTypeMessage) returns (ClaimsMessage) {}
   rpc NodesChainDataGet (EmptyMessage) returns (ChainDataMessage) {}
   rpc NodesHolePunchMessageSend (RelayMessage) returns (EmptyMessage) {}
+  rpc NodesCrossSignClaim (stream CrossSignMessage) returns (stream CrossSignMessage) {}
 
   // Notifications
   rpc NotificationsSend (NotificationMessage) returns (EmptyMessage) {}
@@ -109,10 +110,21 @@ message ClaimMessage {
 
 message SignatureMessage {
   string signature = 1; // base64 encoded
-  string header = 2;    // base64 encoded ('protected' field in GeneralJWS)
+  string protected = 2; // base64 encoded ('protected' header field in GeneralJWS)
 }
 
 // Notification messages
 message NotificationMessage {
   string content = 1;
+}
+
+// Claims messages
+message ClaimIntermediaryMessage {
+  string payload = 1;
+  SignatureMessage signature = 2;
+}
+
+message CrossSignMessage {
+  ClaimIntermediaryMessage singly_signed_claim = 1;
+  ClaimMessage doubly_signed_claim = 2;
 }

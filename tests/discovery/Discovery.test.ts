@@ -12,7 +12,6 @@ import {
 import { ClaimLinkIdentity, ClaimLinkNode } from '@/claims/types';
 import TestProvider from '../identities/TestProvider';
 import { IdentityId } from '@/identities/types';
-import { createPrivateKey } from 'crypto';
 
 describe('Discovery', () => {
   //Constants.
@@ -167,6 +166,119 @@ describe('Discovery', () => {
       expect(gestaltString).toContain(nodeB.nodes.getNodeId());
       expect(gestaltString).toContain(nodeC.nodes.getNodeId());
       expect(gestaltString).toContain(identityId);
+    });
+  });
+  describe('End-to-end discovery between two gestalts', () => {
+    // Gestalt 1
+    let nodeA: PolykeyAgent;
+    let nodeB: PolykeyAgent;
+    let identityIdA: IdentityId;
+    // Gestalt 2
+    let nodeC: PolykeyAgent;
+    let nodeD: PolykeyAgent;
+    let identityIdB: IdentityId;
+
+    let testProvider: TestProvider;
+    beforeAll(async () => {
+      // Setting up remote nodes.
+      nodeA = await setupRemoteKeynode({ logger });
+      nodeB = await setupRemoteKeynode({ logger });
+      nodeC = await setupRemoteKeynode({ logger });
+      nodeD = await setupRemoteKeynode({ logger });
+
+      //Adding connection details
+      await addRemoteDetails(nodeA, nodeB);
+      await addRemoteDetails(nodeA, nodeD);
+      await addRemoteDetails(nodeB, nodeA);
+      await addRemoteDetails(nodeC, nodeB);
+      await addRemoteDetails(nodeC, nodeD);
+      await addRemoteDetails(nodeD, nodeC);
+
+      // Setting up identity provider
+      testProvider = new TestProvider();
+      nodeA.identities.registerProvider(testProvider);
+      nodeC.identities.registerProvider(testProvider);
+
+      // Forming gestalts.
+      await nodeA.nodes.claimNode(nodeB.nodes.getNodeId());
+      await nodeC.nodes.claimNode(nodeD.nodes.getNodeId());
+
+      const gen1 = testProvider.authenticate();
+      await gen1.next();
+      identityIdA = (await gen1.next()).value as IdentityId;
+      const gen2 = testProvider.authenticate();
+      await gen2.next();
+      identityIdB = (await gen2.next()).value as IdentityId;
+
+      const claimIdentToB: ClaimLinkIdentity = {
+        type: 'identity',
+        node: nodeB.nodes.getNodeId(),
+        provider: testProvider.id,
+        identity: identityIdA,
+      };
+      await nodeB.sigchain.addClaim(claimIdentToB);
+
+      const claimIdentToD: ClaimLinkIdentity = {
+        type: 'identity',
+        node: nodeD.nodes.getNodeId(),
+        provider: testProvider.id,
+        identity: identityIdB,
+      };
+      await nodeD.sigchain.addClaim(claimIdentToD);
+    }, global.polykeyStartupTimeout * 4);
+    afterAll(async () => {
+      await cleanupRemoteKeynode(nodeA);
+      await cleanupRemoteKeynode(nodeB);
+      await cleanupRemoteKeynode(nodeC);
+      await cleanupRemoteKeynode(nodeD);
+    });
+    beforeEach(async () => {
+      await nodeA.gestalts.clearDB();
+      await nodeB.gestalts.clearDB();
+      await nodeC.gestalts.clearDB();
+      await nodeD.gestalts.clearDB();
+    });
+    test('Gestalt1 discovers Gestalt2', async () => {
+      await testProvider.overrideLinks(
+        nodeD.nodes.getNodeId(),
+        nodeD.keys.getRootKeyPairPem().privateKey,
+      );
+      // Time to do the test.
+      const discoverProcess = nodeA.discovery.discoverGestaltByIdentity(
+        testProvider.id,
+        identityIdB,
+      );
+      for await (const step of discoverProcess) {
+      }
+
+      //We expect to find a gestalt now.
+      const gestalt = await nodeA.gestalts.getGestalts();
+      expect(gestalt.length).not.toBe(0);
+      const gestaltString = JSON.stringify(gestalt);
+      expect(gestaltString).toContain(nodeC.nodes.getNodeId());
+      expect(gestaltString).toContain(nodeD.nodes.getNodeId());
+      expect(gestaltString).toContain(identityIdB);
+    });
+    test('Gestalt2 discovers Gestalt1', async () => {
+      await testProvider.overrideLinks(
+        nodeB.nodes.getNodeId(),
+        nodeB.keys.getRootKeyPairPem().privateKey,
+      );
+      // Time to do the test.
+      const discoverProcess = nodeC.discovery.discoverGestaltByIdentity(
+        testProvider.id,
+        identityIdA,
+      );
+      for await (const step of discoverProcess) {
+      }
+
+      //We expect to find a gestalt now.
+      const gestalt = await nodeC.gestalts.getGestalts();
+      expect(gestalt.length).not.toBe(0);
+      const gestaltString = JSON.stringify(gestalt);
+      expect(gestaltString).toContain(nodeA.nodes.getNodeId());
+      expect(gestaltString).toContain(nodeB.nodes.getNodeId());
+      expect(gestaltString).toContain(identityIdA);
     });
   });
 });

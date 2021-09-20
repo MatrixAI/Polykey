@@ -53,10 +53,13 @@ edit.action(async (options) => {
     secretEditMessage.setSecret(secretMessage);
 
     const pCall = grpcClient.vaultsSecretsGet(secretEditMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
     const response = await pCall;
+    await p;
 
     const secretContent = response.getSecretName();
 

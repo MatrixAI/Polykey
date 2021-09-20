@@ -32,13 +32,16 @@ certchain.action(async (options) => {
 
     const data: Array<string> = [];
     const certGenerator = grpcClient.keysCertsChainGet(emptyMessage);
-    certGenerator.stream.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    certGenerator.stream.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     for await (const cert of certGenerator) {
       data.push(`Certificate:\t\t${cert.getCert()}`);
     }
+    await p;
 
     process.stdout.write(
       binUtils.outputFormatter({

@@ -38,10 +38,13 @@ commandTrustGestalts.action(async (providerId, options) => {
     providerMessage.setProviderId(providerId);
 
     const pCall = grpcClient.identitiesInfoGet(providerMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
     const res = await pCall;
+    await p;
 
     process.stdout.write(
       outputFormatter({
@@ -66,6 +69,9 @@ commandTrustGestalts.action(async (providerId, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

@@ -36,8 +36,10 @@ list.action(async (options) => {
     const grpcClient = client.grpcClient;
 
     const res = grpcClient.gestaltsGestaltList(emptyMessage);
-    res.stream.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    res.stream.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     for await (const val of res) {
@@ -69,6 +71,9 @@ list.action(async (options) => {
       else newGestalt.permissions = actionList;
       gestalts.push(newGestalt);
     }
+
+    await p;
+    
     output = gestalts;
     if (options.format !== 'json') {
       //Convert to a human readable list.
@@ -114,6 +119,9 @@ list.action(async (options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

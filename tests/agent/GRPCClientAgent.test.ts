@@ -1,4 +1,6 @@
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { NodeAddress, NodeId, NodeInfo } from '@/nodes/types';
+import type { ClaimId, ClaimIntermediary } from '@/claims/types';
+import type { Host, Port, TLSConfig } from '@/network/types';
 
 import fs from 'fs';
 import os from 'os';
@@ -16,8 +18,10 @@ import { agentPB, GRPCClientAgent } from '@/agent';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { DB } from '@/db';
 import { NotificationsManager } from '@/notifications';
+import TestNodeConnection from '../nodes/TestNodeConnection';
 
 import * as testUtils from './utils';
+import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
 
 describe('GRPC agent', () => {
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
@@ -127,12 +131,19 @@ describe('GRPC agent', () => {
 
     await keyManager.start({ password: 'password' });
     await db.start({ keyPair: keyManager.getRootKeyPair() });
+    const tlsConfig: TLSConfig = {
+      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
+      certChainPem: await keyManager.getRootCertChainPem(),
+    };
+    await fwdProxy.start({ tlsConfig });
     await acl.start();
     await gestaltGraph.start();
-    await nodeManager.start({ nodeId: 'NODEID' as NodeId });
+    await nodeManager.start();
+    await sigchain.start();
     await notificationsManager.start();
     await vaultManager.start({});
     [server, port] = await testUtils.openTestAgentServer({
+      keyManager,
       vaultManager,
       nodeManager,
       sigchain,
@@ -146,9 +157,11 @@ describe('GRPC agent', () => {
 
     await vaultManager.stop();
     await notificationsManager.stop();
+    await sigchain.stop();
     await nodeManager.stop();
     await gestaltGraph.stop();
     await acl.stop();
+    await fwdProxy.stop();
     await db.stop();
     await keyManager.stop();
 
@@ -208,5 +221,172 @@ describe('GRPC agent', () => {
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
     expect(client.secured).toBeFalsy();
+  });
+  describe('Cross signing claims', () => {
+    // These tests follow the following process (from the perspective of X):
+    // 1. X -> sends notification (to start cross signing request) -> Y
+    // 2. X <- sends its intermediary signed claim <- Y
+    // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
+    // 4. X <- sends doubly signed claim (X's intermediary) <- Y
+    // We mock the actions of Y (the client: NodeConnection) in the test cases,
+    // and test the responses of X (the server: agentService).
+
+    let yKeysPath: string;
+    let yKeyManager: KeyManager;
+
+    let xToYNodeConnection: TestNodeConnection;
+
+    beforeEach(async () => {
+      yKeysPath = path.join(dataDir, 'keys-y');
+      yKeyManager = new KeyManager({ keysPath: yKeysPath, fs, logger });
+      await yKeyManager.start({ password: 'password' });
+
+      // Manually inject Y's public key into a dummy NodeConnection object, such
+      // that it can be used to verify the claim signature
+      xToYNodeConnection = new TestNodeConnection({
+        publicKey: yKeyManager.getRootKeyPairPem().publicKey,
+        targetNodeId: 'Y' as NodeId,
+        targetHost: 'unnecessary' as Host,
+        targetPort: 0 as Port,
+        forwardProxy: fwdProxy,
+        keyManager: keyManager,
+      });
+      // @ts-ignore - force push into the protected connections map
+      nodeManager.connections.set('Y' as NodeId, xToYNodeConnection);
+      await nodeManager.setNode(
+        'Y' as NodeId,
+        {
+          ip: 'unnecessary' as Host,
+          port: 0 as Port,
+        } as NodeAddress,
+      );
+    });
+
+    afterEach(async () => {
+      await yKeyManager.stop();
+    });
+
+    test('can successfully cross sign a claim', async () => {
+      const genClaims = client.nodesCrossSignClaim();
+      expect(genClaims.stream.destroyed).toBe(false);
+      // 2. X <- sends its intermediary signed claim <- Y
+      // Create a dummy intermediary claim to "receive"
+      const claim = await claimsUtils.createClaim({
+        privateKey: yKeyManager.getRootKeyPairPem().privateKey,
+        hPrev: null,
+        seq: 1,
+        data: {
+          type: 'node',
+          node1: 'Y' as NodeId,
+          node2: 'X' as NodeId,
+        },
+        kid: 'Y' as NodeId,
+      });
+      const intermediary: ClaimIntermediary = {
+        payload: claim.payload,
+        signature: claim.signatures[0],
+      };
+      const crossSignMessage = claimsUtils.createCrossSignMessage({
+        singlySignedClaim: intermediary,
+      });
+      await genClaims.write(crossSignMessage);
+
+      // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
+      // X reads this intermediary signed claim, and is expected to send back:
+      // 1. Doubly signed claim
+      // 2. Singly signed intermediary claim
+      const response = await genClaims.read();
+      // Check X's sigchain is locked at start
+      expect(sigchain.locked).toBe(true);
+      expect(response.done).toBe(false);
+      expect(response.value).toBeInstanceOf(agentPB.CrossSignMessage);
+      const receivedMessage = response.value as agentPB.CrossSignMessage;
+      expect(receivedMessage.getSinglySignedClaim()).toBeDefined();
+      expect(receivedMessage.getDoublySignedClaim()).toBeDefined();
+      const constructedIntermediary = claimsUtils.reconstructClaimIntermediary(
+        receivedMessage.getSinglySignedClaim()!,
+      );
+      const constructedDoubly = claimsUtils.reconstructClaimEncoded(
+        receivedMessage.getDoublySignedClaim()!,
+      );
+      // Verify the intermediary claim with X's public key
+      const verifiedSingly = await claimsUtils.verifyIntermediaryClaimSignature(
+        constructedIntermediary,
+        keyManager.getRootKeyPairPem().publicKey,
+      );
+      expect(verifiedSingly).toBe(true);
+      // Verify the doubly signed claim with both public keys
+      const verifiedDoubly =
+        (await claimsUtils.verifyClaimSignature(
+          constructedDoubly,
+          yKeyManager.getRootKeyPairPem().publicKey,
+        )) &&
+        (await claimsUtils.verifyClaimSignature(
+          constructedDoubly,
+          keyManager.getRootKeyPairPem().publicKey,
+        ));
+      expect(verifiedDoubly).toBe(true);
+
+      // 4. X <- sends doubly signed claim (X's intermediary) <- Y
+      const doublyResponse = await claimsUtils.signIntermediaryClaim({
+        claim: constructedIntermediary,
+        privateKey: yKeyManager.getRootKeyPairPem().privateKey,
+        signeeNodeId: 'Y' as NodeId,
+      });
+      const doublyMessage = claimsUtils.createCrossSignMessage({
+        doublySignedClaim: doublyResponse,
+      });
+      // Just before we complete the last step, check X's sigchain is still locked
+      expect(sigchain.locked).toBe(true);
+      await genClaims.write(doublyMessage);
+
+      // Expect the stream to be closed.
+      const finalResponse = await genClaims.read();
+      expect(finalResponse.done).toBe(true);
+      expect(genClaims.stream.destroyed).toBe(true);
+
+      // Check X's sigchain is released at end.
+      expect(sigchain.locked).toBe(false);
+      // Check claim is in both node's sigchains
+      // Rather, check it's in X's sigchain
+      const chain = await sigchain.getChainData();
+      expect(Object.keys(chain).length).toBe(1);
+      // Iterate just to be safe, but expected to only have this single claim
+      for (const c of Object.keys(chain)) {
+        const claimId = c as ClaimId;
+        expect(chain[claimId]).toStrictEqual(doublyResponse);
+      }
+    });
+    test('fails after receiving undefined singly signed claim', async () => {
+      const genClaims = client.nodesCrossSignClaim();
+      expect(genClaims.stream.destroyed).toBe(false);
+      // 2. X <- sends its intermediary signed claim <- Y
+      const crossSignMessageUndefinedSingly = new agentPB.CrossSignMessage();
+      await genClaims.write(crossSignMessageUndefinedSingly);
+      await expect(genClaims.read()).rejects.toThrow(
+        claimsErrors.ErrorUndefinedSinglySignedClaim,
+      );
+      expect(genClaims.stream.destroyed).toBe(true);
+      // Check sigchain's lock is released
+      expect(sigchain.locked).toBe(false);
+    });
+    test('fails after receiving singly signed claim with no signature', async () => {
+      const genClaims = client.nodesCrossSignClaim();
+      expect(genClaims.stream.destroyed).toBe(false);
+      // 2. X <- sends its intermediary signed claim <- Y
+      const crossSignMessageUndefinedSinglySignature =
+        new agentPB.CrossSignMessage();
+      const intermediaryNoSignature = new agentPB.ClaimIntermediaryMessage();
+      crossSignMessageUndefinedSinglySignature.setSinglySignedClaim(
+        intermediaryNoSignature,
+      );
+      await genClaims.write(crossSignMessageUndefinedSinglySignature);
+      await expect(genClaims.read()).rejects.toThrow(
+        claimsErrors.ErrorUndefinedSignature,
+      );
+      expect(genClaims.stream.destroyed).toBe(true);
+      // Check sigchain's lock is released
+      expect(sigchain.locked).toBe(false);
+    });
   });
 });

@@ -44,11 +44,14 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
     providerMessage.setMessage(identitiyId);
 
     //sending message.
-    const gen = grpcClient.identitiesAuthenticate(providerMessage);
-    gen.stream.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const gen = grpcClient.identitiesAuthenticate(providerMessage)
+    const { p, resolveP } = utils.promise();
+    gen.stream.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
     const codeMessage = (await gen.next()).value;
+    await p;
 
     process.stdout.write(
       outputFormatter({
@@ -84,6 +87,9 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 
