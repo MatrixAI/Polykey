@@ -2,13 +2,12 @@ import type { ModuleThread } from 'threads';
 import type { QueuedTask } from 'threads/dist/master/pool-types';
 import type { PolykeyWorker } from './polykeyWorker';
 
-import { WorkerManagerInterface } from 'encryptedfs/dist/workers';
 import os from 'os';
 import { spawn, Pool, Worker } from 'threads';
 import Logger from '@matrixai/logger';
 import * as workersErrors from './errors';
 
-class WorkerManager implements WorkerManagerInterface<PolykeyWorker> {
+class WorkerManager {
   pool?: Pool<ModuleThread<PolykeyWorker>>;
   logger: Logger;
 

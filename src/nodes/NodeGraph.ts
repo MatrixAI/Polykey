@@ -37,8 +37,8 @@ class NodeGraph {
     this.nodeGraphDbDomain,
     'buckets',
   ];
-  protected nodeGraphDb: DBLevel<string>;
-  protected nodeGraphBucketsDb: DBLevel<NodeBucketIndex>;
+  protected nodeGraphDb: DBLevel;
+  protected nodeGraphBucketsDb: DBLevel;
   protected lock: Mutex = new Mutex();
   protected _started: boolean = false;
 
@@ -78,9 +78,9 @@ class NodeGraph {
       if (!this.nodeManager.started) {
         throw new nodesErrors.ErrorNodeManagerNotStarted();
       }
-      const nodeGraphDb = await this.db.level<string>(this.nodeGraphDbDomain);
+      const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);
       // buckets stores NodeBucketIndex -> NodeBucket
-      const nodeGraphBucketsDb = await this.db.level<NodeBucketIndex>(
+      const nodeGraphBucketsDb = await this.db.level(
         this.nodeGraphBucketsDbDomain[1],
         nodeGraphDb,
       );
@@ -347,7 +347,7 @@ class NodeGraph {
       const vals: Array<string | Buffer> = [];
       for await (const o of this.nodeGraphBucketsDb.createReadStream()) {
         const data = (o as any).value as Buffer;
-        const bucket = this.db.unserializeDecrypt<NodeBucket>(data);
+        const bucket = await this.db.deserializeDecrypt<NodeBucket>(data);
         bucket;
         buckets.push(bucket);
         vals.push(o);

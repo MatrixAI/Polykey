@@ -20,10 +20,10 @@ class ACL {
   protected aclPermsDbDomain: Array<string> = [this.aclDbDomain, 'perms'];
   protected aclNodesDbDomain: Array<string> = [this.aclDbDomain, 'nodes'];
   protected aclVaultsDbDomain: Array<string> = [this.aclDbDomain, 'vaults'];
-  protected aclDb: DBLevel<string>;
-  protected aclPermsDb: DBLevel<PermissionId>;
-  protected aclNodesDb: DBLevel<NodeId>;
-  protected aclVaultsDb: DBLevel<VaultId>;
+  protected aclDb: DBLevel;
+  protected aclPermsDb: DBLevel;
+  protected aclNodesDb: DBLevel;
+  protected aclVaultsDb: DBLevel;
   protected lock: Mutex = new Mutex();
   protected _started: boolean = false;
 
@@ -54,21 +54,21 @@ class ACL {
       if (!this.db.started) {
         throw new dbErrors.ErrorDBNotStarted();
       }
-      const aclDb = await this.db.level<string>(this.aclDbDomain);
+      const aclDb = await this.db.level(this.aclDbDomain);
       // perms stores PermissionId -> Ref<Permission>
-      const aclPermsDb = await this.db.level<PermissionId>(
+      const aclPermsDb = await this.db.level(
         this.aclPermsDbDomain[1],
         aclDb,
       );
       // nodes stores NodeId -> PermissionId
-      const aclNodesDb = await this.db.level<NodeId>(
+      const aclNodesDb = await this.db.level(
         this.aclNodesDbDomain[1],
         aclDb,
       );
       // vaults stores VaultId -> Record<NodeId, null>
       // note that the NodeId in each array must be in their own unique gestalt
       // the NodeId in each array may be missing if it had been previously deleted
-      const aclVaultsDb = await this.db.level<VaultId>(
+      const aclVaultsDb = await this.db.level(
         this.aclVaultsDbDomain[1],
         aclDb,
       );
@@ -147,7 +147,7 @@ class ACL {
       for await (const o of this.aclNodesDb.createReadStream()) {
         const nodeId = (o as any).key as NodeId;
         const data = (o as any).value as Buffer;
-        const permId = this.db.unserializeDecrypt<PermissionId>(data);
+        const permId = await this.db.deserializeDecrypt<PermissionId>(data);
         let nodePerm: Record<NodeId, Permission>;
         if (permId in permIds) {
           nodePerm = permIds[permId];
@@ -185,7 +185,7 @@ class ACL {
       for await (const o of this.aclVaultsDb.createReadStream()) {
         const vaultId = (o as any).key as VaultId;
         const data = (o as any).value as Buffer;
-        const nodeIds = this.db.unserializeDecrypt<Record<NodeId, null>>(data);
+        const nodeIds = await this.db.deserializeDecrypt<Record<NodeId, null>>(data);
         const nodePerm: Record<NodeId, Permission> = {};
         const nodeIdsGc: Set<NodeId> = new Set();
         for (const nodeId in nodeIds) {

@@ -51,10 +51,10 @@ class VaultManager {
   protected vaultsKeysDbDomain: Array<string> = [this.vaultsDbDomain, 'keys'];
   protected vaultsNamesDbDomain: Array<string> = [this.vaultsDbDomain, 'names'];
   protected vaultsNodesDbDomain: Array<string> = [this.vaultsDbDomain, 'nodes'];
-  protected vaultsDb: DBLevel<string>;
-  protected vaultsKeysDb: DBLevel<VaultId>;
-  protected vaultsNamesDb: DBLevel<VaultName>;
-  protected vaultsNodesDb: DBLevel<VaultId>;
+  protected vaultsDb: DBLevel;
+  protected vaultsKeysDb: DBLevel;
+  protected vaultsNamesDb: DBLevel;
+  protected vaultsNodesDb: DBLevel;
   protected lock: Mutex = new Mutex();
 
   protected vaults: Vaults;
@@ -158,19 +158,19 @@ class VaultManager {
       this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
     }
     await utils.mkdirExists(this.fs, this.vaultsPath, { recursive: true });
-    this.vaultsDb = await this.db.level<string>(this.vaultsDbDomain);
+    this.vaultsDb = await this.db.level(this.vaultsDbDomain);
     // Stores VaultId -> VaultKey
-    this.vaultsKeysDb = await this.db.level<VaultId>(
+    this.vaultsKeysDb = await this.db.level(
       this.vaultsKeysDbDomain[1],
       this.vaultsDb,
     );
     // Stores VaultName -> VaultId
-    this.vaultsNamesDb = await this.db.level<string>(
+    this.vaultsNamesDb = await this.db.level(
       this.vaultsNamesDbDomain[1],
       this.vaultsDb,
     );
     // Stores VaultId -> NodeId
-    this.vaultsNodesDb = await this.db.level<VaultId>(
+    this.vaultsNodesDb = await this.db.level(
       this.vaultsNodesDbDomain[1],
       this.vaultsDb,
     );
@@ -351,7 +351,7 @@ class VaultManager {
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const id = (o as any).value;
       const name = (o as any).key as string;
-      const vaultId = this.db.unserializeDecrypt<VaultId>(id);
+      const vaultId = await this.db.deserializeDecrypt<VaultId>(id);
       vaults.push({
         name: name,
         id: vaultId,
@@ -849,7 +849,7 @@ class VaultManager {
       for await (const o of this.vaultsNamesDb.createReadStream({})) {
         const vId = (o as any).value;
         const name = (o as any).key as VaultName;
-        const id = this.db.unserializeDecrypt<VaultId>(vId);
+        const id = await this.db.deserializeDecrypt<VaultId>(vId);
         if (vaultId === id) {
           vaultName = name;
           break;

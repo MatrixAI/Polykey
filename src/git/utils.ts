@@ -224,7 +224,7 @@ async function resolve(
     const sha =
       (
         await fs.readFile(path.join(gitdir, ref), { encoding: 'utf8' })
-      ).toString() || packedMap[ref]; // FIXME: not sure what is going on here.
+      ).toString() || packedMap[ref].line; // FIXME: not sure what is going on here.
     if (sha != null) {
       return resolve(fs, gitdir, sha.trim(), depth); //FIXME: sha is string or config?
     }

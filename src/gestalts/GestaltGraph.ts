@@ -34,10 +34,10 @@ class GestaltGraph {
     this.graphDbDomain,
     'identities',
   ];
-  protected graphDb: DBLevel<string>;
-  protected graphMatrixDb: DBLevel<GestaltKey>;
-  protected graphNodesDb: DBLevel<GestaltNodeKey>;
-  protected graphIdentitiesDb: DBLevel<GestaltIdentityKey>;
+  protected graphDb: DBLevel;
+  protected graphMatrixDb: DBLevel;
+  protected graphNodesDb: DBLevel;
+  protected graphIdentitiesDb: DBLevel;
   protected lock: Mutex = new Mutex();
   protected _started: boolean = false;
 
@@ -72,16 +72,16 @@ class GestaltGraph {
       if (!this.acl.started) {
         throw new aclErrors.ErrorACLNotStarted();
       }
-      const graphDb = await this.db.level<string>(this.graphDbDomain);
-      const graphMatrixDb = await this.db.level<GestaltKey>(
+      const graphDb = await this.db.level(this.graphDbDomain);
+      const graphMatrixDb = await this.db.level(
         this.graphMatrixDbDomain[1],
         graphDb,
       );
-      const graphNodesDb = await this.db.level<GestaltNodeKey>(
+      const graphNodesDb = await this.db.level(
         this.graphNodesDbDomain[1],
         graphDb,
       );
-      const graphIdentitiesDb = await this.db.level<GestaltIdentityKey>(
+      const graphIdentitiesDb = await this.db.level(
         this.graphIdentitiesDbDomain[1],
         graphDb,
       );
@@ -142,7 +142,7 @@ class GestaltGraph {
       for await (const o of this.graphMatrixDb.createReadStream()) {
         const gK = (o as any).key as GestaltKey;
         const data = (o as any).value as Buffer;
-        const gKs = this.db.unserializeDecrypt<GestaltKeySet>(data);
+        const gKs = await this.db.deserializeDecrypt<GestaltKeySet>(data);
         unvisited.set(gK, gKs);
       }
       const gestalts: Array<Gestalt> = [];
