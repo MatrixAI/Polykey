@@ -48,11 +48,14 @@ deleteSecret.action(async (options) => {
     secretMessage.setSecretName(secretName);
 
     const pCall = grpcClient.vaultsSecretsDelete(secretMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     const responseMessage = await pCall;
+    await p;
     if (responseMessage.getSuccess()) {
       process.stdout.write(
         binUtils.outputFormatter({

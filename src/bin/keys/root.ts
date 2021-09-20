@@ -32,11 +32,14 @@ root.action(async (options) => {
     const grpcClient = client.grpcClient;
 
     const pCall = grpcClient.keysKeyPairRoot(emptyMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     const keyPair = await pCall;
+    await p;
 
     process.stdout.write(
       binUtils.outputFormatter({
@@ -73,6 +76,7 @@ root.action(async (options) => {
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;
+    options.privateKey = undefined;
   }
 });
 

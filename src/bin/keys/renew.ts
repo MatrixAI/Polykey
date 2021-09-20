@@ -42,11 +42,14 @@ renew.action(async (options) => {
     keyMessage.setName(password);
 
     const pCall = grpcClient.keysKeyPairRenew(keyMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     await pCall;
+    await p;
 
     process.stdout.write(
       binUtils.outputFormatter({

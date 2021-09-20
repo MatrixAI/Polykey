@@ -78,11 +78,14 @@ env.action(async (options, command) => {
       vaultMessage.setVaultName(obj.vaultName);
       secretMessage.setSecretName(obj.secretName);
       const pCall = grpcClient.vaultsSecretsGet(secretMessage);
-      pCall.call.on('metadata', (meta) => {
-        clientUtils.refreshSession(meta, client.session);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
       });
 
       const res = await pCall;
+      await p;
       const secret = res.getSecretName();
       secretEnv[obj.variableName] = secret;
     }
@@ -140,6 +143,8 @@ env.action(async (options, command) => {
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;
+    options.command = undefined;
+    options.run = undefined;
   }
 });
 

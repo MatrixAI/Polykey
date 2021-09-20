@@ -3,6 +3,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
+import * as utils from '../../utils';
 
 const add = createCommand('add', {
   description: {
@@ -31,33 +32,28 @@ add.action(async (node, host, port, options) => {
   }
 
   const client = new PolykeyClient(clientConfig);
+  const nodeAddressMessage = new clientPB.NodeAddressMessage();
+
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
-
-    const nodeAddressMessage = new clientPB.NodeAddressMessage();
     nodeAddressMessage.setNodeId(node);
     nodeAddressMessage.setHost(host);
     nodeAddressMessage.setPort(port);
 
-    const result = { success: false, message: '' };
-
     const pCall = grpcClient.nodesAdd(nodeAddressMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
     await pCall;
-
-    result.success = true;
-    result.message = 'Added node.';
-
-    let output: any = result;
-    if (options.format === 'human') output = [result.message];
+    await p;
 
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: output,
+        data: ['Added node.'],
       }),
     );
   } catch (err) {
@@ -77,6 +73,9 @@ add.action(async (node, host, port, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

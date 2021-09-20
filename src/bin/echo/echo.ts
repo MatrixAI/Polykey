@@ -2,6 +2,7 @@ import PolykeyClient from '../../PolykeyClient';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { createCommand, outputFormatter } from '../utils';
 import { clientPB, utils as clientUtils } from '../../client';
+import * as utils from '../../utils';
 
 const echo = createCommand('echo', {
   description: {
@@ -37,11 +38,14 @@ echo.action(async (text, options) => {
     echoMessage.setChallenge(text);
 
     const pCall = grpcClient.echo(echoMessage);
-    pCall.call.on('metadata', (meta) => {
-      clientUtils.refreshSession(meta, client.session);
+    const { p, resolveP } = utils.promise();
+    pCall.call.on('metadata', async (meta) => {
+      await clientUtils.refreshSession(meta, client.session);
+      resolveP(null);
     });
 
     const responseMessage = await pCall;
+    await p;
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
@@ -61,6 +65,9 @@ echo.action(async (text, options) => {
     throw e;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

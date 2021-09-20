@@ -1,12 +1,13 @@
 import type { Host, Port } from '../../network/types';
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { ErrorNodeGraphNodeNotFound } from '../../errors';
 import { ErrorCLI } from '../errors';
 import { buildAddress } from '../../network/utils';
+import * as utils from '../../utils';
 
 /**
  * This exists to re-contextualize any errors or results as a `failure to find node` result and not an actual error with the command.
@@ -51,7 +52,15 @@ find.action(async (node, options) => {
 
     const result = { success: false, message: '', id: '', host: '', port: 0 };
     try {
-      const res = await grpcClient.nodesFind(nodeMessage);
+      const pCall = grpcClient.nodesFind(nodeMessage);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
+      });
+      const res = await pCall;
+      await p;
+
       result.success = true;
       result.id = res.getNodeId();
       result.host = res.getHost();
@@ -99,6 +108,9 @@ find.action(async (node, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

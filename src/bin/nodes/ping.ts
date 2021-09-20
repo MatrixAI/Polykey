@@ -1,10 +1,11 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import { clientPB, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { ErrorNodeGraphNodeNotFound } from '../../errors';
 import { ErrorCLI } from '../errors';
+import * as utils from '../../utils';
 
 /**
  * This exists to re-contextualize any errors or results as a `ping failed` result and not an actual error with the command.
@@ -51,7 +52,14 @@ ping.action(async (node, options) => {
     let statusMessage;
     let error;
     try {
-      statusMessage = await grpcClient.nodesPing(nodeMessage);
+      const pCall = grpcClient.nodesPing(nodeMessage);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
+      });
+      statusMessage = await pCall;
+      await p;
     } catch (err) {
       if (err instanceof ErrorNodeGraphNodeNotFound) {
         error = new ErrorNodePingFailed(
@@ -99,6 +107,9 @@ ping.action(async (node, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

@@ -60,6 +60,7 @@ start.action(async (options) => {
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;
+    options.background = undefined;
   }
 });
 

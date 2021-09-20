@@ -55,10 +55,13 @@ commandAllowGestalts.action(async (id, permissions, options) => {
       name = `${nodeId}`;
       //Trusting
       const pCall = grpcClient.gestaltsActionsUnsetByNode(setActionMessage);
-      pCall.call.on('metadata', (meta) => {
-        clientUtils.refreshSession(meta, client.session);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
       });
       await pCall;
+      await p;
     } else {
       //  Setting by Identity
       const providerMessage = new clientPB.ProviderMessage();
@@ -67,7 +70,14 @@ commandAllowGestalts.action(async (id, permissions, options) => {
       setActionMessage.setIdentity(providerMessage);
       name = `${id}`;
       //Trusting.
-      await grpcClient.gestaltsActionsUnsetByIdentity(setActionMessage);
+      const pCall = grpcClient.gestaltsActionsUnsetByIdentity(setActionMessage);
+      const { p, resolveP } = utils.promise();
+      pCall.call.on('metadata', async (meta) => {
+        await clientUtils.refreshSession(meta, client.session);
+        resolveP(null);
+      });
+      await pCall;
+      await p;
     }
 
     const action = options.action;
@@ -94,6 +104,9 @@ commandAllowGestalts.action(async (id, permissions, options) => {
     throw err;
   } finally {
     await client.stop();
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 

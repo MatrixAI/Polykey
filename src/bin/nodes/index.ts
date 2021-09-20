@@ -1,6 +1,6 @@
 import { createCommand } from '../utils';
 import ping from './ping';
-// import commandClaimNode from './commandClaimNode';
+import claim from './claim';
 // import commandUnclaimNode from "./commandUnclaimNode";
 import add from './add';
 import find from './find';
@@ -12,5 +12,6 @@ commandNodes.description('nodes commands');
 commandNodes.addCommand(ping);
 commandNodes.addCommand(add);
 commandNodes.addCommand(find);
+commandNodes.addCommand(claim);
 
 export default commandNodes;

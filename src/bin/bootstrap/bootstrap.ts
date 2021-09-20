@@ -100,6 +100,11 @@ bootstrap.action(async (options) => {
       );
     }
     throw err;
+  } finally {
+    options.passwordFile = undefined;
+    options.nodePath = undefined;
+    options.verbose = undefined;
+    options.format = undefined;
   }
 });
 
