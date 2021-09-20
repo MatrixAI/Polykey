@@ -18,27 +18,32 @@ import { WorkerManager } from '../workers';
 import * as utils from '../utils';
 
 class DB {
-  // public static async createDB({
-  //   dbPath,
-  //   lock = new Mutex(),
-  //   fs = require('fs'),
-  //   logger = new Logger(this.name),
-  // }: {
-  //   dbPath: string;
-  //   lock?: MutexInterface;
-  //   fs?: FileSystem;
-  //   logger?: Logger;
-  // }) {
-  //   const db = new DB({
-  //     dbKey,
-  //     dbPath,
-  //     lock,
-  //     fs,
-  //     logger,
-  //   });
-  //   await db.start();
-  //   return db;
-  // }
+  public static async createDB({
+    dbPath,
+    lock = new Mutex(),
+    fs = require('fs'),
+    logger = new Logger(this.name),
+    dbKey,
+    bits,
+    fresh,
+  }: {
+    dbPath: string;
+    lock?: MutexInterface;
+    fs?: FileSystem;
+    logger?: Logger;
+    dbKey: KeyPair;
+    bits?: number;
+    fresh?: boolean;
+  }) {
+    const db = new DB({
+      dbPath,
+      lock,
+      fs,
+      logger,
+    });
+    await db.start({ keyPair: dbKey, bits, fresh });
+    return db;
+  }
 
   public readonly dbPath: string;
   public readonly dbKeyPath: string;
@@ -52,39 +57,39 @@ class DB {
   protected _started: boolean = false;
   protected _destroyed: boolean = false;
 
-  public constructor({
-    dbPath,
-    fs,
-    logger,
-  }: {
-    dbPath: string;
-    fs?: FileSystem;
-    logger?: Logger;
-  }) {
-    this.logger = logger ?? new Logger(this.constructor.name);
-    this.fs = fs ?? require('fs');
-    this.dbPath = path.join(dbPath, 'db');
-    this.dbKeyPath = path.join(dbPath, 'db_key');
-  }
-
-  // protected constructor({
+  // public constructor({
   //   dbPath,
-  //   lock,
   //   fs,
   //   logger,
   // }: {
   //   dbPath: string;
-  //   lock: MutexInterface;
-  //   fs: FileSystem;
-  //   logger: Logger;
+  //   fs?: FileSystem;
+  //   logger?: Logger;
   // }) {
-  //   this.logger = logger;
-  //   this.dbPath = dbPath;
-  //   this.lock = lock;
-  //   this.fs = fs;
+  //   this.logger = logger ?? new Logger(this.constructor.name);
+  //   this.fs = fs ?? require('fs');
   //   this.dbPath = path.join(dbPath, 'db');
   //   this.dbKeyPath = path.join(dbPath, 'db_key');
   // }
+
+  protected constructor({
+    dbPath,
+    lock,
+    fs,
+    logger,
+  }: {
+    dbPath: string;
+    lock: MutexInterface;
+    fs: FileSystem;
+    logger: Logger;
+  }) {
+    this.logger = logger;
+    this.dbPath = dbPath;
+    this.lock = lock;
+    this.fs = fs;
+    this.dbPath = path.join(dbPath, 'db');
+    this.dbKeyPath = path.join(dbPath, 'db_key');
+  }
 
   get db(): LevelDB<string | Buffer, Buffer> {
     return this._db;

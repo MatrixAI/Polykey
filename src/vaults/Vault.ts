@@ -17,7 +17,6 @@ import * as vaultsUtils from './utils';
 import * as gitUtils from '../git/utils';
 import * as vaultsErrors from './errors';
 import * as gitErrors from '../git/errors';
-import { EFSWorkerManagerInterface } from 'encryptedfs/dist/workers';
 
 class Vault {
   public readonly baseDir: string;
