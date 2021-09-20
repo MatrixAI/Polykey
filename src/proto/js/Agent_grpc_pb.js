@@ -37,6 +37,17 @@ function deserialize_agentInterface_ClaimsMessage(buffer_arg) {
   return Agent_pb.ClaimsMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_agentInterface_CrossSignMessage(arg) {
+  if (!(arg instanceof Agent_pb.CrossSignMessage)) {
+    throw new Error('Expected argument of type agentInterface.CrossSignMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_agentInterface_CrossSignMessage(buffer_arg) {
+  return Agent_pb.CrossSignMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_agentInterface_EchoMessage(arg) {
   if (!(arg instanceof Agent_pb.EchoMessage)) {
     throw new Error('Expected argument of type agentInterface.EchoMessage');
@@ -261,6 +272,17 @@ nodesClosestLocalNodesGet: {
     requestDeserialize: deserialize_agentInterface_RelayMessage,
     responseSerialize: serialize_agentInterface_EmptyMessage,
     responseDeserialize: deserialize_agentInterface_EmptyMessage,
+  },
+  nodesCrossSignClaim: {
+    path: '/agentInterface.Agent/NodesCrossSignClaim',
+    requestStream: true,
+    responseStream: true,
+    requestType: Agent_pb.CrossSignMessage,
+    responseType: Agent_pb.CrossSignMessage,
+    requestSerialize: serialize_agentInterface_CrossSignMessage,
+    requestDeserialize: deserialize_agentInterface_CrossSignMessage,
+    responseSerialize: serialize_agentInterface_CrossSignMessage,
+    responseDeserialize: deserialize_agentInterface_CrossSignMessage,
   },
   // Notifications
 notificationsSend: {

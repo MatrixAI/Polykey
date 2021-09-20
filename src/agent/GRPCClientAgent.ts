@@ -99,6 +99,17 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
       this.client.vaultsPermisssionsCheck,
     )(...args);
   }
+
+  public nodesCrossSignClaim(...args) {
+    if (!this._started) throw new agentErrors.ErrorAgentClientNotStarted();
+    return grpcUtils.promisifyDuplexStreamCall<
+      agentPB.CrossSignMessage,
+      agentPB.CrossSignMessage
+    >(
+      this.client,
+      this.client.nodesCrossSignClaim,
+    )(...args);
+  }
 }
 
 export default GRPCClientAgent;

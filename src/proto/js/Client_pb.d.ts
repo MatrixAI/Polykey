@@ -572,6 +572,29 @@ export namespace NodeAddressMessage {
     }
 }
 
+export class NodeClaimMessage extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodeClaimMessage;
+    getForceInvite(): boolean;
+    setForceInvite(value: boolean): NodeClaimMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodeClaimMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NodeClaimMessage): NodeClaimMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodeClaimMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodeClaimMessage;
+    static deserializeBinaryFromReader(message: NodeClaimMessage, reader: jspb.BinaryReader): NodeClaimMessage;
+}
+
+export namespace NodeClaimMessage {
+    export type AsObject = {
+        nodeId: string,
+        forceInvite: boolean,
+    }
+}
+
 export class CryptoMessage extends jspb.Message { 
     getData(): string;
     setData(value: string): CryptoMessage;
@@ -919,112 +942,175 @@ export namespace SetActionsMessage {
 
 }
 
-export class NotificationInfoMessage extends jspb.Message { 
-    getReceiverId(): string;
-    setReceiverId(value: string): NotificationInfoMessage;
-    getMessage(): string;
-    setMessage(value: string): NotificationInfoMessage;
+export class NotificationsMessage extends jspb.Message { 
+
+    hasGeneral(): boolean;
+    clearGeneral(): void;
+    getGeneral(): GeneralTypeMessage | undefined;
+    setGeneral(value?: GeneralTypeMessage): NotificationsMessage;
+
+    hasGestaltInvite(): boolean;
+    clearGestaltInvite(): void;
+    getGestaltInvite(): string;
+    setGestaltInvite(value: string): NotificationsMessage;
+
+    hasVaultShare(): boolean;
+    clearVaultShare(): void;
+    getVaultShare(): VaultShareTypeMessage | undefined;
+    setVaultShare(value?: VaultShareTypeMessage): NotificationsMessage;
+    getSenderId(): string;
+    setSenderId(value: string): NotificationsMessage;
+    getIsRead(): boolean;
+    setIsRead(value: boolean): NotificationsMessage;
+
+    getDataCase(): NotificationsMessage.DataCase;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NotificationInfoMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NotificationInfoMessage): NotificationInfoMessage.AsObject;
+    toObject(includeInstance?: boolean): NotificationsMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationsMessage): NotificationsMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NotificationInfoMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NotificationInfoMessage;
-    static deserializeBinaryFromReader(message: NotificationInfoMessage, reader: jspb.BinaryReader): NotificationInfoMessage;
+    static serializeBinaryToWriter(message: NotificationsMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationsMessage;
+    static deserializeBinaryFromReader(message: NotificationsMessage, reader: jspb.BinaryReader): NotificationsMessage;
 }
 
-export namespace NotificationInfoMessage {
+export namespace NotificationsMessage {
+    export type AsObject = {
+        general?: GeneralTypeMessage.AsObject,
+        gestaltInvite: string,
+        vaultShare?: VaultShareTypeMessage.AsObject,
+        senderId: string,
+        isRead: boolean,
+    }
+
+    export enum DataCase {
+        DATA_NOT_SET = 0,
+        GENERAL = 1,
+        GESTALT_INVITE = 2,
+        VAULT_SHARE = 3,
+    }
+
+}
+
+export class NotificationsSendMessage extends jspb.Message { 
+    getReceiverId(): string;
+    setReceiverId(value: string): NotificationsSendMessage;
+
+    hasData(): boolean;
+    clearData(): void;
+    getData(): GeneralTypeMessage | undefined;
+    setData(value?: GeneralTypeMessage): NotificationsSendMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NotificationsSendMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationsSendMessage): NotificationsSendMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NotificationsSendMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationsSendMessage;
+    static deserializeBinaryFromReader(message: NotificationsSendMessage, reader: jspb.BinaryReader): NotificationsSendMessage;
+}
+
+export namespace NotificationsSendMessage {
     export type AsObject = {
         receiverId: string,
-        message: string,
+        data?: GeneralTypeMessage.AsObject,
     }
 }
 
-export class NotificationDisplayMessage extends jspb.Message { 
+export class NotificationsReadMessage extends jspb.Message { 
     getUnread(): boolean;
-    setUnread(value: boolean): NotificationDisplayMessage;
-
-    hasNumber(): boolean;
-    clearNumber(): void;
-    getNumber(): NumberMessage | undefined;
-    setNumber(value?: NumberMessage): NotificationDisplayMessage;
+    setUnread(value: boolean): NotificationsReadMessage;
+    getNumber(): string;
+    setNumber(value: string): NotificationsReadMessage;
     getOrder(): string;
-    setOrder(value: string): NotificationDisplayMessage;
+    setOrder(value: string): NotificationsReadMessage;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NotificationDisplayMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NotificationDisplayMessage): NotificationDisplayMessage.AsObject;
+    toObject(includeInstance?: boolean): NotificationsReadMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationsReadMessage): NotificationsReadMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NotificationDisplayMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NotificationDisplayMessage;
-    static deserializeBinaryFromReader(message: NotificationDisplayMessage, reader: jspb.BinaryReader): NotificationDisplayMessage;
+    static serializeBinaryToWriter(message: NotificationsReadMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationsReadMessage;
+    static deserializeBinaryFromReader(message: NotificationsReadMessage, reader: jspb.BinaryReader): NotificationsReadMessage;
 }
 
-export namespace NotificationDisplayMessage {
+export namespace NotificationsReadMessage {
     export type AsObject = {
         unread: boolean,
-        number?: NumberMessage.AsObject,
+        number: string,
         order: string,
     }
 }
 
-export class NotificationListMessage extends jspb.Message { 
-    getMessages(): string;
-    setMessages(value: string): NotificationListMessage;
+export class NotificationsListMessage extends jspb.Message { 
+    clearNotificationList(): void;
+    getNotificationList(): Array<NotificationsMessage>;
+    setNotificationList(value: Array<NotificationsMessage>): NotificationsListMessage;
+    addNotification(value?: NotificationsMessage, index?: number): NotificationsMessage;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NotificationListMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NotificationListMessage): NotificationListMessage.AsObject;
+    toObject(includeInstance?: boolean): NotificationsListMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: NotificationsListMessage): NotificationsListMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NotificationListMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NotificationListMessage;
-    static deserializeBinaryFromReader(message: NotificationListMessage, reader: jspb.BinaryReader): NotificationListMessage;
+    static serializeBinaryToWriter(message: NotificationsListMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NotificationsListMessage;
+    static deserializeBinaryFromReader(message: NotificationsListMessage, reader: jspb.BinaryReader): NotificationsListMessage;
 }
 
-export namespace NotificationListMessage {
+export namespace NotificationsListMessage {
     export type AsObject = {
-        messages: string,
+        notificationList: Array<NotificationsMessage.AsObject>,
     }
 }
 
-export class NumberMessage extends jspb.Message { 
-
-    hasNumber(): boolean;
-    clearNumber(): void;
-    getNumber(): number;
-    setNumber(value: number): NumberMessage;
-
-    hasAll(): boolean;
-    clearAll(): void;
-    getAll(): string;
-    setAll(value: string): NumberMessage;
-
-    getNumberOrAllCase(): NumberMessage.NumberOrAllCase;
+export class GeneralTypeMessage extends jspb.Message { 
+    getMessage(): string;
+    setMessage(value: string): GeneralTypeMessage;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): NumberMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: NumberMessage): NumberMessage.AsObject;
+    toObject(includeInstance?: boolean): GeneralTypeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: GeneralTypeMessage): GeneralTypeMessage.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: NumberMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): NumberMessage;
-    static deserializeBinaryFromReader(message: NumberMessage, reader: jspb.BinaryReader): NumberMessage;
+    static serializeBinaryToWriter(message: GeneralTypeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GeneralTypeMessage;
+    static deserializeBinaryFromReader(message: GeneralTypeMessage, reader: jspb.BinaryReader): GeneralTypeMessage;
 }
 
-export namespace NumberMessage {
+export namespace GeneralTypeMessage {
     export type AsObject = {
-        number: number,
-        all: string,
+        message: string,
     }
+}
 
-    export enum NumberOrAllCase {
-        NUMBER_OR_ALL_NOT_SET = 0,
-        NUMBER = 1,
-        ALL = 2,
+export class VaultShareTypeMessage extends jspb.Message { 
+    getVaultId(): string;
+    setVaultId(value: string): VaultShareTypeMessage;
+    getVaultName(): string;
+    setVaultName(value: string): VaultShareTypeMessage;
+    clearActionsList(): void;
+    getActionsList(): Array<string>;
+    setActionsList(value: Array<string>): VaultShareTypeMessage;
+    addActions(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultShareTypeMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultShareTypeMessage): VaultShareTypeMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultShareTypeMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultShareTypeMessage;
+    static deserializeBinaryFromReader(message: VaultShareTypeMessage, reader: jspb.BinaryReader): VaultShareTypeMessage;
+}
+
+export namespace VaultShareTypeMessage {
+    export type AsObject = {
+        vaultId: string,
+        vaultName: string,
+        actionsList: Array<string>,
     }
-
 }

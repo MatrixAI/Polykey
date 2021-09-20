@@ -1,7 +1,7 @@
 import type { Opaque } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
-import type { GeneralJWS } from 'jose/types';
+import type { GeneralJWS, FlattenedJWSInput } from 'jose/types';
 
 /**
  * A JSON-ified, decoded version of the ClaimEncoded type.
@@ -64,6 +64,16 @@ type ClaimId = Opaque<'ClaimId', string>;
 // type ClaimEncoded = Opaque<'ClaimEncoded', string>;
 type ClaimEncoded = GeneralJWS;
 
+/**
+ * An encoded intermediary claim with a single signature.
+ * Can be sent across GRPC to be signed by another keynode.
+ * Currently used for establishing node to node claims by cross-signing the claim
+ * with both nodes.
+ */
+type ClaimIntermediary = Omit<GeneralJWS, 'signatures'> & {
+  signature: Omit<FlattenedJWSInput, 'payload'>;
+};
+
 // Claims can currently only be a cryptolink to a node or identity
 type ClaimData = ClaimLinkNode | ClaimLinkIdentity;
 
@@ -87,6 +97,7 @@ type ClaimType = 'node' | 'identity';
 export type {
   Claim,
   ClaimValidation,
+  ClaimIntermediary,
   SignatureData,
   ClaimId,
   ClaimEncoded,

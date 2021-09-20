@@ -4,11 +4,13 @@ import type { KeyManager } from '../keys';
 import type { SignedNotification } from '../notifications/types';
 import type { ChainDataEncoded } from '../sigchain/types';
 import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
-import type { ClaimId, ClaimEncoded } from '../claims/types';
+import type { ClaimId, ClaimEncoded, ClaimIntermediary } from '../claims/types';
 
 import Logger from '@matrixai/logger';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
+import * as claimsUtils from '../claims/utils';
+import * as claimsErrors from '../claims/errors';
 import * as keysUtils from '../keys/utils';
 import * as vaultsUtils from '../vaults/utils';
 import { NodeAddressMessage } from '../proto/js/Agent_pb';
@@ -29,7 +31,6 @@ class NodeConnection {
   protected ingressPort: Port;
 
   // Host and port of the initiating node (client) where the connection begins
-  protected localNodeId: NodeId;
   protected localHost: Host;
   protected localPort: Port;
 
@@ -38,7 +39,6 @@ class NodeConnection {
   protected client: GRPCClientAgent;
 
   constructor({
-    sourceNodeId,
     targetNodeId,
     targetHost,
     targetPort,
@@ -46,7 +46,6 @@ class NodeConnection {
     keyManager,
     logger,
   }: {
-    sourceNodeId: NodeId;
     targetNodeId: NodeId;
     targetHost: Host;
     targetPort: Port;
@@ -55,7 +54,6 @@ class NodeConnection {
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger('NodeConnection');
-    this.localNodeId = sourceNodeId;
     this.targetNodeId = targetNodeId;
     this.ingressHost = targetHost;
     this.ingressPort = targetPort;
@@ -116,7 +114,7 @@ class NodeConnection {
         ),
         Array.from(brokerConnections, ([_, conn]) =>
           conn.sendHolePunchMessage(
-            this.localNodeId,
+            this.keyManager.getNodeId(),
             this.targetNodeId,
             egressAddress,
             signature,
@@ -132,7 +130,11 @@ class NodeConnection {
     // Then you can create/start the GRPCClient, and perform the request
     await this.client.start({});
     this._started = true;
-    this.logger.info('Started NodeConnection');
+    this.logger.info(
+      `Started NodeConnection from ${this.keyManager.getNodeId()} to ${
+        this.targetNodeId
+      }`,
+    );
   }
 
   public async stop() {
@@ -283,7 +285,7 @@ class NodeConnection {
         for (const signatureData of claimMsg.getSignaturesList()) {
           signatures.push({
             signature: signatureData.getSignature(),
-            protected: signatureData.getHeader(),
+            protected: signatureData.getProtected(),
           });
         }
         // Add to the record of chain data, casting as expected ClaimEncoded
@@ -293,6 +295,101 @@ class NodeConnection {
         } as ClaimEncoded;
       });
     return chainData;
+  }
+
+  public async claimNode(singlySignedClaim: ClaimIntermediary) {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeConnectionNotStarted();
+    }
+    const genClaims = this.client.nodesCrossSignClaim();
+    try {
+      // 2. Set up the intermediary claim message (the singly signed claim) to send
+      const crossSignMessage = claimsUtils.createCrossSignMessage({
+        singlySignedClaim: singlySignedClaim,
+      });
+      await genClaims.write(crossSignMessage); // get the generator here
+      // 3. We expect to receieve our singly signed claim we sent to now be a
+      // doubly signed claim (signed by the other node), as well as a singly
+      // signed claim to be signed by us.
+      const readStatus = await genClaims.read();
+      // If nothing to read, end and destroy
+      if (readStatus.done) {
+        throw new claimsErrors.ErrorEmptyStream();
+      }
+      const receivedMessage = readStatus.value;
+      const intermediaryClaimMessage = receivedMessage.getSinglySignedClaim();
+      const doublySignedClaimMessage = receivedMessage.getDoublySignedClaim();
+      // Ensure all of our expected messages are defined
+      if (!intermediaryClaimMessage) {
+        throw new claimsErrors.ErrorUndefinedSinglySignedClaim();
+      }
+      const intermediaryClaimSignature =
+        intermediaryClaimMessage.getSignature();
+      if (!intermediaryClaimSignature) {
+        throw new claimsErrors.ErrorUndefinedSignature();
+      }
+      if (!doublySignedClaimMessage) {
+        throw new claimsErrors.ErrorUndefinedDoublySignedClaim();
+      }
+      // Reconstruct the expected objects from the messages
+      const constructedIntermediaryClaim =
+        claimsUtils.reconstructClaimIntermediary(intermediaryClaimMessage);
+      const constructedDoublySignedClaim = claimsUtils.reconstructClaimEncoded(
+        doublySignedClaimMessage,
+      );
+      // Verify the singly signed claim with the sender's public key
+      const senderPublicKey = this.getExpectedPublicKey(this.targetNodeId);
+      if (!senderPublicKey) {
+        throw new nodesErrors.ErrorNodeConnectionPublicKeyNotFound();
+      }
+      const verifiedSingly = await claimsUtils.verifyIntermediaryClaimSignature(
+        constructedIntermediaryClaim,
+        senderPublicKey,
+      );
+      if (!verifiedSingly) {
+        throw new claimsErrors.ErrorSinglySignedClaimVerificationFailed();
+      }
+      // Verify the doubly signed claim with both our public key, and the sender's
+      const verifiedDoubly =
+        (await claimsUtils.verifyClaimSignature(
+          constructedDoublySignedClaim,
+          this.keyManager.getRootKeyPairPem().publicKey,
+        )) &&
+        (await claimsUtils.verifyClaimSignature(
+          constructedDoublySignedClaim,
+          senderPublicKey,
+        ));
+      if (!verifiedDoubly) {
+        throw new claimsErrors.ErrorDoublySignedClaimVerificationFailed();
+      }
+      // 4. X <- responds with double signing the X signed claim <- Y
+      const doublySignedClaimResponse = await claimsUtils.signIntermediaryClaim(
+        {
+          claim: constructedIntermediaryClaim,
+          privateKey: this.keyManager.getRootKeyPairPem().privateKey,
+          signeeNodeId: this.keyManager.getNodeId(),
+        },
+      );
+      // Should never be reached, but just for type safety
+      if (!doublySignedClaimResponse.payload) {
+        throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
+      }
+      const crossSignMessageResponse = claimsUtils.createCrossSignMessage({
+        doublySignedClaim: doublySignedClaimResponse,
+      });
+      await genClaims.write(crossSignMessageResponse);
+
+      // Check the stream is closed (should be closed by other side)
+      const finalResponse = await genClaims.read();
+      if (finalResponse.done != null) {
+        await genClaims.next(null);
+      }
+
+      return constructedDoublySignedClaim;
+    } catch (e) {
+      await genClaims.throw(e);
+      throw e;
+    }
   }
 
   /**
@@ -305,7 +402,7 @@ class NodeConnection {
     // Create the handler for git to scan from
     const gitRequest = await vaultsUtils.constructGitHandler(
       this.client,
-      this.localNodeId,
+      this.keyManager.getNodeId(),
     );
     return await gitRequest.scanVaults();
   }

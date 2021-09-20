@@ -149,6 +149,7 @@ class VaultManager {
     } else if (!this.gestaltGraph.started) {
       throw new gestaltErrors.ErrorGestaltsGraphNotStarted();
     }
+    this.logger.info('Starting Vault Manager');
     if (fresh) {
       await this.fs.promises.rm(this.vaultsPath, {
         force: true,
@@ -177,6 +178,7 @@ class VaultManager {
     }
     // await this.loadVaultData();
     this._started = true;
+    this.logger.info('Started Vault Manager');
   }
 
   public async stop(): Promise<void> {

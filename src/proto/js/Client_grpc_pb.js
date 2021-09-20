@@ -136,6 +136,17 @@ function deserialize_clientInterface_NodeAddressMessage(buffer_arg) {
   return Client_pb.NodeAddressMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_NodeClaimMessage(arg) {
+  if (!(arg instanceof Client_pb.NodeClaimMessage)) {
+    throw new Error('Expected argument of type clientInterface.NodeClaimMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_NodeClaimMessage(buffer_arg) {
+  return Client_pb.NodeClaimMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_NodeMessage(arg) {
   if (!(arg instanceof Client_pb.NodeMessage)) {
     throw new Error('Expected argument of type clientInterface.NodeMessage');
@@ -147,37 +158,37 @@ function deserialize_clientInterface_NodeMessage(buffer_arg) {
   return Client_pb.NodeMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_clientInterface_NotificationDisplayMessage(arg) {
-  if (!(arg instanceof Client_pb.NotificationDisplayMessage)) {
-    throw new Error('Expected argument of type clientInterface.NotificationDisplayMessage');
+function serialize_clientInterface_NotificationsListMessage(arg) {
+  if (!(arg instanceof Client_pb.NotificationsListMessage)) {
+    throw new Error('Expected argument of type clientInterface.NotificationsListMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_clientInterface_NotificationDisplayMessage(buffer_arg) {
-  return Client_pb.NotificationDisplayMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_clientInterface_NotificationsListMessage(buffer_arg) {
+  return Client_pb.NotificationsListMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_clientInterface_NotificationInfoMessage(arg) {
-  if (!(arg instanceof Client_pb.NotificationInfoMessage)) {
-    throw new Error('Expected argument of type clientInterface.NotificationInfoMessage');
+function serialize_clientInterface_NotificationsReadMessage(arg) {
+  if (!(arg instanceof Client_pb.NotificationsReadMessage)) {
+    throw new Error('Expected argument of type clientInterface.NotificationsReadMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_clientInterface_NotificationInfoMessage(buffer_arg) {
-  return Client_pb.NotificationInfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_clientInterface_NotificationsReadMessage(buffer_arg) {
+  return Client_pb.NotificationsReadMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_clientInterface_NotificationListMessage(arg) {
-  if (!(arg instanceof Client_pb.NotificationListMessage)) {
-    throw new Error('Expected argument of type clientInterface.NotificationListMessage');
+function serialize_clientInterface_NotificationsSendMessage(arg) {
+  if (!(arg instanceof Client_pb.NotificationsSendMessage)) {
+    throw new Error('Expected argument of type clientInterface.NotificationsSendMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_clientInterface_NotificationListMessage(buffer_arg) {
-  return Client_pb.NotificationListMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_clientInterface_NotificationsSendMessage(buffer_arg) {
+  return Client_pb.NotificationsSendMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_clientInterface_PasswordMessage(arg) {
@@ -508,10 +519,10 @@ nodesAdd: {
     path: '/clientInterface.Client/NodesClaim',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.NodeMessage,
+    requestType: Client_pb.NodeClaimMessage,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_clientInterface_NodeMessage,
-    requestDeserialize: deserialize_clientInterface_NodeMessage,
+    requestSerialize: serialize_clientInterface_NodeClaimMessage,
+    requestDeserialize: deserialize_clientInterface_NodeClaimMessage,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -1063,10 +1074,10 @@ notificationsSend: {
     path: '/clientInterface.Client/NotificationsSend',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.NotificationInfoMessage,
+    requestType: Client_pb.NotificationsSendMessage,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_clientInterface_NotificationInfoMessage,
-    requestDeserialize: deserialize_clientInterface_NotificationInfoMessage,
+    requestSerialize: serialize_clientInterface_NotificationsSendMessage,
+    requestDeserialize: deserialize_clientInterface_NotificationsSendMessage,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1074,12 +1085,12 @@ notificationsSend: {
     path: '/clientInterface.Client/NotificationsRead',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.NotificationDisplayMessage,
-    responseType: Client_pb.NotificationListMessage,
-    requestSerialize: serialize_clientInterface_NotificationDisplayMessage,
-    requestDeserialize: deserialize_clientInterface_NotificationDisplayMessage,
-    responseSerialize: serialize_clientInterface_NotificationListMessage,
-    responseDeserialize: deserialize_clientInterface_NotificationListMessage,
+    requestType: Client_pb.NotificationsReadMessage,
+    responseType: Client_pb.NotificationsListMessage,
+    requestSerialize: serialize_clientInterface_NotificationsReadMessage,
+    requestDeserialize: deserialize_clientInterface_NotificationsReadMessage,
+    responseSerialize: serialize_clientInterface_NotificationsListMessage,
+    responseDeserialize: deserialize_clientInterface_NotificationsListMessage,
   },
   notificationsClear: {
     path: '/clientInterface.Client/NotificationsClear',

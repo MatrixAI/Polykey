@@ -1,5 +1,5 @@
 import type { Vault } from '@/vaults';
-import type { Host, Port } from '@/network/types';
+import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeId, NodeInfo, NodeAddress } from '@/nodes/types';
 import type { SessionToken, SessionCredentials } from '@/sessions/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
@@ -21,7 +21,7 @@ import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
 import { NotificationsManager } from '@/notifications';
-import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
+import { ForwardProxy, ReverseProxy } from '@/network';
 import { DB } from '@/db';
 import { ClientClient } from '@/proto/js/Client_grpc_pb';
 
@@ -36,6 +36,7 @@ import * as agentUtils from '@/agent/utils';
 import { sleep } from '@/utils';
 import { ErrorSessionTokenInvalid } from '@/errors';
 import { checkAgentRunning } from '@/agent/utils';
+import { NotificationData } from '@/notifications/types';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -78,8 +79,6 @@ describe('Client service', () => {
 
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
-
-  let nodeId: NodeId;
 
   let callCredentials: SessionCredentials;
 
@@ -162,12 +161,9 @@ describe('Client service', () => {
 
     client = await testUtils.openSimpleClientClient(port);
 
-    const cert = keyManager.getRootCert();
-    nodeId = networkUtils.certNodeId(cert);
-
     //Filling in infos.
     node1 = {
-      id: nodeId,
+      id: nodeManager.getNodeId(),
       chain: {},
     };
   }, global.polykeyStartupTimeout);
@@ -186,6 +182,9 @@ describe('Client service', () => {
   beforeEach(async () => {
     const sessionToken = await polykeyAgent.sessions.generateToken();
     callCredentials = testUtils.createCallCredentials(sessionToken);
+  });
+  afterEach(async () => {
+    await gestaltGraph.clearDB();
   });
 
   test('can echo', async () => {
@@ -212,8 +211,6 @@ describe('Client service', () => {
 
       const passwordMessage = new clientPB.PasswordMessage();
       passwordMessage.setPasswordFile(passwordFile);
-
-      const emptyMessage = new clientPB.EmptyMessage();
 
       const res = await requestJWT(passwordMessage);
       expect(typeof res.getToken()).toBe('string');
@@ -832,6 +829,20 @@ describe('Client service', () => {
       );
 
       const keyPair = keyManager.getRootKeyPairPem();
+      const nodeId1 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig1 = polykeyAgent.clientGrpcServer.tlsConfig;
+      const expectedTLSConfig1: TLSConfig = {
+        keyPrivatePem: keyPair.privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(revTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
 
       const keyMessage = new clientPB.KeyMessage();
       keyMessage.setName('somepassphrase');
@@ -843,9 +854,30 @@ describe('Client service', () => {
       await fs.promises.writeFile(passwordFile, 'somepassphrase');
 
       const key = await getRootKeyPair(emptyMessage, callCredentials);
+      const nodeId2 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig2 = polykeyAgent.clientGrpcServer.tlsConfig;
+      const expectedTLSConfig2: TLSConfig = {
+        keyPrivatePem: key.getPrivate(),
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(revTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
 
       expect(key.getPrivate()).not.toBe(keyPair.privateKey);
       expect(key.getPublic()).not.toBe(keyPair.publicKey);
+      expect(nodeId1).not.toBe(nodeId2);
+
+      // Reset this static state with new node ID
+      node1 = {
+        id: nodeManager.getNodeId(),
+        chain: {},
+      };
     });
     test('should renew root keypair', async () => {
       const renewKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
@@ -854,6 +886,20 @@ describe('Client service', () => {
       );
 
       const rootKeyPair1 = keyManager.getRootKeyPairPem();
+      const nodeId1 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig1 = polykeyAgent.clientGrpcServer.tlsConfig;
+      const expectedTLSConfig1: TLSConfig = {
+        keyPrivatePem: rootKeyPair1.privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(revTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
 
       const keyMessage = new clientPB.KeyMessage();
       keyMessage.setName('somepassphrase');
@@ -861,9 +907,30 @@ describe('Client service', () => {
       await renewKeyPair(keyMessage, callCredentials);
 
       const rootKeyPair2 = keyManager.getRootKeyPairPem();
+      const nodeId2 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig2 = polykeyAgent.clientGrpcServer.tlsConfig;
+      const expectedTLSConfig2: TLSConfig = {
+        keyPrivatePem: rootKeyPair2.privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(revTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
 
       expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
       expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
+      expect(nodeId1).not.toBe(nodeId2);
+
+      // Reset this static state with new node ID
+      node1 = {
+        id: nodeManager.getNodeId(),
+        chain: {},
+      };
     });
     test('should encrypt and decrypt with root keypair', async () => {
       const encryptWithKeyPair =
@@ -926,7 +993,6 @@ describe('Client service', () => {
           client,
           client.keysPasswordChange,
         );
-      const nodeId = polykeyAgent.nodes.getNodeId();
 
       const passwordMessage = new clientPB.PasswordMessage();
       passwordMessage.setPassword('newpassword');
@@ -942,7 +1008,7 @@ describe('Client service', () => {
       ).rejects.toThrow();
 
       await keyManager.start({ password: 'newpassword' });
-      await nodeManager.start({ nodeId });
+      await nodeManager.start();
       await vaultManager.start({});
 
       await keyManager.changeRootKeyPassword('password');
@@ -950,7 +1016,7 @@ describe('Client service', () => {
       await vaultManager.stop();
       await keyManager.stop();
       await keyManager.start({ password: 'password' });
-      await nodeManager.start({ nodeId });
+      await nodeManager.start();
       await vaultManager.start({});
     });
     test('should get the root certificate and chains', async () => {
@@ -1138,7 +1204,7 @@ describe('Client service', () => {
       providerMessage.setMessage(testToken.identityId);
       await identitiesAugmentKeynode(providerMessage, callCredentials);
 
-      const res = await gestaltGraph.getGestaltByNode(nodeId);
+      const res = await gestaltGraph.getGestaltByNode(nodeManager.getNodeId());
       const resString = JSON.stringify(res);
       expect(resString).toContain(testToken.providerId);
       expect(resString).toContain(testToken.identityId);
@@ -1299,7 +1365,7 @@ describe('Client service', () => {
       expect(test1.getActionList().includes('scan')).toBeTruthy();
       expect(test1.getActionList().includes('notify')).toBeTruthy();
 
-      nodeMessage.setNodeId(nodeId);
+      nodeMessage.setNodeId(nodeManager.getNodeId());
       // Should have no permissions.
       const test2 = await gestaltsGetActionsByNode(
         nodeMessage,
@@ -1624,6 +1690,98 @@ describe('Client service', () => {
       global.failedConnectionTimeout * 2,
     );
   });
+  describe('Nodes claims', () => {
+    let remoteGestalt: PolykeyAgent;
+    const remoteGestaltNode: NodeInfo = {
+      id: 'nodeId' as NodeId,
+      chain: {},
+    };
+    beforeAll(async () => {
+      remoteGestalt = await testKeynodeUtils.setupRemoteKeynode({ logger });
+      remoteGestaltNode.id = remoteGestalt.nodes.getNodeId();
+      await testKeynodeUtils.addRemoteDetails(polykeyAgent, remoteGestalt);
+      await remoteGestalt.nodes.setNode(nodeManager.getNodeId(), {
+        ip: polykeyAgent.revProxy.getIngressHost(),
+        port: polykeyAgent.revProxy.getIngressPort(),
+      } as NodeAddress);
+      await polykeyAgent.acl.setNodePerm(remoteGestaltNode.id, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+      await remoteGestalt.acl.setNodePerm(nodeManager.getNodeId(), {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+    }, global.polykeyStartupTimeout);
+    afterEach(async () => {
+      await polykeyAgent.notifications.clearNotifications();
+      await remoteGestalt.notifications.clearNotifications();
+    });
+    afterAll(async () => {
+      await remoteGestalt.stop();
+      await polykeyAgent.acl.setNodePerm(remoteGestaltNode.id, {
+        gestalt: {},
+        vaults: {},
+      });
+      await testKeynodeUtils.cleanupRemoteKeynode(remoteGestalt);
+      await polykeyAgent.notifications.clearNotifications();
+    });
+    test('should send a gestalt invite (no existing invitation)', async () => {
+      // Node Claim Case 1: No invitations have been received
+      const nodesClaim = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        client,
+        client.nodesClaim,
+      );
+      const nodeClaimMessage = new clientPB.NodeClaimMessage();
+      nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
+      nodeClaimMessage.setForceInvite(false);
+      const res = await nodesClaim(nodeClaimMessage, callCredentials);
+      // We expect to send a gestalt invite, not to claim the node, so expect false
+      expect(res.getSuccess()).not.toBeTruthy();
+    });
+    test('should send a gestalt invite (existing invitation)', async () => {
+      // Node Claim Case 2: Already received an invite; force invite
+      await remoteGestalt.notifications.sendNotification(
+        nodeManager.getNodeId(),
+        {
+          type: 'GestaltInvite',
+        },
+      );
+      const nodesClaim = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        client,
+        client.nodesClaim,
+      );
+      const nodeClaimMessage = new clientPB.NodeClaimMessage();
+      nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
+      nodeClaimMessage.setForceInvite(true);
+      const res = await nodesClaim(nodeClaimMessage, callCredentials);
+      // We expect to send a gestalt invite, not to claim the node, so expect false
+      expect(res.getSuccess()).not.toBeTruthy();
+    });
+    test('should claim node', async () => {
+      // Node Claim Case 3: Already received an invite; claim node
+      await remoteGestalt.notifications.sendNotification(
+        nodeManager.getNodeId(),
+        {
+          type: 'GestaltInvite',
+        },
+      );
+      const nodesClaim = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        client,
+        client.nodesClaim,
+      );
+      const nodeClaimMessage = new clientPB.NodeClaimMessage();
+      nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
+      nodeClaimMessage.setForceInvite(false);
+      const res = await nodesClaim(nodeClaimMessage, callCredentials);
+      // We expect to claim the node, so expect true
+      expect(res.getSuccess()).toBeTruthy();
+    });
+  });
   describe('Notifications RPC', () => {
     let receiver: PolykeyAgent;
     let sender: PolykeyAgent;
@@ -1655,10 +1813,10 @@ describe('Client service', () => {
     afterEach(async () => {
       await receiver.notifications.clearNotifications();
       await sender.notifications.clearNotifications();
+      await polykeyAgent.notifications.clearNotifications();
     });
     test('should send notifications.', async () => {
       // Set up a remote node receiver and add its details to agent
-
       await testKeynodeUtils.addRemoteDetails(polykeyAgent, receiver);
 
       const notificationsSend =
@@ -1667,76 +1825,121 @@ describe('Client service', () => {
           client.notificationsSend,
         );
 
-      const notificationInfoMessage = new clientPB.NotificationInfoMessage();
-      notificationInfoMessage.setReceiverId(receiver.nodes.getNodeId());
-      notificationInfoMessage.setMessage('msg');
+      const notificationsSendMessage = new clientPB.NotificationsSendMessage();
+      const generalMessage = new clientPB.GeneralTypeMessage();
+      generalMessage.setMessage('msg');
+      notificationsSendMessage.setReceiverId(receiver.nodes.getNodeId());
+      notificationsSendMessage.setData(generalMessage);
 
       // Send notification returns nothing - check remote node received messages
-      await notificationsSend(notificationInfoMessage, callCredentials);
+      await notificationsSend(notificationsSendMessage, callCredentials);
       const notifs = await receiver.notifications.readNotifications();
-      expect(notifs).toEqual(['msg']);
+      expect(notifs[0].data).toEqual({
+        type: 'General',
+        message: 'msg',
+      });
+      expect(notifs[0].senderId).toEqual(polykeyAgent.nodes.getNodeId());
+      expect(notifs[0].isRead).toBeTruthy();
     });
     test('should read all notifications.', async () => {
-      // Set up a remote node sender
+      const generalData = {
+        type: 'General',
+        message: 'msg',
+      } as NotificationData;
+      const gestaltInviteData = {
+        type: 'GestaltInvite',
+      } as NotificationData;
+      const vaultShareData = {
+        type: 'VaultShare',
+        vaultId: 'vaultId',
+        vaultName: 'vaultName',
+        actions: {
+          pull: null,
+          clone: null,
+        },
+      } as NotificationData;
 
-      await sender.notifications.sendNotification(node1.id, 'msg1');
-      await sender.notifications.sendNotification(node1.id, 'msg2');
-      await sender.notifications.sendNotification(node1.id, 'msg3');
+      await sender.notifications.sendNotification(node1.id, generalData);
+      await sender.notifications.sendNotification(node1.id, gestaltInviteData);
+      await sender.notifications.sendNotification(node1.id, vaultShareData);
 
       const notificationsRead =
-        grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+        grpcUtils.promisifyUnaryCall<clientPB.NotificationsListMessage>(
           client,
           client.notificationsRead,
         );
 
-      const notificationDisplayMessage =
-        new clientPB.NotificationDisplayMessage();
-      const numberMessage = new clientPB.NumberMessage();
-      numberMessage.setAll('all');
-      notificationDisplayMessage.setUnread(false);
-      notificationDisplayMessage.setNumber(numberMessage);
-      notificationDisplayMessage.setOrder('newest');
+      const notificationsReadMessage = new clientPB.NotificationsReadMessage();
+      notificationsReadMessage.setUnread(false);
+      notificationsReadMessage.setNumber('all');
+      notificationsReadMessage.setOrder('newest');
 
       // Check the read call
       const response = await notificationsRead(
-        notificationDisplayMessage,
+        notificationsReadMessage,
         callCredentials,
       );
-      expect(response.getMessages()).toContain('msg1');
-      expect(response.getMessages()).toContain('msg2');
-      expect(response.getMessages()).toContain('msg3');
+      const notifs = response.getNotificationList();
+      expect(notifs[0].hasVaultShare()).toBeTruthy();
+      expect(notifs[0].getSenderId()).toEqual(sender.nodes.getNodeId());
+      expect(notifs[0].getIsRead()).toBeTruthy();
+      expect(notifs[1].hasGestaltInvite()).toBeTruthy();
+      expect(notifs[1].getSenderId()).toEqual(sender.nodes.getNodeId());
+      expect(notifs[1].getIsRead()).toBeTruthy();
+      expect(notifs[2].hasGeneral()).toBeTruthy();
+      expect(notifs[2].getSenderId()).toEqual(sender.nodes.getNodeId());
+      expect(notifs[2].getIsRead()).toBeTruthy();
     });
     test('should read a single notification.', async () => {
-      await sender.notifications.sendNotification(node1.id, 'msg1');
-      await sender.notifications.sendNotification(node1.id, 'msg2');
-      await sender.notifications.sendNotification(node1.id, 'msg3');
+      const msgData1 = {
+        type: 'General',
+        message: 'msg1',
+      } as NotificationData;
+      const msgData2 = {
+        type: 'General',
+        message: 'msg2',
+      } as NotificationData;
+      const msgData3 = {
+        type: 'General',
+        message: 'msg3',
+      } as NotificationData;
+
+      await sender.notifications.sendNotification(node1.id, msgData1);
+      await sender.notifications.sendNotification(node1.id, msgData2);
+      await sender.notifications.sendNotification(node1.id, msgData3);
 
       const notificationsRead =
-        grpcUtils.promisifyUnaryCall<clientPB.NotificationListMessage>(
+        grpcUtils.promisifyUnaryCall<clientPB.NotificationsListMessage>(
           client,
           client.notificationsRead,
         );
 
-      const notificationDisplayMessage =
-        new clientPB.NotificationDisplayMessage();
-      const numberMessage = new clientPB.NumberMessage();
-      numberMessage.setNumber(1);
-      notificationDisplayMessage.setUnread(false);
-      notificationDisplayMessage.setNumber(numberMessage);
-      notificationDisplayMessage.setOrder('newest');
+      const notificationsReadMessage = new clientPB.NotificationsReadMessage();
+      notificationsReadMessage.setUnread(false);
+      notificationsReadMessage.setNumber('1');
+      notificationsReadMessage.setOrder('newest');
 
       // Check the read call
       const response = await notificationsRead(
-        notificationDisplayMessage,
+        notificationsReadMessage,
         callCredentials,
       );
-      expect(response.getMessages()).not.toContain('msg1');
-      expect(response.getMessages()).not.toContain('msg2');
-      expect(response.getMessages()).toContain('msg3');
+      const notifs = response.getNotificationList();
+      expect(notifs).toHaveLength(1);
+      expect(notifs[0].getGeneral()!.getMessage()).toEqual('msg3');
     });
     test('should clear all notifications.', async () => {
-      await sender.notifications.sendNotification(node1.id, 'msg1');
-      await sender.notifications.sendNotification(node1.id, 'msg2');
+      const msgData1 = {
+        type: 'General',
+        message: 'msg1',
+      } as NotificationData;
+      const msgData2 = {
+        type: 'General',
+        message: 'msg2',
+      } as NotificationData;
+
+      await sender.notifications.sendNotification(node1.id, msgData1);
+      await sender.notifications.sendNotification(node1.id, msgData2);
 
       const notificationsClear =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(

@@ -17,7 +17,6 @@ import * as dbErrors from '../db/errors';
 import * as networkErrors from '../network/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
-import * as networkUtils from '../network/utils';
 import * as agentPB from '../proto/js/Agent_pb';
 import { GRPCClientAgent } from '../agent';
 import { ForwardProxy, ReverseProxy } from '../network';
@@ -33,7 +32,6 @@ class NodeManager {
   protected lock: Mutex = new Mutex();
   protected _started: boolean = false;
 
-  protected nodeId: NodeId;
   protected nodeGraph: NodeGraph;
   protected sigchain: Sigchain;
   protected keyManager: KeyManager;
@@ -88,21 +86,18 @@ class NodeManager {
   }
 
   public async start({
-    nodeId,
     brokerNodes = {},
     fresh = false,
   }: {
-    nodeId: NodeId;
     brokerNodes?: NodeBucket;
     fresh?: boolean;
-  }) {
+  } = {}) {
     try {
       this.logger.info('Starting Node Manager');
       if (!this.db.started) {
         throw new dbErrors.ErrorDBNotStarted();
       }
       this._started = true;
-      this.nodeId = nodeId;
       // establish and start connections to the brokers
       for (const brokerId in brokerNodes) {
         await this.createConnectionToBroker(
@@ -110,10 +105,7 @@ class NodeManager {
           brokerNodes[brokerId].address,
         );
       }
-      await this.nodeGraph.start({
-        nodeId: nodeId,
-        // brokerNodes: brokerNodes,
-      });
+      await this.nodeGraph.start({ fresh });
       this.logger.info('Started Node Manager');
     } catch (e) {
       this._started = false;
@@ -221,7 +213,7 @@ class NodeManager {
     if (!this._started) {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
     }
-    return this.nodeGraph.getNodeId();
+    return this.keyManager.getNodeId();
   }
 
   /**
@@ -297,7 +289,7 @@ class NodeManager {
         const endNodeId = payload.data.node2;
         let endPublicKey: PublicKeyPem;
         // If the claim points back to our own node, don't attempt to connect
-        if (endNodeId === this.nodeId) {
+        if (endNodeId === this.getNodeId()) {
           endPublicKey = this.keyManager.getRootKeyPairPem().publicKey;
           // Otherwise, get the public key from the root cert chain (by connection)
         } else {
@@ -324,6 +316,32 @@ class NodeManager {
     return verifiedChainData;
   }
 
+  /**
+   * Call this function upon receiving a "claim node request" notification from
+   * another node.
+   */
+  public async claimNode(targetNodeId: NodeId): Promise<void> {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeManagerNotStarted();
+    }
+    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
+    const connection: NodeConnection = await this.createConnectionToNode(
+      targetNodeId,
+      targetAddress,
+    );
+    await this.sigchain.transaction(async (sigchain) => {
+      // 2. Create your intermediary claim
+      const singlySignedClaim = await sigchain.createIntermediaryClaim({
+        type: 'node',
+        node1: this.getNodeId(),
+        node2: targetNodeId,
+      });
+      // Receive back your verified doubly signed claim.
+      const doublySignedClaim = await connection.claimNode(singlySignedClaim);
+      await sigchain.addExistingClaim(doublySignedClaim);
+    });
+  }
+
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
@@ -348,6 +366,13 @@ class NodeManager {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
     }
     return await this.nodeGraph.getAllBuckets();
+  }
+
+  public async refreshBuckets(): Promise<void> {
+    if (!this._started) {
+      throw new nodesErrors.ErrorNodeManagerNotStarted();
+    }
+    return await this.nodeGraph.refreshBuckets();
   }
 
   /**
@@ -420,7 +445,7 @@ class NodeManager {
     }
     return await this._transaction(async () => {
       // Throw error if trying to connect to self
-      if (targetNodeId === this.nodeId) {
+      if (targetNodeId === this.getNodeId()) {
         throw new nodesErrors.ErrorNodeGraphSelfConnect();
       }
       // Attempt to get an existing connection
@@ -431,7 +456,6 @@ class NodeManager {
       }
       // Otherwise, create a new connection
       const nodeConnection = new NodeConnection({
-        sourceNodeId: this.nodeId,
         targetNodeId: targetNodeId,
         targetHost: targetNodeAddress.ip,
         targetPort: targetNodeAddress.port,
@@ -465,7 +489,7 @@ class NodeManager {
     }
     return await this._transaction(async () => {
       // Throw error if trying to connect to self
-      if (brokerNodeId === this.nodeId) {
+      if (brokerNodeId === this.getNodeId()) {
         throw new nodesErrors.ErrorNodeGraphSelfConnect();
       }
       // Attempt to get an existing connection
@@ -474,7 +498,6 @@ class NodeManager {
         return existingConnection;
       }
       const brokerConnection = new NodeConnection({
-        sourceNodeId: this.nodeId,
         targetNodeId: brokerNodeId,
         targetHost: brokerNodeAddress.ip,
         targetPort: brokerNodeAddress.port,
@@ -599,8 +622,8 @@ class NodeManager {
     return await connection.scanVaults();
   }
 
-  public clearDB() {
-    this.nodeGraph.clearDB();
+  public async clearDB() {
+    await this.nodeGraph.clearDB();
   }
 }
 

@@ -17,6 +17,7 @@ interface IAgentService extends grpc.ServiceDefinition<grpc.UntypedServiceImplem
     nodesClaimsGet: IAgentService_INodesClaimsGet;
     nodesChainDataGet: IAgentService_INodesChainDataGet;
     nodesHolePunchMessageSend: IAgentService_INodesHolePunchMessageSend;
+    nodesCrossSignClaim: IAgentService_INodesCrossSignClaim;
     notificationsSend: IAgentService_INotificationsSend;
 }
 
@@ -101,6 +102,15 @@ interface IAgentService_INodesHolePunchMessageSend extends grpc.MethodDefinition
     responseSerialize: grpc.serialize<Agent_pb.EmptyMessage>;
     responseDeserialize: grpc.deserialize<Agent_pb.EmptyMessage>;
 }
+interface IAgentService_INodesCrossSignClaim extends grpc.MethodDefinition<Agent_pb.CrossSignMessage, Agent_pb.CrossSignMessage> {
+    path: "/agentInterface.Agent/NodesCrossSignClaim";
+    requestStream: true;
+    responseStream: true;
+    requestSerialize: grpc.serialize<Agent_pb.CrossSignMessage>;
+    requestDeserialize: grpc.deserialize<Agent_pb.CrossSignMessage>;
+    responseSerialize: grpc.serialize<Agent_pb.CrossSignMessage>;
+    responseDeserialize: grpc.deserialize<Agent_pb.CrossSignMessage>;
+}
 interface IAgentService_INotificationsSend extends grpc.MethodDefinition<Agent_pb.NotificationMessage, Agent_pb.EmptyMessage> {
     path: "/agentInterface.Agent/NotificationsSend";
     requestStream: false;
@@ -123,6 +133,7 @@ export interface IAgentServer extends grpc.UntypedServiceImplementation {
     nodesClaimsGet: grpc.handleUnaryCall<Agent_pb.ClaimTypeMessage, Agent_pb.ClaimsMessage>;
     nodesChainDataGet: grpc.handleUnaryCall<Agent_pb.EmptyMessage, Agent_pb.ChainDataMessage>;
     nodesHolePunchMessageSend: grpc.handleUnaryCall<Agent_pb.RelayMessage, Agent_pb.EmptyMessage>;
+    nodesCrossSignClaim: grpc.handleBidiStreamingCall<Agent_pb.CrossSignMessage, Agent_pb.CrossSignMessage>;
     notificationsSend: grpc.handleUnaryCall<Agent_pb.NotificationMessage, Agent_pb.EmptyMessage>;
 }
 
@@ -152,6 +163,9 @@ export interface IAgentClient {
     nodesHolePunchMessageSend(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     nodesHolePunchMessageSend(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     nodesHolePunchMessageSend(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    nodesCrossSignClaim(): grpc.ClientDuplexStream<Agent_pb.CrossSignMessage, Agent_pb.CrossSignMessage>;
+    nodesCrossSignClaim(options: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.CrossSignMessage, Agent_pb.CrossSignMessage>;
+    nodesCrossSignClaim(metadata: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.CrossSignMessage, Agent_pb.CrossSignMessage>;
     notificationsSend(request: Agent_pb.NotificationMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -183,6 +197,8 @@ export class AgentClient extends grpc.Client implements IAgentClient {
     public nodesHolePunchMessageSend(request: Agent_pb.RelayMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public nodesHolePunchMessageSend(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public nodesHolePunchMessageSend(request: Agent_pb.RelayMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
+    public nodesCrossSignClaim(options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.CrossSignMessage, Agent_pb.CrossSignMessage>;
+    public nodesCrossSignClaim(metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<Agent_pb.CrossSignMessage, Agent_pb.CrossSignMessage>;
     public notificationsSend(request: Agent_pb.NotificationMessage, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public notificationsSend(request: Agent_pb.NotificationMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Agent_pb.EmptyMessage) => void): grpc.ClientUnaryCall;

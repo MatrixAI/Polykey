@@ -4,8 +4,10 @@ import type { NodeManager } from '../nodes';
 import type { IdentitiesManager } from '../identities';
 import type { GestaltGraph } from '../gestalts';
 import type { SessionManager } from '../sessions';
-import { NotificationsManager } from '../notifications';
-import { Discovery } from '../discovery';
+import type { NotificationsManager } from '../notifications';
+import type { Discovery } from '../discovery';
+import type { ForwardProxy, ReverseProxy } from '../network';
+import type { GRPCServer } from '../grpc';
 
 import { promisify } from 'util';
 import * as grpc from '@grpc/grpc-js';
@@ -41,6 +43,9 @@ function createClientService({
   sessionManager,
   notificationsManager,
   discovery,
+  fwdProxy,
+  revProxy,
+  grpcServer,
 }: {
   polykeyAgent: PolykeyAgent;
   keyManager: KeyManager;
@@ -51,6 +56,9 @@ function createClientService({
   sessionManager: SessionManager;
   notificationsManager: NotificationsManager;
   discovery: Discovery;
+  fwdProxy: ForwardProxy;
+  revProxy: ReverseProxy;
+  grpcServer: GRPCServer;
 }) {
   const clientService: IClientServer = {
     ...createEchoRPC({
@@ -66,7 +74,11 @@ function createClientService({
     }),
     ...createKeysRPC({
       keyManager,
+      nodeManager,
       sessionManager,
+      fwdProxy,
+      revProxy,
+      grpcServer,
     }),
     ...createIdentitiesRPC({
       identitiesManager,
@@ -81,6 +93,7 @@ function createClientService({
     }),
     ...createNodesRPC({
       nodeManager,
+      notificationsManager,
       sessionManager,
     }),
     ...createNotificationsRPC({
