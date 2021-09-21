@@ -18,22 +18,16 @@ import { WorkerManager } from '../workers';
 import * as utils from '../utils';
 
 class DB {
-  public static async createDB({
+  public static createDB({
     dbPath,
     lock = new Mutex(),
     fs = require('fs'),
     logger = new Logger(this.name),
-    dbKey,
-    bits,
-    fresh,
   }: {
     dbPath: string;
     lock?: MutexInterface;
     fs?: FileSystem;
     logger?: Logger;
-    dbKey: KeyPair;
-    bits?: number;
-    fresh?: boolean;
   }) {
     const db = new DB({
       dbPath,
@@ -41,7 +35,8 @@ class DB {
       fs,
       logger,
     });
-    await db.start({ keyPair: dbKey, bits, fresh });
+    // Going to start this with the start stop pattern.
+    // await db.start({ keyPair: dbKey, bits, fresh });
     return db;
   }
 

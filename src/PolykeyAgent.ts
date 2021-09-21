@@ -65,8 +65,7 @@ class Polykey {
   protected fs: FileSystem;
   protected logger: Logger;
 
-  public async createPolykeyAgent({
-    password,
+  constructor({
     nodePath,
     keyManager,
     vaultManager,
@@ -89,7 +88,6 @@ class Polykey {
     logger,
     discovery,
   }: {
-    password: string;
     nodePath?: string;
     keyManager?: KeyManager;
     vaultManager?: VaultManager;
@@ -111,216 +109,120 @@ class Polykey {
     fs?: FileSystem;
     logger?: Logger;
     discovery?: Discovery;
-  }): Promise<Polykey> {
-    const clientGrpcHost_ = clientGrpcHost ?? '127.0.0.1';
-    const clientGrpcPort_ = clientGrpcPort ?? 0;
-    const agentGrpcHost_ = agentGrpcHost ?? '127.0.0.1';
-    const agentGrpcPort_ = agentGrpcPort ?? 0;
-    const logger_ = logger ?? new Logger('Polykey');
-    const fs_ = fs ?? require('fs');
-    const nodePath_ = path.resolve(nodePath ?? utils.getDefaultNodePath());
-    const keysPath = path.join(nodePath_, 'keys');
-    const vaultsPath = path.join(nodePath_, 'vaults');
-    const dbPath = path.join(nodePath_, 'db');
+  } = {}) {
+    this.clientGrpcHost = clientGrpcHost ?? '127.0.0.1';
+    this.clientGrpcPort = clientGrpcPort ?? 0;
+    this.agentGrpcHost = agentGrpcHost ?? '127.0.0.1';
+    this.agentGrpcPort = agentGrpcPort ?? 0;
+    this.logger = logger ?? new Logger('Polykey');
+    this.fs = fs ?? require('fs');
+    this.nodePath = path.resolve(nodePath ?? utils.getDefaultNodePath());
+    const keysPath = path.join(this.nodePath, 'keys');
+    const vaultsPath = path.join(this.nodePath, 'vaults');
+    const dbPath = path.join(this.nodePath, 'db');
 
-    const fwdProxy_ =
+    this.fwdProxy =
       fwdProxy ??
       new ForwardProxy({
         authToken: authToken ?? ' ',
-        logger: logger_,
+        logger: this.logger,
       });
-    const revProxy_ =
+    this.revProxy =
       revProxy ??
       new ReverseProxy({
-        logger: logger_,
+        logger: this.logger,
       });
-
-    const keys_ =
-      keyManager ??
-      await KeyManager.createKeyManager({
-        keysPath,
-        fs: fs,
-        logger: logger_.getChild('KeyManager'),
-        password,
-      });
-    const dbKey = keys_.getRootKeyPair()
-    const db_ =
-      db ??
-      await DB.createDB({
-        dbPath: dbPath,
-        fs: fs_,
-        logger: logger_,
-        dbKey,
-      });
-    const sigchain_ =
-      sigchain ??
-      new Sigchain({
-        keyManager: keys_,
-        db: db_,
-        logger: logger_.getChild('Sigchain'),
-      });
-    const acl_ =
-      acl ??
-      new ACL({
-        db: db_,
-        logger: logger_.getChild('ACL'),
-      });
-    const gestalts_ =
-      gestaltGraph ??
-      new GestaltGraph({
-        db: db_,
-        acl: acl_,
-        logger: logger_.getChild('GestaltGraph'),
-      });
-    const nodes_ =
-      nodeManager ??
-      new NodeManager({
-        db: db_,
-        sigchain: sigchain_,
-        keyManager: keys_,
-        fwdProxy: fwdProxy_,
-        revProxy: revProxy_,
-        fs: fs_,
-        logger: logger_.getChild('NodeManager'),
-      });
-    const vaults_ =
-      vaultManager ??
-      new VaultManager({
-        vaultsPath: vaultsPath,
-        keyManager: keys_,
-        nodeManager: nodes_,
-        db: db_,
-        acl: acl_,
-        gestaltGraph: gestalts_,
-        fs: fs_,
-        logger: logger_.getChild('VaultManager'),
-      });
-    const identities_ =
-      identitiesManager ??
-      new IdentitiesManager({
-        db: db_,
-        logger: logger_.getChild('IdentitiesManager'),
-      });
-    const discovery_ =
-      discovery ??
-      new Discovery({
-        gestaltGraph: gestalts_,
-        identitiesManager: identities_,
-        nodeManager: nodes_,
-        logger: logger_.getChild('Discovery'),
-      });
-    const notifications_ =
-      notificationsManager ??
-      new NotificationsManager({
-        acl: acl_,
-        db: db_,
-        nodeManager: nodes_,
-        keyManager: keys_,
-        logger: logger_.getChild('NotificationsManager'),
-      });
-    const workers_ =
-      workerManager ??
-      new WorkerManager({
-        logger: logger_.getChild('WorkerManager'),
-      });
-
-    return new Polykey({
-      acl: acl_,
-      agentGrpcHost: agentGrpcHost_,
-      agentGrpcPort: agentGrpcPort_,
-      clientGrpcHost: clientGrpcHost_,
-      clientGrpcPort: clientGrpcPort_,
-      db: db_,
-      discovery: discovery_,
-      fs: fs_,
-      fwdProxy: fwdProxy_,
-      gestaltGraph: gestalts_,
-      identitiesManager: identities_,
-      keyManager: keys_,
-      logger: logger_,
-      nodeManager: nodes_,
-      nodePath: nodePath_,
-      notificationsManager: notifications_,
-      revProxy: revProxy_,
-      sigchain: sigchain_,
-      vaultManager: vaults_,
-      workerManager: workers_
-    });
-
-    // Starting the agent.
-    // await polykeyAgent_.start();
-  }
-
-  protected constructor({
-    nodePath,
-    keyManager,
-    vaultManager,
-    nodeManager,
-    gestaltGraph,
-    identitiesManager,
-    sigchain,
-    notificationsManager,
-    acl,
-    db,
-    workerManager,
-    clientGrpcHost,
-    agentGrpcHost,
-    clientGrpcPort,
-    agentGrpcPort,
-    fwdProxy,
-    revProxy,
-    fs,
-    logger,
-    discovery,
-  }: {
-    nodePath: string;
-    keyManager: KeyManager;
-    vaultManager: VaultManager;
-    nodeManager: NodeManager;
-    gestaltGraph: GestaltGraph;
-    identitiesManager: IdentitiesManager;
-    sigchain: Sigchain;
-    notificationsManager: NotificationsManager;
-    acl: ACL;
-    db: DB;
-    workerManager: WorkerManager;
-    clientGrpcHost: string;
-    agentGrpcHost: string;
-    clientGrpcPort: number;
-    agentGrpcPort: number;
-    fwdProxy: ForwardProxy;
-    revProxy: ReverseProxy;
-    fs: FileSystem;
-    logger: Logger;
-    discovery: Discovery;
-  }) {
-    this.clientGrpcHost = clientGrpcHost;
-    this.clientGrpcPort = clientGrpcPort;
-    this.agentGrpcHost = agentGrpcHost;
-    this.agentGrpcPort = agentGrpcPort;
-    this.logger = logger;
-    this.fs = fs;
-    this.nodePath = nodePath;
-
-    this.fwdProxy = fwdProxy;
-    this.revProxy = revProxy;
 
     this.lockfile = new Lockfile({
       nodePath: this.nodePath,
       fs: this.fs,
       logger: this.logger.getChild('Lockfile'),
     });
-    this.keys = keyManager;
-    this.db = db;
-    this.sigchain = sigchain ;
-    this.acl = acl;
-    this.gestalts = gestaltGraph;
-    this.nodes = nodeManager;
-    this.vaults = vaultManager;
-    this.identities = identitiesManager;
-    this.discovery = discovery;
-    this.notifications = notificationsManager;
-    this.workers = workerManager;
+    this.keys =
+      keyManager ??
+      KeyManager.createKeyManager({
+        keysPath,
+        fs: this.fs,
+        logger: this.logger.getChild('KeyManager'),
+      });
+    this.db =
+      db ??
+      DB.createDB({
+        dbPath: dbPath,
+        fs: this.fs,
+        logger: this.logger,
+      });
+    this.sigchain =
+      sigchain ??
+      new Sigchain({
+        keyManager: this.keys,
+        db: this.db,
+        logger: this.logger.getChild('Sigchain'),
+      });
+    this.acl =
+      acl ??
+      new ACL({
+        db: this.db,
+        logger: this.logger.getChild('ACL'),
+      });
+    this.gestalts =
+      gestaltGraph ??
+      new GestaltGraph({
+        db: this.db,
+        acl: this.acl,
+        logger: this.logger.getChild('GestaltGraph'),
+      });
+    this.nodes =
+      nodeManager ??
+      new NodeManager({
+        db: this.db,
+        sigchain: this.sigchain,
+        keyManager: this.keys,
+        fwdProxy: this.fwdProxy,
+        revProxy: this.revProxy,
+        fs: this.fs,
+        logger: this.logger.getChild('NodeManager'),
+      });
+    this.vaults =
+      vaultManager ??
+      new VaultManager({
+        vaultsPath: vaultsPath,
+        keyManager: this.keys,
+        nodeManager: this.nodes,
+        db: this.db,
+        acl: this.acl,
+        gestaltGraph: this.gestalts,
+        fs: this.fs,
+        logger: this.logger.getChild('VaultManager'),
+      });
+    this.identities =
+      identitiesManager ??
+      new IdentitiesManager({
+        db: this.db,
+        logger: this.logger.getChild('IdentitiesManager'),
+      });
+    this.discovery =
+      discovery ??
+      new Discovery({
+        gestaltGraph: this.gestalts,
+        identitiesManager: this.identities,
+        nodeManager: this.nodes,
+        logger: this.logger.getChild('Discovery'),
+      });
+    this.notifications =
+      notificationsManager ??
+      new NotificationsManager({
+        acl: this.acl,
+        db: this.db,
+        nodeManager: this.nodes,
+        keyManager: this.keys,
+        logger: this.logger.getChild('NotificationsManager'),
+      });
+    this.workers =
+      workerManager ??
+      new WorkerManager({
+        logger: this.logger.getChild('WorkerManager'),
+      });
     this.sessions = new SessionManager({
       db: this.db,
       logger: logger,
@@ -373,12 +275,12 @@ class Polykey {
    * @param options: password, bits, duration, fresh
    */
   public async start({
-    // password,
+    password,
     rootKeyPairBits,
     rootCertDuration,
     fresh = false,
   }: {
-    // password: string;
+    password: string;
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     fresh?: boolean;
@@ -446,21 +348,21 @@ class Polykey {
     // starting modules
     await this.workers.start();
     this.keys.setWorkerManager(this.workers);
-    // await this.keys.start({
-    //   password,
-    //   rootKeyPairBits,
-    //   rootCertDuration,
-    //   fresh,
-    // });
+    await this.keys.start({
+      password,
+      rootKeyPairBits,
+      rootCertDuration,
+      fresh,
+    });
 
     // Getting NodeId
     const cert = this.keys.getRootCert();
     const nodeId = certNodeId(cert);
 
-    // await this.db.start({
-    //   keyPair: this.keys.getRootKeyPair(),
-    //   bits: rootKeyPairBits,
-    // });
+    await this.db.start({
+      keyPair: this.keys.getRootKeyPair(),
+      bits: rootKeyPairBits,
+    });
 
     await this.acl.start({ fresh });
 

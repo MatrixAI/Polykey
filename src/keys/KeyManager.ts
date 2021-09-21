@@ -34,29 +34,21 @@ class KeyManager {
   protected _started: boolean = false;
   protected workerManager?: WorkerManager;
 
-  static async createKeyManager({
+  static createKeyManager({
     keysPath,
     fs,
     logger,
-    password,
-    rootKeyPairBits,
-    rootCertDuration,
-    fresh,
   }: {
     keysPath: string;
     fs?: FileSystem;
     logger?: Logger;
-    password: string;
-    rootKeyPairBits?: number;
-    rootCertDuration?: number;
-    fresh?: boolean;
-  }): Promise<KeyManager>{
+  }): KeyManager{
     const logger_ = logger ?? new Logger(this.constructor.name);
     const fs_ = fs ?? require('fs')
 
     const keyManager_ = new KeyManager({ fs: fs_, logger: logger_, keysPath })
-    await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
-    return keyManager_
+    // await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
+    return keyManager_;
   }
 
   protected constructor({

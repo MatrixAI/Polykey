@@ -325,7 +325,7 @@ class NotificationsManager {
       const notifications: Array<Notification> = [];
       for await (const v of this.notificationsMessagesDb.createValueStream()) {
         const data = v as Buffer;
-        const notification = this.db.unserializeDecrypt<Notification>(data);
+        const notification = await this.db.deserializeDecrypt<Notification>(data);
         if (type === 'all') {
           notifications.push(notification);
         } else if (type === 'unread') {
