@@ -1,6 +1,6 @@
 import type {
   Refs,
-  RefsAdResponse,
+  SymRefs,
   Ack,
   BufferEncoding,
   Identity,
@@ -16,7 +16,7 @@ import type {
   WrappedObject,
   RawObject,
 } from 'isomorphic-git';
-import type { EncryptedFS } from 'encryptedfs';
+import type { FileSystem } from '../types';
 
 import path from 'path';
 import pako from 'pako';
@@ -24,7 +24,7 @@ import Hash from 'sha.js/sha1';
 import { PassThrough } from 'readable-stream';
 import createHash from 'sha.js';
 
-import * as vaultUtils from '../vaults/utils';
+// import * as vaultUtils from '../vaults/utils';
 import { errors as gitErrors } from './';
 
 const refpaths = (ref: string) => [
@@ -72,22 +72,31 @@ function createGitPacketLine(line: string): string {
 }
 
 async function writeRefsAdResponse(
-  info: RefsAdResponse,
+  {
+    capabilities,
+    refs,
+    symrefs
+  }:
+  {
+    capabilities: string[],
+    refs: Refs,
+    symrefs: SymRefs
+  }
 ): Promise<Array<Buffer>> {
   const stream: Buffer[] = [];
   // Compose capabilities string
   let syms = '';
   let a = '';
-  for (const [key, value] of Object.entries(info.symrefs)) {
+  for (const [key, value] of Object.entries(symrefs)) {
     syms += `symref=${key}:${value} `;
     a = value;
   }
-  let caps = `\x00${[...info.capabilities].join(
+  let caps = `\x00${[...capabilities].join(
     ' ',
   )} ${syms}agent=git/isomorphic-git@1.8.1`;
   // Note: In the edge case of a brand new repo, zero refs (and zero capabilities)
   // are returned.
-  for (const [key, value] of Object.entries(info.refs)) {
+  for (const [key, value] of Object.entries(refs)) {
     stream.push(encode(`${value} ${key}${caps}\n`));
     stream.push(encode(`${value} ${a}\n`));
     caps = '';
@@ -96,18 +105,17 @@ async function writeRefsAdResponse(
   return stream;
 }
 
+/**
+ * Returns the hex encoded format of the input string
+ */
 function encode(line: string | Buffer): Buffer {
   if (typeof line === 'string') {
     line = Buffer.from(line);
   }
   const length = line.length + 4;
-  const hexlength = padHex(4, length);
-  return Buffer.concat([Buffer.from(hexlength, 'utf8'), line]);
-}
-
-function padHex(bytes: number, length: number): string {
   const s = length.toString(16);
-  return '0'.repeat(bytes - s.length) + s;
+  const hexLength = '0'.repeat(4 - s.length) + s;
+  return Buffer.concat([Buffer.from(hexLength, 'utf8'), line]);
 }
 
 function compareRefNames(refa: string, refb: string): number {
@@ -152,8 +160,8 @@ function textToPackedRefs(text: string): Refs {
   return refs;
 }
 
-async function packedRefs(fs: EncryptedFS, gitdir: string): Promise<Refs> {
-  const text = await fs.readFile(path.join(gitdir, 'packed-refs'), {
+async function packedRefs(fs: FileSystem, gitdir: string): Promise<Refs> {
+  const text = await fs.promises.readFile(path.join(gitdir, 'packed-refs'), {
     encoding: 'utf8',
   });
   const refs = textToPackedRefs(text.toString());
@@ -161,25 +169,25 @@ async function packedRefs(fs: EncryptedFS, gitdir: string): Promise<Refs> {
 }
 
 async function listRefs(
-  fs: EncryptedFS,
+  fs: FileSystem,
   gitdir: string,
   filepath: string,
 ): Promise<string[]> {
   const packedMap = packedRefs(fs, gitdir);
   let files: string[] = [];
-  try {
-    for (const file of await vaultUtils.readdirRecursivelyEFS(
-      fs,
-      path.join(gitdir, filepath),
-    )) {
-      files.push(file);
-    }
-    files = files.map((x) => x.replace(path.join(gitdir, filepath, '/'), ''));
-  } catch (err) {
-    files = [];
-  }
+  // try {
+  //   for (const file of await vaultUtils.readdirRecursivelyEFS(
+  //     fs,
+  //     path.join(gitdir, filepath),
+  //   )) {
+  //     files.push(file);
+  //   }
+  //   files = files.map((x) => x.replace(path.join(gitdir, filepath, '/'), ''));
+  // } catch (err) {
+  //   files = [];
+  // }
 
-  for (let key of Object.keys(await packedMap)) {
+  for await (let key of Object.keys(packedMap)) {
     // filter by prefix
     if (key.startsWith(filepath)) {
       // remove prefix
@@ -196,7 +204,7 @@ async function listRefs(
 }
 
 async function resolve(
-  fs: EncryptedFS,
+  fs: FileSystem,
   gitdir: string,
   ref: string,
   depth?: number,
@@ -221,19 +229,24 @@ async function resolve(
   // Look in all the proper paths, in this order
   const allpaths = refpaths(ref).filter((p) => !GIT_FILES.includes(p)); // exclude git system files (#709)
   for (const ref of allpaths) {
-    const sha =
-      (
-        await fs.readFile(path.join(gitdir, ref), { encoding: 'utf8' })
-      ).toString() || packedMap[ref].line; // FIXME: not sure what is going on here.
+    let sha;
+    try {
+      sha =
+        (
+          await fs.promises.readFile(path.join(gitdir, ref), { encoding: 'utf8' })
+        ).toString() || packedMap[ref].line; // FIXME: not sure what is going on here.
+    } catch (err) {
+      if (err.code === 'ENOENT') throw new gitErrors.ErrorGitUndefinedRefs(`Ref ${ref} cannot be found`)
+    }
     if (sha != null) {
       return resolve(fs, gitdir, sha.trim(), depth); //FIXME: sha is string or config?
     }
   }
-  throw new gitErrors.ErrorGitUndefinedRefs('Refs not found');
+  throw new gitErrors.ErrorGitUndefinedRefs(`ref ${ref} corrupted`);
 }
 
 async function uploadPack(
-  fs: EncryptedFS,
+  fs: FileSystem,
   gitdir: string = '.git',
   advertiseRefs = false,
 ): Promise<Array<Buffer> | undefined> {
@@ -249,7 +262,7 @@ async function uploadPack(
       }
       const symrefs = {};
       symrefs['HEAD'] = await resolve(fs, gitdir, 'HEAD', 2);
-      const write: RefsAdResponse = {
+      const write = {
         capabilities: capabilities,
         refs: refs,
         symrefs: symrefs,
@@ -263,11 +276,20 @@ async function uploadPack(
 }
 
 async function packObjects(
-  fs: EncryptedFS,
-  gitdir: string = '.git',
-  refs: string[],
-  depth?: number,
-  haves?: string[],
+  {
+    fs,
+    gitdir = '.git',
+    refs,
+    depth = undefined,
+    haves = undefined,
+  }:
+  {
+    fs: FileSystem,
+    gitdir: string,
+    refs: string[],
+    depth?: number,
+    haves?: string[],
+  }
 ): Promise<Pack> {
   const oids = new Set<string>();
   const shallows = new Set<string>();
@@ -306,7 +328,7 @@ async function packObjects(
 }
 
 async function listObjects(
-  fs: EncryptedFS,
+  fs: FileSystem,
   gitdir = '.git',
   oids: string[],
 ): Promise<Array<string>> {
@@ -319,7 +341,7 @@ async function listObjects(
   // tell us which oids are Blobs and which are Trees. And we
   // do not need to recurse through commit parents.
   async function walk(oid: string): Promise<void> {
-    const gitObject = await read(fs, gitdir, oid);
+    const gitObject = await readObject({ fs, gitdir, oid });
     if (gitObject.type === 'commit') {
       commits.add(oid);
       const commit = commitFrom(Buffer.from(gitObject.object));
@@ -416,7 +438,7 @@ function parseBuffer(buffer: Buffer): TreeObject {
 }
 
 async function log(
-  fs: EncryptedFS,
+  fs: FileSystem,
   gitdir = '.git',
   ref = 'HEAD',
   depth: number | undefined,
@@ -480,12 +502,12 @@ function compareAge(a: ReadCommitResult, b: ReadCommitResult): number {
 }
 
 async function logCommit(
-  fs: EncryptedFS,
+  fs: FileSystem,
   gitdir: string,
   oid: string,
   signing: boolean,
 ): Promise<ReadCommitResult> {
-  const gitObject = await read(fs, gitdir, oid);
+  const gitObject = await readObject({ fs, gitdir, oid });
   if (gitObject.type !== 'commit') {
     throw new gitErrors.ErrorGitUndefinedType(
       `Expected type to be commit, but instead found ${gitObject.type}`,
@@ -686,107 +708,147 @@ function commitFrom(commit: string | Buffer | CommitObject): string {
   return commitRet;
 }
 
-async function read(
-  fs: EncryptedFS,
-  gitdir: string,
-  oid: string,
-  format = 'content',
+async function readObject(
+  {
+    fs,
+    gitdir,
+    oid,
+    format = 'parsed',
+  }:
+  {
+    fs: FileSystem,
+    gitdir: string,
+    oid: string,
+    format?: string,
+  }
 ): Promise<DeflatedObject | WrappedObject | RawObject> {
-  let file;
-  // Look for it in the loose object directory.
-  try {
-    file = await fs.readFile(
-      path.join(gitdir, 'objects', oid.slice(0, 2), oid.slice(2)),
-    );
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      // empty
-    }
+  const _format = format === 'parsed' ? 'content': format;
+  // Curry the current read method so that the packfile un-deltification
+  // process can acquire external ref-deltas.
+  const getExternalRefDelta = (oid: string) => readObject({ fs, gitdir, oid });
+  let result;
+  // Empty tree - hard-coded so we can use it as a shorthand.
+  // Note: I think the canonical git implementation must do this too because
+  // `git cat-file -t 4b825dc642cb6eb9a060e54bf8d69288fbee4904` prints "tree" even in empty repos.
+  if (oid === '4b825dc642cb6eb9a060e54bf8d69288fbee4904') {
+    result = { format: 'wrapped', object: Buffer.from(`tree 0\x00`) }
   }
   const source = path.join('objects', oid.slice(0, 2), oid.slice(2));
+  // Look for it in the loose object directory
+  try {
+    result =
+      {
+        object:
+          await fs.promises.readFile(
+            path.join(gitdir, source),
+          ),
+        format: 'deflated',
+        source: source,
+      };
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      // Object was not in the loose object directory
+    }
+  }
   // Check to see if it's in a packfile.
-  if (file == null) {
-    // Curry the current read method so that the packfile un-deltification
-    // process can acquire external ref-deltas.
-    const getExternalRefDelta = (oid: string) => read(fs, gitdir, oid);
+  if (result == null) {
     // Iterate through all the .pack files
-    const list = await fs.readdir(path.join(gitdir, '/objects/pack'));
+    const list = await fs.promises.readdir(path.join(gitdir, 'objects', 'pack'));
     let stringList = list.map(x => {return x.toString();})
     stringList = stringList.filter((x: string) => x.endsWith('.idx'));
     for (const filename of stringList) {
       const indexFile = path.join(gitdir, 'objects', 'pack', filename);
-      const idx = await fs.readFile(indexFile);
+      const idx = await fs.promises.readFile(indexFile);
       const p = fromIdx(Buffer.from(idx), getExternalRefDelta);
       if (p == null) {
         break;
       }
-      // const p = PackfileCache[filename];
       // If the packfile DOES have the oid we're looking for...
       if (p.offsets.has(oid)) {
         // Make sure the packfile is loaded in memory
         if (!p.pack) {
           const packFile = indexFile.replace(/idx$/, 'pack');
-          const pack = await fs.readFile(packFile);
+          const pack = await fs.promises.readFile(packFile);
           p.pack = Buffer.from(pack);
         }
         // Get the resolved git object from the packfile
-        const result = await readPack(p, oid);
+        result = await readPack(p, oid);
         result.format = 'content';
-        result.source = `objects/pack/${filename.replace(/idx$/, 'pack')}`;
-        return result;
+        result.source = path.join('objects', 'pack', filename.replace(/idx$/, 'pack'));
       }
     }
   }
-  // Check to see if it's in shallow commits.
-  if (file == null) {
-    try {
-      const text: string = (await fs.readFile(path.join(gitdir, 'shallow'), {
-        encoding: 'utf8',
-      })).toString();
-      if (text !== null && text.includes(oid)) {
-        throw new gitErrors.ErrorGitReadObject(`ReadShallowObjectFail: ${oid}`);
-      }
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        throw new gitErrors.ErrorGitReadObject(`ReadObjectFail: ${oid}`);
-      }
-    }
+  // If the object has not been found yet throw an error
+  if (result == null) {
+    throw new gitErrors.ErrorGitReadObject(`Failed to read object ${oid}`);
   }
-
   if (format === 'deflated') {
-    return {
-      oid: oid,
-      type: 'deflated',
-      format: 'deflated',
-      object: file,
-      source: source,
-    };
+    result.oid = oid;
+  } else if (result.format === 'deflated' || result.format === 'wrapped' || result.format === 'content') {
+    if (result.format === 'deflated') {
+      result.object = Buffer.from(pako.inflate(result.object));
+      result.format = 'wrapped';
+    }
+    if (result.format === 'wrapped') {
+      if (format === 'wrapped' && result.format === 'wrapped') {
+        return {
+          oid: oid,
+          type: 'wrapped',
+          format: result.format,
+          object: result.object,
+          source: result.source,
+        };
+      }
+      const sha = new Hash().update(result.object).digest('hex');
+      if (sha !== oid) {
+        throw new gitErrors.ErrorGitReadObject(
+          `SHA check failed! Expected ${oid}, computed ${sha}`,
+        );
+      }
+      const { type, object } = unwrap(
+        result.object,
+      );
+      result.type = type;
+      result.object = object;
+      result.format = 'content';
+    }
+    if (result.format === 'content') {
+      if (format === 'content') {
+        return {
+          oid: oid,
+          type: result.type,
+          format: result.format,
+          object: result.object,
+          source: result.source,
+        };
+      }
+    }
+  } else {
+    throw new gitErrors.ErrorGitReadObject(`Unsupported format type: ${result.format}`);
   }
-  const buffer = Buffer.from(pako.inflate(file));
-  if (format === 'wrapped') {
-    return {
-      oid: oid,
-      type: 'wrapped',
-      format: 'wrapped',
-      object: buffer,
-      source: source,
-    };
+  if (format === 'parsed') {
+    result.format = 'parsed'
+    switch (result.type) {
+      case 'commit':
+        result.object = parse(commitFrom(result.object));
+        break
+      case 'tree':
+        result.object = treeFrom(result.object).entries()
+        break
+      case 'blob':
+        // Here we consider returning a raw Buffer as the 'content' format
+        // and returning a string as the 'parsed' format
+        result.object = new Uint8Array(result.object)
+        result.format = 'content'
+        break
+      default:
+        throw new gitErrors.ErrorGitUndefinedType(
+          `Object ${result.oid} type ${result.type} not recognised`);
+    }
+  } else if (result.format === 'deflated' || result.format === 'wrapped') {
+    result.type = result.format
   }
-  const { type, object } = unwrap({
-    oid: oid,
-    type: 'wrapped',
-    format: 'wrapped',
-    object: buffer,
-  });
-  if (format === 'content')
-    return {
-      oid: oid,
-      type: type,
-      format: 'content',
-      object: object,
-      source: source,
-    };
-  throw new gitErrors.ErrorGitReadObject(`Unsupported format type: ${format}`);
+  return result;
 }
 
 async function readPack(
@@ -984,7 +1046,7 @@ function otherVarIntDecode(reader: BufferCursor, startWith: number): number {
 
 function fromIdx(
   idx: Buffer,
-  getExternalRefDelta: (
+  getExternalRefDelta?: (
     oid: string,
   ) => Promise<DeflatedObject | WrappedObject | RawObject>,
 ): PackIndex | undefined {
@@ -1029,27 +1091,19 @@ function fromIdx(
   };
 }
 
-function unwrap(wrap: WrappedObject): {
-  type: 'commit' | 'blob' | 'tree';
+function unwrap(buffer: Buffer): {
+  type: string;
   object: Buffer;
 } {
-  if (wrap.oid) {
-    const sha = new Hash().update(wrap.object).digest('hex');
-    if (sha !== wrap.oid) {
-      throw new gitErrors.ErrorGitReadObject(
-        `SHA check failed! Expected ${wrap.oid}, computed ${sha}`,
-      );
-    }
-  }
-  const s = wrap.object.indexOf(32); // first space
-  const i = wrap.object.indexOf(0); // first null value
-  const type = wrap.object.slice(0, s).toString(); // get type of object
-  if (type !== 'commit' && type !== 'tree' && type !== 'blob')
-    throw new gitErrors.ErrorGitUndefinedType(
-      `Object of type ${type} not recognised`,
-    );
-  const length = wrap.object.slice(s + 1, i).toString(); // get type of object
-  const actualLength = wrap.object.length - (i + 1);
+  const s = buffer.indexOf(32); // first space
+  const i = buffer.indexOf(0); // first null value
+  const type = buffer.slice(0, s).toString('utf8'); // get type of object
+  // if (type !== 'commit' && type !== 'tree' && type !== 'blob')
+  //   throw new gitErrors.ErrorGitUndefinedType(
+  //     `Object of type ${type} not recognised`,
+  //   );
+  const length = buffer.slice(s + 1, i).toString('utf8'); // get type of object
+  const actualLength = buffer.length - (i + 1);
   // verify length
   if (parseInt(length) !== actualLength) {
     throw new gitErrors.ErrorGitReadObject(
@@ -1058,12 +1112,12 @@ function unwrap(wrap: WrappedObject): {
   }
   return {
     type: type,
-    object: Buffer.from(wrap.object.slice(i + 1)),
+    object: Buffer.from(buffer.slice(i + 1)),
   };
 }
 
 async function pack(
-  fs: EncryptedFS,
+  fs: FileSystem,
   gitdir: string = '.git',
   oids: string[],
   outputStream: PassThrough,
@@ -1116,7 +1170,7 @@ async function pack(
   const paddedChunk = '0'.repeat(8 - unpaddedChunk.length) + unpaddedChunk;
   write(paddedChunk, 'hex');
   for (const oid of oids) {
-    const { type, object } = await read(fs, gitdir, oid);
+    const { type, object } = await readObject({ fs, gitdir, oid });
     writeObject(object, type);
   }
   // Write SHA1 checksum
@@ -1269,4 +1323,15 @@ class BufferCursor {
   }
 }
 
-export { createGitPacketLine, uploadPack, packObjects, mux, iteratorFromData };
+export {
+  createGitPacketLine,
+  uploadPack,
+  packObjects,
+  mux,
+  iteratorFromData,
+  encode,
+  fromIdx,
+  listRefs,
+  resolve,
+  readObject,
+};
