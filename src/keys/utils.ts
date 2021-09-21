@@ -31,6 +31,7 @@ import config from '../config';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
 import { promisify } from '../utils';
+import base58 from 'bs58';
 
 /**
  * Polykey OIDs start at 1.3.6.1.4.1.57167.2
@@ -157,7 +158,8 @@ function publicKeyToFingerprintBytes(
 function publicKeyToFingerprint(publicKey: PublicKey): PublicKeyFingerprint {
   const fString = publicKeyToFingerprintBytes(publicKey);
   const fTypedArray = forgeUtil.binary.raw.decode(fString);
-  const f = forgeUtil.binary.base64.encode(fTypedArray);
+  const f = base58.encode(fTypedArray);
+  // const f = forgeUtil.binary.base64.encode(fTypedArray);
   return f;
 }
 

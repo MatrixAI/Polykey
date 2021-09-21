@@ -1,5 +1,6 @@
 import type { NodeId } from '@/nodes/types';
 import * as nodesUtils from '@/nodes/utils';
+import { isNodeId, makeNodeId } from '@/nodes/utils';
 
 describe('Nodes utils', () => {
   test('basic distance calculation', async () => {
@@ -48,4 +49,15 @@ describe('Nodes utils', () => {
     const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2, 352);
     expect(bucketIndex).toBe(351);
   });
+  test('testing type guard.', async () => {
+    const invalidNodeId = 'invalid!!';
+    const validNodeIdString = 'A'.repeat(44);
+    const validNodeId = validNodeIdString as NodeId;
+    expect(isNodeId(validNodeIdString)).toBeTruthy();
+    expect(isNodeId(makeNodeId(validNodeIdString))).toBeTruthy();
+    expect(isNodeId(validNodeId)).toBeTruthy();
+    expect(isNodeId(invalidNodeId)).toBeFalsy();
+    expect(isNodeId(invalidNodeId as NodeId)).toBeFalsy();
+    // expect(makeNodeId(invalidNodeId)).toThrow();
+  })
 });

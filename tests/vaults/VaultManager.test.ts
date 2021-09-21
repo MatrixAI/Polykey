@@ -422,33 +422,54 @@ describe('VaultManager is', () => {
     await vaultManager.renameVault(v9!, 'Vault10');
     await vaultManager.createVault('ThirdImpact');
     await vaultManager.createVault('Cake');
+    console.log('a');
     await vault9.addSecret('MySecret', 'MyActualPassword');
+    console.log('a');
     const vn: Array<string> = [];
+    console.log('a');
     (await vaultManager.listVaults()).forEach((a) => vn.push(a.name));
+    console.log('a');
     expect(vn.sort()).toEqual(alteredVaultNames.sort());
+    console.log('a');
     await vaultManager.stop();
+    console.log('a');
     await gestaltGraph.stop();
+    console.log('a');
     await acl.stop();
+    console.log('a');
     await db.stop();
 
+    console.log('a');
     await db.start({
       keyPair: keyManager.getRootKeyPair(),
     });
+    console.log('a');
     await acl.start();
+    console.log('a');
     await gestaltGraph.start();
+    console.log('a');
     await vaultManager.start({});
+    console.log('a');
     await vaultManager.createVault('Pumpkin');
+    console.log('a');
     const v102 = await vaultManager.getVaultId('Vault10');
+    console.log('a');
     expect(v102).toBeTruthy();
+    console.log('a');
     const secret = await (
       await vaultManager.getVault(v102!)
     ).getSecret('MySecret');
+    console.log('a');
     expect(secret.toString()).toBe('MyActualPassword');
+    console.log('a');
     alteredVaultNames.push('Pumpkin');
+    console.log('a');
     expect((await vaultManager.listVaults()).length).toEqual(
       alteredVaultNames.length,
     );
+    console.log('a');
     await vaultManager.stop();
+    console.log('a');
   });
   /* TESTING TODO:
    *  Changing the default node to pull from

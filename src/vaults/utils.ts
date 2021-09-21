@@ -24,8 +24,7 @@ async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
 
 function generateVaultId(nodeId: NodeId): VaultId {
   const vaultId = uuid();
-  const id = nodeId.replace(new RegExp(/[\/]/g), '');
-  return (vaultId + ':' + id) as VaultId;
+  return (vaultId + ':' + nodeId) as VaultId;
 }
 
 function splitVaultId(vaultId: VaultId): VaultId {

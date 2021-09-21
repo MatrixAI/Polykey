@@ -72,7 +72,7 @@ class Vault {
 
   // TODO: Once EFS is updated, pass `this.fs` into EFS constructor
   public async start({ key }: { key: VaultKey }): Promise<void> {
-    this.efs = await EncryptedFS.createEncryptedFS({ dbKey: key, dbPath: this.baseDir });
+    this.efs = await EncryptedFS.createEncryptedFS({ dbKey: key, dbPath: this.baseDir , logger: this.logger.getChild('EncryptedFS')});
     const release = await this.lock.acquire();
     try {
       if (!(await this.efs.exists('.git'))) {
@@ -174,7 +174,7 @@ class Vault {
       this.logger.info(`Wrote secret to directory at '${secretName}'`);
 
       // Commit the changes
-      await this.commitChanges(
+      await this.commitChanges( // FIXME: this is failing for some reason.
         [
           {
             fileName: secretName,
@@ -183,6 +183,7 @@ class Vault {
         ],
         `Add secret: ${secretName}`,
       );
+      console.log('a');
       if (await this.efs.exists(secretName)) {
         return true;
       }

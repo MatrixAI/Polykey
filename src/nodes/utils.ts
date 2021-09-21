@@ -2,7 +2,6 @@ import type { NodeId, NodeData } from './types';
 
 import { Validator } from 'ip-num';
 
-const validNodeId = /^[A-Za-z0-9+/]{43}=$/;
 
 /**
  * Compute the distance between two nodes.
@@ -55,11 +54,17 @@ function calculateBucketIndex(
   return bucketIndex;
 }
 
+const validNodeId = /^[A-Za-z0-9]{44}$/;
 /**
  * Validates that a provided node ID string is a valid node ID.
  */
-function isNodeId(nodeId: string): boolean {
+function isNodeId(nodeId: string): nodeId is NodeId {
   return validNodeId.test(nodeId);
+}
+
+function makeNodeId(arg: any): NodeId {
+  if(isNodeId(arg)) return arg;
+  throw Error('Invalid nodeID')
 }
 
 /**
@@ -100,6 +105,7 @@ export {
   calculateDistance,
   calculateBucketIndex,
   isNodeId,
+  makeNodeId,
   isValidHost,
   nodeIdToU8,
   sortByDistance,

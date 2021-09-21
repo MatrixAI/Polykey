@@ -106,6 +106,7 @@ describe('NodeManager', () => {
         logger: logger,
       });
       const serverNodeId = server.nodes.getNodeId();
+      console.log(serverNodeId);
       let serverNodeAddress: NodeAddress = {
         ip: server.revProxy.getIngressHost(),
         port: server.revProxy.getIngressPort(),

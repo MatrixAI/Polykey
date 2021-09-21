@@ -350,7 +350,7 @@ class VaultManager {
     // Read all vault objects from the database
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const id = (o as any).value;
-      const name = (o as any).key as string;
+      const name = (o as any).key.toString() as string;
       const vaultId = await this.db.deserializeDecrypt<VaultId>(id);
       vaults.push({
         name: name,
@@ -528,10 +528,7 @@ class VaultManager {
     const client = this.nodeManager.getClient(nodeId);
 
     // Compile the vault Id
-    const id =
-      vaultsUtils.splitVaultId(vaultId) +
-      ':' +
-      nodeId.replace(new RegExp(/[\/]/g), '');
+    const id =`${vaultsUtils.splitVaultId(vaultId)}:${nodeId}`;
 
     // Send a message to the connected agent to see if the clone can occur
     const vaultPermMessage = new agentPB.VaultPermMessage();
@@ -572,11 +569,7 @@ class VaultManager {
 
     // Set the default pulling node to the specified node Id
     await this.setDefaultNode(
-      (vaultsUtils.splitVaultId(vaultId) +
-        ':' +
-        this.nodeManager
-          .getNodeId()
-          .replace(new RegExp(/[\/]/g), '')) as VaultId,
+      `${ vaultsUtils.splitVaultId(vaultId)}':'${this.nodeManager.getNodeId()}` as VaultId,
       nodeId,
     );
   }
@@ -617,9 +610,7 @@ class VaultManager {
     const client = this.nodeManager.getClient(node);
 
     // Compile the vault Id
-    const id = (vaultsUtils.splitVaultId(vaultId) +
-      ':' +
-      node.replace(new RegExp(/[\/]/g), '')) as VaultId;
+    const id = `${vaultsUtils.splitVaultId(vaultId)}:${node}` as VaultId;
 
     // Send a message to the connected agent to see if the pull can occur
     const vaultPermMessage = new agentPB.VaultPermMessage();
@@ -645,7 +636,7 @@ class VaultManager {
     const vault = await this.getVault(vaultId);
     await vault.pullVault(
       gitRequest,
-      node.replace(new RegExp(/[\/]/g), '') as NodeId,
+      node,
     );
 
     // Set the default pulling node to the specified node Id
@@ -709,9 +700,7 @@ class VaultManager {
     nodeId: NodeId,
   ): Promise<void> {
     // Compile the new vaultId with the current node Id appended
-    const newVaultId = (vaultsUtils.splitVaultId(vaultId) +
-      ':' +
-      this.nodeManager.getNodeId().replace(new RegExp(/[\/]/g), '')) as VaultId;
+    const newVaultId = `${vaultsUtils.splitVaultId(vaultId)}:${this.nodeManager.getNodeId()}` as VaultId;
 
     // Create the Vault instance and path
     await this.fs.promises.mkdir(path.join(this.vaultsPath, newVaultId));
@@ -733,7 +722,7 @@ class VaultManager {
     await vault.cloneVault(
       gitHandler,
       key,
-      nodeId.replace(new RegExp(/[\/]/g), '') as NodeId,
+      nodeId,
     );
   }
 
@@ -893,7 +882,7 @@ class VaultManager {
       if (vaultId == null) {
         return;
       }
-      return vaultId.replace(/"/g, '') as VaultId;
+      return vaultId;
     });
   }
 
@@ -929,7 +918,7 @@ class VaultManager {
       if (vaultLink == null) {
         return;
       }
-      return vaultLink.replace(/"/g, '') as NodeId;
+      return vaultLink;
     });
   }
 
