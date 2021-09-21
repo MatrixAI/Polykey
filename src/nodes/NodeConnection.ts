@@ -307,7 +307,7 @@ class NodeConnection {
       const crossSignMessage = claimsUtils.createCrossSignMessage({
         singlySignedClaim: singlySignedClaim,
       });
-      await genClaims.write(crossSignMessage); // get the generator here
+      await genClaims.write(crossSignMessage); // Get the generator here
       // 3. We expect to receieve our singly signed claim we sent to now be a
       // doubly signed claim (signed by the other node), as well as a singly
       // signed claim to be signed by us.

@@ -64,7 +64,7 @@ class GRPCServer {
       );
       this.tlsConfig = tlsConfig;
     }
-    // grpc servers must be recreated after they are stopped
+    // Grpc servers must be recreated after they are stopped
     const server = new grpc.Server();
     for (const [serviceInterface, serviceImplementation] of this.services) {
       server.addService(serviceInterface, serviceImplementation);

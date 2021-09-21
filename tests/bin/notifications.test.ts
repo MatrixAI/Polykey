@@ -33,10 +33,7 @@ describe('CLI Notifications', () => {
   let senderPolykeyAgent: PolykeyAgent, receiverPolykeyAgent: PolykeyAgent;
   let senderNodeId: NodeId, receiverNodeId: NodeId;
 
-  // constants
-  const noJWTFailCode = 77;
-
-  // helper functions
+  // Helper functions
   function genCommandsSender(options: Array<string>) {
     return ['notifications', ...options, '-np', senderNodePath];
   }
@@ -222,7 +219,7 @@ describe('CLI Notifications', () => {
       const receiverCommands2 = genCommandsReceiver(['read', '--unread']);
       const result = await testUtils.pkWithStdio(receiverCommands2);
       expect(result.code).toBe(0);
-      expect(result.stdout).not.toContain('msg1'); // previously read notifications should be ignored
+      expect(result.stdout).not.toContain('msg1'); // Previously read notifications should be ignored
       expect(result.stdout).not.toContain('msg2');
       expect(result.stdout).not.toContain('msg3');
       expect(result.stdout).toContain('msg4');
@@ -255,7 +252,7 @@ describe('CLI Notifications', () => {
       const receiverCommands = genCommandsReceiver(['read', '--number', '2']);
       const result = await testUtils.pkWithStdio(receiverCommands);
       expect(result.code).toBe(0);
-      expect(result.stdout).not.toContain('msg1'); // oldest notification not included
+      expect(result.stdout).not.toContain('msg1'); // Oldest notification not included
       expect(result.stdout).toContain('msg2');
       expect(result.stdout).toContain('msg3');
     });
@@ -382,7 +379,7 @@ describe('CLI Notifications', () => {
       await testUtils.pkWithStdio(receiverCommandsClear);
       const result = await testUtils.pkWithStdio(receiverCommandsRead);
       expect(result.code).toBe(0);
-      expect(result.stdout).toEqual('No notifications to display\n'); // should be no notifications left
+      expect(result.stdout).toEqual('No notifications to display\n'); // Should be no notifications left
     });
   });
 });

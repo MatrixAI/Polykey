@@ -31,8 +31,4 @@ function deserialize<T>(value_: Buffer): T {
   }
 }
 
-export {
-  domainPath,
-  serialize,
-  deserialize,
-};
+export { domainPath, serialize, deserialize };

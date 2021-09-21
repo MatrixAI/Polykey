@@ -297,7 +297,9 @@ class Sigchain {
       for await (const o of this.sigchainClaimsDb.createReadStream()) {
         const claimId = (o as any).key as ClaimId;
         const encryptedClaim = (o as any).value;
-        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(encryptedClaim);
+        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(
+          encryptedClaim,
+        );
         chainData[claimId] = claim;
       }
       return chainData;

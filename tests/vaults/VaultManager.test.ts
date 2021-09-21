@@ -66,7 +66,7 @@ describe('VaultManager is', () => {
     const dbPath = path.join(dataDir, 'db');
     const vaultsPath = path.join(dataDir, 'vaults');
 
-    keyManager = new KeyManager({
+    keyManager = await KeyManager.createKeyManager({
       keysPath: keysPath,
       logger: logger,
     });
@@ -83,7 +83,7 @@ describe('VaultManager is', () => {
       egressPort: sourcePort,
     });
 
-    db = new DB({
+    db = await DB.createDB({
       dbPath: dbPath,
       logger: logger,
     });
@@ -422,7 +422,7 @@ describe('VaultManager is', () => {
     await vaultManager.renameVault(v9!, 'Vault10');
     await vaultManager.createVault('ThirdImpact');
     await vaultManager.createVault('Cake');
-    await vault9.addSecret('MySecret', 'MyActualPassword');
+    await vault9.addSecret('MySecret', 'MyActualPassword'); // FIXME, this is breaking.
     const vn: Array<string> = [];
     (await vaultManager.listVaults()).forEach((a) => vn.push(a.name));
     expect(vn.sort()).toEqual(alteredVaultNames.sort());
@@ -487,7 +487,7 @@ describe('VaultManager is', () => {
       targetDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
-      targetKeyManager = new KeyManager({
+      targetKeyManager = await KeyManager.createKeyManager({
         keysPath: path.join(targetDataDir, 'keys'),
         fs: fs,
         logger: logger,
@@ -502,7 +502,7 @@ describe('VaultManager is', () => {
         authToken: '',
         logger: logger,
       });
-      targetDb = new DB({
+      targetDb = await DB.createDB({
         dbPath: path.join(targetDataDir, 'db'),
         logger: logger,
       });
@@ -572,7 +572,7 @@ describe('VaultManager is', () => {
       altDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
-      altKeyManager = new KeyManager({
+      altKeyManager = await KeyManager.createKeyManager({
         keysPath: path.join(altDataDir, 'keys'),
         fs: fs,
         logger: logger,
@@ -595,7 +595,7 @@ describe('VaultManager is', () => {
         egressHost: altHost,
         egressPort: altPort,
       });
-      altDb = new DB({
+      altDb = await DB.createDB({
         dbPath: path.join(altDataDir, 'db'),
         logger: logger,
       });

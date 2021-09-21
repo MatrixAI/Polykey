@@ -114,14 +114,14 @@ class ForwardProxy {
     this._started = false;
     const serverClose = promisify(this.server.close).bind(this.server);
     await serverClose();
-    // ensure no new connections are created while this is iterating
+    // Ensure no new connections are created while this is iterating
     await Promise.all(
       Array.from(this.connections.ingress, ([, conn]) => conn.stop()),
     );
-    // delay socket close by about 1 second
+    // Delay socket close by about 1 second
     // this gives some time for the end/FIN packets to be sent
     await sleep(1000);
-    // even when all connections are destroyed
+    // Even when all connections are destroyed
     // the utp socket sometimes hangs in closing
     // here we asynchronously close and unreference it
     // in order to speed up the closing
@@ -301,7 +301,7 @@ class ForwardProxy {
     const ingressPort = (url.port === '' ? 80 : parseInt(url.port)) as Port;
     ingressAddress = url.host;
     this.logger.info(`Handling CONNECT to ${ingressAddress}`);
-    // must be authenticated
+    // Must be authenticated
     if (!this.authenticated(request)) {
       await clientSocketEnd(
         'HTTP/1.1 407 Proxy Authentication Required\r\n' +
@@ -345,7 +345,7 @@ class ForwardProxy {
       } finally {
         timerStop(timer);
       }
-      // after composing, switch off this error handler
+      // After composing, switch off this error handler
       clientSocket.off('error', handleConnectError);
       await clientSocketWrite(
         'HTTP/1.1 200 Connection Established\r\n' + '\r\n',
@@ -382,7 +382,7 @@ class ForwardProxy {
     const ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let conn: ConnectionForward | undefined;
     conn = this.connections.ingress.get(ingressAddress);
-    // no more than one connection to an ingress address.
+    // No more than one connection to an ingress address.
     if (conn != null) {
       return conn;
     }

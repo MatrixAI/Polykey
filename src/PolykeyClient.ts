@@ -89,7 +89,7 @@ class PolykeyClient {
     // Attempt to read token from fs and start session.
     await this.session.start();
 
-    // create a new GRPCClientClient
+    // Create a new GRPCClientClient
     this._grpcClient = new GRPCClientClient({
       nodeId: lock.nodeId as NodeId,
       host: host ?? lock.host ?? 'localhost',

@@ -75,7 +75,7 @@ const polykeyWorker = {
     return signed;
   },
 
-  // these operations are "overwriting" the EFS ops
+  // These operations are "overwriting" the EFS ops
   // they are using our crypto mechanisms
   // during parallel execution
   // unless we are injecting our own crypto mechanism in it
@@ -83,7 +83,6 @@ const polykeyWorker = {
   // so it seems the proper way to do this
   // would be ensure that we have a common interface for a crypto utility
   // like an object containing the relevant operations
-
 
   // DB operations
   /**

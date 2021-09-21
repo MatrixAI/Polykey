@@ -16,9 +16,7 @@ import { Lockfile } from '@/lockfile';
 import { poll } from '../utils';
 
 describe('CLI agent', () => {
-  const passwordFileExitCode = 64;
   const noJWTFailCode = 77;
-  const invalidJWTFailCode = 65;
   const password = 'password';
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
@@ -28,7 +26,6 @@ describe('CLI agent', () => {
     let dataDir: string;
     let foregroundNodePath: string;
     let backgroundNodePath: string;
-    let callCredentials;
 
     let inactiveNodePath: string;
     let activeNodePath: string;
@@ -111,7 +108,7 @@ describe('CLI agent', () => {
         global.polykeyStartupTimeout * 5,
       );
       test('should fail to start if an agent is already running at the path', async () => {
-        //can't await this, it never completes while running.
+        //Can't await this, it never completes while running.
         const result = await testUtils.pkWithStdio([
           'agent',
           'start',
@@ -463,12 +460,14 @@ describe('CLI agent', () => {
         ['Vault', vaultCommands],
       ];
 
+      const dummyNodeId = 'A'.repeat(44);
       function generateCommand(commandString: string) {
         const command = commandString
           .replace(/filePath/g, dummyPath)
           .replace(/sigPath/g, dummyPath)
           .replace(/passPath/g, dummyPath)
           .replace(/secretPath/g, dummyPath)
+          .replace(/nodeId/g, dummyNodeId)
           .split(' ');
         const nodePath = ['-np', activeAgentPath];
         return [...command, ...nodePath];

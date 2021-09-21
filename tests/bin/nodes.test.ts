@@ -8,6 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import * as testUtils from './utils';
 import * as testKeynodeUtils from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -42,7 +43,7 @@ describe('CLI Nodes', () => {
   let remoteOfflineHost: Host;
   let remoteOfflinePort: Port;
 
-  // helper functions
+  // Helper functions
   function genCommands(options: Array<string>) {
     return ['node', ...options, '-np', nodePath];
   }
@@ -178,7 +179,7 @@ describe('CLI Nodes', () => {
         expect(result.code).toBe(1); // Should fail with no response. for automation purposes.
         expect(result.stdout).toContain('No response received');
 
-        //checking for json output
+        //Checking for json output
         const commands2 = genCommands([
           'ping',
           remoteOfflineNodeId,
@@ -194,18 +195,14 @@ describe('CLI Nodes', () => {
     test(
       "Should return failure if can't find the node",
       async () => {
-        const commands = genCommands(['ping', 'FakeNodeId']);
+        const fakeNodeId = makeNodeId('FakeNodeId' + 'A'.repeat(34));
+        const commands = genCommands(['ping', fakeNodeId]);
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).not.toBe(0); // Should fail if node doesn't exist.
         expect(result.stdout).toContain('Failed to resolve node ID');
 
         //Json format.
-        const commands2 = genCommands([
-          'ping',
-          'FakeNodeID',
-          '--format',
-          'json',
-        ]);
+        const commands2 = genCommands(['ping', fakeNodeId, '--format', 'json']);
         const result2 = await testUtils.pkWithStdio(commands2);
         expect(result2.code).not.toBe(0); // Should fail if node doesn't exist.
         expect(result2.stdout).toContain('success');
@@ -296,7 +293,7 @@ describe('CLI Nodes', () => {
     test(
       'Should fail to find an unknown node',
       async () => {
-        const unknownNodeId = ('A'.repeat(43) + '=') as NodeId;
+        const unknownNodeId = makeNodeId('A'.repeat(44));
         const commands = genCommands(['find', unknownNodeId]);
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).toBe(1);
@@ -327,7 +324,7 @@ describe('CLI Nodes', () => {
     );
   });
   describe('commandAddNode', () => {
-    const validNodeId = ('A'.repeat(43) + '=') as NodeId;
+    const validNodeId = makeNodeId('A'.repeat(44));
     const invalidNodeId = 'INVALIDID' as NodeId;
     const validHost = '0.0.0.0';
     const invalidHost = 'INVALIDHOST';

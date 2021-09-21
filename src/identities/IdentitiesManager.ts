@@ -58,7 +58,7 @@ class IdentitiesManager {
         throw new dbErrors.ErrorDBNotStarted();
       }
       const identitiesDb = await this.db.level(this.identitiesDbDomain);
-      // tokens stores ProviderId -> ProviderTokens
+      // Tokens stores ProviderId -> ProviderTokens
       const identitiesTokensDb = await this.db.level(
         this.identitiesTokensDbDomain[1],
         identitiesDb,

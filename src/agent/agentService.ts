@@ -186,7 +186,7 @@ function createAgentService({
       callback: grpc.sendUnaryData<agentPB.ClaimsMessage>,
     ): Promise<void> => {
       const response = new agentPB.ClaimsMessage();
-      // response.setClaimsList(
+      // Response.setClaimsList(
       //   await sigchain.getClaims(call.request.getClaimtype() as ClaimType)
       // );
       callback(null, response);

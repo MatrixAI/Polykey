@@ -42,12 +42,12 @@ class KeyManager {
     keysPath: string;
     fs?: FileSystem;
     logger?: Logger;
-  }): KeyManager{
+  }): KeyManager {
     const logger_ = logger ?? new Logger(this.constructor.name);
-    const fs_ = fs ?? require('fs')
+    const fs_ = fs ?? require('fs');
 
-    const keyManager_ = new KeyManager({ fs: fs_, logger: logger_, keysPath })
-    // await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
+    const keyManager_ = new KeyManager({ fs: fs_, logger: logger_, keysPath });
+    // Await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
     return keyManager_;
   }
 
@@ -379,7 +379,7 @@ class KeyManager {
       subjectAttrsExtra,
       issuerAttrsExtra,
     );
-    // removes the cert chain
+    // Removes the cert chain
     await this.garbageCollectRootCerts(true);
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
@@ -411,7 +411,7 @@ class KeyManager {
       subjectAttrsExtra,
       issuerAttrsExtra,
     );
-    // removes the cert chain
+    // Removes the cert chain
     await this.garbageCollectRootCerts(true);
     await this.writeRootCert(rootCert);
     this.rootCert = rootCert;

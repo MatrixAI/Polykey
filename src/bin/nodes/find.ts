@@ -71,7 +71,7 @@ find.action(async (node, options) => {
       )}`;
     } catch (err) {
       if (!(err instanceof ErrorNodeGraphNodeNotFound)) throw err;
-      // else failed to find the node.
+      // Else failed to find the node.
       result.success = false;
       result.id = node;
       result.host = '';

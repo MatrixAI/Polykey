@@ -35,7 +35,10 @@ describe('Vaults utils', () => {
   });
   test('EFS can be read recursively', async () => {
     const key = await vaultsUtils.generateVaultKey();
-    const efs = new EncryptedFS(key, fs, dataDir);
+    const efs = await EncryptedFS.createEncryptedFS({
+      dbKey: key,
+      dbPath: dataDir,
+    });
     const mkdir = utils.promisify(efs.mkdir).bind(efs);
     const writeFile = utils.promisify(efs.writeFile).bind(efs);
     await mkdir('dir', { recursive: true });
@@ -58,7 +61,7 @@ describe('Vaults utils', () => {
       ['dir', 'dir/dir2', 'dir/dir2/dir3', 'dir/file'].sort(),
     );
   });
-  // test('a persisted EFS object can be read recursively', async () => {
+  // Test('a persisted EFS object can be read recursively', async () => {
   //   const key = await vaultsUtils.generateVaultKey();
   //   const efs = new EncryptedFS(key, fs, dataDir);
   //   const mkdir = utils.promisify(efs.mkdir).bind(efs);
@@ -100,7 +103,7 @@ describe('Vaults utils', () => {
   });
 });
 
-// test('vaultIds are alphanumeric', async () => {
+// Test('vaultIds are alphanumeric', async () => {
 //   const id1 = utils.generateVaultId('abc');
 //
 //   expect(isAlphaNumeric(id1)).toBe(true);

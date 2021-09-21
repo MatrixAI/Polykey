@@ -15,7 +15,7 @@ async function handle(signal) {
 }
 
 process.on('message', async (startOptions: string) => {
-  // split the message into password and string
+  // Split the message into password and string
   const ops = JSON.parse(startOptions);
   try {
     polykeyAgent = new PolykeyAgent({

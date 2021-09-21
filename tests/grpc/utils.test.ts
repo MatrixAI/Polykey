@@ -16,7 +16,7 @@ describe('GRPC utils', () => {
   afterAll(async () => {
     utils.closeTestClient(client);
     setTimeout(() => {
-      // duplex error tests prevents the GRPC server from gracefully shutting down
+      // Duplex error tests prevents the GRPC server from gracefully shutting down
       // this will force it to shutdown
       logger.info('Test GRPC Server Hanging, Forcing Shutdown');
       utils.closeTestServerForce(server);
@@ -47,7 +47,7 @@ describe('GRPC utils', () => {
     try {
       await pCall;
     } catch (e) {
-      // this information comes from the server
+      // This information comes from the server
       expect(e.message).toBe('test error');
       expect(e.data).toMatchObject({
         grpc: true,
@@ -76,7 +76,7 @@ describe('GRPC utils', () => {
       done: true,
     });
     expect(stream.stream.destroyed).toBe(true);
-    // notice this changes to 127.0.0.1
+    // Notice this changes to 127.0.0.1
     expect(stream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
   });
   test('promisified reading server stream - error', async () => {
@@ -90,7 +90,7 @@ describe('GRPC utils', () => {
     messageTo.setChallenge(challenge);
     const stream = serverStream(messageTo);
     await expect(stream.next()).rejects.toThrow(grpcErrors.ErrorGRPC);
-    // the generator will have ended
+    // The generator will have ended
     // the internal stream will be automatically destroyed
     const result = await stream.next();
     expect(result).toMatchObject({
@@ -98,7 +98,7 @@ describe('GRPC utils', () => {
       done: true,
     });
     expect(stream.stream.destroyed).toBe(true);
-    // notice this changes to 127.0.0.1
+    // Notice this changes to 127.0.0.1
     expect(stream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
   });
   test('promisified reading server stream - destroy first', async () => {
@@ -111,7 +111,7 @@ describe('GRPC utils', () => {
     const messageTo = new testPB.EchoMessage();
     messageTo.setChallenge(challenge);
     const stream = serverStream(messageTo);
-    // destroy the stream at the beginning
+    // Destroy the stream at the beginning
     const result1 = await stream.next(null);
     expect(result1).toMatchObject({
       value: undefined,
@@ -149,7 +149,7 @@ describe('GRPC utils', () => {
       done: true,
     });
     expect(stream.stream.destroyed).toBe(true);
-    // notice this changes to 127.0.0.1
+    // Notice this changes to 127.0.0.1
     expect(stream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
   });
   test('promisified writing client stream', async () => {
@@ -163,7 +163,7 @@ describe('GRPC utils', () => {
     for (let i = 0; i < 5; i++) {
       await genStream.next(m);
     }
-    await genStream.next(null); // closed stream
+    await genStream.next(null); // Closed stream
     const m_ = await response;
     expect(m_.getChallenge().length).toBe(m.getChallenge().length * 5);
     expect(genStream.stream.getPeer()).toBe(`127.0.0.1:${port}`);
@@ -175,7 +175,7 @@ describe('GRPC utils', () => {
       testPB.EchoMessage
     >(client, client.clientStream);
     const [genStream, response] = clientStream();
-    const result1 = await genStream.next(null); // closed stream
+    const result1 = await genStream.next(null); // Closed stream
     expect(result1).toMatchObject({
       value: undefined,
       done: true,
@@ -224,9 +224,9 @@ describe('GRPC utils', () => {
       testPB.EchoMessage
     >(client, client.duplexStream);
     const genDuplex = duplexStream();
-    // when duplex streams are ended, reading will hang
+    // When duplex streams are ended, reading will hang
     await genDuplex.write(null);
-    // the only thing you can do is to destroy the read stream
+    // The only thing you can do is to destroy the read stream
     await genDuplex.read(null);
     expect(genDuplex.stream.destroyed).toBe(true);
     expect(genDuplex.stream.getPeer()).toBe(`dns:127.0.0.1:${port}`);

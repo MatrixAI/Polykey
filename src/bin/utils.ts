@@ -107,15 +107,15 @@ function createCommand(
   return cmd;
 }
 
-function promisifyGrpc<t1, t2>(
+function promisifyGrpc<T1, T2>(
   fn: (
-    request: t1,
-    callback: (error: grpc.ServiceError | null, response: t2) => void,
+    request: T1,
+    callback: (error: grpc.ServiceError | null, response: T2) => void,
   ) => any,
-): (request: t1) => Promise<t2> {
-  return (request: t1): Promise<t2> => {
-    return new Promise<t2>((resolve, reject) => {
-      function customCallback(error: grpc.ServiceError, response: t2) {
+): (request: T1) => Promise<T2> {
+  return (request: T1): Promise<T2> => {
+    return new Promise<T2>((resolve, reject) => {
+      function customCallback(error: grpc.ServiceError, response: T2) {
         if (error != null) {
           return reject(error);
         }
@@ -169,7 +169,7 @@ async function requestPassword(): Promise<string> {
   return response.password;
 }
 
-// async function requestPassword(keyManager: KeyManager, attempts: number = 3) {
+// Async function requestPassword(keyManager: KeyManager, attempts: number = 3) {
 //   let i = 0;
 //   let correct = false;
 //   while (i < attempts) {

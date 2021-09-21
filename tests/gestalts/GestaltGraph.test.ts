@@ -29,11 +29,11 @@ describe('GestaltGraph', () => {
   let db: DB;
   let acl: ACL;
 
-  // abc <--> dee claims:
+  // Abc <--> dee claims:
   const abcDeeSignatures: Record<NodeId, SignatureData> = {};
   let nodeClaimAbcToDee: Claim;
   let nodeClaimDeeToAbc: Claim;
-  // abc <--> GitHub claims:
+  // Abc <--> GitHub claims:
   const abcSignature: Record<NodeId, SignatureData> = {};
   let identityClaimAbcToGH: Claim;
   let identityClaimGHToAbc: IdentityClaim;
@@ -43,10 +43,10 @@ describe('GestaltGraph', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
+    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, logger });
+    db = await DB.createDB({ dbPath, logger });
     await db.start({
       keyPair: keyManager.getRootKeyPair(),
     });
@@ -653,7 +653,7 @@ describe('GestaltGraph', () => {
       logger,
     });
     await gestaltGraph.start();
-    // node 1 exists, but node 2 is new
+    // Node 1 exists, but node 2 is new
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -684,7 +684,7 @@ describe('GestaltGraph', () => {
     expect(actions2).not.toBeUndefined();
     expect(actions1).toEqual({ notify: null });
     expect(actions1).toEqual(actions2);
-    // node 3 is new and linking to node 2 which is now exists
+    // Node 3 is new and linking to node 2 which is now exists
     const zzzDeeSignatures: Record<NodeId, SignatureData> = {};
     zzzDeeSignatures['zzz'] = 'zzzSignature';
     zzzDeeSignatures['dee'] = 'deeSignature';
@@ -1129,7 +1129,7 @@ describe('GestaltGraph', () => {
       identityInfo.identityId,
     );
     expect(actions1).toEqual({ scan: null, notify: null });
-    // identity no longer has attached node therefore it has no permissions
+    // Identity no longer has attached node therefore it has no permissions
     expect(actions2).toBeUndefined();
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);
@@ -1165,7 +1165,7 @@ describe('GestaltGraph', () => {
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);
     await gestaltGraph.unsetNode(nodeInfo1.id);
-    // it's still 1 node perm
+    // It's still 1 node perm
     // its just that node 1 is eliminated
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);

@@ -1,5 +1,6 @@
 import type { NodeId } from '@/nodes/types';
 import * as nodesUtils from '@/nodes/utils';
+import { isNodeId, makeNodeId } from '@/nodes/utils';
 
 describe('Nodes utils', () => {
   test('basic distance calculation', async () => {
@@ -41,11 +42,22 @@ describe('Nodes utils', () => {
     expect(bucketIndex).toBe(59);
   });
   test('calculates correct last bucket (bucket 351)', async () => {
-    // nodeId1 XOR nodeID2 = distance between 2^351 and 2^352
+    // NodeId1 XOR nodeID2 = distance between 2^351 and 2^352
     // Therefore, bucket 351 (last possible bucket)
     const nodeId1 = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as NodeId;
     const nodeId2 = 'ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ' as NodeId;
     const bucketIndex = nodesUtils.calculateBucketIndex(nodeId1, nodeId2, 352);
     expect(bucketIndex).toBe(351);
+  });
+  test('testing type guard.', async () => {
+    const invalidNodeId = 'invalid!!';
+    const validNodeIdString = 'A'.repeat(44);
+    const validNodeId = validNodeIdString as NodeId;
+    expect(isNodeId(validNodeIdString)).toBeTruthy();
+    expect(isNodeId(makeNodeId(validNodeIdString))).toBeTruthy();
+    expect(isNodeId(validNodeId)).toBeTruthy();
+    expect(isNodeId(invalidNodeId)).toBeFalsy();
+    expect(isNodeId(invalidNodeId as NodeId)).toBeFalsy();
+    // Expect(makeNodeId(invalidNodeId)).toThrow();
   });
 });

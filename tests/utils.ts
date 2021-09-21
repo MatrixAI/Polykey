@@ -22,7 +22,7 @@ async function setupRemoteKeynode({
   // Create and start the keynode + its temp directory
   let nodeDir: string;
   if (dataDir) {
-    //add the directory.
+    //Add the directory.
     nodeDir = path.join(dataDir, `remoteNode`);
     await fs.promises.mkdir(nodeDir, { recursive: true });
   } else {

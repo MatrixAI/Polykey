@@ -2,15 +2,20 @@ import git, { ReadCommitResult } from 'isomorphic-git';
 import fs from 'fs';
 import path from 'path';
 
-async function createGitRepo(
-    { basePath, packFile, indexFile }:
-    { basePath: string, packFile?: boolean, indexFile?: boolean }
-  ): Promise<ReadCommitResult[]> {
+async function createGitRepo({
+  basePath,
+  packFile,
+  indexFile,
+}: {
+  basePath: string;
+  packFile?: boolean;
+  indexFile?: boolean;
+}): Promise<ReadCommitResult[]> {
   const repoPath = path.join(basePath);
   await fs.promises.mkdir(repoPath, { recursive: true });
   await git.init({
     fs: fs,
-    dir: repoPath
+    dir: repoPath,
   });
   await git.commit({
     fs: fs,
@@ -45,7 +50,7 @@ async function createGitRepo(
       fs: fs,
       dir: repoPath,
       oids: [...log.map((item) => item.oid)],
-      write: true
+      write: true,
     });
     if (indexFile) {
       await git.indexPack({
@@ -59,11 +64,10 @@ async function createGitRepo(
 }
 
 async function getPackID(dataDir: string): Promise<string> {
-  const pack = (await fs.promises.readdir(path.join(dataDir, '.git', 'objects', 'pack')))[0];
+  const pack = (
+    await fs.promises.readdir(path.join(dataDir, '.git', 'objects', 'pack'))
+  )[0];
   return pack.substring(5, 45);
 }
 
-export {
-  createGitRepo,
-  getPackID,
-}
+export { createGitRepo, getPackID };

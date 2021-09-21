@@ -1,4 +1,4 @@
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { NodeInfo } from '@/nodes/types';
 
 import os from 'os';
 import path from 'path';
@@ -7,7 +7,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import { NodeAddress } from '@/nodes/types';
 import * as utils from './utils';
-import { filter } from 'cheerio/lib/api/traversing';
+import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -31,22 +31,21 @@ describe('CLI vaults', () => {
   let vaultNumber: number;
   let vaultName: string;
 
-  // constants
-  const jwtTokenExitCode = 77;
+  // Constants
   const node1: NodeInfo = {
-    id: '123' as NodeId,
+    id: makeNodeId('1'.repeat(44)),
     chain: {},
   };
   const node2: NodeInfo = {
-    id: '456' as NodeId,
+    id: makeNodeId('2'.repeat(44)),
     chain: {},
   };
   const node3: NodeInfo = {
-    id: '789' as NodeId,
+    id: makeNodeId('3'.repeat(44)),
     chain: {},
   };
 
-  // helper functions
+  // Helper functions
   function genVaultName() {
     vaultNumber++;
     return `vault-${vaultNumber}`;
@@ -153,7 +152,7 @@ describe('CLI vaults', () => {
         'vaults',
         'rename',
         '-vn',
-        'InvalidVaultId', // vault does not exist
+        'InvalidVaultId', // Vault does not exist
         '-nn',
         'RenamedVault',
         '-np',
@@ -223,12 +222,12 @@ describe('CLI vaults', () => {
   describe('commandUnsetPermsVault', () => {
     test('should un-share a vault', async () => {
       command = ['vaults', 'unshare', '-np', dataDir, vaultName, node1.id];
-      //creating vault.
+      //Creating vault.
       await polykeyAgent.vaults.createVault(vaultName);
       const id = await polykeyAgent.vaults.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      //init sharing.
+      //Init sharing.
       await polykeyAgent.vaults.setVaultPermissions(node1.id, id!);
       await polykeyAgent.vaults.setVaultPermissions(node2.id, id!);
       await polykeyAgent.vaults.setVaultPermissions(node3.id, id!);
@@ -251,23 +250,11 @@ describe('CLI vaults', () => {
       const vault = await polykeyAgent.vaults.createVault(vaultName);
       const id = await polykeyAgent.vaults.getVaultId(vaultName);
       expect(id).toBeTruthy();
-      await polykeyAgent.vaults.setVaultPermissions(
-        '123' as NodeId,
-        vault.vaultId,
-      );
-      await polykeyAgent.vaults.setVaultPermissions(
-        '456' as NodeId,
-        vault.vaultId,
-      );
-      await polykeyAgent.vaults.setVaultPermissions(
-        '789' as NodeId,
-        vault.vaultId,
-      );
+      await polykeyAgent.vaults.setVaultPermissions(node1.id, vault.vaultId);
+      await polykeyAgent.vaults.setVaultPermissions(node2.id, vault.vaultId);
+      await polykeyAgent.vaults.setVaultPermissions(node3.id, vault.vaultId);
 
-      await polykeyAgent.vaults.unsetVaultPermissions(
-        '456' as NodeId,
-        vault.vaultId,
-      );
+      await polykeyAgent.vaults.unsetVaultPermissions(node2.id, vault.vaultId);
 
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
@@ -492,7 +479,6 @@ describe('CLI vaults', () => {
         '-ni',
         targetNodeId as string,
       ];
-
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
 

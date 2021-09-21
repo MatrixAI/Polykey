@@ -52,7 +52,7 @@ class DB {
   protected _started: boolean = false;
   protected _destroyed: boolean = false;
 
-  // public constructor({
+  // Public constructor({
   //   dbPath,
   //   fs,
   //   logger,
@@ -184,16 +184,14 @@ class DB {
       });
     } catch (e) {
       if (e instanceof RangeError) {
-        // some domain prefixes will conflict with the separator
+        // Some domain prefixes will conflict with the separator
         throw new dbErrors.ErrorDBLevelPrefix();
       }
       throw e;
     }
   }
 
-  public async count(
-    dbLevel: DBLevel = this._db
-  ): Promise<number> {
+  public async count(dbLevel: DBLevel = this._db): Promise<number> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
     }
@@ -209,7 +207,7 @@ class DB {
     key: string | Buffer,
     raw?: false,
   ): Promise<T | undefined>;
-  public async get<T>(
+  public async get(
     domain: DBDomain,
     key: string | Buffer,
     raw: true,
@@ -217,7 +215,7 @@ class DB {
   public async get<T>(
     domain: DBDomain,
     key: string | Buffer,
-    raw: boolean = false
+    raw: boolean = false,
   ): Promise<T | undefined> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
@@ -250,7 +248,7 @@ class DB {
     domain: DBDomain,
     key: string | Buffer,
     value: any,
-    raw: boolean = false
+    raw: boolean = false,
   ): Promise<void> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
@@ -259,10 +257,7 @@ class DB {
     return this._db.put(dbUtils.domainPath(domain, key), data);
   }
 
-  public async del(
-    domain: DBDomain,
-    key: string
-  ): Promise<void> {
+  public async del(domain: DBDomain, key: string): Promise<void> {
     if (!this._started) {
       throw new dbErrors.ErrorDBNotStarted();
     }
@@ -295,22 +290,19 @@ class DB {
     return this._db.batch(ops_);
   }
 
+  public async serializeEncrypt(value: any): Promise<Buffer>;
   public async serializeEncrypt(value: any, raw: false): Promise<Buffer>;
   public async serializeEncrypt(value: Buffer, raw: true): Promise<Buffer>;
   public async serializeEncrypt(
     value: any | Buffer,
-    raw: boolean
+    raw: boolean = false,
   ): Promise<Buffer> {
     const plainText: Buffer = raw
       ? (value as Buffer)
       : dbUtils.serialize(value);
     if (this.workerManager != null) {
       return this.workerManager.call(async (w) => {
-        const [
-          cipherBuf,
-          cipherOffset,
-          cipherLength,
-        ] = await w.encryptWithKey(
+        const [cipherBuf, cipherOffset, cipherLength] = await w.encryptWithKey(
           Transfer(this.dbKey.buffer),
           this.dbKey.byteOffset,
           this.dbKey.byteLength,
@@ -326,14 +318,12 @@ class DB {
     }
   }
 
-  public async deserializeDecrypt<T>(
-    cipherText: Buffer,
-  ): Promise<T>;
+  public async deserializeDecrypt<T>(cipherText: Buffer): Promise<T>;
   public async deserializeDecrypt<T>(
     cipherText: Buffer,
     raw: false,
   ): Promise<T>;
-  public async deserializeDecrypt<T>(
+  public async deserializeDecrypt(
     cipherText: Buffer,
     raw: true,
   ): Promise<Buffer>;

@@ -13,7 +13,7 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   const lowerBoundDistance = BigInt(2) ** BigInt(bucketIndex);
   const bufferId = nodesUtils.nodeIdToU8(nodeId);
   const bufferDistance = bigIntToBuffer(lowerBoundDistance);
-  // console.log('Distance buffer:', bufferDistance);
+  // Console.log('Distance buffer:', bufferDistance);
   // console.log('Node ID buffer:', bufferId);
 
   const max = Math.max(bufferId.length, bufferDistance.length);

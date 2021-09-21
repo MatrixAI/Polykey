@@ -82,7 +82,7 @@ class TestProvider extends Provider {
   public async *authenticate(): AsyncGenerator<string | undefined, IdentityId> {
     const code = 'randomtestcode';
     yield code;
-    // always gives back the abc123 token
+    // Always gives back the abc123 token
     const tokenData = { accessToken: 'abc123' };
     const identityId = await this.getIdentityId(tokenData);
     await this.putToken(identityId, tokenData);

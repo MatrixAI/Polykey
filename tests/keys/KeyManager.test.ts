@@ -31,12 +31,12 @@ describe('KeyManager', () => {
   });
   test('construction has no side effects', async () => {
     const keysPath = `${dataDir}/keys`;
-    new KeyManager({ keysPath, logger });
+    await KeyManager.createKeyManager({ keysPath, logger });
     await expect(fs.promises.stat(keysPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs root key pair and root cert and root certs', async () => {
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const keysPathContents = await fs.promises.readdir(keysPath);
     expect(keysPathContents).toContain('root.pub');
@@ -47,7 +47,7 @@ describe('KeyManager', () => {
   });
   test('can get root key pair and root cert', async () => {
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const rootKeyPairPem = await keyManager.getRootKeyPairPem();
     expect(rootKeyPairPem).not.toBeUndefined();
@@ -63,7 +63,7 @@ describe('KeyManager', () => {
     const workerManager = new WorkerManager({ logger });
     await workerManager.start();
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     keyManager.setWorkerManager(workerManager);
     await keyManager.start({ password: 'password' });
     const keysPathContents = await fs.promises.readdir(keysPath);
@@ -75,7 +75,7 @@ describe('KeyManager', () => {
   });
   test('encrypting and decrypting with root key', async () => {
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const plainText = Buffer.from('abc');
     const cipherText = await keyManager.encryptWithRootKeyPair(plainText);
@@ -87,7 +87,7 @@ describe('KeyManager', () => {
     const workerManager = new WorkerManager({ logger });
     await workerManager.start();
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     keyManager.setWorkerManager(workerManager);
     await keyManager.start({ password: 'password' });
     const plainText = Buffer.from('abc');
@@ -100,9 +100,9 @@ describe('KeyManager', () => {
   });
   test('encrypting beyond maximum size', async () => {
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
-    // no way we can encrypt 1000 bytes without a ridiculous key size
+    // No way we can encrypt 1000 bytes without a ridiculous key size
     const plainText = Buffer.from(new Array(1000 + 1).join('A'));
     await expect(keyManager.encryptWithRootKeyPair(plainText)).rejects.toThrow(
       keysErrors.ErrorEncryptSize,
@@ -111,7 +111,7 @@ describe('KeyManager', () => {
   });
   test('signing and verifying with root key', async () => {
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const data = Buffer.from('abc');
     const signature = await keyManager.signWithRootKeyPair(data);
@@ -123,7 +123,7 @@ describe('KeyManager', () => {
     const workerManager = new WorkerManager({ logger });
     await workerManager.start();
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     keyManager.setWorkerManager(workerManager);
     await keyManager.start({ password: 'password' });
     const data = Buffer.from('abc');
@@ -136,7 +136,7 @@ describe('KeyManager', () => {
   });
   test('can change root key password', async () => {
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     await keyManager.changeRootKeyPassword('newpassword');
     await keyManager.stop();
@@ -153,10 +153,10 @@ describe('KeyManager', () => {
   });
   test('can reset root certificate', async () => {
     const keysPath = `${dataDir}/keys`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const rootCert1 = keyManager.getRootCert();
-    // we use seconds for sequence numbers
+    // We use seconds for sequence numbers
     // in the future we should be using monotonic time
     await sleep(2000);
     await keyManager.resetRootCert();
@@ -176,15 +176,15 @@ describe('KeyManager', () => {
   test('can reset root key pair', async () => {
     const keysPath = `${dataDir}/keys`;
     const dbPath = `${dataDir}/db`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
-    const db = new DB({ dbPath, logger });
+    const db = await DB.createDB({ dbPath, logger });
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();
-    await sleep(2000); // let's just make sure there is time diff
+    await sleep(2000); // Let's just make sure there is time diff
     await db.start({ keyPair: rootKeyPair1 });
     await db.put(['test'], 'hello', 'world');
-    // reset root key pair takes time
+    // Reset root key pair takes time
     await keyManager.resetRootKeyPair('password');
     const rootKeyPair2 = keyManager.getRootKeyPair();
     const rootCert2 = keyManager.getRootCert();
@@ -214,12 +214,12 @@ describe('KeyManager', () => {
   test('can renew root key pair', async () => {
     const keysPath = `${dataDir}/keys`;
     const dbPath = `${dataDir}/db`;
-    const keyManager = new KeyManager({ keysPath, logger });
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
-    const db = new DB({ dbPath, logger });
+    const db = await DB.createDB({ dbPath, logger });
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();
-    await sleep(2000); // let's just make sure there is time diff
+    await sleep(2000); // Let's just make sure there is time diff
     // renew root key pair takes time
     await db.start({ keyPair: rootKeyPair1 });
     await db.put(['test'], 'hello', 'world');
@@ -242,10 +242,10 @@ describe('KeyManager', () => {
     expect(keysUtils.publicKeyToPem(rootCert2.publicKey as PublicKey)).toBe(
       keysUtils.publicKeyToPem(rootKeyPair2.publicKey as PublicKey),
     );
-    // all certificates are self-signed via an extension
+    // All certificates are self-signed via an extension
     expect(keysUtils.certVerifiedNode(rootCert1)).toBe(true);
     expect(keysUtils.certVerifiedNode(rootCert2)).toBe(true);
-    // cert chain is ensured
+    // Cert chain is ensured
     expect(keysUtils.certIssued(rootCert1, rootCert2)).toBe(true);
     expect(keysUtils.certVerified(rootCert1, rootCert2)).toBe(true);
 
@@ -261,24 +261,27 @@ describe('KeyManager', () => {
     async () => {
       const keysPath = `${dataDir}/keys`;
       const dbPath = `${dataDir}/db`;
-      const keyManager = new KeyManager({ keysPath, logger });
+      const keyManager = await KeyManager.createKeyManager({
+        keysPath,
+        logger,
+      });
       await keyManager.start({ password: 'password' });
-      const db = new DB({ dbPath, logger });
+      const db = await DB.createDB({ dbPath, logger });
       const rootKeyPair1 = keyManager.getRootKeyPair();
       const rootCertPem1 = keyManager.getRootCertPem();
-      await sleep(2000); // let's just make sure there is time diff
+      await sleep(2000); // Let's just make sure there is time diff
       // renew root key pair takes time
       await db.start({ keyPair: rootKeyPair1 });
       await keyManager.renewRootKeyPair('newpassword');
       const rootCertPem2 = keyManager.getRootCertPem();
-      await sleep(2000); // let's just make sure there is time diff
+      await sleep(2000); // Let's just make sure there is time diff
       // renew root key pair takes time
       await keyManager.renewRootKeyPair('newnewpassword');
       const rootCertPem3 = keyManager.getRootCertPem();
       const rootCertChainPems = await keyManager.getRootCertChainPems();
       const rootCertChainPem = await keyManager.getRootCertChainPem();
       const rootCertChain = await keyManager.getRootCertChain();
-      // the order should be from leaf to root
+      // The order should be from leaf to root
       expect(rootCertChainPems).toStrictEqual([
         rootCertPem3,
         rootCertPem2,

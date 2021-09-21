@@ -49,7 +49,7 @@ type PkResult = {
 async function pkWithStdio(args: Array<string>): Promise<PkResult> {
   const mockedStdout = mockedProcess.mockProcessStdout();
   const mockedStderr = mockedProcess.mockProcessStderr();
-  // const mockedExit = mockedProcess.mockProcessExit();
+  // Const mockedExit = mockedProcess.mockProcessExit();
 
   //Running the command.
   const code = await pk(args);
@@ -58,7 +58,7 @@ async function pkWithStdio(args: Array<string>): Promise<PkResult> {
   const stderrLog = mockedStderr.mock.calls;
   mockedStdout.mockRestore();
   mockedStderr.mockRestore();
-  // mockedExit.mockRestore();
+  // MockedExit.mockRestore();
   return {
     code: code,
     stdout: stdoutLog.flat().join(),

@@ -26,13 +26,13 @@ describe('SessionManager', () => {
     keysPath = path.join(dataDir, 'keys');
     dbPath = path.join(dataDir, 'db');
 
-    keyManager = new KeyManager({
+    keyManager = await KeyManager.createKeyManager({
       keysPath,
       fs: fs,
       logger: logger,
     });
 
-    db = new DB({
+    db = await DB.createDB({
       dbPath: dbPath,
       fs: fs,
       logger: logger,

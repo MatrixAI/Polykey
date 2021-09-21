@@ -1,5 +1,3 @@
-import type { NodeId } from '@/nodes/types';
-
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -9,8 +7,6 @@ import * as grpc from '@grpc/grpc-js';
 
 import { PolykeyClient } from '@';
 import { clientPB, GRPCClientClient } from '@/client';
-import { utils as keyUtils } from '@/keys';
-import { utils as networkUtils } from '@/network';
 import { PolykeyAgent } from '@';
 
 import * as testUtils from './utils';
@@ -22,24 +18,13 @@ describe('GRPCClientClient', () => {
   let client: GRPCClientClient;
   let pkClient: PolykeyClient;
   let server: grpc.Server;
-  let port: number;
+  let _port: number;
 
   let dataDir: string;
 
   let polykeyAgent: PolykeyAgent;
 
-  let nodeId: NodeId;
-
   beforeEach(async () => {
-    const keyPair = await keyUtils.generateKeyPair(4096);
-    const cert = keyUtils.generateCertificate(
-      keyPair.publicKey,
-      keyPair.privateKey,
-      keyPair.privateKey,
-      86400,
-    );
-    nodeId = networkUtils.certNodeId(cert);
-
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -51,7 +36,7 @@ describe('GRPCClientClient', () => {
 
     await polykeyAgent.start({ password: 'password' });
 
-    [server, port] = await testUtils.openTestClientServer({
+    [server, _port] = await testUtils.openTestClientServer({
       polykeyAgent,
     });
 
@@ -97,8 +82,6 @@ describe('TLS tests', () => {
   let dataDir: string;
   let nodePath: string;
   let polykeyAgent: PolykeyAgent;
-  let polykeyAgentRemote: PolykeyAgent;
-  let callCredentials: Partial<grpc.CallOptions>;
   let token;
 
   beforeAll(async () => {
@@ -122,7 +105,7 @@ describe('TLS tests', () => {
     await polykeyAgent.stop();
   });
   test('Can connect and echo over TLS', async () => {
-    //starting client.
+    //Starting client.
     const pkClient = new PolykeyClient({
       nodePath,
       fs: fs,

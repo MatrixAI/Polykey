@@ -30,10 +30,10 @@ describe('IdentitiesManager', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
+    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, logger });
+    db = await DB.createDB({ dbPath, logger });
     await db.start({
       keyPair: keyManager.getRootKeyPair(),
     });
@@ -149,14 +149,14 @@ describe('IdentitiesManager', () => {
     await identitiesManager.start();
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
-    // we are going to run authenticate
+    // We are going to run authenticate
     const authProcess = testProvider.authenticate();
     const result1 = await authProcess.next();
-    // the test provider will provider a dummy authcode
+    // The test provider will provider a dummy authcode
     expect(result1.value).toBeDefined();
     expect(typeof result1.value).toBe('string');
     expect(result1.done).toBe(false);
-    // this is when we have completed it
+    // This is when we have completed it
     const result2 = await authProcess.next();
     expect(result2.value).toBeDefined();
     expect(result2.done).toBe(true);
@@ -210,7 +210,7 @@ describe('IdentitiesManager', () => {
       rawClaim,
     );
     expect(publishedClaim).toBeDefined();
-    // publishedClaim will contain 2 extra metadata fields: URL and id
+    // PublishedClaim will contain 2 extra metadata fields: URL and id
     expect(publishedClaim).toMatchObject(rawClaim);
     const publishedClaim_ = await testProvider.getClaim(
       identityId,

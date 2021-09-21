@@ -28,7 +28,7 @@ describe('Discovery', () => {
     let nodePath: string;
 
     beforeAll(async () => {
-      //creating directories and paths.
+      //Creating directories and paths.
       dataDirEach = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
@@ -60,7 +60,7 @@ describe('Discovery', () => {
         await polykeyAgent.discovery.stop();
         expect(discovery.started).toBeFalsy();
 
-        //starting.
+        //Starting.
         await discovery.start();
         expect(discovery.started).toBeTruthy();
       },
@@ -135,7 +135,8 @@ describe('Discovery', () => {
       const discoverProcess = nodeA.discovery.discoverGestaltByNode(
         nodeB.nodes.getNodeId(),
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.
@@ -156,7 +157,8 @@ describe('Discovery', () => {
         testProvider.id,
         identityId,
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.
@@ -248,7 +250,8 @@ describe('Discovery', () => {
         testProvider.id,
         identityIdB,
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.
@@ -269,7 +272,8 @@ describe('Discovery', () => {
         testProvider.id,
         identityIdA,
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.

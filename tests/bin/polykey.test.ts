@@ -6,7 +6,7 @@ describe('polykey', () => {
   });
 });
 
-// describe('CLI echoes', () => {
+// Describe('CLI echoes', () => {
 //   beforeEach(async () => {
 //     dataDir = await fs.promises.mkdtemp(
 //       path.join(os.tmpdir(), 'polykey-test-'),

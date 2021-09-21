@@ -28,7 +28,7 @@ async function main(argv = process.argv): Promise<number> {
   rootCommand.addCommand(commandNotifications);
   rootCommand.addCommand(commandEchoes);
   try {
-    // argv will have node path and the script path as the first 2 parameters
+    // Argv will have node path and the script path as the first 2 parameters
     await rootCommand.parseAsync(argv);
   } catch (e) {
     if (

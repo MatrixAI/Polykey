@@ -28,7 +28,7 @@ describe('WorkerManager', () => {
     await workerManager.start();
     let mainPid2;
     let mainPid3;
-    // only `w.f()` functions are running in the worker threads
+    // Only `w.f()` functions are running in the worker threads
     // the callback passed to `call` is still running in the main thread
     expect(
       await workerManager.call(async (w) => {

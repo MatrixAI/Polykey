@@ -34,16 +34,16 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
   const client = new PolykeyClient(clientConfig);
 
   try {
-    //starting client
+    //Starting client
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    //constructing message.
+    //Constructing message.
     const providerMessage = new clientPB.ProviderMessage();
     providerMessage.setProviderId(providerId);
     providerMessage.setMessage(identitiyId);
 
-    //sending message.
+    //Sending message.
     const gen = grpcClient.identitiesAuthenticate(providerMessage);
     const { p, resolveP } = utils.promise();
     gen.stream.on('metadata', async (meta) => {

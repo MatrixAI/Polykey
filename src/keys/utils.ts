@@ -31,6 +31,7 @@ import config from '../config';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
 import { promisify } from '../utils';
+import base58 from 'bs58';
 
 /**
  * Polykey OIDs start at 1.3.6.1.4.1.57167.2
@@ -54,7 +55,7 @@ async function generateDeterministicKeyPair(
 ): Promise<KeyPair> {
   const prng = random.createInstance();
   prng.seedFileSync = (needed: number) => {
-    // using bip39 seed generation parameters
+    // Using bip39 seed generation parameters
     // no passphrase is considered here
     return pkcs5.pbkdf2(seed, 'mnemonic', 2048, needed, md.sha512.create());
   };
@@ -157,7 +158,8 @@ function publicKeyToFingerprintBytes(
 function publicKeyToFingerprint(publicKey: PublicKey): PublicKeyFingerprint {
   const fString = publicKeyToFingerprintBytes(publicKey);
   const fTypedArray = forgeUtil.binary.raw.decode(fString);
-  const f = forgeUtil.binary.base64.encode(fTypedArray);
+  const f = base58.encode(fTypedArray);
+  // Const f = forgeUtil.binary.base64.encode(fTypedArray);
   return f;
 }
 
@@ -179,7 +181,7 @@ function decryptPrivateKey(
   privateKeyEncryptedPem: PrivateKeyPem,
   password: string,
 ): PrivateKey {
-  // using the wrong password can return a null
+  // Using the wrong password can return a null
   // or it could throw an exception
   // the exact exception can be different
   const privateKeyDecrypted = pki.decryptRsaPrivateKey(
@@ -354,7 +356,7 @@ function certFromDer(certDer: string): Certificate {
 }
 
 function certCopy(cert: Certificate): Certificate {
-  // ideally we would use
+  // Ideally we would use
   // certFromAsn1(certToAsn1(cert))
   // however this bugged:
   // https://github.com/digitalbazaar/forge/issues/866
@@ -389,7 +391,7 @@ function certVerifiedNode(cert: Certificate): boolean {
     }
     return true;
   });
-  // calculate the certificate digest
+  // Calculate the certificate digest
   const certDigest = md.sha256.create();
 
   let verified;
@@ -409,14 +411,14 @@ function certVerifiedNode(cert: Certificate): boolean {
       return false;
     }
   } finally {
-    // roll back the mutations to the child certificate
+    // Roll back the mutations to the child certificate
     cert.setExtensions(extensionsOrig);
   }
   return verified;
 }
 
 function encryptWithPublicKey(publicKey: PublicKey, plainText: Buffer): Buffer {
-  // sha256 is 256 bits or 32 bytes
+  // Sha256 is 256 bits or 32 bytes
   const maxSize = maxEncryptSize(publicKeyBitSize(publicKey) / 8, 32);
   if (plainText.byteLength > maxSize) {
     throw new keysErrors.ErrorEncryptSize(
@@ -480,7 +482,7 @@ function verifyWithPublicKey(
 }
 
 function maxEncryptSize(keyByteSize: number, hashByteSize: number) {
-  // see: https://tools.ietf.org/html/rfc3447#section-7.1
+  // See: https://tools.ietf.org/html/rfc3447#section-7.1
   return keyByteSize - 2 * hashByteSize - 2;
 }
 

@@ -84,11 +84,9 @@ class NotificationsManager {
       if (!this.db.started) {
         throw new dbErrors.ErrorDBNotStarted();
       }
-      // sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
-      const notificationsDb = await this.db.level(
-        this.notificationsDomain,
-      );
-      // sub-sub-level stores NotificationId -> string (message)
+      // Sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
+      const notificationsDb = await this.db.level(this.notificationsDomain);
+      // Sub-sub-level stores NotificationId -> string (message)
       const notificationsMessagesDb = await this.db.level(
         this.notificationsMessagesDbDomain[1],
         notificationsDb,
@@ -325,7 +323,9 @@ class NotificationsManager {
       const notifications: Array<Notification> = [];
       for await (const v of this.notificationsMessagesDb.createValueStream()) {
         const data = v as Buffer;
-        const notification = await this.db.deserializeDecrypt<Notification>(data);
+        const notification = await this.db.deserializeDecrypt<Notification>(
+          data,
+        );
         if (type === 'all') {
           notifications.push(notification);
         } else if (type === 'unread') {

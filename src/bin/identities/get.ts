@@ -20,7 +20,7 @@ const get = createCommand('get', {
 });
 get.arguments('<id>');
 get.action(async (id, options) => {
-  //parsing ID.
+  //Parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
   const clientConfig = {};
@@ -43,7 +43,7 @@ get.action(async (id, options) => {
     let res: clientPB.GestaltGraphMessage;
 
     if (nodeId) {
-      //getting from node.
+      //Getting from node.
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setNodeId(nodeId);
       const pCall = grpcClient.gestaltsGestaltGetByNode(nodeMessage);

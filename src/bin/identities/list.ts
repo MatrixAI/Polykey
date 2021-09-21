@@ -83,11 +83,11 @@ list.action(async (options) => {
         output.push(`gestalt ${count}`);
         output.push(`permissions: ${gestalt.permissions ?? 'None'}`);
 
-        //listing nodes
+        //Listing nodes
         for (const node of gestalt.nodes) {
           output.push(`${node.id}`);
         }
-        //listing identities
+        //Listing identities
         for (const identity of gestalt.identities) {
           output.push(`${identity.providerId}:${identity.identityId}`);
         }

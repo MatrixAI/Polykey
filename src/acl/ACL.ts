@@ -55,23 +55,14 @@ class ACL {
         throw new dbErrors.ErrorDBNotStarted();
       }
       const aclDb = await this.db.level(this.aclDbDomain);
-      // perms stores PermissionId -> Ref<Permission>
-      const aclPermsDb = await this.db.level(
-        this.aclPermsDbDomain[1],
-        aclDb,
-      );
-      // nodes stores NodeId -> PermissionId
-      const aclNodesDb = await this.db.level(
-        this.aclNodesDbDomain[1],
-        aclDb,
-      );
-      // vaults stores VaultId -> Record<NodeId, null>
+      // Perms stores PermissionId -> Ref<Permission>
+      const aclPermsDb = await this.db.level(this.aclPermsDbDomain[1], aclDb);
+      // Nodes stores NodeId -> PermissionId
+      const aclNodesDb = await this.db.level(this.aclNodesDbDomain[1], aclDb);
+      // Vaults stores VaultId -> Record<NodeId, null>
       // note that the NodeId in each array must be in their own unique gestalt
       // the NodeId in each array may be missing if it had been previously deleted
-      const aclVaultsDb = await this.db.level(
-        this.aclVaultsDbDomain[1],
-        aclDb,
-      );
+      const aclVaultsDb = await this.db.level(this.aclVaultsDbDomain[1], aclDb);
       if (fresh) {
         await aclDb.clear();
       }
@@ -151,13 +142,13 @@ class ACL {
         let nodePerm: Record<NodeId, Permission>;
         if (permId in permIds) {
           nodePerm = permIds[permId];
-          // get the first existing perm object
+          // Get the first existing perm object
           let perm: Permission;
           for (const nodeId_ in nodePerm) {
             perm = nodePerm[nodeId_];
             break;
           }
-          // all perm objects are shared
+          // All perm objects are shared
           nodePerm[nodeId] = perm!;
         } else {
           const permRef = (await this.db.get(
@@ -185,7 +176,9 @@ class ACL {
       for await (const o of this.aclVaultsDb.createReadStream()) {
         const vaultId = (o as any).key as VaultId;
         const data = (o as any).value as Buffer;
-        const nodeIds = await this.db.deserializeDecrypt<Record<NodeId, null>>(data);
+        const nodeIds = await this.db.deserializeDecrypt<Record<NodeId, null>>(
+          data,
+        );
         const nodePerm: Record<NodeId, Permission> = {};
         const nodeIdsGc: Set<NodeId> = new Set();
         for (const nodeId in nodeIds) {
@@ -194,7 +187,7 @@ class ACL {
             nodeId as NodeId,
           );
           if (permId == null) {
-            // invalid node id
+            // Invalid node id
             nodeIdsGc.add(nodeId as NodeId);
             continue;
           }
@@ -203,14 +196,14 @@ class ACL {
             permId,
           )) as Ref<Permission>;
           if (!(vaultId in permRef.object.vaults)) {
-            // vault id is missing from the perm
+            // Vault id is missing from the perm
             nodeIdsGc.add(nodeId as NodeId);
             continue;
           }
           nodePerm[nodeId] = permRef.object;
         }
         if (nodeIdsGc.size > 0) {
-          // remove invalid node ids
+          // Remove invalid node ids
           for (const nodeId of nodeIdsGc) {
             delete nodeIds[nodeId];
           }
@@ -273,7 +266,7 @@ class ACL {
           nodeId as NodeId,
         );
         if (permId == null) {
-          // invalid node id
+          // Invalid node id
           nodeIdsGc.add(nodeId as NodeId);
           continue;
         }
@@ -282,14 +275,14 @@ class ACL {
           permId,
         )) as Ref<Permission>;
         if (!(vaultId in permRef.object.vaults)) {
-          // vault id is missing from the perm
+          // Vault id is missing from the perm
           nodeIdsGc.add(nodeId as NodeId);
           continue;
         }
         perms[nodeId] = permRef.object;
       }
       if (nodeIdsGc.size > 0) {
-        // remove invalid node ids
+        // Remove invalid node ids
         for (const nodeId of nodeIdsGc) {
           delete nodeIds[nodeId];
         }
@@ -569,7 +562,7 @@ class ACL {
         },
       );
     } else {
-      // the entire gestalt's perm gets replaced, therefore the count stays the same
+      // The entire gestalt's perm gets replaced, therefore the count stays the same
       const permRef = (await this.db.get(
         this.aclPermsDbDomain,
         permId,
@@ -625,7 +618,7 @@ class ACL {
       domain: this.aclNodesDbDomain,
       key: nodeId,
     });
-    // we do not remove the node id from the vaults
+    // We do not remove the node id from the vaults
     // they can be removed later upon inspection
     return ops;
   }
@@ -645,7 +638,7 @@ class ACL {
           this.aclNodesDbDomain,
           nodeId as NodeId,
         );
-        // skip if the nodeId doesn't exist
+        // Skip if the nodeId doesn't exist
         // this means that it previously been removed
         if (permId == null) {
           continue;
@@ -699,7 +692,7 @@ class ACL {
       this.aclPermsDbDomain,
       permId,
     )) as Ref<Permission>;
-    // optionally replace the permission record for the target
+    // Optionally replace the permission record for the target
     if (perm != null) {
       permRef.object = perm;
     }
@@ -778,7 +771,7 @@ class ACL {
         nodeId as NodeId,
       );
       if (permId == null) {
-        // invalid node id
+        // Invalid node id
         nodeIdsGc.add(nodeId as NodeId);
         continue;
       }
@@ -787,7 +780,7 @@ class ACL {
         permId,
       )) as Ref<Permission>;
       if (!(vaultId in permRef.object.vaults)) {
-        // vault id is missing from the perm
+        // Vault id is missing from the perm
         nodeIdsGc.add(nodeId as NodeId);
         continue;
       }
@@ -812,7 +805,7 @@ class ACL {
       });
     }
     if (nodeIdsGc.size > 0) {
-      // remove invalid node ids
+      // Remove invalid node ids
       for (const nodeId of nodeIdsGc) {
         delete nodeIds[nodeId];
       }

@@ -59,11 +59,11 @@ class ConnectionForward extends Connection {
       }
       this.logger.info('Starting Connection Forward');
       this._started = true;
-      // promise for ready
+      // Promise for ready
       const { p: readyP, resolveP: resolveReadyP } = promise<void>();
-      // promise for start errors
+      // Promise for start errors
       const { p: errorP, rejectP: rejectErrorP } = promise<void>();
-      // promise for secure connection
+      // Promise for secure connection
       const { p: secureConnectP, resolveP: resolveSecureConnectP } =
         promise<void>();
       this.resolveReadyP = resolveReadyP;
@@ -88,7 +88,7 @@ class ConnectionForward extends Connection {
       this.tlsSocket.on('close', this.handleClose);
       let punchInterval;
       try {
-        // send punch signal
+        // Send punch signal
         await this.send(networkUtils.pingBuffer);
         punchInterval = setInterval(async () => {
           await this.send(networkUtils.pingBuffer);
@@ -251,7 +251,7 @@ class ConnectionForward extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
-    // ignore messages not intended for this target
+    // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
     }
@@ -261,15 +261,15 @@ class ConnectionForward extends Connection {
     } catch (e) {
       return;
     }
-    // don't reset timeout until timeout is initialised
+    // Don't reset timeout until timeout is initialised
     if (this.timeout != null) {
-      // any message should reset the timeout
+      // Any message should reset the timeout
       this.stopTimeout();
       this.startTimeout();
     }
     if (msg.type === 'ping') {
       this.resolveReadyP();
-      // respond with ready message
+      // Respond with ready message
       await this.send(networkUtils.pongBuffer);
     }
   };
@@ -288,10 +288,10 @@ class ConnectionForward extends Connection {
 
   protected handleEnd = () => {
     if (this.utpConn.destroyed) {
-      // the utp connection may already be destroyed
+      // The utp connection may already be destroyed
       this.tlsSocket.destroy();
     } else {
-      // prevent half open connections
+      // Prevent half open connections
       this.tlsSocket.end();
     }
   };

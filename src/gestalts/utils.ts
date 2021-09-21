@@ -5,6 +5,7 @@ import type {
   GestaltId,
   GestaltNodeId,
   GestaltIdentityId,
+  GestaltAction,
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
@@ -73,18 +74,15 @@ function identityFromKey(
   return [identity.providerId, identity.identityId];
 }
 
-function validGestaltAction(action: string): boolean {
-  const validActions = [
-    //This list has to match GestaltAction.
-    'notify',
-    'scan',
-  ];
-  return validActions.includes(action);
+const validGestaltAction = ['notify', 'scan'];
+function isGestaltAction(arg: any): arg is GestaltAction {
+  if (typeof arg !== 'string') return false;
+  return validGestaltAction.includes(arg);
 }
 
-function checkGestaltAction(action: string): void {
-  if (!validGestaltAction(action))
-    throw new ErrorGestaltsInvalidAction(`Invalid action: ${action}`);
+function makeGestaltAction(value: string): GestaltAction {
+  if (isGestaltAction(value)) return value;
+  throw new ErrorGestaltsInvalidAction(`${value} is not a valid GestaltAction`);
 }
 
 export {
@@ -94,6 +92,6 @@ export {
   keyFromIdentity,
   nodeFromKey,
   identityFromKey,
-  validGestaltAction,
-  checkGestaltAction,
+  isGestaltAction,
+  makeGestaltAction,
 };

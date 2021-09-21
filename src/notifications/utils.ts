@@ -35,7 +35,7 @@ function constructGestaltInviteMessage(nodeId: NodeId): string {
 }
 
 /**
- * dummy for now
+ * Dummy for now
  */
 function constructVaultShareMessage(vaultId: VaultId): string {
   return `xxx has shared their vault with ID ${vaultId} with you.`;
@@ -75,7 +75,7 @@ async function verifyAndDecodeNotif(notifJWT: string): Promise<Notification> {
     ) {
       throw err;
     } else {
-      // error came from jose
+      // Error came from jose
       throw new notificationsErrors.ErrorNotificationsParse();
     }
   }

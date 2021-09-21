@@ -92,7 +92,7 @@ function unserializeNetworkMessage(data: Buffer): NetworkMessage {
 }
 
 function getCertificateChain(socket: TLSSocket): Array<Certificate> {
-  // the order of certificates is always leaf to root
+  // The order of certificates is always leaf to root
   const certs: Array<Certificate> = [];
   let cert_ = socket.getPeerCertificate(true);
   if (isEmptyObject(cert_)) {
@@ -197,7 +197,7 @@ function verifyServerCertificateChain(
       );
     }
     if (commonName.value === nodeId) {
-      // found the certificate claiming the nodeId
+      // Found the certificate claiming the nodeId
       certClaim = cert;
       certClaimIndex = certIndex;
       break;

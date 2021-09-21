@@ -25,9 +25,6 @@ describe('CLI secrets', () => {
   let passwordFile: string;
   let command: Array<string>;
 
-  // constants
-  const jwtTokenExitCode = 77;
-
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
