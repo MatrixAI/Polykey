@@ -295,11 +295,12 @@ class DB {
     return this._db.batch(ops_);
   }
 
+  public async serializeEncrypt(value: any): Promise<Buffer>;
   public async serializeEncrypt(value: any, raw: false): Promise<Buffer>;
   public async serializeEncrypt(value: Buffer, raw: true): Promise<Buffer>;
   public async serializeEncrypt(
     value: any | Buffer,
-    raw: boolean
+    raw: boolean = false,
   ): Promise<Buffer> {
     const plainText: Buffer = raw
       ? (value as Buffer)

@@ -70,13 +70,13 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    keyManager = new KeyManager({
+    keyManager = await KeyManager.createKeyManager({
       keysPath,
       fs: fs,
       logger: logger,
     });
 
-    db = new DB({
+    db = await DB.createDB({
       dbPath: dbPath,
       fs: fs,
       logger: logger,
@@ -238,7 +238,7 @@ describe('GRPC agent', () => {
 
     beforeEach(async () => {
       yKeysPath = path.join(dataDir, 'keys-y');
-      yKeyManager = new KeyManager({ keysPath: yKeysPath, fs, logger });
+      yKeyManager = await KeyManager.createKeyManager({ keysPath: yKeysPath, fs, logger });
       await yKeyManager.start({ password: 'password' });
 
       // Manually inject Y's public key into a dummy NodeConnection object, such

@@ -313,7 +313,7 @@ describe('Vault is', () => {
   test(
     'adding and committing a secret 100 times on efs',
     async () => {
-      const efs = new EncryptedFS(await getRandomBytes(32), fs, dataDir);
+      const efs = await EncryptedFS.createEncryptedFS({ dbKey: await getRandomBytes(32), dbPath: dataDir });
       const exists = utils.promisify(efs.exists).bind(efs);
       const mkdir = utils.promisify(efs.mkdir).bind(efs);
       const writeFile = utils.promisify(efs.writeFile).bind(efs);

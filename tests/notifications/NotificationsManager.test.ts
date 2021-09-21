@@ -81,12 +81,12 @@ describe('NotificationsManager', () => {
     const receiverVaultsPath = path.join(receiverDataDir, 'receiverVaults');
     const receiverDbPath = path.join(receiverDataDir, 'receiverDb');
 
-    receiverKeyManager = new KeyManager({
+    receiverKeyManager = await KeyManager.createKeyManager({
       keysPath: receiverKeysPath,
       fs: fs,
       logger: logger,
     });
-    receiverDb = new DB({
+    receiverDb = await DB.createDB({
       dbPath: receiverDbPath,
       fs: fs,
       logger: logger,
@@ -190,8 +190,8 @@ describe('NotificationsManager', () => {
     const senderRevProxy = new ReverseProxy({
       logger: logger,
     });
-    senderKeyManager = new KeyManager({ keysPath: senderKeysPath, fs, logger });
-    senderDb = new DB({ dbPath: senderDbPath, fs, logger });
+    senderKeyManager = await KeyManager.createKeyManager({ keysPath: senderKeysPath, fs, logger });
+    senderDb = await DB.createDB({ dbPath: senderDbPath, fs, logger });
     senderACL = new ACL({ db: senderDb, logger });
     senderSigchain = new Sigchain({
       keyManager: senderKeyManager,

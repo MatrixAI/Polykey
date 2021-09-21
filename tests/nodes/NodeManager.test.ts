@@ -47,7 +47,7 @@ describe('NodeManager', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
+    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
 
     const cert = keyManager.getRootCert();
@@ -69,7 +69,7 @@ describe('NodeManager', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, logger });
+    db = await DB.createDB({ dbPath, logger });
     await db.start({
       keyPair: keyManager.getRootKeyPair(),
     });

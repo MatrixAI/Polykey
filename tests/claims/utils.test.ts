@@ -1,4 +1,4 @@
-import type { Claim, ClaimEncoded, ClaimData } from '@/claims/types';
+import type { Claim } from '@/claims/types';
 import type { NodeId } from '@/nodes/types';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { PrivateKeyPem, PublicKeyPem } from '@/keys/types';
@@ -32,7 +32,7 @@ describe('Claims utils', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
+    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     publicKey = keyManager.getRootKeyPairPem().publicKey;
     privateKey = keyManager.getRootKeyPairPem().privateKey;

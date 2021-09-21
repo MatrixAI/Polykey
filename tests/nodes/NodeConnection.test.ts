@@ -75,12 +75,12 @@ describe('NodeConnection', () => {
     const serverVaultsPath = path.join(serverDataDir, 'serverVaults');
     const serverDbPath = path.join(serverDataDir, 'serverDb');
 
-    serverKeyManager = new KeyManager({
+    serverKeyManager = await KeyManager.createKeyManager({
       keysPath: serverKeysPath,
       fs: fs,
       logger: logger,
     });
-    serverDb = new DB({
+    serverDb = await DB.createDB({
       dbPath: serverDbPath,
       fs: fs,
       logger: logger,
@@ -174,7 +174,7 @@ describe('NodeConnection', () => {
       path.join(os.tmpdir(), 'polykey-test-client'),
     );
     const clientKeysPath = path.join(clientDataDir, 'clientKeys');
-    clientKeyManager = new KeyManager({ keysPath: clientKeysPath, logger });
+    clientKeyManager = await KeyManager.createKeyManager({ keysPath: clientKeysPath, logger });
     await clientKeyManager.start({ password: 'password' });
     fwdTLSConfig = {
       keyPrivatePem: clientKeyManager.getRootKeyPairPem().privateKey,
@@ -195,7 +195,7 @@ describe('NodeConnection', () => {
     await clientKeyManager.stop();
     await fwdProxy.stop();
 
-    serverNodeManager.clearDB();
+    await serverNodeManager.clearDB();
   });
   afterAll(async () => {
     await fs.promises.rm(serverDataDir, {

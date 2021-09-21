@@ -35,7 +35,7 @@ describe('Vaults utils', () => {
   });
   test('EFS can be read recursively', async () => {
     const key = await vaultsUtils.generateVaultKey();
-    const efs = new EncryptedFS(key, fs, dataDir);
+    const efs = await EncryptedFS.createEncryptedFS({ dbKey: key, dbPath: dataDir });
     const mkdir = utils.promisify(efs.mkdir).bind(efs);
     const writeFile = utils.promisify(efs.writeFile).bind(efs);
     await mkdir('dir', { recursive: true });
