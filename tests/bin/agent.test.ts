@@ -463,12 +463,14 @@ describe('CLI agent', () => {
         ['Vault', vaultCommands],
       ];
 
+      const dummyNodeId = 'A'.repeat(44);
       function generateCommand(commandString: string) {
         const command = commandString
           .replace(/filePath/g, dummyPath)
           .replace(/sigPath/g, dummyPath)
           .replace(/passPath/g, dummyPath)
           .replace(/secretPath/g, dummyPath)
+          .replace(/nodeId/g, dummyNodeId)
           .split(' ');
         const nodePath = ['-np', activeAgentPath];
         return [...command, ...nodePath];

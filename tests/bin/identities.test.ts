@@ -19,6 +19,7 @@ import {
   setupRemoteKeynode,
 } from '../utils';
 import { ClaimLinkIdentity, ClaimLinkNode } from '@/claims/types';
+import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -46,23 +47,23 @@ describe('CLI Identities', () => {
     new StreamHandler(),
   ]);
   const node1: NodeInfo = {
-    id: '123' as NodeId,
+    id: makeNodeId('1'.repeat(44)),
     chain: {},
   };
   const keynode: NodeInfo = {
-    id: '123' as NodeId,
+    id: makeNodeId('2'.repeat(44)),
     chain: {},
   };
   const node2: NodeInfo = {
-    id: '456' as NodeId,
+    id: makeNodeId('3'.repeat(44)),
     chain: {},
   };
   const node3: NodeInfo = {
-    id: '789' as NodeId,
+    id: makeNodeId('4'.repeat(44)),
     chain: {},
   };
   const invaldNode: NodeInfo = {
-    id: 'invalid' as NodeId,
+    id: makeNodeId('invalid' + 'A'.repeat(37)),
     chain: {},
   };
   const identity1: IdentityInfo = {
@@ -548,13 +549,14 @@ describe('CLI Identities', () => {
     });
   });
   describe('commandListGestalts', () => {
+    //FIXME: Breaking because the gestalt contains no Nodes, this should not be possible.
     test('Should list gestalts with permissions.', async () => {
       await polykeyAgent.gestalts.setGestaltActionByNode(node1.id, 'notify');
       await polykeyAgent.gestalts.setGestaltActionByNode(node1.id, 'scan');
       await polykeyAgent.gestalts.setGestaltActionByNode(node2.id, 'scan');
 
       const commands = ['identities', 'list', '-np', nodePath];
-      const result = await testUtils.pkWithStdio(commands);
+      const result = await testUtils.pk(commands);
       expect(result.code).toBe(0); //Succeeds.
       expect(result.stdout).toContain('notify');
       expect(result.stdout).toContain('scan');

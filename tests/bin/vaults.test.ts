@@ -8,6 +8,7 @@ import { PolykeyAgent } from '@';
 import { NodeAddress } from '@/nodes/types';
 import * as utils from './utils';
 import { filter } from 'cheerio/lib/api/traversing';
+import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -34,15 +35,15 @@ describe('CLI vaults', () => {
   // constants
   const jwtTokenExitCode = 77;
   const node1: NodeInfo = {
-    id: '123' as NodeId,
+    id: makeNodeId('1'.repeat(44)),
     chain: {},
   };
   const node2: NodeInfo = {
-    id: '456' as NodeId,
+    id: makeNodeId('2'.repeat(44)),
     chain: {},
   };
   const node3: NodeInfo = {
-    id: '789' as NodeId,
+    id: makeNodeId('3'.repeat(44)),
     chain: {},
   };
 
@@ -252,20 +253,20 @@ describe('CLI vaults', () => {
       const id = await polykeyAgent.vaults.getVaultId(vaultName);
       expect(id).toBeTruthy();
       await polykeyAgent.vaults.setVaultPermissions(
-        '123' as NodeId,
+        node1.id,
         vault.vaultId,
       );
       await polykeyAgent.vaults.setVaultPermissions(
-        '456' as NodeId,
+        node2.id,
         vault.vaultId,
       );
       await polykeyAgent.vaults.setVaultPermissions(
-        '789' as NodeId,
+        node3.id,
         vault.vaultId,
       );
 
       await polykeyAgent.vaults.unsetVaultPermissions(
-        '456' as NodeId,
+        node2.id,
         vault.vaultId,
       );
 
@@ -492,7 +493,6 @@ describe('CLI vaults', () => {
         '-ni',
         targetNodeId as string,
       ];
-
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
 

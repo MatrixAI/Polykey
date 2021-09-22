@@ -16,7 +16,7 @@ import type {
   WrappedObject,
   RawObject,
 } from 'isomorphic-git';
-import type { FileSystem } from '../types';
+// import type { EncryptedFS } from '../types';
 
 import path from 'path';
 import pako from 'pako';
@@ -26,6 +26,7 @@ import createHash from 'sha.js';
 
 // import * as vaultUtils from '../vaults/utils';
 import { errors as gitErrors } from './';
+import type { EncryptedFS } from 'encryptedfs';
 
 const refpaths = (ref: string) => [
   `${ref}`,
@@ -160,7 +161,7 @@ function textToPackedRefs(text: string): Refs {
   return refs;
 }
 
-async function packedRefs(fs: FileSystem, gitdir: string): Promise<Refs> {
+async function packedRefs(fs: EncryptedFS, gitdir: string): Promise<Refs> {
   const text = await fs.promises.readFile(path.join(gitdir, 'packed-refs'), {
     encoding: 'utf8',
   });
@@ -169,7 +170,7 @@ async function packedRefs(fs: FileSystem, gitdir: string): Promise<Refs> {
 }
 
 async function listRefs(
-  fs: FileSystem,
+  fs: EncryptedFS,
   gitdir: string,
   filepath: string,
 ): Promise<string[]> {
@@ -204,7 +205,7 @@ async function listRefs(
 }
 
 async function resolve(
-  fs: FileSystem,
+  fs: EncryptedFS,
   gitdir: string,
   ref: string,
   depth?: number,
@@ -246,7 +247,7 @@ async function resolve(
 }
 
 async function uploadPack(
-  fs: FileSystem,
+  fs: EncryptedFS,
   gitdir: string = '.git',
   advertiseRefs = false,
 ): Promise<Array<Buffer> | undefined> {
@@ -284,7 +285,7 @@ async function packObjects(
     haves = undefined,
   }:
   {
-    fs: FileSystem,
+    fs: EncryptedFS,
     gitdir: string,
     refs: string[],
     depth?: number,
@@ -328,7 +329,7 @@ async function packObjects(
 }
 
 async function listObjects(
-  fs: FileSystem,
+  fs: EncryptedFS,
   gitdir = '.git',
   oids: string[],
 ): Promise<Array<string>> {
@@ -438,7 +439,7 @@ function parseBuffer(buffer: Buffer): TreeObject {
 }
 
 async function log(
-  fs: FileSystem,
+  fs: EncryptedFS,
   gitdir = '.git',
   ref = 'HEAD',
   depth: number | undefined,
@@ -502,7 +503,7 @@ function compareAge(a: ReadCommitResult, b: ReadCommitResult): number {
 }
 
 async function logCommit(
-  fs: FileSystem,
+  fs: EncryptedFS,
   gitdir: string,
   oid: string,
   signing: boolean,
@@ -716,7 +717,7 @@ async function readObject(
     format = 'parsed',
   }:
   {
-    fs: FileSystem,
+    fs: EncryptedFS,
     gitdir: string,
     oid: string,
     format?: string,
@@ -1117,7 +1118,7 @@ function unwrap(buffer: Buffer): {
 }
 
 async function pack(
-  fs: FileSystem,
+  fs: EncryptedFS,
   gitdir: string = '.git',
   oids: string[],
   outputStream: PassThrough,

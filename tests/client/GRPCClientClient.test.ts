@@ -51,7 +51,7 @@ describe('GRPCClientClient', () => {
       logger: logger,
     });
     const clientPath = path.join(nodePath, 'client');
-    const session = new Session({ clientPath });
+    const session = new Session({ clientPath, logger });
     const token = await polykeyAgent.sessions.generateToken();
     await session.start({ token });
     await client.start({ timeout: 10000, session });

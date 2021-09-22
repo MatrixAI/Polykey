@@ -581,9 +581,10 @@ class Vault {
       const wantedObjectId = body.toString().slice(9, 49);
 
       // Pack the requested object into a message
-      const packResult = await gitUtils.packObjects(this.efs, '.git', [
-        wantedObjectId,
-      ]);
+      const packResult = await gitUtils.packObjects({
+        fs: this.efs, gitdir: '.git', refs: [wantedObjectId,]
+
+      });
 
       // Construct and return readable streams to send the message
       const readable = new PassThrough();

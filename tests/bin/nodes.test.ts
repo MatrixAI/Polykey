@@ -8,6 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import * as testUtils from './utils';
 import * as testKeynodeUtils from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -194,7 +195,8 @@ describe('CLI Nodes', () => {
     test(
       "Should return failure if can't find the node",
       async () => {
-        const commands = genCommands(['ping', 'FakeNodeId']);
+        const fakeNodeId = makeNodeId('FakeNodeId' + 'A'.repeat(34));
+        const commands = genCommands(['ping', fakeNodeId]);
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).not.toBe(0); // Should fail if node doesn't exist.
         expect(result.stdout).toContain('Failed to resolve node ID');
@@ -202,7 +204,7 @@ describe('CLI Nodes', () => {
         //Json format.
         const commands2 = genCommands([
           'ping',
-          'FakeNodeID',
+          fakeNodeId,
           '--format',
           'json',
         ]);
@@ -296,7 +298,7 @@ describe('CLI Nodes', () => {
     test(
       'Should fail to find an unknown node',
       async () => {
-        const unknownNodeId = ('A'.repeat(43) + '=') as NodeId;
+        const unknownNodeId = makeNodeId('A'.repeat(44));
         const commands = genCommands(['find', unknownNodeId]);
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).toBe(1);
@@ -327,7 +329,7 @@ describe('CLI Nodes', () => {
     );
   });
   describe('commandAddNode', () => {
-    const validNodeId = ('A'.repeat(43) + '=') as NodeId;
+    const validNodeId = makeNodeId('A'.repeat(44));
     const invalidNodeId = 'INVALIDID' as NodeId;
     const validHost = '0.0.0.0';
     const invalidHost = 'INVALIDHOST';

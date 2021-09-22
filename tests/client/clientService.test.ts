@@ -37,6 +37,7 @@ import { sleep } from '@/utils';
 import { ErrorSessionTokenInvalid } from '@/errors';
 import { checkAgentRunning } from '@/agent/utils';
 import { NotificationData } from '@/notifications/types';
+import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -98,7 +99,7 @@ describe('Client service', () => {
     },
   };
   const node2: NodeInfo = {
-    id: 'NodeIdABC' as NodeId,
+    id: makeNodeId('NodeIdABC' + 'A'.repeat(35)),
     chain: {},
   };
   const identity1: IdentityInfo = {
@@ -1599,7 +1600,7 @@ describe('Client service', () => {
         client,
         client.nodesAdd,
       );
-      const nodeId = 'A'.repeat(43) + '=';
+      const nodeId = makeNodeId('A'.repeat(44));
       const host = '127.0.0.1';
       const port = 11111;
       const nodeAddressMessage = new clientPB.NodeAddressMessage();
@@ -1607,7 +1608,7 @@ describe('Client service', () => {
       nodeAddressMessage.setHost(host);
       nodeAddressMessage.setPort(port);
       await nodesAdd(nodeAddressMessage, callCredentials);
-      const nodeAddress = await nodeManager.getNode(nodeId as NodeId);
+      const nodeAddress = await nodeManager.getNode(nodeId);
       if (!nodeAddress) {
         fail('Node address undefined');
       }
@@ -1652,7 +1653,7 @@ describe('Client service', () => {
           client.nodesFind,
         );
       // Case 1: node already exists in the local node graph (no contact required)
-      const nodeId = 'nodeId' as NodeId;
+      const nodeId = makeNodeId('B'.repeat(44));
       const nodeAddress: NodeAddress = {
         ip: '127.0.0.1' as Host,
         port: 11111 as Port,
@@ -1668,7 +1669,7 @@ describe('Client service', () => {
     });
     test('should find a node (contacts remote node)', async () => {
       // Case 2: node can be found on the remote node
-      const nodeId = 'nodeId' as NodeId;
+      const nodeId = makeNodeId('C'.repeat(44));
       const nodeAddress: NodeAddress = {
         ip: '127.0.0.1' as Host,
         port: 11111 as Port,
@@ -1690,12 +1691,12 @@ describe('Client service', () => {
       'should fail to find a node (contacts remote node)',
       async () => {
         // Case 3: node exhausts all contacts and cannot find node
-        const nodeId = 'unfindableNode' as NodeId;
+        const nodeId = makeNodeId('unfindableNode' + 'A'.repeat(30));
         // Add a single dummy node to the server node graph database
         // Server will not be able to connect to this node (the only node in its
         // database), and will therefore not be able to locate the node.
         await server.nodes.setNode(
-          'dummyNode' as NodeId,
+          makeNodeId('dummyNode' + 'A'.repeat(35)),
           {
             ip: '127.0.0.2' as Host,
             port: 22222 as Port,
@@ -1719,7 +1720,7 @@ describe('Client service', () => {
   describe('Nodes claims', () => {
     let remoteGestalt: PolykeyAgent;
     const remoteGestaltNode: NodeInfo = {
-      id: 'nodeId' as NodeId,
+      id: makeNodeId('D'.repeat(44)),
       chain: {},
     };
     beforeAll(async () => {

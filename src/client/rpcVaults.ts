@@ -7,7 +7,7 @@ import * as utils from './utils';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
-import { makeNodeId } from '../nodes/utils';
+import { isNodeId, makeNodeId } from '../nodes/utils';
 
 const createVaultRPC = ({
   vaultManager,
@@ -566,7 +566,7 @@ const createVaultRPC = ({
           await genWritable.throw({ code: grpc.status.NOT_FOUND });
           return;
         }
-        const node = makeNodeId(nodeMessage.getNodeId());
+        const node = nodeMessage.getNodeId();
         const vaultMessage = call.request.getVault();
         if (vaultMessage == null) {
           await genWritable.throw({ code: grpc.status.NOT_FOUND });
@@ -574,7 +574,7 @@ const createVaultRPC = ({
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         let perms: Record<NodeId, VaultAction>;
-        if (node != null) {
+        if (isNodeId(node)) {
           perms = await vaultManager.getVaultPermissions(id, node);
         } else {
           perms = await vaultManager.getVaultPermissions(id);
