@@ -219,6 +219,8 @@ async function requestVaultNames(
   return data;
 }
 
+
+
 export {
   generateVaultKey,
   generateVaultId,

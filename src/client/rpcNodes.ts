@@ -10,6 +10,7 @@ import * as utils from '../client/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as grpcUtils from '../grpc/utils';
 import * as nodesErrors from '../nodes/errors';
+import { makeNodeId } from '../nodes/utils';
 
 const createNodesRPC = ({
   nodeManager,
@@ -50,7 +51,7 @@ const createNodesRPC = ({
           throw new nodesErrors.ErrorInvalidHost();
         }
         await nodeManager.setNode(
-          call.request.getNodeId() as NodeId,
+          makeNodeId(call.request.getNodeId()),
           {
             ip: call.request.getHost(),
             port: call.request.getPort(),
@@ -76,7 +77,7 @@ const createNodesRPC = ({
         );
         call.sendMetadata(responseMeta);
         const status = await nodeManager.pingNode(
-          call.request.getNodeId() as NodeId,
+          makeNodeId(call.request.getNodeId()),
         );
         response.setSuccess(status);
       } catch (err) {
@@ -103,7 +104,7 @@ const createNodesRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const remoteNodeId = call.request.getNodeId() as NodeId;
+        const remoteNodeId = makeNodeId(call.request.getNodeId());
         const gestaltInvite = await notificationsManager.findGestaltInvite(
           remoteNodeId,
         );
@@ -145,7 +146,7 @@ const createNodesRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const nodeId = call.request.getNodeId() as NodeId;
+        const nodeId = makeNodeId(call.request.getNodeId());
         const address = await nodeManager.findNode(nodeId);
         response.setNodeId(nodeId);
         response.setHost(address.ip);
