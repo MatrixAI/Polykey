@@ -1,5 +1,5 @@
 import type { NodeManager } from '../nodes';
-import type { NodeAddress, NodeId } from '../nodes/types';
+import type { NodeAddress } from '../nodes/types';
 import type { NotificationData } from '../notifications/types';
 import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
@@ -50,13 +50,10 @@ const createNodesRPC = ({
         if (!validHost) {
           throw new nodesErrors.ErrorInvalidHost();
         }
-        await nodeManager.setNode(
-          makeNodeId(call.request.getNodeId()),
-          {
-            ip: call.request.getHost(),
-            port: call.request.getPort(),
-          } as NodeAddress,
-        );
+        await nodeManager.setNode(makeNodeId(call.request.getNodeId()), {
+          ip: call.request.getHost(),
+          port: call.request.getPort(),
+        } as NodeAddress);
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
@@ -109,7 +106,7 @@ const createNodesRPC = ({
           remoteNodeId,
         );
 
-        // check first whether there is an existing gestalt invite from the remote node
+        // Check first whether there is an existing gestalt invite from the remote node
         // or if we want to force an invitation rather than a claim
         if (gestaltInvite === undefined || call.request.getForceInvite()) {
           const data = {
@@ -118,7 +115,7 @@ const createNodesRPC = ({
           await notificationsManager.sendNotification(remoteNodeId, data);
           response.setSuccess(false);
         } else {
-          // there is an existing invitation, and we want to claim the node
+          // There is an existing invitation, and we want to claim the node
           await nodeManager.claimNode(remoteNodeId);
           response.setSuccess(true);
         }

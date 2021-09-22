@@ -36,7 +36,7 @@ abstract class Connection {
     const address = networkUtils.buildAddress(host, port);
     this.logger = logger ?? new Logger(`Connection ${address}`);
     this.utpSocket = utpSocket;
-    // the host for the connection must always valid target
+    // The host for the connection must always valid target
     // here we resolve any zero IPs to localhost
     // this matches the default behaviour in other parts of node
     this.host = networkUtils.resolvesZeroIP(host);

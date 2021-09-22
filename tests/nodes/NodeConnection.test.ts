@@ -174,7 +174,10 @@ describe('NodeConnection', () => {
       path.join(os.tmpdir(), 'polykey-test-client'),
     );
     const clientKeysPath = path.join(clientDataDir, 'clientKeys');
-    clientKeyManager = await KeyManager.createKeyManager({ keysPath: clientKeysPath, logger });
+    clientKeyManager = await KeyManager.createKeyManager({
+      keysPath: clientKeysPath,
+      logger,
+    });
     await clientKeyManager.start({ password: 'password' });
     fwdTLSConfig = {
       keyPrivatePem: clientKeyManager.getRootKeyPairPem().privateKey,

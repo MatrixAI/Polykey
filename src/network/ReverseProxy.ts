@@ -97,14 +97,14 @@ class ReverseProxy {
     }
     this.logger.info('Stopping Reverse Proxy');
     this._started = false;
-    // ensure no new connections are created while this is iterating
+    // Ensure no new connections are created while this is iterating
     await Promise.all(
       Array.from(this.connections.egress, ([, conn]) => conn.stop()),
     );
-    // delay socket close by about 1 second
+    // Delay socket close by about 1 second
     // this gives some time for the end/FIN packets to be sent
     await sleep(1000);
-    // even when all connections are destroyed
+    // Even when all connections are destroyed
     // the utp socket sometimes hangs in closing
     // here we asynchronously close and unreference it
     // in order to speed up the closing

@@ -528,7 +528,7 @@ class VaultManager {
     const client = this.nodeManager.getClient(nodeId);
 
     // Compile the vault Id
-    const id =`${vaultsUtils.splitVaultId(vaultId)}:${nodeId}`;
+    const id = `${vaultsUtils.splitVaultId(vaultId)}:${nodeId}`;
 
     // Send a message to the connected agent to see if the clone can occur
     const vaultPermMessage = new agentPB.VaultPermMessage();
@@ -569,7 +569,9 @@ class VaultManager {
 
     // Set the default pulling node to the specified node Id
     await this.setDefaultNode(
-      `${ vaultsUtils.splitVaultId(vaultId)}':'${this.nodeManager.getNodeId()}` as VaultId,
+      `${vaultsUtils.splitVaultId(
+        vaultId,
+      )}':'${this.nodeManager.getNodeId()}` as VaultId,
       nodeId,
     );
   }
@@ -634,10 +636,7 @@ class VaultManager {
 
     // Pull the vault
     const vault = await this.getVault(vaultId);
-    await vault.pullVault(
-      gitRequest,
-      node,
-    );
+    await vault.pullVault(gitRequest, node);
 
     // Set the default pulling node to the specified node Id
     await this.setDefaultNode(vaultId, node);
@@ -700,7 +699,9 @@ class VaultManager {
     nodeId: NodeId,
   ): Promise<void> {
     // Compile the new vaultId with the current node Id appended
-    const newVaultId = `${vaultsUtils.splitVaultId(vaultId)}:${this.nodeManager.getNodeId()}` as VaultId;
+    const newVaultId = `${vaultsUtils.splitVaultId(
+      vaultId,
+    )}:${this.nodeManager.getNodeId()}` as VaultId;
 
     // Create the Vault instance and path
     await this.fs.promises.mkdir(path.join(this.vaultsPath, newVaultId));
@@ -719,11 +720,7 @@ class VaultManager {
     this.vaults[newVaultId] = vault;
 
     // Clone into the vault
-    await vault.cloneVault(
-      gitHandler,
-      key,
-      nodeId,
-    );
+    await vault.cloneVault(gitHandler, key, nodeId);
   }
 
   /**

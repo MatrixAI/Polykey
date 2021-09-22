@@ -32,8 +32,7 @@ describe('CLI keys', () => {
   let newNodePath2: string;
   let command: Array<string>;
 
-  // constants
-  const jwtTokenExitCode = 77;
+  // Constants
   const password = 'password';
 
   beforeAll(async () => {

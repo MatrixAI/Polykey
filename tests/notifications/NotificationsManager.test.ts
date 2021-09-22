@@ -105,7 +105,7 @@ describe('NotificationsManager', () => {
       acl: receiverACL,
       logger: logger,
     });
-    // won't be used so don't need to start
+    // Won't be used so don't need to start
     const receiverFwdProxy = new ForwardProxy({
       authToken: '',
       logger: logger,
@@ -186,11 +186,15 @@ describe('NotificationsManager', () => {
     const senderDbPath = await fs.promises.mkdtemp(
       path.join(senderDataDir, 'senderDb'),
     );
-    // won't be used so don't need to start
+    // Won't be used so don't need to start
     const senderRevProxy = new ReverseProxy({
       logger: logger,
     });
-    senderKeyManager = await KeyManager.createKeyManager({ keysPath: senderKeysPath, fs, logger });
+    senderKeyManager = await KeyManager.createKeyManager({
+      keysPath: senderKeysPath,
+      fs,
+      logger,
+    });
     senderDb = await DB.createDB({ dbPath: senderDbPath, fs, logger });
     senderACL = new ACL({ db: senderDb, logger });
     senderSigchain = new Sigchain({
@@ -277,7 +281,7 @@ describe('NotificationsManager', () => {
       type: 'General',
       message: 'msg',
     };
-    // can send with permissions
+    // Can send with permissions
     await senderNotificationsManager.start({});
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {
@@ -285,7 +289,7 @@ describe('NotificationsManager', () => {
       },
       vaults: {},
     });
-    // can send without permissions
+    // Can send without permissions
     await senderNotificationsManager.sendNotification(
       receiverNodeId,
       notificationData,

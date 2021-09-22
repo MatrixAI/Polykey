@@ -18,25 +18,25 @@ class ErrorConnectionMessageParse extends ErrorConnection {}
 
 class ErrorConnectionNotStarted extends ErrorConnection {}
 
-// during start error
+// During start error
 class ErrorConnectionStart extends ErrorConnection {}
 
-// start timeout error
+// Start timeout error
 class ErrorConnectionStartTimeout extends ErrorConnectionStart {}
 
-// during compose error
+// During compose error
 class ErrorConnectionCompose extends ErrorConnection {}
 
-// compose timeout error
+// Compose timeout error
 class ErrorConnectionComposeTimeout extends ErrorConnectionCompose {}
 
-// connection is already composed
+// Connection is already composed
 class ErrorConnectionComposed extends ErrorConnection {}
 
-// not yet composed, cannot answer certain things
+// Not yet composed, cannot answer certain things
 class ErrorConnectionNotComposed extends ErrorConnection {}
 
-// was not able to keep alive
+// Was not able to keep alive
 class ErrorConnectionTimeout extends ErrorConnection {}
 
 /**

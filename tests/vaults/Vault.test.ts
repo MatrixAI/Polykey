@@ -313,7 +313,10 @@ describe('Vault is', () => {
   test(
     'adding and committing a secret 100 times on efs',
     async () => {
-      const efs = await EncryptedFS.createEncryptedFS({ dbKey: await getRandomBytes(32), dbPath: dataDir });
+      const efs = await EncryptedFS.createEncryptedFS({
+        dbKey: await getRandomBytes(32),
+        dbPath: dataDir,
+      });
       const exists = utils.promisify(efs.exists).bind(efs);
       const mkdir = utils.promisify(efs.mkdir).bind(efs);
       const writeFile = utils.promisify(efs.writeFile).bind(efs);
@@ -542,7 +545,7 @@ describe('Vault is', () => {
     expect(content).toBe('secret-content');
     await vault2.stop();
   });
-  // test('able to erase dirty commits on start up', async () => {
+  // Test('able to erase dirty commits on start up', async () => {
   //   await vault.start({ key });
   //   await vault.addSecret('secret-1', 'secret-content');
   //   await vault.mkdir('dir-1', { recursive: true });

@@ -30,7 +30,7 @@ async function bootstrapPolykeyState(
     throw new errors.ErrorAgentRunning('Agent currently running.');
   }
 
-  // checking keynode state.
+  // Checking keynode state.
   switch (await checkKeynodeState(nodePath)) {
     default: //Shouldn't be possible.
     case 'MALFORMED_KEYNODE':
@@ -45,7 +45,7 @@ async function bootstrapPolykeyState(
       );
     case 'EMPTY_DIRECTORY':
     case 'NO_DIRECTORY':
-      //this is fine.
+      //This is fine.
       break;
   }
 

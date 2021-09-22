@@ -143,7 +143,7 @@ describe('NodeManager', () => {
       await testUtils.cleanupRemoteKeynode(server);
     },
     global.failedConnectionTimeout * 2,
-  ); // ping needs to timeout (takes 20 seconds + setup + pulldown)
+  ); // Ping needs to timeout (takes 20 seconds + setup + pulldown)
   test('finds node (local)', async () => {
     // Case 1: node already exists in the local node graph (no contact required)
     const nodeId = 'nodeId' as NodeId;

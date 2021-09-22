@@ -137,7 +137,7 @@ describe('Claims utils', () => {
         },
         iat: expect.any(Number),
       },
-      signatures: expect.any(Object), // just check for existence right now
+      signatures: expect.any(Object), // Just check for existence right now
     });
     // Check the signatures field
     // Check we only have 1 signature
@@ -180,7 +180,7 @@ describe('Claims utils', () => {
         },
         iat: expect.any(Number),
       },
-      signatures: expect.any(Object), // just check for existence right now
+      signatures: expect.any(Object), // Just check for existence right now
     });
     // Check the signatures field
     // Check we have both signatures
@@ -226,7 +226,7 @@ describe('Claims utils', () => {
         },
         iat: expect.any(Number),
       },
-      signatures: expect.any(Object), // just check for existence right now
+      signatures: expect.any(Object), // Just check for existence right now
     });
     // Check the signatures field
     // Check we only have 1 signature
@@ -390,7 +390,7 @@ describe('Claims utils', () => {
           node1: 'node1' as NodeId,
           node2: 'node2' as NodeId,
         },
-        iat: Date.now(), // timestamp (initialised at JWS field)
+        iat: Date.now(), // Timestamp (initialised at JWS field)
       },
       signatures: {
         node1: {
@@ -400,7 +400,7 @@ describe('Claims utils', () => {
             kid: 'node1',
           },
         },
-      }, // signee node ID -> claim signature
+      }, // Signee node ID -> claim signature
     };
     expect(
       claimsUtils.validateSinglySignedNodeClaim(singlySignedNodeClaim),
@@ -415,7 +415,7 @@ describe('Claims utils', () => {
           node1: 'node1' as NodeId,
           node2: 'node2' as NodeId,
         },
-        iat: Date.now(), // timestamp (initialised at JWS field)
+        iat: Date.now(), // Timestamp (initialised at JWS field)
       },
       signatures: {
         node1: {
@@ -432,7 +432,7 @@ describe('Claims utils', () => {
             kid: 'node2',
           },
         },
-      }, // signee node ID -> claim signature
+      }, // Signee node ID -> claim signature
     };
     expect(
       claimsUtils.validateDoublySignedNodeClaim(doublySignedNodeClaim),
@@ -474,7 +474,7 @@ describe('Claims utils', () => {
           node1: 'node1' as NodeId,
           node2: 'node2' as NodeId,
         },
-        iat: Date.now(), // timestamp (initialised at JWS field)
+        iat: Date.now(), // Timestamp (initialised at JWS field)
       },
       signatures: {
         node1: {
@@ -484,9 +484,9 @@ describe('Claims utils', () => {
             kid: 'node1',
           },
         },
-      }, // signee node ID -> claim signature
+      }, // Signee node ID -> claim signature
     } as any;
-    // testing for incorrect data types
+    // Testing for incorrect data types
     expect(() => claimsUtils.validateSinglySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
     );
@@ -517,7 +517,7 @@ describe('Claims utils', () => {
     );
     claim.payload.iat = 1;
     claim.signatures = {};
-    // testing for incorrect number of signatures
+    // Testing for incorrect number of signatures
     expect(() => claimsUtils.validateSinglySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimNumSignatures,
     );
@@ -543,7 +543,7 @@ describe('Claims utils', () => {
     claim = {
       notAField: 'invalid',
     };
-    // testing for missing/extra/incorrect fields
+    // Testing for missing/extra/incorrect fields
     expect(() => claimsUtils.validateSinglySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
     );
@@ -558,7 +558,7 @@ describe('Claims utils', () => {
           node1: 'node1' as NodeId,
           node2: 'node2' as NodeId,
         },
-        iat: Date.now(), // timestamp (initialised at JWS field)
+        iat: Date.now(), // Timestamp (initialised at JWS field)
       },
       signatures: {
         node1: {
@@ -575,9 +575,9 @@ describe('Claims utils', () => {
             kid: 'node2',
           },
         },
-      }, // signee node ID -> claim signature
+      }, // Signee node ID -> claim signature
     } as any;
-    // testing for incorrect data types
+    // Testing for incorrect data types
     expect(() => claimsUtils.validateDoublySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorDoublySignedClaimValidationFailed,
     );
@@ -616,7 +616,7 @@ describe('Claims utils', () => {
         },
       },
     };
-    // testing for incorrect number of signatures
+    // Testing for incorrect number of signatures
     expect(() => claimsUtils.validateDoublySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorDoublySignedClaimNumSignatures,
     );
@@ -649,7 +649,7 @@ describe('Claims utils', () => {
     claim = {
       notAField: 'invalid',
     };
-    // testing for missing/extra/incorrect fields
+    // Testing for missing/extra/incorrect fields
     expect(() => claimsUtils.validateDoublySignedNodeClaim(claim)).toThrow(
       claimsErrors.ErrorDoublySignedClaimValidationFailed,
     );
@@ -677,7 +677,7 @@ describe('Claims utils', () => {
         },
       },
     } as any;
-    // testing for incorrect data types
+    // Testing for incorrect data types
     expect(() => claimsUtils.validateIdentityClaim(claim)).toThrow(
       claimsErrors.ErrorSinglySignedClaimValidationFailed,
     );
@@ -745,7 +745,7 @@ describe('Claims utils', () => {
         },
       },
     };
-    // testing for missing/extra/incorrect fields
+    // Testing for missing/extra/incorrect fields
     claim = {
       notAField: 'invalid',
     };

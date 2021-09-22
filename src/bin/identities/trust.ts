@@ -20,7 +20,7 @@ const trust = createCommand('trust', {
 
 trust.arguments('<id>');
 trust.action(async (id, options) => {
-  //parsing ID.
+  //Parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
   const clientConfig = {};

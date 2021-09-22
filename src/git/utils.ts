@@ -16,7 +16,7 @@ import type {
   WrappedObject,
   RawObject,
 } from 'isomorphic-git';
-// import type { EncryptedFS } from '../types';
+// Import type { EncryptedFS } from '../types';
 
 import path from 'path';
 import pako from 'pako';
@@ -24,7 +24,7 @@ import Hash from 'sha.js/sha1';
 import { PassThrough } from 'readable-stream';
 import createHash from 'sha.js';
 
-// import * as vaultUtils from '../vaults/utils';
+// Import * as vaultUtils from '../vaults/utils';
 import { errors as gitErrors } from './';
 import type { EncryptedFS } from 'encryptedfs';
 
@@ -72,18 +72,15 @@ function createGitPacketLine(line: string): string {
   return Array(4 - hexPrefix.length + 1).join('0') + hexPrefix + line;
 }
 
-async function writeRefsAdResponse(
-  {
-    capabilities,
-    refs,
-    symrefs
-  }:
-  {
-    capabilities: string[],
-    refs: Refs,
-    symrefs: SymRefs
-  }
-): Promise<Array<Buffer>> {
+async function writeRefsAdResponse({
+  capabilities,
+  refs,
+  symrefs,
+}: {
+  capabilities: string[];
+  refs: Refs;
+  symrefs: SymRefs;
+}): Promise<Array<Buffer>> {
   const stream: Buffer[] = [];
   // Compose capabilities string
   let syms = '';
@@ -175,8 +172,8 @@ async function listRefs(
   filepath: string,
 ): Promise<string[]> {
   const packedMap = packedRefs(fs, gitdir);
-  let files: string[] = [];
-  // try {
+  const files: string[] = [];
+  // Try {
   //   for (const file of await vaultUtils.readdirRecursivelyEFS(
   //     fs,
   //     path.join(gitdir, filepath),
@@ -189,9 +186,9 @@ async function listRefs(
   // }
 
   for await (let key of Object.keys(packedMap)) {
-    // filter by prefix
+    // Filter by prefix
     if (key.startsWith(filepath)) {
-      // remove prefix
+      // Remove prefix
       key = key.replace(filepath + '/', '');
       // Don't include duplicates; the loose files have precedence anyway
       if (!files.includes(key)) {
@@ -199,7 +196,7 @@ async function listRefs(
       }
     }
   }
-  // since we just appended things onto an array, we need to sort them now
+  // Since we just appended things onto an array, we need to sort them now
   files.sort(compareRefNames);
   return files;
 }
@@ -228,16 +225,19 @@ async function resolve(
   // We need to alternate between the file system and the packed-refs
   const packedMap = await packedRefs(fs, gitdir);
   // Look in all the proper paths, in this order
-  const allpaths = refpaths(ref).filter((p) => !GIT_FILES.includes(p)); // exclude git system files (#709)
+  const allpaths = refpaths(ref).filter((p) => !GIT_FILES.includes(p)); // Exclude git system files (#709)
   for (const ref of allpaths) {
     let sha;
     try {
       sha =
         (
-          await fs.promises.readFile(path.join(gitdir, ref), { encoding: 'utf8' })
+          await fs.promises.readFile(path.join(gitdir, ref), {
+            encoding: 'utf8',
+          })
         ).toString() || packedMap[ref].line; // FIXME: not sure what is going on here.
     } catch (err) {
-      if (err.code === 'ENOENT') throw new gitErrors.ErrorGitUndefinedRefs(`Ref ${ref} cannot be found`)
+      if (err.code === 'ENOENT')
+        throw new gitErrors.ErrorGitUndefinedRefs(`Ref ${ref} cannot be found`);
     }
     if (sha != null) {
       return resolve(fs, gitdir, sha.trim(), depth); //FIXME: sha is string or config?
@@ -276,22 +276,19 @@ async function uploadPack(
   }
 }
 
-async function packObjects(
-  {
-    fs,
-    gitdir = '.git',
-    refs,
-    depth = undefined,
-    haves = undefined,
-  }:
-  {
-    fs: EncryptedFS,
-    gitdir: string,
-    refs: string[],
-    depth?: number,
-    haves?: string[],
-  }
-): Promise<Pack> {
+async function packObjects({
+  fs,
+  gitdir = '.git',
+  refs,
+  depth = undefined,
+  haves = undefined,
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  refs: string[];
+  depth?: number;
+  haves?: string[];
+}): Promise<Pack> {
   const oids = new Set<string>();
   const shallows = new Set<string>();
   const unshallows = new Set<string>();
@@ -355,7 +352,7 @@ async function listObjects(
         if (entry.type === 'blob') {
           blobs.add(entry.oid);
         }
-        // only recurse for trees
+        // Only recurse for trees
         if (entry.type === 'tree') {
           await walk(entry.oid);
         }
@@ -389,9 +386,9 @@ function nudgeIntoShape(entry: TreeEntry): TreeEntry {
   // if (!entry.oid && entry.sha) {
   //   entry.oid = entry.sha; // Github
   // }
-  entry.mode = limitModeToAllowed(entry.mode); // index
+  entry.mode = limitModeToAllowed(entry.mode); // Index
   if (!entry.type) {
-    entry.type = 'blob'; // index
+    entry.type = 'blob'; // Index
   }
   return entry;
 }
@@ -400,7 +397,7 @@ function limitModeToAllowed(mode: string | number): string {
   if (typeof mode === 'number') {
     mode = mode.toString(8);
   }
-  // tree
+  // Tree
   if (mode.match(/^0?4.*/)) return '40000'; // Directory
   if (mode.match(/^1006.*/)) return '100644'; // Regular non-executable file
   if (mode.match(/^1007.*/)) return '100755'; // Regular executable file
@@ -428,7 +425,7 @@ function parseBuffer(buffer: Buffer): TreeObject {
       );
     }
     let mode = buffer.slice(cursor, space).toString('utf8');
-    if (mode === '40000') mode = '040000'; // makes it line up neater in printed output
+    if (mode === '40000') mode = '040000'; // Makes it line up neater in printed output
     const type = mode === '040000' ? 'tree' : 'blob';
     const path = buffer.slice(space + 1, nullchar).toString('utf8');
     const oid = buffer.slice(nullchar + 1, nullchar + 21).toString('hex');
@@ -457,11 +454,11 @@ async function log(
 
     // eslint-disable-next-line
     while (true) {
-      const Commit = tips.pop();
-      if (Commit == null) {
+      const commitResult = tips.pop();
+      if (commitResult == null) {
         throw new gitErrors.ErrorGitReadObject('Commit history invalid');
       }
-      const commit = Commit.commit;
+      const commit = commitResult.commit;
 
       // Stop the log if we've hit the age limit
       if (
@@ -471,7 +468,7 @@ async function log(
         break;
       }
 
-      commits.push(Commit);
+      commits.push(commitResult);
 
       // Stop the loop if we have enough commits now.
       if (depth !== undefined && commits.length === depth) break;
@@ -479,9 +476,9 @@ async function log(
       // Add the parents of this commit to the queue
       // Note: for the case of a commit with no parents, it will concat an empty array, having no net effect.
       for (const oid of commit.parent) {
-        const Commit = await logCommit(fs, gitdir, oid, signing);
-        if (!tips.map((commit) => commit.oid).includes(Commit.oid)) {
-          tips.push(Commit);
+        const commitResult1 = await logCommit(fs, gitdir, oid, signing);
+        if (!tips.map((commit) => commit.oid).includes(commitResult1.oid)) {
+          tips.push(commitResult1);
         }
       }
 
@@ -556,7 +553,7 @@ function parseHeaders(commit: string): {
   const hs: string[] = [];
   for (const h of headers) {
     if (h[0] === ' ') {
-      // combine with previous header (without space indent)
+      // Combine with previous header (without space indent)
       hs[hs.length - 1] += '\n' + h.slice(1);
     } else {
       hs.push(h);
@@ -632,11 +629,11 @@ function parseTimezoneOffset(offset: string): number {
 }
 
 function normalize(str: string): string {
-  // remove all <CR>
+  // Remove all <CR>
   str = str.replace(/\r/g, '');
-  // no extra newlines up front
+  // No extra newlines up front
   str = str.replace(/^\n+/, '');
-  // and a single newline at the end
+  // And a single newline at the end
   str = str.replace(/\n+$/, '') + '\n';
   return str;
 }
@@ -656,7 +653,7 @@ function renderHeaders(obj: CommitObject): string {
   if (obj.tree) {
     headers += `tree ${obj.tree}\n`;
   } else {
-    headers += `tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\n`; // the null tree
+    headers += `tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904\n`; // The null tree
   }
   if (obj.parent) {
     for (const p of obj.parent) {
@@ -709,21 +706,18 @@ function commitFrom(commit: string | Buffer | CommitObject): string {
   return commitRet;
 }
 
-async function readObject(
-  {
-    fs,
-    gitdir,
-    oid,
-    format = 'parsed',
-  }:
-  {
-    fs: EncryptedFS,
-    gitdir: string,
-    oid: string,
-    format?: string,
-  }
-): Promise<DeflatedObject | WrappedObject | RawObject> {
-  const _format = format === 'parsed' ? 'content': format;
+async function readObject({
+  fs,
+  gitdir,
+  oid,
+  format = 'parsed',
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  oid: string;
+  format?: string;
+}): Promise<DeflatedObject | WrappedObject | RawObject> {
+  const _format = format === 'parsed' ? 'content' : format;
   // Curry the current read method so that the packfile un-deltification
   // process can acquire external ref-deltas.
   const getExternalRefDelta = (oid: string) => readObject({ fs, gitdir, oid });
@@ -732,20 +726,16 @@ async function readObject(
   // Note: I think the canonical git implementation must do this too because
   // `git cat-file -t 4b825dc642cb6eb9a060e54bf8d69288fbee4904` prints "tree" even in empty repos.
   if (oid === '4b825dc642cb6eb9a060e54bf8d69288fbee4904') {
-    result = { format: 'wrapped', object: Buffer.from(`tree 0\x00`) }
+    result = { format: 'wrapped', object: Buffer.from(`tree 0\x00`) };
   }
   const source = path.join('objects', oid.slice(0, 2), oid.slice(2));
   // Look for it in the loose object directory
   try {
-    result =
-      {
-        object:
-          await fs.promises.readFile(
-            path.join(gitdir, source),
-          ),
-        format: 'deflated',
-        source: source,
-      };
+    result = {
+      object: await fs.promises.readFile(path.join(gitdir, source)),
+      format: 'deflated',
+      source: source,
+    };
   } catch (err) {
     if (err.code === 'ENOENT') {
       // Object was not in the loose object directory
@@ -754,8 +744,12 @@ async function readObject(
   // Check to see if it's in a packfile.
   if (result == null) {
     // Iterate through all the .pack files
-    const list = await fs.promises.readdir(path.join(gitdir, 'objects', 'pack'));
-    let stringList = list.map(x => {return x.toString();})
+    const list = await fs.promises.readdir(
+      path.join(gitdir, 'objects', 'pack'),
+    );
+    let stringList = list.map((x) => {
+      return x.toString();
+    });
     stringList = stringList.filter((x: string) => x.endsWith('.idx'));
     for (const filename of stringList) {
       const indexFile = path.join(gitdir, 'objects', 'pack', filename);
@@ -775,7 +769,11 @@ async function readObject(
         // Get the resolved git object from the packfile
         result = await readPack(p, oid);
         result.format = 'content';
-        result.source = path.join('objects', 'pack', filename.replace(/idx$/, 'pack'));
+        result.source = path.join(
+          'objects',
+          'pack',
+          filename.replace(/idx$/, 'pack'),
+        );
       }
     }
   }
@@ -785,7 +783,11 @@ async function readObject(
   }
   if (format === 'deflated') {
     result.oid = oid;
-  } else if (result.format === 'deflated' || result.format === 'wrapped' || result.format === 'content') {
+  } else if (
+    result.format === 'deflated' ||
+    result.format === 'wrapped' ||
+    result.format === 'content'
+  ) {
     if (result.format === 'deflated') {
       result.object = Buffer.from(pako.inflate(result.object));
       result.format = 'wrapped';
@@ -806,9 +808,7 @@ async function readObject(
           `SHA check failed! Expected ${oid}, computed ${sha}`,
         );
       }
-      const { type, object } = unwrap(
-        result.object,
-      );
+      const { type, object } = unwrap(result.object);
       result.type = type;
       result.object = object;
       result.format = 'content';
@@ -825,29 +825,32 @@ async function readObject(
       }
     }
   } else {
-    throw new gitErrors.ErrorGitReadObject(`Unsupported format type: ${result.format}`);
+    throw new gitErrors.ErrorGitReadObject(
+      `Unsupported format type: ${result.format}`,
+    );
   }
   if (format === 'parsed') {
-    result.format = 'parsed'
+    result.format = 'parsed';
     switch (result.type) {
       case 'commit':
         result.object = parse(commitFrom(result.object));
-        break
+        break;
       case 'tree':
-        result.object = treeFrom(result.object).entries()
-        break
+        result.object = treeFrom(result.object).entries();
+        break;
       case 'blob':
         // Here we consider returning a raw Buffer as the 'content' format
         // and returning a string as the 'parsed' format
-        result.object = new Uint8Array(result.object)
-        result.format = 'content'
-        break
+        result.object = new Uint8Array(result.object);
+        result.format = 'content';
+        break;
       default:
         throw new gitErrors.ErrorGitUndefinedType(
-          `Object ${result.oid} type ${result.type} not recognised`);
+          `Object ${result.oid} type ${result.type} not recognised`,
+        );
     }
   } else if (result.format === 'deflated' || result.format === 'wrapped') {
-    result.type = result.format
+    result.type = result.format;
   }
   return result;
 }
@@ -985,14 +988,14 @@ function readOp(reader: BufferCursor, source: Buffer): Buffer {
   const OFFS = 0b00001111;
   const SIZE = 0b01110000;
   if (byte & COPY) {
-    // copy consists of 4 byte offset, 3 byte size (in LE order)
+    // Copy consists of 4 byte offset, 3 byte size (in LE order)
     const offset = readCompactLE(reader, byte & OFFS, 4);
     let size = readCompactLE(reader, (byte & SIZE) >> 4, 3);
     // Yup. They really did this optimization.
     if (size === 0) size = 0x10000;
     return source.slice(offset, offset + size);
   } else {
-    // insert
+    // Insert
     return reader.slice(byte);
   }
 }
@@ -1096,16 +1099,16 @@ function unwrap(buffer: Buffer): {
   type: string;
   object: Buffer;
 } {
-  const s = buffer.indexOf(32); // first space
-  const i = buffer.indexOf(0); // first null value
-  const type = buffer.slice(0, s).toString('utf8'); // get type of object
+  const s = buffer.indexOf(32); // First space
+  const i = buffer.indexOf(0); // First null value
+  const type = buffer.slice(0, s).toString('utf8'); // Get type of object
   // if (type !== 'commit' && type !== 'tree' && type !== 'blob')
   //   throw new gitErrors.ErrorGitUndefinedType(
   //     `Object of type ${type} not recognised`,
   //   );
-  const length = buffer.slice(s + 1, i).toString('utf8'); // get type of object
+  const length = buffer.slice(s + 1, i).toString('utf8'); // Get type of object
   const actualLength = buffer.length - (i + 1);
-  // verify length
+  // Verify length
   if (parseInt(length) !== actualLength) {
     throw new gitErrors.ErrorGitReadObject(
       `Length mismatch: expected ${length} bytes but got ${actualLength} instead.`,

@@ -77,9 +77,9 @@ describe('Polykey', () => {
     const nodePath = `${dataDir}/polykey`;
     const pk = new PolykeyAgent({ nodePath, logger });
     const providers = pk.identities.getProviders();
-    // exists
+    // Exists
     expect(providers[providerId]).toBeTruthy();
-    // matches clientID in config.
+    // Matches clientID in config.
     expect(providers[providerId].clientId).toEqual(
       config.providers[providerId].clientId,
     );
@@ -90,7 +90,7 @@ describe('Polykey', () => {
       // Creating an old version file.
       const nodePath = `${dataDir}/polykey`;
       const versionFilePath = path.join(nodePath, 'versionFile');
-      const versionInfo = { ...config }; // cheeky clone
+      const versionInfo = { ...config }; // Cheeky clone
       versionInfo.stateVersion = config.stateVersion + 1;
       const versionInfoString = JSON.stringify(versionInfo);
       await fs.promises.mkdir(nodePath, { recursive: true });

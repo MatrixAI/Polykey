@@ -68,7 +68,7 @@ describe('agent utils', () => {
         ).resolves.toBeFalsy();
         const pid = await agentUtils.spawnBackgroundAgent(nodePath, password);
         expect(typeof pid).toBe('number'); //Returns a number.
-        expect(pid > 0).toBeTruthy(); // non-zero
+        expect(pid > 0).toBeTruthy(); // Non-zero
         await poll(global.polykeyStartupTimeout * 1.5, async () => {
           return await agentUtils.checkAgentRunning(nodePath);
         });

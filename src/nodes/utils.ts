@@ -3,7 +3,6 @@ import type { NodeId, NodeData } from './types';
 import { Validator } from 'ip-num';
 import { ErrorInvalidNodeId } from '@/nodes/errors';
 
-
 /**
  * Compute the distance between two nodes.
  * distance = nodeId1 ^ nodeId2
@@ -40,13 +39,13 @@ function calculateBucketIndex(
   nodeIdBits: number,
 ) {
   const distance = calculateDistance(sourceNode, targetNode);
-  // start at the last bucket: most likely to be here based on relation of
+  // Start at the last bucket: most likely to be here based on relation of
   // bucket index to distance
   let bucketIndex = nodeIdBits - 1;
   for (; bucketIndex >= 0; bucketIndex--) {
     const lowerBound = BigInt(2) ** BigInt(bucketIndex);
     const upperBound = BigInt(2) ** BigInt(bucketIndex + 1);
-    // if 2^i <= distance (from current node) < 2^(i+1),
+    // If 2^i <= distance (from current node) < 2^(i+1),
     // then break and return current index
     if (lowerBound <= distance && distance < upperBound) {
       break;
@@ -64,7 +63,7 @@ function isNodeId(nodeId: string): nodeId is NodeId {
 }
 
 function makeNodeId(arg: any): NodeId {
-  if(isNodeId(arg)) return arg;
+  if (isNodeId(arg)) return arg;
   throw new ErrorInvalidNodeId('NodeID is not a base58 string of length 44');
 }
 

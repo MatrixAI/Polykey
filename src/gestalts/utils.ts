@@ -4,7 +4,8 @@ import type {
   GestaltIdentityKey,
   GestaltId,
   GestaltNodeId,
-  GestaltIdentityId, GestaltAction
+  GestaltIdentityId,
+  GestaltAction,
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { IdentityId, ProviderId } from '../identities/types';
@@ -73,10 +74,9 @@ function identityFromKey(
   return [identity.providerId, identity.identityId];
 }
 
-
 const validGestaltAction = ['notify', 'scan'];
 function isGestaltAction(arg: any): arg is GestaltAction {
-  if(typeof arg !== 'string') return false;
+  if (typeof arg !== 'string') return false;
   return validGestaltAction.includes(arg);
 }
 

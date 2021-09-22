@@ -1,6 +1,6 @@
 import type { Vault } from '@/vaults';
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { NodeId, NodeInfo, NodeAddress } from '@/nodes/types';
+import type { NodeInfo, NodeAddress } from '@/nodes/types';
 import type { SessionToken, SessionCredentials } from '@/sessions/types';
 import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 
@@ -17,12 +17,8 @@ import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
 import { VaultManager } from '@/vaults';
 import { IdentitiesManager } from '@/identities';
-import { Sigchain } from '@/sigchain';
-import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
-import { NotificationsManager } from '@/notifications';
-import { ForwardProxy, ReverseProxy } from '@/network';
-import { DB } from '@/db';
+import { ForwardProxy } from '@/network';
 import { ClientClient } from '@/proto/js/Client_grpc_pb';
 
 import * as testKeynodeUtils from '../utils';
@@ -61,9 +57,6 @@ describe('Client service', () => {
   let port: number;
 
   let dataDir: string;
-  let keysPath: string;
-  let vaultsPath: string;
-  let dbPath: string;
 
   let polykeyAgent: PolykeyAgent;
   let keyManager: KeyManager;
@@ -71,26 +64,14 @@ describe('Client service', () => {
   let vaultManager: VaultManager;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
-  let notificationsManager: NotificationsManager;
-  let sigchain: Sigchain;
-  let acl: ACL;
-  let db: DB;
 
   let passwordFile: string;
 
   let fwdProxy: ForwardProxy;
-  let revProxy: ReverseProxy;
 
   let callCredentials: SessionCredentials;
 
-  //node and identity infos.
-  const token = {
-    providerId: 'github.com' as ProviderId,
-    identityId: 'tegefaulkes' as IdentityId,
-    tokenData: {
-      accessToken: 'Oauth token here, DO NOT COMMIT.',
-    },
-  };
+  //Node and identity infos.
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
@@ -122,9 +103,6 @@ describe('Client service', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    keysPath = path.join(dataDir, 'keys');
-    vaultsPath = path.join(dataDir, 'vaults');
-    dbPath = path.join(dataDir, 'db');
 
     passwordFile = path.join(dataDir, 'password');
     await fs.promises.writeFile(passwordFile, 'password');
@@ -146,12 +124,8 @@ describe('Client service', () => {
     vaultManager = polykeyAgent.vaults;
     gestaltGraph = polykeyAgent.gestalts;
     identitiesManager = polykeyAgent.identities;
-    notificationsManager = polykeyAgent.notifications;
-    sigchain = polykeyAgent.sigchain;
-    acl = polykeyAgent.acl;
-    db = polykeyAgent.db;
 
-    //adding provider.
+    //Adding provider.
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
 
@@ -258,13 +232,13 @@ describe('Client service', () => {
         client.echo,
       );
 
-      // checking that session is working.
+      // Checking that session is working.
       const echoMessage = new clientPB.EchoMessage();
       echoMessage.setChallenge('Hello');
       const res = await echo(echoMessage, callCredentials);
       expect(res.getChallenge()).toBe('Hello');
 
-      //locking the session.
+      //Locking the session.
       const sessionLockAll = grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
         client,
         client.sessionLockAll,
@@ -283,7 +257,7 @@ describe('Client service', () => {
     test(
       'stop',
       async () => {
-        //starting agent
+        //Starting agent
         const newNodePath = path.join(dataDir, 'newAgent');
         const agent = new PolykeyAgent({
           nodePath: newNodePath,
@@ -696,7 +670,7 @@ describe('Client service', () => {
           client.vaultsSecretsNewDir,
         );
 
-      // make a temp file for editing
+      // Make a temp file for editing
       const tmpDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'pksecret'),
       );
@@ -706,7 +680,7 @@ describe('Client service', () => {
         secrets.push(
           path.join(`${path.basename(tmpDir)}`, `pkSecretFile${i.toString()}`),
         );
-        // write secret to file
+        // Write secret to file
         await fs.promises.writeFile(tmpFile, tmpFile);
       }
 
@@ -722,7 +696,7 @@ describe('Client service', () => {
 
       expect((await vault.listSecrets()).sort()).toStrictEqual(secrets.sort());
 
-      // remove temp directory
+      // Remove temp directory
       await fs.promises.rmdir(tmpDir, { recursive: true });
 
       await cleanVault('MyFirstVault');
@@ -1153,7 +1127,7 @@ describe('Client service', () => {
 
       const emptyMessage = new clientPB.EmptyMessage();
       const test = await providersGet(emptyMessage, callCredentials);
-      // expect(test.getId()).toContain('github.com');
+      // Expect(test.getId()).toContain('github.com');
       expect(test.getProviderId()).toContain('test-provider');
     });
     test('should list connected Identities.', async () => {
@@ -1225,7 +1199,7 @@ describe('Client service', () => {
         testToken.tokenData,
       );
 
-      //making the call.
+      //Making the call.
       const providerMessage = new clientPB.ProviderMessage();
       providerMessage.setProviderId(testToken.providerId);
       providerMessage.setMessage(testToken.identityId);
@@ -1256,11 +1230,11 @@ describe('Client service', () => {
       for await (const val of res) {
         gestalts.push(JSON.parse(val.getName()));
       }
-      const identityGestalt = await gestaltGraph.getGestaltByIdentity(
+      await gestaltGraph.getGestaltByIdentity(
         identity1.providerId,
         identity1.identityId,
       );
-      const nodeGestalt = await gestaltGraph.getGestaltByNode(node2.id);
+      await gestaltGraph.getGestaltByNode(node2.id);
       const gestaltsString = JSON.stringify(gestalts);
       expect(gestaltsString).toContain(identity1.providerId);
       expect(gestaltsString).toContain(identity1.identityId);
@@ -1308,7 +1282,7 @@ describe('Client service', () => {
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setNodeId(node2.id);
 
-      //making the call
+      //Making the call
       const res = await gestaltsGetNode(nodeMessage, callCredentials);
       const jsonString = res.getGestaltGraph();
 
@@ -1323,7 +1297,7 @@ describe('Client service', () => {
           client.gestaltsGestaltGetByIdentity,
         );
       await createGestaltState();
-      //testing the call
+      //Testing the call
       const providerMessage = new clientPB.ProviderMessage();
       providerMessage.setProviderId(identity1.providerId);
       providerMessage.setMessage(identity1.identityId);
@@ -1645,7 +1619,7 @@ describe('Client service', () => {
         expect(res3.getSuccess()).toEqual(false);
       },
       global.failedConnectionTimeout * 2,
-    ); // ping needs to timeout, so longer test timeout required
+    ); // Ping needs to timeout, so longer test timeout required
     test('should find a node (local)', async () => {
       const nodesFind =
         grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
@@ -1695,13 +1669,10 @@ describe('Client service', () => {
         // Add a single dummy node to the server node graph database
         // Server will not be able to connect to this node (the only node in its
         // database), and will therefore not be able to locate the node.
-        await server.nodes.setNode(
-          makeNodeId('dummyNode' + 'A'.repeat(35)),
-          {
-            ip: '127.0.0.2' as Host,
-            port: 22222 as Port,
-          } as NodeAddress,
-        );
+        await server.nodes.setNode(makeNodeId('dummyNode' + 'A'.repeat(35)), {
+          ip: '127.0.0.2' as Host,
+          port: 22222 as Port,
+        } as NodeAddress);
         const nodesFind =
           grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
             client,

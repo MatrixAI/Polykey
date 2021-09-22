@@ -43,7 +43,7 @@ describe('CLI Nodes', () => {
   let remoteOfflineHost: Host;
   let remoteOfflinePort: Port;
 
-  // helper functions
+  // Helper functions
   function genCommands(options: Array<string>) {
     return ['node', ...options, '-np', nodePath];
   }
@@ -179,7 +179,7 @@ describe('CLI Nodes', () => {
         expect(result.code).toBe(1); // Should fail with no response. for automation purposes.
         expect(result.stdout).toContain('No response received');
 
-        //checking for json output
+        //Checking for json output
         const commands2 = genCommands([
           'ping',
           remoteOfflineNodeId,
@@ -202,12 +202,7 @@ describe('CLI Nodes', () => {
         expect(result.stdout).toContain('Failed to resolve node ID');
 
         //Json format.
-        const commands2 = genCommands([
-          'ping',
-          fakeNodeId,
-          '--format',
-          'json',
-        ]);
+        const commands2 = genCommands(['ping', fakeNodeId, '--format', 'json']);
         const result2 = await testUtils.pkWithStdio(commands2);
         expect(result2.code).not.toBe(0); // Should fail if node doesn't exist.
         expect(result2.stdout).toContain('success');

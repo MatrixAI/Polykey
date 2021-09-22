@@ -86,7 +86,7 @@ abstract class GRPCClient<T extends Client> {
         clientCredentials = grpc.ChannelCredentials.createSsl();
         // @ts-ignore hack for undocumented property
         const connectionOptions = clientCredentials.connectionOptions;
-        // disable default certificate path validation logic
+        // Disable default certificate path validation logic
         // polykey has custom certificate path validation logic
         connectionOptions['rejectUnauthorized'] = false;
       }
@@ -108,7 +108,7 @@ abstract class GRPCClient<T extends Client> {
     }
 
     const clientOptions: ClientOptions = {
-      // prevents complaints with having an ip address as the server name
+      // Prevents complaints with having an ip address as the server name
       'grpc.ssl_target_name_override': this.nodeId,
     };
     let client: T;
@@ -122,9 +122,9 @@ abstract class GRPCClient<T extends Client> {
       // Encode as a URI in order to preserve the '+' characters when retrieving
       // in ForwardProxy from the http_connect_target URL
       const encodedNodeId = encodeURIComponent(this.nodeId);
-      // ignore proxy env variables
+      // Ignore proxy env variables
       clientOptions['grpc.enable_http_proxy'] = 0;
-      // the proxy target target is the true address
+      // The proxy target target is the true address
       clientOptions[
         'grpc.http_connect_target'
       ] = `dns:${address}/?nodeId=${encodedNodeId}`;
@@ -136,7 +136,7 @@ abstract class GRPCClient<T extends Client> {
       );
     }
     const waitForReady = promisify(client.waitForReady).bind(client);
-    // add the current unix time because grpc expects the milliseconds since unix epoch
+    // Add the current unix time because grpc expects the milliseconds since unix epoch
     timeout += Date.now();
     try {
       await waitForReady(timeout);
@@ -184,7 +184,7 @@ abstract class GRPCClient<T extends Client> {
     }
     const address = `${this.host}:${this.port}`;
     this.logger.info(`Stopping GRPC Client connected to ${address}`);
-    // this currently doesn't stop all inflight requests
+    // This currently doesn't stop all inflight requests
     // https://github.com/grpc/grpc-node/issues/1340
     this.client.close();
     this._secured = false;

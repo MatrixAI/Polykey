@@ -64,7 +64,7 @@ async function* readdirRecursivelyEFS(
   const dirents = await fs.readdir(dir);
   let secretPath: string;
   for (const dirent of dirents) {
-    const res = dirent.toString(); // makes string | buffer a string.
+    const res = dirent.toString(); // Makes string | buffer a string.
     secretPath = path.join(dir, res);
     if ((await fs.stat(secretPath)).isDirectory() && dirent !== '.git') {
       if (dirs === true) {
@@ -218,8 +218,6 @@ async function requestVaultNames(
 
   return data;
 }
-
-
 
 export {
   generateVaultKey,

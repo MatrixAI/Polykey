@@ -275,7 +275,7 @@ class GestaltGraph {
         );
       }
     }
-    // ensure that an empty key set is still deleted
+    // Ensure that an empty key set is still deleted
     ops.push({
       type: 'del',
       domain: this.graphMatrixDbDomain,
@@ -308,7 +308,7 @@ class GestaltGraph {
     );
     if (nodeKeyKeys == null) {
       nodeKeyKeys = {};
-      // sets the gestalt in the acl
+      // Sets the gestalt in the acl
       ops.push(
         ...(await this.acl.setNodePermOps(nodeInfo.id, {
           gestalt: {},
@@ -376,13 +376,13 @@ class GestaltGraph {
         );
       }
     }
-    // ensure that an empty key set is still deleted
+    // Ensure that an empty key set is still deleted
     ops.push({
       type: 'del',
       domain: this.graphMatrixDbDomain,
       key: nodeKey,
     });
-    // unsets the gestalt in the acl
+    // Unsets the gestalt in the acl
     // this must be done after all unlinking operations
     ops.push(...(await this.acl.unsetNodePermOps(nodeId)));
     return ops;
@@ -418,7 +418,7 @@ class GestaltGraph {
       this.graphMatrixDbDomain,
       identityKey,
     );
-    // if they are already connected we do nothing
+    // If they are already connected we do nothing
     if (
       nodeKeyKeys &&
       identityKey in nodeKeyKeys &&
@@ -437,7 +437,7 @@ class GestaltGraph {
       identityNew = true;
       identityKeyKeys = {};
     }
-    // acl changes depend on the situation:
+    // Acl changes depend on the situation:
     // if both node and identity are new  then
     //   set a new permission for the node
     // if both node and identity exists then
@@ -473,14 +473,14 @@ class GestaltGraph {
         identityNodeKeys,
         (key) => gestaltsUtils.ungestaltKey(key).nodeId,
       );
-      // these must exist
+      // These must exist
       const nodePerm = (await this.acl.getNodePerm(nodeInfo.id)) as Permission;
       const identityPerm = (await this.acl.getNodePerm(
         identityNodeIds[0],
       )) as Permission;
-      // union the perms together
+      // Union the perms together
       const permNew = aclUtils.permUnion(nodePerm, identityPerm);
-      // node perm is updated and identity perm is joined to node perm
+      // Node perm is updated and identity perm is joined to node perm
       // this has to be done as 1 call to acl in order to combine ref count update
       // and the perm record update
       ops.push(
@@ -570,7 +570,7 @@ class GestaltGraph {
       this.graphMatrixDbDomain,
       nodeKey2,
     );
-    // if they are already connected we do nothing
+    // If they are already connected we do nothing
     if (
       nodeKeyKeys1 &&
       nodeKey2 in nodeKeyKeys1 &&
@@ -589,7 +589,7 @@ class GestaltGraph {
       nodeNew2 = true;
       nodeKeyKeys2 = {};
     }
-    // acl changes depend on the situation:
+    // Acl changes depend on the situation:
     // if both node1 and node2 are new  then
     //   set a new permission for both nodes
     // if both node1 and node2 exists then
@@ -615,16 +615,16 @@ class GestaltGraph {
         nodeNodeKeys2,
         (key) => gestaltsUtils.ungestaltKey(key).nodeId,
       );
-      // these must exist
+      // These must exist
       const nodePerm1 = (await this.acl.getNodePerm(
         nodeInfo1.id,
       )) as Permission;
       const nodePerm2 = (await this.acl.getNodePerm(
         nodeInfo2.id,
       )) as Permission;
-      // union the perms together
+      // Union the perms together
       const permNew = aclUtils.permUnion(nodePerm1, nodePerm2);
-      // node perm 1 is updated and node perm 2 is joined to node perm 2
+      // Node perm 1 is updated and node perm 2 is joined to node perm 2
       // this has to be done as 1 call to acl in order to combine ref count update
       // and the perm record update
       ops.push(
@@ -729,7 +729,7 @@ class GestaltGraph {
       });
     }
     if (nodeKeyKeys && identityKeyKeys && unlinking) {
-      // check if the gestalts have split
+      // Check if the gestalts have split
       // if so, the node gestalt will inherit a new copy of the permission
       const [, gestaltNodeKeys, gestaltIdentityKeys] =
         await this.traverseGestalt(
@@ -741,9 +741,9 @@ class GestaltGraph {
           gestaltNodeKeys,
           (key) => gestaltsUtils.ungestaltKey(key).nodeId,
         );
-        // it is assumed that an existing gestalt has a permission
+        // It is assumed that an existing gestalt has a permission
         const perm = (await this.acl.getNodePerm(nodeId)) as Permission;
-        // this remaps all existing nodes to a new permission
+        // This remaps all existing nodes to a new permission
         ops.push(...(await this.acl.setNodesPermOps(nodeIds, perm)));
       }
     }
@@ -799,7 +799,7 @@ class GestaltGraph {
       });
     }
     if (nodeKeyKeys1 && nodeKeyKeys2 && unlinking) {
-      // check if the gestalts have split
+      // Check if the gestalts have split
       // if so, the node gestalt will inherit a new copy of the permission
       const [, gestaltNodeKeys] = await this.traverseGestalt(
         Object.keys(nodeKeyKeys1) as Array<GestaltKey>,
@@ -810,9 +810,9 @@ class GestaltGraph {
           gestaltNodeKeys,
           (key) => gestaltsUtils.ungestaltKey(key).nodeId,
         );
-        // it is assumed that an existing gestalt has a permission
+        // It is assumed that an existing gestalt has a permission
         const perm = (await this.acl.getNodePerm(nodeId1)) as Permission;
-        // this remaps all existing nodes to a new permission
+        // This remaps all existing nodes to a new permission
         ops.push(...(await this.acl.setNodesPermOps(nodeIds, perm)));
       }
     }
@@ -925,7 +925,7 @@ class GestaltGraph {
           nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
           break;
         }
-        // if there are no linked nodes, this cannot proceed
+        // If there are no linked nodes, this cannot proceed
         if (nodeId == null) {
           throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         }
@@ -980,7 +980,7 @@ class GestaltGraph {
           nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
           break;
         }
-        // if there are no linked nodes, this cannot proceed
+        // If there are no linked nodes, this cannot proceed
         if (nodeId == null) {
           throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         }
@@ -998,7 +998,7 @@ class GestaltGraph {
         nodes: {},
         identities: {},
       };
-      // we are not using traverseGestalt
+      // We are not using traverseGestalt
       // because this requires keeping track of the vertexKeys
       const queue = [gK];
       const visited = new Set<GestaltKey>();

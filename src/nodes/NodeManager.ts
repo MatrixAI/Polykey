@@ -38,7 +38,7 @@ class NodeManager {
   protected fwdProxy: ForwardProxy;
   protected revProxy: ReverseProxy;
 
-  // active connections to other nodes
+  // Active connections to other nodes
   protected connections: Map<NodeId, NodeConnection> = new Map();
   // Node ID -> node address mappings for the bootstrap/broker nodes
   protected brokerNodes: NodeBucket = {};
@@ -98,7 +98,7 @@ class NodeManager {
         throw new dbErrors.ErrorDBNotStarted();
       }
       this._started = true;
-      // establish and start connections to the brokers
+      // Establish and start connections to the brokers
       for (const brokerId in brokerNodes) {
         await this.createConnectionToBroker(
           brokerId as NodeId,

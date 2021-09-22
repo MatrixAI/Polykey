@@ -15,7 +15,7 @@ describe('Bootstrap', () => {
   ]);
   let nodePath: string;
 
-  // helper functions
+  // Helper functions
   async function fakeKeynode(nodePath) {
     await fs.promises.mkdir(path.join(nodePath, 'keys'));
     await fs.promises.mkdir(path.join(nodePath, 'vaults'));

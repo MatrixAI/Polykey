@@ -1,4 +1,4 @@
-// provide to the keys domain
+// Provide to the keys domain
 // a way to extract or render `LinkClaimNode`
 // each side only needs to publish the other keynode that it's associated with
 // remember we must assign a specific OID under our Polykey OID

@@ -20,7 +20,7 @@ const commandTrustGestalts = createCommand('untrust', {
 
 commandTrustGestalts.arguments('<id>');
 commandTrustGestalts.action(async (id, options) => {
-  //parsing ID.
+  //Parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
   const clientConfig = {};

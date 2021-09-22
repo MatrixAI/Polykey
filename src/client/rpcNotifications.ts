@@ -1,4 +1,3 @@
-import type { NodeId } from '../nodes/types';
 import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 

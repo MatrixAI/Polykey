@@ -195,9 +195,9 @@ describe('GRPC agent', () => {
   test('can scan vaults', async () => {
     const vault = await vaultManager.createVault('TestAgentVault');
     await gestaltGraph.setNode(node1);
-    const NodeIdMessage = new agentPB.NodeIdMessage();
-    NodeIdMessage.setNodeId('12345');
-    const response = client.vaultsScan(NodeIdMessage);
+    const nodeIdMessage = new agentPB.NodeIdMessage();
+    nodeIdMessage.setNodeId('12345');
+    const response = client.vaultsScan(nodeIdMessage);
     const data: string[] = [];
     for await (const resp of response) {
       const chunk = resp.getVault_asU8();
@@ -205,7 +205,7 @@ describe('GRPC agent', () => {
     }
     expect(data).toStrictEqual([]);
     await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = client.vaultsScan(NodeIdMessage);
+    const response2 = client.vaultsScan(nodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {
       const chunk = resp.getVault_asU8();
@@ -238,7 +238,11 @@ describe('GRPC agent', () => {
 
     beforeEach(async () => {
       yKeysPath = path.join(dataDir, 'keys-y');
-      yKeyManager = await KeyManager.createKeyManager({ keysPath: yKeysPath, fs, logger });
+      yKeyManager = await KeyManager.createKeyManager({
+        keysPath: yKeysPath,
+        fs,
+        logger,
+      });
       await yKeyManager.start({ password: 'password' });
 
       // Manually inject Y's public key into a dummy NodeConnection object, such

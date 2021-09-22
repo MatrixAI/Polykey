@@ -79,7 +79,7 @@ async function spawnBackgroundAgent(
     spawnPath = DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node';
   }
 
-  //spawning the process.
+  //Spawning the process.
   const agentProcess = spawn(spawnPath, [DAEMON_SCRIPT_PATH], options);
 
   const startOptions = {

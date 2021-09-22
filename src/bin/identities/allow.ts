@@ -23,7 +23,7 @@ const allow = createCommand('allow', {
 
 allow.arguments('<id> <permissions>');
 allow.action(async (id, permissions, options) => {
-  //parsing ID.
+  //Parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
   const clientConfig = {};

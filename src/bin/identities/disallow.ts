@@ -23,7 +23,7 @@ const commandAllowGestalts = createCommand('disallow', {
 
 commandAllowGestalts.arguments('<id> <permissions>');
 commandAllowGestalts.action(async (id, permissions, options) => {
-  //parsing ID.
+  //Parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
   const clientConfig = {};

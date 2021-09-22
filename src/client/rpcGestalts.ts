@@ -1,8 +1,7 @@
 import type { Discovery } from '../discovery';
 import type { GestaltGraph } from '../gestalts';
 import type { SessionManager } from '../sessions';
-import type { NodeId } from '../nodes/types';
-import type { Gestalt, GestaltAction } from '../gestalts/types';
+import type { Gestalt } from '../gestalts/types';
 import type { IdentityId, ProviderId } from '../identities/types';
 
 import * as utils from './utils';
@@ -113,10 +112,12 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //constructing identity info.
-        const gen = discovery.discoverGestaltByNode(makeNodeId(info.getNodeId()));
+        //Constructing identity info.
+        const gen = discovery.discoverGestaltByNode(
+          makeNodeId(info.getNodeId()),
+        );
         for await (const _ of gen) {
-          // empty
+          // Empty
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -138,13 +139,13 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //constructing identity info.
+        //Constructing identity info.
         const gen = discovery.discoverGestaltByIdentity(
           info.getProviderId() as ProviderId,
           info.getMessage() as IdentityId,
         );
         for await (const _ of gen) {
-          // empty
+          // Empty
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -228,7 +229,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase
@@ -265,7 +266,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:
@@ -307,7 +308,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase
@@ -344,7 +345,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:

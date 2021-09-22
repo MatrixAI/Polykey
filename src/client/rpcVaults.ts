@@ -137,9 +137,9 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        // vault id
+        // Vault id
         const vaultId = vaultMessage.getVaultId() as VaultId;
-        // node id
+        // Node id
         const id = makeNodeId(nodeMessage.getNodeId());
 
         await vaultManager.cloneVault(vaultId, id);
@@ -173,9 +173,9 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        // vault name
+        // Vault name
         const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
-        // node id
+        // Node id
         const id = makeNodeId(nodeMessage.getNodeId());
 
         await vaultManager.pullVault(vaultId, id);

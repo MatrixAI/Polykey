@@ -23,7 +23,7 @@ type SecretName = string;
 type SecretList = string[];
 
 /**
- * map vaultId -> Vault
+ * Map vaultId -> Vault
  */
 type Vaults = {
   [vaultId: string]: Vault;

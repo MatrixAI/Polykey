@@ -13,12 +13,12 @@ import type { GeneralJWS, FlattenedJWSInput } from 'jose/types';
  */
 type Claim = {
   payload: {
-    hPrev: string | null; // hash of the previous claim (null if first claim)
-    seq: number; // sequence number of the claim
-    data: ClaimData; // our custom payload data
-    iat: number; // timestamp (initialised at JWS field)
+    hPrev: string | null; // Hash of the previous claim (null if first claim)
+    seq: number; // Sequence number of the claim
+    data: ClaimData; // Our custom payload data
+    iat: number; // Timestamp (initialised at JWS field)
   };
-  signatures: Record<NodeId, SignatureData>; // signee node ID -> claim signature
+  signatures: Record<NodeId, SignatureData>; // Signee node ID -> claim signature
 };
 
 /**
@@ -27,7 +27,7 @@ type Claim = {
  * This is only used in src/claims/schema.ts.
  */
 type ClaimValidation = Omit<Claim, 'signatures'> & {
-  signatures: Record<string, SignatureData>; // replaces NodeId key with string
+  signatures: Record<string, SignatureData>; // Replaces NodeId key with string
 };
 
 /**
@@ -36,8 +36,8 @@ type ClaimValidation = Omit<Claim, 'signatures'> & {
 type SignatureData = {
   signature: string;
   header: {
-    alg: string; // signing algorithm (e.g. RS256 for RSA keys)
-    kid: NodeId; // node ID of the signing keynode
+    alg: string; // Signing algorithm (e.g. RS256 for RSA keys)
+    kid: NodeId; // Node ID of the signing keynode
   };
 };
 
