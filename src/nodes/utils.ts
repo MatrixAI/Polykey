@@ -1,6 +1,7 @@
 import type { NodeId, NodeData } from './types';
 
 import { Validator } from 'ip-num';
+import { ErrorInvalidNodeId } from '@/nodes/errors';
 
 
 /**
@@ -64,7 +65,7 @@ function isNodeId(nodeId: string): nodeId is NodeId {
 
 function makeNodeId(arg: any): NodeId {
   if(isNodeId(arg)) return arg;
-  throw Error('Invalid nodeID')
+  throw new ErrorInvalidNodeId('NodeID is not a base58 string of length 44');
 }
 
 /**
