@@ -1,7 +1,6 @@
 import type { NodeId, NodeAddress, NodeBucket, NodeData } from './types';
 import type { Host, Port } from '../network/types';
-import type { DB } from '../db';
-import type { DBLevel, DBOp } from '../db/types';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeConnection } from '../nodes';
 
 import { Mutex } from 'async-mutex';
@@ -9,7 +8,7 @@ import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
 import NodeManager from './NodeManager';
 import { utils as nodesUtils, errors as nodesErrors } from './';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer information
@@ -66,8 +65,8 @@ class NodeGraph {
     try {
       this.logger.info('Starting Node Graph');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       if (!this.nodeManager.started) {
         throw new nodesErrors.ErrorNodeManagerNotStarted();
@@ -341,12 +340,13 @@ class NodeGraph {
       const vals: Array<string | Buffer> = [];
       for await (const o of this.nodeGraphBucketsDb.createReadStream()) {
         const data = (o as any).value as Buffer;
-        const bucket = await this.db.deserializeDecrypt<NodeBucket>(data);
-        bucket;
+        const bucket = await this.db.deserializeDecrypt<NodeBucket>(
+          data,
+          false,
+        );
         buckets.push(bucket);
         vals.push(o);
       }
-      // Console.log(vals);
       return buckets;
     });
   }

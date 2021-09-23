@@ -7,13 +7,13 @@ import type { NodeId, NodeAddress, NodeData, NodeBucket } from '../nodes/types';
 import type { SignedNotification } from '../notifications/types';
 import type { Host, Port } from '../network/types';
 import type { FileSystem, Timer } from '../types';
-import type { DB } from '../db';
+import type { DB } from '@matrixai/db';
 
 import Logger from '@matrixai/logger';
 import NodeGraph from './NodeGraph';
 import NodeConnection from './NodeConnection';
 import * as nodesErrors from './errors';
-import * as dbErrors from '../db/errors';
+import { errors as dbErrors } from '@matrixai/db';
 import * as networkErrors from '../network/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
@@ -94,8 +94,8 @@ class NodeManager {
   } = {}) {
     try {
       this.logger.info('Starting Node Manager');
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       this._started = true;
       // Establish and start connections to the brokers

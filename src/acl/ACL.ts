@@ -1,7 +1,6 @@
 import type { Buffer } from 'buffer';
 import type { PermissionId, Permission, VaultActions } from './types';
-import type { DB } from '../db';
-import type { DBLevel, DBOp } from '../db/types';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeId } from '../nodes/types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultAction, VaultId } from '../vaults/types';
@@ -11,7 +10,7 @@ import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
 
 class ACL {
   protected logger: Logger;
@@ -51,8 +50,8 @@ class ACL {
       }
       this.logger.info('Starting ACL');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       const aclDb = await this.db.level(this.aclDbDomain);
       // Perms stores PermissionId -> Ref<Permission>
@@ -138,7 +137,10 @@ class ACL {
       for await (const o of this.aclNodesDb.createReadStream()) {
         const nodeId = (o as any).key as NodeId;
         const data = (o as any).value as Buffer;
-        const permId = await this.db.deserializeDecrypt<PermissionId>(data);
+        const permId = await this.db.deserializeDecrypt<PermissionId>(
+          data,
+          false,
+        );
         let nodePerm: Record<NodeId, Permission>;
         if (permId in permIds) {
           nodePerm = permIds[permId];
@@ -178,6 +180,7 @@ class ACL {
         const data = (o as any).value as Buffer;
         const nodeIds = await this.db.deserializeDecrypt<Record<NodeId, null>>(
           data,
+          false,
         );
         const nodePerm: Record<NodeId, Permission> = {};
         const nodeIdsGc: Set<NodeId> = new Set();

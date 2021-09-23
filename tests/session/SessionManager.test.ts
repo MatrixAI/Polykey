@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { KeyManager } from '@/keys';
 import { SessionManager } from '@/sessions';
 
@@ -43,7 +43,7 @@ describe('SessionManager', () => {
       logger: logger,
     });
     await keyManager.start({ password: 'password' });
-    await db.start({ keyPair: keyManager.getRootKeyPair() });
+    await db.start(); // TODO start with { keyPair: keyManager.getRootKeyPair() }
     await sessionManager.start({ bits: 4096 });
   });
 

@@ -10,16 +10,15 @@ import type {
 } from './types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { ProviderId, IdentityId, IdentityInfo } from '../identities/types';
-import type { DBLevel, DBOp } from '../db/types';
 import type { Permission } from '../acl/types';
-import type { DB } from '../db';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { ACL } from '../acl';
 
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
 import { utils as aclUtils, errors as aclErrors } from '../acl';
 import * as utils from '../utils';
 
@@ -66,8 +65,8 @@ class GestaltGraph {
       }
       this.logger.info('Starting Gestalt Graph');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       if (!this.acl.started) {
         throw new aclErrors.ErrorACLNotStarted();
@@ -142,7 +141,10 @@ class GestaltGraph {
       for await (const o of this.graphMatrixDb.createReadStream()) {
         const gK = (o as any).key as GestaltKey;
         const data = (o as any).value as Buffer;
-        const gKs = await this.db.deserializeDecrypt<GestaltKeySet>(data);
+        const gKs = await this.db.deserializeDecrypt<GestaltKeySet>(
+          data,
+          false,
+        );
         unvisited.set(gK, gKs);
       }
       const gestalts: Array<Gestalt> = [];

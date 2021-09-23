@@ -7,7 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
 import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
@@ -30,9 +30,7 @@ describe('Sigchain', () => {
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO start with keyPair: keyManager.getRootKeyPair(),
   });
   afterEach(async () => {
     await db.stop();

@@ -2,7 +2,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { KeyManager } from '@/keys';
 
 describe('DB', () => {
@@ -25,6 +25,7 @@ describe('DB', () => {
     });
   });
   test('construction has no side effects', async () => {
+    // TODO remove?
     const dbPath = `${dataDir}/db`;
     await DB.createDB({ dbPath, logger });
     await expect(fs.promises.stat(dbPath)).rejects.toThrow(/ENOENT/);
@@ -32,24 +33,19 @@ describe('DB', () => {
   test('async start constructs the db leveldb', async () => {
     const dbPath = `${dataDir}/db`;
     const db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair()
     const dbPathContents = await fs.promises.readdir(dbPath);
     expect(dbPathContents.length).toBeGreaterThan(1);
     await db.stop();
   });
+  // TODO, remove this? not sure it will be relevant after changes.
   test('start and stop preserves the db key', async () => {
     const dbPath = `${dataDir}/db`;
     const db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair(),
     const dbKey = await fs.promises.readFile(`${dataDir}/db/db_key`);
     await db.stop();
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair()
     const dbKey_ = await fs.promises.readFile(`${dataDir}/db/db_key`);
     await db.stop();
     expect(dbKey).toEqual(dbKey_);
@@ -57,9 +53,7 @@ describe('DB', () => {
   test('get and put and del', async () => {
     const dbPath = `${dataDir}/db`;
     const db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair()
     await db.put([], 'a', 'value0');
     expect(await db.get([], 'a')).toBe('value0');
     await db.del([], 'a');
@@ -74,26 +68,26 @@ describe('DB', () => {
   test('db levels are leveldbs', async () => {
     const dbPath = `${dataDir}/db`;
     const db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
-    await db.db.put('a', await db.serializeEncrypt('value0'));
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair()
+    await db.db.put('a', await db.serializeEncrypt('value0', false));
     expect(await db.get([], 'a')).toBe('value0');
     await db.put([], 'b', 'value0');
-    expect(await db.deserializeDecrypt(await db.db.get('b'))).toBe('value0');
+    expect(await db.deserializeDecrypt(await db.db.get('b'), false)).toBe(
+      'value0',
+    );
     const level1 = await db.level('level1');
-    await level1.put('a', await db.serializeEncrypt('value1'));
+    await level1.put('a', await db.serializeEncrypt('value1', false));
     expect(await db.get(['level1'], 'a')).toBe('value1');
     await db.put(['level1'], 'b', 'value1');
-    expect(await db.deserializeDecrypt(await level1.get('b'))).toBe('value1');
+    expect(await db.deserializeDecrypt(await level1.get('b'), false)).toBe(
+      'value1',
+    );
     await db.stop();
   });
   test('clearing a level clears all sublevels', async () => {
     const dbPath = `${dataDir}/db`;
     const db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair()
     const level1 = await db.level('level1');
     await db.level('level2', level1);
     await db.put([], 'a', 'value0');

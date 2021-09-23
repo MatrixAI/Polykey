@@ -9,7 +9,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { ForwardProxy, ReverseProxy } from '@/network';
@@ -70,9 +70,7 @@ describe('NodeManager', () => {
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair()
     sigchain = new Sigchain({ keyManager, db, logger });
     await sigchain.start();
 

@@ -1,18 +1,17 @@
 import type { NotificationId, Notification, NotificationData } from './types';
 import type { ACL } from '../acl';
-import type { DB } from '../db';
+import type { DB, DBLevel } from '@matrixai/db';
 import type { KeyManager } from '../keys';
 import type { NodeManager } from '../nodes';
 import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
-import type { DBLevel } from '../db/types';
 
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
 
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
 
 /**
  * Manage Node Notifications between Gestalts
@@ -81,8 +80,8 @@ class NotificationsManager {
       }
       this.logger.info('Starting Notifications Manager');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       // Sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
       const notificationsDb = await this.db.level(this.notificationsDomain);
@@ -303,7 +302,10 @@ class NotificationsManager {
       for await (const o of this.notificationsMessagesDb.createReadStream()) {
         const notifId = (o as any).key as NotificationId;
         const data = (o as any).value as Buffer;
-        const notif = await this.db.deserializeDecrypt<Notification>(data);
+        const notif = await this.db.deserializeDecrypt<Notification>(
+          data,
+          false,
+        );
         if (type === 'all') {
           notificationIds.push(notifId);
         } else if (type === 'unread') {
@@ -325,6 +327,7 @@ class NotificationsManager {
         const data = v as Buffer;
         const notification = await this.db.deserializeDecrypt<Notification>(
           data,
+          false,
         );
         if (type === 'all') {
           notifications.push(notification);

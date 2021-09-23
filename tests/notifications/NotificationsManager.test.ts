@@ -9,7 +9,7 @@ import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
 import { GRPCServer } from '@/grpc';
@@ -145,7 +145,7 @@ describe('NotificationsManager', () => {
       keyPrivatePem: receiverKeyPairPem.privateKey,
       certChainPem: receiverCertPem,
     };
-    await receiverDb.start({ keyPair: receiverKeyManager.getRootKeyPair() });
+    await receiverDb.start(); // TODO start with { keyPair: receiverKeyManager.getRootKeyPair() }
     await receiverACL.start();
     await receiverSigchain.start();
     await receiverGestaltGraph.start();
@@ -220,7 +220,7 @@ describe('NotificationsManager', () => {
       keyPrivatePem: senderKeyPairPem.privateKey,
       certChainPem: senderCertPem,
     };
-    await senderDb.start({ keyPair: senderKeyManager.getRootKeyPair() });
+    await senderDb.start(); // TODO start with { keyPair: senderKeyManager.getRootKeyPair() }
     await senderACL.start();
     await fwdProxy.start({
       tlsConfig: fwdTLSConfig,
