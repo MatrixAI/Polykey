@@ -8,7 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import KeyManager from '@/keys/KeyManager';
 import WorkerManager from '@/workers/WorkerManager';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
@@ -189,7 +189,7 @@ describe('KeyManager', () => {
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();
     await sleep(2000); // Let's just make sure there is time diff
-    await db.start({ keyPair: rootKeyPair1 });
+    await db.start(); // TODO start with this key { keyPair: rootKeyPair1 }
     await db.put(['test'], 'hello', 'world');
     // Reset root key pair takes time
     await keyManager.resetRootKeyPair('password');
@@ -214,7 +214,7 @@ describe('KeyManager', () => {
 
     //Testing DB.
     await expect(db.stop()).resolves.toBe(undefined);
-    await expect(db.start({ keyPair: rootKeyPair2 })).resolves.toBe(undefined);
+    await expect(db.start()).resolves.toBe(undefined); // TODO start with this key { keyPair: rootKeyPair2 }
     expect(await db.get(['test'], 'hello')).toBe('world');
     await keyManager.stop();
   });
@@ -228,7 +228,7 @@ describe('KeyManager', () => {
     const rootCert1 = keyManager.getRootCert();
     await sleep(2000); // Let's just make sure there is time diff
     // renew root key pair takes time
-    await db.start({ keyPair: rootKeyPair1 });
+    await db.start(); // TODO start with this key { keyPair: rootKeyPair1 }
     await db.put(['test'], 'hello', 'world');
     await keyManager.renewRootKeyPair('newpassword');
     const rootKeyPair2 = keyManager.getRootKeyPair();
@@ -258,7 +258,7 @@ describe('KeyManager', () => {
 
     //Testing DB.
     await expect(db.stop()).resolves.toBe(undefined);
-    await expect(db.start({ keyPair: rootKeyPair2 })).resolves.toBe(undefined);
+    await expect(db.start()).resolves.toBe(undefined); //TODO start with { keyPair: rootKeyPair2 }
     expect(await db.get(['test'], 'hello')).toBe('world');
 
     await keyManager.stop();
@@ -278,7 +278,7 @@ describe('KeyManager', () => {
       const rootCertPem1 = keyManager.getRootCertPem();
       await sleep(2000); // Let's just make sure there is time diff
       // renew root key pair takes time
-      await db.start({ keyPair: rootKeyPair1 });
+      await db.start(); //TODO start with { keyPair: rootKeyPair1 }
       await keyManager.renewRootKeyPair('newpassword');
       const rootCertPem2 = keyManager.getRootCertPem();
       await sleep(2000); // Let's just make sure there is time diff

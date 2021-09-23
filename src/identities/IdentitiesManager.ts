@@ -4,14 +4,13 @@ import type {
   ProviderTokens,
   TokenData,
 } from './types';
-import type { DB } from '../db';
-import type { DBLevel } from '../db/types';
+import type { DB, DBLevel } from '@matrixai/db';
 import type Provider from './Provider';
 
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import * as identitiesErrors from './errors';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
 
 class IdentitiesManager {
   public readonly identitiesPath: string;
@@ -54,8 +53,8 @@ class IdentitiesManager {
       }
       this.logger.info('Starting Identities Manager');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       const identitiesDb = await this.db.level(this.identitiesDbDomain);
       // Tokens stores ProviderId -> ProviderTokens

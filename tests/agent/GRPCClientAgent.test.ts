@@ -16,7 +16,7 @@ import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { agentPB, GRPCClientAgent } from '@/agent';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { NotificationsManager } from '@/notifications';
 import TestNodeConnection from '../nodes/TestNodeConnection';
 
@@ -130,7 +130,7 @@ describe('GRPC agent', () => {
     });
 
     await keyManager.start({ password: 'password' });
-    await db.start({ keyPair: keyManager.getRootKeyPair() });
+    await db.start(); // TODO start with { keyPair: keyManager.getRootKeyPair() }
     const tlsConfig: TLSConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: await keyManager.getRootCertChainPem(),

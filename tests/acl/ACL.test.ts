@@ -8,7 +8,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { ACL, errors as aclErrors } from '@/acl';
 import { KeyManager } from '@/keys';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 
 describe('ACL', () => {
   const logger = new Logger('ACL Test', LogLevel.WARN, [new StreamHandler()]);
@@ -23,10 +23,8 @@ describe('ACL', () => {
     keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    db = await DB.createDB({ dbPath, logger }); // FIXME: Start with a key and crypto.
+    await db.start();
   });
   afterEach(async () => {
     await db.stop();

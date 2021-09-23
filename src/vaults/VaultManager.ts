@@ -1,5 +1,4 @@
-import type { DB } from '../db';
-import type { DBLevel, DBOp } from '../db/types';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type {
   VaultId,
   Vaults,
@@ -33,7 +32,7 @@ import * as gitErrors from '../git/errors';
 import * as nodesErrors from '../nodes/errors';
 import * as aclErrors from '../acl/errors';
 import * as gestaltErrors from '../gestalts/errors';
-import * as dbErrors from '../db/errors';
+import { errors as dbErrors } from '@matrixai/db';
 
 class VaultManager {
   public readonly vaultsPath: string;
@@ -110,7 +109,7 @@ class VaultManager {
     if (
       this._started &&
       this.keyManager.started &&
-      this.db.started &&
+      this.db.running &&
       this.acl.started &&
       this.gestaltGraph.started
     ) {
@@ -140,8 +139,8 @@ class VaultManager {
   public async start({ fresh = false }: { fresh?: boolean }): Promise<void> {
     if (!this.keyManager.started) {
       throw new keysErrors.ErrorKeyManagerNotStarted();
-    } else if (!this.db.started) {
-      throw new dbErrors.ErrorDBNotStarted();
+    } else if (!this.db.running) {
+      throw new dbErrors.ErrorDBNotRunning();
     } else if (!this.nodeManager.started) {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
     } else if (!this.acl.started) {
@@ -351,7 +350,7 @@ class VaultManager {
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const id = (o as any).value;
       const name = (o as any).key.toString() as string;
-      const vaultId = await this.db.deserializeDecrypt<VaultId>(id);
+      const vaultId = await this.db.deserializeDecrypt<VaultId>(id, false);
       vaults.push({
         name: name,
         id: vaultId,
@@ -835,7 +834,7 @@ class VaultManager {
       for await (const o of this.vaultsNamesDb.createReadStream({})) {
         const vId = (o as any).value;
         const name = (o as any).key as VaultName;
-        const id = await this.db.deserializeDecrypt<VaultId>(vId);
+        const id = await this.db.deserializeDecrypt<VaultId>(vId, false);
         if (vaultId === id) {
           vaultName = name;
           break;

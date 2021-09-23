@@ -14,7 +14,7 @@ import GRPCServer from '@/grpc/GRPCServer';
 import { AgentService, createAgentService } from '@/agent';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
 import { NotificationsManager } from '@/notifications';
 
@@ -132,7 +132,7 @@ describe('NodeConnection', () => {
       logger: logger,
     });
     await serverKeyManager.start({ password: 'password' });
-    await serverDb.start({ keyPair: serverKeyManager.getRootKeyPair() });
+    await serverDb.start(); //TODO start with { keyPair: serverKeyManager.getRootKeyPair() }
     await serverACL.start();
     await serverSigchain.start();
     await serverGestaltGraph.start();

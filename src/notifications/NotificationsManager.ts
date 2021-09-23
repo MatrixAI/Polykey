@@ -1,18 +1,19 @@
 import type { NotificationId, Notification, NotificationData } from './types';
 import type { ACL } from '../acl';
-import type { DB } from '../db';
+import type { DB, DBLevel } from '@matrixai/db';
 import type { KeyManager } from '../keys';
 import type { NodeManager } from '../nodes';
 import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
-import type { DBLevel } from '../db/types';
 
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
 
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
+
+const MESSAGE_COUNT_KEY = 'numMessages';
 
 /**
  * Manage Node Notifications between Gestalts
@@ -26,7 +27,6 @@ class NotificationsManager {
   protected workerManager?: WorkerManager;
 
   protected messageCap: number;
-  protected readonly MESSAGE_COUNT_KEY: string = 'numMessages';
 
   protected notificationsDomain: string = this.constructor.name;
   protected notificationsDbDomain: Array<string> = [this.notificationsDomain];
@@ -81,8 +81,8 @@ class NotificationsManager {
       }
       this.logger.info('Starting Notifications Manager');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       // Sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
       const notificationsDb = await this.db.level(this.notificationsDomain);
@@ -171,15 +171,11 @@ class NotificationsManager {
         // If the number stored in notificationsDb >= 10000
         let numMessages = await this.db.get<number>(
           this.notificationsDbDomain,
-          this.MESSAGE_COUNT_KEY,
+          MESSAGE_COUNT_KEY,
         );
         if (numMessages === undefined) {
           numMessages = 0;
-          await this.db.put(
-            this.notificationsDbDomain,
-            this.MESSAGE_COUNT_KEY,
-            0,
-          );
+          await this.db.put(this.notificationsDbDomain, MESSAGE_COUNT_KEY, 0);
         }
         if (numMessages >= this.messageCap) {
           // Remove the oldest notification from notificationsMessagesDb
@@ -197,7 +193,7 @@ class NotificationsManager {
         const newNumMessages = numMessages + 1;
         await this.db.put(
           this.notificationsDbDomain,
-          this.MESSAGE_COUNT_KEY,
+          MESSAGE_COUNT_KEY,
           newNumMessages,
         );
       }
@@ -264,7 +260,7 @@ class NotificationsManager {
       const notificationIds = await this.getNotificationIds('all');
       const numMessages = await this.db.get<number>(
         this.notificationsDbDomain,
-        this.MESSAGE_COUNT_KEY,
+        MESSAGE_COUNT_KEY,
       );
       if (numMessages !== undefined) {
         for (const id of notificationIds) {
@@ -303,7 +299,10 @@ class NotificationsManager {
       for await (const o of this.notificationsMessagesDb.createReadStream()) {
         const notifId = (o as any).key as NotificationId;
         const data = (o as any).value as Buffer;
-        const notif = await this.db.deserializeDecrypt<Notification>(data);
+        const notif = await this.db.deserializeDecrypt<Notification>(
+          data,
+          false,
+        );
         if (type === 'all') {
           notificationIds.push(notifId);
         } else if (type === 'unread') {
@@ -325,6 +324,7 @@ class NotificationsManager {
         const data = v as Buffer;
         const notification = await this.db.deserializeDecrypt<Notification>(
           data,
+          false,
         );
         if (type === 'all') {
           notifications.push(notification);
@@ -350,7 +350,7 @@ class NotificationsManager {
     await this._transaction(async () => {
       const numMessages = await this.db.get<number>(
         this.notificationsDbDomain,
-        this.MESSAGE_COUNT_KEY,
+        MESSAGE_COUNT_KEY,
       );
       if (numMessages === undefined) {
         throw new notificationsErrors.ErrorNotificationsDb();
@@ -359,7 +359,7 @@ class NotificationsManager {
       await this.db.del(this.notificationsMessagesDbDomain, messageId);
       await this.db.put(
         this.notificationsDbDomain,
-        this.MESSAGE_COUNT_KEY,
+        MESSAGE_COUNT_KEY,
         numMessages - 1,
       );
     });

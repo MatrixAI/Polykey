@@ -6,7 +6,7 @@ import * as clientErrors from '../client/errors';
 
 import Logger from '@matrixai/logger';
 
-import { DB } from '../db';
+import { DB } from '@matrixai/db';
 import { Mutex } from 'async-mutex';
 import { utils as keyUtils } from '../keys';
 import { ErrorKeyManagerNotStarted } from '../errors';

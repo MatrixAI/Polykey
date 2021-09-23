@@ -18,7 +18,7 @@ import { GestaltGraph, utils as gestaltsUtils } from '@/gestalts';
 import { utils as claimsUtils } from '@/claims';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 
 describe('GestaltGraph', () => {
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
@@ -46,10 +46,10 @@ describe('GestaltGraph', () => {
     keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    db = await DB.createDB({ dbPath, logger }); // TODO: Start with key and crypto.
+    await db.start();
+    // KeyPair: keyManager.getRootKeyPair(), // TODO use this for the key.
+
     acl = new ACL({ db, logger });
     await acl.start();
 
@@ -77,7 +77,7 @@ describe('GestaltGraph', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'dee' as NodeId,
+          node1: 'dee' as NodeId, //TODO: use type guards for all `as NodeID` usages here.
           node2: 'abc' as NodeId,
         },
         iat: 1618203162,

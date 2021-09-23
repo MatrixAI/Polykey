@@ -8,14 +8,13 @@ import type {
 } from '../claims/types';
 import type { NodeId } from '../nodes/types';
 import type { KeyManager } from '../keys';
-import type { DB } from '../db';
-import type { DBLevel, DBOp } from '../db/types';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
 import * as sigchainErrors from './errors';
 import * as claimsUtils from '../claims/utils';
-import * as dbErrors from '../db/errors';
+import { errors as dbErrors } from '@matrixai/db';
 
 class Sigchain {
   public readonly sigchainPath: string;
@@ -77,8 +76,8 @@ class Sigchain {
       }
       this.logger.info('Starting Sigchain');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
       // Top-level database for the sigchain domain
       const sigchainDb = await this.db.level(this.sigchainDbDomain);
@@ -212,7 +211,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(newSequenceNumber) as ClaimId,
+          key: claimsUtils.numToLexiString(newSequenceNumber),
           value: claim,
         },
         {
@@ -250,7 +249,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(expectedSequenceNumber) as ClaimId,
+          key: claimsUtils.numToLexiString(expectedSequenceNumber),
           value: claim,
         },
         {
@@ -299,6 +298,7 @@ class Sigchain {
         const encryptedClaim = (o as any).value;
         const claim = await this.db.deserializeDecrypt<ClaimEncoded>(
           encryptedClaim,
+          false,
         );
         chainData[claimId] = claim;
       }
@@ -319,7 +319,10 @@ class Sigchain {
       const relevantClaims: Array<ClaimEncoded> = [];
       for await (const o of this.sigchainClaimsDb.createReadStream()) {
         const data = (o as any).value;
-        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(data);
+        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(
+          data,
+          false,
+        );
         const decodedClaim = claimsUtils.decodeClaim(claim);
         if (decodedClaim.payload.data.type === claimType) {
           relevantClaims.push(claim);
@@ -378,7 +381,7 @@ class Sigchain {
     return await this._transaction(async () => {
       const claim = await this.db.get<ClaimEncoded>(
         this.sigchainClaimsDbDomain,
-        claimsUtils.numToLexiString(sequenceNumber) as ClaimId,
+        claimsUtils.numToLexiString(sequenceNumber),
       );
       if (claim == null) {
         throw new sigchainErrors.ErrorSigchainClaimUndefined();

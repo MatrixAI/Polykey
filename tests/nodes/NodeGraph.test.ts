@@ -10,7 +10,7 @@ import * as nodesTestUtils from './utils';
 import { NodeGraph, NodeManager } from '@/nodes';
 import { KeyManager } from '@/keys';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
 
 describe('NodeGraph', () => {
@@ -47,10 +47,9 @@ describe('NodeGraph', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    db = await DB.createDB({ dbPath, logger }); // TODO start with key and crypto.
+    // keyPair: keyManager.getRootKeyPair(), TODO: Use this for the key
+    await db.start();
     sigchain = new Sigchain({
       keyManager: keyManager,
       db: db,

@@ -15,7 +15,7 @@ import { Sigchain } from '@/sigchain';
 import { VaultManager } from '@/vaults';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
 import { AgentService, createAgentService } from '@/agent';
@@ -87,9 +87,7 @@ describe('VaultManager is', () => {
       dbPath: dbPath,
       logger: logger,
     });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO start with keyPair: keyManager.getRootKeyPair(),
 
     sigchain = new Sigchain({
       keyManager: keyManager,
@@ -370,9 +368,7 @@ describe('VaultManager is', () => {
     await acl.stop();
     await db.stop();
 
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); //TODO keyPair: keyManager.getRootKeyPair(),
     await acl.start();
     await gestaltGraph.start();
     await vaultManager.start({});
@@ -431,9 +427,7 @@ describe('VaultManager is', () => {
     await acl.stop();
     await db.stop();
 
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    await db.start(); // TODO keyPair: keyManager.getRootKeyPair(),
     await acl.start();
     await gestaltGraph.start();
     await vaultManager.start({});
@@ -506,7 +500,7 @@ describe('VaultManager is', () => {
         dbPath: path.join(targetDataDir, 'db'),
         logger: logger,
       });
-      await targetDb.start({ keyPair: targetKeyManager.getRootKeyPair() });
+      await targetDb.start(); // TODO { keyPair: targetKeyManager.getRootKeyPair() };
       targetSigchain = new Sigchain({
         keyManager: targetKeyManager,
         db: targetDb,
@@ -599,7 +593,7 @@ describe('VaultManager is', () => {
         dbPath: path.join(altDataDir, 'db'),
         logger: logger,
       });
-      await altDb.start({ keyPair: altKeyManager.getRootKeyPair() });
+      await altDb.start(); // TODO { keyPair: altKeyManager.getRootKeyPair() }
       altSigchain = new Sigchain({
         keyManager: altKeyManager,
         db: altDb,

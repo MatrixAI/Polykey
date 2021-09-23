@@ -34,7 +34,7 @@ export { ErrorPolykey, ErrorUndefinedBehaviour, ErrorStateVersionMismatch };
  * reference all Polykey errors
  */
 export * from './acl/errors';
-export * from './db/errors';
+export { errors } from '@matrixai/db';
 export * from './sessions/errors';
 export * from './keys/errors';
 export * from './vaults/errors';

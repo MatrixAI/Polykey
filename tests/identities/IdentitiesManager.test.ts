@@ -13,7 +13,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import TestProvider from './TestProvider';
@@ -33,10 +33,9 @@ describe('IdentitiesManager', () => {
     keyManager = await KeyManager.createKeyManager({ keysPath, logger });
     await keyManager.start({ password: 'password' });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
+    db = await DB.createDB({ dbPath, logger }); // TODO start with key and crypto.
+    //keyPair: keyManager.getRootKeyPair() TODO use this for the key.
+    await db.start();
   });
   afterEach(async () => {
     await db.stop();

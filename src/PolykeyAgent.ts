@@ -15,7 +15,7 @@ import { GestaltGraph } from './gestalts';
 import { NotificationsManager } from './notifications';
 import { Sigchain } from './sigchain';
 import { ACL } from './acl';
-import { DB } from './db';
+import { DB } from '@matrixai/db';
 import { Discovery } from './discovery';
 import { WorkerManager } from './workers';
 import { SessionManager } from './sessions';
@@ -141,11 +141,11 @@ class Polykey {
       });
     const db_ =
       db ??
-      DB.createDB({
+      (await DB.createDB({
         dbPath: dbPath,
         fs: fs_,
         logger: logger_,
-      });
+      }));
     const sigchain_ =
       sigchain ??
       new Sigchain({
@@ -448,10 +448,11 @@ class Polykey {
     const cert = this.keys.getRootCert();
     const nodeId = certNodeId(cert);
 
-    await this.db.start({
-      keyPair: this.keys.getRootKeyPair(),
-      bits: rootKeyPairBits,
-    });
+    await this.db.start(); // TODO start with the key provided.
+    // {
+    //   keyPair: this.keys.getRootKeyPair(),
+    //     bits: rootKeyPairBits,
+    // }
 
     await this.acl.start({ fresh });
 

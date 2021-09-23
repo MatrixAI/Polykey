@@ -14,7 +14,6 @@ import Logger from '@matrixai/logger';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as utils from '../utils';
-import * as dbErrors from '../db/errors';
 import * as networkUtils from '../network/utils';
 
 /**
@@ -544,18 +543,21 @@ class KeyManager {
     }
   }
 
+  // FIXME, DB key is now handled via keyManager now.
+  // so this needs to be changed to reflect that.
   protected async readDBKey(dbKeyPath: string): Promise<Buffer> {
     this.logger.info(`Reading ${dbKeyPath}`);
     let keysDbKeyCipher;
     try {
       keysDbKeyCipher = await this.fs.promises.readFile(dbKeyPath);
     } catch (e) {
-      throw new dbErrors.ErrorDBKeyRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
-      });
+      throw new Error('temp error, please ignore.');
+      // Throw new dbErrors.ErrorDBKeyRead(e.message, {
+      //   errno: e.errno,
+      //   syscall: e.syscall,
+      //   code: e.code,
+      //   path: e.path,
+      // });
     }
     let keysDbKeyPlain;
     try {
@@ -564,11 +566,14 @@ class KeyManager {
         keysDbKeyCipher,
       );
     } catch (e) {
-      throw new dbErrors.ErrorDBKeyParse(e.message);
+      throw Error('temp error, please ignore.');
+      // Throw new dbErrors.ErrorDBKeyParse(e.message);
     }
     return keysDbKeyPlain;
   }
 
+  // FIXME, DB key is now handled via keyManager now.
+  // so this needs to be changed to reflect that.
   protected async writeDBKey(
     keyPair: KeyPair,
     dbKey: Buffer,
@@ -583,12 +588,13 @@ class KeyManager {
       await this.fs.promises.writeFile(`${dbKeyPath}.tmp`, keysDbKeyCipher);
       await this.fs.promises.rename(`${dbKeyPath}.tmp`, dbKeyPath);
     } catch (e) {
-      throw new dbErrors.ErrorDBKeyWrite(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
-      });
+      throw Error('temp error, please ignore.');
+      // Throw new dbErrors.ErrorDBKeyWrite(e.message, {
+      //   errno: e.errno,
+      //   syscall: e.syscall,
+      //   code: e.code,
+      //   path: e.path,
+      // });
     }
   }
 
