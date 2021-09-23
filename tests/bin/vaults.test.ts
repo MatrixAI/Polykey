@@ -57,7 +57,7 @@ describe('CLI vaults', () => {
     );
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: dataDir,
       logger: logger,
     });
@@ -267,7 +267,7 @@ describe('CLI vaults', () => {
         const dataDir2 = await fs.promises.mkdtemp(
           path.join(os.tmpdir(), 'polykey-test-'),
         );
-        const targetPolykeyAgent = new PolykeyAgent({
+        const targetPolykeyAgent = await PolykeyAgent.createPolykey({
           nodePath: dataDir2,
           logger: logger,
         });
@@ -344,7 +344,7 @@ describe('CLI vaults', () => {
         const dataDir2 = await fs.promises.mkdtemp(
           path.join(os.tmpdir(), 'polykey-test-'),
         );
-        const targetPolykeyAgent = new PolykeyAgent({
+        const targetPolykeyAgent = await PolykeyAgent.createPolykey({
           nodePath: dataDir2,
           logger: logger,
         });
@@ -433,7 +433,7 @@ describe('CLI vaults', () => {
       const dataDir2 = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
-      const targetPolykeyAgent = new PolykeyAgent({
+      const targetPolykeyAgent = await PolykeyAgent.createPolykey({
         nodePath: dataDir2,
         logger: logger,
       });

@@ -34,7 +34,7 @@ describe('Discovery', () => {
       );
       nodePath = path.join(dataDirEach, 'node');
 
-      polykeyAgent = new PolykeyAgent({
+      polykeyAgent = await PolykeyAgent.createPolykey({
         nodePath,
         logger,
       });

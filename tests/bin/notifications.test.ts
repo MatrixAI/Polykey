@@ -55,11 +55,11 @@ describe('CLI Notifications', () => {
     receiverPasswordFile = path.join(senderDataDir, 'passwordFile');
     await fs.promises.writeFile(senderPasswordFile, 'password');
     await fs.promises.writeFile(receiverPasswordFile, 'password');
-    senderPolykeyAgent = new PolykeyAgent({
+    senderPolykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: senderNodePath,
       logger: logger,
     });
-    receiverPolykeyAgent = new PolykeyAgent({
+    receiverPolykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: receiverNodePath,
       logger: logger,
     });

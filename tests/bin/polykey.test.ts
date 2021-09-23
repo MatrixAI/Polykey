@@ -11,7 +11,7 @@ describe('polykey', () => {
 //     dataDir = await fs.promises.mkdtemp(
 //       path.join(os.tmpdir(), 'polykey-test-'),
 //     );
-//     polykeyAgent = new PolykeyAgent({
+//     polykeyAgent = await PolykeyAgent.createPolykey({
 //       nodePath: dataDir,
 //       logger: logger,
 //     });

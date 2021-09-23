@@ -112,7 +112,7 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: dataDir,
       logger,
       fwdProxy,
@@ -259,7 +259,7 @@ describe('Client service', () => {
       async () => {
         //Starting agent
         const newNodePath = path.join(dataDir, 'newAgent');
-        const agent = new PolykeyAgent({
+        const agent = await PolykeyAgent.createPolykey({
           nodePath: newNodePath,
           logger,
         });

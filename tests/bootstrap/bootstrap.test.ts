@@ -59,7 +59,7 @@ describe('Bootstrap', () => {
     test(
       'keynode with contents in directory',
       async () => {
-        const pk = new PolykeyAgent({
+        const pk = await PolykeyAgent.createPolykey({
           nodePath: nodePath,
           logger: logger,
         });
@@ -101,7 +101,7 @@ describe('Bootstrap', () => {
 
     test('should be able to start agent on created state.', async () => {
       await bootstrapPolykeyState(nodePath, password);
-      const polykeyAgent = new PolykeyAgent({
+      const polykeyAgent = await PolykeyAgent.createPolykey({
         nodePath: nodePath,
         logger: logger,
       });

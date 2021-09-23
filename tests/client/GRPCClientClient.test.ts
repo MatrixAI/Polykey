@@ -33,7 +33,7 @@ describe('GRPCClientClient', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'node');
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath,
       logger: logger,
     });

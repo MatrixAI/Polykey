@@ -29,7 +29,7 @@ describe('GRPCClientClient', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
 
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: dataDir,
       logger: logger,
     });
@@ -92,7 +92,7 @@ describe('TLS tests', () => {
     nodePath = path.join(dataDir, 'keynode');
 
     //Starting an agent.
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath,
       logger: logger.getChild('agent'),
       clientGrpcPort: 55555,

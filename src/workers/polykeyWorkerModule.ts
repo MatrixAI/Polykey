@@ -3,7 +3,6 @@ import type { PublicKeyAsn1, PrivateKeyAsn1, KeyPairAsn1 } from '../keys/types';
 
 import { utils as keysUtils } from '../keys';
 import { isWorkerRuntime, Transfer } from 'threads/worker';
-import efsWorker from 'encryptedfs/dist/workers/efsWorkerModule';
 
 /**
  * Worker object that contains all functions that will be executed in parallel
@@ -13,7 +12,27 @@ import efsWorker from 'encryptedfs/dist/workers/efsWorkerModule';
  * The caller must always await because the fucntions will run on the pool
  */
 const polykeyWorker = {
-  ...efsWorker,
+  // EFS functions
+  async encrypt(
+    key: ArrayBuffer,
+    plainText: ArrayBuffer,
+  ): Promise<TransferDescriptor<ArrayBuffer>> {
+    const cipherText = await keysUtils.encryptWithKey(key, plainText);
+    return Transfer(cipherText);
+  },
+  async decrypt(
+    key: ArrayBuffer,
+    cipherText: ArrayBuffer,
+  ): Promise<TransferDescriptor<ArrayBuffer> | undefined> {
+    const plainText = await keysUtils.decryptWithKey(key, cipherText);
+    if (plainText != null) {
+      return Transfer(plainText);
+    } else {
+      return;
+    }
+  },
+
+  // Normal functions
   /**
    * Check if we are running in the worker.
    * Only used for testing
@@ -88,17 +107,19 @@ const polykeyWorker = {
   /**
    * Zero copy encryption of plain text to cipher text
    */
-  encryptWithKey(
+  async encryptWithKey(
     key: ArrayBuffer,
     keyOffset: number,
     keyLength: number,
     plainText: ArrayBuffer,
     plainTextOffset: number,
     plainTextLength: number,
-  ): TransferDescriptor<[ArrayBuffer, number, number]> {
+  ): Promise<TransferDescriptor<[ArrayBuffer, number, number]>> {
     const key_ = Buffer.from(key, keyOffset, keyLength);
     const plainText_ = Buffer.from(plainText, plainTextOffset, plainTextLength);
-    const cipherText = keysUtils.encryptWithKey(key_, plainText_);
+    const cipherText = Buffer.from(
+      await keysUtils.encryptWithKey(key_, plainText_),
+    );
     return Transfer(
       [cipherText.buffer, cipherText.byteOffset, cipherText.byteLength],
       [cipherText.buffer],
@@ -107,21 +128,23 @@ const polykeyWorker = {
   /**
    * Zero copy decryption of cipher text to plain text
    */
-  decryptWithKey(
+  async decryptWithKey(
     key: ArrayBuffer,
     keyOffset: number,
     keyLength: number,
     cipherText: ArrayBuffer,
     cipherTextOffset: number,
     cipherTextLength: number,
-  ): TransferDescriptor<[ArrayBuffer, number, number]> | undefined {
+  ): Promise<TransferDescriptor<[ArrayBuffer, number, number]> | undefined> {
     const key_ = Buffer.from(key, keyOffset, keyLength);
     const cipherText_ = Buffer.from(
       cipherText,
       cipherTextOffset,
       cipherTextLength,
     );
-    const plainText = keysUtils.decryptWithKey(key_, cipherText_);
+    const plainText = Buffer.from(
+      (await keysUtils.decryptWithKey(key_, cipherText_))!,
+    );
     if (plainText != null) {
       return Transfer(
         [plainText.buffer, plainText.byteOffset, plainText.byteLength],

@@ -35,7 +35,7 @@ describe('agent utils', () => {
     });
 
     test('True if agent running.', async () => {
-      const agent = new PolykeyAgent({
+      const agent = await PolykeyAgent.createPolykey({
         nodePath: nodePath,
         logger: logger,
       });
@@ -90,7 +90,7 @@ describe('agent utils', () => {
       global.polykeyStartupTimeout * 3.5,
     );
     test('Should throw error if agent already running.', async () => {
-      const agent = new PolykeyAgent({
+      const agent = await PolykeyAgent.createPolykey({
         nodePath: nodePath,
         logger: logger,
       });

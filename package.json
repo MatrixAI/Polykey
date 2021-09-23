@@ -70,6 +70,8 @@
   "dependencies": {
     "@grpc/grpc-js": "^1.2.5",
     "@matrixai/logger": "^2.0.1",
+    "@matrixai/workers": "^1.2.3",
+    "@matrixai/db": "^1.0.1",
     "ajv": "^7.0.4",
     "async-mutex": "^0.2.4",
     "bip39": "^3.0.3",

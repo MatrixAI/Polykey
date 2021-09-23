@@ -19,7 +19,7 @@ async function bootstrapPolykeyState(
     new StreamHandler(),
   ]);
 
-  const polykeyAgent = new PolykeyAgent({
+  const polykeyAgent = await PolykeyAgent.createPolykey({
     nodePath: nodePath,
     logger: logger,
   });

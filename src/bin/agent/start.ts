@@ -37,7 +37,7 @@ start.action(async (options) => {
     if (background) {
       await agentUtils.spawnBackgroundAgent(nodePath, password);
     } else {
-      const agent = new PolykeyAgent(agentConfig);
+      const agent = await PolykeyAgent.createPolykey(agentConfig);
       await agent.start({ password: password });
 
       // If started add handlers for terminating.

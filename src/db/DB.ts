@@ -314,7 +314,7 @@ class DB {
         return Buffer.from(cipherBuf, cipherOffset, cipherLength);
       });
     } else {
-      return keysUtils.encryptWithKey(this.dbKey, plainText);
+      return Buffer.from(await keysUtils.encryptWithKey(this.dbKey, plainText));
     }
   }
 
