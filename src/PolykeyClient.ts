@@ -6,7 +6,7 @@ import Logger from '@matrixai/logger';
 
 import * as utils from './utils';
 import { Session } from './sessions';
-import { Lockfile } from './lockfile';
+import { Lockfile, LOCKFILE_NAME } from './lockfile';
 import { ErrorPolykey } from './errors';
 import { GRPCClientClient } from './client';
 import { ErrorClientClientNotStarted } from './client/errors';
@@ -50,7 +50,7 @@ class PolykeyClient {
 
     this.nodePath =
       nodePath ?? path.resolve(nodePath ?? utils.getDefaultNodePath());
-    this.lockPath = path.join(this.nodePath, Lockfile.LOCKFILE_NAME);
+    this.lockPath = path.join(this.nodePath, LOCKFILE_NAME);
     this.clientPath = path.join(this.nodePath, 'client');
 
     this.session = new Session({
