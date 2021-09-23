@@ -30,7 +30,7 @@ async function setupRemoteKeynode({
       path.join(os.tmpdir(), 'polykey-test-remote-'),
     );
   }
-  const remote = new PolykeyAgent({
+  const remote = await PolykeyAgent.createPolykey({
     nodePath: nodeDir,
     logger: logger,
   });

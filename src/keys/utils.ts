@@ -33,6 +33,9 @@ import * as keysErrors from './errors';
 import { promisify } from '../utils';
 import base58 from 'bs58';
 
+const ivSize = 16;
+const authTagSize = 16;
+
 /**
  * Polykey OIDs start at 1.3.6.1.4.1.57167.2
  */
@@ -504,36 +507,47 @@ async function generateKey(bits: number = 256): Promise<Buffer> {
   return key;
 }
 
-function encryptWithKey(key: Buffer, plainText: Buffer): Buffer {
-  const iv = getRandomBytesSync(16);
-  const c = cipher.createCipher('AES-GCM', key.toString('binary'));
-  c.start({ iv: iv.toString('binary'), tagLength: 128 });
+async function encryptWithKey(
+  key: ArrayBuffer,
+  plainText: ArrayBuffer,
+): Promise<ArrayBuffer> {
+  const iv = getRandomBytesSync(ivSize);
+  const c = cipher.createCipher('AES-GCM', Buffer.from(key).toString('binary'));
+  c.start({ iv: iv.toString('binary'), tagLength: authTagSize * 8 });
   c.update(forgeUtil.createBuffer(plainText));
   c.finish();
   const cipherText = Buffer.from(c.output.getBytes(), 'binary');
   const authTag = Buffer.from(c.mode.tag.getBytes(), 'binary');
   const data = Buffer.concat([iv, authTag, cipherText]);
-  return data;
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 }
 
-function decryptWithKey(key: Buffer, cipherText: Buffer): Buffer | undefined {
-  if (cipherText.length <= 32) {
+async function decryptWithKey(
+  key: ArrayBuffer,
+  cipherText: ArrayBuffer,
+): Promise<ArrayBuffer | undefined> {
+  const cipherTextBuf = Buffer.from(cipherText);
+  if (cipherTextBuf.byteLength <= 32) {
     return;
   }
-  const iv = cipherText.subarray(0, 16);
-  const authTag = cipherText.subarray(16, 32);
-  const cipherText_ = cipherText.subarray(32);
-  const d = cipher.createDecipher('AES-GCM', key.toString('binary'));
+  const iv = cipherTextBuf.subarray(0, ivSize);
+  const authTag = cipherTextBuf.subarray(ivSize, ivSize + authTagSize);
+  const cipherText_ = cipherTextBuf.subarray(ivSize + authTagSize);
+  const d = cipher.createDecipher(
+    'AES-GCM',
+    Buffer.from(key).toString('binary'),
+  );
   d.start({
     iv: iv.toString('binary'),
-    tagLength: 128,
+    tagLength: authTagSize * 8,
     tag: forgeUtil.createBuffer(authTag),
   });
   d.update(forgeUtil.createBuffer(cipherText_));
   if (!d.finish()) {
     return;
   }
-  return Buffer.from(d.output.getBytes(), 'binary');
+  const data = Buffer.from(d.output.getBytes(), 'binary');
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 }
 
 export {

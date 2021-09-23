@@ -45,15 +45,15 @@ describe('CLI keys', () => {
     newNodePath2 = path.join(dataDir, 'newNode2');
 
     await fs.promises.writeFile(passwordFile, password);
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: nodePath,
       logger: logger,
     });
-    newPolykeyAgent1 = new PolykeyAgent({
+    newPolykeyAgent1 = await PolykeyAgent.createPolykey({
       nodePath: newNodePath1,
       logger: logger,
     });
-    newPolykeyAgent2 = new PolykeyAgent({
+    newPolykeyAgent2 = await PolykeyAgent.createPolykey({
       nodePath: newNodePath2,
       logger: logger,
     });

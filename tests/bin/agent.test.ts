@@ -47,7 +47,7 @@ describe('CLI agent', () => {
         new StreamHandler(),
       ]);
 
-      activeNode = new PolykeyAgent({
+      activeNode = await PolykeyAgent.createPolykey({
         nodePath: activeNodePath,
         logger,
       });
@@ -264,7 +264,7 @@ describe('CLI agent', () => {
       inactiveAgentPath = path.join(dataDir, 'InactiveAgent');
       await fs.promises.writeFile(passwordFile, password);
 
-      activeAgent = new PolykeyAgent({
+      activeAgent = await PolykeyAgent.createPolykey({
         nodePath: activeAgentPath,
         logger: logger,
       });

@@ -18,7 +18,7 @@ process.on('message', async (startOptions: string) => {
   // Split the message into password and string
   const ops = JSON.parse(startOptions);
   try {
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: ops.nodePath,
     });
     await polykeyAgent.start({

@@ -27,8 +27,8 @@ describe('Polykey', () => {
   });
   test(
     'Able to construct',
-    () => {
-      pk = new PolykeyAgent({ logger });
+    async () => {
+      pk = await PolykeyAgent.createPolykey({ logger });
       expect(pk).toBeInstanceOf(PolykeyAgent);
       expect(pk.nodePath).toBe(utils.getDefaultNodePath());
     },
@@ -38,7 +38,7 @@ describe('Polykey', () => {
     'construction has no side effects',
     async () => {
       const nodePath = `${dataDir}/polykey`;
-      new PolykeyAgent({ nodePath, logger });
+      await PolykeyAgent.createPolykey({ nodePath, logger });
       await expect(fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/);
     },
     global.polykeyStartupTimeout,
@@ -47,7 +47,7 @@ describe('Polykey', () => {
     'async start constructs node path',
     async () => {
       const nodePath = `${dataDir}/polykey`;
-      pk = new PolykeyAgent({ nodePath, logger });
+      pk = await PolykeyAgent.createPolykey({ nodePath, logger });
       await pk.start({ password: 'password' });
       const nodePathContents = await fs.promises.readdir(nodePath);
       expect(nodePathContents).toContain('keys');
@@ -61,7 +61,7 @@ describe('Polykey', () => {
     'async stop leaves the node path',
     async () => {
       const nodePath = `${dataDir}/polykey`;
-      pk = new PolykeyAgent({ nodePath, logger });
+      pk = await PolykeyAgent.createPolykey({ nodePath, logger });
       await pk.start({ password: 'password' });
       await pk.stop();
       const nodePathContents = await fs.promises.readdir(nodePath);
@@ -75,7 +75,7 @@ describe('Polykey', () => {
   test('GithubProvider is registered', async () => {
     const providerId = 'github.com';
     const nodePath = `${dataDir}/polykey`;
-    const pk = new PolykeyAgent({ nodePath, logger });
+    const pk = await PolykeyAgent.createPolykey({ nodePath, logger });
     const providers = pk.identities.getProviders();
     // Exists
     expect(providers[providerId]).toBeTruthy();
@@ -97,7 +97,7 @@ describe('Polykey', () => {
       await fs.promises.writeFile(versionFilePath, versionInfoString);
 
       // Attempt to start a polykeyAgent.
-      pk = new PolykeyAgent({
+      pk = await PolykeyAgent.createPolykey({
         nodePath,
         logger,
       });
@@ -116,7 +116,7 @@ describe('Polykey', () => {
       const versionFilePath = path.join(nodePath, 'versionFile');
 
       // Attempt to start a polykeyAgent.
-      pk = new PolykeyAgent({
+      pk = await PolykeyAgent.createPolykey({
         nodePath,
         logger,
       });

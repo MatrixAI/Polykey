@@ -98,7 +98,7 @@ describe('CLI Identities', () => {
     nodePath = path.join(dataDir, 'keynode');
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
       nodePath: nodePath,
       logger: logger,
     });

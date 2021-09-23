@@ -65,11 +65,6 @@ class Vault {
 
   public setWorkerManager(workerManager: WorkerManager): void {
     this.workerManager = workerManager;
-    // Type `WorkerManager` implements `WorkerManagerInterface<PolykeyWorker>`.
-    // `PolykeyWorker` contains the functions from `EFSWorkerModule`
-    // and `efs.setWorkerManager` expects `WorkerManagerInterface<EFSWorkerModule>`
-    // BUT `PolykeyWorker` doesn't technically extend `EFSWorkerModule` so typescript is throwing an error.
-    // @ts-ignore: Issue with types, should work.
     this.efs.setWorkerManager(workerManager);
   }
 
@@ -78,7 +73,6 @@ class Vault {
     this.efs.unsetWorkerManager();
   }
 
-  // TODO: Once EFS is updated, pass `this.fs` into EFS constructor
   public async start({ key }: { key: VaultKey }): Promise<void> {
     this.efs = await EncryptedFS.createEncryptedFS({
       dbKey: key,
