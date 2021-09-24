@@ -211,7 +211,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(newSequenceNumber) as ClaimId,
+          key: claimsUtils.numToLexiString(newSequenceNumber),
           value: claim,
         },
         {
@@ -249,7 +249,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(expectedSequenceNumber) as ClaimId,
+          key: claimsUtils.numToLexiString(expectedSequenceNumber),
           value: claim,
         },
         {
@@ -381,7 +381,7 @@ class Sigchain {
     return await this._transaction(async () => {
       const claim = await this.db.get<ClaimEncoded>(
         this.sigchainClaimsDbDomain,
-        claimsUtils.numToLexiString(sequenceNumber) as ClaimId,
+        claimsUtils.numToLexiString(sequenceNumber),
       );
       if (claim == null) {
         throw new sigchainErrors.ErrorSigchainClaimUndefined();
