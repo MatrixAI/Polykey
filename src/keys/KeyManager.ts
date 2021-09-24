@@ -25,10 +25,12 @@ class KeyManager {
   public readonly rootKeyPath: string;
   public readonly rootCertPath: string;
   public readonly rootCertsPath: string;
+  public readonly dbKeyPath: string;
 
   protected fs: FileSystem;
   protected logger: Logger;
   protected rootKeyPair: KeyPair;
+  protected _dbKey: Buffer;
   protected rootCert: Certificate;
   protected _started: boolean = false;
   protected workerManager?: WorkerManager;
@@ -66,6 +68,7 @@ class KeyManager {
     this.rootKeyPath = path.join(keysPath, 'root.key');
     this.rootCertPath = path.join(keysPath, 'root.crt');
     this.rootCertsPath = path.join(keysPath, 'root_certs');
+    this.dbKeyPath = path.join(keysPath, 'db_key') // TODO: update the file name? db.key?
   }
 
   get started(): boolean {
@@ -105,6 +108,7 @@ class KeyManager {
     const rootCert = await this.setupRootCert(rootKeyPair, rootCertDuration);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
+    this._dbKey = await this.setupDbKey();
     this._started = true;
     this.logger.info('Started Key Manager');
   }
@@ -312,7 +316,7 @@ class KeyManager {
     }
     this.logger.info('Renewing root key pair');
     const dbKeyPath = path.join(path.dirname(this.keysPath), 'db', 'db_key');
-    const keysDbKeyPlain = await this.readDBKey(dbKeyPath);
+    const keysDbKeyPlain = await this.readDBKey();
     const rootKeyPair = await this.generateKeyPair(bits);
     const now = new Date();
     const rootCert = keysUtils.generateCertificate(
@@ -345,7 +349,7 @@ class KeyManager {
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
-      this.writeDBKey(rootKeyPair, keysDbKeyPlain, dbKeyPath),
+      this.writeDBKey(keysDbKeyPlain, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
@@ -367,8 +371,7 @@ class KeyManager {
       throw new keysErrors.ErrorKeyManagerNotStarted();
     }
     this.logger.info('Resetting root key pair');
-    const dbKeyPath = path.join(path.dirname(this.keysPath), 'db', 'db_key');
-    const keysDbKeyPlain = await this.readDBKey(dbKeyPath);
+    const keysDbKeyPlain = await this.readDBKey();
     const rootKeyPair = await this.generateKeyPair(bits);
     const rootCert = keysUtils.generateCertificate(
       rootKeyPair.publicKey,
@@ -383,7 +386,7 @@ class KeyManager {
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
-      this.writeDBKey(rootKeyPair, keysDbKeyPlain, dbKeyPath),
+      this.writeDBKey(keysDbKeyPlain, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
@@ -543,21 +546,52 @@ class KeyManager {
     }
   }
 
-  // FIXME, DB key is now handled via keyManager now.
-  // so this needs to be changed to reflect that.
-  protected async readDBKey(dbKeyPath: string): Promise<Buffer> {
-    this.logger.info(`Reading ${dbKeyPath}`);
+  // Functions that handle the DB key.
+
+  protected async setupDbKey(
+    bits: number = 256,
+  ): Promise<Buffer> {
+    let keyDbKey: Buffer;
+    if (await this.existsDbKey()) {
+      keyDbKey = await this.readDBKey();
+    } else {
+      this.logger.info('Generating keys db key');
+      keyDbKey = await keysUtils.generateKey(bits);
+      await this.writeDBKey(keyDbKey);
+    }
+    return keyDbKey;
+  }
+
+  protected async existsDbKey(): Promise<boolean> {
+    this.logger.info(`Checking ${this.dbKeyPath}`);
+    try {
+      await this.fs.promises.stat(this.dbKeyPath);
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        return false;
+      }
+      throw new keysErrors.ErrorDBKeyRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    return true;
+  }
+
+  protected async readDBKey(): Promise<Buffer> {
+    this.logger.info(`Reading ${this.dbKeyPath}`);
     let keysDbKeyCipher;
     try {
-      keysDbKeyCipher = await this.fs.promises.readFile(dbKeyPath);
+      keysDbKeyCipher = await this.fs.promises.readFile(this.dbKeyPath);
     } catch (e) {
-      throw new Error('temp error, please ignore.');
-      // Throw new dbErrors.ErrorDBKeyRead(e.message, {
-      //   errno: e.errno,
-      //   syscall: e.syscall,
-      //   code: e.code,
-      //   path: e.path,
-      // });
+      throw new keysErrors.ErrorDBKeyRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
     }
     let keysDbKeyPlain;
     try {
@@ -566,37 +600,42 @@ class KeyManager {
         keysDbKeyCipher,
       );
     } catch (e) {
-      throw Error('temp error, please ignore.');
-      // Throw new dbErrors.ErrorDBKeyParse(e.message);
+      throw new keysErrors.ErrorDBKeyParse(e.message);
     }
     return keysDbKeyPlain;
   }
 
-  // FIXME, DB key is now handled via keyManager now.
-  // so this needs to be changed to reflect that.
   protected async writeDBKey(
-    keyPair: KeyPair,
     dbKey: Buffer,
-    dbKeyPath: string,
+    keyPair?: KeyPair,
   ): Promise<void> {
+    const keyPair_ = keyPair ?? this.rootKeyPair;
     const keysDbKeyCipher = keysUtils.encryptWithPublicKey(
-      keyPair.publicKey,
+      keyPair_.publicKey,
       dbKey,
     );
-    this.logger.info(`Writing ${dbKeyPath}`);
+    this.logger.info(`Writing ${this.dbKeyPath}`);
     try {
-      await this.fs.promises.writeFile(`${dbKeyPath}.tmp`, keysDbKeyCipher);
-      await this.fs.promises.rename(`${dbKeyPath}.tmp`, dbKeyPath);
+      await this.fs.promises.writeFile(`${this.dbKeyPath}.tmp`, keysDbKeyCipher);
+      await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
     } catch (e) {
-      throw Error('temp error, please ignore.');
-      // Throw new dbErrors.ErrorDBKeyWrite(e.message, {
-      //   errno: e.errno,
-      //   syscall: e.syscall,
-      //   code: e.code,
-      //   path: e.path,
-      // });
+      throw new keysErrors.ErrorDBKeyWrite(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
     }
   }
+
+  get dbKey(): Buffer {
+    if (!this._started) {
+      throw new keysErrors.ErrorKeyManagerNotStarted();
+    }
+    return this._dbKey;
+  }
+
+  // ---
 
   /**
    * Generates a key pair

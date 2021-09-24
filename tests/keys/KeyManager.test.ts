@@ -309,4 +309,13 @@ describe('KeyManager', () => {
     },
     global.defaultTimeout * 2 + 5000,
   );
+  test('Creates a DB key when started.', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyManager = await KeyManager.createKeyManager({ keysPath, logger });
+    await keyManager.start({ password: 'password' });
+    expect(await fs.promises.readdir(keysPath)).toContain('db_key');
+    expect(keyManager.dbKey.toString()).toBeTruthy();
+  });
+  test.todo('Throws an exception when it fails to read the DB key.')
+  test.todo('Throws an exception when it fails to parse the DB key.')
 });
