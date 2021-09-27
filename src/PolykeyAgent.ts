@@ -123,6 +123,27 @@ class Polykey {
     const vaultsPath = path.join(nodePath_, 'vaults');
     const dbPath = path.join(nodePath_, 'db');
 
+    if (
+      // FIXME, this duplicates the same check in the start method. make a function or something.
+      (await Lockfile.checkLock(
+        fs_,
+        path.join(nodePath_, 'agent-lock.json'),
+      )) !== 'DOESNOTEXIST'
+    ) {
+      // Interrogate Lock File
+      const lock = await Lockfile.parseLock(
+        fs_,
+        path.join(nodePath_, 'agent-lock.json'),
+      );
+
+      if (utils.pidIsRunning(lock.pid)) {
+        logger_.error(`PolykeyAgent already started at pid: ${lock.pid}`);
+        throw new errors.ErrorPolykey(
+          `PolykeyAgent already started at pid: ${lock.pid}`,
+        );
+      }
+    }
+
     const umaskNew = 0o077;
     logger_.info(`Setting umask to ${umaskNew.toString(8).padStart(3, '0')}`);
     process.umask(umaskNew);
@@ -545,7 +566,6 @@ class Polykey {
 
     await this.db.stop();
 
-    await this.keys.stop();
     this.keys.unsetWorkerManager();
 
     // Stop GRPC Server
@@ -557,7 +577,8 @@ class Polykey {
 
   public async destroy() {
     await this.workers.destroy();
-    await this.db.destroy();
+    // Await this.db.destroy();
+    await this.keys.stop(); // FIXME: This should be "destroy" now.
     return;
   }
 }

@@ -1642,6 +1642,7 @@ describe('Client service', () => {
       expect(res.getPort()).toEqual(nodeAddress.port);
     });
     test('should find a node (contacts remote node)', async () => {
+      // FIXME, this succeeds on it's own, some crossover breaking this.
       // Case 2: node can be found on the remote node
       const nodeId = makeNodeId('C'.repeat(44));
       const nodeAddress: NodeAddress = {
@@ -1662,6 +1663,7 @@ describe('Client service', () => {
       expect(res.getPort()).toEqual(nodeAddress.port);
     });
     test(
+      //FIXME, the above test is breaking this one.
       'should fail to find a node (contacts remote node)',
       async () => {
         // Case 3: node exhausts all contacts and cannot find node
