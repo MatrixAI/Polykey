@@ -58,7 +58,7 @@ async function bootstrapPolykeyState(
   await polykeyAgent.keys.start({
     password: password,
   });
-  await polykeyAgent.db.start(); // TODO { keyPair: polykeyAgent.keys.getRootKeyPair() }
+  await polykeyAgent.db.start();
   await polykeyAgent.nodes.start();
   await polykeyAgent.acl.start();
   await polykeyAgent.gestalts.start();

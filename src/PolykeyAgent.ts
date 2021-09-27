@@ -66,6 +66,7 @@ class Polykey {
   protected logger: Logger;
 
   public static async createPolykey({
+    password,
     nodePath,
     keyManager,
     vaultManager,
@@ -88,6 +89,7 @@ class Polykey {
     logger,
     discovery,
   }: {
+    password: string;
     nodePath?: string;
     keyManager?: KeyManager;
     vaultManager?: VaultManager;
@@ -109,7 +111,7 @@ class Polykey {
     fs?: FileSystem;
     logger?: Logger;
     discovery?: Discovery;
-  } = {}) {
+  }) {
     const clientGrpcHost_ = clientGrpcHost ?? '127.0.0.1';
     const clientGrpcPort_ = clientGrpcPort ?? 0;
     const agentGrpcHost_ = agentGrpcHost ?? '127.0.0.1';
@@ -134,8 +136,9 @@ class Polykey {
       });
     const keys_ =
       keyManager ??
-      KeyManager.createKeyManager({
+      await KeyManager.createKeyManager({
         keysPath,
+        password,
         fs: fs_,
         logger: logger_.getChild('KeyManager'),
       });
@@ -145,7 +148,7 @@ class Polykey {
         dbPath: dbPath,
         fs: fs_,
         logger: logger_,
-      }));
+      })); // TODO start with Crypto.
     const sigchain_ =
       sigchain ??
       new Sigchain({
@@ -437,7 +440,7 @@ class Polykey {
 
     // Starting modules
     this.keys.setWorkerManager(this.workers);
-    await this.keys.start({
+    await this.keys.start({ // TODO: remove this, add parameters to createPolykey
       password,
       rootKeyPairBits,
       rootCertDuration,
@@ -448,11 +451,7 @@ class Polykey {
     const cert = this.keys.getRootCert();
     const nodeId = certNodeId(cert);
 
-    await this.db.start(); // TODO start with the key provided.
-    // {
-    //   keyPair: this.keys.getRootKeyPair(),
-    //     bits: rootKeyPairBits,
-    // }
+    await this.db.start();
 
     await this.acl.start({ fresh });
 

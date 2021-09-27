@@ -35,20 +35,28 @@ class KeyManager {
   protected _started: boolean = false;
   protected workerManager?: WorkerManager;
 
-  static createKeyManager({
+  static async createKeyManager({
     keysPath,
+    password,
     fs,
     logger,
+    rootKeyPairBits,
+    rootCertDuration,
+    fresh,
   }: {
     keysPath: string;
+    password: string;
     fs?: FileSystem;
     logger?: Logger;
-  }): KeyManager {
+    rootKeyPairBits?: number;
+    rootCertDuration?: number;
+    fresh?: boolean;
+  }): Promise<KeyManager> {
     const logger_ = logger ?? new Logger(this.constructor.name);
     const fs_ = fs ?? require('fs');
 
     const keyManager_ = new KeyManager({ fs: fs_, logger: logger_, keysPath });
-    // Await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
+    await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
     return keyManager_;
   }
 
@@ -83,7 +91,7 @@ class KeyManager {
     delete this.workerManager;
   }
 
-  public async start({
+  protected async start({
     password,
     rootKeyPairBits = 4096,
     rootCertDuration = 31536000,
@@ -108,7 +116,7 @@ class KeyManager {
     const rootCert = await this.setupRootCert(rootKeyPair, rootCertDuration);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
-    this._dbKey = await this.setupDbKey();
+    this._dbKey = await this.setupDbKey(rootKeyPairBits);
     this._started = true;
     this.logger.info('Started Key Manager');
   }
