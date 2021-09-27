@@ -22,8 +22,10 @@ import TestNodeConnection from '../nodes/TestNodeConnection';
 
 import * as testUtils from './utils';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
+import { makeCrypto } from '../utils';
 
 describe('GRPC agent', () => {
+  const password = 'password';
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -71,6 +73,7 @@ describe('GRPC agent', () => {
     });
 
     keyManager = await KeyManager.createKeyManager({
+      password,
       keysPath,
       fs: fs,
       logger: logger,
@@ -80,6 +83,7 @@ describe('GRPC agent', () => {
       dbPath: dbPath,
       fs: fs,
       logger: logger,
+      crypto: makeCrypto(keyManager),
     });
 
     acl = new ACL({
@@ -129,8 +133,7 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    await keyManager.start({ password: 'password' });
-    await db.start(); // TODO start with { keyPair: keyManager.getRootKeyPair() }
+    await db.start();
     const tlsConfig: TLSConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: await keyManager.getRootCertChainPem(),
@@ -239,11 +242,11 @@ describe('GRPC agent', () => {
     beforeEach(async () => {
       yKeysPath = path.join(dataDir, 'keys-y');
       yKeyManager = await KeyManager.createKeyManager({
+        password,
         keysPath: yKeysPath,
         fs,
         logger,
       });
-      await yKeyManager.start({ password: 'password' });
 
       // Manually inject Y's public key into a dummy NodeConnection object, such
       // that it can be used to verify the claim signature

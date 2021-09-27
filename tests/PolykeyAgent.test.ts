@@ -8,6 +8,7 @@ import config from '@/config';
 import { ErrorStateVersionMismatch } from '@/errors';
 
 describe('Polykey', () => {
+  const password = 'password';
   const logger = new Logger('PolykeyAgent Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -20,6 +21,7 @@ describe('Polykey', () => {
   });
   afterEach(async () => {
     await pk.stop();
+    await pk.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -28,27 +30,30 @@ describe('Polykey', () => {
   test(
     'Able to construct',
     async () => {
-      pk = await PolykeyAgent.createPolykey({ logger });
+      pk = await PolykeyAgent.createPolykey({
+        password,
+        logger,
+      });
       expect(pk).toBeInstanceOf(PolykeyAgent);
       expect(pk.nodePath).toBe(utils.getDefaultNodePath());
     },
     global.polykeyStartupTimeout,
   );
-  test(
-    'construction has no side effects',
-    async () => {
-      const nodePath = `${dataDir}/polykey`;
-      await PolykeyAgent.createPolykey({ nodePath, logger });
-      await expect(fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/);
-    },
-    global.polykeyStartupTimeout,
-  );
+  // Test.skip(
+  //   'construction has no side effects',
+  //   async () => {
+  //     const nodePath = `${dataDir}/polykey`;
+  //     await PolykeyAgent.createPolykey({ password, nodePath, logger });
+  //     await expect(fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/); // Construction has side effects now.
+  //   },
+  //   global.polykeyStartupTimeout,
+  // );
   test(
     'async start constructs node path',
     async () => {
       const nodePath = `${dataDir}/polykey`;
-      pk = await PolykeyAgent.createPolykey({ nodePath, logger });
-      await pk.start({ password: 'password' });
+      pk = await PolykeyAgent.createPolykey({ password, nodePath, logger });
+      await pk.start({});
       const nodePathContents = await fs.promises.readdir(nodePath);
       expect(nodePathContents).toContain('keys');
       expect(nodePathContents).toContain('vaults');
@@ -61,8 +66,8 @@ describe('Polykey', () => {
     'async stop leaves the node path',
     async () => {
       const nodePath = `${dataDir}/polykey`;
-      pk = await PolykeyAgent.createPolykey({ nodePath, logger });
-      await pk.start({ password: 'password' });
+      pk = await PolykeyAgent.createPolykey({ password, nodePath, logger });
+      await pk.start({});
       await pk.stop();
       const nodePathContents = await fs.promises.readdir(nodePath);
       expect(nodePathContents).toContain('keys');
@@ -75,7 +80,7 @@ describe('Polykey', () => {
   test('GithubProvider is registered', async () => {
     const providerId = 'github.com';
     const nodePath = `${dataDir}/polykey`;
-    const pk = await PolykeyAgent.createPolykey({ nodePath, logger });
+    pk = await PolykeyAgent.createPolykey({ password, nodePath, logger });
     const providers = pk.identities.getProviders();
     // Exists
     expect(providers[providerId]).toBeTruthy();
@@ -98,12 +103,11 @@ describe('Polykey', () => {
 
       // Attempt to start a polykeyAgent.
       pk = await PolykeyAgent.createPolykey({
+        password,
         nodePath,
         logger,
       });
-      await expect(pk.start({ password: 'password' })).rejects.toThrow(
-        ErrorStateVersionMismatch,
-      );
+      await expect(pk.start({})).rejects.toThrow(ErrorStateVersionMismatch);
       await pk.stop();
     },
     global.polykeyStartupTimeout,
@@ -117,10 +121,11 @@ describe('Polykey', () => {
 
       // Attempt to start a polykeyAgent.
       pk = await PolykeyAgent.createPolykey({
+        password,
         nodePath,
         logger,
       });
-      await pk.start({ password: 'password' });
+      await pk.start({});
       await pk.stop();
 
       const versionFileContents = await fs.promises.readFile(versionFilePath);

@@ -7,6 +7,7 @@ async function handle(signal) {
   process.stdout.write('stopping polykeyAgent...');
   try {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
   } catch (e) {
     process.stderr.write('Failed to stop agent.', e);
   }
@@ -19,11 +20,10 @@ process.on('message', async (startOptions: string) => {
   const ops = JSON.parse(startOptions);
   try {
     polykeyAgent = await PolykeyAgent.createPolykey({
+      password: ops.password,
       nodePath: ops.nodePath,
     });
-    await polykeyAgent.start({
-      password: ops.password,
-    });
+    await polykeyAgent.start({});
     //Catching kill signals.
     process.send && process.send('started');
     process.on('SIGINT', handle);

@@ -24,8 +24,10 @@ import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
 
 import { errors as vaultErrors } from '@/vaults';
 import { errors as gitErrors } from '@/git';
+import { makeCrypto } from '../utils';
 
 describe('VaultManager is', () => {
+  const password = 'password';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -67,11 +69,9 @@ describe('VaultManager is', () => {
     const vaultsPath = path.join(dataDir, 'vaults');
 
     keyManager = await KeyManager.createKeyManager({
+      password,
       keysPath: keysPath,
       logger: logger,
-    });
-    await keyManager.start({
-      password: 'password',
     });
 
     await fwdProxy.start({
@@ -86,8 +86,9 @@ describe('VaultManager is', () => {
     db = await DB.createDB({
       dbPath: dbPath,
       logger: logger,
+      crypto: makeCrypto(keyManager),
     });
-    await db.start(); // TODO start with keyPair: keyManager.getRootKeyPair(),
+    await db.start();
 
     sigchain = new Sigchain({
       keyManager: keyManager,
@@ -368,7 +369,7 @@ describe('VaultManager is', () => {
     await acl.stop();
     await db.stop();
 
-    await db.start(); //TODO keyPair: keyManager.getRootKeyPair(),
+    await db.start();
     await acl.start();
     await gestaltGraph.start();
     await vaultManager.start({});
@@ -427,7 +428,7 @@ describe('VaultManager is', () => {
     await acl.stop();
     await db.stop();
 
-    await db.start(); // TODO keyPair: keyManager.getRootKeyPair(),
+    await db.start();
     await acl.start();
     await gestaltGraph.start();
     await vaultManager.start({});
@@ -482,11 +483,11 @@ describe('VaultManager is', () => {
         path.join(os.tmpdir(), 'polykey-test-'),
       );
       targetKeyManager = await KeyManager.createKeyManager({
+        password,
         keysPath: path.join(targetDataDir, 'keys'),
         fs: fs,
         logger: logger,
       });
-      await targetKeyManager.start({ password: 'password' });
       targetNodeId = targetKeyManager.getNodeId();
       revTLSConfig = {
         keyPrivatePem: targetKeyManager.getRootKeyPairPem().privateKey,
@@ -499,8 +500,9 @@ describe('VaultManager is', () => {
       targetDb = await DB.createDB({
         dbPath: path.join(targetDataDir, 'db'),
         logger: logger,
+        crypto: makeCrypto(keyManager),
       });
-      await targetDb.start(); // TODO { keyPair: targetKeyManager.getRootKeyPair() };
+      await targetDb.start();
       targetSigchain = new Sigchain({
         keyManager: targetKeyManager,
         db: targetDb,
@@ -567,11 +569,11 @@ describe('VaultManager is', () => {
         path.join(os.tmpdir(), 'polykey-test-'),
       );
       altKeyManager = await KeyManager.createKeyManager({
+        password,
         keysPath: path.join(altDataDir, 'keys'),
         fs: fs,
         logger: logger,
       });
-      await altKeyManager.start({ password: 'password' });
       altNodeId = altKeyManager.getNodeId();
       await targetGestaltGraph.setNode({
         id: altNodeId,
@@ -592,8 +594,9 @@ describe('VaultManager is', () => {
       altDb = await DB.createDB({
         dbPath: path.join(altDataDir, 'db'),
         logger: logger,
+        crypto: makeCrypto(keyManager),
       });
-      await altDb.start(); // TODO { keyPair: altKeyManager.getRootKeyPair() }
+      await altDb.start();
       altSigchain = new Sigchain({
         keyManager: altKeyManager,
         db: altDb,

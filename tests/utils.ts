@@ -6,6 +6,7 @@ import fs from 'fs';
 import Logger from '@matrixai/logger';
 import { PolykeyAgent } from '../src';
 import { sleep } from '@/utils';
+import { KeyManager, utils as keyUtils } from '@/keys';
 
 /**
  * Helper function to create a remote keynode to contact.
@@ -31,10 +32,11 @@ async function setupRemoteKeynode({
     );
   }
   const remote = await PolykeyAgent.createPolykey({
+    password: 'password',
     nodePath: nodeDir,
     logger: logger,
   });
-  await remote.start({ password: 'password' });
+  await remote.start({});
   return remote;
 }
 
@@ -44,6 +46,7 @@ async function setupRemoteKeynode({
  */
 async function cleanupRemoteKeynode(node: PolykeyAgent): Promise<void> {
   await node.stop();
+  await node.destroy();
   await fs.promises.rm(node.nodePath, {
     force: true,
     recursive: true,
@@ -75,4 +78,20 @@ async function poll(
   expect(await condition()).toBeTruthy();
 }
 
-export { setupRemoteKeynode, cleanupRemoteKeynode, addRemoteDetails, poll };
+function makeCrypto(keyManager: KeyManager) {
+  return {
+    key: keyManager.dbKey,
+    ops: {
+      encrypt: keyUtils.encryptWithKey,
+      decrypt: keyUtils.decryptWithKey,
+    },
+  };
+}
+
+export {
+  setupRemoteKeynode,
+  cleanupRemoteKeynode,
+  addRemoteDetails,
+  poll,
+  makeCrypto,
+};

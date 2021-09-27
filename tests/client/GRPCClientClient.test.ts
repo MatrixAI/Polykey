@@ -15,6 +15,7 @@ import * as testUtils from './utils';
 import { Session } from '@/sessions';
 
 describe('GRPCClientClient', () => {
+  const password = 'password';
   const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -34,11 +35,12 @@ describe('GRPCClientClient', () => {
     );
     nodePath = path.join(dataDir, 'node');
     polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath,
       logger: logger,
     });
 
-    await polykeyAgent.start({ password: 'password ' });
+    await polykeyAgent.start({});
     nodeId = polykeyAgent.nodes.getNodeId();
     [server, port] = await testUtils.openTestClientServer({
       polykeyAgent,

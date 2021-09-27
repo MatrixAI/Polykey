@@ -10,9 +10,11 @@ import * as bootstrapErrors from '@/bootstrap/errors';
 import * as agentUtils from '@/agent/utils';
 
 describe('Bootstrap', () => {
+  const password = 'password';
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  let dataDir: string;
   let nodePath: string;
 
   // Helper functions
@@ -25,9 +27,11 @@ describe('Bootstrap', () => {
   }
 
   beforeEach(async () => {
-    nodePath = await fs.promises.mkdtemp(
+    dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'lockfile-test-'),
     );
+    nodePath = path.join(dataDir, 'Node');
+    await fs.promises.mkdir(nodePath);
   });
   afterEach(async () => {
     await fs.promises.rm(nodePath, {
@@ -60,10 +64,11 @@ describe('Bootstrap', () => {
       'keynode with contents in directory',
       async () => {
         const pk = await PolykeyAgent.createPolykey({
+          password,
           nodePath: nodePath,
           logger: logger,
         });
-        await pk.start({ password: 'password' });
+        await pk.start({});
         await pk.stop();
         expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
       },
@@ -73,8 +78,7 @@ describe('Bootstrap', () => {
   describe('BootstrapPolykeyState', () => {
     const password = 'password123';
     test('should create state if no directory', async () => {
-      await fs.promises.rmdir(nodePath);
-
+      // Await fs.promises.rmdir(nodePath);
       await bootstrapPolykeyState(nodePath, password);
       //Should have keynode state;
       expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
@@ -102,10 +106,11 @@ describe('Bootstrap', () => {
     test('should be able to start agent on created state.', async () => {
       await bootstrapPolykeyState(nodePath, password);
       const polykeyAgent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: nodePath,
         logger: logger,
       });
-      await polykeyAgent.start({ password });
+      await polykeyAgent.start({});
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeTruthy();
       await polykeyAgent.stop();
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeFalsy();

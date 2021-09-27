@@ -48,13 +48,15 @@ describe('CLI agent', () => {
       ]);
 
       activeNode = await PolykeyAgent.createPolykey({
+        password,
         nodePath: activeNodePath,
         logger,
       });
-      await activeNode.start({ password });
+      await activeNode.start({});
     });
     afterAll(async () => {
       await activeNode.stop();
+      await activeNode.destroy();
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,
@@ -265,13 +267,15 @@ describe('CLI agent', () => {
       await fs.promises.writeFile(passwordFile, password);
 
       activeAgent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: activeAgentPath,
         logger: logger,
       });
-      await activeAgent.start({ password });
+      await activeAgent.start({});
     }, global.polykeyStartupTimeout);
     afterAll(async () => {
       await activeAgent.stop();
+      await activeAgent.destroy();
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,

@@ -12,8 +12,10 @@ import { KeyManager } from '@/keys';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
+import { makeCrypto } from '../utils';
 
 describe('NodeGraph', () => {
+  const password = 'password';
   let nodeGraph: NodeGraph;
   let nodeId: NodeId;
 
@@ -38,8 +40,11 @@ describe('NodeGraph', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
     await fwdProxy.start({
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
@@ -47,8 +52,7 @@ describe('NodeGraph', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger }); // TODO start with key and crypto.
-    // keyPair: keyManager.getRootKeyPair(), TODO: Use this for the key
+    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
     await db.start();
     sigchain = new Sigchain({
       keyManager: keyManager,

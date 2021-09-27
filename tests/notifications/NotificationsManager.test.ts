@@ -22,8 +22,10 @@ import { ForwardProxy, ReverseProxy } from '@/network';
 import { AgentService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
+import { makeCrypto } from '../utils';
 
 describe('NotificationsManager', () => {
+  const password = 'password';
   const node: NodeInfo = {
     id: 'NodeId' as NodeId,
     chain: {},
@@ -82,6 +84,7 @@ describe('NotificationsManager', () => {
     const receiverDbPath = path.join(receiverDataDir, 'receiverDb');
 
     receiverKeyManager = await KeyManager.createKeyManager({
+      password,
       keysPath: receiverKeysPath,
       fs: fs,
       logger: logger,
@@ -90,6 +93,7 @@ describe('NotificationsManager', () => {
       dbPath: receiverDbPath,
       fs: fs,
       logger: logger,
+      crypto: makeCrypto(receiverKeyManager),
     });
     receiverACL = new ACL({
       db: receiverDb,
@@ -137,7 +141,6 @@ describe('NotificationsManager', () => {
       messageCap: 5,
       logger: logger,
     });
-    await receiverKeyManager.start({ password: 'password' });
     receiverKeyPairPem = receiverKeyManager.getRootKeyPairPem();
     receiverCertPem = receiverKeyManager.getRootCertPem();
     receiverNodeId = networkUtils.certNodeId(receiverKeyManager.getRootCert());
@@ -145,7 +148,7 @@ describe('NotificationsManager', () => {
       keyPrivatePem: receiverKeyPairPem.privateKey,
       certChainPem: receiverCertPem,
     };
-    await receiverDb.start(); // TODO start with { keyPair: receiverKeyManager.getRootKeyPair() }
+    await receiverDb.start();
     await receiverACL.start();
     await receiverSigchain.start();
     await receiverGestaltGraph.start();
@@ -191,11 +194,17 @@ describe('NotificationsManager', () => {
       logger: logger,
     });
     senderKeyManager = await KeyManager.createKeyManager({
+      password,
       keysPath: senderKeysPath,
       fs,
       logger,
     });
-    senderDb = await DB.createDB({ dbPath: senderDbPath, fs, logger });
+    senderDb = await DB.createDB({
+      dbPath: senderDbPath,
+      fs,
+      logger,
+      crypto: makeCrypto(senderKeyManager),
+    });
     senderACL = new ACL({ db: senderDb, logger });
     senderSigchain = new Sigchain({
       keyManager: senderKeyManager,
@@ -212,7 +221,6 @@ describe('NotificationsManager', () => {
       logger,
     });
 
-    await senderKeyManager.start({ password: 'password' });
     senderKeyPairPem = senderKeyManager.getRootKeyPairPem();
     senderCertPem = senderKeyManager.getRootCertPem();
     senderNodeId = networkUtils.certNodeId(senderKeyManager.getRootCert());
@@ -220,7 +228,7 @@ describe('NotificationsManager', () => {
       keyPrivatePem: senderKeyPairPem.privateKey,
       certChainPem: senderCertPem,
     };
-    await senderDb.start(); // TODO start with { keyPair: senderKeyManager.getRootKeyPair() }
+    await senderDb.start();
     await senderACL.start();
     await fwdProxy.start({
       tlsConfig: fwdTLSConfig,

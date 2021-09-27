@@ -12,6 +12,7 @@ import { PolykeyAgent } from '@';
 import * as testUtils from './utils';
 
 describe('GRPCClientClient', () => {
+  const password = 'password';
   const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -30,11 +31,12 @@ describe('GRPCClientClient', () => {
     );
 
     polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: dataDir,
       logger: logger,
     });
 
-    await polykeyAgent.start({ password: 'password' });
+    await polykeyAgent.start({});
 
     [server, _port] = await testUtils.openTestClientServer({
       polykeyAgent,
@@ -60,6 +62,7 @@ describe('GRPCClientClient', () => {
     await testUtils.closeTestClientServer(server);
 
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -75,10 +78,10 @@ describe('GRPCClientClient', () => {
 });
 
 describe('TLS tests', () => {
+  const password = 'password';
   const logger = new Logger('PolykeyAgent TLS', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const password = 'password';
   let dataDir: string;
   let nodePath: string;
   let polykeyAgent: PolykeyAgent;
@@ -93,16 +96,18 @@ describe('TLS tests', () => {
 
     //Starting an agent.
     polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath,
       logger: logger.getChild('agent'),
       clientGrpcPort: 55555,
     });
 
-    await polykeyAgent.start({ password });
+    await polykeyAgent.start({});
     token = await polykeyAgent.sessions.generateToken();
   }, global.defaultTimeout * 3);
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
   });
   test('Can connect and echo over TLS', async () => {
     //Starting client.

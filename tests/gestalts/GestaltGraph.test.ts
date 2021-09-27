@@ -19,8 +19,10 @@ import { utils as claimsUtils } from '@/claims';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
 import { DB } from '@matrixai/db';
+import { makeCrypto } from '../utils';
 
 describe('GestaltGraph', () => {
+  const pass = 'password';
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -43,12 +45,18 @@ describe('GestaltGraph', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password: pass,
+      keysPath,
+      logger,
+    });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger }); // TODO: Start with key and crypto.
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: makeCrypto(keyManager),
+    });
     await db.start();
-    // KeyPair: keyManager.getRootKeyPair(), // TODO use this for the key.
 
     acl = new ACL({ db, logger });
     await acl.start();
@@ -121,6 +129,7 @@ describe('GestaltGraph', () => {
   afterEach(async () => {
     await acl.stop();
     await db.stop();
+    await db.destroy();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,

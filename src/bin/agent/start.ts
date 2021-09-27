@@ -37,8 +37,11 @@ start.action(async (options) => {
     if (background) {
       await agentUtils.spawnBackgroundAgent(nodePath, password);
     } else {
-      const agent = await PolykeyAgent.createPolykey(agentConfig);
-      await agent.start({ password: password });
+      const agent = await PolykeyAgent.createPolykey({
+        password,
+        ...agentConfig,
+      });
+      await agent.start({});
 
       // If started add handlers for terminating.
       const termHandler = async () => await agent.stop();

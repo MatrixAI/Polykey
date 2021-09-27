@@ -19,11 +19,6 @@ async function bootstrapPolykeyState(
     new StreamHandler(),
   ]);
 
-  const polykeyAgent = await PolykeyAgent.createPolykey({
-    nodePath: nodePath,
-    logger: logger,
-  });
-
   // Checks
   // Checking for running agent.
   if (await agentUtils.checkAgentRunning(nodePath)) {
@@ -49,16 +44,18 @@ async function bootstrapPolykeyState(
       break;
   }
 
+  const polykeyAgent = await PolykeyAgent.createPolykey({
+    password,
+    nodePath: nodePath,
+    logger: logger,
+  });
+
   // Setting FS editing mask.
   const umaskNew = 0o077;
   process.umask(umaskNew);
   await utils.mkdirExists(fs, nodePath, { recursive: true });
 
   // Starting and creating state (this will need to be changed with the new db stuff)
-  await polykeyAgent.keys.start({
-    password: password,
-  });
-  await polykeyAgent.db.start();
   await polykeyAgent.nodes.start();
   await polykeyAgent.acl.start();
   await polykeyAgent.gestalts.start();

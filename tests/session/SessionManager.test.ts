@@ -6,8 +6,10 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { KeyManager } from '@/keys';
 import { SessionManager } from '@/sessions';
+import { makeCrypto } from '../utils';
 
 describe('SessionManager', () => {
+  const password = 'password';
   const logger = new Logger('SessionManager', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -27,6 +29,7 @@ describe('SessionManager', () => {
     dbPath = path.join(dataDir, 'db');
 
     keyManager = await KeyManager.createKeyManager({
+      password,
       keysPath,
       fs: fs,
       logger: logger,
@@ -36,14 +39,14 @@ describe('SessionManager', () => {
       dbPath: dbPath,
       fs: fs,
       logger: logger,
+      crypto: makeCrypto(keyManager),
     });
 
     sessionManager = new SessionManager({
       db: db,
       logger: logger,
     });
-    await keyManager.start({ password: 'password' });
-    await db.start(); // TODO start with { keyPair: keyManager.getRootKeyPair() }
+    await db.start();
     await sessionManager.start({ bits: 4096 });
   });
 

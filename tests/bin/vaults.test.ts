@@ -23,6 +23,7 @@ import { makeNodeId } from '@/nodes/utils';
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
 describe('CLI vaults', () => {
+  const password = 'password';
   const logger = new Logger('CLI Test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   let passwordFile: string;
@@ -58,12 +59,11 @@ describe('CLI vaults', () => {
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
     polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: dataDir,
       logger: logger,
     });
-    await polykeyAgent.start({
-      password: 'password',
-    });
+    await polykeyAgent.start({});
     await polykeyAgent.gestalts.setNode(node1);
     await polykeyAgent.gestalts.setNode(node2);
     await polykeyAgent.gestalts.setNode(node3);
@@ -72,6 +72,7 @@ describe('CLI vaults', () => {
   }, global.polykeyStartupTimeout);
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -268,12 +269,11 @@ describe('CLI vaults', () => {
           path.join(os.tmpdir(), 'polykey-test-'),
         );
         const targetPolykeyAgent = await PolykeyAgent.createPolykey({
+          password,
           nodePath: dataDir2,
           logger: logger,
         });
-        await targetPolykeyAgent.start({
-          password: 'password',
-        });
+        await targetPolykeyAgent.start({});
         const vault = await targetPolykeyAgent.vaults.createVault(vaultName);
         const id = await targetPolykeyAgent.vaults.getVaultId(vaultName);
         expect(id).toBeTruthy();
@@ -331,6 +331,7 @@ describe('CLI vaults', () => {
         expect(JSON.stringify(list)).toContain(vaultName);
 
         await targetPolykeyAgent.stop();
+        await targetPolykeyAgent.destroy();
         await fs.promises.rm(dataDir2, {
           force: true,
           recursive: true,
@@ -345,12 +346,11 @@ describe('CLI vaults', () => {
           path.join(os.tmpdir(), 'polykey-test-'),
         );
         const targetPolykeyAgent = await PolykeyAgent.createPolykey({
+          password,
           nodePath: dataDir2,
           logger: logger,
         });
-        await targetPolykeyAgent.start({
-          password: 'password',
-        });
+        await targetPolykeyAgent.start({});
         const vault = await targetPolykeyAgent.vaults.createVault(vaultName);
 
         const id = await targetPolykeyAgent.vaults.getVaultId(vaultName);
@@ -423,6 +423,7 @@ describe('CLI vaults', () => {
         );
 
         await targetPolykeyAgent.stop();
+        await targetPolykeyAgent.destroy();
         await fs.promises.rm(dataDir2, { recursive: true });
       },
       global.defaultTimeout * 2,
@@ -434,12 +435,11 @@ describe('CLI vaults', () => {
         path.join(os.tmpdir(), 'polykey-test-'),
       );
       const targetPolykeyAgent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: dataDir2,
         logger: logger,
       });
-      await targetPolykeyAgent.start({
-        password: 'password',
-      });
+      await targetPolykeyAgent.start({});
 
       const targetNodeId = targetPolykeyAgent.nodes.getNodeId();
       const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
@@ -483,6 +483,7 @@ describe('CLI vaults', () => {
       expect(result.code).toBe(0);
 
       await targetPolykeyAgent.stop();
+      await targetPolykeyAgent.destroy();
       await fs.promises.rmdir(dataDir2, { recursive: true });
     });
   });
