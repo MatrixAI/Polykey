@@ -11,8 +11,10 @@ import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
 import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
+import { makeCrypto } from '../utils';
 
 describe('Sigchain', () => {
+  const password = 'password';
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -26,11 +28,14 @@ describe('Sigchain', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger });
-    await db.start(); // TODO start with keyPair: keyManager.getRootKeyPair(),
+    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
+    await db.start();
   });
   afterEach(async () => {
     await db.stop();

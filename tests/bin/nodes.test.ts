@@ -24,6 +24,7 @@ import { makeNodeId } from '@/nodes/utils';
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
 describe('CLI Nodes', () => {
+  const password = 'password';
   const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -56,12 +57,11 @@ describe('CLI Nodes', () => {
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
     polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: nodePath,
       logger: logger,
     });
-    await polykeyAgent.start({
-      password: 'password',
-    });
+    await polykeyAgent.start({});
     keynodeId = polykeyAgent.nodes.getNodeId();
 
     // Setting up a remote keynode
@@ -95,6 +95,7 @@ describe('CLI Nodes', () => {
   }, global.polykeyStartupTimeout * 3);
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
     await testKeynodeUtils.cleanupRemoteKeynode(remoteOnline);
     await testKeynodeUtils.cleanupRemoteKeynode(remoteOffline);
     await fs.promises.rm(dataDir, {

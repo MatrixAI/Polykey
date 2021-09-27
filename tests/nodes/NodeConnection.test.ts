@@ -21,8 +21,10 @@ import { NotificationsManager } from '@/notifications';
 import * as grpcErrors from '@/grpc/errors';
 import * as nodesTestUtils from './utils';
 import * as nodesUtils from '@/nodes/utils';
+import { makeCrypto } from '../utils';
 
 describe('NodeConnection', () => {
+  const password = 'password';
   const node: NodeInfo = {
     id: 'NodeId' as NodeId,
     chain: {},
@@ -76,6 +78,7 @@ describe('NodeConnection', () => {
     const serverDbPath = path.join(serverDataDir, 'serverDb');
 
     serverKeyManager = await KeyManager.createKeyManager({
+      password,
       keysPath: serverKeysPath,
       fs: fs,
       logger: logger,
@@ -84,6 +87,7 @@ describe('NodeConnection', () => {
       dbPath: serverDbPath,
       fs: fs,
       logger: logger,
+      crypto: makeCrypto(serverKeyManager),
     });
     serverACL = new ACL({
       db: serverDb,
@@ -131,8 +135,7 @@ describe('NodeConnection', () => {
       keyManager: serverKeyManager,
       logger: logger,
     });
-    await serverKeyManager.start({ password: 'password' });
-    await serverDb.start(); //TODO start with { keyPair: serverKeyManager.getRootKeyPair() }
+    await serverDb.start();
     await serverACL.start();
     await serverSigchain.start();
     await serverGestaltGraph.start();
@@ -175,10 +178,10 @@ describe('NodeConnection', () => {
     );
     const clientKeysPath = path.join(clientDataDir, 'clientKeys');
     clientKeyManager = await KeyManager.createKeyManager({
+      password,
       keysPath: clientKeysPath,
       logger,
     });
-    await clientKeyManager.start({ password: 'password' });
     fwdTLSConfig = {
       keyPrivatePem: clientKeyManager.getRootKeyPairPem().privateKey,
       certChainPem: await clientKeyManager.getRootCertChainPem(),

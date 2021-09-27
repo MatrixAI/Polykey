@@ -35,6 +35,7 @@ import { makeNodeId } from '@/nodes/utils';
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
 describe('CLI Identities', () => {
+  const password = 'password';
   // Test dependent variables
   let dataDir: string;
   let nodePath: string;
@@ -99,12 +100,11 @@ describe('CLI Identities', () => {
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
     polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: nodePath,
       logger: logger,
     });
-    await polykeyAgent.start({
-      password: 'password',
-    });
+    await polykeyAgent.start({});
     keynode.id = polykeyAgent.nodes.getNodeId();
 
     testProvider = new TestProvider();
@@ -549,7 +549,7 @@ describe('CLI Identities', () => {
       await polykeyAgent.gestalts.setGestaltActionByNode(node2.id, 'scan');
 
       const commands = ['identities', 'list', '-np', nodePath];
-      const result = await testUtils.pk(commands);
+      const result = await testUtils.pkWithStdio(commands);
       expect(result.code).toBe(0); //Succeeds.
       expect(result.stdout).toContain('notify');
       expect(result.stdout).toContain('scan');

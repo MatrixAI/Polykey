@@ -17,8 +17,10 @@ import { DB } from '@matrixai/db';
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import TestProvider from './TestProvider';
+import { makeCrypto } from '../utils';
 
 describe('IdentitiesManager', () => {
+  const password = 'password';
   const logger = new Logger('IdentitiesManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -30,15 +32,22 @@ describe('IdentitiesManager', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger }); // TODO start with key and crypto.
-    //keyPair: keyManager.getRootKeyPair() TODO use this for the key.
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: makeCrypto(keyManager),
+    });
     await db.start();
   });
   afterEach(async () => {
     await db.stop();
+    await db.destroy();
     await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,

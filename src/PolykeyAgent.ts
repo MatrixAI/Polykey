@@ -6,7 +6,7 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import * as utils from './utils';
 import * as errors from './errors';
-import { KeyManager } from './keys';
+import { KeyManager, utils as keyUtils } from './keys';
 import { GRPCServer } from './grpc';
 import { Lockfile } from './lockfile';
 import { NodeManager } from './nodes';
@@ -66,6 +66,7 @@ class Polykey {
   protected logger: Logger;
 
   public static async createPolykey({
+    password,
     nodePath,
     keyManager,
     vaultManager,
@@ -88,6 +89,7 @@ class Polykey {
     logger,
     discovery,
   }: {
+    password: string;
     nodePath?: string;
     keyManager?: KeyManager;
     vaultManager?: VaultManager;
@@ -109,7 +111,7 @@ class Polykey {
     fs?: FileSystem;
     logger?: Logger;
     discovery?: Discovery;
-  } = {}) {
+  }) {
     const clientGrpcHost_ = clientGrpcHost ?? '127.0.0.1';
     const clientGrpcPort_ = clientGrpcPort ?? 0;
     const agentGrpcHost_ = agentGrpcHost ?? '127.0.0.1';
@@ -120,6 +122,13 @@ class Polykey {
     const keysPath = path.join(nodePath_, 'keys');
     const vaultsPath = path.join(nodePath_, 'vaults');
     const dbPath = path.join(nodePath_, 'db');
+
+    const umaskNew = 0o077;
+    logger_.info(`Setting umask to ${umaskNew.toString(8).padStart(3, '0')}`);
+    process.umask(umaskNew);
+
+    logger_.info(`Setting node path to ${nodePath_}`);
+    await utils.mkdirExists(fs_, nodePath_, { recursive: true });
 
     const fwdProxy_ =
       fwdProxy ??
@@ -134,17 +143,25 @@ class Polykey {
       });
     const keys_ =
       keyManager ??
-      KeyManager.createKeyManager({
+      (await KeyManager.createKeyManager({
         keysPath,
+        password,
         fs: fs_,
         logger: logger_.getChild('KeyManager'),
-      });
+      }));
     const db_ =
       db ??
       (await DB.createDB({
         dbPath: dbPath,
         fs: fs_,
         logger: logger_,
+        crypto: {
+          key: keys_.dbKey,
+          ops: {
+            encrypt: keyUtils.encryptWithKey,
+            decrypt: keyUtils.decryptWithKey,
+          },
+        },
       }));
     const sigchain_ =
       sigchain ??
@@ -365,26 +382,13 @@ class Polykey {
    * @param options: password, bits, duration, fresh
    */
   public async start({
-    password,
     rootKeyPairBits,
-    rootCertDuration,
     fresh = false,
   }: {
-    password: string;
     rootKeyPairBits?: number;
-    rootCertDuration?: number;
     fresh?: boolean;
   }) {
     this.logger.info('Starting Polykey');
-
-    const umaskNew = 0o077;
-    this.logger.info(
-      `Setting umask to ${umaskNew.toString(8).padStart(3, '0')}`,
-    );
-    process.umask(umaskNew);
-
-    this.logger.info(`Setting node path to ${this.nodePath}`);
-    await utils.mkdirExists(this.fs, this.nodePath, { recursive: true });
 
     if (
       (await Lockfile.checkLock(
@@ -437,22 +441,12 @@ class Polykey {
 
     // Starting modules
     this.keys.setWorkerManager(this.workers);
-    await this.keys.start({
-      password,
-      rootKeyPairBits,
-      rootCertDuration,
-      fresh,
-    });
 
     // Getting NodeId
     const cert = this.keys.getRootCert();
     const nodeId = certNodeId(cert);
 
-    await this.db.start(); // TODO start with the key provided.
-    // {
-    //   keyPair: this.keys.getRootKeyPair(),
-    //     bits: rootKeyPairBits,
-    // }
+    await this.db.start();
 
     await this.acl.start({ fresh });
 
@@ -563,6 +557,7 @@ class Polykey {
 
   public async destroy() {
     await this.workers.destroy();
+    await this.db.destroy();
     return;
   }
 }

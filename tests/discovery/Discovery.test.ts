@@ -35,6 +35,7 @@ describe('Discovery', () => {
       nodePath = path.join(dataDirEach, 'node');
 
       polykeyAgent = await PolykeyAgent.createPolykey({
+        password,
         nodePath,
         logger,
       });
@@ -43,6 +44,7 @@ describe('Discovery', () => {
 
     afterAll(async () => {
       await polykeyAgent.stop();
+      await polykeyAgent.destroy();
       await fs.promises.rm(dataDirEach, {
         force: true,
         recursive: true,
@@ -54,7 +56,7 @@ describe('Discovery', () => {
     test(
       'Starts and stops',
       async () => {
-        await polykeyAgent.start({ password });
+        await polykeyAgent.start({});
 
         //Not started.
         await polykeyAgent.discovery.stop();

@@ -24,6 +24,7 @@ import { PolykeyAgent } from '@';
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
 describe('CLI Notifications', () => {
+  const password = 'password';
   const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -56,19 +57,17 @@ describe('CLI Notifications', () => {
     await fs.promises.writeFile(senderPasswordFile, 'password');
     await fs.promises.writeFile(receiverPasswordFile, 'password');
     senderPolykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: senderNodePath,
       logger: logger,
     });
     receiverPolykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: receiverNodePath,
       logger: logger,
     });
-    await senderPolykeyAgent.start({
-      password: 'password',
-    });
-    await receiverPolykeyAgent.start({
-      password: 'password',
-    });
+    await senderPolykeyAgent.start({});
+    await receiverPolykeyAgent.start({});
     senderNodeId = senderPolykeyAgent.nodes.getNodeId();
     receiverNodeId = receiverPolykeyAgent.nodes.getNodeId();
     await senderPolykeyAgent.nodes.setNode(receiverNodeId, {
@@ -97,7 +96,9 @@ describe('CLI Notifications', () => {
   }, global.polykeyStartupTimeout * 2);
   afterAll(async () => {
     await senderPolykeyAgent.stop();
+    await senderPolykeyAgent.destroy();
     await receiverPolykeyAgent.stop();
+    await receiverPolykeyAgent.destroy();
     await fs.promises.rmdir(senderDataDir, { recursive: true });
     await fs.promises.rmdir(receiverDataDir, { recursive: true });
   });

@@ -9,8 +9,10 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { ACL, errors as aclErrors } from '@/acl';
 import { KeyManager } from '@/keys';
 import { DB } from '@matrixai/db';
+import { makeCrypto } from '../utils';
 
 describe('ACL', () => {
+  const password = 'password';
   const logger = new Logger('ACL Test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   let keyManager: KeyManager;
@@ -20,10 +22,17 @@ describe('ACL', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger }); // FIXME: Start with a key and crypto.
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: makeCrypto(keyManager),
+    });
     await db.start();
   });
   afterEach(async () => {

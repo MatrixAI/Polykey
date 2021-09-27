@@ -18,8 +18,10 @@ import { sleep } from '@/utils';
 import * as testUtils from '../utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as claimsUtils from '@/claims/utils';
+import { makeCrypto } from '../utils';
 
 describe('NodeManager', () => {
+  const password = 'password';
   const logger = new Logger('NodeManagerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -47,8 +49,11 @@ describe('NodeManager', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
 
     const cert = keyManager.getRootCert();
     keyPairPem = keyManager.getRootKeyPairPem();
@@ -69,8 +74,8 @@ describe('NodeManager', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger });
-    await db.start(); // TODO keyPair: keyManager.getRootKeyPair()
+    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
+    await db.start();
     sigchain = new Sigchain({ keyManager, db, logger });
     await sigchain.start();
 
@@ -88,6 +93,7 @@ describe('NodeManager', () => {
     await nodeManager.stop();
     await sigchain.stop();
     await db.stop();
+    await db.destroy();
     await keyManager.stop();
     await fwdProxy.stop();
     await revProxy.stop();
@@ -117,7 +123,7 @@ describe('NodeManager', () => {
       const active1 = await nodeManager.pingNode(serverNodeId);
       expect(active1).toBe(false);
       // Bring server node online
-      await server.start({ password: 'password' });
+      await server.start({});
       // Update the node address (only changes because we start and stop)
       serverNodeAddress = {
         ip: server.revProxy.getIngressHost(),

@@ -36,10 +36,11 @@ describe('agent utils', () => {
 
     test('True if agent running.', async () => {
       const agent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: nodePath,
         logger: logger,
       });
-      await agent.start({ password });
+      await agent.start({});
       await expect(
         agentUtils.checkAgentRunning(nodePath),
       ).resolves.toBeTruthy();
@@ -91,10 +92,11 @@ describe('agent utils', () => {
     );
     test('Should throw error if agent already running.', async () => {
       const agent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: nodePath,
         logger: logger,
       });
-      await agent.start({ password });
+      await agent.start({});
       await expect(
         agentUtils.checkAgentRunning(nodePath),
       ).resolves.toBeTruthy();

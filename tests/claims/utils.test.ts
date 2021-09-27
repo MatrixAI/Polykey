@@ -19,6 +19,7 @@ import * as keysUtils from '@/keys/utils';
 import * as claimsErrors from '@/claims/errors';
 
 describe('Claims utils', () => {
+  const password = 'password';
   const logger = new Logger('Claims Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -32,8 +33,11 @@ describe('Claims utils', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
     publicKey = keyManager.getRootKeyPairPem().publicKey;
     privateKey = keyManager.getRootKeyPairPem().privateKey;
   });

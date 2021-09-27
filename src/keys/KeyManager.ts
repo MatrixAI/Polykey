@@ -35,20 +35,36 @@ class KeyManager {
   protected _started: boolean = false;
   protected workerManager?: WorkerManager;
 
-  static createKeyManager({
+  static async createKeyManager({
     keysPath,
+    password,
     fs,
     logger,
+    rootKeyPairBits,
+    rootCertDuration,
+    dbKeyBits,
+    fresh,
   }: {
     keysPath: string;
+    password: string;
     fs?: FileSystem;
     logger?: Logger;
-  }): KeyManager {
+    rootKeyPairBits?: number;
+    rootCertDuration?: number;
+    dbKeyBits?: number;
+    fresh?: boolean;
+  }): Promise<KeyManager> {
     const logger_ = logger ?? new Logger(this.constructor.name);
     const fs_ = fs ?? require('fs');
 
     const keyManager_ = new KeyManager({ fs: fs_, logger: logger_, keysPath });
-    // Await keyManager_.start({password, rootKeyPairBits, rootCertDuration, fresh});
+    await keyManager_.start({
+      password,
+      rootKeyPairBits,
+      rootCertDuration,
+      dbKeyBits,
+      fresh,
+    });
     return keyManager_;
   }
 
@@ -68,7 +84,7 @@ class KeyManager {
     this.rootKeyPath = path.join(keysPath, 'root.key');
     this.rootCertPath = path.join(keysPath, 'root.crt');
     this.rootCertsPath = path.join(keysPath, 'root_certs');
-    this.dbKeyPath = path.join(keysPath, 'db_key') // TODO: update the file name? db.key?
+    this.dbKeyPath = path.join(keysPath, 'db_key'); // TODO: update the file name? db.key?
   }
 
   get started(): boolean {
@@ -83,15 +99,17 @@ class KeyManager {
     delete this.workerManager;
   }
 
-  public async start({
+  protected async start({
     password,
     rootKeyPairBits = 4096,
     rootCertDuration = 31536000,
+    dbKeyBits = 256,
     fresh = false,
   }: {
     password: string;
     rootKeyPairBits?: number;
     rootCertDuration?: number;
+    dbKeyBits?: number;
     fresh?: boolean;
   }) {
     this.logger.info('Starting Key Manager');
@@ -108,7 +126,7 @@ class KeyManager {
     const rootCert = await this.setupRootCert(rootKeyPair, rootCertDuration);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
-    this._dbKey = await this.setupDbKey();
+    this._dbKey = await this.setupDbKey(dbKeyBits);
     this._started = true;
     this.logger.info('Started Key Manager');
   }
@@ -315,7 +333,6 @@ class KeyManager {
       throw new keysErrors.ErrorKeyManagerNotStarted();
     }
     this.logger.info('Renewing root key pair');
-    const dbKeyPath = path.join(path.dirname(this.keysPath), 'db', 'db_key');
     const keysDbKeyPlain = await this.readDBKey();
     const rootKeyPair = await this.generateKeyPair(bits);
     const now = new Date();
@@ -548,9 +565,7 @@ class KeyManager {
 
   // Functions that handle the DB key.
 
-  protected async setupDbKey(
-    bits: number = 256,
-  ): Promise<Buffer> {
+  protected async setupDbKey(bits: number = 256): Promise<Buffer> {
     let keyDbKey: Buffer;
     if (await this.existsDbKey()) {
       keyDbKey = await this.readDBKey();
@@ -605,10 +620,7 @@ class KeyManager {
     return keysDbKeyPlain;
   }
 
-  protected async writeDBKey(
-    dbKey: Buffer,
-    keyPair?: KeyPair,
-  ): Promise<void> {
+  protected async writeDBKey(dbKey: Buffer, keyPair?: KeyPair): Promise<void> {
     const keyPair_ = keyPair ?? this.rootKeyPair;
     const keysDbKeyCipher = keysUtils.encryptWithPublicKey(
       keyPair_.publicKey,
@@ -616,7 +628,10 @@ class KeyManager {
     );
     this.logger.info(`Writing ${this.dbKeyPath}`);
     try {
-      await this.fs.promises.writeFile(`${this.dbKeyPath}.tmp`, keysDbKeyCipher);
+      await this.fs.promises.writeFile(
+        `${this.dbKeyPath}.tmp`,
+        keysDbKeyCipher,
+      );
       await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(e.message, {
