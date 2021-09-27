@@ -26,7 +26,7 @@ async function checkAgentRunning(nodePath: string): Promise<boolean> {
   return false;
 }
 
-async function spawnBackgroundAgent(
+async function spawnBackgroundAgent( // FIXME, this is broken.
   nodePath: string,
   password: string,
 ): Promise<number> {

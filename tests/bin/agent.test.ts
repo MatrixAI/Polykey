@@ -149,6 +149,7 @@ describe('CLI agent', () => {
             fs,
             path.join(backgroundNodePath, 'agent-lock.json'),
           );
+
           process.kill(lock.pid);
           await poll(global.polykeyStartupTimeout, async () => {
             const test = await agentUtils.checkAgentRunning(backgroundNodePath);

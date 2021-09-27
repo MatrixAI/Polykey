@@ -236,7 +236,7 @@ describe('CLI keys', () => {
       await newPolykeyAgent1.stop();
       await newPolykeyAgent1.destroy();
 
-      polykeyAgent = await PolykeyAgent.createPolykey({
+      newPolykeyAgent1 = await PolykeyAgent.createPolykey({
         password: 'password-new-new',
         nodePath: nodePath,
         logger: logger,
