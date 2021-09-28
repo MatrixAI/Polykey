@@ -9,8 +9,10 @@ import { EncryptedFS } from 'encryptedfs';
 import * as utils from '@/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
+import Logger, { LogLevel } from '@matrixai/logger';
 
 describe('Vaults utils', () => {
+  const logger = new Logger('Vaults utils tests', LogLevel.WARN);
   let dataDir: string;
 
   beforeEach(async () => {
@@ -33,11 +35,12 @@ describe('Vaults utils', () => {
     const vaultId = vaultsUtils.splitVaultId(id);
     expect(vaultId).not.toContain(nodeId);
   });
-  test('EFS can be read recursively', async () => {
+  test.skip('EFS can be read recursively', async () => {
     const key = await vaultsUtils.generateVaultKey();
     const efs = await EncryptedFS.createEncryptedFS({
       dbKey: key,
       dbPath: dataDir,
+      logger,
     });
     const mkdir = utils.promisify(efs.mkdir).bind(efs);
     const writeFile = utils.promisify(efs.writeFile).bind(efs);

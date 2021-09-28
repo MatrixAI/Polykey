@@ -57,19 +57,14 @@ async function bootstrapPolykeyState(
 
   // Starting and creating state (this will need to be changed with the new db stuff)
   await polykeyAgent.nodes.start();
-  await polykeyAgent.acl.start();
-  await polykeyAgent.gestalts.start();
   await polykeyAgent.vaults.start({});
-  await polykeyAgent.identities.start();
 
   // Stopping
-  await polykeyAgent.identities.stop();
   await polykeyAgent.vaults.stop();
-  await polykeyAgent.gestalts.stop();
-  await polykeyAgent.acl.stop();
   await polykeyAgent.nodes.stop();
   await polykeyAgent.db.stop();
-  await polykeyAgent.keys.stop();
+
+  await polykeyAgent.destroy();
 }
 
 async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {

@@ -34,7 +34,7 @@ describe('network index', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const [server, serverPort] = await openTestServer();
-    const revProxy = new ReverseProxy({ logger });
+    const revProxy = await ReverseProxy.createReverseProxy({ logger });
     await revProxy.start({
       ingressHost: '127.0.0.1' as Host,
       ingressPort: 0 as Port,
@@ -45,7 +45,7 @@ describe('network index', () => {
         certChainPem: serverCertPem,
       },
     });
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
       logger,
     });

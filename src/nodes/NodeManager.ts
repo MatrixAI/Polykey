@@ -21,7 +21,16 @@ import * as agentPB from '../proto/js/Agent_pb';
 import { GRPCClientAgent } from '../agent';
 import { ForwardProxy, ReverseProxy } from '../network';
 import { Mutex } from 'async-mutex';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
+interface NodeManager extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new nodesErrors.ErrorNodeManagerNotStarted(),
+  new nodesErrors.ErrorNodeManagerDestroyed(),
+)
 class NodeManager {
   // LevelDB directory to store all the information for managing nodes
   // public readonly nodesPath: string;
@@ -30,7 +39,6 @@ class NodeManager {
   protected fs: FileSystem;
   protected logger: Logger;
   protected lock: Mutex = new Mutex();
-  protected _started: boolean = false;
 
   protected nodeGraph: NodeGraph;
   protected sigchain: Sigchain;
@@ -44,7 +52,7 @@ class NodeManager {
   protected brokerNodes: NodeBucket = {};
   protected brokerNodeConnections: Map<NodeId, NodeConnection> = new Map();
 
-  constructor({
+  static async createNodeManager({
     db,
     sigchain,
     keyManager,
@@ -60,11 +68,43 @@ class NodeManager {
     revProxy: ReverseProxy;
     fs?: FileSystem;
     logger?: Logger;
+  }): Promise<NodeManager> {
+    const logger_ = logger ?? new Logger('NodeManager');
+    const fs_ = fs ?? require('fs');
+
+    return new NodeManager({
+      db,
+      fs: fs_,
+      fwdProxy,
+      keyManager,
+      logger: logger_,
+      revProxy,
+      sigchain,
+    });
+  }
+
+  constructor({
+    db,
+    sigchain,
+    keyManager,
+    fwdProxy,
+    revProxy,
+    fs,
+    logger,
+  }: {
+    db: DB;
+    sigchain: Sigchain;
+    keyManager: KeyManager;
+    fwdProxy: ForwardProxy;
+    revProxy: ReverseProxy;
+    fs: FileSystem;
+    logger: Logger;
   }) {
     this.logger = logger ?? new Logger('NodeManager');
     this.db = db;
-    this.fs = fs ?? require('fs');
+    this.fs = fs;
 
+    this.logger.info('Creating Node Manager');
     // Instantiate the node graph (containing Kademlia implementation)
     this.nodeGraph = new NodeGraph({
       db: db,
@@ -75,10 +115,7 @@ class NodeManager {
     this.keyManager = keyManager;
     this.fwdProxy = fwdProxy;
     this.revProxy = revProxy;
-  }
-
-  get started(): boolean {
-    return this._started;
+    this.logger.info('Created Node Manager');
   }
 
   get locked(): boolean {
@@ -92,33 +129,23 @@ class NodeManager {
     brokerNodes?: NodeBucket;
     fresh?: boolean;
   } = {}) {
-    try {
-      this.logger.info('Starting Node Manager');
-      if (!this.db.running) {
-        throw new dbErrors.ErrorDBNotRunning();
-      }
-      this._started = true;
-      // Establish and start connections to the brokers
-      for (const brokerId in brokerNodes) {
-        await this.createConnectionToBroker(
-          brokerId as NodeId,
-          brokerNodes[brokerId].address,
-        );
-      }
-      await this.nodeGraph.start({ fresh });
-      this.logger.info('Started Node Manager');
-    } catch (e) {
-      this._started = false;
-      throw e;
+    this.logger.info('Starting Node Manager');
+    if (!this.db.running) {
+      throw new dbErrors.ErrorDBNotRunning();
     }
+    // Establish and start connections to the brokers
+    for (const brokerId in brokerNodes) {
+      await this.createConnectionToBroker(
+        brokerId as NodeId,
+        brokerNodes[brokerId].address,
+      );
+    }
+    await this.nodeGraph.start({ fresh });
+    this.logger.info('Started Node Manager');
   }
 
   public async stop() {
-    if (!this._started) {
-      return;
-    }
     this.logger.info('Stopping Node Manager');
-    this._started = false;
     for (const [, conn] of this.connections) {
       await conn.stop();
     }
@@ -127,6 +154,10 @@ class NodeManager {
     }
     await this.nodeGraph.stop();
     this.logger.info('Stopped Node Manager');
+  }
+
+  public async destroy() {
+    this.logger.info('Destroyed Node Manager');
   }
 
   /**
@@ -155,12 +186,10 @@ class NodeManager {
     }
   }
 
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getClosestLocalNodes(
     targetNodeId: NodeId,
   ): Promise<Array<NodeData>> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this.nodeGraph.getClosestLocalNodes(targetNodeId);
   }
 
@@ -170,10 +199,8 @@ class NodeManager {
    * @param targetNodeId the node ID of the node to find
    * @returns true if the node exists in the table, false otherwise
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async knowsNode(targetNodeId: NodeId): Promise<boolean> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     if (await this.nodeGraph.getNode(targetNodeId)) {
       return true;
     } else {
@@ -185,10 +212,8 @@ class NodeManager {
    * Determines whether a node in the Polykey network is online.
    * @return true if online, false if offline
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async pingNode(targetNodeId: NodeId): Promise<boolean> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     const targetAddress: NodeAddress = await this.findNode(targetNodeId);
     try {
       // Attempt to open a connection via the forward proxy
@@ -209,10 +234,8 @@ class NodeManager {
     return true;
   }
 
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public getNodeId(): NodeId {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return this.keyManager.getNodeId();
   }
 
@@ -221,10 +244,8 @@ class NodeManager {
    * certificate chain (corresponding to the provided public key fingerprint -
    * the node ID).
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getPublicKey(targetNodeId: NodeId): Promise<PublicKeyPem> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     const targetAddress: NodeAddress = await this.findNode(targetNodeId);
     const connection: NodeConnection = await this.createConnectionToNode(
       targetNodeId,
@@ -243,10 +264,8 @@ class NodeManager {
    * Retrieves the cryptolinks of this node, returning as a collection of
    * records (for storage in the gestalt graph)
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getChainData(): Promise<ChainDataEncoded> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this.sigchain.getChainData();
   }
 
@@ -257,10 +276,8 @@ class NodeManager {
    * For node1 -> node2 claims, the verification process also involves connecting
    * to node2 to verify the claim (to retrieve its signing public key).
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async requestChainData(targetNodeId: NodeId): Promise<ChainData> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     const targetAddress: NodeAddress = await this.findNode(targetNodeId);
     const connection: NodeConnection = await this.createConnectionToNode(
       targetNodeId,
@@ -320,10 +337,8 @@ class NodeManager {
    * Call this function upon receiving a "claim node request" notification from
    * another node.
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async claimNode(targetNodeId: NodeId): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     const targetAddress: NodeAddress = await this.findNode(targetNodeId);
     const connection: NodeConnection = await this.createConnectionToNode(
       targetNodeId,
@@ -342,36 +357,28 @@ class NodeManager {
     });
   }
 
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
   ): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     await this.nodeGraph.setNode(nodeId, nodeAddress);
   }
 
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
   ): Promise<NodeAddress | undefined> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this.nodeGraph.getClosestGlobalNodes(targetNodeId);
   }
 
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getAllBuckets(): Promise<Array<NodeBucket>> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this.nodeGraph.getAllBuckets();
   }
 
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async refreshBuckets(): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this.nodeGraph.refreshBuckets();
   }
 
@@ -383,12 +390,10 @@ class NodeManager {
    * @param message the original relay message (assumed to be created in
    * nodeConnection.start())
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async relayHolePunchMessage(
     message: agentPB.RelayMessage,
   ): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     const conn = this.connections.get(message.getTargetId() as NodeId);
     if (conn === undefined) {
       throw new nodesErrors.ErrorNodeConnectionNotExist();
@@ -404,13 +409,11 @@ class NodeManager {
   /**
    * Sends a notification to a node.
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async sendNotification(
     nodeId: NodeId,
     message: SignedNotification,
   ): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     const targetAddress: NodeAddress = await this.findNode(nodeId);
     const connection: NodeConnection = await this.createConnectionToNode(
       nodeId,
@@ -436,13 +439,11 @@ class NodeManager {
    * @param targetNodeId ID of the node wanting to connect to
    * @param targetNodeAddress host and port of the node wanting to connect to
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async createConnectionToNode(
     targetNodeId: NodeId,
     targetNodeAddress: NodeAddress,
   ): Promise<NodeConnection> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this._transaction(async () => {
       // Throw error if trying to connect to self
       if (targetNodeId === this.getNodeId()) {
@@ -455,7 +456,7 @@ class NodeManager {
         return existingConnection;
       }
       // Otherwise, create a new connection
-      const nodeConnection = new NodeConnection({
+      const nodeConnection = await NodeConnection.createNodeConnection({
         targetNodeId: targetNodeId,
         targetHost: targetNodeAddress.ip,
         targetPort: targetNodeAddress.port,
@@ -480,13 +481,11 @@ class NodeManager {
    * @param brokerNodeAddress host and port of the broker node to connect to
    * @returns
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async createConnectionToBroker(
     brokerNodeId: NodeId,
     brokerNodeAddress: NodeAddress,
   ): Promise<NodeConnection> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this._transaction(async () => {
       // Throw error if trying to connect to self
       if (brokerNodeId === this.getNodeId()) {
@@ -497,7 +496,7 @@ class NodeManager {
       if (existingConnection != null) {
         return existingConnection;
       }
-      const brokerConnection = new NodeConnection({
+      const brokerConnection = await NodeConnection.createNodeConnection({
         targetNodeId: brokerNodeId,
         targetHost: brokerNodeAddress.ip,
         targetPort: brokerNodeAddress.port,
@@ -515,9 +514,6 @@ class NodeManager {
   }
 
   public getBrokerNodeConnections(): Map<NodeId, NodeConnection> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return this.brokerNodeConnections;
   }
 
@@ -531,14 +527,12 @@ class NodeManager {
    * @param egressHost host of the client's forward proxy
    * @param egressPort port of the cient's forward proxy
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async openConnection(
     egressHost: Host,
     egressPort: Port,
     timer?: Timer,
   ): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     await this.revProxy.openConnection(egressHost, egressPort, timer);
   }
 
@@ -548,10 +542,8 @@ class NodeManager {
    * @returns GRPC client of the active connection
    * @throws ErrorNodeConnectionNotExist if a connection to the target does not exist
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public getClient(targetNodeId: NodeId): GRPCClientAgent {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     const conn = this.connections.get(targetNodeId);
     if (conn != null) {
       return conn.getClient();
@@ -565,10 +557,8 @@ class NodeManager {
    * @param targetNodeId node ID of the target node
    * @returns Node Address of the target node
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getNode(targetNodeId: NodeId): Promise<NodeAddress | undefined> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     return await this.nodeGraph.getNode(targetNodeId);
   }
 
@@ -576,10 +566,8 @@ class NodeManager {
    * Retrieves the node address. If an entry doesn't exist in the db, then
    * proceeds to locate it using Kademlia.
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async findNode(targetNodeId: NodeId): Promise<NodeAddress> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     // First check if we already have an existing ID -> address record
     let address = await this.getNode(targetNodeId);
     // Otherwise, attempt to locate it by contacting network
@@ -599,10 +587,8 @@ class NodeManager {
   /**
    * Retrieves all the vaults for a peers node
    */
+  @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async scanNodeVaults(nodeId: string): Promise<Array<string>> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeManagerNotStarted();
-    }
     // Create a connection to the specified node
     const nodeAddress = await this.getNode(nodeId as NodeId);
     if (nodeAddress == null) {

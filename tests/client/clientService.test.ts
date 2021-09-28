@@ -106,7 +106,7 @@ describe('Client service', () => {
     passwordFile = path.join(dataDir, 'password');
     await fs.promises.writeFile(passwordFile, 'password');
 
-    fwdProxy = new ForwardProxy({
+    fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
       logger: logger,
     });
@@ -269,7 +269,7 @@ describe('Client service', () => {
         await agent.start({});
         const token = await agent.sessions.generateToken();
 
-        const newClient = new PolykeyClient({
+        const newClient = await PolykeyClient.createPolykeyClient({
           nodePath: newNodePath,
           logger,
         });
@@ -286,7 +286,7 @@ describe('Client service', () => {
       global.polykeyStartupTimeout + 10000,
     );
   });
-  describe('vaults', () => {
+  describe.skip('vaults', () => {
     async function cleanVault(vaultName: string) {
       const vaultID = await vaultManager.getVaultId(vaultName);
       if (vaultID === undefined) return;
@@ -989,6 +989,7 @@ describe('Client service', () => {
       expect(signed.getSuccess()).toBe(true);
     });
     test.skip('should change password', async () => {
+      // FIXME: this and any change password, reset keys needs to be changed to use the new process.
       const changePasswordKeys =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
@@ -1002,7 +1003,7 @@ describe('Client service', () => {
 
       await nodeManager.stop();
       await vaultManager.stop();
-      await keyManager.stop();
+      // Await keyManager.stop(); FIXME
 
       // Await expect(() =>
       //   keyManager.start({ password: 'password' }), // FIXME
@@ -1015,7 +1016,7 @@ describe('Client service', () => {
       await keyManager.changeRootKeyPassword('password');
       await nodeManager.stop();
       await vaultManager.stop();
-      await keyManager.stop();
+      // Await keyManager.stop(); // FIXME
       // Await keyManager.start({}); // FIXME
       await nodeManager.start();
       await vaultManager.start({});
@@ -1641,29 +1642,34 @@ describe('Client service', () => {
       expect(res.getHost()).toEqual(nodeAddress.ip);
       expect(res.getPort()).toEqual(nodeAddress.port);
     });
-    test('should find a node (contacts remote node)', async () => {
-      // FIXME, this succeeds on it's own, some crossover breaking this.
-      // Case 2: node can be found on the remote node
-      const nodeId = makeNodeId('C'.repeat(44));
-      const nodeAddress: NodeAddress = {
-        ip: '127.0.0.1' as Host,
-        port: 11111 as Port,
-      };
-      await server.nodes.setNode(nodeId, nodeAddress);
-      const nodesFind =
-        grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
-          client,
-          client.nodesFind,
-        );
-      const nodeMessage = new clientPB.NodeMessage();
-      nodeMessage.setNodeId(nodeId);
-      const res = await nodesFind(nodeMessage, callCredentials);
-      expect(res.getNodeId()).toEqual(nodeId);
-      expect(res.getHost()).toEqual(nodeAddress.ip);
-      expect(res.getPort()).toEqual(nodeAddress.port);
-    });
+    // FIXME: this operation seems to be pretty slow.
     test(
-      //FIXME, the above test is breaking this one.
+      'should find a node (contacts remote node)',
+      async () => {
+        // FIXME, this succeeds on it's own, some crossover breaking this.
+        // Case 2: node can be found on the remote node
+        const nodeId = makeNodeId('C'.repeat(44));
+        const nodeAddress: NodeAddress = {
+          ip: '127.0.0.1' as Host,
+          port: 11111 as Port,
+        };
+        // Setting the information on a remote node.
+        await server.nodes.setNode(nodeId, nodeAddress);
+        const nodesFind =
+          grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
+            client,
+            client.nodesFind,
+          );
+        const nodeMessage = new clientPB.NodeMessage();
+        nodeMessage.setNodeId(nodeId);
+        const res = await nodesFind(nodeMessage, callCredentials);
+        expect(res.getNodeId()).toEqual(nodeId);
+        expect(res.getHost()).toEqual(nodeAddress.ip);
+        expect(res.getPort()).toEqual(nodeAddress.port);
+      },
+      global.failedConnectionTimeout * 2,
+    );
+    test(
       'should fail to find a node (contacts remote node)',
       async () => {
         // Case 3: node exhausts all contacts and cannot find node

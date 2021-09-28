@@ -22,11 +22,27 @@ class ErrorPolykey extends CustomError {
   }
 }
 
+class ErrorPolykeyAgentNotRunning extends ErrorPolykey {}
+
+class ErrorPolykeyAgentDestroyed extends ErrorPolykey {}
+
+class ErrorPolykeyClientNotRunning extends ErrorPolykey {}
+
+class ErrorPolykeyClientDestroyed extends ErrorPolykey {}
+
 class ErrorUndefinedBehaviour extends ErrorPolykey {}
 
 class ErrorStateVersionMismatch extends ErrorPolykey {}
 
-export { ErrorPolykey, ErrorUndefinedBehaviour, ErrorStateVersionMismatch };
+export {
+  ErrorPolykey,
+  ErrorPolykeyAgentNotRunning,
+  ErrorPolykeyAgentDestroyed,
+  ErrorPolykeyClientNotRunning,
+  ErrorPolykeyClientDestroyed,
+  ErrorUndefinedBehaviour,
+  ErrorStateVersionMismatch,
+};
 
 /**
  * Recursively export all domain-level error classes

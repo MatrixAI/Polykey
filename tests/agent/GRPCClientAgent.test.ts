@@ -63,12 +63,12 @@ describe('GRPC agent', () => {
     vaultsPath = path.join(dataDir, 'vaults');
     dbPath = path.join(dataDir, 'db');
 
-    fwdProxy = new ForwardProxy({
+    fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
       logger: logger,
     });
 
-    revProxy = new ReverseProxy({
+    revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
 
@@ -86,24 +86,24 @@ describe('GRPC agent', () => {
       crypto: makeCrypto(keyManager),
     });
 
-    acl = new ACL({
+    acl = await ACL.createACL({
       db: db,
       logger: logger,
     });
 
-    gestaltGraph = new GestaltGraph({
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
       db: db,
       acl: acl,
       logger: logger,
     });
 
-    sigchain = new Sigchain({
+    sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
       db: db,
       logger: logger,
     });
 
-    nodeManager = new NodeManager({
+    nodeManager = await NodeManager.createNodeManager({
       db: db,
       sigchain: sigchain,
       keyManager: keyManager,
@@ -113,14 +113,15 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    notificationsManager = new NotificationsManager({
-      acl: acl,
-      db: db,
-      nodeManager: nodeManager,
-      keyManager: keyManager,
-      messageCap: 5,
-      logger: logger,
-    });
+    notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: acl,
+        db: db,
+        nodeManager: nodeManager,
+        keyManager: keyManager,
+        messageCap: 5,
+        logger: logger,
+      });
 
     vaultManager = new VaultManager({
       vaultsPath: vaultsPath,
@@ -139,11 +140,7 @@ describe('GRPC agent', () => {
       certChainPem: await keyManager.getRootCertChainPem(),
     };
     await fwdProxy.start({ tlsConfig });
-    await acl.start();
-    await gestaltGraph.start();
     await nodeManager.start();
-    await sigchain.start();
-    await notificationsManager.start();
     await vaultManager.start({});
     [server, port] = await testUtils.openTestAgentServer({
       keyManager,
@@ -159,14 +156,14 @@ describe('GRPC agent', () => {
     await testUtils.closeTestAgentServer(server);
 
     await vaultManager.stop();
-    await notificationsManager.stop();
-    await sigchain.stop();
+    await notificationsManager.destroy();
+    await sigchain.destroy();
     await nodeManager.stop();
-    await gestaltGraph.stop();
-    await acl.stop();
+    await gestaltGraph.destroy();
+    await acl.destroy();
     await fwdProxy.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyManager.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -250,7 +247,7 @@ describe('GRPC agent', () => {
 
       // Manually inject Y's public key into a dummy NodeConnection object, such
       // that it can be used to verify the claim signature
-      xToYNodeConnection = new TestNodeConnection({
+      xToYNodeConnection = await TestNodeConnection.createTestNodeConnection({
         publicKey: yKeyManager.getRootKeyPairPem().publicKey,
         targetNodeId: 'Y' as NodeId,
         targetHost: 'unnecessary' as Host,
@@ -270,7 +267,7 @@ describe('GRPC agent', () => {
     });
 
     afterEach(async () => {
-      await yKeyManager.stop();
+      await yKeyManager.destroy();
     });
 
     test('can successfully cross sign a claim', async () => {

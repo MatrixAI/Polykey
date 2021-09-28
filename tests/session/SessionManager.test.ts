@@ -42,16 +42,17 @@ describe('SessionManager', () => {
       crypto: makeCrypto(keyManager),
     });
 
-    sessionManager = new SessionManager({
+    sessionManager = await SessionManager.createSessionManager({
       db: db,
       logger: logger,
+      bits: 4096,
     });
     await db.start();
-    await sessionManager.start({ bits: 4096 });
   });
 
   afterEach(async () => {
-    await keyManager.stop();
+    await keyManager.destroy();
+    await sessionManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -62,17 +63,15 @@ describe('SessionManager', () => {
     expect(sessionManager).toBeInstanceOf(SessionManager);
   });
 
-  test('starts and stops', async () => {
-    await sessionManager.start({ bits: 4096 });
-    expect(sessionManager.started).toBe(true);
-    await sessionManager.stop();
-    expect(sessionManager.started).toBe(false);
+  test('destroys', async () => {
+    expect(sessionManager.destroyed).toBe(false);
+    await sessionManager.destroy();
+    expect(sessionManager.destroyed).toBe(true);
+    await expect(sessionManager.refreshKey()).rejects.toThrow();
   });
   test('can generate and verify JWT Token', async () => {
-    await sessionManager.start({ bits: 4096 });
     const claim = await sessionManager.generateToken();
     const result = await sessionManager.verifyToken(claim);
-    await sessionManager.stop();
     expect(result.payload.token).toBeTruthy();
   });
 });

@@ -22,7 +22,7 @@ import { makeNodeId } from '@/nodes/utils';
  * - when in doubt test each modified or added test on it's own as well as the whole file.
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
-describe('CLI vaults', () => {
+describe.skip('CLI vaults', () => {
   const password = 'password';
   const logger = new Logger('CLI Test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;

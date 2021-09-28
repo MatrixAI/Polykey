@@ -216,6 +216,8 @@ describe('CLI keys', () => {
         logger: logger,
       });
       await polykeyAgent.start({});
+      await polykeyAgent.stop();
+      await polykeyAgent.destroy();
     });
   });
   describe('commandResetKeyPair', () => {
@@ -238,7 +240,7 @@ describe('CLI keys', () => {
 
       newPolykeyAgent1 = await PolykeyAgent.createPolykey({
         password: 'password-new-new',
-        nodePath: nodePath,
+        nodePath: newNodePath1,
         logger: logger,
       });
       await newPolykeyAgent1.start({});
@@ -258,7 +260,7 @@ describe('CLI keys', () => {
 
         newPolykeyAgent2 = await PolykeyAgent.createPolykey({
           password,
-          nodePath: nodePath,
+          nodePath: newNodePath2,
           logger: logger,
         });
         await newPolykeyAgent2.start({});
@@ -272,7 +274,7 @@ describe('CLI keys', () => {
         await newPolykeyAgent2.destroy();
         newPolykeyAgent2 = await PolykeyAgent.createPolykey({
           password: 'password-change',
-          nodePath: nodePath,
+          nodePath: newNodePath2,
           logger: logger,
         });
         await newPolykeyAgent2.start({});

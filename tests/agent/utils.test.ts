@@ -45,6 +45,7 @@ describe('agent utils', () => {
         agentUtils.checkAgentRunning(nodePath),
       ).resolves.toBeTruthy();
       await agent.stop();
+      await agent.destroy();
     });
   });
   describe('spawnBackgroundAgent', () => {
@@ -109,6 +110,7 @@ describe('agent utils', () => {
       ).resolves.toBeTruthy(); //Check that it is running.
 
       await agent.stop();
+      await agent.destroy();
     });
   });
 });

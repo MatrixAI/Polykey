@@ -34,7 +34,7 @@ get.action(async (id, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   try {
     await client.start({});

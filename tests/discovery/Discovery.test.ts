@@ -59,12 +59,11 @@ describe('Discovery', () => {
         await polykeyAgent.start({});
 
         //Not started.
-        await polykeyAgent.discovery.stop();
-        expect(discovery.started).toBeFalsy();
+        expect(discovery.destroyed).toBeFalsy();
 
         //Starting.
-        await discovery.start();
-        expect(discovery.started).toBeTruthy();
+        await discovery.destroy();
+        expect(discovery.destroyed).toBeTruthy();
       },
       global.polykeyStartupTimeout,
     );

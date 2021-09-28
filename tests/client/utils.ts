@@ -59,7 +59,7 @@ async function openTestClientClient(nodePath) {
   ]);
   const fs = require('fs/promises');
 
-  const pkc: PolykeyClient = new PolykeyClient({
+  const pkc: PolykeyClient = await PolykeyClient.createPolykeyClient({
     nodePath,
     fs,
     logger,

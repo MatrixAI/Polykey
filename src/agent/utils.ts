@@ -33,7 +33,7 @@ async function spawnBackgroundAgent( // FIXME, this is broken.
   //Checking agent running.
   if (await checkAgentRunning(nodePath)) {
     throw new agentErrors.ErrorAgentRunning(
-      'Unable to spawn Agent, already running at: ' + nodePath,
+      `Unable to spawn Agent, already running at: ${nodePath}`,
     );
   }
 

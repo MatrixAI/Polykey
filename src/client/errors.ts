@@ -8,6 +8,11 @@ class ErrorClientClientNotStarted extends ErrorClient {
   exitCode: number = 64;
 }
 
+class ErrorClientClientDestroyed extends ErrorClient {
+  description: string = 'GRPCClientClient has been destroyed';
+  exitCode: number = 64;
+}
+
 class ErrorClientPasswordNotProvided extends ErrorClient {
   description: string =
     'Invalid Password, please use --password-file <file> or the prompt to input the correct password';
@@ -24,6 +29,7 @@ class ErrorPassword extends ErrorClient {}
 export {
   ErrorClient,
   ErrorClientClientNotStarted,
+  ErrorClientClientDestroyed,
   ErrorClientPasswordNotProvided,
   ErrorClientJWTTokenNotProvided,
   ErrorPassword,

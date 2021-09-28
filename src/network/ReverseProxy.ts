@@ -10,7 +10,16 @@ import ConnectionReverse from './ConnectionReverse';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import { promisify, sleep, timerStart, timerStop } from '../utils';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
+interface ReverseProxy extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new networkErrors.ErrorReverseProxyNotStarted(),
+  new networkErrors.ErrorReverseProxyDestroyed(),
+)
 class ReverseProxy {
   public readonly connConnectTime: number;
   public readonly connTimeoutTime: number;
@@ -27,9 +36,8 @@ class ReverseProxy {
     egress: new Map(),
     proxy: new Map(),
   };
-  protected _started: boolean = false;
 
-  constructor({
+  static async createReverseProxy({
     connConnectTime = 20000,
     connTimeoutTime = 20000,
     logger,
@@ -37,14 +45,29 @@ class ReverseProxy {
     connConnectTime?: number;
     connTimeoutTime?: number;
     logger?: Logger;
-  } = {}) {
-    this.logger = logger ?? new Logger('ReverseProxy');
-    this.connConnectTime = connConnectTime;
-    this.connTimeoutTime = connTimeoutTime;
+  }): Promise<ReverseProxy> {
+    const logger_ = logger ?? new Logger('ReverseProxy');
+    return new ReverseProxy({
+      connConnectTime,
+      connTimeoutTime,
+      logger: logger_,
+    });
   }
 
-  get started(): boolean {
-    return this._started;
+  constructor({
+    connConnectTime,
+    connTimeoutTime,
+    logger,
+  }: {
+    connConnectTime: number;
+    connTimeoutTime: number;
+    logger: Logger;
+  }) {
+    logger.info('Creating Reverse Proxy');
+    this.logger = logger;
+    this.connConnectTime = connConnectTime;
+    this.connTimeoutTime = connTimeoutTime;
+    this.logger.info('Created Reverse Proxy');
   }
 
   /**
@@ -63,9 +86,6 @@ class ReverseProxy {
     serverPort: Port;
     tlsConfig: TLSConfig;
   }): Promise<void> {
-    if (this._started) {
-      return;
-    }
     let ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let serverAddress = networkUtils.buildAddress(serverHost, serverPort);
     this.logger.info(
@@ -83,7 +103,6 @@ class ReverseProxy {
     this.serverPort = serverPort;
     this.tlsConfig = tlsConfig;
     this.utpSocket = utpSocket;
-    this._started = true;
     ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     serverAddress = networkUtils.buildAddress(serverHost, serverPort);
     this.logger.info(
@@ -92,11 +111,7 @@ class ReverseProxy {
   }
 
   public async stop(): Promise<void> {
-    if (!this._started) {
-      return;
-    }
     this.logger.info('Stopping Reverse Proxy');
-    this._started = false;
     // Ensure no new connections are created while this is iterating
     await Promise.all(
       Array.from(this.connections.egress, ([, conn]) => conn.stop()),
@@ -113,31 +128,23 @@ class ReverseProxy {
     this.logger.info('Stopped Reverse Proxy');
   }
 
+  public async destroy() {
+    this.logger.info('Destroyed Reverse Proxy');
+  }
+
   public getIngressHost(): Host {
-    if (!this._started) {
-      throw new networkErrors.ErrorReverseProxyNotStarted();
-    }
     return this.ingressHost;
   }
 
   public getIngressPort(): Port {
-    if (!this._started) {
-      throw new networkErrors.ErrorReverseProxyNotStarted();
-    }
     return this.ingressPort;
   }
 
   public getServerHost(): Host {
-    if (!this._started) {
-      throw new networkErrors.ErrorReverseProxyNotStarted();
-    }
     return this.serverHost;
   }
 
   public getServerPort(): Port {
-    if (!this._started) {
-      throw new networkErrors.ErrorReverseProxyNotStarted();
-    }
     return this.serverPort;
   }
 
@@ -145,6 +152,7 @@ class ReverseProxy {
     this.tlsConfig = tlsConfig;
   }
 
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
   public getConnectionInfoByProxy(
     proxyHost: Host,
     proxyPort: Port,
@@ -166,6 +174,7 @@ class ReverseProxy {
     };
   }
 
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
   public getConnectionInfoByEgress(
     egressHost: Host,
     egressPort: Port,
@@ -191,14 +200,12 @@ class ReverseProxy {
     return this.connections.egress.size;
   }
 
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
   public async openConnection(
     egressHost: Host,
     egressPort: Port,
     timer?: Timer,
   ): Promise<void> {
-    if (!this._started) {
-      throw new networkErrors.ErrorReverseProxyNotStarted();
-    }
     const egressAddress = networkUtils.buildAddress(egressHost, egressPort);
     let lock = this.connectionLocks.get(egressAddress);
     if (lock == null) {
@@ -214,13 +221,11 @@ class ReverseProxy {
     }
   }
 
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
   public async closeConnection(
     egressHost: Host,
     egressPort: Port,
   ): Promise<void> {
-    if (!this._started) {
-      throw new networkErrors.ErrorReverseProxyNotStarted();
-    }
     const egressAddress = networkUtils.buildAddress(egressHost, egressPort);
     let lock = this.connectionLocks.get(egressAddress);
     if (lock == null) {

@@ -14,8 +14,11 @@ import { utils as networkUtils, errors as networkErrors } from '../network';
 import { promisify } from '../utils';
 import * as grpc from '@grpc/grpc-js';
 import { Session } from '../sessions';
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
-abstract class GRPCClient<T extends Client> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface GRPCClient<T extends Client> extends CreateDestroyStartStop {}
+class GRPCClient<T extends Client> {
   public readonly nodeId: NodeId;
   public readonly host: Host;
   public readonly port: Port;
@@ -26,7 +29,6 @@ abstract class GRPCClient<T extends Client> {
   protected session: Http2Session;
   protected serverCertChain: Array<Certificate>;
   protected _secured: boolean = false;
-  protected _started: boolean = false;
 
   constructor({
     nodeId,
@@ -39,17 +41,13 @@ abstract class GRPCClient<T extends Client> {
     host: Host;
     port: Port;
     proxyConfig?: ProxyConfig;
-    logger?: Logger;
+    logger: Logger;
   }) {
-    this.logger = logger ?? new Logger('GRPCClient');
+    this.logger = logger;
     this.nodeId = nodeId;
     this.host = host;
     this.port = port;
     this.proxyConfig = proxyConfig;
-  }
-
-  get started(): boolean {
-    return this._started;
   }
 
   get secured(): boolean {
@@ -73,9 +71,6 @@ abstract class GRPCClient<T extends Client> {
     session?: Session;
     timeout?: number;
   }): Promise<void> {
-    if (this._started) {
-      return;
-    }
     const address = networkUtils.buildAddress(this.host, this.port);
     this.logger.info(`Starting GRPC Client connecting to ${address}`);
     let clientCredentials;
@@ -174,22 +169,21 @@ abstract class GRPCClient<T extends Client> {
       this._secured = true;
     }
     this.client = client;
-    this._started = true;
     this.logger.info(`Started GRPC Client connected to ${address}`);
   }
 
   public async stop(): Promise<void> {
-    if (!this._started) {
-      return;
-    }
     const address = `${this.host}:${this.port}`;
     this.logger.info(`Stopping GRPC Client connected to ${address}`);
     // This currently doesn't stop all inflight requests
     // https://github.com/grpc/grpc-node/issues/1340
     this.client.close();
     this._secured = false;
-    this._started = false;
     this.logger.info(`Stopped GRPC Client connected to ${address}`);
+  }
+
+  public async destroy() {
+    this.logger.info(`Destroyed GPRC CLient`);
   }
 
   public getServerCertificate(): Certificate {

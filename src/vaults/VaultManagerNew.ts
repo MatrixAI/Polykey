@@ -91,9 +91,7 @@ class VaultManager {
   }
 
   get started(): boolean {
-    if (
-      this._started
-    ) {
+    if (this._started) {
       return true;
     }
     return false;

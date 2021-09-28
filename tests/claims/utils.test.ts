@@ -42,7 +42,7 @@ describe('Claims utils', () => {
     privateKey = keyManager.getRootKeyPairPem().privateKey;
   });
   afterEach(async () => {
-    await keyManager.stop();
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

@@ -34,14 +34,8 @@ describe('NotificationsManager', () => {
     new StreamHandler(),
   ]);
   const authToken = 'AUTH';
-  const fwdProxy = new ForwardProxy({
-    authToken: authToken,
-    logger: logger,
-  });
-
-  const revProxy = new ReverseProxy({
-    logger: logger,
-  });
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
 
   let receiverDataDir: string;
   let receiverKeyManager: KeyManager;
@@ -78,6 +72,14 @@ describe('NotificationsManager', () => {
       path.join(os.tmpdir(), 'polykey-test-server'),
     );
 
+    fwdProxy = await ForwardProxy.createForwardProxy({
+      authToken: authToken,
+      logger: logger,
+    });
+    revProxy = await ReverseProxy.createReverseProxy({
+      logger: logger,
+    });
+
     // Server setup
     const receiverKeysPath = path.join(receiverDataDir, 'receiverKeys');
     const receiverVaultsPath = path.join(receiverDataDir, 'receiverVaults');
@@ -95,26 +97,26 @@ describe('NotificationsManager', () => {
       logger: logger,
       crypto: makeCrypto(receiverKeyManager),
     });
-    receiverACL = new ACL({
+    receiverACL = await ACL.createACL({
       db: receiverDb,
       logger: logger,
     });
-    receiverSigchain = new Sigchain({
+    receiverSigchain = await Sigchain.createSigchain({
       keyManager: receiverKeyManager,
       db: receiverDb,
       logger: logger,
     });
-    receiverGestaltGraph = new GestaltGraph({
+    receiverGestaltGraph = await GestaltGraph.createGestaltGraph({
       db: receiverDb,
       acl: receiverACL,
       logger: logger,
     });
     // Won't be used so don't need to start
-    const receiverFwdProxy = new ForwardProxy({
+    const receiverFwdProxy = await ForwardProxy.createForwardProxy({
       authToken: '',
       logger: logger,
     });
-    receiverNodeManager = new NodeManager({
+    receiverNodeManager = await NodeManager.createNodeManager({
       db: receiverDb,
       sigchain: receiverSigchain,
       keyManager: receiverKeyManager,
@@ -133,14 +135,15 @@ describe('NotificationsManager', () => {
       fs: fs,
       logger: logger,
     });
-    receiverNotificationsManager = new NotificationsManager({
-      acl: receiverACL,
-      db: receiverDb,
-      nodeManager: receiverNodeManager,
-      keyManager: receiverKeyManager,
-      messageCap: 5,
-      logger: logger,
-    });
+    receiverNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: receiverACL,
+        db: receiverDb,
+        nodeManager: receiverNodeManager,
+        keyManager: receiverKeyManager,
+        messageCap: 5,
+        logger: logger,
+      });
     receiverKeyPairPem = receiverKeyManager.getRootKeyPairPem();
     receiverCertPem = receiverKeyManager.getRootCertPem();
     receiverNodeId = networkUtils.certNodeId(receiverKeyManager.getRootCert());
@@ -149,12 +152,8 @@ describe('NotificationsManager', () => {
       certChainPem: receiverCertPem,
     };
     await receiverDb.start();
-    await receiverACL.start();
-    await receiverSigchain.start();
-    await receiverGestaltGraph.start();
     await receiverGestaltGraph.setNode(node);
     await receiverNodeManager.start();
-    await receiverNotificationsManager.start();
     await receiverVaultManager.start({});
 
     agentService = createAgentService({
@@ -164,7 +163,7 @@ describe('NotificationsManager', () => {
       sigchain: receiverSigchain,
       notificationsManager: receiverNotificationsManager,
     });
-    server = new GRPCServer({
+    server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     await server.start({
@@ -190,7 +189,7 @@ describe('NotificationsManager', () => {
       path.join(senderDataDir, 'senderDb'),
     );
     // Won't be used so don't need to start
-    const senderRevProxy = new ReverseProxy({
+    const senderRevProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
     senderKeyManager = await KeyManager.createKeyManager({
@@ -205,13 +204,13 @@ describe('NotificationsManager', () => {
       logger,
       crypto: makeCrypto(senderKeyManager),
     });
-    senderACL = new ACL({ db: senderDb, logger });
-    senderSigchain = new Sigchain({
+    senderACL = await ACL.createACL({ db: senderDb, logger });
+    senderSigchain = await Sigchain.createSigchain({
       keyManager: senderKeyManager,
       db: senderDb,
       logger,
     });
-    senderNodeManager = new NodeManager({
+    senderNodeManager = await NodeManager.createNodeManager({
       db: senderDb,
       sigchain: senderSigchain,
       keyManager: senderKeyManager,
@@ -229,7 +228,7 @@ describe('NotificationsManager', () => {
       certChainPem: senderCertPem,
     };
     await senderDb.start();
-    await senderACL.start();
+    await senderACL.destroy();
     await fwdProxy.start({
       tlsConfig: fwdTLSConfig,
       proxyHost: senderHost,
@@ -255,9 +254,9 @@ describe('NotificationsManager', () => {
 
     await senderNodeManager.stop();
     await fwdProxy.stop();
-    await senderACL.stop();
+    await senderACL.destroy();
     await senderDb.stop();
-    await senderKeyManager.stop();
+    await senderKeyManager.destroy();
   });
 
   afterAll(async () => {
@@ -266,31 +265,31 @@ describe('NotificationsManager', () => {
       recursive: true,
     });
     await revProxy.stop();
-    await receiverKeyManager.stop();
+    await receiverKeyManager.destroy();
     await receiverDb.stop();
-    await receiverACL.stop();
-    await receiverSigchain.stop();
-    await receiverGestaltGraph.stop();
+    await receiverACL.destroy();
+    await receiverSigchain.destroy();
+    await receiverGestaltGraph.destroy();
     await receiverVaultManager.stop();
     await receiverNodeManager.stop();
-    await receiverNotificationsManager.stop();
+    await receiverNotificationsManager.destroy();
     await server.stop();
   });
 
   test('can send notifications', async () => {
-    const senderNotificationsManager = new NotificationsManager({
-      acl: senderACL,
-      db: senderDb,
-      nodeManager: senderNodeManager,
-      keyManager: senderKeyManager,
-      logger,
-    });
+    const senderNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: senderACL,
+        db: senderDb,
+        nodeManager: senderNodeManager,
+        keyManager: senderKeyManager,
+        logger,
+      });
     const notificationData: NotificationData = {
       type: 'General',
       message: 'msg',
     };
     // Can send with permissions
-    await senderNotificationsManager.start({});
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {
         notify: null,
@@ -310,18 +309,18 @@ describe('NotificationsManager', () => {
       receiverNodeId,
       notificationData,
     );
-    await senderNotificationsManager.stop();
+    await senderNotificationsManager.destroy();
   });
 
   test('can receive and read sent notifications', async () => {
-    const senderNotificationsManager = new NotificationsManager({
-      acl: senderACL,
-      db: senderDb,
-      nodeManager: senderNodeManager,
-      keyManager: senderKeyManager,
-      logger,
-    });
-    await senderNotificationsManager.start({});
+    const senderNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: senderACL,
+        db: senderDb,
+        nodeManager: senderNodeManager,
+        keyManager: senderKeyManager,
+        logger,
+      });
 
     const notificationData: NotificationData = {
       type: 'General',
@@ -342,18 +341,18 @@ describe('NotificationsManager', () => {
     expect(notifs[0].senderId).toEqual(senderNodeId);
     expect(notifs[0].isRead).toBeTruthy();
 
-    await senderNotificationsManager.stop();
+    await senderNotificationsManager.destroy();
   });
 
   test('cannot receive notifications without notify permission', async () => {
-    const senderNotificationsManager = new NotificationsManager({
-      acl: senderACL,
-      db: senderDb,
-      nodeManager: senderNodeManager,
-      keyManager: senderKeyManager,
-      logger,
-    });
-    await senderNotificationsManager.start({});
+    const senderNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: senderACL,
+        db: senderDb,
+        nodeManager: senderNodeManager,
+        keyManager: senderKeyManager,
+        logger,
+      });
 
     const notificationData: NotificationData = {
       type: 'General',
@@ -371,18 +370,18 @@ describe('NotificationsManager', () => {
     const notifs = await receiverNotificationsManager.readNotifications();
     expect(notifs).toEqual([]);
 
-    await senderNotificationsManager.stop();
+    await senderNotificationsManager.destroy();
   });
 
   test('notifications are read in order they were sent', async () => {
-    const senderNotificationsManager = new NotificationsManager({
-      acl: senderACL,
-      db: senderDb,
-      nodeManager: senderNodeManager,
-      keyManager: senderKeyManager,
-      logger,
-    });
-    await senderNotificationsManager.start({});
+    const senderNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: senderACL,
+        db: senderDb,
+        nodeManager: senderNodeManager,
+        keyManager: senderKeyManager,
+        logger,
+      });
 
     const notificationData1: NotificationData = {
       type: 'General',
@@ -420,18 +419,18 @@ describe('NotificationsManager', () => {
     expect(notifs[1].data).toEqual(notificationData2);
     expect(notifs[2].data).toEqual(notificationData1);
 
-    await senderNotificationsManager.stop();
+    await senderNotificationsManager.destroy();
   });
 
   test('notifications can be capped', async () => {
-    const senderNotificationsManager = new NotificationsManager({
-      acl: senderACL,
-      db: senderDb,
-      nodeManager: senderNodeManager,
-      keyManager: senderKeyManager,
-      logger,
-    });
-    await senderNotificationsManager.start({});
+    const senderNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: senderACL,
+        db: senderDb,
+        nodeManager: senderNodeManager,
+        keyManager: senderKeyManager,
+        logger,
+      });
 
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {
@@ -471,18 +470,18 @@ describe('NotificationsManager', () => {
       message: '1',
     });
 
-    await senderNotificationsManager.stop();
+    await senderNotificationsManager.destroy();
   });
 
   test('can send and receive Gestalt Invite notifications', async () => {
-    const senderNotificationsManager = new NotificationsManager({
-      acl: senderACL,
-      db: senderDb,
-      nodeManager: senderNodeManager,
-      keyManager: senderKeyManager,
-      logger,
-    });
-    await senderNotificationsManager.start({});
+    const senderNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: senderACL,
+        db: senderDb,
+        nodeManager: senderNodeManager,
+        keyManager: senderKeyManager,
+        logger,
+      });
 
     const notificationData: NotificationData = {
       type: 'GestaltInvite',
@@ -502,18 +501,18 @@ describe('NotificationsManager', () => {
     expect(notifs[0].senderId).toEqual(senderNodeId);
     expect(notifs[0].isRead).toBeTruthy();
 
-    await senderNotificationsManager.stop();
+    await senderNotificationsManager.destroy();
   });
 
   test('can send and receive Vault Share notifications', async () => {
-    const senderNotificationsManager = new NotificationsManager({
-      acl: senderACL,
-      db: senderDb,
-      nodeManager: senderNodeManager,
-      keyManager: senderKeyManager,
-      logger,
-    });
-    await senderNotificationsManager.start({});
+    const senderNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: senderACL,
+        db: senderDb,
+        nodeManager: senderNodeManager,
+        keyManager: senderKeyManager,
+        logger,
+      });
 
     await receiverACL.setNodePerm(senderNodeId, {
       gestalt: {
@@ -541,6 +540,6 @@ describe('NotificationsManager', () => {
     expect(notifs[0].senderId).toEqual(senderNodeId);
     expect(notifs[0].isRead).toBeTruthy();
 
-    await senderNotificationsManager.stop();
+    await senderNotificationsManager.destroy();
   });
 });

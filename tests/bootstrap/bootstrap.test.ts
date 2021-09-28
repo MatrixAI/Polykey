@@ -70,6 +70,7 @@ describe('Bootstrap', () => {
         });
         await pk.start({});
         await pk.stop();
+        await pk.destroy();
         expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
       },
       global.polykeyStartupTimeout,
@@ -113,6 +114,7 @@ describe('Bootstrap', () => {
       await polykeyAgent.start({});
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeTruthy();
       await polykeyAgent.stop();
+      await polykeyAgent.destroy();
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeFalsy();
     });
   });

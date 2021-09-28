@@ -6,6 +6,7 @@
     "allowJs": true,
     "strictNullChecks": true,
     "noImplicitAny": false,
+    "experimentalDecorators": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,

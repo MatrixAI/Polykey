@@ -46,7 +46,7 @@ describe('GRPCClientClient', () => {
       polykeyAgent,
     });
 
-    client = new GRPCClientClient({
+    client = await GRPCClientClient.createGRPCCLientClient({
       nodeId: nodeId,
       host: '127.0.0.1' as Host,
       port: port as Port,
@@ -63,6 +63,7 @@ describe('GRPCClientClient', () => {
     await testUtils.closeTestClientServer(server);
 
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -74,5 +75,7 @@ describe('GRPCClientClient', () => {
     echoMessage.setChallenge('yes');
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
+    await client.stop();
+    await client.destroy();
   });
 });

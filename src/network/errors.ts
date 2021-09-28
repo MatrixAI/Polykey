@@ -4,6 +4,8 @@ class ErrorNetwork extends ErrorPolykey {}
 
 class ErrorForwardProxyNotStarted extends ErrorNetwork {}
 
+class ErrorForwardProxyDestroyed extends ErrorNetwork {}
+
 class ErrorForwardProxyInvalidUrl extends ErrorNetwork {}
 
 class ErrorForwardProxyMissingNodeId extends ErrorNetwork {}
@@ -11,6 +13,8 @@ class ErrorForwardProxyMissingNodeId extends ErrorNetwork {}
 class ErrorForwardProxyAuth extends ErrorNetwork {}
 
 class ErrorReverseProxyNotStarted extends ErrorNetwork {}
+
+class ErrorReverseProxyDestroyed extends ErrorNetwork {}
 
 class ErrorConnection extends ErrorNetwork {}
 
@@ -82,10 +86,12 @@ class ErrorCertChainSignatureInvalid extends ErrorCertChain {}
 export {
   ErrorNetwork,
   ErrorForwardProxyNotStarted,
+  ErrorForwardProxyDestroyed,
   ErrorForwardProxyInvalidUrl,
   ErrorForwardProxyMissingNodeId,
   ErrorForwardProxyAuth,
   ErrorReverseProxyNotStarted,
+  ErrorReverseProxyDestroyed,
   ErrorConnection,
   ErrorConnectionMessageParse,
   ErrorConnectionNotStarted,

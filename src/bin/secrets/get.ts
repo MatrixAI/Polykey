@@ -34,7 +34,7 @@ get.action(async (options) => {
 
   const isEnv: boolean = options.env ?? false;
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const secretMessage = new clientPB.SecretMessage();
   const vaultMessage = new clientPB.VaultMessage();
 

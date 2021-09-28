@@ -122,6 +122,7 @@ describe('CLI Identities', () => {
   }, global.polykeyStartupTimeout);
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
     await fs.promises.rmdir(dataDir, { recursive: true });
   });
   beforeEach(async () => {
@@ -542,7 +543,6 @@ describe('CLI Identities', () => {
     });
   });
   describe('commandListGestalts', () => {
-    //FIXME: Breaking because the gestalt contains no Nodes, this should not be possible.
     test('Should list gestalts with permissions.', async () => {
       await polykeyAgent.gestalts.setGestaltActionByNode(node1.id, 'notify');
       await polykeyAgent.gestalts.setGestaltActionByNode(node1.id, 'scan');
@@ -692,7 +692,7 @@ describe('CLI Identities', () => {
         identityString(testProvider.id, identityId),
       ];
       const result = await testUtils.pk(commands);
-      expect(result).toBe(0); //Nothing to discover.
+      expect(result).toBe(0);
 
       //We expect to find a gestalt now.
       const gestalt = await polykeyAgent.gestalts.getGestalts();

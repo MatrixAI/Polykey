@@ -14,6 +14,7 @@ import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
 import { makeCrypto } from '../utils';
 
+// FIXME, some of these tests fail randomly.
 describe('NodeGraph', () => {
   const password = 'password';
   let nodeGraph: NodeGraph;
@@ -22,13 +23,8 @@ describe('NodeGraph', () => {
   const logger = new Logger('NodeGraph Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const fwdProxy = new ForwardProxy({
-    authToken: 'auth',
-    logger: logger,
-  });
-  const revProxy = new ReverseProxy({
-    logger: logger,
-  });
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
@@ -45,6 +41,15 @@ describe('NodeGraph', () => {
       keysPath,
       logger,
     });
+    fwdProxy = await ForwardProxy.createForwardProxy({
+      authToken: 'auth',
+      logger: logger,
+    });
+
+    revProxy = await ReverseProxy.createReverseProxy({
+      logger: logger,
+    });
+
     await fwdProxy.start({
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
@@ -54,13 +59,12 @@ describe('NodeGraph', () => {
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
     await db.start();
-    sigchain = new Sigchain({
+    sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
       db: db,
       logger: logger,
     });
-    await sigchain.start();
-    nodeManager = new NodeManager({
+    nodeManager = await NodeManager.createNodeManager({
       db: db,
       sigchain: sigchain,
       keyManager: keyManager,
@@ -81,9 +85,9 @@ describe('NodeGraph', () => {
 
   afterAll(async () => {
     await db.stop();
-    await sigchain.stop();
+    await sigchain.destroy();
     await nodeManager.stop();
-    await keyManager.stop();
+    await keyManager.destroy();
     await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,

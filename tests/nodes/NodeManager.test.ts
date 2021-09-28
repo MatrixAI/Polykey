@@ -28,13 +28,8 @@ describe('NodeManager', () => {
   let dataDir: string;
   let nodeManager: NodeManager;
 
-  const fwdProxy = new ForwardProxy({
-    authToken: 'abc',
-    logger: logger,
-  });
-  const revProxy = new ReverseProxy({
-    logger: logger,
-  });
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
   let keyManager: KeyManager;
   let keyPairPem: KeyPairPem;
   let certPem: CertificatePem;
@@ -44,6 +39,15 @@ describe('NodeManager', () => {
   const serverHost = '::1' as Host;
   const serverPort = 1 as Port;
 
+  beforeAll(async () => {
+    fwdProxy = await ForwardProxy.createForwardProxy({
+      authToken: 'abc',
+      logger: logger,
+    });
+    revProxy = await ReverseProxy.createReverseProxy({
+      logger: logger,
+    });
+  });
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -76,10 +80,9 @@ describe('NodeManager', () => {
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
     await db.start();
-    sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
 
-    nodeManager = new NodeManager({
+    nodeManager = await NodeManager.createNodeManager({
       db,
       sigchain,
       keyManager,
@@ -91,10 +94,10 @@ describe('NodeManager', () => {
   });
   afterEach(async () => {
     await nodeManager.stop();
-    await sigchain.stop();
+    await sigchain.destroy();
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
+    await keyManager.destroy();
     await fwdProxy.stop();
     await revProxy.stop();
     await fs.promises.rm(dataDir, {

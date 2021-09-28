@@ -37,15 +37,14 @@ describe('ACL', () => {
   });
   afterEach(async () => {
     await db.stop();
-    await keyManager.stop();
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
   test('trust and untrust gestalts', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
+    const acl = await ACL.createACL({ db, logger });
     // Gestalt 1
     await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, {
       gestalt: {
@@ -101,11 +100,10 @@ describe('ACL', () => {
     // Check that the permission object is identical
     // this should be a performance optimisation
     expect(nodePerms[0]['g1-first']).toBe(nodePerms[0]['g1-second']);
-    await acl.stop();
+    await acl.destroy();
   });
   test('setting and unsetting vault actions', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
+    const acl = await ACL.createACL({ db, logger });
     // The node id must exist as a gestalt first
     await expect(() =>
       acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull'),
@@ -159,11 +157,10 @@ describe('ACL', () => {
         },
       },
     });
-    await acl.stop();
+    await acl.destroy();
   });
   test('joining existing gestalt permissions', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
+    const acl = await ACL.createACL({ db, logger });
     const g1Perm = {
       gestalt: {
         notify: null,
@@ -188,11 +185,10 @@ describe('ACL', () => {
         'g1-fourth': g1Perm,
       },
     ]);
-    await acl.stop();
+    await acl.destroy();
   });
   test('joining existing vault permissions', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
+    const acl = await ACL.createACL({ db, logger });
     await acl.setNodesPerm(['g1-1'] as Array<NodeId>, {
       gestalt: {
         notify: null,
@@ -252,11 +248,10 @@ describe('ACL', () => {
     // Object identity for performance
     expect(vaultPerms['v1']['g1-1']).toEqual(vaultPerms['v2']['g1-1']);
     expect(vaultPerms['v2']['g1-1']).toEqual(vaultPerms['v3']['g1-1']);
-    await acl.stop();
+    await acl.destroy();
   });
   test('node removal', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
+    const acl = await ACL.createACL({ db, logger });
     const g1Perm = {
       gestalt: {
         notify: null,
@@ -273,11 +268,10 @@ describe('ACL', () => {
     await acl.unsetNodePerm('g1-second' as NodeId);
     expect(await acl.getNodePerm('g1-second' as NodeId)).toBeUndefined();
     expect(await acl.getNodePerms()).toHaveLength(0);
-    await acl.stop();
+    await acl.destroy();
   });
   test('vault removal', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
+    const acl = await ACL.createACL({ db, logger });
     const g1Perm = {
       gestalt: {
         notify: null,
@@ -315,11 +309,10 @@ describe('ACL', () => {
         },
       },
     });
-    await acl.stop();
+    await acl.destroy();
   });
   test('transactional operations', async () => {
-    const acl = new ACL({ db, logger });
-    await acl.start();
+    const acl = await ACL.createACL({ db, logger });
     const p1 = acl.getNodePerms();
     const p2 = acl.transaction(async (acl) => {
       await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, {
@@ -411,6 +404,6 @@ describe('ACL', () => {
     // then results[2] woudl equal []
     // the order of execution is not specified
     expect([results[1], []]).toContainEqual(results[2]);
-    await acl.stop();
+    await acl.destroy();
   });
 });

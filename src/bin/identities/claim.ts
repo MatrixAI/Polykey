@@ -31,7 +31,7 @@ claim.action(async (providerId, identitiyId, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   try {
     //Starting client

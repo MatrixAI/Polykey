@@ -32,7 +32,7 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   const unsetVaultPermsMessage = new clientPB.UnsetVaultPermMessage();
   const vaultMessage = new clientPB.VaultMessage();

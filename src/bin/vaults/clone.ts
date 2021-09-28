@@ -34,7 +34,7 @@ clone.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
   const nodeMessage = new clientPB.NodeMessage();
   const vaultCloneMessage = new clientPB.VaultCloneMessage();
