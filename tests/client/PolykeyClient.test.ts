@@ -42,7 +42,7 @@ describe('GRPCClientClient', () => {
       polykeyAgent,
     });
 
-    pkClient = new PolykeyClient({
+    pkClient = await PolykeyClient.createPolykeyClient({
       nodePath: dataDir,
       fs: fs,
       logger: logger,
@@ -111,7 +111,7 @@ describe('TLS tests', () => {
   });
   test('Can connect and echo over TLS', async () => {
     //Starting client.
-    const pkClient = new PolykeyClient({
+    const pkClient = await PolykeyClient.createPolykeyClient({
       nodePath,
       fs: fs,
       logger: logger.getChild('client'),

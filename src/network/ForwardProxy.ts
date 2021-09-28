@@ -12,7 +12,15 @@ import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import { promisify, sleep, timerStart, timerStop } from '../utils';
-
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+interface ForwardProxy extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new networkErrors.ErrorForwardProxyNotStarted(),
+  new networkErrors.ErrorForwardProxyDestroyed(),
+)
 class ForwardProxy {
   public readonly authToken: string;
   public readonly connConnectTime: number;
@@ -32,9 +40,8 @@ class ForwardProxy {
     ingress: new Map(),
     client: new Map(),
   };
-  protected _started: boolean = false;
 
-  constructor({
+  static async createForwardProxy({
     authToken,
     connConnectTime = 20000,
     connTimeoutTime = 20000,
@@ -46,8 +53,32 @@ class ForwardProxy {
     connTimeoutTime?: number;
     connPingIntervalTime?: number;
     logger?: Logger;
+  }): Promise<ForwardProxy> {
+    const logger_ = logger ?? new Logger('ForwardProxy');
+    return new ForwardProxy({
+      authToken,
+      connConnectTime,
+      connPingIntervalTime,
+      connTimeoutTime,
+      logger: logger_,
+    });
+  }
+
+  constructor({
+    authToken,
+    connConnectTime,
+    connTimeoutTime,
+    connPingIntervalTime,
+    logger,
+  }: {
+    authToken: string;
+    connConnectTime: number;
+    connTimeoutTime: number;
+    connPingIntervalTime: number;
+    logger: Logger;
   }) {
-    this.logger = logger ?? new Logger('ForwardProxy');
+    logger.info('Creating Forward Proxy');
+    this.logger = logger;
     this.authToken = authToken;
     this.connConnectTime = connConnectTime;
     this.connTimeoutTime = connTimeoutTime;
@@ -55,10 +86,7 @@ class ForwardProxy {
     this.server = http.createServer();
     this.server.on('request', this.handleRequest);
     this.server.on('connect', this.handleConnect);
-  }
-
-  get started(): boolean {
-    return this._started;
+    this.logger.info('Created Forward Proxy');
   }
 
   /**
@@ -77,9 +105,6 @@ class ForwardProxy {
     egressPort?: Port;
     tlsConfig: TLSConfig;
   }): Promise<void> {
-    if (this._started) {
-      return;
-    }
     let proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
     let egressAddress = networkUtils.buildAddress(egressHost, egressPort);
     this.logger.info(
@@ -100,18 +125,13 @@ class ForwardProxy {
     this.egressPort = egressPort;
     this.utpSocket = utpSocket;
     this.tlsConfig = tlsConfig;
-    this._started = true;
     this.logger.info(
       `Started Forward Proxy from ${proxyAddress} to ${egressAddress}`,
     );
   }
 
   public async stop(): Promise<void> {
-    if (!this._started) {
-      return;
-    }
     this.logger.info('Stopping Forward Proxy Server');
-    this._started = false;
     const serverClose = promisify(this.server.close).bind(this.server);
     await serverClose();
     // Ensure no new connections are created while this is iterating
@@ -130,31 +150,27 @@ class ForwardProxy {
     this.logger.info('Stopped Forward Proxy Server');
   }
 
+  public async destroy() {
+    this.logger.info('Destroyed Forward Proxy Server');
+  }
+
+  @ready(new networkErrors.ErrorForwardProxyNotStarted())
   public getProxyHost(): Host {
-    if (!this._started) {
-      throw new networkErrors.ErrorForwardProxyNotStarted();
-    }
     return this.proxyHost;
   }
 
+  @ready(new networkErrors.ErrorForwardProxyNotStarted())
   public getProxyPort(): Port {
-    if (!this._started) {
-      throw new networkErrors.ErrorForwardProxyNotStarted();
-    }
     return this.proxyPort;
   }
 
+  @ready(new networkErrors.ErrorForwardProxyNotStarted())
   public getEgressHost(): Host {
-    if (!this._started) {
-      throw new networkErrors.ErrorForwardProxyNotStarted();
-    }
     return this.egressHost;
   }
 
+  @ready(new networkErrors.ErrorForwardProxyNotStarted())
   public getEgressPort(): Port {
-    if (!this._started) {
-      throw new networkErrors.ErrorForwardProxyNotStarted();
-    }
     return this.egressPort;
   }
 
@@ -208,15 +224,13 @@ class ForwardProxy {
     return this.connections.ingress.size;
   }
 
+  @ready(new networkErrors.ErrorForwardProxyNotStarted())
   public async openConnection(
     nodeId: NodeId,
     ingressHost: Host,
     ingressPort: Port,
     timer?: Timer,
   ): Promise<void> {
-    if (!this._started) {
-      throw new networkErrors.ErrorForwardProxyNotStarted();
-    }
     const ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let lock = this.connectionLocks.get(ingressAddress);
     if (lock == null) {
@@ -232,13 +246,11 @@ class ForwardProxy {
     }
   }
 
+  @ready(new networkErrors.ErrorForwardProxyNotStarted())
   public async closeConnection(
     ingressHost: Host,
     ingressPort: Port,
   ): Promise<void> {
-    if (!this._started) {
-      throw new networkErrors.ErrorForwardProxyNotStarted();
-    }
     const ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let lock = this.connectionLocks.get(ingressAddress);
     if (lock == null) {

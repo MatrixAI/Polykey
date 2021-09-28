@@ -47,7 +47,7 @@ unlock.action(async (password, options) => {
     sessionPasswordMessage.setPassword(input);
   }
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   try {
     await client.start({});

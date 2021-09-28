@@ -12,7 +12,7 @@ describe('GRPCServer', () => {
     new StreamHandler(),
   ]);
   test('starting and stopping the server', async () => {
-    const server = new GRPCServer({
+    const server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     const keyPair = await keysUtils.generateKeyPair(4096);
@@ -36,7 +36,7 @@ describe('GRPCServer', () => {
     await server.stop();
   });
   test('connecting to the server securely', async () => {
-    const server = new GRPCServer({
+    const server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     const serverKeyPair = await keysUtils.generateKeyPair(4096);
@@ -83,7 +83,7 @@ describe('GRPCServer', () => {
     await server.stop();
   });
   test('changing the private key and certificate on the fly', async () => {
-    const server = new GRPCServer({
+    const server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     const serverKeyPair1 = await keysUtils.generateKeyPair(4096);

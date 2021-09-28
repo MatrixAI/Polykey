@@ -65,7 +65,7 @@ describe('ForwardProxy', () => {
     certPem = keysUtils.certToPem(cert);
   });
   test('starting and stopping the forward proxy', async () => {
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
       logger,
     });
@@ -95,7 +95,7 @@ describe('ForwardProxy', () => {
   });
   test('connect failures to the forward proxy', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -147,7 +147,7 @@ describe('ForwardProxy', () => {
   });
   test('open connection to port 0 fails', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -165,7 +165,7 @@ describe('ForwardProxy', () => {
   });
   test('open connection timeout due to hanging remote', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -202,7 +202,7 @@ describe('ForwardProxy', () => {
   });
   test('open connection reset due to ending remote', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -247,7 +247,7 @@ describe('ForwardProxy', () => {
   });
   test('open connection fails due to missing certificates', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -332,7 +332,7 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -428,7 +428,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -532,7 +532,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -645,7 +645,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -753,7 +753,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -858,7 +858,7 @@ describe('ForwardProxy', () => {
     const serverCertPem2 = keysUtils.certToPem(serverCert2);
     const serverNodeId2 = networkUtils.certNodeId(serverCert2);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });

@@ -45,9 +45,7 @@ describe('NodeConnection', () => {
   let serverDb: DB;
   let serverNotificationsManager: NotificationsManager;
   let revTLSConfig: TLSConfig;
-  const revProxy = new ReverseProxy({
-    logger: logger,
-  });
+  let revProxy: ReverseProxy;
 
   // Client
   let clientDataDir: string;
@@ -55,10 +53,7 @@ describe('NodeConnection', () => {
   let clientKeyManager: KeyManager;
   let fwdTLSConfig: TLSConfig;
   const authToken = 'AUTH';
-  const fwdProxy = new ForwardProxy({
-    authToken: authToken,
-    logger: logger,
-  });
+  let fwdProxy: ForwardProxy;
 
   let agentService;
   let server: GRPCServer;
@@ -77,6 +72,15 @@ describe('NodeConnection', () => {
     const serverVaultsPath = path.join(serverDataDir, 'serverVaults');
     const serverDbPath = path.join(serverDataDir, 'serverDb');
 
+    fwdProxy = await ForwardProxy.createForwardProxy({
+      authToken: authToken,
+      logger: logger,
+    });
+
+    revProxy = await ReverseProxy.createReverseProxy({
+      logger: logger,
+    });
+
     serverKeyManager = await KeyManager.createKeyManager({
       password,
       keysPath: serverKeysPath,
@@ -89,27 +93,27 @@ describe('NodeConnection', () => {
       logger: logger,
       crypto: makeCrypto(serverKeyManager),
     });
-    serverACL = new ACL({
+    serverACL = await ACL.createACL({
       db: serverDb,
       logger: logger,
     });
-    serverSigchain = new Sigchain({
+    serverSigchain = await Sigchain.createSigchain({
       keyManager: serverKeyManager,
       db: serverDb,
       logger: logger,
     });
-    serverGestaltGraph = new GestaltGraph({
+    serverGestaltGraph = await GestaltGraph.createGestaltGraph({
       db: serverDb,
       acl: serverACL,
       logger: logger,
     });
     // Only needed to pass into nodeManager constructor - won't be forwarding calls
     // so no need to start
-    const serverFwdProxy = new ForwardProxy({
+    const serverFwdProxy = await ForwardProxy.createForwardProxy({
       authToken: '',
       logger: logger,
     });
-    serverNodeManager = new NodeManager({
+    serverNodeManager = await NodeManager.createNodeManager({
       db: serverDb,
       sigchain: serverSigchain,
       keyManager: serverKeyManager,
@@ -128,20 +132,17 @@ describe('NodeConnection', () => {
       fs: fs,
       logger: logger,
     });
-    serverNotificationsManager = new NotificationsManager({
-      acl: serverACL,
-      db: serverDb,
-      nodeManager: serverNodeManager,
-      keyManager: serverKeyManager,
-      logger: logger,
-    });
+    serverNotificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: serverACL,
+        db: serverDb,
+        nodeManager: serverNodeManager,
+        keyManager: serverKeyManager,
+        logger: logger,
+      });
     await serverDb.start();
-    await serverACL.start();
-    await serverSigchain.start();
-    await serverGestaltGraph.start();
     await serverGestaltGraph.setNode(node);
     await serverNodeManager.start();
-    await serverNotificationsManager.start({});
     await serverVaultManager.start({});
     agentService = createAgentService({
       keyManager: serverKeyManager,
@@ -150,7 +151,7 @@ describe('NodeConnection', () => {
       sigchain: serverSigchain,
       notificationsManager: serverNotificationsManager,
     });
-    server = new GRPCServer({
+    server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     await server.start({
@@ -198,7 +199,7 @@ describe('NodeConnection', () => {
       force: true,
       recursive: true,
     });
-    await clientKeyManager.stop();
+    await clientKeyManager.destroy();
     await fwdProxy.stop();
 
     await serverNodeManager.clearDB();
@@ -209,21 +210,21 @@ describe('NodeConnection', () => {
       recursive: true,
     });
     await revProxy.stop();
-    await serverKeyManager.stop();
+    await serverKeyManager.destroy();
     await serverDb.stop();
-    await serverACL.stop();
-    await serverSigchain.stop();
-    await serverGestaltGraph.stop();
+    await serverACL.destroy();
+    await serverSigchain.destroy();
+    await serverGestaltGraph.destroy();
     await serverVaultManager.stop();
     await serverNodeManager.stop();
-    await serverNotificationsManager.stop();
+    await serverNotificationsManager.destroy();
     await server.stop();
   });
 
   test('connects to its target (via direct connection)', async () => {
     expect(fwdProxy.getConnectionCount()).toBe(0);
     const initialNumConnections = revProxy.getConnectionCount();
-    const conn = new NodeConnection({
+    const conn = await NodeConnection.createNodeConnection({
       targetNodeId: targetNodeId,
       targetHost: targetHost,
       targetPort: targetPort,
@@ -247,10 +248,11 @@ describe('NodeConnection', () => {
       fwdProxy.getEgressHost(),
       fwdProxy.getEgressPort(),
     );
+    await conn.destroy();
   });
 
   test('receives 20 closest local nodes from connected target', async () => {
-    const conn = new NodeConnection({
+    const conn = await NodeConnection.createNodeConnection({
       targetNodeId: targetNodeId,
       targetHost: targetHost,
       targetPort: targetPort,
@@ -302,10 +304,11 @@ describe('NodeConnection', () => {
       fwdProxy.getEgressHost(),
       fwdProxy.getEgressPort(),
     );
+    await conn.destroy();
   });
 
   test('sends hole punch message to connected target (expected to be broker, to relay further)', async () => {
-    const conn = new NodeConnection({
+    const conn = await NodeConnection.createNodeConnection({
       targetNodeId: targetNodeId,
       targetHost: targetHost,
       targetPort: targetPort,
@@ -343,6 +346,7 @@ describe('NodeConnection', () => {
       fwdProxy.getEgressHost(),
       fwdProxy.getEgressPort(),
     );
+    await conn.destroy();
   });
 
   test('scans the servers vaults', async () => {
@@ -357,7 +361,7 @@ describe('NodeConnection', () => {
       chain: {},
     });
 
-    const conn = new NodeConnection({
+    const conn = await NodeConnection.createNodeConnection({
       targetNodeId: targetNodeId,
       targetHost: targetHost,
       targetPort: targetPort,
@@ -401,5 +405,6 @@ describe('NodeConnection', () => {
       fwdProxy.getEgressHost(),
       fwdProxy.getEgressPort(),
     );
+    await conn.destroy();
   });
 });

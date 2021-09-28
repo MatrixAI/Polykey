@@ -2,7 +2,7 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorGestalts extends ErrorPolykey {}
 
-class ErrorGestaltsGraphNotStarted extends ErrorGestalts {}
+class ErrorGestaltsGraphDestroyed extends ErrorGestalts {}
 
 class ErrorGestaltsGraphNodeIdMissing extends ErrorGestalts {}
 
@@ -12,7 +12,7 @@ class ErrorGestaltsInvalidAction extends ErrorGestalts {}
 
 export {
   ErrorGestalts,
-  ErrorGestaltsGraphNotStarted,
+  ErrorGestaltsGraphDestroyed,
   ErrorGestaltsGraphNodeIdMissing,
   ErrorGestaltsGraphIdentityIdMissing,
   ErrorGestaltsInvalidAction,

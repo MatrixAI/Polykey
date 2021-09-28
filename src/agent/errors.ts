@@ -6,4 +6,11 @@ class ErrorAgentRunning extends ErrorPolykey {}
 
 class ErrorAgentClientNotStarted extends ErrorAgent {}
 
-export { ErrorAgent, ErrorAgentClientNotStarted, ErrorAgentRunning };
+class ErrorAgentClientDestroyed extends ErrorAgent {}
+
+export {
+  ErrorAgent,
+  ErrorAgentClientNotStarted,
+  ErrorAgentRunning,
+  ErrorAgentClientDestroyed,
+};

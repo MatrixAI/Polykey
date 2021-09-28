@@ -4,6 +4,8 @@ class ErrorGRPC extends ErrorPolykey {}
 
 class ErrorGRPCClientNotStarted extends ErrorGRPC {}
 
+class ErrorGRPCClientDestroyed extends ErrorGRPC {}
+
 class ErrorGRPCClientNotSecured extends ErrorGRPC {}
 
 /**
@@ -18,6 +20,8 @@ class ErrorGRPCServerBind extends ErrorGRPC {}
 class ErrorGRPCServerShutdown extends ErrorGRPC {}
 
 class ErrorGRPCServerNotStarted extends ErrorGRPC {}
+
+class ErrorGRPCServerDestroyed extends ErrorGRPC {}
 
 class ErrorGRPCServerNotSecured extends ErrorGRPC {}
 
@@ -38,6 +42,8 @@ class ErrorGRPCInvalidMessage extends ErrorGRPC {
 export {
   ErrorGRPC,
   ErrorGRPCClientNotStarted,
+  ErrorGRPCClientDestroyed,
+  ErrorGRPCServerDestroyed,
   ErrorGRPCClientNotSecured,
   ErrorGRPCClientTimeout,
   ErrorGRPCClientVerification,

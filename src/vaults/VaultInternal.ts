@@ -91,7 +91,9 @@ class VaultInternal {
     logger?: Logger;
   }): Promise<VaultInternal> {
     logger = logger ?? new Logger(this.constructor.name);
-    const workingDir = await efs.readFile(path.join('.git', 'workingDir'), { encoding: 'utf8' }) as string;
+    const workingDir = (await efs.readFile(path.join('.git', 'workingDir'), {
+      encoding: 'utf8',
+    })) as string;
     const vault = new VaultInternal({
       vaultId,
       vaultName,
@@ -132,7 +134,10 @@ class VaultInternal {
   public async stop(): Promise<void> {
     const release = await this._lock.acquire();
     try {
-      await this._efs.writeFile(path.join('.git', 'workingDirectory'), this._workingDir);
+      await this._efs.writeFile(
+        path.join('.git', 'workingDirectory'),
+        this._workingDir,
+      );
     } finally {
       release();
       this._logger.info(`Stopping vault at '${this.vaultId}'`);
@@ -144,9 +149,7 @@ class VaultInternal {
     this._logger.info(`Destroying vault at '${this.vaultId}'`);
   }
 
-  public async commit(
-    f: (fs: EncryptedFS) => Promise<void>,
-  ) {
+  public async commit(f: (fs: EncryptedFS) => Promise<void>) {
     const release = await this._lock.acquire();
     const message: string[] = [];
     await git.checkout({
@@ -156,7 +159,11 @@ class VaultInternal {
     });
     try {
       await f(this._efs);
-      for await (const file of vaultsUtils.readdirRecursivelyEFS(this._efs, '.', false)) {
+      for await (const file of vaultsUtils.readdirRecursivelyEFS(
+        this._efs,
+        '.',
+        false,
+      )) {
         await git.add({
           fs: this._efs,
           dir: '.',
@@ -184,7 +191,11 @@ class VaultInternal {
         message: message.toString(),
       });
     } finally {
-      for await (const file of vaultsUtils.readdirRecursivelyEFS(this._efs, '.', false)) {
+      for await (const file of vaultsUtils.readdirRecursivelyEFS(
+        this._efs,
+        '.',
+        false,
+      )) {
         await git.add({
           fs: this._efs,
           dir: '.',
@@ -202,7 +213,10 @@ class VaultInternal {
 
   public async log(depth: 1, commit?: string): Promise<string>;
   public async log(depth?: number, commit?: string): Promise<Array<string>>;
-  public async log(depth?: number, commit?: string): Promise<Array<string> | string> {
+  public async log(
+    depth?: number,
+    commit?: string,
+  ): Promise<Array<string> | string> {
     const log = await git.log({
       fs: this._efs,
       dir: '.',
@@ -210,10 +224,12 @@ class VaultInternal {
       ref: commit,
     });
     return log.map((readCommit) => {
-      return `commit ${readCommit.oid}\n` +
-      `Author: ${readCommit.commit.author.name}\n` +
-      `Date: ${new Date(readCommit.commit.author.timestamp * 1000)}\n` +
-      `${readCommit.commit.message}\n`
+      return (
+        `commit ${readCommit.oid}\n` +
+        `Author: ${readCommit.commit.author.name}\n` +
+        `Date: ${new Date(readCommit.commit.author.timestamp * 1000)}\n` +
+        `${readCommit.commit.message}\n`
+      );
     });
   }
 
@@ -227,8 +243,7 @@ class VaultInternal {
     this._workingDir = commit;
   }
 
-  public async applySchema(vs) {
-  }
+  public async applySchema(vs) {}
 }
 
 export default VaultInternal;

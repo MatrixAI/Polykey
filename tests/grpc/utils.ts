@@ -6,6 +6,8 @@ import { GRPCClient, utils as grpcUtils, errors as grpcErrors } from '@/grpc';
 import * as testPB from '@/proto/js/Test_pb';
 import { TestService, ITestServer, TestClient } from '@/proto/js/Test_grpc_pb';
 import { promisify } from '@/utils';
+import { Host, Port, ProxyConfig } from '@/network/types';
+import Logger from '@matrixai/logger';
 
 /**
  * Test GRPC service
@@ -102,6 +104,28 @@ const testService: ITestServer = {
 };
 
 class GRPCClientTest extends GRPCClient<TestClient> {
+  constructor({
+    nodeId,
+    host,
+    port,
+    proxyConfig,
+    logger,
+  }: {
+    nodeId: NodeId;
+    host: Host;
+    port: Port;
+    proxyConfig?: ProxyConfig;
+    logger: Logger;
+  }) {
+    super({
+      nodeId,
+      host,
+      port,
+      proxyConfig,
+      logger,
+    });
+  }
+
   public async start({
     tlsConfig,
     timeout = Infinity,

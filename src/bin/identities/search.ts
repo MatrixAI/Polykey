@@ -30,7 +30,7 @@ commandTrustGestalts.action(async (providerId, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   try {
     await client.start({});
     const grpcClient = client.grpcClient;

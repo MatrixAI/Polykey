@@ -12,7 +12,16 @@ import * as grpcUtils from './utils';
 import * as grpcErrors from './errors';
 import { utils as networkUtils, errors as networkErrors } from '../network';
 import { promisify } from '../utils';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
+interface GRPCServer extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new grpcErrors.ErrorGRPCServerNotStarted(),
+  new grpcErrors.ErrorGRPCServerDestroyed(),
+)
 class GRPCServer {
   protected services: Services;
   protected logger: Logger;
@@ -23,14 +32,16 @@ class GRPCServer {
     new WeakMap();
   protected tlsConfig: TLSConfig;
   protected _secured: boolean = false;
-  protected _started: boolean = false;
 
-  constructor({ logger }: { logger?: Logger }) {
-    this.logger = logger ?? new Logger('GRPCServer');
+  static async createGRPCServer({ logger }: { logger?: Logger }) {
+    const logger_ = logger ?? new Logger('GRPCServer');
+    return new GRPCServer({ logger: logger_ });
   }
 
-  get started(): boolean {
-    return this._started;
+  constructor({ logger }: { logger: Logger }) {
+    logger.info('Creating GRPC Server');
+    this.logger = logger;
+    logger.info('Created GRPC Server');
   }
 
   get secured(): boolean {
@@ -48,9 +59,6 @@ class GRPCServer {
     port?: Port;
     tlsConfig?: TLSConfig;
   }): Promise<void> {
-    if (this._started) {
-      return;
-    }
     this.services = services;
     let address = networkUtils.buildAddress(host, port);
     this.logger.info(`Starting GRPC Server on ${address}`);
@@ -119,7 +127,6 @@ class GRPCServer {
     this.host = host;
     this.port = port;
     this.server = server;
-    this._started = true;
     if (serverCredentials._isSecure()) {
       this._secured = true;
     }
@@ -128,9 +135,6 @@ class GRPCServer {
   }
 
   public async stop(): Promise<void> {
-    if (!this._started) {
-      return;
-    }
     this.logger.info('Stopping GRPC Server');
     const tryShutdown = promisify(this.server.tryShutdown).bind(this.server);
     try {
@@ -139,24 +143,24 @@ class GRPCServer {
       throw new grpcErrors.ErrorGRPCServerShutdown(e.message);
     }
     this._secured = false;
-    this._started = false;
     this.logger.info('Stopped GRPC Server');
   }
 
+  public async destroy() {
+    this.logger.info('Destroyed GRPC server');
+  }
+
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getHost(): Host {
-    if (!this._started) {
-      throw new grpcErrors.ErrorGRPCServerNotStarted();
-    }
     return this.host;
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getPort(): Port {
-    if (!this._started) {
-      throw new grpcErrors.ErrorGRPCServerNotStarted();
-    }
     return this.port;
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getClientCertificate(session: Http2Session): Certificate {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -164,6 +168,7 @@ class GRPCServer {
     return this.clientCertChains.get(session)![0];
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getClientCertificates(session: Http2Session): Array<Certificate> {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -171,6 +176,7 @@ class GRPCServer {
     return this.clientCertChains.get(session)!;
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public setTLSConfig(tlsConfig: TLSConfig): void {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -188,6 +194,7 @@ class GRPCServer {
     return;
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public closeServerForce(): void {
     this.server.forceShutdown();
   }

@@ -68,7 +68,7 @@ class NodeGraph {
       if (!this.db.running) {
         throw new dbErrors.ErrorDBNotRunning();
       }
-      if (!this.nodeManager.started) {
+      if (!this.nodeManager.running) {
         throw new nodesErrors.ErrorNodeManagerNotStarted();
       }
       const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);

@@ -39,7 +39,7 @@ describe('Sigchain', () => {
   });
   afterEach(async () => {
     await db.stop();
-    await keyManager.stop();
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -47,15 +47,13 @@ describe('Sigchain', () => {
   });
 
   test('async start initialises the sequence number', async () => {
-    const sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     const sequenceNumber = await sigchain.getSequenceNumber();
     expect(sequenceNumber).toBe(0);
-    await sigchain.stop();
+    await sigchain.destroy();
   });
   test('adds and retrieves a cryptolink, verifies signature', async () => {
-    const sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     const cryptolink: ClaimData = {
       type: 'node',
       node1: srcNodeId,
@@ -94,11 +92,10 @@ describe('Sigchain', () => {
     );
     expect(verified).toBe(true);
 
-    await sigchain.stop();
+    await sigchain.destroy();
   });
   test('adds and retrieves 2 cryptolinks, verifies signatures and hash', async () => {
-    const sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     const cryptolink: ClaimData = {
       type: 'node',
       node1: srcNodeId,
@@ -180,11 +177,10 @@ describe('Sigchain', () => {
     );
     expect(verifiedHash).toBe(true);
 
-    await sigchain.stop();
+    await sigchain.destroy();
   });
   test('adds an existing claim', async () => {
-    const sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     // Create a claim
     // Firstly, check that we can add an existing claim if it's the first claim
     // in the sigchain
@@ -260,8 +256,7 @@ describe('Sigchain', () => {
     ).rejects.toThrow(sigchainErrors.ErrorSigchainInvalidSequenceNum);
   });
   test('retrieves chain data', async () => {
-    const sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
 
     // Add 10 claims
     for (let i = 1; i <= 5; i++) {
@@ -304,8 +299,7 @@ describe('Sigchain', () => {
     }
   });
   test('retrieves all cryptolinks (nodes and identities) from sigchain (in expected lexicographic order)', async () => {
-    const sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
 
     // Add 30 claims
     for (let i = 1; i <= 30; i++) {
@@ -426,6 +420,6 @@ describe('Sigchain', () => {
       i++;
     }
 
-    await sigchain.stop();
+    await sigchain.destroy();
   });
 });

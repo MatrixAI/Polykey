@@ -6,6 +6,7 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as utils from '@/utils';
 import config from '@/config';
 import { ErrorStateVersionMismatch } from '@/errors';
+import { checkAgentRunning } from '@/agent/utils';
 
 describe('Polykey', () => {
   const password = 'password';
@@ -134,4 +135,20 @@ describe('Polykey', () => {
     },
     global.polykeyStartupTimeout,
   );
+  test('Stopping and destroying properly stops Polykey', async () => {
+    //Starting.
+    const nodePath = `${dataDir}/polykey`;
+    pk = await PolykeyAgent.createPolykey({
+      password,
+      nodePath,
+      logger,
+    });
+    await pk.start({});
+    expect(await checkAgentRunning(nodePath)).toBeTruthy();
+
+    await pk.stop();
+    expect(await checkAgentRunning(nodePath)).toBeFalsy();
+    await pk.destroy();
+    expect(await checkAgentRunning(nodePath)).toBeFalsy();
+  });
 });

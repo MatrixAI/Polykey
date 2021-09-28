@@ -1,7 +1,7 @@
 import type { NodeId, NodeData } from './types';
 
 import { Validator } from 'ip-num';
-import { ErrorInvalidNodeId } from '@/nodes/errors';
+import { ErrorInvalidNodeId } from '../errors';
 
 /**
  * Compute the distance between two nodes.

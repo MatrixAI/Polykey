@@ -108,10 +108,10 @@ class VaultManager {
   get started(): boolean {
     if (
       this._started &&
-      this.keyManager.started &&
+      !this.keyManager.destroyed &&
       this.db.running &&
-      this.acl.started &&
-      this.gestaltGraph.started
+      this.acl.destroyed &&
+      this.gestaltGraph.destroyed
     ) {
       return true;
     }
@@ -137,16 +137,16 @@ class VaultManager {
   }
 
   public async start({ fresh = false }: { fresh?: boolean }): Promise<void> {
-    if (!this.keyManager.started) {
-      throw new keysErrors.ErrorKeyManagerNotStarted();
+    if (this.keyManager.destroyed) {
+      throw new keysErrors.ErrorKeyManagerDestroyed();
     } else if (!this.db.running) {
       throw new dbErrors.ErrorDBNotRunning();
-    } else if (!this.nodeManager.started) {
+    } else if (!this.nodeManager.running) {
       throw new nodesErrors.ErrorNodeManagerNotStarted();
-    } else if (!this.acl.started) {
-      throw new aclErrors.ErrorACLNotStarted();
-    } else if (!this.gestaltGraph.started) {
-      throw new gestaltErrors.ErrorGestaltsGraphNotStarted();
+    } else if (this.acl.destroyed) {
+      throw new aclErrors.ErrorACLDestroyed();
+    } else if (this.gestaltGraph.destroyed) {
+      throw new gestaltErrors.ErrorGestaltsGraphDestroyed();
     }
     this.logger.info('Starting Vault Manager');
     if (fresh) {

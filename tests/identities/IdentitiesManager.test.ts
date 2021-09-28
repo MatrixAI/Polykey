@@ -48,18 +48,17 @@ describe('IdentitiesManager', () => {
   afterEach(async () => {
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
   test('get, set and unset tokens', async () => {
-    const identitiesManager = new IdentitiesManager({
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
       logger,
     });
-    await identitiesManager.start();
     const providerId = 'test-provider' as ProviderId;
     const identityId = 'test-user' as IdentityId;
     const tokenData = {
@@ -75,14 +74,14 @@ describe('IdentitiesManager', () => {
       identityId,
     );
     expect(tokenData__).toBeUndefined();
-    await identitiesManager.stop();
+    await identitiesManager.destroy();
   });
   test('start and stop preserves state', async () => {
-    const identitiesManager = new IdentitiesManager({
+    //FIXME, save some actual state to check.
+    let identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
       logger,
     });
-    await identitiesManager.start();
     const providerId = 'test-provider' as ProviderId;
     const identityId = 'test-user' as IdentityId;
     const tokenData = {
@@ -91,21 +90,25 @@ describe('IdentitiesManager', () => {
     await identitiesManager.putToken(providerId, identityId, tokenData);
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
-    await identitiesManager.stop();
-    await identitiesManager.start();
+    await identitiesManager.destroy();
+
+    identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      logger,
+    });
+    identitiesManager.registerProvider(testProvider);
     const tokenData_ = await identitiesManager.getToken(providerId, identityId);
     expect(tokenData).toStrictEqual(tokenData_);
     expect(identitiesManager.getProviders()).toStrictEqual({
       [testProvider.id]: testProvider,
     });
-    await identitiesManager.stop();
+    await identitiesManager.destroy();
   });
   test('fresh start deletes all state', async () => {
-    const identitiesManager = new IdentitiesManager({
+    let identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
       logger,
     });
-    await identitiesManager.start();
     const providerId = 'test-provider' as ProviderId;
     const identityId = 'test-user' as IdentityId;
     const tokenData = {
@@ -114,19 +117,23 @@ describe('IdentitiesManager', () => {
     await identitiesManager.putToken(providerId, identityId, tokenData);
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
-    await identitiesManager.stop();
-    await identitiesManager.start({ fresh: true });
+    await identitiesManager.destroy();
+
+    identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      logger,
+      fresh: true,
+    });
     const tokenData_ = await identitiesManager.getToken(providerId, identityId);
     expect(tokenData_).toBeUndefined();
     expect(identitiesManager.getProviders()).toStrictEqual({});
-    await identitiesManager.stop();
+    await identitiesManager.destroy();
   });
   test('register and unregister providers', async () => {
-    const identitiesManager = new IdentitiesManager({
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
       logger,
     });
-    await identitiesManager.start();
     const testProvider = new TestProvider();
     const githubProvider = new providers.GithubProvider({
       clientId: 'randomclientid',
@@ -147,14 +154,13 @@ describe('IdentitiesManager', () => {
     identitiesManager.unregisterProvider(githubProvider.id);
     ps = identitiesManager.getProviders();
     expect(ps).toStrictEqual({});
-    await identitiesManager.stop();
+    await identitiesManager.destroy();
   });
   test('using TestProvider', async () => {
-    const identitiesManager = new IdentitiesManager({
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
       logger,
     });
-    await identitiesManager.start();
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
     // We are going to run authenticate
@@ -230,6 +236,6 @@ describe('IdentitiesManager', () => {
       publishedClaims.push(claim);
     }
     expect(publishedClaims).toContainEqual(publishedClaim);
-    await identitiesManager.stop();
+    await identitiesManager.destroy();
   });
 });

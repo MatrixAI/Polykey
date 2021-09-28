@@ -37,7 +37,7 @@ commandAllowGestalts.action(async (id, permissions, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const gestaltTrustMessage = new clientPB.GestaltTrustMessage();
   gestaltTrustMessage.setSet(options.trust);
 

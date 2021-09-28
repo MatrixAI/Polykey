@@ -7,9 +7,10 @@ import Logger from '@matrixai/logger';
 import * as utils from './utils';
 import { Session } from './sessions';
 import { Lockfile, LOCKFILE_NAME } from './lockfile';
-import { ErrorPolykey } from './errors';
+import * as errors from './errors';
 import { GRPCClientClient } from './client';
 import { ErrorClientClientNotStarted } from './client/errors';
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -22,6 +23,11 @@ import { ErrorClientClientNotStarted } from './client/errors';
  * It should read from some lockfile in the nodePath,
  * which is usually the default polykey path
  */
+interface PolykeyClient extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new errors.ErrorPolykeyClientNotRunning(),
+  new errors.ErrorPolykeyClientDestroyed(),
+)
 class PolykeyClient {
   protected _grpcClient: GRPCClientClient;
 
@@ -36,7 +42,7 @@ class PolykeyClient {
   // Session
   public readonly session: Session;
 
-  constructor({
+  static async createPolykeyClient({
     nodePath,
     fs,
     logger,
@@ -44,19 +50,44 @@ class PolykeyClient {
     nodePath?: string;
     fs?: FileSystem;
     logger?: Logger;
-  }) {
-    this.fs = fs ?? require('fs');
-    this.logger = logger ?? new Logger('CLI Logger');
-
-    this.nodePath =
+  }): Promise<PolykeyClient> {
+    const fs_ = fs ?? require('fs');
+    const logger_ = logger ?? new Logger('CLI Logger');
+    const nodePath_ =
       nodePath ?? path.resolve(nodePath ?? utils.getDefaultNodePath());
-    this.lockPath = path.join(this.nodePath, LOCKFILE_NAME);
-    this.clientPath = path.join(this.nodePath, 'client');
-
-    this.session = new Session({
-      clientPath: this.clientPath,
-      logger: this.logger,
+    const clientPath_ = path.join(nodePath_, 'client');
+    const session_ = new Session({
+      clientPath: clientPath_,
+      logger: logger_,
     });
+    return new PolykeyClient({
+      fs: fs_,
+      logger: logger_,
+      nodePath: nodePath_,
+      clientPath: clientPath_,
+      session: session_,
+    });
+  }
+
+  constructor({
+    nodePath,
+    fs,
+    logger,
+    clientPath,
+    session,
+  }: {
+    nodePath: string;
+    fs: FileSystem;
+    logger: Logger;
+    clientPath: string;
+    session: Session;
+  }) {
+    this.fs = fs;
+    this.logger = logger;
+    this.nodePath = nodePath;
+    this.lockPath = path.join(this.nodePath, LOCKFILE_NAME);
+    this.clientPath = clientPath;
+    this.session = session;
   }
 
   public async start({
@@ -68,6 +99,7 @@ class PolykeyClient {
     host?: string;
     port?: number;
   }) {
+    this.logger.info('Starting PolykeyClient');
     const status = await Lockfile.checkLock(this.fs, this.lockPath);
     if (status === 'UNLOCKED') {
       throw new ErrorClientClientNotStarted(
@@ -83,14 +115,14 @@ class PolykeyClient {
     try {
       lock = await Lockfile.parseLock(this.fs, this.lockPath);
     } catch (err) {
-      throw new ErrorPolykey('Could not parse Polykey Lockfile.');
+      throw new errors.ErrorPolykey('Could not parse Polykey Lockfile.');
     }
 
     // Attempt to read token from fs and start session.
     await this.session.start();
 
     // Create a new GRPCClientClient
-    this._grpcClient = new GRPCClientClient({
+    this._grpcClient = await GRPCClientClient.createGRPCCLientClient({
       nodeId: lock.nodeId as NodeId,
       host: host ?? lock.host ?? 'localhost',
       port: port ?? lock.port ?? 0,
@@ -110,12 +142,19 @@ class PolykeyClient {
     }
 
     await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
+    this.logger.info('Started PolykeyClient');
   }
 
   public async stop() {
+    this.logger.info('Stopping PolykeyClient');
     if (this.grpcClient) {
       await this.grpcClient.stop();
     }
+    this.logger.info('Stopped PolykeyClient');
+  }
+
+  public async destroy() {
+    this.logger.info('Destroyed PolykeyClient');
   }
 
   public get grpcClient(): GRPCClientClient {
