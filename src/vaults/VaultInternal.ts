@@ -33,25 +33,57 @@ class VaultInternal {
   public readonly vaultId: VaultId;
 
   public vaultName: VaultName;
-  public efs: EncryptedFS;
+  protected efs: EncryptedFS;
   protected logger: Logger;
+  protected _lock: MutexInterface;
   protected _started: boolean;
 
-  constructor({
+  public static async create({
     vaultId,
     vaultName,
-    baseDir,
+    efs,
     logger,
   }: {
     vaultId: VaultId;
     vaultName: VaultName;
-    baseDir: string;
+    efs: EncryptedFS;
+    logger?: Logger;
+  }) {
+    logger = logger ?? new Logger(this.constructor.name);
+    const vault = new VaultInternal({
+      vaultId,
+      vaultName,
+      efs,
+      logger,
+    })
+    await git.init({
+      fs: efs,
+      dir: '.',
+    });
+    await efs.writeFile(
+      path.join('.git', 'packed-refs'),
+      '# pack-refs with: peeled fully-peeled sorted',
+    );
+    logger.info(`Initialising vault at '${vaultId}'`);
+    return vault;
+  }
+
+  constructor({
+    vaultId,
+    vaultName,
+    efs,
+    logger,
+  }: {
+    vaultId: VaultId;
+    vaultName: VaultName;
+    efs: EncryptedFS;
     logger?: Logger;
   }) {
     this.vaultId = vaultId;
     this.vaultName = vaultName;
-    this.baseDir = baseDir;
+    this.efs = efs;
     this.logger = logger ?? new Logger(this.constructor.name);
+    this._lock = new Mutex();
     this._started = false;
   }
 
@@ -59,26 +91,16 @@ class VaultInternal {
     return this._started;
   }
 
-  public async start({ key }: { key: VaultKey }): Promise<void> {
-    this.efs = await EncryptedFS.createEncryptedFS({
-      dbKey: key,
-      dbPath: this.baseDir,
-      logger: this.logger.getChild('EncryptedFS'),
-    });
-    await git.init({
-      fs: this.efs,
-      dir: '.',
-    });
+  public async start(): Promise<void> {
   }
 
-  public async stop(): Promise<void> {
+  public async destroy(): Promise<void> {
   }
 
   public async commit(
     f: (fs: EncryptedFS) => Promise<void>,
-    vaultLock: MutexInterface
   ) {
-    const release = await vaultLock.acquire();
+    const release = await this._lock.acquire();
     const message: string[] = [];
     try {
       await f(this.efs);
@@ -106,22 +128,31 @@ class VaultInternal {
         message: message.toString(),
       });
     } finally {
+      await git.checkout({
+        fs: this.efs,
+        dir: '.',
+      });
       release();
     }
   }
 
-  public async log(): Promise<Array<ReadCommitResult>> {
-    return await git.log({
+  public async log(): Promise<Array<String>> {
+    const log = await git.log({
       fs: this.efs,
       dir: '.'
     });
+    return log.map((readCommit) => {
+      return `commit ${readCommit.oid}\n
+      Author: ${readCommit.commit.author.name} <${readCommit.commit.author.email}>\n
+      Date: ${readCommit.commit.author.timestamp}\n
+      ${readCommit.commit.message}`
+    })
   }
 
   public async revert(commit: string) {
   }
 
   public async applySchema(vs) {
-
   }
 }
 
