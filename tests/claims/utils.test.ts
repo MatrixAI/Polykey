@@ -402,7 +402,9 @@ describe('Claims utils', () => {
         },
       }, // signee node ID -> claim signature
     };
-    expect(claimsUtils.validateSinglySignedNodeClaim(singlySignedNodeClaim)).toEqual(singlySignedNodeClaim);
+    expect(
+      claimsUtils.validateSinglySignedNodeClaim(singlySignedNodeClaim),
+    ).toEqual(singlySignedNodeClaim);
 
     const doublySignedNodeClaim: Claim = {
       payload: {
@@ -432,7 +434,9 @@ describe('Claims utils', () => {
         },
       }, // signee node ID -> claim signature
     };
-    expect(claimsUtils.validateDoublySignedNodeClaim(doublySignedNodeClaim)).toEqual(doublySignedNodeClaim);
+    expect(
+      claimsUtils.validateDoublySignedNodeClaim(doublySignedNodeClaim),
+    ).toEqual(doublySignedNodeClaim);
 
     const identityClaim: Claim = {
       payload: {
@@ -456,7 +460,9 @@ describe('Claims utils', () => {
         },
       },
     };
-    expect(claimsUtils.validateIdentityClaim(identityClaim)).toEqual(identityClaim);
+    expect(claimsUtils.validateIdentityClaim(identityClaim)).toEqual(
+      identityClaim,
+    );
   });
   test('rejects invalid singly signed claims', async () => {
     let claim = {
