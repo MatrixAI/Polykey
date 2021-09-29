@@ -33,10 +33,11 @@ class VaultInternal {
   public readonly vaultId: VaultId;
 
   public vaultName: VaultName;
-  protected efs: EncryptedFS;
-  protected logger: Logger;
+  protected _efs: EncryptedFS;
+  protected _logger: Logger;
   protected _lock: MutexInterface;
   protected _started: boolean;
+  protected _workingDir: string;
 
   public static async create({
     vaultId,
@@ -50,25 +51,35 @@ class VaultInternal {
     logger?: Logger;
   }) {
     logger = logger ?? new Logger(this.constructor.name);
-    const vault = new VaultInternal({
-      vaultId,
-      vaultName,
-      efs,
-      logger,
-    })
     await git.init({
       fs: efs,
       dir: '.',
+    });
+    const workingDir = await git.commit({
+      fs: efs,
+      dir: '.',
+      author: {
+        name: vaultId,
+      },
+      message: 'Initial Commit',
     });
     await efs.writeFile(
       path.join('.git', 'packed-refs'),
       '# pack-refs with: peeled fully-peeled sorted',
     );
+    await efs.writeFile(path.join('.git', 'workingDir'), workingDir);
+    const vault = new VaultInternal({
+      vaultId,
+      vaultName,
+      efs,
+      workingDir,
+      logger,
+    });
     logger.info(`Initialising vault at '${vaultId}'`);
     return vault;
   }
 
-  constructor({
+  public static async start({
     vaultId,
     vaultName,
     efs,
@@ -78,23 +89,59 @@ class VaultInternal {
     vaultName: VaultName;
     efs: EncryptedFS;
     logger?: Logger;
+  }): Promise<VaultInternal> {
+    logger = logger ?? new Logger(this.constructor.name);
+    const workingDir = await efs.readFile(path.join('.git', 'workingDir'), { encoding: 'utf8' }) as string;
+    const vault = new VaultInternal({
+      vaultId,
+      vaultName,
+      efs,
+      workingDir,
+      logger,
+    });
+    logger.info(`Starting vault at '${vaultId}'`);
+    return vault;
+  }
+
+  constructor({
+    vaultId,
+    vaultName,
+    efs,
+    workingDir,
+    logger,
+  }: {
+    vaultId: VaultId;
+    vaultName: VaultName;
+    efs: EncryptedFS;
+    workingDir: string;
+    logger?: Logger;
   }) {
     this.vaultId = vaultId;
     this.vaultName = vaultName;
-    this.efs = efs;
-    this.logger = logger ?? new Logger(this.constructor.name);
+    this._efs = efs;
+    this._workingDir = workingDir;
+    this._logger = logger ?? new Logger(this.constructor.name);
     this._lock = new Mutex();
-    this._started = false;
+    this._started = true;
   }
 
   get started(): boolean {
     return this._started;
   }
 
-  public async start(): Promise<void> {
+  public async stop(): Promise<void> {
+    const release = await this._lock.acquire();
+    try {
+      await this._efs.writeFile(path.join('.git', 'workingDirectory'), this._workingDir);
+    } finally {
+      release();
+      this._logger.info(`Stopping vault at '${this.vaultId}'`);
+      this._started = false;
+    }
   }
 
   public async destroy(): Promise<void> {
+    this._logger.info(`Destroying vault at '${this.vaultId}'`);
   }
 
   public async commit(
@@ -102,25 +149,34 @@ class VaultInternal {
   ) {
     const release = await this._lock.acquire();
     const message: string[] = [];
+    await git.checkout({
+      fs: this._efs,
+      dir: '.',
+      ref: this._workingDir,
+    });
     try {
-      await f(this.efs);
-      for await (const file of vaultsUtils.readdirRecursivelyEFS(this.efs, '.', false)) {
+      await f(this._efs);
+      for await (const file of vaultsUtils.readdirRecursivelyEFS(this._efs, '.', false)) {
         await git.add({
-          fs: this.efs,
+          fs: this._efs,
           dir: '.',
           filepath: file,
         });
         const status = await git.status({
-          fs: this.efs,
+          fs: this._efs,
           dir: '.',
           filepath: file,
         });
-        if (status === 'added' || status === 'deleted' || status === 'modified') {
+        if (
+          status === 'added' ||
+          status === 'deleted' ||
+          status === 'modified'
+        ) {
           message.push(file + ' ' + status);
         }
       }
-      await git.commit({
-        fs: this.efs,
+      this._workingDir = await git.commit({
+        fs: this._efs,
         dir: '.',
         author: {
           name: this.vaultId,
@@ -128,28 +184,47 @@ class VaultInternal {
         message: message.toString(),
       });
     } finally {
+      for await (const file of vaultsUtils.readdirRecursivelyEFS(this._efs, '.', false)) {
+        await git.add({
+          fs: this._efs,
+          dir: '.',
+          filepath: file,
+        });
+      }
       await git.checkout({
-        fs: this.efs,
+        fs: this._efs,
         dir: '.',
+        ref: this._workingDir,
       });
       release();
     }
   }
 
-  public async log(): Promise<Array<String>> {
+  public async log(depth: 1, commit?: string): Promise<string>;
+  public async log(depth?: number, commit?: string): Promise<Array<string>>;
+  public async log(depth?: number, commit?: string): Promise<Array<string> | string> {
     const log = await git.log({
-      fs: this.efs,
-      dir: '.'
+      fs: this._efs,
+      dir: '.',
+      depth: depth,
+      ref: commit,
     });
     return log.map((readCommit) => {
-      return `commit ${readCommit.oid}\n
-      Author: ${readCommit.commit.author.name} <${readCommit.commit.author.email}>\n
-      Date: ${readCommit.commit.author.timestamp}\n
-      ${readCommit.commit.message}`
-    })
+      return `commit ${readCommit.oid}\n` +
+      `Author: ${readCommit.commit.author.name}\n` +
+      `Date: ${new Date(readCommit.commit.author.timestamp * 1000)}\n` +
+      `${readCommit.commit.message}\n`
+    });
   }
 
-  public async revert(commit: string) {
+  public async versionCheckout(commit: string): Promise<void> {
+    await git.checkout({
+      fs: this._efs,
+      dir: '.',
+      ref: commit,
+      noUpdateHead: true,
+    });
+    this._workingDir = commit;
   }
 
   public async applySchema(vs) {
