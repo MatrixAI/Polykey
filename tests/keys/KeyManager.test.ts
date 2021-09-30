@@ -369,6 +369,70 @@ describe('KeyManager', () => {
     expect(await fs.promises.readdir(keysPath)).toContain('db_key');
     expect(keyManager.dbKey.toString()).toBeTruthy();
   });
-  test.todo('Throws an exception when it fails to read the DB key.');
-  test.todo('Throws an exception when it fails to parse the DB key.');
+  test('Throws an exception when it fails to parse the DB key.', async () => {
+    const keysPath = `${dataDir}/keys`;
+    let keyManager = await KeyManager.createKeyManager({
+      password: "Password",
+      keysPath,
+      logger,
+    });
+    expect(await fs.promises.readdir(keysPath)).toContain('db_key');
+    expect(keyManager.dbKey.toString()).toBeTruthy();
+    await keyManager.stop();
+
+    // use a different key.
+    await expect(KeyManager.createKeyManager({
+      password: "OtherPassword",
+      keysPath,
+      logger,
+    })).rejects.toThrow();
+  });
+  test('DB key remains unchanged when resetting keys.', async () => {
+    const keysPath = `${dataDir}/keys`;
+    let keyManager = await KeyManager.createKeyManager({
+      password: "Password",
+      keysPath,
+      logger,
+    });
+    expect(await fs.promises.readdir(keysPath)).toContain('db_key');
+    expect(keyManager.dbKey.toString()).toBeTruthy();
+    const dbKey = keyManager.dbKey;
+
+    await keyManager.resetRootKeyPair('NewPassword');
+    expect(keyManager.dbKey).toEqual(dbKey);
+    await keyManager.stop();
+
+    // use a different key.
+    keyManager = await KeyManager.createKeyManager({
+      password: "NewPassword",
+      keysPath,
+      logger,
+    });
+    expect(keyManager.dbKey).toEqual(dbKey);
+    await keyManager.stop();
+  });
+  test('DB key remains unchanged when renewing keys.', async () => {
+    const keysPath = `${dataDir}/keys`;
+    let keyManager = await KeyManager.createKeyManager({
+      password: "Password",
+      keysPath,
+      logger,
+    });
+    expect(await fs.promises.readdir(keysPath)).toContain('db_key');
+    expect(keyManager.dbKey.toString()).toBeTruthy();
+    const dbKey = keyManager.dbKey;
+
+    await keyManager.renewRootKeyPair('NewPassword');
+    expect(keyManager.dbKey).toEqual(dbKey);
+    await keyManager.stop();
+
+    // use a different key.
+    keyManager = await KeyManager.createKeyManager({
+      password: "NewPassword",
+      keysPath,
+      logger,
+    });
+    expect(keyManager.dbKey).toEqual(dbKey);
+    await keyManager.stop();
+  });
 });
