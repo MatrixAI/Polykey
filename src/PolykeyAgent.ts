@@ -151,6 +151,12 @@ class Polykey {
     logger_.info(`Setting node path to ${nodePath_}`);
     await utils.mkdirExists(fs_, nodePath_, { recursive: true });
 
+    const workers_ =
+      workerManager ??
+      (await WorkerManager.createPolykeyWorkerManager({
+        cores: 1,
+        logger: logger_.getChild('WorkerManager'),
+      }));
     const fwdProxy_ =
       fwdProxy ??
       new ForwardProxy({
@@ -184,6 +190,7 @@ class Polykey {
           },
         },
       }));
+    db_.setWorkerManager(workers_);
     const sigchain_ =
       sigchain ??
       new Sigchain({
@@ -227,6 +234,7 @@ class Polykey {
         fs: fs_,
         logger: logger_.getChild('VaultManager'),
       });
+    vaults_.setWorkerManager(workers_);
     const identities_ =
       identitiesManager ??
       new IdentitiesManager({
@@ -250,12 +258,7 @@ class Polykey {
         keyManager: keys_,
         logger: logger_.getChild('NotificationsManager'),
       });
-    const workers_ =
-      workerManager ??
-      (await WorkerManager.createPolykeyWorkerManager({
-        cores: 1,
-        logger: logger_.getChild('WorkerManager'),
-      }));
+
 
     return new Polykey({
       acl: acl_,
