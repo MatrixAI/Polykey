@@ -101,7 +101,7 @@ describe('agent utils', () => {
         agentUtils.checkAgentRunning(nodePath),
       ).resolves.toBeTruthy();
 
-      await expect(
+      await expect(() =>
         agentUtils.spawnBackgroundAgent(nodePath, password),
       ).rejects.toThrow('running');
       await expect(

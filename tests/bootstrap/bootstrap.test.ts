@@ -91,16 +91,16 @@ describe('Bootstrap', () => {
 
     test('Should throw error if other files exists.', async () => {
       await fs.promises.mkdir(path.join(nodePath, 'NotAnNodeDirectory'));
-      await expect(bootstrapPolykeyState(nodePath, password)).rejects.toThrow(
-        bootstrapErrors.ErrorExistingState,
-      );
+      await expect(() =>
+        bootstrapPolykeyState(nodePath, password),
+      ).rejects.toThrow(bootstrapErrors.ErrorExistingState);
     });
 
     test('should throw error if keynode already exists.', async () => {
       await fakeKeynode(nodePath);
-      await expect(bootstrapPolykeyState(nodePath, password)).rejects.toThrow(
-        bootstrapErrors.ErrorMalformedKeynode,
-      );
+      await expect(() =>
+        bootstrapPolykeyState(nodePath, password),
+      ).rejects.toThrow(bootstrapErrors.ErrorMalformedKeynode);
     });
 
     test('should be able to start agent on created state.', async () => {

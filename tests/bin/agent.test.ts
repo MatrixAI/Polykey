@@ -343,7 +343,7 @@ describe('CLI agent', () => {
           { encoding: 'utf-8' },
         );
 
-        await expect(
+        await expect(() =>
           activeAgent.sessions.verifyToken(content as SessionToken),
         ).rejects.toThrow(sessionErrors.ErrorSessionTokenInvalid);
       });
@@ -389,9 +389,9 @@ describe('CLI agent', () => {
         ]);
         expect(result.code).toBe(0);
 
-        await expect(activeAgent.sessions.verifyToken(token)).rejects.toThrow(
-          sessionErrors.ErrorSessionTokenInvalid,
-        );
+        await expect(() =>
+          activeAgent.sessions.verifyToken(token),
+        ).rejects.toThrow(sessionErrors.ErrorSessionTokenInvalid);
       });
     });
     describe('Bin commands should fail when session is locked.', () => {

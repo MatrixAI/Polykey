@@ -370,7 +370,7 @@ describe('GRPC agent', () => {
       // 2. X <- sends its intermediary signed claim <- Y
       const crossSignMessageUndefinedSingly = new agentPB.CrossSignMessage();
       await genClaims.write(crossSignMessageUndefinedSingly);
-      await expect(genClaims.read()).rejects.toThrow(
+      await expect(() => genClaims.read()).rejects.toThrow(
         claimsErrors.ErrorUndefinedSinglySignedClaim,
       );
       expect(genClaims.stream.destroyed).toBe(true);
@@ -388,7 +388,7 @@ describe('GRPC agent', () => {
         intermediaryNoSignature,
       );
       await genClaims.write(crossSignMessageUndefinedSinglySignature);
-      await expect(genClaims.read()).rejects.toThrow(
+      await expect(() => genClaims.read()).rejects.toThrow(
         claimsErrors.ErrorUndefinedSignature,
       );
       expect(genClaims.stream.destroyed).toBe(true);

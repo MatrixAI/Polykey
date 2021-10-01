@@ -175,7 +175,7 @@ describe('Client service', () => {
 
     // Hard Coded error
     m.setChallenge('ThrowAnError');
-    await expect(echo(m)).rejects.toThrow(polykeyErrors.ErrorPolykey);
+    await expect(() => echo(m)).rejects.toThrow(polykeyErrors.ErrorPolykey);
   });
   describe('sessions', () => {
     test('can request a session', async () => {
@@ -249,7 +249,7 @@ describe('Client service', () => {
       await sessionLockAll(emptyMessage, callCredentials);
 
       //Should reject the session token.
-      await expect(echo(echoMessage, callCredentials)).rejects.toThrow(
+      await expect(() => echo(echoMessage, callCredentials)).rejects.toThrow(
         ErrorSessionTokenInvalid,
       );
     });
@@ -367,9 +367,9 @@ describe('Client service', () => {
       }
       expect(list).toStrictEqual(vaultList2.sort());
 
-      await expect(deleteVault(vaultMessage, callCredentials)).rejects.toThrow(
-        vaultErrors.ErrorVaultUndefined,
-      );
+      await expect(() =>
+        deleteVault(vaultMessage, callCredentials)
+      ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
 
       await cleanVaultList(vaultList);
     });
@@ -1004,7 +1004,7 @@ describe('Client service', () => {
       await vaultManager.stop();
       await keyManager.stop();
 
-      // Await expect(
+      // Await expect(() =>
       //   keyManager.start({ password: 'password' }), // FIXME
       // ).rejects.toThrow();
 
@@ -1318,7 +1318,7 @@ describe('Client service', () => {
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setNodeId(node2.id);
       //I have no idea how to test this. so we just check for expected error for now.
-      await expect(
+      await expect(() =>
         gestaltsDiscoverNode(nodeMessage, callCredentials),
       ).rejects.toThrow(nodesErrors.ErrorNodeGraphEmptyDatabase);
     });
@@ -1683,9 +1683,9 @@ describe('Client service', () => {
         const nodeMessage = new clientPB.NodeMessage();
         nodeMessage.setNodeId(nodeId);
         // So unfindableNode cannot be found
-        await expect(nodesFind(nodeMessage, callCredentials)).rejects.toThrow(
-          nodesErrors.ErrorNodeGraphNodeNotFound,
-        );
+        await expect(() => 
+          nodesFind(nodeMessage, callCredentials)
+        ).rejects.toThrow(nodesErrors.ErrorNodeGraphNodeNotFound);
       },
       global.failedConnectionTimeout * 2,
     );

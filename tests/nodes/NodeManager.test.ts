@@ -204,7 +204,7 @@ describe('NodeManager', () => {
         } as NodeAddress,
       );
       // So unfindableNode cannot be found
-      await expect(nodeManager.findNode(nodeId)).rejects.toThrowError(
+      await expect(() => nodeManager.findNode(nodeId)).rejects.toThrowError(
         nodesErrors.ErrorNodeGraphNodeNotFound,
       );
 

@@ -110,14 +110,14 @@ describe('Git utils', () => {
       expect(ref).toBe('refs/heads/master');
     });
     test('non-existant refs', async () => {
-      await expect(
+      await expect(() =>
         gitUtils.resolve(fs, path.join(dataDir, '.git'), 'this-is-not-a-ref'),
       ).rejects.toThrow(gitErrors.ErrorGitUndefinedRefs);
     });
   });
   describe('read object', () => {
     test('object missing', async () => {
-      await expect(
+      await expect(() =>
         gitUtils.readObject({
           fs: fs,
           gitdir: path.join(dataDir, '.git'),

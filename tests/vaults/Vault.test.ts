@@ -73,7 +73,7 @@ describe('Vault is', () => {
     await vault.addSecret('secret-1', 'secret-content');
     const secret = await vault.getSecret('secret-1');
     expect(secret).toBe('secret-content');
-    await expect(vault.getSecret('doesnotexist')).rejects.toThrow(
+    await expect(() => vault.getSecret('doesnotexist')).rejects.toThrow(
       errors.ErrorSecretUndefined,
     );
     await vault.stop();
@@ -156,7 +156,7 @@ describe('Vault is', () => {
     await vault.addSecret('secret-1', 'secret-content');
     await vault.mkdir('dir-1');
     await vault.deleteSecret('secret-1');
-    await expect(vault.deleteSecret('dir-1')).rejects.toThrow(
+    await expect(() => vault.deleteSecret('dir-1')).rejects.toThrow(
       errors.ErrorRecursive,
     );
     await expect(
@@ -166,7 +166,7 @@ describe('Vault is', () => {
   });
   test('deleting a secret within a directory', async () => {
     await vault.start({ key });
-    await expect(vault.mkdir(path.join('dir-1', 'dir-2'))).rejects.toThrow(
+    await expect(() => vault.mkdir(path.join('dir-1', 'dir-2'))).rejects.toThrow(
       errors.ErrorRecursive,
     );
     await vault.mkdir(path.join('dir-1', 'dir-2'), { recursive: true });

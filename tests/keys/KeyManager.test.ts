@@ -36,7 +36,7 @@ describe('KeyManager', () => {
     // FIXME: this has side effects now.
     const keysPath = `${dataDir}/keys`;
     await KeyManager.createKeyManager({ password, keysPath, logger });
-    await expect(fs.promises.stat(keysPath)).rejects.toThrow(/ENOENT/);
+    await expect(() => fs.promises.stat(keysPath)).rejects.toThrow(/ENOENT/);
   });
   test('async start constructs root key pair and root cert and root certs', async () => {
     const keysPath = `${dataDir}/keys`;

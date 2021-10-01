@@ -329,7 +329,7 @@ describe('NodeConnection', () => {
     // Expected to throw an error, as the connection to 1.1.1.1:11111 would not
     // exist on the server's side. A broker is expected to have this pre-existing
     // connection.
-    expect(
+    expect(() =>
       conn.sendHolePunchMessage(
         sourceNodeId,
         'NODEID' as NodeId,

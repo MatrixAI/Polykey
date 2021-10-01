@@ -89,7 +89,7 @@ describe('GRPC utils', () => {
     const messageTo = new testPB.EchoMessage();
     messageTo.setChallenge(challenge);
     const stream = serverStream(messageTo);
-    await expect(stream.next()).rejects.toThrow(grpcErrors.ErrorGRPC);
+    await expect(() => stream.next()).rejects.toThrow(grpcErrors.ErrorGRPC);
     // The generator will have ended
     // the internal stream will be automatically destroyed
     const result = await stream.next();
@@ -240,7 +240,7 @@ describe('GRPC utils', () => {
     await genDuplex.read(null);
     const messageTo = new testPB.EchoMessage();
     messageTo.setChallenge('d89f7u983e4d');
-    await expect(genDuplex.write(messageTo)).rejects.toThrow(
+    await expect(() => genDuplex.write(messageTo)).rejects.toThrow(
       /Cannot call write after a stream was destroyed/,
     );
     try {
@@ -260,7 +260,7 @@ describe('GRPC utils', () => {
     const messageTo = new testPB.EchoMessage();
     messageTo.setChallenge('error');
     await genDuplex.write(messageTo);
-    await expect(genDuplex.read()).rejects.toThrow(grpcErrors.ErrorGRPC);
+    await expect(() => genDuplex.read()).rejects.toThrow(grpcErrors.ErrorGRPC);
     expect(genDuplex.stream.destroyed).toBe(true);
     expect(genDuplex.stream.getPeer()).toBe(`127.0.0.1:${port}`);
   });
@@ -272,7 +272,7 @@ describe('GRPC utils', () => {
     const genDuplex = duplexStream();
     const messageTo = new testPB.EchoMessage();
     messageTo.setChallenge('error');
-    await expect(genDuplex.next(messageTo)).rejects.toThrow(
+    await expect(() => genDuplex.next(messageTo)).rejects.toThrow(
       grpcErrors.ErrorGRPC,
     );
     expect(genDuplex.stream.destroyed).toBe(true);
