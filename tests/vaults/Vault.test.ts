@@ -14,7 +14,7 @@ import { EncryptedFS } from 'encryptedfs';
 import * as errors from '@/vaults/errors';
 import * as utils from '@/utils';
 
-describe.skip('Vault is', () => {
+describe('Vault is', () => {
   let dataDir: string;
   let vault: Vault;
   let key: VaultKey;
