@@ -1,4 +1,4 @@
-import type { FileSystem } from '../types';
+import type { FileSystem } from '../../types';
 import type {
   FileChanges,
   FileOptions,
@@ -7,9 +7,9 @@ import type {
   VaultId,
   VaultKey,
   VaultName,
-} from './types';
-import type { NodeId } from '../nodes/types';
-import type { WorkerManager } from '../workers';
+} from '../types';
+import type { NodeId } from '../../nodes/types';
+import type { WorkerManager } from '../../workers';
 
 import fs from 'fs';
 import path from 'path';
@@ -19,12 +19,12 @@ import { EncryptedFS } from 'encryptedfs';
 import { PassThrough } from 'readable-stream';
 import Logger from '@matrixai/logger';
 
-import { GitRequest } from '../git';
+import { GitRequest } from '../../git';
 
-import * as vaultsUtils from './utils';
-import * as gitUtils from '../git/utils';
-import * as vaultsErrors from './errors';
-import * as gitErrors from '../git/errors';
+import * as vaultsUtils from '../utils';
+import * as gitUtils from '../../git/utils';
+import * as vaultsErrors from '../errors';
+import * as gitErrors from '../../git/errors';
 
 class Vault {
   public readonly baseDir: string;

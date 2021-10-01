@@ -19,7 +19,7 @@ import * as keysUtils from '../keys/utils';
 import { errors as vaultErrors } from './';
 
 async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
-  return await keysUtils.generateKey(bits);
+  return await keysUtils.generateKey(bits) as VaultKey;
 }
 
 function generateVaultId(nodeId: NodeId): VaultId {
@@ -210,7 +210,7 @@ async function requestVaultNames(
   const request = new agentPB.NodeIdMessage();
   request.setNodeId(nodeId);
   const vaultList = client.vaultsScan(request);
-  const data: VaultList = [];
+  const data: string[] = [];
   for await (const vault of vaultList) {
     const vaultMessage = vault.getVault_asU8();
     data.push(Buffer.from(vaultMessage).toString());

@@ -26,7 +26,7 @@ import { errors as vaultErrors } from '@/vaults';
 import { errors as gitErrors } from '@/git';
 import { makeCrypto } from '../utils';
 
-describe.skip('VaultManager is', () => {
+describe('VaultManager is', () => {
   const password = 'password';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),

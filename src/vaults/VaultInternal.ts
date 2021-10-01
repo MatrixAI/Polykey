@@ -7,6 +7,8 @@ import type {
   VaultId,
   VaultKey,
   VaultName,
+  FileSystemReadable,
+  FileSystemWritable,
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
@@ -32,7 +34,6 @@ class VaultInternal {
   public readonly baseDir: string;
   public readonly vaultId: VaultId;
 
-  public vaultName: VaultName;
   protected _efs: EncryptedFS;
   protected _logger: Logger;
   protected _lock: MutexInterface;
@@ -41,12 +42,10 @@ class VaultInternal {
 
   public static async create({
     vaultId,
-    vaultName,
     efs,
     logger,
   }: {
     vaultId: VaultId;
-    vaultName: VaultName;
     efs: EncryptedFS;
     logger?: Logger;
   }) {
@@ -70,7 +69,6 @@ class VaultInternal {
     await efs.writeFile(path.join('.git', 'workingDir'), workingDir);
     const vault = new VaultInternal({
       vaultId,
-      vaultName,
       efs,
       workingDir,
       logger,
@@ -81,12 +79,10 @@ class VaultInternal {
 
   public static async start({
     vaultId,
-    vaultName,
     efs,
     logger,
   }: {
     vaultId: VaultId;
-    vaultName: VaultName;
     efs: EncryptedFS;
     logger?: Logger;
   }): Promise<VaultInternal> {
@@ -96,7 +92,6 @@ class VaultInternal {
     })) as string;
     const vault = new VaultInternal({
       vaultId,
-      vaultName,
       efs,
       workingDir,
       logger,
@@ -107,19 +102,16 @@ class VaultInternal {
 
   constructor({
     vaultId,
-    vaultName,
     efs,
     workingDir,
     logger,
   }: {
     vaultId: VaultId;
-    vaultName: VaultName;
     efs: EncryptedFS;
     workingDir: string;
     logger?: Logger;
   }) {
     this.vaultId = vaultId;
-    this.vaultName = vaultName;
     this._efs = efs;
     this._workingDir = workingDir;
     this._logger = logger ?? new Logger(this.constructor.name);
@@ -149,7 +141,7 @@ class VaultInternal {
     this._logger.info(`Destroying vault at '${this.vaultId}'`);
   }
 
-  public async commit(f: (fs: EncryptedFS) => Promise<void>) {
+  public async commit(f: (fs: FileSystemWritable) => Promise<void>) {
     const release = await this._lock.acquire();
     const message: string[] = [];
     await git.checkout({
@@ -207,6 +199,15 @@ class VaultInternal {
         dir: '.',
         ref: this._workingDir,
       });
+      release();
+    }
+  }
+
+  public async access<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
+    const release = await this._lock.acquire();
+    try {
+      return await f(this._efs);
+    } finally {
       release();
     }
   }
