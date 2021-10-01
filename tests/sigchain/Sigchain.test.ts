@@ -239,9 +239,9 @@ describe('Sigchain', () => {
       },
       kid: 'D' as NodeId,
     });
-    await expect(sigchain.addExistingClaim(claimInvalidHash)).rejects.toThrow(
-      sigchainErrors.ErrorSigchainInvalidHash,
-    );
+    await expect(() =>
+      sigchain.addExistingClaim(claimInvalidHash)
+    ).rejects.toThrow(sigchainErrors.ErrorSigchainInvalidHash);
 
     // Check a claim with an invalid sequence number will throw an exception
     const claimInvalidSeqNum = await claimsUtils.createClaim({
@@ -255,9 +255,9 @@ describe('Sigchain', () => {
       },
       kid: 'D' as NodeId,
     });
-    await expect(sigchain.addExistingClaim(claimInvalidSeqNum)).rejects.toThrow(
-      sigchainErrors.ErrorSigchainInvalidSequenceNum,
-    );
+    await expect(() =>
+      sigchain.addExistingClaim(claimInvalidSeqNum)
+    ).rejects.toThrow(sigchainErrors.ErrorSigchainInvalidSequenceNum);
   });
   test('retrieves chain data', async () => {
     const sigchain = new Sigchain({ keyManager, db, logger });

@@ -44,7 +44,7 @@ describe('Polykey', () => {
   //   async () => {
   //     const nodePath = `${dataDir}/polykey`;
   //     await PolykeyAgent.createPolykey({ password, nodePath, logger });
-  //     await expect(fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/); // Construction has side effects now.
+  //     await expect(() => fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/); // Construction has side effects now.
   //   },
   //   global.polykeyStartupTimeout,
   // );
@@ -107,7 +107,7 @@ describe('Polykey', () => {
         nodePath,
         logger,
       });
-      await expect(pk.start({})).rejects.toThrow(ErrorStateVersionMismatch);
+      await expect(() => pk.start({})).rejects.toThrow(ErrorStateVersionMismatch);
       await pk.stop();
     },
     global.polykeyStartupTimeout,

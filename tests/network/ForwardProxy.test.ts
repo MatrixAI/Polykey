@@ -108,7 +108,7 @@ describe('ForwardProxy', () => {
     });
     const authTokenEncoded = Buffer.from(authToken, 'utf-8').toString('base64');
     // Incorrect auth token
-    await expect(
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -117,7 +117,7 @@ describe('ForwardProxy', () => {
       ),
     ).rejects.toThrow('407');
     // No node id
-    await expect(
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -126,7 +126,7 @@ describe('ForwardProxy', () => {
       ),
     ).rejects.toThrow('400');
     // Missing target
-    await expect(
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -135,7 +135,7 @@ describe('ForwardProxy', () => {
       ),
     ).rejects.toThrow('400');
     // Targetting an un-used port
-    await expect(
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -158,7 +158,7 @@ describe('ForwardProxy', () => {
       },
     });
     // Cannot open connection to port 0
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection('abc' as NodeId, '127.0.0.1' as Host, 0 as Port),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await fwdProxy.stop();
@@ -186,7 +186,7 @@ describe('ForwardProxy', () => {
     await utpSocketHangListen(0, '127.0.0.1');
     const utpSocketHangPort = utpSocketHang.address().port;
     const timer = timerStart(3000);
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'abc' as NodeId,
         '127.0.0.1' as Host,
@@ -225,7 +225,7 @@ describe('ForwardProxy', () => {
     );
     await utpSocketEndListen(0, '127.0.0.1');
     const utpSocketEndPort = utpSocketEnd.address().port;
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'abc' as NodeId,
         '127.0.0.1' as Host,
@@ -234,7 +234,7 @@ describe('ForwardProxy', () => {
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     expect(receivedConnection).toBe(true);
     // The actual error is UTP_ECONNRESET to be precise
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'abc' as NodeId,
         '127.0.0.1' as Host,
@@ -308,7 +308,7 @@ describe('ForwardProxy', () => {
     const utpSocketPort = utpSocket.address().port;
     expect(fwdProxy.getConnectionCount()).toBe(0);
     // This is an SSL handshake failure
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'somerandomnodeid' as NodeId,
         utpSocketHost as Host,
@@ -398,7 +398,7 @@ describe('ForwardProxy', () => {
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(fwdProxy.getConnectionCount()).toBe(0);
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'somerandomnodeid' as NodeId,
         utpSocketHost as Host,

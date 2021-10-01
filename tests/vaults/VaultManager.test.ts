@@ -171,7 +171,7 @@ describe('VaultManager is', () => {
     const theVault = await vaultManager.getVault(vault.vaultId);
 
     expect(vault).toBe(theVault);
-    await expect(
+    await expect(() =>
       vaultManager.getVault('DoesNotExist' as VaultId),
     ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
 
@@ -183,7 +183,7 @@ describe('VaultManager is', () => {
     const result = await vaultManager.renameVault(vault.vaultId, 'BetterVault');
     expect(result).toBe(true);
     await expect(vaultManager.getVault(vault.vaultId)).resolves.toBe(vault);
-    await expect(
+    await expect(() =>
       vaultManager.renameVault('DoesNotExist' as VaultId, 'DNE'),
     ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
     await vaultManager.stop();
@@ -198,9 +198,9 @@ describe('VaultManager is', () => {
     await expect(vaultManager.getVault(firstVault.vaultId)).resolves.toBe(
       firstVault,
     );
-    await expect(vaultManager.getVault(secondVault.vaultId)).rejects.toThrow(
-      vaultErrors.ErrorVaultUndefined,
-    );
+    await expect(() =>
+      vaultManager.getVault(secondVault.vaultId)
+    ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
     await expect(vaultManager.getVault(thirdVault.vaultId)).resolves.toBe(
       thirdVault,
     );
@@ -791,7 +791,7 @@ describe('VaultManager is', () => {
           port: targetPort,
         } as NodeAddress);
         await revProxy.openConnection(sourceHost, sourcePort);
-        await expect(
+        await expect(() =>
           vaultManager.cloneVault(vault.vaultId, targetNodeId),
         ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
         const vaultsList = await vaultManager.listVaults();
@@ -807,7 +807,7 @@ describe('VaultManager is', () => {
           vault.vaultId,
         );
         vault.addSecret('MySecondSecret', 'SecondSuccess?');
-        await expect(
+        await expect(() =>
           vaultManager.pullVault(vaultList[0].id, targetNodeId),
         ).rejects.toThrow(gitErrors.ErrorGitPermissionDenied);
         const list = await vaultManager.listVaults();
@@ -850,7 +850,7 @@ describe('VaultManager is', () => {
         const clonedVault = await vaultManager.getVault(vaultList[0].id);
         await clonedVault.renameSecret('secret 9', 'secret 10');
         await vault.renameSecret('secret 9', 'causing merge conflict');
-        await expect(
+        await expect(() =>
           vaultManager.pullVault(clonedVault.vaultId),
         ).rejects.toThrow(vaultErrors.ErrorVaultMergeConflict);
       },

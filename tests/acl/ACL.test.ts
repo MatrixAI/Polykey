@@ -107,7 +107,7 @@ describe('ACL', () => {
     const acl = new ACL({ db, logger });
     await acl.start();
     // The node id must exist as a gestalt first
-    await expect(
+    await expect(() =>
       acl.setVaultAction('v1' as VaultId, 'g1-1' as NodeId, 'pull'),
     ).rejects.toThrow(aclErrors.ErrorACLNodeIdMissing);
     await acl.setNodesPerm(['g1-1'] as Array<NodeId>, {

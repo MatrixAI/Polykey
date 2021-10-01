@@ -18,7 +18,7 @@ describe('WorkerManager', () => {
     });
     expect(await workerManager.call(async () => 1)).toBe(1);
     await workerManager.destroy();
-    await expect(workerManager.call(async () => 1)).rejects.toThrow(
+    await expect(() => workerManager.call(async () => 1)).rejects.toThrow(
       workersErrors.ErrorWorkerManagerNotRunning,
     );
   });
