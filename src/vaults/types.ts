@@ -1,6 +1,7 @@
-import type Vault from './Vault';
+import type VaultInternal from './VaultInternal';
 import type { Opaque } from '../types';
 import type { NodeId } from '@/nodes/types';
+import type { MutexInterface } from 'async-mutex';
 
 /**
  * Randomly generated vault ID for each new vault
@@ -26,12 +27,12 @@ type SecretList = string[];
  * Map vaultId -> Vault
  */
 type Vaults = {
-  [vaultId: string]: Vault;
+  [vaultId: string]: VaultInternal;
 };
 
-type VaultMap = Array<{
-  id: VaultId;
-  name: VaultName;
+type VaultMap = Map<VaultId, {
+  vault?: VaultInternal;
+  lock: MutexInterface;
 }>;
 
 type VaultPermissions = Record<NodeId, VaultAction>;
