@@ -157,6 +157,26 @@ class VaultManager {
     return false;
   }
 
+  public async transaction<T>(
+    f: (vaultManager: VaultManager) => Promise<T>,
+    lock: MutexInterface
+  ): Promise<T> {
+    const release = await lock.acquire();
+    try {
+      return await f(this);
+    } finally {
+      release();
+    }
+  }
+
+  public async _transaction<T>(f: () => Promise<T>, lock: MutexInterface): Promise<T> {
+    if (lock.isLocked()) {
+      return await f();
+    } else {
+      return await this.transaction(f, lock);
+    }
+  }
+
   public async destroy(): Promise<void> {
     this.logger.info('Destroying Vault Manager');
     await this.efs.stop();
@@ -181,6 +201,7 @@ class VaultManager {
 
   public async createVault(vaultName: VaultName): Promise<VaultInternal> {
     const lock = new Mutex();
+    this.vaultsMap.set(vaultName, { lock });
     const release = await lock.acquire();
     try {
       const existingId = await this.getVaultId(vaultName);
@@ -190,15 +211,18 @@ class VaultManager {
         );
       }
       const vaultId = await this.generateVaultId();
-      await this.db.put(this.vaultsNamesDbDomain, vaultName, vaultId);
-      await this.efs.mkdir(vaultId);
-      const vault = await VaultInternal.create({
-        vaultId,
-        vaultName,
-        efs: await this.efs.chroot(vaultId),
-        logger: this.logger.getChild(VaultInternal.name),
-      });
-      this.vaultsMap.set(vaultId, { lock, vault });
+      let vault;
+      await this._transaction(async () => {
+        await this.db.put(this.vaultsNamesDbDomain, vaultName, vaultId);
+        await this.efs.mkdir(vaultId);
+        vault = await VaultInternal.create({
+          vaultId,
+          vaultName,
+          efs: await this.efs.chroot(vaultId),
+          logger: this.logger.getChild(VaultInternal.name),
+        });
+        this.vaultsMap.set(vaultName, { lock, vault });
+      }, lock);
       return vault;
     } finally {
       release();
@@ -210,22 +234,19 @@ class VaultManager {
     if (vaultId == null) {
       return
     }
-    const vaultLock = this.vaultsMap.get(vaultId);
+    const vaultLock = this.vaultsMap.get(vaultName);
     if (vaultLock == null) {
       return
     }
-    const release = await vaultLock.lock.acquire();
-    try {
+    await this._transaction(async () => {
       await this.db.del(
         this.vaultsNamesDbDomain,
         vaultName,
       );
       await this.efs.rmdir(vaultId);
       await vaultLock.vault?.destroy();
-      this.vaultsMap.delete(vaultId);
-    } finally {
-      release();
-    }
+      this.vaultsMap.delete(vaultName);
+    }, vaultLock.lock);
   }
 
   public async openVault(vaultName: VaultName): Promise<VaultInternal> {
@@ -261,7 +282,7 @@ class VaultManager {
         `Vault name ${vaultName} does not exist`,
       );
     }
-    let vaultAndLock = this.vaultsMap.get(vaultId);
+    let vaultAndLock = this.vaultsMap.get(vaultName);
     if (vaultAndLock != null) {
       ({ vault, lock } = vaultAndLock);
       if (vault != null) {
@@ -281,7 +302,7 @@ class VaultManager {
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
-        this.vaultsMap.set(vaultId, vaultAndLock);
+        this.vaultsMap.set(vaultName, vaultAndLock);
         return vault;
       } finally {
         release();
@@ -289,7 +310,7 @@ class VaultManager {
     } else {
       lock = new Mutex();
       vaultAndLock = { lock };
-      this.vaultsMap.set(vaultId, vaultAndLock);
+      this.vaultsMap.set(vaultName, vaultAndLock);
       let release;
       try {
         release = await lock.acquire();
@@ -300,7 +321,7 @@ class VaultManager {
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
-        this.vaultsMap.set(vaultId, vaultAndLock);
+        this.vaultsMap.set(vaultName, vaultAndLock);
         return vault;
       } finally {
         release();

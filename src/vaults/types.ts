@@ -30,7 +30,7 @@ type Vaults = {
   [vaultId: string]: VaultInternal;
 };
 
-type VaultMap = Map<VaultId, {
+type VaultMap = Map<VaultName, {
   vault?: VaultInternal;
   lock: MutexInterface;
 }>;
