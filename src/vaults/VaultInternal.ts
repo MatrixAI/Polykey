@@ -7,6 +7,8 @@ import type {
   VaultId,
   VaultKey,
   VaultName,
+  FileSystemReadable,
+  FileSystemWritable,
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
@@ -149,7 +151,7 @@ class VaultInternal {
     this._logger.info(`Destroying vault at '${this.vaultId}'`);
   }
 
-  public async commit(f: (fs: EncryptedFS) => Promise<void>) {
+  public async commit(f: (fs: FileSystemWritable) => Promise<void>) {
     const release = await this._lock.acquire();
     const message: string[] = [];
     await git.checkout({
@@ -207,6 +209,15 @@ class VaultInternal {
         dir: '.',
         ref: this._workingDir,
       });
+      release();
+    }
+  }
+
+  public async access<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
+    const release = await this._lock.acquire();
+    try {
+      return await f(this._efs);
+    } finally {
       release();
     }
   }

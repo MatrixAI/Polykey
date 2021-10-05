@@ -345,16 +345,16 @@ class VaultManager {
    * @returns Array of VaultName and VaultIds managed currently by the vault manager
    */
   public async listVaults(): Promise<VaultMap> {
-    const vaults: VaultMap = [];
+    const vaults: VaultMap = new Map();
     // Read all vault objects from the database
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const id = (o as any).value;
       const name = (o as any).key.toString() as string;
       const vaultId = await this.db.deserializeDecrypt<VaultId>(id, false);
-      vaults.push({
-        name: name,
-        id: vaultId,
-      });
+      // vaults.push({
+      //   name: name,
+      //   id: vaultId,
+      // });
     }
     return vaults;
   }
@@ -377,15 +377,15 @@ class VaultManager {
     return await this.acl._transaction(async () => {
       // List all vaults
       const vaults = await this.listVaults();
-      const scan: VaultMap = [];
+      const scan: VaultMap = new Map();
       for (const vault of vaults) {
-        // Check if the vault has valid permissions
-        const list = await this.acl.getVaultPerm(vault.id);
-        if (list[nodeId]) {
-          if (list[nodeId].vaults[vault.id]['pull'] !== undefined) {
-            scan.push(vault);
-          }
-        }
+        // // Check if the vault has valid permissions
+        // const list = await this.acl.getVaultPerm(vault.id);
+        // if (list[nodeId]) {
+        //   if (list[nodeId].vaults[vault.id]['pull'] !== undefined) {
+        //     scan.push(vault);
+        //   }
+        // }
       }
       return scan;
     });
