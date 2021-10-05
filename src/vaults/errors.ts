@@ -1,10 +1,10 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorForwardProxyNotStarted, ErrorPolykey } from "../errors";
 
 class ErrorVaults extends ErrorPolykey {}
 
 class ErrorSecrets extends ErrorPolykey {}
 
-class ErrorVaultManagerNotStarted extends ErrorVaults {}
+class ErrorVaultManagerDestroyed extends ErrorVaults {}
 
 class ErrorVaultUndefined extends ErrorVaults {
   description: string = 'Vault does not exist';
@@ -16,6 +16,10 @@ class ErrorVaultDefined extends ErrorVaults {}
 class ErrorRemoteVaultUndefined extends ErrorVaults {}
 
 class ErrorVaultUninitialised extends ErrorVaults {}
+
+class ErrorVaultNotStarted extends ErrorVaults {}
+
+class ErrorVaultDestroyed extends ErrorVaults {}
 
 class ErrorRecursive extends ErrorVaults {}
 
@@ -39,11 +43,13 @@ class ErrorGitFile extends ErrorSecrets {}
 
 export {
   ErrorVaults,
-  ErrorVaultManagerNotStarted,
+  ErrorVaultManagerDestroyed,
   ErrorVaultUndefined,
   ErrorVaultDefined,
   ErrorRemoteVaultUndefined,
   ErrorVaultUninitialised,
+  ErrorVaultNotStarted,
+  ErrorVaultDestroyed,
   ErrorRecursive,
   ErrorVaultModified,
   ErrorMalformedVaultDBValue,

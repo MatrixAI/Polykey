@@ -29,7 +29,10 @@ import * as vaultsUtils from './utils';
 import * as gitUtils from '../git/utils';
 import * as vaultsErrors from './errors';
 import * as gitErrors from '../git/errors';
+import { CreateDestroyStartStop, ready } from "@matrixai/async-init/dist/CreateDestroyStartStop";
 
+interface VaultInternal extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(new vaultsErrors.ErrorVaultNotStarted(), new vaultsErrors.ErrorVaultDestroyed())
 class VaultInternal {
   public readonly baseDir: string;
   public readonly vaultId: VaultId;
@@ -37,7 +40,6 @@ class VaultInternal {
   protected _efs: EncryptedFS;
   protected _logger: Logger;
   protected _lock: MutexInterface;
-  protected _started: boolean;
   protected _workingDir: string;
 
   public static async create({
@@ -116,11 +118,6 @@ class VaultInternal {
     this._workingDir = workingDir;
     this._logger = logger ?? new Logger(this.constructor.name);
     this._lock = new Mutex();
-    this._started = true;
-  }
-
-  get started(): boolean {
-    return this._started;
   }
 
   public async stop(): Promise<void> {
@@ -133,7 +130,6 @@ class VaultInternal {
     } finally {
       release();
       this._logger.info(`Stopping vault at '${this.vaultId}'`);
-      this._started = false;
     }
   }
 
@@ -141,6 +137,7 @@ class VaultInternal {
     this._logger.info(`Destroying vault at '${this.vaultId}'`);
   }
 
+  @ready(new vaultsErrors.ErrorVaultNotStarted())
   public async commit(f: (fs: FileSystemWritable) => Promise<void>) {
     const release = await this._lock.acquire();
     const message: string[] = [];
@@ -203,6 +200,7 @@ class VaultInternal {
     }
   }
 
+  @ready(new vaultsErrors.ErrorVaultNotStarted())
   public async access<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
     const release = await this._lock.acquire();
     try {
@@ -214,6 +212,7 @@ class VaultInternal {
 
   public async log(depth: 1, commit?: string): Promise<string>;
   public async log(depth?: number, commit?: string): Promise<Array<string>>;
+  @ready(new vaultsErrors.ErrorVaultNotStarted())
   public async log(
     depth?: number,
     commit?: string,
@@ -234,6 +233,7 @@ class VaultInternal {
     });
   }
 
+  @ready(new vaultsErrors.ErrorVaultNotStarted())
   public async versionCheckout(commit: string): Promise<void> {
     await git.checkout({
       fs: this._efs,
@@ -244,6 +244,7 @@ class VaultInternal {
     this._workingDir = commit;
   }
 
+  @ready(new vaultsErrors.ErrorVaultNotStarted())
   public async applySchema(vs) {}
 }
 
