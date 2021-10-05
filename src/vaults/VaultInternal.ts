@@ -34,7 +34,6 @@ class VaultInternal {
   public readonly baseDir: string;
   public readonly vaultId: VaultId;
 
-  public vaultName: VaultName;
   protected _efs: EncryptedFS;
   protected _logger: Logger;
   protected _lock: MutexInterface;
@@ -43,12 +42,10 @@ class VaultInternal {
 
   public static async create({
     vaultId,
-    vaultName,
     efs,
     logger,
   }: {
     vaultId: VaultId;
-    vaultName: VaultName;
     efs: EncryptedFS;
     logger?: Logger;
   }) {
@@ -72,7 +69,6 @@ class VaultInternal {
     await efs.writeFile(path.join('.git', 'workingDir'), workingDir);
     const vault = new VaultInternal({
       vaultId,
-      vaultName,
       efs,
       workingDir,
       logger,
@@ -83,12 +79,10 @@ class VaultInternal {
 
   public static async start({
     vaultId,
-    vaultName,
     efs,
     logger,
   }: {
     vaultId: VaultId;
-    vaultName: VaultName;
     efs: EncryptedFS;
     logger?: Logger;
   }): Promise<VaultInternal> {
@@ -98,7 +92,6 @@ class VaultInternal {
     })) as string;
     const vault = new VaultInternal({
       vaultId,
-      vaultName,
       efs,
       workingDir,
       logger,
@@ -109,19 +102,16 @@ class VaultInternal {
 
   constructor({
     vaultId,
-    vaultName,
     efs,
     workingDir,
     logger,
   }: {
     vaultId: VaultId;
-    vaultName: VaultName;
     efs: EncryptedFS;
     workingDir: string;
     logger?: Logger;
   }) {
     this.vaultId = vaultId;
-    this.vaultName = vaultName;
     this._efs = efs;
     this._workingDir = workingDir;
     this._logger = logger ?? new Logger(this.constructor.name);

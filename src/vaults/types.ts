@@ -1,5 +1,4 @@
 import type VaultInternal from './VaultInternal';
-import type Vault from './Vault';
 import type { Opaque } from '../types';
 import type { NodeId } from '@/nodes/types';
 import type { MutexInterface } from 'async-mutex';
@@ -12,29 +11,23 @@ import { EncryptedFS, permissions } from 'encryptedfs';
  */
 type VaultId = Opaque<'VaultId', string>;
 
+type VaultName = Opaque<'VaultName', string>;
+
+type VaultKey = Opaque<'VaultKey', Buffer>;
+
+
 /**
  * Actions relating to what is possible with vaults
  */
 type VaultAction = 'clone' | 'pull';
 
-type VaultKey = Buffer;
-
-type VaultName = string;
-
-type VaultList = string[];
+type VaultList = Map<VaultName, VaultId>;
 
 type SecretName = string;
 
 type SecretList = string[];
 
-/**
- * Map vaultId -> Vault
- */
-type Vaults = {
-  [vaultId: string]: Vault;
-};
-
-type VaultMap = Map<VaultName, {
+type VaultMap = Map<VaultId, {
   vault?: VaultInternal;
   lock: MutexInterface;
 }>;
@@ -162,7 +155,6 @@ export type {
   VaultName,
   VaultList,
   VaultMap,
-  Vaults,
   VaultPermissions,
   FileChange,
   FileChanges,

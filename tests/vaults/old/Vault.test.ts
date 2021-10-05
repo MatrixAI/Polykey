@@ -1,11 +1,11 @@
 import type { NodeId } from '@/nodes/types';
-import type { VaultId, VaultKey } from '@/vaults/types';
+import type { VaultId, VaultKey, VaultName } from '@/vaults/types';
 
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import git from 'isomorphic-git';
-import Vault from '@/vaults/Vault';
+import Vault from '@/vaults/old/Vault';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { generateVaultId, generateVaultKey } from '@/vaults/utils';
@@ -21,7 +21,7 @@ describe('Vault is', () => {
   let vaultId: VaultId;
   let efsDir: string;
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
-  const name = 'vault-1';
+  const name = 'vault-1' as VaultName;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -196,7 +196,7 @@ describe('Vault is', () => {
   });
   test('renaming a vault', async () => {
     await vault.start({ key });
-    await vault.renameVault('vault-change');
+    await vault.renameVault('vault-change' as VaultName);
     expect(vault.vaultName).toEqual('vault-change');
     await vault.stop();
   });
