@@ -9,6 +9,7 @@ import type {
   VaultName,
   FileSystemReadable,
   FileSystemWritable,
+  CommitLog,
 } from './types';
 import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
@@ -210,13 +211,11 @@ class VaultInternal {
     }
   }
 
-  public async log(depth: 1, commit?: string): Promise<string>;
-  public async log(depth?: number, commit?: string): Promise<Array<string>>;
   @ready(new vaultsErrors.ErrorVaultNotStarted())
   public async log(
     depth?: number,
     commit?: string,
-  ): Promise<Array<string> | string> {
+  ): Promise<Array<CommitLog>> {
     const log = await git.log({
       fs: this._efs,
       dir: '.',
@@ -224,24 +223,28 @@ class VaultInternal {
       ref: commit,
     });
     return log.map((readCommit) => {
-      return (
-        `commit ${readCommit.oid}\n` +
-        `Author: ${readCommit.commit.author.name}\n` +
-        `Date: ${new Date(readCommit.commit.author.timestamp * 1000)}\n` +
-        `${readCommit.commit.message}\n`
-      );
+      return {
+        oid: readCommit.oid,
+        committer: readCommit.commit.committer.name,
+        message: readCommit.commit.message,
+      };
     });
   }
 
   @ready(new vaultsErrors.ErrorVaultNotStarted())
-  public async versionCheckout(commit: string): Promise<void> {
-    await git.checkout({
-      fs: this._efs,
-      dir: '.',
-      ref: commit,
-      noUpdateHead: true,
-    });
-    this._workingDir = commit;
+  public async version(commit: string): Promise<void> {
+    try {
+      await git.checkout({
+        fs: this._efs,
+        dir: '.',
+        ref: commit,
+        noUpdateHead: true,
+      });
+      this._workingDir = commit;
+    } catch (err) {
+      if (err.code === 'NotFoundError') throw new vaultsErrors.ErrorVaultCommitUndefined;
+      throw err;
+    }
   }
 
   @ready(new vaultsErrors.ErrorVaultNotStarted())

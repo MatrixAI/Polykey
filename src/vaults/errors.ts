@@ -33,6 +33,11 @@ class ErrorCreateVaultId extends ErrorVaults {}
 
 class ErrorVaultMergeConflict extends ErrorVaults {}
 
+class ErrorVaultCommitUndefined extends ErrorVaults {
+  description: string = 'Commit does not exist';
+  exitCode: number = 10;
+}
+
 class ErrorSecretUndefined extends ErrorSecrets {}
 
 class ErrorSecretDefined extends ErrorSecrets {}
@@ -56,6 +61,7 @@ export {
   ErrorVaultUnlinked,
   ErrorCreateVaultId,
   ErrorVaultMergeConflict,
+  ErrorVaultCommitUndefined,
   ErrorSecretUndefined,
   ErrorSecretDefined,
   ErrorReadingSecret,
