@@ -148,6 +148,12 @@ interface FileSystemWritable {
   writeFile: typeof EncryptedFS.prototype.writeFile,
 }
 
+type CommitLog = {
+  oid: string,
+  committer: string,
+  message: string,
+}
+
 export type {
   VaultId,
   VaultAction,
@@ -165,4 +171,5 @@ export type {
   FileOptions,
   FileSystemReadable,
   FileSystemWritable,
+  CommitLog,
 };
