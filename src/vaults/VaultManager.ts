@@ -34,7 +34,10 @@ import * as gestaltErrors from '../gestalts/errors';
 import { errors as dbErrors } from '@matrixai/db';
 import { EncryptedFS } from 'encryptedfs';
 import VaultInternal from './VaultInternal';
+import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 
+interface VaultManager extends CreateDestroy {}
+@CreateDestroy()
 class VaultManager {
   public readonly vaultsPath: string;
 
@@ -50,8 +53,6 @@ class VaultManager {
   protected vaultsNamesDbDomain: Array<string>;
   protected vaultsDb: DBLevel;
   protected vaultsNamesDb: DBLevel;
-
-  protected _started: boolean;
 
   public static async create({
     fresh = false,
@@ -146,14 +147,6 @@ class VaultManager {
     this.fs = fs ?? require('fs');
     this.vaultsKey = vaultsKey;
     this.logger = logger ?? new Logger(this.constructor.name);
-    this._started = true;
-  }
-
-  get started(): boolean {
-    if (this._started) {
-      return true;
-    }
-    return false;
   }
 
   public async transaction<T>(
@@ -184,10 +177,10 @@ class VaultManager {
       recursive: true,
     });
     this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
-    this._started = false;
     this.logger.info('Destroyed Vault Manager');
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async getVaultId(
     vaultName: VaultName,
   ): Promise<VaultId | undefined> {
@@ -198,6 +191,7 @@ class VaultManager {
     return vaultId;
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async createVault(vaultName: VaultName): Promise<VaultInternal> {
     let vault;
     const lock = new Mutex();
@@ -218,6 +212,7 @@ class VaultManager {
     return vault;
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async destroyVault(vaultId: VaultId) {
     const lock = await this.getLock(vaultId);
     await this._transaction(async () => {
@@ -234,15 +229,18 @@ class VaultManager {
     }, lock);
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async openVault(vaultId: VaultId): Promise<VaultInternal> {
     return await this.getVault(vaultId);
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async closeVault(vaultId: VaultId) {
     const vault = await this.getVault(vaultId);
     await vault.stop();
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async listVaults(nodeId: NodeId): Promise<VaultList> {
     const vaults: VaultList = new Map();
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
@@ -258,6 +256,7 @@ class VaultManager {
     return vaults;
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async renameVault(
     vaultId: VaultId,
     newVaultName: VaultName,
