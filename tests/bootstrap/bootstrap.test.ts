@@ -67,6 +67,7 @@ describe('Bootstrap', () => {
           password,
           nodePath: nodePath,
           logger: logger,
+          cores: 1,
         });
         await pk.start({});
         await pk.stop();
@@ -110,6 +111,7 @@ describe('Bootstrap', () => {
         password,
         nodePath: nodePath,
         logger: logger,
+        cores: 1,
       });
       await polykeyAgent.start({});
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeTruthy();

@@ -98,6 +98,7 @@ class Polykey {
     rootKeyPairBits,
     rootCertDuration,
     dbKeyBits,
+    cores,
   }: {
     password: string;
     nodePath?: string;
@@ -125,6 +126,7 @@ class Polykey {
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     dbKeyBits?: number;
+    cores?: number;
   }): Promise<Polykey> {
     const clientGrpcHost_ = clientGrpcHost ?? '127.0.0.1';
     const clientGrpcPort_ = clientGrpcPort ?? 0;
@@ -167,7 +169,7 @@ class Polykey {
     const workers_ =
       workerManager ??
       (await WorkerManager.createPolykeyWorkerManager({
-        cores: 1,
+        cores,
         logger: logger_.getChild('WorkerManager'),
       }));
     const fwdProxy_ =

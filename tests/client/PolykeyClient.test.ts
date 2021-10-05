@@ -34,6 +34,7 @@ describe('GRPCClientClient', () => {
       password,
       nodePath: dataDir,
       logger: logger,
+      cores: 1,
     });
 
     await polykeyAgent.start({});
@@ -100,6 +101,7 @@ describe('TLS tests', () => {
       nodePath,
       logger: logger.getChild('agent'),
       clientGrpcPort: 55555,
+      cores: 1,
     });
 
     await polykeyAgent.start({});

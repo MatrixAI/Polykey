@@ -38,6 +38,7 @@ describe('Discovery', () => {
         password,
         nodePath,
         logger,
+        cores: 1,
       });
       discovery = polykeyAgent.discovery;
     });

@@ -35,6 +35,7 @@ async function setupRemoteKeynode({
     password: 'password',
     nodePath: nodeDir,
     logger: logger,
+    cores: 1,
   });
   await remote.start({});
   return remote;
