@@ -62,6 +62,7 @@ describe('CLI vaults', () => {
       password,
       nodePath: dataDir,
       logger: logger,
+      cores: 1,
     });
     await polykeyAgent.start({});
     await polykeyAgent.gestalts.setNode(node1);
@@ -272,6 +273,7 @@ describe('CLI vaults', () => {
           password,
           nodePath: dataDir2,
           logger: logger,
+          cores: 1,
         });
         await targetPolykeyAgent.start({});
         const vault = await targetPolykeyAgent.vaults.createVault(vaultName);
@@ -349,6 +351,7 @@ describe('CLI vaults', () => {
           password,
           nodePath: dataDir2,
           logger: logger,
+          cores: 1,
         });
         await targetPolykeyAgent.start({});
         const vault = await targetPolykeyAgent.vaults.createVault(vaultName);
@@ -438,6 +441,7 @@ describe('CLI vaults', () => {
         password,
         nodePath: dataDir2,
         logger: logger,
+        cores: 1,
       });
       await targetPolykeyAgent.start({});
 

@@ -18,6 +18,7 @@ describe('index', () => {
       password,
       nodePath: dataDir,
       logger,
+      cores: 1,
     });
     expect(pk).toBeInstanceOf(PolykeyAgent);
     await pk.stop();

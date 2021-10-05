@@ -34,6 +34,7 @@ describe('Polykey', () => {
       pk = await PolykeyAgent.createPolykey({
         password,
         logger,
+        cores: 1,
       });
       expect(pk).toBeInstanceOf(PolykeyAgent);
       expect(pk.nodePath).toBe(utils.getDefaultNodePath());
@@ -53,7 +54,12 @@ describe('Polykey', () => {
     'async start constructs node path',
     async () => {
       const nodePath = `${dataDir}/polykey`;
-      pk = await PolykeyAgent.createPolykey({ password, nodePath, logger });
+      pk = await PolykeyAgent.createPolykey({
+        password,
+        nodePath,
+        logger,
+        cores: 1,
+      });
       await pk.start({});
       const nodePathContents = await fs.promises.readdir(nodePath);
       expect(nodePathContents).toContain('keys');
@@ -67,7 +73,12 @@ describe('Polykey', () => {
     'async stop leaves the node path',
     async () => {
       const nodePath = `${dataDir}/polykey`;
-      pk = await PolykeyAgent.createPolykey({ password, nodePath, logger });
+      pk = await PolykeyAgent.createPolykey({
+        password,
+        nodePath,
+        logger,
+        cores: 1,
+      });
       await pk.start({});
       await pk.stop();
       const nodePathContents = await fs.promises.readdir(nodePath);
@@ -81,7 +92,12 @@ describe('Polykey', () => {
   test('GithubProvider is registered', async () => {
     const providerId = 'github.com';
     const nodePath = `${dataDir}/polykey`;
-    pk = await PolykeyAgent.createPolykey({ password, nodePath, logger });
+    pk = await PolykeyAgent.createPolykey({
+      password,
+      nodePath,
+      logger,
+      cores: 1,
+    });
     const providers = pk.identities.getProviders();
     // Exists
     expect(providers[providerId]).toBeTruthy();
@@ -107,6 +123,7 @@ describe('Polykey', () => {
         password,
         nodePath,
         logger,
+        cores: 1,
       });
       await expect(() => pk.start({})).rejects.toThrow(ErrorStateVersionMismatch);
       await pk.stop();
@@ -125,6 +142,7 @@ describe('Polykey', () => {
         password,
         nodePath,
         logger,
+        cores: 1,
       });
       await pk.start({});
       await pk.stop();
@@ -142,6 +160,7 @@ describe('Polykey', () => {
       password,
       nodePath,
       logger,
+      cores: 1,
     });
     await pk.start({});
     expect(await checkAgentRunning(nodePath)).toBeTruthy();

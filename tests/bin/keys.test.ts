@@ -49,16 +49,19 @@ describe('CLI keys', () => {
       password,
       nodePath: nodePath,
       logger: logger,
+      cores: 1,
     });
     newPolykeyAgent1 = await PolykeyAgent.createPolykey({
       password,
       nodePath: newNodePath1,
       logger: logger,
+      cores: 1,
     });
     newPolykeyAgent2 = await PolykeyAgent.createPolykey({
       password,
       nodePath: newNodePath2,
       logger: logger,
+      cores: 1,
     });
     await polykeyAgent.start({});
     await newPolykeyAgent1.start({});
@@ -214,6 +217,7 @@ describe('CLI keys', () => {
         password: 'password-new',
         nodePath: nodePath,
         logger: logger,
+        cores: 1,
       });
       await polykeyAgent.start({});
       await polykeyAgent.stop();
@@ -242,6 +246,7 @@ describe('CLI keys', () => {
         password: 'password-new-new',
         nodePath: newNodePath1,
         logger: logger,
+        cores: 1,
       });
       await newPolykeyAgent1.start({});
 
@@ -262,6 +267,7 @@ describe('CLI keys', () => {
           password,
           nodePath: newNodePath2,
           logger: logger,
+          cores: 1,
         });
         await newPolykeyAgent2.start({});
 
@@ -276,6 +282,7 @@ describe('CLI keys', () => {
           password: 'password-change',
           nodePath: newNodePath2,
           logger: logger,
+          cores: 1,
         });
         await newPolykeyAgent2.start({});
 

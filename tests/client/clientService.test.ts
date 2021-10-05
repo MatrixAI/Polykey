@@ -116,6 +116,7 @@ describe('Client service', () => {
       nodePath: dataDir,
       logger,
       fwdProxy,
+      cores: 1,
     });
 
     await polykeyAgent.start({});
@@ -264,6 +265,7 @@ describe('Client service', () => {
           password,
           nodePath: newNodePath,
           logger,
+          cores: 1,
         });
 
         await agent.start({});
@@ -333,7 +335,7 @@ describe('Client service', () => {
       vaultMessage.setVaultName('NewVault');
 
       const vaultId = await createVault(vaultMessage, callCredentials);
-      const vault = (await vaultManager.listVaults()).pop();
+      const vault = (await vaultManager.listVaults());
       expect(vault?.name).toBe('NewVault');
       expect(vault?.id).toBe(vaultId.getVaultId());
 
@@ -1689,7 +1691,7 @@ describe('Client service', () => {
         const nodeMessage = new clientPB.NodeMessage();
         nodeMessage.setNodeId(nodeId);
         // So unfindableNode cannot be found
-        await expect(() => 
+        await expect(() =>
           nodesFind(nodeMessage, callCredentials)
         ).rejects.toThrow(nodesErrors.ErrorNodeGraphNodeNotFound);
       },

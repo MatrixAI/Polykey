@@ -60,6 +60,7 @@ describe('CLI Nodes', () => {
       password,
       nodePath: nodePath,
       logger: logger,
+      cores: 1,
     });
     await polykeyAgent.start({});
     keynodeId = polykeyAgent.nodes.getNodeId();

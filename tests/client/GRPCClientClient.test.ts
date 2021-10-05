@@ -38,6 +38,7 @@ describe('GRPCClientClient', () => {
       password,
       nodePath,
       logger: logger,
+      cores: 1,
     });
 
     await polykeyAgent.start({});

@@ -39,6 +39,7 @@ describe('agent utils', () => {
         password,
         nodePath: nodePath,
         logger: logger,
+        cores: 1,
       });
       await agent.start({});
       await expect(
@@ -96,6 +97,7 @@ describe('agent utils', () => {
         password,
         nodePath: nodePath,
         logger: logger,
+        cores: 1,
       });
       await agent.start({});
       await expect(
