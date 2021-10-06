@@ -171,12 +171,17 @@ class VaultManager {
 
   public async destroy(): Promise<void> {
     this.logger.info('Destroying Vault Manager');
+    // Destroying managed vaults.
+    for (const vault of this.vaultsMap.values()) {
+      vault.vault?.destroy()
+    }
     await this.efs.stop();
-    await this.fs.promises.rm(this.vaultsPath, {
-      force: true,
-      recursive: true,
-    });
-    this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
+    // We shouldn't delete the saved state when destroying.
+    // await this.fs.promises.rm(this.vaultsPath, {
+    //   force: true,
+    //   recursive: true,
+    // });
+    // this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
     this.logger.info('Destroyed Vault Manager');
   }
 
@@ -206,6 +211,7 @@ class VaultManager {
         vaultId,
         efs: await this.efs.chroot(vaultId),
         logger: this.logger.getChild(VaultInternal.name),
+        fresh: true,
       });
       this.vaultsMap.set(vaultId, { lock, vault });
     }, lock);
@@ -237,7 +243,7 @@ class VaultManager {
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async closeVault(vaultId: VaultId) {
     const vault = await this.getVault(vaultId);
-    await vault.stop();
+    await vault.destroy();
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
@@ -313,7 +319,7 @@ class VaultManager {
         if (vault != null) {
           return vault;
         }
-        vault = await VaultInternal.start({
+        vault = await VaultInternal.create({
           vaultId,
           efs: await this.efs.chroot(vaultId),
           logger: this.logger.getChild(VaultInternal.name),
@@ -331,7 +337,7 @@ class VaultManager {
       let release;
       try {
         release = await lock.acquire();
-        vault = await VaultInternal.start({
+        vault = await VaultInternal.create({
           vaultId,
           efs: await this.efs.chroot(vaultId),
           logger: this.logger.getChild(VaultInternal.name),
