@@ -54,9 +54,10 @@ class VaultManager {
   protected vaultsDb: DBLevel;
   protected vaultsNamesDb: DBLevel;
 
-  public static async create({
+  static async createVaultManager({
     fresh = false,
     vaultsPath,
+    vaultsKey,
     nodeManager,
     db,
     fs,
@@ -64,6 +65,7 @@ class VaultManager {
   }: {
     fresh?: boolean
     vaultsPath: string;
+    vaultsKey: VaultKey;
     nodeManager: NodeManager;
     db: DB;
     fs?: FileSystem;
@@ -88,10 +90,10 @@ class VaultManager {
       logger.info(`Removing vaults directory at '${vaultsPath}'`);
     }
     await utils.mkdirExists(fileSystem, vaultsPath, { recursive: true });
-    const vaultsKey = await vaultsUtils.generateVaultKey();
     const efs = await EncryptedFS.createEncryptedFS({
       dbPath: vaultsPath,
       dbKey: vaultsKey,
+      logger: logger,
     });
     await efs.start();
     logger.info('Created Vault Manager');
@@ -173,7 +175,7 @@ class VaultManager {
     this.logger.info('Destroying Vault Manager');
     // Destroying managed vaults.
     for (const vault of this.vaultsMap.values()) {
-      vault.vault?.destroy()
+      await vault.vault?.destroy()
     }
     await this.efs.stop();
     // We shouldn't delete the saved state when destroying.
@@ -207,9 +209,11 @@ class VaultManager {
       this.vaultsMap.set(vaultId, { lock });
       await this.db.put(this.vaultsNamesDbDomain, vaultName, vaultId);
       await this.efs.mkdir(vaultId);
+      const efs = await this.efs.chroot(vaultId);
+      await efs.start();
       vault = await VaultInternal.create({
         vaultId,
-        efs: await this.efs.chroot(vaultId),
+        efs: efs,
         logger: this.logger.getChild(VaultInternal.name),
         fresh: true,
       });
@@ -237,6 +241,8 @@ class VaultManager {
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async openVault(vaultId: VaultId): Promise<VaultInternal> {
+    const vaultName = await this.getVaultName(vaultId);
+    if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
     return await this.getVault(vaultId);
   }
 
@@ -247,13 +253,13 @@ class VaultManager {
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
-  public async listVaults(nodeId: NodeId): Promise<VaultList> {
+  public async listVaults(nodeId?: NodeId): Promise<VaultList> {
     const vaults: VaultList = new Map();
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const dbId = (o as any).value;
       const dbName = (o as any).key.toString() as VaultName;
       const vaultId = await this.db.deserializeDecrypt<VaultId>(dbId, false);
-      if (nodeId === this.nodeManager.getNodeId()) {
+      if (!nodeId) {
         vaults.set(dbName, vaultId);
       } else {
         // TODO: Handle what other nodes can see with their permissions
@@ -319,9 +325,11 @@ class VaultManager {
         if (vault != null) {
           return vault;
         }
+        const efs = await this.efs.chroot(vaultId);
+        await efs.start();
         vault = await VaultInternal.create({
           vaultId,
-          efs: await this.efs.chroot(vaultId),
+          efs: efs,
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
@@ -337,9 +345,11 @@ class VaultManager {
       let release;
       try {
         release = await lock.acquire();
+        const efs = await this.efs.chroot(vaultId);
+        await efs.start();
         vault = await VaultInternal.create({
           vaultId,
-          efs: await this.efs.chroot(vaultId),
+          efs: efs,
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
