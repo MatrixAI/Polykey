@@ -30,10 +30,10 @@ import * as vaultsUtils from './utils';
 import * as gitUtils from '../git/utils';
 import * as vaultsErrors from './errors';
 import * as gitErrors from '../git/errors';
-import { CreateDestroyStartStop, ready } from "@matrixai/async-init/dist/CreateDestroyStartStop";
+import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 
-interface VaultInternal extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(new vaultsErrors.ErrorVaultNotStarted(), new vaultsErrors.ErrorVaultDestroyed())
+interface VaultInternal extends CreateDestroy {}
+@CreateDestroy()
 class VaultInternal {
   public readonly baseDir: string;
   public readonly vaultId: VaultId;
@@ -47,60 +47,56 @@ class VaultInternal {
     vaultId,
     efs,
     logger,
+    fresh = false,
   }: {
     vaultId: VaultId;
     efs: EncryptedFS;
     logger?: Logger;
+    fresh?: boolean;
   }) {
     logger = logger ?? new Logger(this.constructor.name);
-    await git.init({
-      fs: efs,
-      dir: '.',
-    });
-    const workingDir = await git.commit({
-      fs: efs,
-      dir: '.',
-      author: {
-        name: vaultId,
-      },
-      message: 'Initial Commit',
-    });
-    await efs.writeFile(
-      path.join('.git', 'packed-refs'),
-      '# pack-refs with: peeled fully-peeled sorted',
-    );
-    await efs.writeFile(path.join('.git', 'workingDir'), workingDir);
-    const vault = new VaultInternal({
-      vaultId,
-      efs,
-      workingDir,
-      logger,
-    });
-    logger.info(`Initialising vault at '${vaultId}'`);
-    return vault;
-  }
+    if(fresh){
+      // Creating a new vault.
+      await git.init({
+        fs: efs,
+        dir: '.',
+      });
+      const workingDir = await git.commit({
+        fs: efs,
+        dir: '.',
+        author: {
+          name: vaultId,
+        },
+        message: 'Initial Commit',
+      });
+      await efs.writeFile(
+        path.join('.git', 'packed-refs'),
+        '# pack-refs with: peeled fully-peeled sorted',
+      );
+      await efs.writeFile(path.join('.git', 'workingDir'), workingDir);
+      const vault = new VaultInternal({
+        vaultId,
+        efs,
+        workingDir,
+        logger,
+      });
+      logger.info(`Initialising vault at '${vaultId}'`);
+      return vault;
+    } else {
+      // Loading an existing vault.
+      const workingDir = (await efs.readFile(path.join('.git', 'workingDir'), {
+        encoding: 'utf8',
+      })) as string;
+      const vault = new VaultInternal({
+        vaultId,
+        efs,
+        workingDir,
+        logger,
+      });
+      logger.info(`Starting vault at '${vaultId}'`);
+      return vault;
+    }
 
-  public static async start({
-    vaultId,
-    efs,
-    logger,
-  }: {
-    vaultId: VaultId;
-    efs: EncryptedFS;
-    logger?: Logger;
-  }): Promise<VaultInternal> {
-    logger = logger ?? new Logger(this.constructor.name);
-    const workingDir = (await efs.readFile(path.join('.git', 'workingDir'), {
-      encoding: 'utf8',
-    })) as string;
-    const vault = new VaultInternal({
-      vaultId,
-      efs,
-      workingDir,
-      logger,
-    });
-    logger.info(`Starting vault at '${vaultId}'`);
-    return vault;
   }
 
   constructor({
@@ -121,7 +117,7 @@ class VaultInternal {
     this._lock = new Mutex();
   }
 
-  public async stop(): Promise<void> {
+  public async destroy(): Promise<void> {
     const release = await this._lock.acquire();
     try {
       await this._efs.writeFile(
@@ -130,15 +126,11 @@ class VaultInternal {
       );
     } finally {
       release();
-      this._logger.info(`Stopping vault at '${this.vaultId}'`);
     }
-  }
-
-  public async destroy(): Promise<void> {
     this._logger.info(`Destroying vault at '${this.vaultId}'`);
   }
 
-  @ready(new vaultsErrors.ErrorVaultNotStarted())
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async commit(f: (fs: FileSystemWritable) => Promise<void>) {
     const release = await this._lock.acquire();
     const message: string[] = [];
@@ -201,7 +193,7 @@ class VaultInternal {
     }
   }
 
-  @ready(new vaultsErrors.ErrorVaultNotStarted())
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async access<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
     const release = await this._lock.acquire();
     try {
@@ -211,7 +203,7 @@ class VaultInternal {
     }
   }
 
-  @ready(new vaultsErrors.ErrorVaultNotStarted())
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async log(
     depth?: number,
     commit?: string,
@@ -231,7 +223,7 @@ class VaultInternal {
     });
   }
 
-  @ready(new vaultsErrors.ErrorVaultNotStarted())
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async version(commit: string): Promise<void> {
     try {
       await git.checkout({
@@ -247,7 +239,7 @@ class VaultInternal {
     }
   }
 
-  @ready(new vaultsErrors.ErrorVaultNotStarted())
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async applySchema(vs) {}
 }
 
