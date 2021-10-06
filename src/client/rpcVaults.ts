@@ -1,7 +1,7 @@
 import type { NodeId } from '../nodes/types';
-import type { VaultAction, VaultId } from '../vaults/types';
+import type { VaultAction, VaultId, VaultName } from '../vaults/types';
 import type { SessionManager } from '../sessions';
-import type { VaultManager, Vault } from '../vaults';
+import type { VaultManager, VaultInternal } from '../vaults';
 
 import * as utils from './utils';
 import * as grpc from '@grpc/grpc-js';
@@ -30,17 +30,14 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const vaults: Array<{
-          name: string;
-          id: string;
-        }> = await vaultManager.listVaults();
+        const vaults = await vaultManager.listVaults();
         let vaultListMessage: clientPB.VaultListMessage;
-        for (const vault of vaults) {
+        vaults.forEach(async (vaultId, vaultName) => {
           vaultListMessage = new clientPB.VaultListMessage();
-          vaultListMessage.setVaultName(vault.name);
-          vaultListMessage.setVaultId(vault.id);
+          vaultListMessage.setVaultName(vaultName);
+          vaultListMessage.setVaultId(vaultId);
           await genWritable.next(vaultListMessage);
-        }
+        });
         await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);
@@ -51,14 +48,14 @@ const createVaultRPC = ({
       callback: grpc.sendUnaryData<clientPB.VaultMessage>,
     ): Promise<void> => {
       const response = new clientPB.VaultMessage();
-      let vault: Vault;
+      let vault: VaultInternal;
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        vault = await vaultManager.createVault(call.request.getVaultName());
+        vault = await vaultManager.createVault(call.request.getVaultName() as VaultName);
         response.setVaultId(vault.vaultId);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -85,7 +82,7 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const newName = call.request.getNewName();
+        const newName = call.request.getNewName() as VaultName;
         await vaultManager.renameVault(id, newName);
         response.setVaultId(id);
         callback(null, response);
@@ -106,8 +103,8 @@ const createVaultRPC = ({
         );
         call.sendMetadata(responseMeta);
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const result = await vaultManager.deleteVault(id);
-        response.setSuccess(result);
+        await vaultManager.destroyVault(id);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -142,7 +139,7 @@ const createVaultRPC = ({
         // Node id
         const id = makeNodeId(nodeMessage.getNodeId());
 
-        await vaultManager.cloneVault(vaultId, id);
+        // await vaultManager.cloneVault(vaultId, id);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -178,7 +175,7 @@ const createVaultRPC = ({
         // Node id
         const id = makeNodeId(nodeMessage.getNodeId());
 
-        await vaultManager.pullVault(vaultId, id);
+        // await vaultManager.pullVault(vaultId, id);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -200,14 +197,13 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const vaults = await vaultManager.scanVaults(nodeId);
-        let vaultListMessage: clientPB.VaultListMessage;
-        for (const vault of vaults) {
-          vaultListMessage = new clientPB.VaultListMessage();
-          vaultListMessage.setVaultName(vault.name);
-          vaultListMessage.setVaultId(vault.id);
+        const vaults = await vaultManager.listVaults(nodeId);
+        vaults.forEach(async (vaultId, vaultName) => {
+          const vaultListMessage = new clientPB.VaultListMessage();
+          vaultListMessage.setVaultName(vaultName);
+          vaultListMessage.setVaultId(vaultId);
           await genWritable.next(vaultListMessage);
-        }
+        });
         await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);
@@ -232,8 +228,11 @@ const createVaultRPC = ({
           vaultMessage,
           vaultManager,
         );
-        const vault = await vaultManager.getVault(id);
-        const secrets: Array<string> = await vault.listSecrets();
+        const vault = await vaultManager.openVault(id);
+        const secrets: Array<string> = await vault.access<Array<string>>(async (efs) => {
+          const list = await efs.readdir('.', { encoding: 'utf8' }) as string[];
+          return list.filter((value) => { if (value !== '.git') return value });
+        });
         let secretMessage: clientPB.SecretMessage;
         for (const secret of secrets) {
           secretMessage = new clientPB.SecretMessage();
@@ -265,11 +264,11 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
-        const success = await vault.mkdir(call.request.getDirName(), {
-          recursive: true,
+        const vault = await vaultManager.openVault(id);
+        await vault.commit(async (efs) => {
+          await efs.mkdirp(call.request.getDirName());
         });
-        response.setSuccess(success);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -288,8 +287,8 @@ const createVaultRPC = ({
         call.sendMetadata(responseMeta);
         const vaultMessage = call.request;
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const stats = await vaultManager.vaultStats(id);
-        response.setStats(JSON.stringify(stats));
+        const vault = await vaultManager.openVault(id);
+        // response.setStats(JSON.stringify(stats));
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -315,11 +314,11 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
-        const success = await vault.deleteSecret(call.request.getSecretName(), {
-          recursive: true,
+        const vault = await vaultManager.openVault(id);
+        await vault.commit(async (efs) => {
+          await efs.unlink(call.request.getSecretName());
         });
-        response.setSuccess(success);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -350,10 +349,12 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
         const secret = secretMessage.getSecretName();
         const content = secretMessage.getSecretContent();
-        await vault.updateSecret(secret, content);
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secret, content);
+        });
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -377,9 +378,11 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
 
-        const secret = await vault.getSecret(call.request.getSecretName());
+        const secret = await vault.access<string>(async (efs) => {
+          return await efs.readFile(call.request.getSecretName(), { encoding: 'utf8' }) as string;
+        });
         response.setSecretContent(secret);
         callback(null, response);
       } catch (err) {
@@ -411,11 +414,13 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
         const oldSecret = secretMessage.getSecretName();
         const newSecret = call.request.getNewName();
-        const success = await vault.renameSecret(oldSecret, newSecret);
-        response.setSuccess(success);
+        await vault.commit(async (efs) => {
+          await efs.rename(oldSecret, newSecret);
+        });
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -441,11 +446,13 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
         const secret = call.request.getSecretName();
         const content = call.request.getSecretContent();
-        const success = await vault.addSecret(secret, content);
-        response.setSuccess(success);
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secret, content);
+        });
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -471,10 +478,10 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
         const secretsPath = call.request.getSecretDirectory();
 
-        await vault.addSecretDirectory(secretsPath);
+        // await vault.addSecretDirectory(secretsPath);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -506,7 +513,7 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        await vaultManager.setVaultPermissions(node, id);
+        // await vaultManager.setVaultPermissions(node, id);
         const response = new clientPB.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
@@ -539,7 +546,7 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        await vaultManager.unsetVaultPermissions(node, id);
+        // await vaultManager.unsetVaultPermissions(node, id);
         const response = new clientPB.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
@@ -575,18 +582,18 @@ const createVaultRPC = ({
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         let perms: Record<NodeId, VaultAction>;
         if (isNodeId(node)) {
-          perms = await vaultManager.getVaultPermissions(id, node);
+          // perms = await vaultManager.getVaultPermissions(id, node);
         } else {
-          perms = await vaultManager.getVaultPermissions(id);
+          // perms = await vaultManager.getVaultPermissions(id);
         }
         const permissionMessage = new clientPB.PermissionMessage();
-        for (const nodeId in perms) {
-          permissionMessage.setNodeId(nodeId);
-          if (perms[nodeId]['pull'] !== undefined) {
-            permissionMessage.setAction('pull');
-          }
-          await genWritable.next(permissionMessage);
-        }
+        // for (const nodeId in perms) {
+        //   permissionMessage.setNodeId(nodeId);
+        //   if (perms[nodeId]['pull'] !== undefined) {
+        //     permissionMessage.setAction('pull');
+        //   }
+        //   await genWritable.next(permissionMessage);
+        // }
         await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);

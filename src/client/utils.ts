@@ -1,4 +1,4 @@
-import type { VaultId } from '../vaults/types';
+import type { VaultId, VaultName } from '../vaults/types';
 import type { Session } from '../sessions';
 import type { VaultManager } from '../vaults';
 import type { SessionToken } from '../sessions/types';
@@ -14,7 +14,7 @@ async function parseVaultInput(
   switch (vaultMessage.getNameOrIdCase()) {
     case VaultMessage.NameOrIdCase.VAULT_NAME: {
       return (await vaultManager.getVaultId(
-        vaultMessage.getVaultName(),
+        vaultMessage.getVaultName() as VaultName,
       )) as VaultId;
     }
     case VaultMessage.NameOrIdCase.VAULT_ID: {
