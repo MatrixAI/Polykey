@@ -526,6 +526,32 @@ export namespace PermissionMessage {
     }
 }
 
+export class VaultsVersionMessage extends jspb.Message { 
+
+    hasVault(): boolean;
+    clearVault(): void;
+    getVault(): VaultMessage | undefined;
+    setVault(value?: VaultMessage): VaultsVersionMessage;
+    getVersionId(): string;
+    setVersionId(value: string): VaultsVersionMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultsVersionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultsVersionMessage): VaultsVersionMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultsVersionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultsVersionMessage;
+    static deserializeBinaryFromReader(message: VaultsVersionMessage, reader: jspb.BinaryReader): VaultsVersionMessage;
+}
+
+export namespace VaultsVersionMessage {
+    export type AsObject = {
+        vault?: VaultMessage.AsObject,
+        versionId: string,
+    }
+}
+
 export class NodeMessage extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeMessage;

@@ -491,4 +491,9 @@ describe('CLI vaults', () => {
       await fs.promises.rmdir(dataDir2, { recursive: true });
     });
   });
+  describe('commandVaultVersion', () => {
+    test.todo('should switch the version of a vault');
+    test.todo('should switch the version of a vault to the latest version');
+    test.todo('should throw an error if the vault is not found');
+  })
 });

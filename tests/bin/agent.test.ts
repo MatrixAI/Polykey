@@ -455,6 +455,7 @@ describe('CLI agent', () => {
         'vaults clone -ni nodeId -vi vaultId',
         'vaults pull -vn vaultName -ni nodeId',
         'vaults scan -ni nodeId',
+        'vaults version vaultName nodeId',
       ];
 
       const commands = [

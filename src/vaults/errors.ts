@@ -31,6 +31,8 @@ class ErrorVaultUnlinked extends ErrorVaults {}
 
 class ErrorCreateVaultId extends ErrorVaults {}
 
+class ErrorInvalidVaultId extends ErrorVaults {}
+
 class ErrorVaultMergeConflict extends ErrorVaults {}
 
 class ErrorVaultCommitUndefined extends ErrorVaults {
@@ -60,6 +62,7 @@ export {
   ErrorMalformedVaultDBValue,
   ErrorVaultUnlinked,
   ErrorCreateVaultId,
+  ErrorInvalidVaultId,
   ErrorVaultMergeConflict,
   ErrorVaultCommitUndefined,
   ErrorSecretUndefined,

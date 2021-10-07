@@ -22,6 +22,19 @@ async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
   return await keysUtils.generateKey(bits) as VaultKey;
 }
 
+const validVaultId = /^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}:[A-Za-z0-9]{44}$/
+/**
+ * Validates that a provided vault ID string is a valid vault ID.
+ */
+function isVaultId(vaultId: string): vaultId is VaultId {
+  return validVaultId.test(vaultId);
+}
+
+function makeVaultId(arg: any): VaultId {
+  if (isVaultId(arg)) return arg;
+  throw new vaultErrors.ErrorInvalidVaultId();
+}
+
 function generateVaultId(nodeId: NodeId): VaultId {
   const vaultId = uuid();
   return (vaultId + ':' + nodeId) as VaultId;
@@ -220,6 +233,8 @@ async function requestVaultNames(
 }
 
 export {
+  isVaultId,
+  makeVaultId,
   generateVaultKey,
   generateVaultId,
   splitVaultId,
