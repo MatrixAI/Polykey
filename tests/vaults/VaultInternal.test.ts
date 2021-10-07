@@ -155,11 +155,6 @@ describe('VaultInternal', () => {
   test('creating state on disk', async () => {
     expect(await fs.promises.readdir(dataDir)).toContain('db');
   });
-  test('Comitting a change', async () => {
-    await vault.commit(async (efs) => {
-      await efs.writeFile('secret-1', 'secret-content')
-    })
-  });
   test('Accessing a change', async () => {
     await vault.commit(async (efs) => {
       await efs.writeFile('secret-1', 'secret-content')
@@ -184,4 +179,185 @@ describe('VaultInternal', () => {
       expect((await efs.readFile('secret-1')).toString()).toStrictEqual('secret-content');
     })
   })
+  describe('Writing operations', () => {
+    const secret1 = {name: 'secret-1', content: 'secret-content-1'}
+    const secret2 = {name: 'secret-2', content: 'secret-content-2'}
+    test('Write operation allowed', async () => {
+      await vault.commit(async (efs) => {
+        await efs.writeFile('secret-1', 'secret-content')
+      })
+    });
+    test('Concurrent write operations prevented', async () => {
+      await Promise.all([
+        vault.commit(async (efs) => {
+          await efs.writeFile('secret-1', 'secret-content-1')
+        }),
+        vault.commit(async (efs) => {
+          await efs.writeFile('secret-2', 'secret-content-2')
+        }),
+        vault.commit(async (efs) => {
+          await efs.writeFile('secret-3', 'secret-content-3')
+        }),
+      ])
+
+      await vault.access(async (efs) => {
+        const directory = await efs.readdir('.');
+        expect(directory).toContain('secret-1');
+        expect(directory).toContain('secret-2');
+        expect(directory).toContain('secret-3');
+      })
+      const log = await vault.log();
+      expect(log.length).toEqual(4);
+    });
+    test('Write locks read', async () => {
+      await vault.commit(async (efs) => {
+        await efs.writeFile('secret-1', 'secret-content')
+      })
+
+      await Promise.all([
+        vault.commit(async (efs) => {
+          await efs.writeFile('secret-1', 'SUPER-DUPER-SECRET-CONTENT')
+        }),
+        vault.access(async (efs) => {
+          expect((await efs.readFile('secret-1')).toString()).toEqual('SUPER-DUPER-SECRET-CONTENT')
+        })
+      ]);
+    });
+    test('Commit added if mutation in write', async () => {
+      const commit = (await vault.log())[0].oid;
+      await vault.commit(async (efs) => {
+        await efs.writeFile('secret-1', 'secret-content')
+      });
+      const log = await vault.log();
+      expect(log).toHaveLength(2);
+      expect(log[0].message).toContain('secret-1');
+      expect(log[0].oid).not.toStrictEqual(commit);
+    });
+    test('No commit added if no mutation in write', async () => {
+      const commit = (await vault.log())[0].oid;
+      await vault.commit(async (_efs) => {
+      });
+      const log = await vault.log();
+      expect(log).toHaveLength(1);
+      expect(log[0].message).not.toContain('secret-1');
+      expect(log[0].oid).toStrictEqual(commit);
+    });
+    test('Commit message contains all actions made in the commit', async () => {
+      // adding
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secret1.name, secret1.content);
+        await efs.writeFile(secret2.name, secret2.content);
+      });
+      let log = await vault.log();
+      expect(log[0].message).toContain(`${secret1.name} added`);
+      expect(log[0].message).toContain(`${secret2.name} added`);
+
+      // Modifying
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secret2.name, `${secret2.content} new content`);
+      });
+      log = await vault.log();
+      expect(log[0].message).toContain(`${secret2.name} modified`);
+
+      // moving and removing
+      await vault.commit(async (efs) => {
+        await efs.rename(secret1.name, secret1.name + '-new');
+        await efs.unlink(secret2.name);
+      });
+
+      log = await vault.log();
+      expect(log[0].message).toContain(`${secret1.name}-new added`)
+      expect(log[0].message).toContain(`${secret1.name} deleted`)
+      expect(log[0].message).toContain(`${secret2.name} deleted`)
+      //TODO: update this with all the expected messages.
+    })
+    test('No mutation to vault when part of a commit operation fails', async () => {
+      // Failing commit operation
+      await expect( () => vault.commit(async (efs) => {
+        await efs.writeFile(secret1.name, secret1.content);
+        await efs.rename('notValid', 'randomName'); // throws
+      })).rejects.toThrow()
+
+      // Make sure secret1 wasn't written when the above commit failed.
+      await vault.access(async (efs) => {
+        expect(await efs.readdir('.')).not.toContain(secret1.name);
+      })
+
+      // No new commit.
+      expect(await vault.log()).toHaveLength(1);
+
+      // Succeeding commit operation.
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secret2.name, secret2.content);
+      })
+
+      // Secret 1 shouldn't exist while secret2 exists.
+      await vault.access(async (efs) => {
+        const directory = await efs.readdir('.');
+        expect(directory).not.toContain(secret1.name); //
+        expect(directory).toContain(secret2.name);
+      })
+
+      // Has a new commit.
+      expect(await vault.log()).toHaveLength(2);
+
+    })
+  });
+  describe('Reading operations', () => {
+    const secret1 = {name: 'secret-1', content: 'secret-content-1'}
+    const secret2 = {name: 'secret-2', content: 'secret-content-2'}
+
+    beforeEach(async () => {
+      await vault.commit( async (efs) => {
+        await efs.writeFile(secret1.name, secret1.content);
+        await efs.writeFile(secret2.name, secret2.content);
+      });
+    });
+    test('Read operation allowed', async () => {
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content)
+      })
+    });
+    test('Concurrent read operations allowed', async () => {
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content)
+        expect((await efs.readFile(secret2.name)).toString()).toEqual(secret2.content)
+        expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content)
+      })
+
+      await Promise.all([
+        vault.access(async (efs) => {
+          expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content)
+        }),
+        vault.access(async (efs) => {
+          expect((await efs.readFile(secret2.name)).toString()).toEqual(secret2.content)
+        }),
+        vault.access(async (efs) => {
+          expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content)
+        }),
+      ]);
+    });
+    test('Read locks write', async () => {
+      await Promise.all([
+        vault.access(async (efs) => {
+          expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content)
+        }),
+        vault.commit(async (efs) => {
+          await efs.writeFile(secret1.name, 'NEW-CONTENT');
+        }),
+        vault.access(async (efs) => {
+          expect((await efs.readFile(secret1.name)).toString()).toEqual('NEW-CONTENT')
+        }),
+      ]);
+    });
+    test('No commit after read', async () => {
+      const commit = (await vault.log())[0].oid;
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content)
+      });
+      const log = await vault.log();
+      expect(log).toHaveLength(2);
+      expect(log[0].oid).toStrictEqual(commit);
+    });
+  });
 });
