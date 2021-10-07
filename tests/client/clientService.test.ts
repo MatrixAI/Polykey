@@ -801,6 +801,9 @@ describe('Client service', () => {
 
       await cleanVault('vault1');
     });
+    test.todo('should be able to switch a vault to a specific version of it\'s history');
+    test.todo('should be able to go to the end of the vault history');
+
   });
   describe('keys', () => {
     test('should get root keypair', async () => {

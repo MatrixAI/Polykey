@@ -51,6 +51,7 @@ service Client {
   rpc VaultsPermissionsSet(SetVaultPermMessage) returns (StatusMessage) {};
   rpc VaultsPermissionsUnset(UnsetVaultPermMessage) returns (StatusMessage) {}
   rpc VaultsPermissions(GetVaultPermMessage) returns (stream PermissionMessage) {};
+  rpc VaultsVersion(VaultsVersionMessage) returns (StatusMessage);
 
   // Identities
   rpc IdentitiesAuthenticate(ProviderMessage) returns (stream ProviderMessage) {};
@@ -180,6 +181,11 @@ message GetVaultPermMessage {
 message PermissionMessage {
   string node_id = 1;
   string action = 2;
+}
+
+message VaultsVersionMessage {
+  VaultMessage vault = 1;
+  string version_id = 2;
 }
 
 // Nodes

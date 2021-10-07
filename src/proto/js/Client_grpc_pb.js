@@ -433,6 +433,17 @@ function deserialize_clientInterface_VaultRenameMessage(buffer_arg) {
   return Client_pb.VaultRenameMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_VaultsVersionMessage(arg) {
+  if (!(arg instanceof Client_pb.VaultsVersionMessage)) {
+    throw new Error('Expected argument of type clientInterface.VaultsVersionMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_VaultsVersionMessage(buffer_arg) {
+  return Client_pb.VaultsVersionMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 var ClientService = exports.ClientService = {
   echo: {
@@ -857,6 +868,17 @@ vaultsList: {
     requestDeserialize: deserialize_clientInterface_GetVaultPermMessage,
     responseSerialize: serialize_clientInterface_PermissionMessage,
     responseDeserialize: deserialize_clientInterface_PermissionMessage,
+  },
+  vaultsVersion: {
+    path: '/clientInterface.Client/VaultsVersion',
+    requestStream: false,
+    responseStream: false,
+    requestType: Client_pb.VaultsVersionMessage,
+    responseType: Client_pb.StatusMessage,
+    requestSerialize: serialize_clientInterface_VaultsVersionMessage,
+    requestDeserialize: deserialize_clientInterface_VaultsVersionMessage,
+    responseSerialize: serialize_clientInterface_StatusMessage,
+    responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
   // Identities
 identitiesAuthenticate: {

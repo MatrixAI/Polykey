@@ -1,13 +1,16 @@
-import type { NodeId } from '../nodes/types';
-import type { VaultAction, VaultId, VaultName } from '../vaults/types';
-import type { SessionManager } from '../sessions';
-import type { VaultManager, VaultInternal } from '../vaults';
+import type { NodeId } from "../nodes/types";
+import type { VaultAction, VaultId, VaultName } from "../vaults/types";
+import type { SessionManager } from "../sessions";
+import type { VaultInternal, VaultManager } from "../vaults";
 
-import * as utils from './utils';
-import * as grpc from '@grpc/grpc-js';
-import * as grpcUtils from '../grpc/utils';
-import * as clientPB from '../proto/js/Client_pb';
-import { isNodeId, makeNodeId } from '../nodes/utils';
+import * as utils from "./utils";
+import * as grpc from "@grpc/grpc-js";
+import * as grpcUtils from "../grpc/utils";
+import * as clientPB from "../proto/js/Client_pb";
+import { VaultMessage } from "../proto/js/Client_pb";
+import { isNodeId, makeNodeId } from "../nodes/utils";
+import NameOrIdCase = VaultMessage.NameOrIdCase;
+import { makeVaultId } from "@/vaults/utils";
 
 const createVaultRPC = ({
   vaultManager,
@@ -65,7 +68,7 @@ const createVaultRPC = ({
     vaultsRename: async (
       call: grpc.ServerUnaryCall<
         clientPB.VaultRenameMessage,
-        clientPB.StatusMessage
+        clientPB.VaultMessage
       >,
       callback: grpc.sendUnaryData<clientPB.VaultMessage>,
     ): Promise<void> => {
@@ -597,6 +600,51 @@ const createVaultRPC = ({
         await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);
+      }
+    },
+    vaultsVersion: async (
+      call: grpc.ServerUnaryCall<clientPB.VaultsVersionMessage, clientPB.StatusMessage>,
+      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+    ): Promise<void> => {
+      try {
+        //checking session token
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+
+        const vaultsVersionMessage = call.request;
+
+        //getting vault ID
+        const vaultMessage = vaultsVersionMessage.getVault();
+        let vaultId: VaultId;
+        switch(vaultMessage?.getNameOrIdCase()) {
+          case NameOrIdCase.VAULT_NAME:
+            vaultId = (await vaultManager.getVaultId(vaultMessage?.getVaultName() as VaultName))!
+            break;
+          case NameOrIdCase.VAULT_ID:
+            vaultId = makeVaultId(vaultMessage?.getVaultName());
+            break;
+          case NameOrIdCase.NAME_OR_ID_NOT_SET:
+          default:
+            // Here be dragons
+            throw Error();
+        }
+
+        // Doing the deed
+
+        const vault = await vaultManager.openVault(vaultId);
+        await vault.version(vaultsVersionMessage.getVersionId());
+
+        // Creating message
+        const statusMessage = new clientPB.StatusMessage();
+        statusMessage.setSuccess(true);
+
+        // Sending message
+        callback(null, statusMessage);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
       }
     },
   };
