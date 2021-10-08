@@ -1,6 +1,6 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { NotificationData } from '@/notifications/types';
-import type { VaultId } from '@/vaults/types';
+import type { VaultId, VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
@@ -325,7 +325,7 @@ describe('CLI Notifications', () => {
       const notificationData3: NotificationData = {
         type: 'VaultShare',
         vaultId: 'vaultId' as VaultId,
-        vaultName: 'vaultName',
+        vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
           pull: null,

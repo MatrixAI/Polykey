@@ -7,12 +7,16 @@ import * as gitTestUtils from './utils';
 import * as gitErrors from '@/git/errors';
 import { PackIndex } from '@/git/types';
 import { ReadCommitResult } from 'isomorphic-git';
+import { EncryptedFS } from "encryptedfs";
+import { KeyManager } from "@/keys";
 
 describe('Git utils', () => {
   let dataDir: string;
   let commits: ReadCommitResult[];
   let firstCommit: ReadCommitResult;
   let objectsPath: string;
+  let efs: EncryptedFS;
+  let keyManager: KeyManager;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -25,9 +29,20 @@ describe('Git utils', () => {
     });
     firstCommit = commits[0];
     objectsPath = path.join(dataDir, '.git', 'objects');
+
+    const keysPath = path.join(dataDir, 'KEYS');
+    keyManager = await KeyManager.createKeyManager({
+      keysPath,
+      password: 'password'
+    });
+    const dbPath = path.join(dataDir, 'EFS');
+    efs = await EncryptedFS.createEncryptedFS({
+      dbKey: keyManager.dbKey,
+      dbPath })
   });
 
   afterEach(async () => {
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -51,7 +66,7 @@ describe('Git utils', () => {
   describe.skip('Git Ref Manager', () => {
     test('listRefs', async () => {
       const refs = await gitUtils.listRefs(
-        fs,
+        efs,
         path.join(dataDir, '.git'),
         'refs/heads',
       );
@@ -72,7 +87,7 @@ describe('Git utils', () => {
   });
   test('upload pack', async () => {
     const res = (await gitUtils.uploadPack(
-      fs,
+      efs,
       path.join(dataDir, '.git'),
       true,
     )) as Buffer[];
@@ -86,7 +101,7 @@ describe('Git utils', () => {
   describe('Resolve refs', () => {
     test('resolving a commit oid', async () => {
       const ref = await gitUtils.resolve(
-        fs,
+        efs,
         path.join(dataDir, '.git'),
         commits[0].oid,
       );
@@ -94,7 +109,7 @@ describe('Git utils', () => {
     });
     test('HEAD', async () => {
       const ref = await gitUtils.resolve(
-        fs,
+        efs,
         path.join(dataDir, '.git'),
         'HEAD',
       );
@@ -102,7 +117,7 @@ describe('Git utils', () => {
     });
     test('HEAD depth', async () => {
       const ref = await gitUtils.resolve(
-        fs,
+        efs,
         path.join(dataDir, '.git'),
         'HEAD',
         2,
@@ -111,7 +126,7 @@ describe('Git utils', () => {
     });
     test('non-existant refs', async () => {
       await expect(() =>
-        gitUtils.resolve(fs, path.join(dataDir, '.git'), 'this-is-not-a-ref'),
+        gitUtils.resolve(efs, path.join(dataDir, '.git'), 'this-is-not-a-ref'),
       ).rejects.toThrow(gitErrors.ErrorGitUndefinedRefs);
     });
   });
@@ -119,7 +134,7 @@ describe('Git utils', () => {
     test('object missing', async () => {
       await expect(() =>
         gitUtils.readObject({
-          fs: fs,
+          fs: efs,
           gitdir: path.join(dataDir, '.git'),
           oid: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         }),
@@ -127,7 +142,7 @@ describe('Git utils', () => {
     });
     test('parsed', async () => {
       const ref = await gitUtils.readObject({
-        fs: fs,
+        fs: efs,
         gitdir: path.join(dataDir, '.git'),
         oid: firstCommit.oid,
       });
@@ -136,7 +151,7 @@ describe('Git utils', () => {
     });
     test('content', async () => {
       const ref = await gitUtils.readObject({
-        fs,
+        fs: efs,
         gitdir: path.join(dataDir, '.git'),
         oid: firstCommit.oid,
         format: 'content',
@@ -157,7 +172,7 @@ describe('Git utils', () => {
     });
     test('wrapped', async () => {
       const ref = await gitUtils.readObject({
-        fs: fs,
+        fs: efs,
         gitdir: path.join(dataDir, '.git'),
         oid: firstCommit.oid,
         format: 'wrapped',
@@ -177,7 +192,7 @@ describe('Git utils', () => {
     });
     test('deflated', async () => {
       const ref = await gitUtils.readObject({
-        fs: fs,
+        fs: efs,
         gitdir: path.join(dataDir, '.git'),
         oid: firstCommit.oid,
         format: 'deflated',
@@ -202,7 +217,7 @@ describe('Git utils', () => {
         path.join(objectsPath, 'TEST'),
       );
       const ref = await gitUtils.readObject({
-        fs: fs,
+        fs: efs,
         gitdir: path.join(dataDir, '.git'),
         oid: firstCommit.oid,
         format: 'deflated',
@@ -228,7 +243,7 @@ describe('Git utils', () => {
     );
     // Await fs.promises.unlink(path.join(objectsPath, 'pack', `pack-${packName}.pack`));
     const pack = await gitUtils.packObjects({
-      fs: fs,
+      fs: efs,
       gitdir: path.join(dataDir, '.git'),
       refs: commits.map((commit) => commit.oid),
     });

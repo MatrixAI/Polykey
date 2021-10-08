@@ -57,10 +57,8 @@ async function bootstrapPolykeyState(
 
   // Starting and creating state (this will need to be changed with the new db stuff)
   await polykeyAgent.nodes.start();
-  await polykeyAgent.vaults.start({});
 
   // Stopping
-  await polykeyAgent.vaults.stop();
   await polykeyAgent.nodes.stop();
   await polykeyAgent.db.stop();
 

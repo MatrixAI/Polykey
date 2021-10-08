@@ -552,6 +552,26 @@ export namespace VaultsVersionMessage {
     }
 }
 
+export class VaultsVersionResultMessage extends jspb.Message { 
+    getIsLatestVersion(): boolean;
+    setIsLatestVersion(value: boolean): VaultsVersionResultMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultsVersionResultMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultsVersionResultMessage): VaultsVersionResultMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultsVersionResultMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultsVersionResultMessage;
+    static deserializeBinaryFromReader(message: VaultsVersionResultMessage, reader: jspb.BinaryReader): VaultsVersionResultMessage;
+}
+
+export namespace VaultsVersionResultMessage {
+    export type AsObject = {
+        isLatestVersion: boolean,
+    }
+}
+
 export class NodeMessage extends jspb.Message { 
     getNodeId(): string;
     setNodeId(value: string): NodeMessage;

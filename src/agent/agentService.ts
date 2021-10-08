@@ -57,17 +57,20 @@ function createAgentService({
       const vaultId = request.getId() as VaultId;
 
       const response = new agentPB.PackChunk();
-      const vault = await vaultManager.getVault(vaultId);
-      const responseGen = vault.handleInfoRequest();
+      const vault = await vaultManager.openVault(vaultId);
 
-      for await (const byte of responseGen) {
-        if (byte !== null) {
-          response.setChunk(byte);
-          await genWritable.next(response);
-        } else {
-          await genWritable.next(null);
-        }
-      }
+      throw Error('Not implemented');
+      //FIXME: not implemented
+      // const responseGen = vault.handleInfoRequest();
+      //
+      // for await (const byte of responseGen) {
+      //   if (byte !== null) {
+      //     response.setChunk(byte);
+      //     await genWritable.next(response);
+      //   } else {
+      //     await genWritable.next(null);
+      //   }
+      // }
       await genWritable.next(null);
     },
     vaultsGitPackGet: async (
@@ -85,12 +88,15 @@ function createAgentService({
         const meta = call.metadata;
         const vaultId = meta.get('vault-id').pop()?.toString() as VaultId;
         if (vaultId == null) throw new ErrorGRPC('vault-name not in metadata.');
-        const vault = await vaultManager.getVault(vaultId);
+        const vault = await vaultManager.openVault(vaultId);
 
         const response = new agentPB.PackChunk();
-        const [sideBand, progressStream] = await vault.handlePackRequest(
-          Buffer.from(body),
-        );
+        let sideBand, progressStream;
+        throw Error('Not implemented');
+        // FIXME: handlePackRequest doesn't exist
+        // const [sideBand, progressStream] = await vault.handlePackRequest(
+        //   Buffer.from(body),
+        // );
 
         response.setChunk(Buffer.from('0008NAK\n'));
         await write(response);
@@ -126,8 +132,10 @@ function createAgentService({
       const response = new agentPB.VaultListMessage();
       const id = call.request.getNodeId() as NodeId;
       try {
-        const listResponse = vaultManager.handleVaultNamesRequest(id);
-
+        throw Error('Not implemented')
+        // FIXME: handleVaultNamesRequest doesn't exist.
+        // const listResponse = vaultManager.handleVaultNamesRequest(id);
+        let listResponse;
         for await (const vault of listResponse) {
           if (vault !== null) {
             response.setVault(vault);
@@ -287,7 +295,10 @@ function createAgentService({
       try {
         const nodeId = call.request.getNodeId() as NodeId;
         const vaultId = call.request.getVaultId() as VaultId;
-        const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
+        throw Error('Not Implemented');
+        // FIXME: getVaultPermissions not implemented.
+        // const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
+        let result;
         if (result[nodeId] === undefined) {
           response.setPermission(false);
         } else if (result[nodeId]['pull'] === undefined) {

@@ -30,6 +30,7 @@ import { GithubProvider } from './identities/providers';
 import config from './config';
 import { ErrorStateVersionMismatch } from './errors';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { VaultKey } from "@/vaults/types";
 
 interface Polykey extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -246,17 +247,15 @@ class Polykey {
       }));
     const vaults_ =
       vaultManager ??
-      new VaultManager({
+      await VaultManager.createVaultManager({
         vaultsPath: vaultsPath,
-        keyManager: keys_,
+        vaultsKey: keys_.dbKey as VaultKey, // FIXME, should be the vaults key not db key.
         nodeManager: nodes_,
         db: db_,
-        acl: acl_,
-        gestaltGraph: gestalts_,
         fs: fs_,
-        logger: logger_.getChild('VaultManager'),
+        logger: logger_.getChild('VaultManager')
       });
-    vaults_.setWorkerManager(workers_);
+    // vaults_.setWorkerManager(workers_); FIXME, need to be able to set this.
     const identities_ =
       identitiesManager ??
       (await IdentitiesManager.createIdentitiesManager({
@@ -505,7 +504,6 @@ class Polykey {
     await this.db.start();
 
     await this.nodes.start({ fresh });
-    await this.vaults.start({ fresh });
 
     const keyPrivatePem = this.keys.getRootKeyPairPem().privateKey;
     const certChainPem = await this.keys.getRootCertChainPem();
@@ -570,7 +568,6 @@ class Polykey {
     );
     await this.lockfile.stop();
     await this.revProxy.stop();
-    await this.vaults.stop();
     await this.nodes.stop();
     await this.fwdProxy.stop();
     await this.db.stop();

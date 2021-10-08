@@ -51,14 +51,18 @@ version.action(async (vault, versionId, options) => {
 
     const statusMessage = await grpcClient.vaultsVersion(vaultsVersionMessage);
 
-    let successMessage: string;
-    if(statusMessage.getSuccess()) successMessage = 'PLACEHOLDER SUCCEEDED';
-    else throw Error('PLACEHOLDER FAILED');
+    let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
+    if(!statusMessage.getIsLatestVersion()) {
+      successMessage.push('')
+      successMessage.push('Note: any changes made to the contents of the vault while at this version ')
+      successMessage.push('will discard all changes applied to the vault in later versions. You will')
+      successMessage.push('not be able to return to these later versions if changes are made.')
+    }
 
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: [successMessage],
+        data: successMessage,
       }),
     );
   } catch (err) {

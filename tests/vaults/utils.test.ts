@@ -96,13 +96,16 @@ describe('Vaults utils', () => {
   // });
   test('can search for a vault name', async () => {
     const vaultList = ['a\tb', 'b\ta', '', 'c\tc', 'e\tf'];
-    expect(vaultsUtils.searchVaultName(vaultList, 'b' as VaultId)).toEqual('a');
-    expect(vaultsUtils.searchVaultName(vaultList, 'a' as VaultId)).toEqual('b');
-    expect(vaultsUtils.searchVaultName(vaultList, 'c' as VaultId)).toEqual('c');
-    expect(vaultsUtils.searchVaultName(vaultList, 'f' as VaultId)).toEqual('e');
-    expect(() =>
-      vaultsUtils.searchVaultName(vaultList, 'd' as VaultId),
-    ).toThrow(vaultsErrors.ErrorRemoteVaultUndefined);
+
+    fail()
+    // FIXME secret methods not implemented.
+    // expect(vaultsUtils.searchVaultName(vaultList, 'b' as VaultId)).toEqual('a');
+    // expect(vaultsUtils.searchVaultName(vaultList, 'a' as VaultId)).toEqual('b');
+    // expect(vaultsUtils.searchVaultName(vaultList, 'c' as VaultId)).toEqual('c');
+    // expect(vaultsUtils.searchVaultName(vaultList, 'f' as VaultId)).toEqual('e');
+    // expect(() =>
+    //   vaultsUtils.searchVaultName(vaultList, 'd' as VaultId),
+    // ).toThrow(vaultsErrors.ErrorRemoteVaultUndefined);
   });
 });
 

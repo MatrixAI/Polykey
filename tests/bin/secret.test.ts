@@ -4,6 +4,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import * as utils from './utils';
+import { VaultName } from "@/vaults/types";
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -62,7 +63,7 @@ describe('CLI secrets', () => {
 
   describe('commandCreateSecret', () => {
     test('should create secrets', async () => {
-      const vaultName = 'Vault1';
+      const vaultName = 'Vault1' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
       const secretPath = path.join(dataDir, 'secret');
@@ -82,22 +83,26 @@ describe('CLI secrets', () => {
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
 
-      const list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual(['MySecret']);
-      expect(await vault.getSecret('MySecret')).toStrictEqual(
-        'this is a secret',
-      );
+      fail()
+      // FIXME secret methods not implemented.
+      // const list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MySecret']);
+      // expect(await vault.getSecret('MySecret')).toStrictEqual(
+      //   'this is a secret',
+      // );
     });
   });
   describe('commandDeleteSecret', () => {
     test('should delete secrets', async () => {
-      const vaultName = 'Vault2';
+      const vaultName = 'Vault2' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
-      await vault.addSecret('MySecret', 'this is the secret');
+      fail()
+      // FIXME secret methods not implemented.
+      // await vault.addSecret('MySecret', 'this is the secret');
 
-      let list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual(['MySecret']);
+      // let list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MySecret']);
 
       command = [
         'secrets',
@@ -111,16 +116,18 @@ describe('CLI secrets', () => {
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
 
-      list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual([]);
+      // list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual([]);
     });
   });
   describe('commandGetSecret', () => {
     test('should retrieve secrets', async () => {
-      const vaultName = 'Vault3';
+      const vaultName = 'Vault3' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
-      await vault.addSecret('MySecret', 'this is the secret');
+      fail()
+      // FIXME secret methods not implemented.
+      // await vault.addSecret('MySecret', 'this is the secret');
 
       command = [
         'secrets',
@@ -137,12 +144,14 @@ describe('CLI secrets', () => {
   });
   describe('commandListSecrets', () => {
     test('should list secrets', async () => {
-      const vaultName = 'Vault4';
+      const vaultName = 'Vault4' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
-      await vault.addSecret('MySecret1', 'this is the secret 1');
-      await vault.addSecret('MySecret2', 'this is the secret 2');
-      await vault.addSecret('MySecret3', 'this is the secret 3');
+      fail()
+      // FIXME secret methods not implemented.
+      // await vault.addSecret('MySecret1', 'this is the secret 1');
+      // await vault.addSecret('MySecret2', 'this is the secret 2');
+      // await vault.addSecret('MySecret3', 'this is the secret 3');
 
       command = ['secrets', 'ls', '-np', dataDir, '-vn', vaultName];
 
@@ -152,7 +161,7 @@ describe('CLI secrets', () => {
   });
   describe('commandNewDir', () => {
     test('should make a directory', async () => {
-      const vaultName = 'Vault5';
+      const vaultName = 'Vault5' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
       command = [
@@ -167,21 +176,25 @@ describe('CLI secrets', () => {
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
 
-      await vault.addSecret('dir1/MySecret1', 'this is the secret 1');
-      await vault.addSecret('dir1/dir2/MySecret2', 'this is the secret 2');
-
-      const list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual(
-        ['dir1/MySecret1', 'dir1/dir2/MySecret2'].sort(),
-      );
+      fail()
+      // FIXME secret methods not implemented.
+      // await vault.addSecret('dir1/MySecret1', 'this is the secret 1');
+      // await vault.addSecret('dir1/dir2/MySecret2', 'this is the secret 2');
+      //
+      // const list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(
+      //   ['dir1/MySecret1', 'dir1/dir2/MySecret2'].sort(),
+      // );
     });
   });
   describe('commandRenameSecret', () => {
     test('should rename secrets', async () => {
-      const vaultName = 'Vault6';
+      const vaultName = 'Vault6' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
-      await vault.addSecret('MySecret', 'this is the secret');
+      fail()
+      // FIXME secret methods not implemented.
+      // await vault.addSecret('MySecret', 'this is the secret');
 
       command = [
         'secrets',
@@ -197,23 +210,25 @@ describe('CLI secrets', () => {
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
 
-      const list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual(['MyRenamedSecret']);
+      // const list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MyRenamedSecret']);
     });
   });
   describe('commandUpdateSecret', () => {
     test('should update secrets', async () => {
-      const vaultName = 'Vault7';
+      const vaultName = 'Vault7' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
       const secretPath = path.join(dataDir, 'secret');
       await fs.promises.writeFile(secretPath, 'updated-content');
 
-      await vault.addSecret('MySecret', 'original-content');
+      fail()
+      // FIXME secret methods not implemented.
+      // await vault.addSecret('MySecret', 'original-content');
 
-      expect(await vault.getSecret('MySecret')).toStrictEqual(
-        'original-content',
-      );
+      // expect(await vault.getSecret('MySecret')).toStrictEqual(
+      //   'original-content',
+      // );
 
       command = [
         'secrets',
@@ -229,16 +244,16 @@ describe('CLI secrets', () => {
       const result2 = await utils.pkWithStdio([...command]);
       expect(result2.code).toBe(0);
 
-      const list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual(['MySecret']);
-      expect(await vault.getSecret('MySecret')).toStrictEqual(
-        'updated-content',
-      );
+      // const list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MySecret']);
+      // expect(await vault.getSecret('MySecret')).toStrictEqual(
+      //   'updated-content',
+      // );
     });
   });
   describe('commandNewDirSecret', () => {
     test('should add a directory of secrets', async () => {
-      const vaultName = 'Vault8';
+      const vaultName = 'Vault8' as VaultName;
       const vault = await polykeyAgent.vaults.createVault(vaultName);
 
       const secretDir = path.join(dataDir, 'secrets');
@@ -256,8 +271,10 @@ describe('CLI secrets', () => {
         'this is the secret 3',
       );
 
-      let list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual([]);
+      fail()
+      // FIXME secret methods not implemented.
+      // let list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual([]);
 
       command = [
         'secrets',
@@ -273,12 +290,12 @@ describe('CLI secrets', () => {
       const result2 = await utils.pkWithStdio([...command]);
       expect(result2.code).toBe(0);
 
-      list = await vault.listSecrets();
-      expect(list.sort()).toStrictEqual([
-        'secrets/secret-1',
-        'secrets/secret-2',
-        'secrets/secret-3',
-      ]);
+      // list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual([
+      //   'secrets/secret-1',
+      //   'secrets/secret-2',
+      //   'secrets/secret-3',
+      // ]);
     });
   });
 });

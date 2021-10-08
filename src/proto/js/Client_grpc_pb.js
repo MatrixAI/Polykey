@@ -444,6 +444,17 @@ function deserialize_clientInterface_VaultsVersionMessage(buffer_arg) {
   return Client_pb.VaultsVersionMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_VaultsVersionResultMessage(arg) {
+  if (!(arg instanceof Client_pb.VaultsVersionResultMessage)) {
+    throw new Error('Expected argument of type clientInterface.VaultsVersionResultMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_VaultsVersionResultMessage(buffer_arg) {
+  return Client_pb.VaultsVersionResultMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 var ClientService = exports.ClientService = {
   echo: {
@@ -874,11 +885,11 @@ vaultsList: {
     requestStream: false,
     responseStream: false,
     requestType: Client_pb.VaultsVersionMessage,
-    responseType: Client_pb.StatusMessage,
+    responseType: Client_pb.VaultsVersionResultMessage,
     requestSerialize: serialize_clientInterface_VaultsVersionMessage,
     requestDeserialize: deserialize_clientInterface_VaultsVersionMessage,
-    responseSerialize: serialize_clientInterface_StatusMessage,
-    responseDeserialize: deserialize_clientInterface_StatusMessage,
+    responseSerialize: serialize_clientInterface_VaultsVersionResultMessage,
+    responseDeserialize: deserialize_clientInterface_VaultsVersionResultMessage,
   },
   // Identities
 identitiesAuthenticate: {
