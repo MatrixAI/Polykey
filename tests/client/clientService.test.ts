@@ -1,4 +1,3 @@
-import type { Vault } from '@/vaults';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { NodeInfo, NodeAddress } from '@/nodes/types';
 import type { SessionToken, SessionCredentials } from '@/sessions/types';
@@ -15,7 +14,7 @@ import { PolykeyAgent, PolykeyClient } from '@';
 import { clientPB } from '@/client';
 import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
-import { VaultManager } from '@/vaults';
+import { VaultInternal, VaultManager } from "@/vaults";
 import { IdentitiesManager } from '@/identities';
 import { KeyManager } from '@/keys';
 import { ForwardProxy } from '@/network';
@@ -34,6 +33,8 @@ import { ErrorSessionTokenInvalid } from '@/errors';
 import { checkAgentRunning } from '@/agent/utils';
 import { NotificationData } from '@/notifications/types';
 import { makeNodeId } from '@/nodes/utils';
+import { VaultName } from "@/vaults/types";
+import { VaultsVersionMessage } from "@/proto/js/Client_pb";
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -288,18 +289,14 @@ describe('Client service', () => {
       global.polykeyStartupTimeout + 10000,
     );
   });
-  describe.skip('vaults', () => {
-    async function cleanVault(vaultName: string) {
-      const vaultID = await vaultManager.getVaultId(vaultName);
-      if (vaultID === undefined) return;
-      await vaultManager.deleteVault(vaultID);
-    }
+  describe('vaults', () => {
 
-    async function cleanVaultList(vaultList: Array<string>) {
-      for (const vaultName of vaultList) {
-        await cleanVault(vaultName);
-      }
-    }
+    afterEach(async () => {
+      const aliveVaults = await vaultManager.listVaults();
+      // for (const vaultId of aliveVaults.values()) {
+      //   await vaultManager.destroyVault(vaultId);
+      // }
+    })
 
     test('should get vaults', async () => {
       const listVaults =
@@ -311,7 +308,7 @@ describe('Client service', () => {
       const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
 
       for (const vaultName of vaultList) {
-        await vaultManager.createVault(vaultName);
+        await vaultManager.createVault(vaultName as VaultName);
       }
 
       const emptyMessage = new clientPB.EmptyMessage();
@@ -323,23 +320,23 @@ describe('Client service', () => {
 
       expect(names.sort()).toStrictEqual(vaultList.sort());
 
-      await cleanVaultList(vaultList);
     });
     test('should create vault', async () => {
+      const vaultName = 'NewVault' as VaultName;
+
       const createVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
         client,
         client.vaultsCreate,
       );
 
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName('NewVault');
+      vaultMessage.setVaultName(vaultName);
 
       const vaultId = await createVault(vaultMessage, callCredentials);
-      const vault = (await vaultManager.listVaults());
-      expect(vault?.name).toBe('NewVault');
-      expect(vault?.id).toBe(vaultId.getVaultId());
+      const vaultList = (await vaultManager.listVaults());
+      expect(vaultList.get(vaultName)).toBeTruthy();
+      expect(vaultList.get(vaultName)).toBe(vaultId.getVaultId());
 
-      await cleanVault('NewVault');
     });
     test('should delete vaults', async () => {
       const deleteVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
@@ -350,61 +347,62 @@ describe('Client service', () => {
       const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
       const vaultList2 = ['Vault2', 'Vault3', 'Vault4', 'Vault5'];
 
-      const vaults: Array<Vault> = [];
+      const vaults: Array<VaultInternal> = [];
 
       for (const vaultName of vaultList) {
-        vaults.push(await vaultManager.createVault(vaultName));
+        vaults.push(await vaultManager.createVault(vaultName as VaultName));
       }
 
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vaults[0].vaultName);
+      vaultMessage.setVaultName(vaultList[0]);
 
       const res = await deleteVault(vaultMessage, callCredentials);
       expect(res.getSuccess()).toBe(true);
 
       const list: Array<string> = [];
-      const listVaults = (await vaultManager.listVaults()).sort();
-      for (const vault of listVaults) {
-        list.push(vault.name);
+      const listVaults = (await vaultManager.listVaults());
+      for (const [_vaultName, _vaultId] of listVaults) {
+        list.push(_vaultName);
       }
-      expect(list).toStrictEqual(vaultList2.sort());
+      expect(list.sort()).toStrictEqual(vaultList2.sort());
 
       await expect(() =>
         deleteVault(vaultMessage, callCredentials)
       ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
 
-      await cleanVaultList(vaultList);
     });
     test('should rename vaults', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
+      const vaultRename = 'MyRenamedVault' as VaultName;
       const renameVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
         client,
         client.vaultsRename,
       );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const vaultRenameMessage = new clientPB.VaultRenameMessage();
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       vaultRenameMessage.setVault(vaultMessage);
-      vaultRenameMessage.setNewName('MyRenamedVault');
+      vaultRenameMessage.setNewName(vaultRename);
 
       const vaultId = await renameVault(vaultRenameMessage, callCredentials);
       expect(vaultId.getVaultId()).toBe(vault.vaultId);
 
-      const name = (await vaultManager.listVaults()).pop()?.name;
-      expect(name).toBe('MyRenamedVault');
+      const name = (await vaultManager.listVaults()).entries().next().value[0];
+      expect(name).toBe(vaultRename);
 
-      await cleanVault('MyRenamedVault');
     });
+    //FIXME, fix this when vault secrets stat is re-implemented
     test('should get stats for vaults', async () => {
       const statsVault = grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
         client,
         client.vaultsSecretsStat,
       );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
-      const vault2 = await vaultManager.createVault('MySecondVault');
+      const vault = await vaultManager.createVault('MyFirstVault' as VaultName);
+      const vault2 = await vaultManager.createVault('MySecondVault' as VaultName);
 
       const vaultMessage = new clientPB.VaultMessage();
       vaultMessage.setVaultId(vault.vaultId);
@@ -416,44 +414,48 @@ describe('Client service', () => {
       const res2 = await statsVault(vaultMessage, callCredentials);
       const stats2 = res2.getStats();
 
-      expect(stats1).toBe(
-        JSON.stringify(await vaultManager.vaultStats(vault.vaultId)),
-      );
-      expect(stats2).toBe(
-        JSON.stringify(await vaultManager.vaultStats(vault2.vaultId)),
-      );
+      fail('not implemented')
+      // FIXME
+      // expect(stats1).toBe(
+      //   JSON.stringify(await vaultManager.vaultStats(vault.vaultId)),
+      // );
+      // expect(stats2).toBe(
+      //   JSON.stringify(await vaultManager.vaultStats(vault2.vaultId)),
+      // );
 
-      await cleanVaultList(['MyFirstVault', 'MySecondVault']);
     });
     test('should make a directory in a vault', async () => {
+      const vaultName = 'MySecondVault' as VaultName;
+
       const mkdirVault = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
         client,
         client.vaultsSecretsMkdir,
       );
 
-      const vault = await vaultManager.createVault('MySecondVault');
+      const vault = await vaultManager.createVault(vaultName);
       const dirPath = 'dir/dir1/dir2';
 
       const vaultMkdirMessage = new clientPB.VaultMkdirMessage();
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       vaultMkdirMessage.setVault(vaultMessage);
       vaultMkdirMessage.setDirName(dirPath);
 
       await mkdirVault(vaultMkdirMessage, callCredentials);
 
-      await expect(
-        fs.promises.readdir(path.join(dataDir, 'vaults', vault.vaultId)),
-      ).resolves.toContain(`dir.data`);
+      await vault.access(async (efs) => {
+        expect(await efs.exists(dirPath)).toBeTruthy();
+      });
     });
     test('should list secrets in a vault', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
       const listSecretsVault =
         grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
           client,
           client.vaultsSecretsList,
         );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const secretList = [
         'Secret1',
@@ -463,12 +465,15 @@ describe('Client service', () => {
         'Secret5',
       ];
 
-      for (const secretName of secretList) {
-        await vault.addSecret(secretName, secretName);
-      }
+      await vault.commit(async efs => {
+        for (const secretName of secretList) {
+          await efs.writeFile(secretName, secretName);
+        }
+      })
+
 
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
 
       const res = listSecretsVault(vaultMessage, callCredentials);
 
@@ -479,16 +484,16 @@ describe('Client service', () => {
 
       expect(names.sort()).toStrictEqual(secretList.sort());
 
-      await cleanVault('MyFirstVault');
     });
     test('should delete secrets in a vault', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
       const deleteSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
           client.vaultsSecretsDelete,
         );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const secretList = [
         'Secret1',
@@ -499,33 +504,36 @@ describe('Client service', () => {
       ];
       const secretList2 = ['Secret2', 'Secret3', 'Secret4', 'Secret5'];
 
-      for (const secretName of secretList) {
-        await vault.addSecret(secretName, secretName);
-      }
+      await vault.commit(async efs => {
+        for (const secretName of secretList) {
+          await efs.writeFile(secretName, secretName);
+        }
+      })
 
       const secretMessage = new clientPB.SecretMessage();
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
 
       const res = await deleteSecretVault(secretMessage, callCredentials);
       expect(res.getSuccess()).toBeTruthy();
 
-      expect((await vault.listSecrets()).sort()).toStrictEqual(
-        secretList2.sort(),
-      );
 
-      await cleanVault('MyFirstVault');
+      const secrets = await vault.access(async efs => {
+        return await efs.readdir('.');
+      })
+      expect(secrets).toContain(secretList2); // FIXME, this will likely fail.
     });
     test('should edit secrets in a vault', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
       const editSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
           client,
           client.vaultsSecretsEdit,
         );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const secretList = [
         'Secret1',
@@ -535,14 +543,16 @@ describe('Client service', () => {
         'Secret5',
       ];
 
-      for (const secretName of secretList) {
-        await vault.addSecret(secretName, secretName);
-      }
+      await vault.commit(async efs => {
+        for (const secretName of secretList) {
+          await efs.writeFile(secretName, secretName);
+        }
+      })
 
       const secretEditMessage = new clientPB.SecretEditMessage();
       const secretMessage = new clientPB.SecretMessage();
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
       secretMessage.setSecretContent('content-change');
@@ -550,20 +560,20 @@ describe('Client service', () => {
 
       await editSecretVault(secretEditMessage, callCredentials);
 
-      expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
-        'content-change',
-      );
-
-      await cleanVault('MyFirstVault');
+      await vault.access(async efs => {
+        expect((await efs.readFile('Secret1')).toString()).toStrictEqual('content-change')
+      })
     });
     test('should get secrets in a vault', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
+
       const getSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
           client,
           client.vaultsSecretsGet,
         );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const secretList = [
         'Secret1',
@@ -573,13 +583,15 @@ describe('Client service', () => {
         'Secret5',
       ];
 
-      for (const secretName of secretList) {
-        await vault.addSecret(secretName, secretName);
-      }
+      await vault.commit(async efs => {
+        for (const secretName of secretList) {
+          await efs.writeFile(secretName, secretName);
+        }
+      })
 
       const secretMessage = new clientPB.SecretMessage();
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
 
@@ -587,16 +599,17 @@ describe('Client service', () => {
 
       expect(response.getSecretContent()).toStrictEqual('Secret1');
 
-      await cleanVault('MyFirstVault');
     });
     test('should rename secrets in a vault', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
+
       const renameSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
           client.vaultsSecretsRename,
         );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const secretList = [
         'Secret1',
@@ -613,15 +626,17 @@ describe('Client service', () => {
         'Secret6',
       ];
 
-      for (const secretName of secretList) {
-        await vault.addSecret(secretName, secretName);
-      }
+      await vault.commit(async efs => {
+        for (const secretName of secretList) {
+          await efs.writeFile(secretName, secretName);
+        }
+      })
 
       const secretRenameMessage = new clientPB.SecretRenameMessage();
       const vaultMessage = new clientPB.VaultMessage();
       const secretMessage = new clientPB.SecretMessage();
 
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setSecretName('Secret1');
       secretMessage.setVault(vaultMessage);
       secretRenameMessage.setNewName('Secret6');
@@ -633,24 +648,26 @@ describe('Client service', () => {
       );
 
       expect(response.getSuccess()).toBeTruthy();
-      expect((await vault.listSecrets()).sort()).toStrictEqual(
-        secretList2.sort(),
-      );
+      const secrets = await vault.access(async efs => {
+        return await efs.readdir('.');
+      })
+      expect(secrets).toContain(secretList2); // FIXME, this will likely fail.
 
-      await cleanVault('MyFirstVault');
     });
     test('should add secrets in a vault', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
+
       const newSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
           client.vaultsSecretsNew,
         );
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const secretMessage = new clientPB.SecretMessage();
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
       secretMessage.setSecretContent('secret-content');
@@ -658,14 +675,23 @@ describe('Client service', () => {
       const response = await newSecretVault(secretMessage, callCredentials);
 
       expect(response.getSuccess()).toBeTruthy();
-      expect((await vault.listSecrets()).sort()).toStrictEqual(['Secret1']);
-      expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
-        'secret-content',
-      );
+      const secrets = await vault.access(async efs => {
+        return await efs.readdir('.');
+      })
+      expect(secrets).toContain(['Secret1']); // FIXME, this will likely fail.
+      // expect((await vault.listSecrets()).sort()).toStrictEqual(['Secret1']);
+      expect(response.getSuccess()).toBeTruthy();
+      const secret = await vault.access(async efs => {
+        return (await efs.readFile('Secret1')).toString();
+      })
+      expect(secret).toStrictEqual('secret-content');
+      // expect((await vault.getSecret('Secret1')).toString()).toStrictEqual(
+      //   'secret-content',
+      // );
 
-      await cleanVault('MyFirstVault');
     });
     test('should add a directory of secrets in a vault', async () => {
+      const vaultName = 'MyFirstVault' as VaultName;
       const newDirSecretVault =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -686,24 +712,28 @@ describe('Client service', () => {
         await fs.promises.writeFile(tmpFile, tmpFile);
       }
 
-      const vault = await vaultManager.createVault('MyFirstVault');
+      const vault = await vaultManager.createVault(vaultName);
 
       const secretDirectoryMessage = new clientPB.SecretDirectoryMessage();
       const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vault.vaultName);
+      vaultMessage.setVaultId(vault.vaultId);
       secretDirectoryMessage.setVault(vaultMessage);
       secretDirectoryMessage.setSecretDirectory(tmpDir);
 
       await newDirSecretVault(secretDirectoryMessage, callCredentials);
 
-      expect((await vault.listSecrets()).sort()).toStrictEqual(secrets.sort());
+      const secrets2 = await vault.access(async efs => {
+        return await efs.readdir('.');
+      })
+      expect(secrets2).toStrictEqual(secrets.sort()); // FIXME, this will likely fail.
+      // expect((await vault.listSecrets()).sort()).toStrictEqual(secrets.sort());
 
       // Remove temp directory
       await fs.promises.rmdir(tmpDir, { recursive: true });
 
-      await cleanVault('MyFirstVault');
     });
     test('should add permissions to a vault', async () => {
+      const vaultName = 'vault1' as VaultName;
       const vaultsSetPerms =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -711,7 +741,7 @@ describe('Client service', () => {
         );
 
       // Creating a vault
-      await vaultManager.createVault('vault1');
+      await vaultManager.createVault(vaultName);
       const vaults = await vaultManager.listVaults();
       const vaultId = vaults[0].id;
 
@@ -727,14 +757,16 @@ describe('Client service', () => {
       setVaultPermMessage.setNode(nodeMessage);
       await vaultsSetPerms(setVaultPermMessage, callCredentials);
 
-      const result = await vaultManager.getVaultPermissions(vaultId);
+      fail('Functionality not fully implemented');
+      // FIXME: this is not implemented yet.
+      const result = "Not implemented";//await vaultManager.getVaultPermissions(vaultId);
       const stringResult = JSON.stringify(result);
       expect(stringResult).toContain(node2.id);
       expect(stringResult).toContain('pull');
 
-      await cleanVault('vault1');
     });
     test('should remove permissions to a vault', async () => {
+      const vaultName = 'vault1' as VaultName;
       const vaultsUnsetPerms =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
           client,
@@ -742,13 +774,15 @@ describe('Client service', () => {
         );
 
       // Creating a vault.
-      await vaultManager.createVault('vault1');
+      await vaultManager.createVault(vaultName);
       const vaults = await vaultManager.listVaults();
       const vaultId = vaults[0].id;
 
       // Creating a gestalts state
       await createGestaltState();
-      await vaultManager.setVaultPermissions(node2.id, vaultId);
+      fail('Functionality not fully implemented');
+      // FIXME: not implemented yet
+      // await vaultManager.setVaultPermissions(node2.id, vaultId);
 
       const unsetVaultPermMessage = new clientPB.UnsetVaultPermMessage();
       const nodeMessage = new clientPB.NodeMessage();
@@ -759,14 +793,15 @@ describe('Client service', () => {
       unsetVaultPermMessage.setNode(nodeMessage);
       await vaultsUnsetPerms(unsetVaultPermMessage, callCredentials);
 
-      const result = await vaultManager.getVaultPermissions(vaultId);
-      const stringResult = JSON.stringify(result);
-      expect(stringResult).toContain(node2.id);
-      expect(stringResult.includes('pull')).toBeFalsy();
+      // FIXME: not implemented yet
+      // const result = await vaultManager.getVaultPermissions(vaultId);
+      // const stringResult = JSON.stringify(result);
+      // expect(stringResult).toContain(node2.id);
+      // expect(stringResult.includes('pull')).toBeFalsy();
 
-      await cleanVault('vault1');
     });
     test('should get permissions to a vault', async () => {
+      const vaultName = 'vault1' as VaultName;
       const vaultsPermissions =
         grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
           client,
@@ -774,13 +809,16 @@ describe('Client service', () => {
         );
 
       // Creating a vault
-      await vaultManager.createVault('vault1');
+      await vaultManager.createVault(vaultName);
       const vaults = await vaultManager.listVaults();
       const vaultId = vaults[0].id;
 
       // Creating a gestalts state
       await createGestaltState();
-      await vaultManager.setVaultPermissions(node2.id, vaultId);
+
+      fail('Functionality not fully implemented');
+      // FIXME: not implemented yet
+      // await vaultManager.setVaultPermissions(node2.id, vaultId);
 
       const getVaultPermMessage = new clientPB.GetVaultPermMessage();
       const vaultMessage = new clientPB.VaultMessage();
@@ -792,17 +830,243 @@ describe('Client service', () => {
       const resGen = vaultsPermissions(getVaultPermMessage, callCredentials);
 
       const results: Array<clientPB.PermissionMessage.AsObject> = [];
-      for await (const res of resGen) {
-        results.push(res.toObject());
-      }
-      const resultsString = JSON.stringify(results);
-      expect(resultsString).toContain(node2.id);
-      expect(resultsString).toContain('pull');
+      // FIXME
+      // for await (const res of resGen) {
+      //   results.push(res.toObject());
+      // }
+      // const resultsString = JSON.stringify(results);
+      // expect(resultsString).toContain(node2.id);
+      // expect(resultsString).toContain('pull');
 
-      await cleanVault('vault1');
     });
-    test.todo('should be able to switch a vault to a specific version of it\'s history');
-    test.todo('should be able to go to the end of the vault history');
+    test('should be able to switch a vault to a specific version of it\'s history using VaultName', async () => {
+      // Constants for current test.
+      const vaultName = 'historyVault' as VaultName;
+
+      const secretName = 'Secret-1';
+      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+
+      const vaultsVersion =
+        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+          client,
+          client.vaultsVersion,
+        );
+
+      // Create a vault
+      const vault = await vaultManager.createVault(vaultName);
+
+      // Commit some history
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer1.name, secretVer1.content);
+      })
+      const ver1Oid = (await vault.log(1))[0].oid;
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer2.name, secretVer2.content);
+      })
+      const ver2Oid = (await vault.log(1))[0].oid;
+
+      // Revert the version
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setVaultName(vaultName);
+
+      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+      vaultVersionMessage.setVault(vaultMessage)
+      vaultVersionMessage.setVersionId(ver1Oid);
+
+      const response = await vaultsVersion(vaultVersionMessage);
+      expect(response.getIsLatestVersion()).toBeFalsy();
+
+      // read old history
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+      })
+
+      // Switch back to the latest version
+      vaultVersionMessage.setVersionId(ver2Oid);
+      const response2 = await vaultsVersion(vaultVersionMessage);
+      expect(response2.getIsLatestVersion()).toBeTruthy();
+
+      // read latest history
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
+      })
+
+    });
+    test('should be able to switch a vault to a specific version of it\'s history using VaultId', async () => {
+      // Constants for current test.
+      const vaultName = 'historyVaultID' as VaultName;
+
+      const secretName = 'Secret-1';
+      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+
+      const vaultsVersion =
+        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+          client,
+          client.vaultsVersion,
+        );
+
+      // Create a vault
+      const vault = await vaultManager.createVault(vaultName);
+      const vaultId = vault.vaultId;
+
+      // Commit some history
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer1.name, secretVer1.content);
+      })
+      const ver1Oid = (await vault.log(1))[0].oid;
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer2.name, secretVer2.content);
+      })
+      const ver2Oid = (await vault.log(1))[0].oid;
+
+      // Revert the version
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setVaultId(vaultId);
+
+      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+      vaultVersionMessage.setVault(vaultMessage)
+      vaultVersionMessage.setVersionId(ver1Oid);
+
+      const response = await vaultsVersion(vaultVersionMessage);
+      expect(response.getIsLatestVersion()).toBeFalsy();
+
+      // read old history
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+      })
+
+      // Switch back to the latest version
+      vaultVersionMessage.setVersionId(ver2Oid);
+      const response2 = await vaultsVersion(vaultVersionMessage);
+      expect(response2.getIsLatestVersion()).toBeTruthy();
+
+      // read latest history
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
+      })
+
+    });
+    test('should be able to go to the end of the vault history', async () => {
+      // Constants for current test.
+      const vaultName = 'historyVault' as VaultName;
+
+      const secretName = 'Secret-1';
+      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+
+      const vaultsVersion =
+        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+          client,
+          client.vaultsVersion,
+        );
+
+      // Create a vault
+      const vault = await vaultManager.createVault(vaultName);
+
+      // Commit some history
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer1.name, secretVer1.content);
+      })
+      const ver1Oid = (await vault.log(1))[0].oid;
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer2.name, secretVer2.content);
+      })
+      const ver2Oid = (await vault.log(1))[0].oid;
+
+      // Revert the version
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setVaultName(vaultName);
+
+      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+      vaultVersionMessage.setVault(vaultMessage)
+      vaultVersionMessage.setVersionId(ver1Oid);
+
+      const response = await vaultsVersion(vaultVersionMessage);
+      expect(response.getIsLatestVersion()).toBeFalsy();
+
+      // read old history
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+      })
+
+      // Switch back to the latest version
+      vaultVersionMessage.setVersionId('end');
+      const response2 = await vaultsVersion(vaultVersionMessage);
+      expect(response2.getIsLatestVersion()).toBeTruthy();
+
+      // read latest history
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
+      })
+    });
+    test('Writing to previous history will destroy future history', async () => {
+      // Constants for current test.
+      const vaultName = 'overwriteVault' as VaultName;
+
+      const secretName = 'Secret-1';
+      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+      const secretVer3 = {name: secretName, content: 'Secret-1-content-ver3'}
+      const secretVerNew = {name: secretName, content: 'NEW CONTENT'}
+
+      const vaultsVersion =
+        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+          client,
+          client.vaultsVersion,
+        );
+
+      // Create a vault
+      const vault = await vaultManager.createVault(vaultName);
+
+      // Commit some history
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer1.name, secretVer1.content);
+      })
+      const ver1Oid = (await vault.log(1))[0].oid;
+
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer2.name, secretVer2.content);
+      })
+      const ver2Oid = (await vault.log(1))[0].oid;
+
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer3.name, secretVer3.content);
+      })
+      const ver3Oid = (await vault.log(1))[0].oid;
+
+      // Revert the version
+      const vaultMessage = new clientPB.VaultMessage();
+      vaultMessage.setVaultName(vaultName);
+
+      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+      vaultVersionMessage.setVault(vaultMessage)
+      vaultVersionMessage.setVersionId(ver1Oid);
+
+      const response = await vaultsVersion(vaultVersionMessage);
+      expect(response.getIsLatestVersion()).toBeFalsy();
+
+      // read old history
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+      })
+
+      // Commit new history
+      await vault.commit(async (efs) => {
+        await efs.writeFile(secretVer3.name, secretVer3.content);
+      })
+      const newVerOid = (await vault.log(1))[0].oid;
+
+      // Check that new commit overwrites old commits.
+      expect(await vault.log()).toHaveLength(3);
+
+      // Check contents are correct.
+      await vault.access(async (efs) => {
+        expect((await efs.readFile(secretVerNew.name)).toString()).toStrictEqual(secretVerNew.content);
+      })
+    });
+
 
   });
   describe('keys', () => {
@@ -1007,24 +1271,24 @@ describe('Client service', () => {
       await changePasswordKeys(passwordMessage, callCredentials);
 
       await nodeManager.stop();
-      await vaultManager.stop();
-      // Await keyManager.stop(); FIXME
+      // await vaultManager.stop();
+      // Await keyManager.stop();
 
       // Await expect(() =>
-      //   keyManager.start({ password: 'password' }), // FIXME
+      //   keyManager.start({ password: 'password' }),
       // ).rejects.toThrow();
 
-      // await keyManager.start({ password: 'newpassword' }); // FIXME
+      // await keyManager.start({ password: 'newpassword' });
       await nodeManager.start();
-      await vaultManager.start({});
+      // await vaultManager.start({});
 
       await keyManager.changeRootKeyPassword('password');
       await nodeManager.stop();
-      await vaultManager.stop();
-      // Await keyManager.stop(); // FIXME
-      // Await keyManager.start({}); // FIXME
+      // await vaultManager.stop();
+      // Await keyManager.stop();
+      // Await keyManager.start({});
       await nodeManager.start();
-      await vaultManager.start({});
+      // await vaultManager.start({});
     });
     test('should get the root certificate and chains', async () => {
       const getCerts =

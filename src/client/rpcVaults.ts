@@ -11,6 +11,7 @@ import { VaultMessage } from "../proto/js/Client_pb";
 import { isNodeId, makeNodeId } from "../nodes/utils";
 import NameOrIdCase = VaultMessage.NameOrIdCase;
 import { makeVaultId } from "@/vaults/utils";
+import * as clientErrors from './errors';
 
 const createVaultRPC = ({
   vaultManager,
@@ -232,7 +233,7 @@ const createVaultRPC = ({
           vaultManager,
         );
         const vault = await vaultManager.openVault(id);
-        const secrets: Array<string> = await vault.access<Array<string>>(async (efs) => {
+        const secrets: Array<string> = await vault.access(async (efs) => {
           const list = await efs.readdir('.', { encoding: 'utf8' }) as string[];
           return list.filter((value) => { if (value !== '.git') return value });
         });
@@ -291,6 +292,7 @@ const createVaultRPC = ({
         const vaultMessage = call.request;
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         const vault = await vaultManager.openVault(id);
+        // FIXME, reimplement this.
         // response.setStats(JSON.stringify(stats));
         callback(null, response);
       } catch (err) {
@@ -516,7 +518,7 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        // await vaultManager.setVaultPermissions(node, id);
+        // await vaultManager.setVaultPermissions(node, id); // FIXME
         const response = new clientPB.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
@@ -603,8 +605,8 @@ const createVaultRPC = ({
       }
     },
     vaultsVersion: async (
-      call: grpc.ServerUnaryCall<clientPB.VaultsVersionMessage, clientPB.StatusMessage>,
-      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      call: grpc.ServerUnaryCall<clientPB.VaultsVersionMessage, clientPB.VaultsVersionResultMessage>,
+      callback: grpc.sendUnaryData<clientPB.VaultsVersionResultMessage>,
     ): Promise<void> => {
       try {
         //checking session token
@@ -629,20 +631,25 @@ const createVaultRPC = ({
           case NameOrIdCase.NAME_OR_ID_NOT_SET:
           default:
             // Here be dragons
-            throw Error();
+            throw new clientErrors.ErrorClient('Vault name or ID was not provided');
         }
 
         // Doing the deed
 
         const vault = await vaultManager.openVault(vaultId);
         await vault.version(vaultsVersionMessage.getVersionId());
+        // TODO: DO we want to close the vault afterwards?
+
+        // checking if latest version ID.
+        const latestOid = (await vault.log(1))[0].oid;
+        const isLatestVersion = latestOid === vaultsVersionMessage.getVersionId();
 
         // Creating message
-        const statusMessage = new clientPB.StatusMessage();
-        statusMessage.setSuccess(true);
+        const vaultsVersionResultMessage = new clientPB.VaultsVersionResultMessage();
+        vaultsVersionResultMessage.setIsLatestVersion(isLatestVersion);
 
         // Sending message
-        callback(null, statusMessage);
+        callback(null, vaultsVersionResultMessage);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }

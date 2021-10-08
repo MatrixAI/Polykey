@@ -262,7 +262,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsVersion(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
       this.client,
       this.client.vaultsVersion,
     )(...args);

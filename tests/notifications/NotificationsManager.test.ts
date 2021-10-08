@@ -1,7 +1,7 @@
 import type { NodeId, NodeInfo, NodeAddress } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
-import type { VaultActions, VaultId, VaultName } from '@/vaults/types';
+import type { VaultActions, VaultId, VaultKey, VaultName } from "@/vaults/types";
 import type { NotificationData } from '@/notifications/types';
 
 import fs from 'fs';
@@ -125,15 +125,13 @@ describe('NotificationsManager', () => {
       fs: fs,
       logger: logger,
     });
-    receiverVaultManager = new VaultManager({
+    receiverVaultManager = await VaultManager.createVaultManager({
       vaultsPath: receiverVaultsPath,
-      keyManager: receiverKeyManager,
       nodeManager: receiverNodeManager,
+      vaultsKey: receiverKeyManager.dbKey as VaultKey, // FIXME don't use dbKey
       db: receiverDb,
-      acl: receiverACL,
-      gestaltGraph: receiverGestaltGraph,
       fs: fs,
-      logger: logger,
+      logger: logger
     });
     receiverNotificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -154,7 +152,6 @@ describe('NotificationsManager', () => {
     await receiverDb.start();
     await receiverGestaltGraph.setNode(node);
     await receiverNodeManager.start();
-    await receiverVaultManager.start({});
 
     agentService = createAgentService({
       keyManager: receiverKeyManager,
@@ -270,7 +267,7 @@ describe('NotificationsManager', () => {
     await receiverACL.destroy();
     await receiverSigchain.destroy();
     await receiverGestaltGraph.destroy();
-    await receiverVaultManager.stop();
+    await receiverVaultManager.destroy();
     await receiverNodeManager.stop();
     await receiverNotificationsManager.destroy();
     await server.stop();
