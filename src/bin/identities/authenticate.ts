@@ -44,7 +44,7 @@ commandAugmentKeynode.action(async (providerId, identitiyId, options) => {
     providerMessage.setMessage(identitiyId);
 
     //sending message.
-    const gen = grpcClient.identitiesAuthenticate(providerMessage)
+    const gen = grpcClient.identitiesAuthenticate(providerMessage);
     const { p, resolveP } = utils.promise();
     gen.stream.on('metadata', async (meta) => {
       await clientUtils.refreshSession(meta, client.session);

@@ -3,11 +3,11 @@ import type { SessionToken, SessionCredentials } from './types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
-import lockfile from 'proper-lockfile';
+import lock from 'fd-lock';
+import { openSync, closeSync } from 'fs';
 
 import * as utils from '../utils';
 import * as grpc from '@grpc/grpc-js';
-import * as sessionErrors from './errors';
 
 /**
  * Represents a client's session
@@ -126,9 +126,18 @@ class Session {
     await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
 
     try {
-      if (await lockfile.check(this.sessionFile, { fs: this.fs })) {
+      // Get a file descriptor for the session file so we can lock it
+      const fd = openSync(this.sessionFile, 'r');
+      // If we can't lock the session file (and no error is thrown) this means
+      // another concurrent process must have already locked it. The other process
+      // will unlock and refresh the token when it finishes so we can just drop
+      // our request.
+      if (!lock(fd)) {
         return;
       }
+      await this.fs.promises.writeFile(this.sessionFile, this._token);
+      lock.unlock(fd);
+      closeSync(fd);
     } catch (err) {
       if (err.code === 'ENOENT') {
         await this.fs.promises.writeFile(this.sessionFile, this._token);
@@ -136,10 +145,6 @@ class Session {
       }
       throw err;
     }
-
-    await lockfile.lock(this.sessionFile);
-    await this.fs.promises.writeFile(this.sessionFile, this._token);
-    await lockfile.unlock(this.sessionFile);
   }
 
   /**

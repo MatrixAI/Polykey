@@ -219,9 +219,35 @@ describe('Client service', () => {
       );
       expect(result).toBeTruthy();
     });
-    // refresh seems odd to me. It provides a new token to the client.
-    // I don't know how I can force this to happen to test it. needs digging.
-    test.todo('can refresh session');
+    test('can refresh session', async () => {
+      const requestJWT =
+        grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
+          client,
+          client.sessionUnlock,
+        );
+
+      const passwordMessage = new clientPB.PasswordMessage();
+      passwordMessage.setPasswordFile(passwordFile);
+
+      const res1 = await requestJWT(passwordMessage);
+      const token1 = res1.getToken() as SessionToken;
+      const callCredentialsRefresh = testUtils.createCallCredentials(token1);
+
+      const sessionRefresh =
+        grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
+          client,
+          client.sessionRefresh,
+        );
+
+      const emptyMessage = new clientPB.EmptyMessage();
+
+      const res2 = await sessionRefresh(emptyMessage, callCredentialsRefresh);
+      expect(typeof res2.getToken()).toBe('string');
+      const token2 = res2.getToken() as SessionToken;
+      const result = await polykeyAgent.sessions.verifyToken(token2);
+      expect(result).toBeTruthy();
+      expect(token1).not.toEqual(token2);
+    });
     test.todo('actions over GRPC refresh the session'); // How do I even test this?
     test('session can lock all', async () => {
       //Starts off unlocked.

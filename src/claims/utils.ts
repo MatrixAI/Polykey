@@ -71,7 +71,7 @@ async function createClaim({
 }
 
 /**
- * Helper function to deconstruct a created GeneralJWS (ClaimEncoded) object and 
+ * Helper function to deconstruct a created GeneralJWS (ClaimEncoded) object and
  * add a new signature to it.
  */
 async function signExistingClaim({

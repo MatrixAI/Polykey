@@ -73,7 +73,7 @@ list.action(async (options) => {
     }
 
     await p;
-    
+
     output = gestalts;
     if (options.format !== 'json') {
       //Convert to a human readable list.
