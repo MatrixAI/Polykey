@@ -626,7 +626,7 @@ const createVaultRPC = ({
             vaultId = (await vaultManager.getVaultId(vaultMessage?.getVaultName() as VaultName))!
             break;
           case NameOrIdCase.VAULT_ID:
-            vaultId = makeVaultId(vaultMessage?.getVaultName());
+            vaultId = makeVaultId(vaultMessage?.getVaultId());
             break;
           case NameOrIdCase.NAME_OR_ID_NOT_SET:
           default:
@@ -637,7 +637,7 @@ const createVaultRPC = ({
         // Doing the deed
 
         const vault = await vaultManager.openVault(vaultId);
-        await vault.version(vaultsVersionMessage.getVersionId());
+        await vault.version(vaultsVersionMessage.getVersionId()); // FIXME, check for tags like Head
         // TODO: DO we want to close the vault afterwards?
 
         // checking if latest version ID.
@@ -651,6 +651,7 @@ const createVaultRPC = ({
         // Sending message
         callback(null, vaultsVersionResultMessage);
       } catch (err) {
+        console.error(err);
         callback(grpcUtils.fromError(err), null);
       }
     },
