@@ -10,6 +10,8 @@ import * as utils from '@/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import Logger, { LogLevel } from '@matrixai/logger';
+import { makeNodeId } from "@/nodes/utils";
+import { isVaultId, splitVaultId } from "@/vaults/utils";
 
 describe('Vaults utils', () => {
   const logger = new Logger('Vaults utils tests', LogLevel.WARN);
@@ -28,6 +30,11 @@ describe('Vaults utils', () => {
     });
   });
 
+  test('VaultId type guard works', async () => {
+    const nodeId = makeNodeId('A'.repeat(44));
+    const vaultId = vaultsUtils.generateVaultId(nodeId);
+    expect(isVaultId(vaultId)).toBeTruthy();
+  })
   test('vaultIds can be split', async () => {
     const nodeId = 'alkjsddfjknacqqquiry32741834id';
     const id = vaultsUtils.generateVaultId(nodeId as NodeId);

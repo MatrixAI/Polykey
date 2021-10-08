@@ -515,8 +515,95 @@ describe('CLI vaults', () => {
     });
   });
   describe('commandVaultVersion', () => {
-    test.todo('should switch the version of a vault');
-    test.todo('should switch the version of a vault to the latest version');
-    test.todo('should throw an error if the vault is not found');
+    test('should switch the version of a vault', async () => {
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+      const id = polykeyAgent.vaults.getVaultId(vaultName);
+      expect(id).toBeTruthy();
+
+      const secret1 = {name: 'Secret-1', content: 'Secret-1-content'};
+      const secret2 = {name: 'Secret-1', content: 'Secret-2-content'};
+
+      await vault.commit(async efs => {
+        efs.writeFile(secret1.name, secret1.content);
+      })
+      const ver1Oid = (await vault.log(1))[0].oid;
+
+      await vault.commit(async efs => {
+        efs.writeFile(secret2.name, secret2.content);
+      })
+      const ver2Oid = (await vault.log(1))[0].oid;
+
+      const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
+
+      const result = await utils.pkWithStdio([...command]);
+      console.log(result);
+      expect(result.code).toBe(0)
+
+      const fileContents = await vault.access(async efs => {
+        return (await efs.readFile(secret1.name)).toString();
+      })
+      expect(fileContents).toStrictEqual(secret1.content);
+
+      fail('Test not finished')
+      // TODO: check and validate output.
+
+    });
+    test('should switch the version of a vault to the latest version', async () => {
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+      const id = polykeyAgent.vaults.getVaultId(vaultName);
+      expect(id).toBeTruthy();
+
+      const secret1 = {name: 'Secret-1', content: 'Secret-1-content'};
+      const secret2 = {name: 'Secret-1', content: 'Secret-2-content'};
+
+      await vault.commit(async efs => {
+        efs.writeFile(secret1.name, secret1.content);
+      })
+      const ver1Oid = (await vault.log(1))[0].oid;
+
+      await vault.commit(async efs => {
+        efs.writeFile(secret2.name, secret2.content);
+      })
+      const ver2Oid = (await vault.log(1))[0].oid;
+
+      const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
+
+      const result = await utils.pkWithStdio([...command]);
+      expect(result.code).toBe(0)
+
+
+      const command2 = ['vaults', 'version', '-np', dataDir, vaultName, 'head'];
+
+      const result2 = await utils.pkWithStdio([...command2]);
+      console.log(result2);
+      expect(result2.code).toBe(0)
+
+      fail('Test not finished')
+      // TODO: check and validate output.
+
+    });
+    test('should should handle invalid version IDs', async () => {
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+      const id = polykeyAgent.vaults.getVaultId(vaultName);
+      expect(id).toBeTruthy();
+
+      const command = ['vaults', 'version', '-np', dataDir, vaultName, "NOT_A_VALID_CHECKOUT_ID"];
+
+      const result = await utils.pkWithStdio([...command]);
+      console.log(result);
+      expect(result.code).not.toBe(0) // FIXME use proper code
+      fail("finish this test");
+      // TODO validate the output.
+    });
+    test('should throw an error if the vault is not found', async () => {
+
+      const command = ['vaults', 'version', '-np', dataDir, vaultName, "NOT_A_VALID_CHECKOUT_ID"];
+
+      const result = await utils.pk([...command]);
+      console.log(result);
+      expect(result.code).not.toBe(0) // FIXME use proper code
+      fail("finish this test");
+      // TODO validate the output.
+    });
   })
 });

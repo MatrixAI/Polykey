@@ -35,6 +35,7 @@ import { NotificationData } from '@/notifications/types';
 import { makeNodeId } from '@/nodes/utils';
 import { VaultName } from "@/vaults/types";
 import { VaultsVersionMessage } from "@/proto/js/Client_pb";
+import { isVaultId } from "@/vaults/utils";
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -874,7 +875,7 @@ describe('Client service', () => {
       vaultVersionMessage.setVault(vaultMessage)
       vaultVersionMessage.setVersionId(ver1Oid);
 
-      const response = await vaultsVersion(vaultVersionMessage);
+      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
       expect(response.getIsLatestVersion()).toBeFalsy();
 
       // read old history
@@ -884,7 +885,7 @@ describe('Client service', () => {
 
       // Switch back to the latest version
       vaultVersionMessage.setVersionId(ver2Oid);
-      const response2 = await vaultsVersion(vaultVersionMessage);
+      const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
       expect(response2.getIsLatestVersion()).toBeTruthy();
 
       // read latest history
@@ -929,7 +930,7 @@ describe('Client service', () => {
       vaultVersionMessage.setVault(vaultMessage)
       vaultVersionMessage.setVersionId(ver1Oid);
 
-      const response = await vaultsVersion(vaultVersionMessage);
+      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
       expect(response.getIsLatestVersion()).toBeFalsy();
 
       // read old history
@@ -939,7 +940,7 @@ describe('Client service', () => {
 
       // Switch back to the latest version
       vaultVersionMessage.setVersionId(ver2Oid);
-      const response2 = await vaultsVersion(vaultVersionMessage);
+      const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
       expect(response2.getIsLatestVersion()).toBeTruthy();
 
       // read latest history
@@ -983,7 +984,7 @@ describe('Client service', () => {
       vaultVersionMessage.setVault(vaultMessage)
       vaultVersionMessage.setVersionId(ver1Oid);
 
-      const response = await vaultsVersion(vaultVersionMessage);
+      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
       expect(response.getIsLatestVersion()).toBeFalsy();
 
       // read old history
@@ -992,8 +993,8 @@ describe('Client service', () => {
       })
 
       // Switch back to the latest version
-      vaultVersionMessage.setVersionId('end');
-      const response2 = await vaultsVersion(vaultVersionMessage);
+      vaultVersionMessage.setVersionId('end'); //TODO, implementing this feature in vaultsVersion.
+      const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
       expect(response2.getIsLatestVersion()).toBeTruthy();
 
       // read latest history
@@ -1044,7 +1045,7 @@ describe('Client service', () => {
       vaultVersionMessage.setVault(vaultMessage)
       vaultVersionMessage.setVersionId(ver1Oid);
 
-      const response = await vaultsVersion(vaultVersionMessage);
+      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
       expect(response.getIsLatestVersion()).toBeFalsy();
 
       // read old history
@@ -1054,12 +1055,14 @@ describe('Client service', () => {
 
       // Commit new history
       await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer3.name, secretVer3.content);
+        await efs.writeFile(secretVerNew.name, secretVerNew.content);
       })
       const newVerOid = (await vault.log(1))[0].oid;
 
       // Check that new commit overwrites old commits.
-      expect(await vault.log()).toHaveLength(3);
+      const log = await vault.log()
+      expect(log).toHaveLength(3);
+      expect(log[0].oid).toEqual(newVerOid);
 
       // Check contents are correct.
       await vault.access(async (efs) => {
