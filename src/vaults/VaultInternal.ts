@@ -36,21 +36,25 @@ interface VaultInternal extends CreateDestroy {}
 @CreateDestroy()
 class VaultInternal {
   public readonly baseDir: string;
+  public readonly gitDir: string;
   public readonly vaultId: VaultId;
 
-  protected _efs: EncryptedFS;
+  protected _efsRoot: EncryptedFS;
+  protected _efsVault: EncryptedFS;
   protected _logger: Logger;
   protected _lock: MutexInterface;
   protected _workingDir: string;
 
   public static async create({
     vaultId,
-    efs,
+    efsRoot,
+    efsVault,
     logger,
     fresh = false,
   }: {
     vaultId: VaultId;
-    efs: EncryptedFS;
+    efsRoot: EncryptedFS;
+    efsVault: EncryptedFS;
     logger?: Logger;
     fresh?: boolean;
   }) {
@@ -58,25 +62,28 @@ class VaultInternal {
     if(fresh){
       // Creating a new vault.
       await git.init({
-        fs: efs,
-        dir: '.',
+        fs: efsRoot,
+        dir: path.join(vaultId, 'contents'),
+        gitdir: path.join(vaultId, '.git'),
       });
       const workingDir = await git.commit({
-        fs: efs,
-        dir: '.',
+        fs: efsRoot,
+        dir: path.join(vaultId, 'contents'),
+        gitdir: path.join(vaultId, '.git'),
         author: {
           name: vaultId,
         },
         message: 'Initial Commit',
       });
-      await efs.writeFile(
-        path.join('.git', 'packed-refs'),
+      await efsRoot.writeFile(
+        path.join(vaultId, '.git', 'packed-refs'),
         '# pack-refs with: peeled fully-peeled sorted',
       );
-      await efs.writeFile(path.join('.git', 'workingDir'), workingDir);
+      await efsRoot.writeFile(path.join(vaultId, '.git', 'workingDir'), workingDir);
       const vault = new VaultInternal({
         vaultId,
-        efs,
+        efsRoot,
+        efsVault,
         workingDir,
         logger,
       });
@@ -84,12 +91,13 @@ class VaultInternal {
       return vault;
     } else {
       // Loading an existing vault.
-      const workingDir = (await efs.readFile(path.join('.git', 'workingDir'), {
+      const workingDir = (await efsRoot.readFile(path.join(vaultId, '.git', 'workingDir'), {
         encoding: 'utf8',
       })) as string;
       const vault = new VaultInternal({
         vaultId,
-        efs,
+        efsRoot,
+        efsVault,
         workingDir,
         logger,
       });
@@ -101,17 +109,22 @@ class VaultInternal {
 
   constructor({
     vaultId,
-    efs,
+    efsRoot,
+    efsVault,
     workingDir,
     logger,
   }: {
     vaultId: VaultId;
-    efs: EncryptedFS;
+    efsRoot: EncryptedFS;
+    efsVault: EncryptedFS;
     workingDir: string;
     logger?: Logger;
   }) {
+    this.baseDir = path.join(vaultId, 'contents');
+    this.gitDir = path.join(vaultId, '.git');
     this.vaultId = vaultId;
-    this._efs = efs;
+    this._efsRoot = efsRoot;
+    this._efsVault = efsVault;
     this._workingDir = workingDir;
     this._logger = logger ?? new Logger(this.constructor.name);
     this._lock = new Mutex();
@@ -120,8 +133,8 @@ class VaultInternal {
   public async destroy(): Promise<void> {
     const release = await this._lock.acquire();
     try {
-      await this._efs.writeFile(
-        path.join('.git', 'workingDirectory'),
+      await this._efsRoot.writeFile(
+        path.join(this.vaultId, '.git', 'workingDirectory'),
         this._workingDir,
       );
     } finally {
@@ -135,58 +148,83 @@ class VaultInternal {
     const release = await this._lock.acquire();
     const message: string[] = [];
     await git.checkout({
-      fs: this._efs,
-      dir: '.',
+      fs: this._efsRoot,
+      dir: this.baseDir,
+      gitdir: this.gitDir,
       ref: this._workingDir,
     });
     try {
-      await f(this._efs);
-      for await (const file of vaultsUtils.readdirRecursivelyEFS(
-        this._efs,
-        '.',
-        false,
-      )) {
-        await git.add({
-          fs: this._efs,
-          dir: '.',
-          filepath: file,
-        });
-        const status = await git.status({
-          fs: this._efs,
-          dir: '.',
-          filepath: file,
-        });
-        if (
-          status === 'added' ||
-          status === 'deleted' ||
-          status === 'modified'
-        ) {
-          message.push(file + ' ' + status);
+      await f(this._efsVault);
+      const statusMatrix = await git.statusMatrix({
+        fs: this._efsRoot,
+        dir: this.baseDir,
+        gitdir: this.gitDir,
+      });
+      for await (const file of statusMatrix) {
+        if (file[2] !== file[3]) {
+          let status: 'added' | 'modified' | 'deleted';
+          if (file[2] === 0) {
+            status = 'deleted';
+            await git.remove({
+              fs: this._efsRoot,
+              dir: this.baseDir,
+              gitdir: this.gitDir,
+              filepath: file[0],
+            });
+          } else {
+            await git.add({
+              fs: this._efsRoot,
+              dir: this.baseDir,
+              gitdir: this.gitDir,
+              filepath: file[0],
+            });
+            if (file[1] === 1) {
+              status = 'modified';
+            } else {
+              status = 'added';
+            }
+          }
+          message.push(file[0] + ' ' + status)
         }
       }
-      this._workingDir = await git.commit({
-        fs: this._efs,
-        dir: '.',
-        author: {
-          name: this.vaultId,
-        },
-        message: message.toString(),
-      });
-    } finally {
-      for await (const file of vaultsUtils.readdirRecursivelyEFS(
-        this._efs,
-        '.',
-        false,
-      )) {
-        await git.add({
-          fs: this._efs,
-          dir: '.',
-          filepath: file,
+      if (message.length !== 0) {
+        this._workingDir = await git.commit({
+          fs: this._efsRoot,
+          dir: this.baseDir,
+          gitdir: this.gitDir,
+          author: {
+            name: this.vaultId,
+          },
+          message: message.toString(),
         });
       }
+    } finally {
+      const statusMatrix = await git.statusMatrix({
+        fs: this._efsRoot,
+        dir: this.baseDir,
+        gitdir: this.gitDir,
+      });
+      for await (const file of statusMatrix) {
+        if (file[2] === 0) {
+          await git.remove({
+            fs: this._efsRoot,
+            dir: this.baseDir,
+            gitdir: this.gitDir,
+            filepath: file[0],
+          });
+        } else {
+          await git.add({
+            fs: this._efsRoot,
+            dir: this.baseDir,
+            gitdir: this.gitDir,
+            filepath: file[0],
+          });
+        }
+      }
       await git.checkout({
-        fs: this._efs,
-        dir: '.',
+        fs: this._efsRoot,
+        dir: this.baseDir,
+        gitdir: this.gitDir,
         ref: this._workingDir,
       });
       release();
@@ -197,7 +235,7 @@ class VaultInternal {
   public async access<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
     const release = await this._lock.acquire();
     try {
-      return await f(this._efs);
+      return await f(this._efsVault);
     } finally {
       release();
     }
@@ -209,8 +247,9 @@ class VaultInternal {
     commit?: string,
   ): Promise<Array<CommitLog>> {
     const log = await git.log({
-      fs: this._efs,
-      dir: '.',
+      fs: this._efsRoot,
+      dir: this.baseDir,
+      gitdir: this.gitDir,
       depth: depth,
       ref: commit,
     });
@@ -227,8 +266,9 @@ class VaultInternal {
   public async version(commit: string): Promise<void> {
     try {
       await git.checkout({
-        fs: this._efs,
-        dir: '.',
+        fs: this._efsRoot,
+        dir: this.baseDir,
+        gitdir: this.gitDir,
         ref: commit,
         noUpdateHead: true,
       });

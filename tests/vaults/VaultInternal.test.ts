@@ -19,11 +19,13 @@ import Vault from "@/vaults/old/Vault";
 describe('VaultInternal', () => {
   let dataDir: string;
   let dbPath: string;
+  let vaultPath: string;
 
   let vault: VaultInternal;
   let dbKey: VaultKey;
   let vaultId: VaultId;
-  let efs: EncryptedFS;
+  let efsRoot: EncryptedFS;
+  let efsVault: EncryptedFS;
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
 
   beforeEach(async () => {
@@ -34,14 +36,20 @@ describe('VaultInternal', () => {
     dbPath = path.join(dataDir, 'db');
     await fs.promises.mkdir(dbPath);
     vaultId = generateVaultId('nodeId' as NodeId);
-    efs = await EncryptedFS.createEncryptedFS({
+    vaultPath = path.join(vaultId, 'contents');
+    efsRoot = await EncryptedFS.createEncryptedFS({
       dbPath,
       dbKey,
       logger,
     });
+    await efsRoot.start();
+    await efsRoot.mkdirp(vaultPath);
+    efsVault = await efsRoot.chroot(vaultPath);
+    await efsVault.start();
     vault = await VaultInternal.create({
       vaultId,
-      efs,
+      efsRoot,
+      efsVault,
       logger,
       fresh: true,
     });
@@ -49,6 +57,8 @@ describe('VaultInternal', () => {
 
   afterEach(async () => {
     await vault.destroy();
+    await efsVault.stop();
+    await efsRoot.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -63,13 +73,13 @@ describe('VaultInternal', () => {
     test('can change to the current commit', async () => {
       let commit = (await vault.log(1))[0];
       await vault.version(commit.oid);
-      await expect(efs.readdir('.')).resolves.toEqual(['.git']);
+      await expect(efsVault.readdir('.')).resolves.toEqual([]);
       await vault.commit(async (efs) => {
         await efs.writeFile('test', 'testdata');
       });
       commit = (await vault.log(1))[0];
       await vault.version(commit.oid);
-      await expect(efs.readFile('test', { encoding: 'utf8' })).resolves.toBe('testdata');
+      await expect(efsVault.readFile('test', { encoding: 'utf8' })).resolves.toBe('testdata');
     });
     test('can change commits and preserve the log with no intermediate vault mutation', async () => {
       const initCommit = (await vault.log(1))[0].oid;
@@ -84,9 +94,9 @@ describe('VaultInternal', () => {
       });
       await vault.version(initCommit);
       const endCommit = (await vault.log(1))[0].oid;
-      await expect(efs.readdir('.')).resolves.toEqual(['.git']);
+      await expect(efsVault.readdir('.')).resolves.toEqual([]);
       await vault.version(endCommit);
-      await expect(efs.readdir('.')).resolves.toEqual(['.git', 'test1', 'test2', 'test3']);
+      await expect(efsVault.readdir('.')).resolves.toEqual(['test1', 'test2', 'test3']);
     });
     test('does not allow changing to an unrecognised commit', async () => {
       await expect(() => vault.version('unrecognisedcommit')).rejects.toThrow(vaultsErrors.ErrorVaultCommitUndefined);
@@ -128,7 +138,7 @@ describe('VaultInternal', () => {
       });
       await vault.version(initCommit);
       await vault.version('HEAD');
-      await expect(efs.readdir('.')).resolves.toEqual(['.git', 'test1', 'test2', 'test3']);
+      await expect(efsVault.readdir('.')).resolves.toEqual(['test1', 'test2', 'test3']);
     });
     test('adjusts HEAD after vault mutation, discarding forward and preserving backwards history', async () => {
       const initCommit = (await vault.log(1))[0].oid;
@@ -146,9 +156,9 @@ describe('VaultInternal', () => {
       await vault.commit(async (efs) => {
         await efs.writeFile('test4', 'testdata4');
       });
-      await expect(efs.readdir('.')).resolves.toEqual(['.git', 'test1', 'test4']);
+      await expect(efsVault.readdir('.')).resolves.toEqual(['test1', 'test4']);
       await vault.version(initCommit);
-      await expect(efs.readdir('.')).resolves.toEqual(['.git']);
+      await expect(efsVault.readdir('.')).resolves.toEqual([]);
     });
   });
 
@@ -171,12 +181,13 @@ describe('VaultInternal', () => {
     await vault.destroy();
     vault = await VaultInternal.create({
       vaultId,
-      efs,
+      efsRoot,
+      efsVault,
       logger,
       fresh: true,
     });
     await vault.access(async () => {
-      expect((await efs.readFile('secret-1')).toString()).toStrictEqual('secret-content');
+      expect((await efsVault.readFile('secret-1')).toString()).toStrictEqual('secret-content');
     })
   })
   describe('Writing operations', () => {
