@@ -43,7 +43,7 @@ describe('VaultInternal', () => {
       logger,
     });
     await efsRoot.start();
-    await efsRoot.mkdirp(vaultPath);
+    await efsRoot.mkdir(vaultPath, { recursive: true });
     efsVault = await efsRoot.chroot(vaultPath);
     await efsVault.start();
     vault = await VaultInternal.create({

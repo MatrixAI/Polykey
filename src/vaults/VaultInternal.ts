@@ -137,6 +137,7 @@ class VaultInternal {
         path.join(this.vaultId, '.git', 'workingDirectory'),
         this._workingDir,
       );
+      await this._efsVault.stop();
     } finally {
       release();
     }

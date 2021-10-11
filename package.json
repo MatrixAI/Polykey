@@ -82,7 +82,7 @@
     "commander": "^7.1.0",
     "cross-fetch": "^3.0.6",
     "cross-spawn": "^7.0.3",
-    "encryptedfs": "^3.1.0",
+    "encryptedfs": "^3.2.0",
     "fast-fuzzy": "^1.10.8",
     "fd-lock": "^1.2.0",
     "google-protobuf": "^3.14.0",
