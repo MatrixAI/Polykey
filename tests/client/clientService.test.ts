@@ -840,236 +840,274 @@ describe('Client service', () => {
       // expect(resultsString).toContain('pull');
 
     });
-    test('should be able to switch a vault to a specific version of it\'s history using VaultName', async () => {
-      // Constants for current test.
-      const vaultName = 'historyVault' as VaultName;
+    describe('vault versions', () => {
+      test('should be able to switch a vault to a specific version of it\'s history using VaultName', async () => {
+        // Constants for current test.
+        const vaultName = 'historyVault' as VaultName;
 
-      const secretName = 'Secret-1';
-      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
-      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+        const secretName = 'Secret-1';
+        const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+        const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
 
-      const vaultsVersion =
-        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-          client,
-          client.vaultsVersion,
-        );
+        const vaultsVersion =
+          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+            client,
+            client.vaultsVersion,
+          );
 
-      // Create a vault
-      const vault = await vaultManager.createVault(vaultName);
+        // Create a vault
+        const vault = await vaultManager.createVault(vaultName);
 
-      // Commit some history
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer1.name, secretVer1.content);
-      })
-      const ver1Oid = (await vault.log(1))[0].oid;
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer2.name, secretVer2.content);
-      })
-      const ver2Oid = (await vault.log(1))[0].oid;
+        // Commit some history
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer1.name, secretVer1.content);
+        })
+        const ver1Oid = (await vault.log(1))[0].oid;
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer2.name, secretVer2.content);
+        })
+        const ver2Oid = (await vault.log(1))[0].oid;
 
-      // Revert the version
-      const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vaultName);
+        // Revert the version
+        const vaultMessage = new clientPB.VaultMessage();
+        vaultMessage.setVaultName(vaultName);
 
-      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
-      vaultVersionMessage.setVault(vaultMessage)
-      vaultVersionMessage.setVersionId(ver1Oid);
+        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        vaultVersionMessage.setVault(vaultMessage)
+        vaultVersionMessage.setVersionId(ver1Oid);
 
-      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
-      expect(response.getIsLatestVersion()).toBeFalsy();
+        const response = await vaultsVersion(vaultVersionMessage, callCredentials);
+        expect(response.getIsLatestVersion()).toBeFalsy();
 
-      // read old history
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
-      })
+        // read old history
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+        })
 
-      // Switch back to the latest version
-      vaultVersionMessage.setVersionId(ver2Oid);
-      const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
-      expect(response2.getIsLatestVersion()).toBeTruthy();
+        // Switch back to the latest version
+        vaultVersionMessage.setVersionId(ver2Oid);
+        const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
+        expect(response2.getIsLatestVersion()).toBeTruthy();
 
-      // read latest history
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
-      })
+        // read latest history
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
+        })
 
+      });
+      test('should be able to switch a vault to a specific version of it\'s history using VaultId', async () => {
+        // Constants for current test.
+        const vaultName = 'historyVaultID' as VaultName;
+
+        const secretName = 'Secret-1';
+        const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+        const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+
+        const vaultsVersion =
+          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+            client,
+            client.vaultsVersion,
+          );
+
+        // Create a vault
+        const vault = await vaultManager.createVault(vaultName);
+        const vaultId = vault.vaultId;
+
+        // Commit some history
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer1.name, secretVer1.content);
+        })
+        const ver1Oid = (await vault.log(1))[0].oid;
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer2.name, secretVer2.content);
+        })
+        const ver2Oid = (await vault.log(1))[0].oid;
+
+        // Revert the version
+        const vaultMessage = new clientPB.VaultMessage();
+        vaultMessage.setVaultId(vaultId);
+
+        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        vaultVersionMessage.setVault(vaultMessage)
+        vaultVersionMessage.setVersionId(ver1Oid);
+
+        const response = await vaultsVersion(vaultVersionMessage, callCredentials);
+        expect(response.getIsLatestVersion()).toBeFalsy();
+
+        // read old history
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+        })
+
+        // Switch back to the latest version
+        vaultVersionMessage.setVersionId(ver2Oid);
+        const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
+        expect(response2.getIsLatestVersion()).toBeTruthy();
+
+        // read latest history
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
+        })
+
+      });
+      test('should fail to find a non existent version', async () => {
+        // Constants for current test.
+        const vaultName = 'nonExistentVersionVault' as VaultName;
+
+        const secretName = 'Secret-1';
+        const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+        const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+
+        const vaultsVersion =
+          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+            client,
+            client.vaultsVersion,
+          );
+
+        // Create a vault
+        const vault = await vaultManager.createVault(vaultName);
+        const vaultId = vault.vaultId;
+
+        // Commit some history
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer1.name, secretVer1.content);
+        })
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer2.name, secretVer2.content);
+        })
+
+        // Revert the version
+        const vaultMessage = new clientPB.VaultMessage();
+        vaultMessage.setVaultId(vaultId);
+
+        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        vaultVersionMessage.setVault(vaultMessage)
+        vaultVersionMessage.setVersionId('invalidOid');
+
+        const response = vaultsVersion(vaultVersionMessage, callCredentials);
+        await expect(response).rejects.not.toThrow(vaultErrors.ErrorVaultCommitUndefined);
+      });
+      test('should be able to go to the end of the vault history', async () => {
+        // Constants for current test.
+        const vaultName = 'historyVault' as VaultName;
+
+        const secretName = 'Secret-1';
+        const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+        const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+
+        const vaultsVersion =
+          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+            client,
+            client.vaultsVersion,
+          );
+
+        // Create a vault
+        const vault = await vaultManager.createVault(vaultName);
+
+        // Commit some history
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer1.name, secretVer1.content);
+        })
+        const ver1Oid = (await vault.log(1))[0].oid;
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer2.name, secretVer2.content);
+        })
+        const ver2Oid = (await vault.log(1))[0].oid;
+
+        // Revert the version
+        const vaultMessage = new clientPB.VaultMessage();
+        vaultMessage.setVaultName(vaultName);
+
+        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        vaultVersionMessage.setVault(vaultMessage)
+        vaultVersionMessage.setVersionId(ver1Oid);
+
+        const response = await vaultsVersion(vaultVersionMessage, callCredentials);
+        expect(response.getIsLatestVersion()).toBeFalsy();
+
+        // read old history
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+        })
+
+        // Switch back to the latest version
+        vaultVersionMessage.setVersionId('end'); //TODO, implementing this feature in vaultsVersion.
+        const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
+        expect(response2.getIsLatestVersion()).toBeTruthy();
+
+        // read latest history
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
+        })
+      });
+      test('should destroy newer history when writing to an old version', async () => {
+        // Constants for current test.
+        const vaultName = 'overwriteVault' as VaultName;
+
+        const secretName = 'Secret-1';
+        const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
+        const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
+        const secretVer3 = {name: secretName, content: 'Secret-1-content-ver3'}
+        const secretVerNew = {name: secretName, content: 'NEW CONTENT'}
+
+        const vaultsVersion =
+          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+            client,
+            client.vaultsVersion,
+          );
+
+        // Create a vault
+        const vault = await vaultManager.createVault(vaultName);
+
+        // Commit some history
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer1.name, secretVer1.content);
+        })
+        const ver1Oid = (await vault.log(1))[0].oid;
+
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer2.name, secretVer2.content);
+        })
+        const ver2Oid = (await vault.log(1))[0].oid;
+
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVer3.name, secretVer3.content);
+        })
+        const ver3Oid = (await vault.log(1))[0].oid;
+
+        // Revert the version
+        const vaultMessage = new clientPB.VaultMessage();
+        vaultMessage.setVaultName(vaultName);
+
+        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        vaultVersionMessage.setVault(vaultMessage)
+        vaultVersionMessage.setVersionId(ver1Oid);
+
+        const response = await vaultsVersion(vaultVersionMessage, callCredentials);
+        expect(response.getIsLatestVersion()).toBeFalsy();
+
+        // read old history
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
+        })
+
+        // Commit new history
+        await vault.commit(async (efs) => {
+          await efs.writeFile(secretVerNew.name, secretVerNew.content);
+        })
+        const newVerOid = (await vault.log(1))[0].oid;
+
+        // Check that new commit overwrites old commits.
+        const log = await vault.log()
+        expect(log).toHaveLength(3);
+        expect(log[0].oid).toEqual(newVerOid);
+
+        // Check contents are correct.
+        await vault.access(async (efs) => {
+          expect((await efs.readFile(secretVerNew.name)).toString()).toStrictEqual(secretVerNew.content);
+        })
+      });
     });
-    test('should be able to switch a vault to a specific version of it\'s history using VaultId', async () => {
-      // Constants for current test.
-      const vaultName = 'historyVaultID' as VaultName;
-
-      const secretName = 'Secret-1';
-      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
-      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
-
-      const vaultsVersion =
-        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-          client,
-          client.vaultsVersion,
-        );
-
-      // Create a vault
-      const vault = await vaultManager.createVault(vaultName);
-      const vaultId = vault.vaultId;
-
-      // Commit some history
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer1.name, secretVer1.content);
-      })
-      const ver1Oid = (await vault.log(1))[0].oid;
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer2.name, secretVer2.content);
-      })
-      const ver2Oid = (await vault.log(1))[0].oid;
-
-      // Revert the version
-      const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultId(vaultId);
-
-      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
-      vaultVersionMessage.setVault(vaultMessage)
-      vaultVersionMessage.setVersionId(ver1Oid);
-
-      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
-      expect(response.getIsLatestVersion()).toBeFalsy();
-
-      // read old history
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
-      })
-
-      // Switch back to the latest version
-      vaultVersionMessage.setVersionId(ver2Oid);
-      const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
-      expect(response2.getIsLatestVersion()).toBeTruthy();
-
-      // read latest history
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
-      })
-
-    });
-    test('should be able to go to the end of the vault history', async () => {
-      // Constants for current test.
-      const vaultName = 'historyVault' as VaultName;
-
-      const secretName = 'Secret-1';
-      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
-      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
-
-      const vaultsVersion =
-        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-          client,
-          client.vaultsVersion,
-        );
-
-      // Create a vault
-      const vault = await vaultManager.createVault(vaultName);
-
-      // Commit some history
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer1.name, secretVer1.content);
-      })
-      const ver1Oid = (await vault.log(1))[0].oid;
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer2.name, secretVer2.content);
-      })
-      const ver2Oid = (await vault.log(1))[0].oid;
-
-      // Revert the version
-      const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vaultName);
-
-      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
-      vaultVersionMessage.setVault(vaultMessage)
-      vaultVersionMessage.setVersionId(ver1Oid);
-
-      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
-      expect(response.getIsLatestVersion()).toBeFalsy();
-
-      // read old history
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
-      })
-
-      // Switch back to the latest version
-      vaultVersionMessage.setVersionId('end'); //TODO, implementing this feature in vaultsVersion.
-      const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
-      expect(response2.getIsLatestVersion()).toBeTruthy();
-
-      // read latest history
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVer2.name)).toString()).toStrictEqual(secretVer2.content);
-      })
-    });
-    test('Writing to previous history will destroy future history', async () => {
-      // Constants for current test.
-      const vaultName = 'overwriteVault' as VaultName;
-
-      const secretName = 'Secret-1';
-      const secretVer1 = {name: secretName, content: 'Secret-1-content-ver1'}
-      const secretVer2 = {name: secretName, content: 'Secret-1-content-ver2'}
-      const secretVer3 = {name: secretName, content: 'Secret-1-content-ver3'}
-      const secretVerNew = {name: secretName, content: 'NEW CONTENT'}
-
-      const vaultsVersion =
-        grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-          client,
-          client.vaultsVersion,
-        );
-
-      // Create a vault
-      const vault = await vaultManager.createVault(vaultName);
-
-      // Commit some history
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer1.name, secretVer1.content);
-      })
-      const ver1Oid = (await vault.log(1))[0].oid;
-
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer2.name, secretVer2.content);
-      })
-      const ver2Oid = (await vault.log(1))[0].oid;
-
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVer3.name, secretVer3.content);
-      })
-      const ver3Oid = (await vault.log(1))[0].oid;
-
-      // Revert the version
-      const vaultMessage = new clientPB.VaultMessage();
-      vaultMessage.setVaultName(vaultName);
-
-      const vaultVersionMessage = new clientPB.VaultsVersionMessage();
-      vaultVersionMessage.setVault(vaultMessage)
-      vaultVersionMessage.setVersionId(ver1Oid);
-
-      const response = await vaultsVersion(vaultVersionMessage, callCredentials);
-      expect(response.getIsLatestVersion()).toBeFalsy();
-
-      // read old history
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVer1.name)).toString()).toStrictEqual(secretVer1.content);
-      })
-
-      // Commit new history
-      await vault.commit(async (efs) => {
-        await efs.writeFile(secretVerNew.name, secretVerNew.content);
-      })
-      const newVerOid = (await vault.log(1))[0].oid;
-
-      // Check that new commit overwrites old commits.
-      const log = await vault.log()
-      expect(log).toHaveLength(3);
-      expect(log[0].oid).toEqual(newVerOid);
-
-      // Check contents are correct.
-      await vault.access(async (efs) => {
-        expect((await efs.readFile(secretVerNew.name)).toString()).toStrictEqual(secretVerNew.content);
-      })
-    });
-
 
   });
   describe('keys', () => {

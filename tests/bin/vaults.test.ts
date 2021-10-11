@@ -536,17 +536,17 @@ describe('CLI vaults', () => {
       const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
 
       const result = await utils.pkWithStdio([...command]);
-      console.log(result);
       expect(result.code).toBe(0)
+      expect(result.stdout).toContain(vaultName);
+      expect(result.stdout).toContain(ver1Oid);
+      expect(result.stdout).toContain('Note: any changes made to the contents of the vault while at this version');
+      expect(result.stdout).toContain('will discard all changes applied to the vault in later versions. You will');
+      expect(result.stdout).toContain('not be able to return to these later versions if changes are made.');
 
       const fileContents = await vault.access(async efs => {
         return (await efs.readFile(secret1.name)).toString();
       })
       expect(fileContents).toStrictEqual(secret1.content);
-
-      fail('Test not finished')
-      // TODO: check and validate output.
-
     });
     test('should switch the version of a vault to the latest version', async () => {
       const vault = await polykeyAgent.vaults.createVault(vaultName);
@@ -572,14 +572,12 @@ describe('CLI vaults', () => {
       expect(result.code).toBe(0)
 
 
-      const command2 = ['vaults', 'version', '-np', dataDir, vaultName, 'head'];
+      const command2 = ['vaults', 'version', '-np', dataDir, vaultName, 'end'];
 
       const result2 = await utils.pkWithStdio([...command2]);
-      console.log(result2);
       expect(result2.code).toBe(0)
-
-      fail('Test not finished')
-      // TODO: check and validate output.
+      expect(result2.stdout).toContain(vaultName)
+      expect(result2.stdout).toContain('latest')
 
     });
     test('should should handle invalid version IDs', async () => {
@@ -590,20 +588,21 @@ describe('CLI vaults', () => {
       const command = ['vaults', 'version', '-np', dataDir, vaultName, "NOT_A_VALID_CHECKOUT_ID"];
 
       const result = await utils.pkWithStdio([...command]);
-      console.log(result);
-      expect(result.code).not.toBe(0) // FIXME use proper code
-      fail("finish this test");
-      // TODO validate the output.
+      expect(result.code).toBe(10)
+
+      expect(result.stderr).toContain('Error:');
+      expect(result.stderr).toContain('VersionID');
+      expect(result.stderr).toContain('invalid');
     });
     test('should throw an error if the vault is not found', async () => {
 
-      const command = ['vaults', 'version', '-np', dataDir, vaultName, "NOT_A_VALID_CHECKOUT_ID"];
+      const command = ['vaults', 'version', '-np', dataDir, 'A' + vaultName, "NOT_A_VALID_CHECKOUT_ID"];
 
-      const result = await utils.pk([...command]);
-      console.log(result);
-      expect(result.code).not.toBe(0) // FIXME use proper code
-      fail("finish this test");
-      // TODO validate the output.
+      const result = await utils.pkWithStdio([...command]);
+      expect(result.code).toBe(10)
+      expect(result.stderr).toContain('VaultId')
+      expect(result.stderr).toContain('invalid')
+      expect(result.stderr).toContain('not found')
     });
   })
 });
