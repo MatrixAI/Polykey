@@ -583,6 +583,7 @@ class Polykey {
 
   public async destroy() {
     this.logger.info('Destroying Polykey');
+    await this.vaults.destroy();
     await this.discovery.destroy();
     await this.agentGrpcServer.destroy();
     await this.clientGrpcServer.destroy();
