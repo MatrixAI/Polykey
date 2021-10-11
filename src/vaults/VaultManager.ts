@@ -178,6 +178,7 @@ class VaultManager {
       await vault.vault?.destroy()
     }
     await this.efs.stop();
+    await this.efs.destroy();
     // We shouldn't delete the saved state when destroying.
     // await this.fs.promises.rm(this.vaultsPath, {
     //   force: true,
