@@ -51,13 +51,13 @@ describe('Session Token Refreshing', () => {
     passwordFile = path.join(dataDir, 'passwordFile');
     sessionFile = path.join(nodePath, 'client', 'token');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
+      password: 'password',
       nodePath: nodePath,
       logger: logger,
+      cores: 1,
     });
-    await polykeyAgent.start({
-      password: 'password',
-    });
+    await polykeyAgent.start({});
 
     // Authorize session
     await testUtils.pkWithStdio([
