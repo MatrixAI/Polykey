@@ -16,6 +16,7 @@ import * as keysErrors from './errors';
 import * as utils from '../utils';
 import * as networkUtils from '../network/utils';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import { VaultKey } from "../vaults/types";
 
 /**
  * Manage Root Keys and Root Certificates
@@ -29,11 +30,13 @@ class KeyManager {
   public readonly rootCertPath: string;
   public readonly rootCertsPath: string;
   public readonly dbKeyPath: string;
+  public readonly vaultKeyPath: string;
 
   protected fs: FileSystem;
   protected logger: Logger;
   protected rootKeyPair: KeyPair;
   protected _dbKey: Buffer;
+  protected _vaultKey: Buffer;
   protected rootCert: Certificate;
   protected workerManager?: WorkerManager;
 
@@ -87,6 +90,7 @@ class KeyManager {
     this.rootCertPath = path.join(keysPath, 'root.crt');
     this.rootCertsPath = path.join(keysPath, 'root_certs');
     this.dbKeyPath = path.join(keysPath, 'db.key');
+    this.vaultKeyPath = path.join(keysPath, 'vault.key');
   }
 
   public setWorkerManager(workerManager: WorkerManager) {
@@ -102,12 +106,14 @@ class KeyManager {
     rootKeyPairBits = 4096,
     rootCertDuration = 31536000,
     dbKeyBits = 256,
+    vaultKeyBits = 256,
     fresh = false,
   }: {
     password: string;
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     dbKeyBits?: number;
+    vaultKeyBits?: number;
     fresh?: boolean;
   }) {
     this.logger.info('Creating Key Manager');
@@ -124,7 +130,8 @@ class KeyManager {
     const rootCert = await this.setupRootCert(rootKeyPair, rootCertDuration);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
-    this._dbKey = await this.setupDbKey(dbKeyBits);
+    this._dbKey = await this.setupKey(this.dbKeyPath, dbKeyBits);
+    this._vaultKey = await this.setupKey(this.vaultKeyPath, vaultKeyBits);
     this.logger.info('Created Key Manager');
   }
 
@@ -300,7 +307,8 @@ class KeyManager {
     issuerAttrsExtra: Array<{ name: string; value: string }> = [],
   ): Promise<void> {
     this.logger.info('Renewing root key pair');
-    const keysDbKeyPlain = await this.readDBKey();
+    const keysDbKeyPlain = await this.readKey(this.dbKeyPath);
+    const keysVaultKeyPlain = await this.readKey(this.vaultKeyPath);
     const rootKeyPair = await this.generateKeyPair(bits);
     const now = new Date();
     const rootCert = keysUtils.generateCertificate(
@@ -333,7 +341,8 @@ class KeyManager {
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
-      this.writeDBKey(keysDbKeyPlain, rootKeyPair),
+      this.writeKey(keysDbKeyPlain, this.dbKeyPath, rootKeyPair),
+      this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
@@ -353,7 +362,8 @@ class KeyManager {
     issuerAttrsExtra: Array<{ name: string; value: string }> = [],
   ): Promise<void> {
     this.logger.info('Resetting root key pair');
-    const keysDbKeyPlain = await this.readDBKey();
+    const keysDbKeyPlain = await this.readKey(this.dbKeyPath);
+    const keysVaultKeyPlain = await this.readKey(this.vaultKeyPath);
     const rootKeyPair = await this.generateKeyPair(bits);
     const rootCert = keysUtils.generateCertificate(
       rootKeyPair.publicKey,
@@ -368,7 +378,8 @@ class KeyManager {
     await Promise.all([
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
-      this.writeDBKey(keysDbKeyPlain, rootKeyPair),
+      this.writeKey(keysDbKeyPlain, this.dbKeyPath, rootKeyPair),
+      this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair)
     ]);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
@@ -528,22 +539,22 @@ class KeyManager {
 
   // Functions that handle the DB key.
 
-  protected async setupDbKey(bits: number = 256): Promise<Buffer> {
+  protected async setupKey(keyPath: string, bits: number = 256): Promise<Buffer> {
     let keyDbKey: Buffer;
-    if (await this.existsDbKey()) {
-      keyDbKey = await this.readDBKey();
+    if (await this.existsKey(keyPath)) {
+      keyDbKey = await this.readKey(keyPath);
     } else {
       this.logger.info('Generating keys db key');
       keyDbKey = await keysUtils.generateKey(bits);
-      await this.writeDBKey(keyDbKey);
+      await this.writeKey(keyDbKey, keyPath);
     }
     return keyDbKey;
   }
 
-  protected async existsDbKey(): Promise<boolean> {
-    this.logger.info(`Checking ${this.dbKeyPath}`);
+  protected async existsKey(keyPath: string): Promise<boolean> {
+    this.logger.info(`Checking ${keyPath}`);
     try {
-      await this.fs.promises.stat(this.dbKeyPath);
+      await this.fs.promises.stat(keyPath);
     } catch (e) {
       if (e.code === 'ENOENT') {
         return false;
@@ -558,11 +569,11 @@ class KeyManager {
     return true;
   }
 
-  protected async readDBKey(): Promise<Buffer> {
-    this.logger.info(`Reading ${this.dbKeyPath}`);
+  protected async readKey(keyPath: string): Promise<Buffer> {
+    this.logger.info(`Reading ${keyPath}`);
     let keysDbKeyCipher;
     try {
-      keysDbKeyCipher = await this.fs.promises.readFile(this.dbKeyPath);
+      keysDbKeyCipher = await this.fs.promises.readFile(keyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyRead(e.message, {
         errno: e.errno,
@@ -583,19 +594,19 @@ class KeyManager {
     return keysDbKeyPlain;
   }
 
-  protected async writeDBKey(dbKey: Buffer, keyPair?: KeyPair): Promise<void> {
+  protected async writeKey(dbKey: Buffer, keyPath: string, keyPair?: KeyPair): Promise<void> {
     const keyPair_ = keyPair ?? this.rootKeyPair;
     const keysDbKeyCipher = keysUtils.encryptWithPublicKey(
       keyPair_.publicKey,
       dbKey,
     );
-    this.logger.info(`Writing ${this.dbKeyPath}`);
+    this.logger.info(`Writing ${keyPath}`);
     try {
       await this.fs.promises.writeFile(
-        `${this.dbKeyPath}.tmp`,
+        `${keyPath}.tmp`,
         keysDbKeyCipher,
       );
-      await this.fs.promises.rename(`${this.dbKeyPath}.tmp`, this.dbKeyPath);
+      await this.fs.promises.rename(`${keyPath}.tmp`, keyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(e.message, {
         errno: e.errno,
@@ -608,6 +619,10 @@ class KeyManager {
 
   get dbKey(): Buffer {
     return this._dbKey;
+  }
+
+  get vaultKey(): VaultKey {
+    return this._vaultKey as VaultKey;
   }
 
   // ---

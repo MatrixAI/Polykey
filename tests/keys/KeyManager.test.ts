@@ -360,84 +360,167 @@ describe('KeyManager', () => {
     },
     global.defaultTimeout * 2 + 5000,
   );
-  test('Creates a DB key when started.', async () => {
-    const keysPath = `${dataDir}/keys`;
-    const keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath,
-      logger,
-    });
-    expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-    expect(keyManager.dbKey.toString()).toBeTruthy();
-  });
-  test('Throws an exception when it fails to parse the DB key.', async () => {
-    const keysPath = `${dataDir}/keys`;
-    const keyManager = await KeyManager.createKeyManager({
-      password: 'Password',
-      keysPath,
-      logger,
-    });
-    expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-    expect(keyManager.dbKey.toString()).toBeTruthy();
-    await keyManager.destroy();
-
-    // Use a different key.
-    await expect(
-      KeyManager.createKeyManager({
-        password: 'OtherPassword',
+  describe('dbKey', () => {
+    test('Creates a key when started.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      const keyManager = await KeyManager.createKeyManager({
+        password,
         keysPath,
         logger,
-      }),
-    ).rejects.toThrow();
-  });
-  test('DB key remains unchanged when resetting keys.', async () => {
-    const keysPath = `${dataDir}/keys`;
-    let keyManager = await KeyManager.createKeyManager({
-      password: 'Password',
-      keysPath,
-      logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
+      expect(keyManager.dbKey.toString()).toBeTruthy();
     });
-    expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-    expect(keyManager.dbKey.toString()).toBeTruthy();
-    const dbKey = keyManager.dbKey;
+    test('Throws an exception when it fails to parse the key.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      const keyManager = await KeyManager.createKeyManager({
+        password: 'Password',
+        keysPath,
+        logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
+      expect(keyManager.dbKey.toString()).toBeTruthy();
+      await keyManager.destroy();
 
-    await keyManager.resetRootKeyPair('NewPassword');
-    expect(keyManager.dbKey).toEqual(dbKey);
-    await keyManager.destroy();
-
-    // Use a different key.
-    keyManager = await KeyManager.createKeyManager({
-      password: 'NewPassword',
-      keysPath,
-      logger,
+      // Use a different key.
+      await expect(
+        KeyManager.createKeyManager({
+          password: 'OtherPassword',
+          keysPath,
+          logger,
+        }),
+      ).rejects.toThrow();
     });
-    expect(keyManager.dbKey).toEqual(dbKey);
-    await keyManager.destroy();
-  });
-  test('DB key remains unchanged when renewing keys.', async () => {
-    const keysPath = `${dataDir}/keys`;
-    let keyManager = await KeyManager.createKeyManager({
-      password: 'Password',
-      keysPath,
-      logger,
-    });
-    expect(await fs.promises.readdir(keysPath)).toContain('db.key');
-    expect(keyManager.dbKey.toString()).toBeTruthy();
-    const dbKey = keyManager.dbKey;
+    test('key remains unchanged when resetting keys.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      let keyManager = await KeyManager.createKeyManager({
+        password: 'Password',
+        keysPath,
+        logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
+      expect(keyManager.dbKey.toString()).toBeTruthy();
+      const dbKey = keyManager.dbKey;
 
-    await keyManager.renewRootKeyPair('NewPassword');
-    expect(keyManager.dbKey).toEqual(dbKey);
-    await keyManager.destroy();
+      await keyManager.resetRootKeyPair('NewPassword');
+      expect(keyManager.dbKey).toEqual(dbKey);
+      await keyManager.destroy();
 
-    // Use a different key.
-    keyManager = await KeyManager.createKeyManager({
-      password: 'NewPassword',
-      keysPath,
-      logger,
+      // Use a different key.
+      keyManager = await KeyManager.createKeyManager({
+        password: 'NewPassword',
+        keysPath,
+        logger,
+      });
+      expect(keyManager.dbKey).toEqual(dbKey);
+      await keyManager.destroy();
     });
-    expect(keyManager.dbKey).toEqual(dbKey);
-    await keyManager.destroy();
-  });
+    test('key remains unchanged when renewing keys.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      let keyManager = await KeyManager.createKeyManager({
+        password: 'Password',
+        keysPath,
+        logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('db.key');
+      expect(keyManager.dbKey.toString()).toBeTruthy();
+      const dbKey = keyManager.dbKey;
+
+      await keyManager.renewRootKeyPair('NewPassword');
+      expect(keyManager.dbKey).toEqual(dbKey);
+      await keyManager.destroy();
+
+      // Use a different key.
+      keyManager = await KeyManager.createKeyManager({
+        password: 'NewPassword',
+        keysPath,
+        logger,
+      });
+      expect(keyManager.dbKey).toEqual(dbKey);
+      await keyManager.destroy();
+    });
+  })
+  describe('vaultKey', () => {
+    test('Creates a key when started.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      const keyManager = await KeyManager.createKeyManager({
+        password,
+        keysPath,
+        logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('vault.key');
+      expect(keyManager.vaultKey.toString()).toBeTruthy();
+    });
+    test('Throws an exception when it fails to parse the key.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      const keyManager = await KeyManager.createKeyManager({
+        password: 'Password',
+        keysPath,
+        logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('vault.key');
+      expect(keyManager.vaultKey.toString()).toBeTruthy();
+      await keyManager.destroy();
+
+      // Use a different key.
+      await expect(
+        KeyManager.createKeyManager({
+          password: 'OtherPassword',
+          keysPath,
+          logger,
+        }),
+      ).rejects.toThrow();
+    });
+    test('key remains unchanged when resetting keys.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      let keyManager = await KeyManager.createKeyManager({
+        password: 'Password',
+        keysPath,
+        logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('vault.key');
+      expect(keyManager.vaultKey.toString()).toBeTruthy();
+      const vaultKey = keyManager.vaultKey;
+
+      await keyManager.resetRootKeyPair('NewPassword');
+      expect(keyManager.vaultKey).toEqual(vaultKey);
+      await keyManager.destroy();
+
+      // Use a different key.
+      keyManager = await KeyManager.createKeyManager({
+        password: 'NewPassword',
+        keysPath,
+        logger,
+      });
+      expect(keyManager.vaultKey).toEqual(vaultKey);
+      await keyManager.destroy();
+    });
+    test('key remains unchanged when renewing keys.', async () => {
+      const keysPath = `${dataDir}/keys`;
+      let keyManager = await KeyManager.createKeyManager({
+        password: 'Password',
+        keysPath,
+        logger,
+      });
+      expect(await fs.promises.readdir(keysPath)).toContain('vault.key');
+      expect(keyManager.vaultKey.toString()).toBeTruthy();
+      const vaultKey = keyManager.vaultKey;
+
+      await keyManager.renewRootKeyPair('NewPassword');
+      expect(keyManager.vaultKey).toEqual(vaultKey);
+      await keyManager.destroy();
+
+      // Use a different key.
+      keyManager = await KeyManager.createKeyManager({
+        password: 'NewPassword',
+        keysPath,
+        logger,
+      });
+      expect(keyManager.vaultKey).toEqual(vaultKey);
+      await keyManager.destroy();
+    });
+  })
+
   test('destroying the KeyManager prevents any further method calls.', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
