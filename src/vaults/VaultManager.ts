@@ -209,12 +209,13 @@ class VaultManager {
       const vaultId = await this.generateVaultId();
       this.vaultsMap.set(vaultId, { lock });
       await this.db.put(this.vaultsNamesDbDomain, vaultName, vaultId);
-      await this.efs.mkdir(vaultId);
-      const efs = await this.efs.chroot(vaultId);
+      await this.efs.mkdirp(path.join(vaultId, 'contents'));
+      const efs = await this.efs.chroot(path.join(vaultId, 'contents'));
       await efs.start();
       vault = await VaultInternal.create({
         vaultId,
-        efs: efs,
+        efsRoot: this.efs,
+        efsVault: efs,
         logger: this.logger.getChild(VaultInternal.name),
         fresh: true,
       });
@@ -330,7 +331,8 @@ class VaultManager {
         await efs.start();
         vault = await VaultInternal.create({
           vaultId,
-          efs: efs,
+          efsRoot: this.efs,
+          efsVault: efs,
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
@@ -350,7 +352,8 @@ class VaultManager {
         await efs.start();
         vault = await VaultInternal.create({
           vaultId,
-          efs: efs,
+          efsRoot: this.efs,
+          efsVault: efs,
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
