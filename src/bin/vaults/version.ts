@@ -3,6 +3,7 @@ import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
+import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
 import { isVaultId } from '../../vaults/utils'
 
@@ -52,6 +53,11 @@ version.action(async (vault, versionId, options) => {
     const statusMessage = await grpcClient.vaultsVersion(vaultsVersionMessage);
 
     let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
+
+    if(versionId.toLowerCase() === 'end') {
+      successMessage = [`Vault ${vault} is now at the latest version.`];
+    }
+
     if(!statusMessage.getIsLatestVersion()) {
       successMessage.push('')
       successMessage.push('Note: any changes made to the contents of the vault while at this version ')
@@ -66,19 +72,31 @@ version.action(async (vault, versionId, options) => {
       }),
     );
   } catch (err) {
+    let data: string[];
     if (err instanceof errors.ErrorGRPCClientTimeout) {
-      process.stderr.write(`${err.message}\n`);
-    }
-    if (err instanceof errors.ErrorGRPCServerNotStarted) {
-      process.stderr.write(`${err.message}\n`);
+      data = ['Error:', err.message];
+    } else if (err instanceof errors.ErrorGRPCServerNotStarted) {
+      data = ['Error:', err.message];
+    } else if (err instanceof vaultErrors.ErrorVaultCommitUndefined) {
+      // Warning that the versionId was invalid
+      data =  [
+        `AError: ${err.message}`,
+        `The VersionID provided was invalid or not in the version history.`
+      ];
+    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
+      data = [
+        `Error: ${err.message}`,
+        `The VaultId was invalid or not found.`
+      ]
     } else {
-      process.stderr.write(
-        outputFormatter({
-          type: options.format === 'json' ? 'json' : 'list',
-          data: ['Error:', err.message],
-        }),
-      );
+      data = ['Error:', err.message];
     }
+    process.stderr.write(
+      outputFormatter({
+        type: options.format === 'json' ? 'json' : 'list',
+        data,
+      }),
+    );
     throw err;
   } finally {
     await client.stop();

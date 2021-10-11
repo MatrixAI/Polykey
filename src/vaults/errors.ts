@@ -31,7 +31,7 @@ class ErrorVaultUnlinked extends ErrorVaults {}
 
 class ErrorCreateVaultId extends ErrorVaults {}
 
-class ErrorInvalidVaultId extends ErrorVaults {}
+class ErrorInvalidVaultId extends ErrorVaults {} // TODO: Assign a proper error code and message.
 
 class ErrorVaultMergeConflict extends ErrorVaults {}
 
