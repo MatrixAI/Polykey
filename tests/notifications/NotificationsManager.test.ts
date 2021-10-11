@@ -62,9 +62,11 @@ describe('NotificationsManager', () => {
   let agentService;
   let server: GRPCServer;
 
-  const senderHost = '127.0.0.1' as Host;
+  // Keep IPs unique. ideally we'd use the generated IP and port. but this is good for now.
+  // If this fails again we shouldn't specify the port and IP.
+  const senderHost = '127.0.0.3' as Host;
   const senderPort = 11110 as Port;
-  const receiverHost = '127.0.0.2' as Host;
+  const receiverHost = '127.0.0.4' as Host;
   const receiverPort = 11111 as Port;
 
   beforeAll(async () => {
@@ -175,7 +177,7 @@ describe('NotificationsManager', () => {
       serverPort: server.getPort(),
       tlsConfig: revTLSConfig,
     });
-  }, global.polykeyStartupTimeout);
+  }, global.polykeyStartupTimeout * 2);
 
   beforeEach(async () => {
     senderDataDir = await fs.promises.mkdtemp(
@@ -241,7 +243,7 @@ describe('NotificationsManager', () => {
 
     await receiverNotificationsManager.clearNotifications();
     expect(await receiverNotificationsManager.readNotifications()).toEqual([]);
-  }, global.polykeyStartupTimeout);
+  }, global.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
     await fs.promises.rm(senderDataDir, {
