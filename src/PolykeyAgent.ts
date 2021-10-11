@@ -167,6 +167,35 @@ class Polykey {
     logger_.info(`Setting node path to ${nodePath_}`);
     await utils.mkdirExists(fs_, nodePath_, { recursive: true });
 
+    // Checking the state version
+    // reading the contents of the file
+    const versionFilePath = path.join(nodePath_, 'versionFile');
+    let versionInfo;
+    try {
+      const versionFileContents = await fs_.promises.readFile(
+        versionFilePath,
+      );
+      versionInfo = JSON.parse(versionFileContents.toString());
+    } catch (err) {
+      logger_.info(`Failed to open version file: ${err.message}`);
+    }
+    if (versionInfo != null) {
+      // Checking state version
+      if (versionInfo.stateVersion !== config.stateVersion) {
+        throw new ErrorStateVersionMismatch(
+          `The agent state version of ${config.stateVersion} does not match the keynode state version of ${versionInfo.stateVersion}`,
+        );
+      }
+      // Checking version
+      if (versionInfo.version !== config.version) {
+        logger_.info(
+          `The version of the Agent ${config.version} does not match the version of the keynode ${versionInfo.version}`,
+        );
+      }
+    }
+    // Writing current version info.
+    await fs_.promises.writeFile(versionFilePath, JSON.stringify(config));
+
     const workers_ =
       workerManager ??
       (await WorkerManager.createPolykeyWorkerManager({
@@ -464,35 +493,6 @@ class Polykey {
         );
       }
     }
-
-    // Checking the state version
-    // reading the contents of the file
-    const versionFilePath = path.join(this.nodePath, 'versionFile');
-    let versionInfo;
-    try {
-      const versionFileContents = await this.fs.promises.readFile(
-        versionFilePath,
-      );
-      versionInfo = JSON.parse(versionFileContents.toString());
-    } catch (err) {
-      this.logger.info(`Failed to open version file: ${err.message}`);
-    }
-    if (versionInfo != null) {
-      // Checking state version
-      if (versionInfo.stateVersion !== config.stateVersion) {
-        throw new ErrorStateVersionMismatch(
-          `The agent state version of ${config.stateVersion} does not match the keynode state version of ${versionInfo.stateVersion}`,
-        );
-      }
-      // Checking version
-      if (versionInfo.version !== config.version) {
-        this.logger.info(
-          `The version of the Agent ${config.version} does not match the version of the keynode ${versionInfo.version}`,
-        );
-      }
-    }
-    // Writing current version info.
-    await this.fs.promises.writeFile(versionFilePath, JSON.stringify(config));
 
     // Starting modules
     this.keys.setWorkerManager(this.workers);
