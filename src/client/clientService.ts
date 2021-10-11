@@ -122,6 +122,7 @@ function createClientService({
         const response = new clientPB.EmptyMessage();
         setTimeout(async () => {
           await polykeyAgent.stop();
+          await polykeyAgent.destroy();
         }, 50);
         callback(null, response);
       } catch (err) {

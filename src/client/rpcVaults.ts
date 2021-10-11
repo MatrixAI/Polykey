@@ -10,7 +10,7 @@ import * as clientPB from "../proto/js/Client_pb";
 import { VaultMessage } from "../proto/js/Client_pb";
 import { isNodeId, makeNodeId } from "../nodes/utils";
 import NameOrIdCase = VaultMessage.NameOrIdCase;
-import { makeVaultId } from "@/vaults/utils";
+import { makeVaultId } from "../vaults/utils";
 import * as clientErrors from './errors';
 
 const createVaultRPC = ({

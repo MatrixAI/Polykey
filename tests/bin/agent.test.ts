@@ -125,6 +125,7 @@ describe('CLI agent', () => {
       });
     });
     describe('Starting the agent in the background', () => {
+      // FIXME, failing on it's own.
       test(
         'should start the agent and clean up the lockfile when a kill signal is received',
         async () => {

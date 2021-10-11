@@ -10,7 +10,7 @@ import { ReadCommitResult } from 'isomorphic-git';
 import { EncryptedFS } from "encryptedfs";
 import { KeyManager } from "@/keys";
 
-describe('Git utils', () => {
+describe.skip('Git utils', () => {
   let dataDir: string;
   let commits: ReadCommitResult[];
   let firstCommit: ReadCommitResult;
