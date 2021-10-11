@@ -542,7 +542,7 @@ class Polykey {
       },
     });
 
-    await this.lockfile.start({ nodeId });
+    await this.lockfile.start({ nodeId }); // TODO: start the lockfile when Polykey is created.
     await this.lockfile.updateLockfile('host', this.clientGrpcHost);
     await this.lockfile.updateLockfile('port', this.clientGrpcServer.getPort());
     await this.lockfile.updateLockfile(
@@ -566,7 +566,7 @@ class Polykey {
     this.logger.info(
       `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
     );
-    await this.lockfile.stop();
+    await this.lockfile.stop(); // TODO: remove the lockfile when polykey is destroyed.
     await this.revProxy.stop();
     await this.nodes.stop();
     await this.fwdProxy.stop();

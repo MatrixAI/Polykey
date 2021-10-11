@@ -72,6 +72,7 @@ describe('Session Token Refreshing', () => {
 
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
     await fs.promises.rmdir(dataDir, { recursive: true });
   });
 

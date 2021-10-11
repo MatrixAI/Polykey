@@ -44,7 +44,10 @@ start.action(async (options) => {
       await agent.start({});
 
       // If started add handlers for terminating.
-      const termHandler = async () => await agent.stop();
+      const termHandler = async () => {
+        await agent.stop();
+        await agent.destroy();
+      };
       process.on('SIGTERM', termHandler); //For kill command.
       process.on('SIGHUP', termHandler); // Edge case if remote terminal closes. like someone runs agent start in ssh.
       process.on('SIGINT', termHandler); // For ctrl+C

@@ -290,7 +290,7 @@ describe('Client service', () => {
       global.polykeyStartupTimeout + 10000,
     );
   });
-  describe('vaults', () => {
+  describe.skip('vaults', () => {
 
     afterEach(async () => {
       const aliveVaults = await vaultManager.listVaults();
