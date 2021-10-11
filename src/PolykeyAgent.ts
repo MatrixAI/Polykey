@@ -249,7 +249,7 @@ class Polykey {
       vaultManager ??
       await VaultManager.createVaultManager({
         vaultsPath: vaultsPath,
-        vaultsKey: keys_.dbKey as VaultKey, // FIXME, should be the vaults key not db key.
+        vaultsKey: keys_.vaultKey,
         nodeManager: nodes_,
         db: db_,
         fs: fs_,

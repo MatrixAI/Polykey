@@ -127,7 +127,7 @@ describe('GRPC agent', () => {
     vaultManager = await VaultManager.createVaultManager({
       vaultsPath: vaultsPath,
       nodeManager: nodeManager,
-      vaultsKey: keyManager.dbKey as VaultKey, // FIXME, shouldn't be dbKey
+      vaultsKey: keyManager.vaultKey,
       db: db,
       fs: fs,
       logger: logger

@@ -128,7 +128,7 @@ describe('NodeConnection', () => {
     serverVaultManager = await VaultManager.createVaultManager({
       vaultsPath: serverVaultsPath,
       nodeManager: serverNodeManager,
-      vaultsKey: serverKeyManager.dbKey as VaultKey, // FIXME, not dbKey
+      vaultsKey: serverKeyManager.vaultKey,
       db: serverDb,
       fs: fs,
       logger: logger

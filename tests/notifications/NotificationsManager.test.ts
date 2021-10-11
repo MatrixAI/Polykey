@@ -130,7 +130,7 @@ describe('NotificationsManager', () => {
     receiverVaultManager = await VaultManager.createVaultManager({
       vaultsPath: receiverVaultsPath,
       nodeManager: receiverNodeManager,
-      vaultsKey: receiverKeyManager.dbKey as VaultKey, // FIXME don't use dbKey
+      vaultsKey: receiverKeyManager.vaultKey,
       db: receiverDb,
       fs: fs,
       logger: logger
