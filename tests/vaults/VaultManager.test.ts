@@ -206,7 +206,7 @@ describe('VaultManager', () => {
       vaultManager.renameVault('DoesNotExist' as VaultId, 'DNE' as VaultName),
     ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
   });
-  test.skip('can delete a vault', async () => {
+  test('can delete a vault', async () => {
     const firstVault = await vaultManager.createVault(vaultName);
     const secondVault = await vaultManager.createVault(secondVaultName);
     await vaultManager.destroyVault(secondVault.vaultId);
@@ -230,7 +230,7 @@ describe('VaultManager', () => {
     expect(vaultNames.sort()).toEqual([vaultName, secondVaultName].sort());
     expect(vaultIds.sort()).toEqual([firstVault.vaultId, secondVault.vaultId].sort());
   });
-  test.skip('able to read and load existing metadata', async () => {
+  test('able to read and load existing metadata', async () => {
     const vaultNames = [
       'Vault1',
       'Vault2',
@@ -268,7 +268,7 @@ describe('VaultManager', () => {
     });
     expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
   });
-  test.skip('able to recover metadata after complex operations', async () => {
+  test('able to recover metadata after complex operations', async () => {
     const vaultNames = [
       'Vault1',
       'Vault2',
@@ -333,7 +333,7 @@ describe('VaultManager', () => {
       alteredVaultNames.length,
     );
     const vnAltered: Array<string> = [];
-    (await vaultManagerReloaded.listVaults()).forEach((_, vaultName) => vn.push(vaultName));
+    (await vaultManagerReloaded.listVaults()).forEach((_, vaultName) => vnAltered.push(vaultName));
     expect(vnAltered.sort()).toEqual(alteredVaultNames.sort());
     await vaultManagerReloaded.destroy();
   });

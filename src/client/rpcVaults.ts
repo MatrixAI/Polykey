@@ -270,7 +270,7 @@ const createVaultRPC = ({
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         const vault = await vaultManager.openVault(id);
         await vault.commit(async (efs) => {
-          await efs.mkdirp(call.request.getDirName());
+          await efs.mkdir(call.request.getDirName(), { recursive: true });
         });
         response.setSuccess(true);
         callback(null, response);

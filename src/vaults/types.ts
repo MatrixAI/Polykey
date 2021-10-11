@@ -134,7 +134,6 @@ interface FileSystemWritable {
   link: typeof EncryptedFS.prototype.link,
   lseek: typeof EncryptedFS.prototype.lseek,
   mkdir: typeof EncryptedFS.prototype.mkdir,
-  mkdirp: typeof EncryptedFS.prototype.mkdirp,
   mkdtemp: typeof EncryptedFS.prototype.mkdtemp,
   mknod: typeof EncryptedFS.prototype.mknod,
   open: typeof EncryptedFS.prototype.open,

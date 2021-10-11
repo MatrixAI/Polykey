@@ -174,7 +174,8 @@ class VaultManager {
       await vault.vault?.destroy()
     }
     await this.efs.stop();
-    await this.efs.destroy();
+    // Shouldn't this be removed as well if we arent destroying state here?
+    // await this.efs.destroy();
     this.logger.info('Destroyed Vault Manager');
   }
 
@@ -199,7 +200,7 @@ class VaultManager {
       const vaultId = await this.generateVaultId();
       this.vaultsMap.set(vaultId, { lock });
       await this.db.put(this.vaultsNamesDbDomain, vaultName, vaultId);
-      await this.efs.mkdirp(path.join(vaultId, 'contents'));
+      await this.efs.mkdir(path.join(vaultId, 'contents'), { recursive: true });
       const efs = await this.efs.chroot(path.join(vaultId, 'contents'));
       await efs.start();
       vault = await VaultInternal.create({
@@ -224,10 +225,8 @@ class VaultManager {
         this.vaultsNamesDbDomain,
         vaultName,
       );
-      await this.efs.rmdir(vaultId);
-      const vaultLock = this.vaultsMap.get(vaultId);
-      await vaultLock?.vault?.destroy();
       this.vaultsMap.delete(vaultId);
+      await this.efs.rmdir(vaultId, { recursive: true });
     }, lock);
   }
 
