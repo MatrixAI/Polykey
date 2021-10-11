@@ -3,7 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import * as utils from '@/utils';
 import config from '@/config';
 import { ErrorStateVersionMismatch } from '@/errors';
 import { checkAgentRunning } from '@/agent/utils';
@@ -21,8 +20,10 @@ describe('Polykey', () => {
     );
   });
   afterEach(async () => {
-    await pk.stop();
-    await pk.destroy();
+    if(pk != null ){
+      await pk.stop();
+      await pk.destroy();
+    }
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -31,13 +32,14 @@ describe('Polykey', () => {
   test(
     'Able to construct',
     async () => {
+      const nodePath = path.join(dataDir, 'polykey');
       pk = await PolykeyAgent.createPolykey({
         password,
+        nodePath,
         logger,
         cores: 1,
       });
       expect(pk).toBeInstanceOf(PolykeyAgent);
-      expect(pk.nodePath).toBe(utils.getDefaultNodePath());
     },
     global.polykeyStartupTimeout,
   );
@@ -82,10 +84,10 @@ describe('Polykey', () => {
       await pk.start({});
       await pk.stop();
       const nodePathContents = await fs.promises.readdir(nodePath);
+      console.log(nodePathContents);
       expect(nodePathContents).toContain('keys');
-      expect(nodePathContents).toContain('vaults');
       expect(nodePathContents).toContain('db');
-      await fs.promises.rm(dataDir, { force: true, recursive: true });
+      expect(nodePathContents).toContain('vaults');
     },
     global.polykeyStartupTimeout,
   );
@@ -119,14 +121,15 @@ describe('Polykey', () => {
       await fs.promises.writeFile(versionFilePath, versionInfoString);
 
       // Attempt to start a polykeyAgent.
-      pk = await PolykeyAgent.createPolykey({
-        password,
-        nodePath,
-        logger,
-        cores: 1,
-      });
-      await expect(() => pk.start({})).rejects.toThrow(ErrorStateVersionMismatch);
-      await pk.stop();
+      await expect (async () =>
+      {
+        pk = await PolykeyAgent.createPolykey({
+          password,
+          nodePath,
+          logger,
+          cores: 1,
+        });
+      }).rejects.toThrow(ErrorStateVersionMismatch);
     },
     global.polykeyStartupTimeout,
   );

@@ -98,7 +98,6 @@ class VaultManager {
     await efs.start();
     logger.info('Created Vault Manager');
     return new VaultManager({
-      vaultsPath,
       nodeManager,
       vaultsKey,
       db,
@@ -113,7 +112,6 @@ class VaultManager {
   }
 
   constructor({
-    vaultsPath,
     nodeManager,
     vaultsKey,
     db,
@@ -125,7 +123,6 @@ class VaultManager {
     fs,
     logger,
   }: {
-    vaultsPath: string;
     nodeManager: NodeManager;
     vaultsKey: VaultKey;
     db: DB;
@@ -137,7 +134,6 @@ class VaultManager {
     fs?: FileSystem;
     logger?: Logger;
   }) {
-    this.vaultsPath = vaultsPath;
     this.nodeManager = nodeManager;
     this.db = db;
     this.vaultsDbDomain = vaultsDbDomain;
@@ -179,12 +175,6 @@ class VaultManager {
     }
     await this.efs.stop();
     await this.efs.destroy();
-    // We shouldn't delete the saved state when destroying.
-    // await this.fs.promises.rm(this.vaultsPath, {
-    //   force: true,
-    //   recursive: true,
-    // });
-    // this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
     this.logger.info('Destroyed Vault Manager');
   }
 

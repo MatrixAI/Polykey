@@ -68,21 +68,22 @@ async function bootstrapPolykeyState(
 async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
   try {
     const files = await fs.promises.readdir(nodePath);
+    console.log(files);
     //Checking if directory structure matches keynode structure. Possibly check the private and public key and the level db for keys)
     if (
       files.includes('keys') &&
-      files.includes('vaults') &&
-      files.includes('db')
+      files.includes('db') &&
+      files.includes('versionFile')
     ) {
       const keysPath = path.join(nodePath, 'keys');
       const keysFiles = await fs.promises.readdir(keysPath);
       if (
-        !keysFiles.includes('keys_db') &&
-        !keysFiles.includes('root_certs') &&
-        !keysFiles.includes('root.cert') &&
-        !keysFiles.includes('root.key') &&
-        !keysFiles.includes('root_pub') &&
-        !keysFiles.includes('keys_db_key')
+        !keysFiles.includes('db.key') ||
+        !keysFiles.includes('root_certs') ||
+        !keysFiles.includes('root.crt') ||
+        !keysFiles.includes('root.key') ||
+        !keysFiles.includes('root.pub') ||
+        !keysFiles.includes('vault.key')
       ) {
         return 'MALFORMED_KEYNODE';
       }
