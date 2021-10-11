@@ -59,6 +59,8 @@ describe('NodeConnection', () => {
   let agentService;
   let server: GRPCServer;
 
+  // Meep IPs unique. Ideally we'd use the generated IP and port. But this is good for now.
+  // If this fails again we shouldn't specify the port and IP.
   const sourceHost = '127.0.0.1' as Host;
   const sourcePort = 11110 as Port;
   const targetHost = '127.0.0.2' as Host;
@@ -168,7 +170,7 @@ describe('NodeConnection', () => {
       tlsConfig: revTLSConfig,
     });
     targetNodeId = serverKeyManager.getNodeId();
-  }, global.polykeyStartupTimeout);
+  }, global.polykeyStartupTimeout * 2);
 
   beforeEach(async () => {
     // Client setup
