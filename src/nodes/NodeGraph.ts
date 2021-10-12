@@ -89,8 +89,8 @@ class NodeGraph {
       for (const [, conn] of this.nodeManager.getBrokerNodeConnections()) {
         const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
         for (const n of nodes) {
-          await this.nodeManager.createConnectionToNode(n.id, n.address);
           await this.setNode(n.id, n.address);
+          await this.nodeManager.getConnectionToNode(n.id);
         }
       }
       this.logger.info('Started Node Graph');
@@ -514,10 +514,10 @@ class NodeGraph {
       // create a new one)
       let nodeConnection: NodeConnection;
       try {
-        nodeConnection = await this.nodeManager.createConnectionToNode(
-          nextNode.id,
-          nextNode.address,
-        );
+        // Add the node to the database so that we can find its address in
+        // call to getConnectionToNode
+        await this.setNode(nextNode.id, nextNode.address);
+        nodeConnection = await this.nodeManager.getConnectionToNode(nextNode.id);
       } catch (e) {
         // If we can't connect to the node, then skip it.
         continue;

@@ -761,10 +761,7 @@ describe('VaultManager', () => {
   //         ip: targetHost,
   //         port: targetPort,
   //       } as NodeAddress);
-  //       await nodeManager.createConnectionToNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
+  //       await nodeManager.getConnectionToNode(targetNodeId);
   //       await revProxy.openConnection(sourceHost, sourcePort);
   //       await vaultManager.cloneVault(vault.vaultId, targetNodeId);
   //       const vaultsList = await vaultManager.listVaults();
@@ -805,10 +802,7 @@ describe('VaultManager', () => {
   //         ip: targetHost,
   //         port: targetPort,
   //       } as NodeAddress);
-  //       await nodeManager.createConnectionToNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
+  //       await nodeManager.getConnectionToNode(targetNodeId);
   //       await revProxy.openConnection(sourceHost, sourcePort);
   //       await expect(() =>
   //         vaultManager.cloneVault(vault.vaultId, targetNodeId),
@@ -859,10 +853,7 @@ describe('VaultManager', () => {
   //         ip: targetHost,
   //         port: targetPort,
   //       } as NodeAddress);
-  //       await nodeManager.createConnectionToNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
+  //       await nodeManager.getConnectionToNode(targetNodeId);
   //       await revProxy.openConnection(sourceHost, sourcePort);
   //       await vaultManager.cloneVault(vault.vaultId, targetNodeId);
   //       const vaultList = await vaultManager.listVaults();
@@ -899,10 +890,7 @@ describe('VaultManager', () => {
   //         ip: targetHost,
   //         port: targetPort,
   //       } as NodeAddress);
-  //       await altNodeManager.createConnectionToNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
+  //       await altNodeManager.getConnectionToNode(targetNodeId);
   //       await revProxy.openConnection(altHost, altPort);
   //       await altVaultManager.cloneVault(vault.vaultId, targetNodeId);
   //       const altVaultsList = await altVaultManager.listVaults();
@@ -911,10 +899,7 @@ describe('VaultManager', () => {
   //         ip: targetHost,
   //         port: targetPort,
   //       } as NodeAddress);
-  //       await nodeManager.createConnectionToNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
+  //       await nodeManager.getConnectionToNode(targetNodeId);
   //       await revProxy.openConnection(sourceHost, sourcePort);
   //       await vaultManager.cloneVault(vault.vaultId, targetNodeId);
   //       await altVaultManager.setVaultPermissions(
@@ -932,10 +917,7 @@ describe('VaultManager', () => {
   //         ip: altHostIn,
   //         port: altPortIn,
   //       } as NodeAddress);
-  //       await nodeManager.createConnectionToNode(altNodeId, {
-  //         ip: altHostIn,
-  //         port: altPortIn,
-  //       } as NodeAddress);
+  //       await nodeManager.getConnectionToNode(altNodeId);
   //       await altRevProxy.openConnection(sourceHost, sourcePort);
   //       await vaultManager.pullVault(clonedVault.vaultId, altNodeId);
   //       expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
@@ -973,10 +955,7 @@ describe('VaultManager', () => {
   //         ip: targetHost,
   //         port: targetPort,
   //       } as NodeAddress);
-  //       await altNodeManager.createConnectionToNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
+  //       await altNodeManager.getConnectionToNode(targetNodeId);
   //       await revProxy.openConnection(altHost, altPort);
   //       await altVaultManager.cloneVault(vault.vaultId, targetNodeId);
   //       const altVaultsList = await altVaultManager.listVaults();
@@ -985,10 +964,7 @@ describe('VaultManager', () => {
   //         ip: targetHost,
   //         port: targetPort,
   //       } as NodeAddress);
-  //       await nodeManager.createConnectionToNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
+  //       await nodeManager.getConnectionToNode(targetNodeId);
   //       await revProxy.openConnection(sourceHost, sourcePort);
   //       await vaultManager.cloneVault(vault.vaultId, targetNodeId);
   //       await altVaultManager.setVaultPermissions(
@@ -1006,10 +982,7 @@ describe('VaultManager', () => {
   //         ip: altHostIn,
   //         port: altPortIn,
   //       } as NodeAddress);
-  //       await nodeManager.createConnectionToNode(altNodeId, {
-  //         ip: altHostIn,
-  //         port: altPortIn,
-  //       } as NodeAddress);
+  //       await nodeManager.getConnectionToNode(altNodeId);
   //       await altRevProxy.openConnection(sourceHost, sourcePort);
   //       await vaultManager.pullVault(clonedVault.vaultId, altNodeId);
   //       expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
