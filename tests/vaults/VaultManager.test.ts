@@ -62,6 +62,7 @@ describe('VaultManager', () => {
 
   const vaultName = 'TestVault' as VaultName;
   const secondVaultName = 'SecondTestVault' as VaultName;
+  const thirdVaultName = 'ThirdTestVault' as VaultName;
 
   beforeAll(async () => {
     fwdProxy = await ForwardProxy.createForwardProxy({
@@ -199,6 +200,19 @@ describe('VaultManager', () => {
     }
     expect((await vaultManager.listVaults()).size).toEqual(vaultNames.length + 1);
   });
+  test('can open the same vault twice and perform mutations', async () => {
+    const vault = await vaultManager.createVault(vaultName);
+    const vaultCopyOne = await vaultManager.openVault(vault.vaultId);
+    const vaultCopyTwo = await vaultManager.openVault(vault.vaultId);
+    expect(vaultCopyOne).toBe(vaultCopyTwo);
+    await vaultCopyOne.commit(async (efs) => {
+      await efs.writeFile('test', 'test');
+    });
+    const read = await vaultCopyTwo.access(async (efs) => {
+      return await efs.readFile('test', { encoding: 'utf8' }) as string;
+    });
+    expect(read).toBe('test');
+  });
   test('can rename a vault', async () => {
     const vault = await vaultManager.createVault(vaultName);
     await vaultManager.renameVault(vault.vaultId, secondVaultName as VaultName);
@@ -270,6 +284,38 @@ describe('VaultManager', () => {
       restartedVaultNames.push(vaultName);
     });
     expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
+  });
+  test('can concurrently rename the same vault', async () => {
+    const vault = await vaultManager.createVault(vaultName);
+    await Promise.all([
+      vaultManager.renameVault(vault.vaultId, secondVaultName),
+      vaultManager.renameVault(vault.vaultId, thirdVaultName),
+    ]);
+    await expect(vaultManager.getVaultName(vault.vaultId)).resolves.toBe(thirdVaultName);
+  });
+  test('can save the commit state of a vault', async () => {
+    const vault = await vaultManager.createVault(vaultName);
+    await vault.commit(async (efs) => {
+      await efs.writeFile('test', 'test');
+    });
+    await vaultManager.closeVault(vault.vaultId);
+    await vaultManager.destroy();
+    vaultManager = await VaultManager.createVaultManager({
+      vaultsPath,
+      vaultsKey,
+      // keyManager: keyManager,
+      nodeManager,
+      db,
+      // acl: acl,
+      // gestaltGraph: gestaltGraph,
+      fs,
+      logger,
+    });
+    const vaultLoaded = await vaultManager.openVault(vault.vaultId);
+    const read = await vaultLoaded.access(async (efs) => {
+      return await efs.readFile('test', { encoding: 'utf8' });
+    });
+    expect(read).toBe('test');
   });
   test('able to recover metadata after complex operations', async () => {
     const vaultNames = [

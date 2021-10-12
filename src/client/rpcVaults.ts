@@ -52,7 +52,7 @@ const createVaultRPC = ({
       callback: grpc.sendUnaryData<clientPB.VaultMessage>,
     ): Promise<void> => {
       const response = new clientPB.VaultMessage();
-      let vault: VaultInternal;
+      let vault;
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -385,7 +385,7 @@ const createVaultRPC = ({
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         const vault = await vaultManager.openVault(id);
 
-        const secret = await vault.access<string>(async (efs) => {
+        const secret = await vault.access(async (efs) => {
           return await efs.readFile(call.request.getSecretName(), { encoding: 'utf8' }) as string;
         });
         response.setSecretContent(secret);

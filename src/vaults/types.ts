@@ -156,7 +156,7 @@ interface VaultFacade {
   gitDir: typeof VaultInternal.prototype.gitDir;
   vaultId: typeof VaultInternal.prototype.vaultId;
   commit(...arg: Parameters<commitType>): ReturnType<commitType>;
-  access(...arg: Parameters<accessType>): ReturnType<accessType>;
+  access: accessType;
   log(...arg: Parameters<logType>): ReturnType<logType>;
   version(...arg: Parameters<versionType>): ReturnType<versionType>;
 }
