@@ -5,8 +5,8 @@ import type {
   VaultMap,
   VaultPermissions,
   VaultKey,
-  VaultList,
-} from './types';
+  VaultList, VaultFacade
+} from "./types";
 import type { FileSystem } from '../types';
 import type { WorkerManager } from '../workers';
 import type { NodeId } from '../nodes/types';
@@ -191,7 +191,7 @@ class VaultManager {
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
-  public async createVault(vaultName: VaultName): Promise<VaultInternal> {
+  public async createVault(vaultName: VaultName): Promise<VaultFacade> {
     let vault;
     const lock = new Mutex();
     await this._transaction(async () => {
@@ -231,7 +231,7 @@ class VaultManager {
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
-  public async openVault(vaultId: VaultId): Promise<VaultInternal> {
+  public async openVault(vaultId: VaultId): Promise<VaultFacade> {
     const vaultName = await this.getVaultName(vaultId);
     if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
     return await this.getVault(vaultId);

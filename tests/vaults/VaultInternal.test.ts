@@ -1,5 +1,5 @@
 import type { NodeId } from '@/nodes/types';
-import type { VaultId, VaultKey, VaultName } from '@/vaults/types';
+import type { VaultFacade, VaultId, VaultKey, VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
@@ -15,6 +15,7 @@ import * as vaultsErrors from '@/vaults/errors';
 import * as utils from '@/utils';
 import * as errors from "@/vaults/errors";
 import Vault from "@/vaults/old/Vault";
+import { FileSystemReadable, FileSystemWritable } from "@/vaults/types";
 
 describe('VaultInternal', () => {
   let dataDir: string;
@@ -370,5 +371,31 @@ describe('VaultInternal', () => {
       expect(log).toHaveLength(2);
       expect(log[0].oid).toStrictEqual(commit);
     });
+  });
+  test('VaultFacade only exposes limited commands of VaultInternal', async () => {
+    // converting a vault to the interface
+    const vaultInterface = vault as VaultFacade;
+
+    // Using the avaliable functions.
+    await vaultInterface.commit(async efs => {
+      await efs.writeFile('test', 'testContent');
+    })
+
+    await vaultInterface.access(async efs => {
+      const content = (await efs.readFile('test')).toString();
+      expect(content).toStrictEqual('testContent');
+    })
+
+    expect(vaultInterface.baseDir).toBeTruthy();
+    expect(vaultInterface.gitDir).toBeTruthy();
+    expect(vaultInterface.vaultId).toBeTruthy();
+    expect(vaultInterface.commit).toBeTruthy();
+    expect(vaultInterface.access).toBeTruthy();
+    expect(vaultInterface.log).toBeTruthy();
+    expect(vaultInterface.version).toBeTruthy();
+
+    // can we convert back?
+    const vaultNormal = vaultInterface as VaultInternal;
+    expect(vaultNormal.destroy).toBeTruthy(); // This exists again.
   });
 });

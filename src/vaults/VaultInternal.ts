@@ -145,7 +145,7 @@ class VaultInternal {
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
-  public async commit(f: (fs: FileSystemWritable) => Promise<void>) {
+  public async commit(f: (fs: FileSystemWritable) => Promise<void>): Promise<void> {
     const release = await this._lock.acquire();
     const message: string[] = [];
     await git.checkout({

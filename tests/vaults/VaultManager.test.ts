@@ -4,7 +4,7 @@ import type { Host, Port, TLSConfig } from '@/network/types';
 import type { VaultId, VaultKey, VaultName } from '@/vaults/types';
 import type { ChainData } from '@/sigchain/types';
 
-import os from 'os';
+import os, { type } from "os";
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -12,7 +12,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { Sigchain } from '@/sigchain';
-import { VaultManager } from '@/vaults';
+import { VaultManager } from "@/vaults";
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { DB } from '@matrixai/db';
@@ -27,6 +27,7 @@ import { errors as gitErrors } from '@/git';
 import { utils as vaultUtils } from '@/vaults';
 import { makeCrypto } from '../utils';
 import { assert } from 'console';
+import { FileSystemReadable, FileSystemWritable, VaultFacade } from "@/vaults/types";
 
 describe('VaultManager', () => {
   const password = 'password';
@@ -44,6 +45,8 @@ describe('VaultManager', () => {
   let vaultManager: VaultManager;
   let sigchain: Sigchain;
 
+  // FIXME, try not to do this, they can all have the localhost,
+  //  but use the generated port when the server is started.
   const sourceHost = '127.0.0.1' as Host;
   const sourcePort = 11112 as Port;
   const targetHost = '127.0.0.2' as Host;
