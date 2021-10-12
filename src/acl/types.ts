@@ -1,6 +1,6 @@
 import type { Opaque } from '../types';
 import type { GestaltAction } from '../gestalts/types';
-import type { VaultId, VaultActions } from '../vaults/types';
+import type { VaultActions, VaultId } from "../vaults/types";
 
 type PermissionId = Opaque<'PermissionId', string>;
 

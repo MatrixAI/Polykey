@@ -7,7 +7,7 @@ import type {
 } from './types';
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
-import type { VaultId } from '../vaults/types';
+import type { VaultIdRaw } from '../vaults/types';
 
 import mlts from 'monotonic-lexicographic-timestamp';
 import EmbeddedJWK from 'jose/jwk/embedded';
@@ -37,7 +37,7 @@ function constructGestaltInviteMessage(nodeId: NodeId): string {
 /**
  * Dummy for now
  */
-function constructVaultShareMessage(vaultId: VaultId): string {
+function constructVaultShareMessage(vaultId: VaultIdRaw): string {
   return `xxx has shared their vault with ID ${vaultId} with you.`;
 }
 

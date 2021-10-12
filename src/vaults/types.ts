@@ -9,6 +9,8 @@ import { EncryptedFS, permissions } from 'encryptedfs';
 /**
  * Randomly generated vault ID for each new vault
  */
+type VaultIdRaw = Opaque<'VaultIdRaw', Buffer>;
+
 type VaultId = Opaque<'VaultId', string>;
 
 type VaultName = Opaque<'VaultName', string>;
@@ -52,17 +54,17 @@ type FileOptions = {
 type VaultMapOp_ =
   | {
       domain: 'vaults';
-      key: VaultId;
+      key: VaultIdRaw;
       value: Buffer;
     }
   | {
       domain: 'names';
       key: string;
-      value: VaultId;
+      value: VaultIdRaw;
     }
   | {
       domain: 'links';
-      key: VaultId;
+      key: VaultIdRaw;
       value: string;
     };
 
@@ -172,6 +174,7 @@ type CommitLog = {
 }
 
 export type {
+  VaultIdRaw,
   VaultId,
   VaultAction,
   VaultKey,

@@ -1,5 +1,5 @@
 import type { NodeId } from '@/nodes/types';
-import type { VaultFacade, VaultId, VaultKey, VaultName } from "@/vaults/types";
+import type { VaultFacade, VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
@@ -14,7 +14,6 @@ import { EncryptedFS } from 'encryptedfs';
 import * as vaultsErrors from '@/vaults/errors';
 import * as utils from '@/utils';
 import * as errors from "@/vaults/errors";
-import Vault from "@/vaults/old/Vault";
 import { FileSystemReadable, FileSystemWritable } from "@/vaults/types";
 
 describe('VaultInternal', () => {
@@ -36,7 +35,7 @@ describe('VaultInternal', () => {
     dbKey = await generateVaultKey();
     dbPath = path.join(dataDir, 'db');
     await fs.promises.mkdir(dbPath);
-    vaultId = generateVaultId('nodeId' as NodeId);
+    vaultId = generateVaultId();
     vaultPath = path.join(vaultId, 'contents');
     efsRoot = await EncryptedFS.createEncryptedFS({
       dbPath,

@@ -306,7 +306,7 @@ class VaultManager {
   }
 
   protected async generateVaultId(): Promise<VaultId> {
-    let vaultId = vaultsUtils.generateVaultId(this.nodeManager.getNodeId());
+    let vaultId = vaultsUtils.generateVaultId();
     let i = 0;
     while (await this.efs.exists(vaultId)) {
       i++;
@@ -315,7 +315,7 @@ class VaultManager {
           'Could not create a unique vaultId after 50 attempts',
         );
       }
-      vaultId = vaultsUtils.generateVaultId(this.nodeManager.getNodeId());
+      vaultId = vaultsUtils.generateVaultId();
     }
     return vaultId;
   }

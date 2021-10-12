@@ -1,6 +1,6 @@
 import type { Opaque } from '../types';
 import type { NodeId } from '../nodes/types';
-import type { VaultId, VaultName, VaultActions } from '../vaults/types';
+import type { VaultIdRaw, VaultName, VaultActions, VaultId } from "../vaults/types";
 
 type NotificationId = Opaque<'NotificationId', string>;
 

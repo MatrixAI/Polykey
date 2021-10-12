@@ -3,11 +3,11 @@ import type {
   FileChanges,
   FileOptions,
   SecretList,
-  SecretName,
-  VaultId,
+  SecretName, VaultId,
+  VaultIdRaw,
   VaultKey,
-  VaultName,
-} from '../types';
+  VaultName
+} from "../types";
 import type { NodeId } from '../../nodes/types';
 import type { WorkerManager } from '../../workers';
 

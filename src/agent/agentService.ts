@@ -1,6 +1,6 @@
 import type { NodeId } from '../nodes/types';
 import type { ClaimId, ClaimEncoded, ClaimIntermediary } from '../claims/types';
-import type { VaultId } from '../vaults/types';
+import type { VaultIdRaw } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '../utils';
@@ -20,6 +20,8 @@ import {
   errors as notificationsErrors,
 } from '../notifications';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
+import { makeVaultId, makeVaultIdRaw } from "../vaults/utils";
+import { makeNodeId } from "../nodes/utils";
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -54,7 +56,7 @@ function createAgentService({
       const genWritable = grpcUtils.generatorWritable(call);
 
       const request = call.request;
-      const vaultId = request.getId() as VaultId;
+      const vaultId = makeVaultId(request.getId());
 
       const response = new agentPB.PackChunk();
       const vault = await vaultManager.openVault(vaultId);
@@ -86,7 +88,7 @@ function createAgentService({
         const body = Buffer.concat(clientBodyBuffers);
 
         const meta = call.metadata;
-        const vaultId = meta.get('vault-id').pop()?.toString() as VaultId;
+        const vaultId = makeVaultId(meta.get('vault-id').pop()!.toString());
         if (vaultId == null) throw new ErrorGRPC('vault-name not in metadata.');
         const vault = await vaultManager.openVault(vaultId);
 
@@ -130,7 +132,7 @@ function createAgentService({
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       const response = new agentPB.VaultListMessage();
-      const id = call.request.getNodeId() as NodeId;
+      const id = makeNodeId(call.request.getNodeId());
       try {
         throw Error('Not implemented')
         // FIXME: handleVaultNamesRequest doesn't exist.
@@ -164,7 +166,7 @@ function createAgentService({
     ): Promise<void> => {
       const response = new agentPB.NodeTableMessage();
       try {
-        const targetNodeId = call.request.getNodeId() as NodeId;
+        const targetNodeId = makeNodeId(call.request.getNodeId());
         // Get all local nodes that are closest to the target node from the request
         const closestNodes = await nodeManager.getClosestLocalNodes(
           targetNodeId,
@@ -245,18 +247,18 @@ function createAgentService({
         // If so, then we want to make this node start sending hole punching packets
         // back to the source node.
         if (
-          nodeManager.getNodeId() === (call.request.getTargetId() as NodeId)
+          nodeManager.getNodeId() === makeNodeId(call.request.getTargetId())
         ) {
           const [host, port] = networkUtils.parseAddress(
             call.request.getEgressAddress(),
           );
           await nodeManager.openConnection(host, port);
           // Otherwise, find if node in table
-          // If so, ask the nodemanager to relay to the node
+          // If so, ask the nodeManager to relay to the node
         } else if (
-          await nodeManager.knowsNode(call.request.getSrcId() as NodeId)
+          await nodeManager.knowsNode(makeNodeId(call.request.getSrcId()))
         ) {
-          nodeManager.relayHolePunchMessage(call.request);
+          nodeManager.relayHolePunchMessage(call.request); // FIXME: don't we want to await this?
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -293,8 +295,8 @@ function createAgentService({
     ): Promise<void> => {
       const response = new agentPB.PermissionMessage();
       try {
-        const nodeId = call.request.getNodeId() as NodeId;
-        const vaultId = call.request.getVaultId() as VaultId;
+        const nodeId = makeNodeId(call.request.getNodeId());
+        const vaultId = makeVaultIdRaw(call.request.getVaultId());
         throw Error('Not Implemented');
         // FIXME: getVaultPermissions not implemented.
         // const result = await vaultManager.getVaultPermissions(vaultId, nodeId);

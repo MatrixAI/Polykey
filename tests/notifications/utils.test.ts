@@ -4,7 +4,7 @@ import type {
   Notification,
   NotificationData,
 } from '@/notifications/types';
-import type { VaultActions, VaultId, VaultName } from '@/vaults/types';
+import type { VaultActions, VaultId, VaultIdRaw, VaultName } from "@/vaults/types";
 
 import jwtVerify from 'jose/jwt/verify';
 import { createPublicKey } from 'crypto';

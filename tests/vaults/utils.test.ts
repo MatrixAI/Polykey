@@ -1,4 +1,4 @@
-import type { VaultId } from '@/vaults/types';
+import type { VaultIdRaw } from '@/vaults/types';
 import type { NodeId } from '@/nodes/types';
 
 import fs from 'fs';
@@ -11,7 +11,10 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { makeNodeId } from "@/nodes/utils";
-import { isVaultId, splitVaultId } from "@/vaults/utils";
+import { isVaultIdRaw, makeVaultIdRaw, makeVaultId, } from "@/vaults/utils";
+
+import { IdRandom } from "@matrixai/id";
+import * as uuid from 'uuid';
 
 describe('Vaults utils', () => {
   const logger = new Logger('Vaults utils tests', LogLevel.WARN);
@@ -30,18 +33,26 @@ describe('Vaults utils', () => {
     });
   });
 
+  test('testing new rando id', async () => {
+    const random = new IdRandom();
+    const id = random.get()
+    const uuidString = uuid.stringify(Buffer.from(id));
+    console.log(uuidString)
+    console.log(uuid.validate(uuidString));
+  })
   test('VaultId type guard works', async () => {
     const nodeId = makeNodeId('A'.repeat(44));
-    const vaultId = vaultsUtils.generateVaultId(nodeId);
-    expect(isVaultId(vaultId)).toBeTruthy();
+    const vaultId = vaultsUtils.generateVaultId();
+    expect(isVaultIdRaw(vaultId)).toBeTruthy();
   })
-  test('vaultIds can be split', async () => {
-    const nodeId = 'alkjsddfjknacqqquiry32741834id';
-    const id = vaultsUtils.generateVaultId(nodeId as NodeId);
-    expect(id).toContain(nodeId);
-    const vaultId = vaultsUtils.splitVaultId(id);
-    expect(vaultId).not.toContain(nodeId);
-  });
+  // TODO: this may be fully removed later. check if splitting is needed for vaultIds
+  // test('vaultIds can be split', async () => {
+  //   const nodeId = 'alkjsddfjknacqqquiry32741834id';
+  //   const id = vaultsUtils.generateVaultId();
+  //   expect(id).toContain(nodeId);
+  //   const vaultId = vaultsUtils.splitVaultId(id);
+  //   expect(vaultId).not.toContain(nodeId);
+  // });
   test.skip('EFS can be read recursively', async () => {
     const key = await vaultsUtils.generateVaultKey();
     const efs = await EncryptedFS.createEncryptedFS({
@@ -114,6 +125,24 @@ describe('Vaults utils', () => {
     //   vaultsUtils.searchVaultName(vaultList, 'd' as VaultId),
     // ).toThrow(vaultsErrors.ErrorRemoteVaultUndefined);
   });
+  test('makeVaultId converts a buffer', async () => {
+    const randomIdGen = new IdRandom();
+    const idBuffer = Buffer.from(randomIdGen.get());
+    console.log(makeVaultIdRaw(idBuffer))
+  })
+  test('makeVaultString converts a VaultId', async () => {
+    const randomIdGen = new IdRandom();
+    const idBuffer = Buffer.from(randomIdGen.get());
+    const vaultId = makeVaultIdRaw(idBuffer)
+    makeVaultId(vaultId);
+  })
+  test('makeVaultId converts a string', async () => {
+    const randomIdGen = new IdRandom();
+    const idBuffer = Buffer.from(randomIdGen.get());
+    const vaultId = makeVaultIdRaw(idBuffer)
+    const vaultString = makeVaultId(vaultId);
+    makeVaultIdRaw(vaultString);
+  })
 });
 
 // Test('vaultIds are alphanumeric', async () => {

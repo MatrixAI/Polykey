@@ -1,5 +1,5 @@
 import type { NodeId } from '@/nodes/types';
-import type { VaultId, VaultKey, VaultName } from '@/vaults/types';
+import type { VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
@@ -28,7 +28,7 @@ describe.skip('Vault is', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     key = await generateVaultKey();
-    vaultId = generateVaultId('nodeId' as NodeId);
+    vaultId = generateVaultId();
     efsDir = path.join(dataDir, vaultId);
     await fs.promises.mkdir(efsDir);
     vault = new Vault({

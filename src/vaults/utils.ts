@@ -1,11 +1,11 @@
 import type { EncryptedFS } from 'encryptedfs';
-import type { VaultId, VaultKey, VaultList, VaultName } from './types';
+import type { VaultIdRaw, VaultId, VaultKey, VaultList, VaultName } from "./types";
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 
 import fs from 'fs';
 import path from 'path';
-import { v4 as uuid } from 'uuid';
+import { IdRandom,  utils as idUtils} from "@matrixai/id";
 
 import { GitRequest } from '../git';
 import * as grpc from '@grpc/grpc-js';
@@ -22,27 +22,57 @@ async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
   return await keysUtils.generateKey(bits) as VaultKey;
 }
 
-const validVaultId = /[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-4[0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}:[A-Za-z0-9]{44}$/
-/**
- * Validates that a provided vault ID string is a valid vault ID.
- */
-function isVaultId(vaultId: string): vaultId is VaultId {
-  return validVaultId.test(vaultId);
+function isVaultIdRaw(arg: any): arg is VaultIdRaw {
+  if (!( arg instanceof Buffer)) return false;
+  return arg.length === 16;
 }
 
-function makeVaultId(arg: any): VaultId {
-  if (isVaultId(arg)) return arg;
+/**
+ * This will return arg as a valid VaultId or throw an error if it can't be converted.
+ * This will take a multibase string of the ID or the raw Buffer of the ID.
+ * @param arg - The variable we wish to convert
+ * @throws vaultErrors.ErrorInvalidVaultId  if the arg can't be converted into a VaultId
+ * @returns VaultIdRaw
+ */
+function makeVaultIdRaw(arg: any): VaultIdRaw {
+  let id = arg;
+  // Checking and converting a string
+  if (typeof arg === 'string'){
+    // Covert the string to the Buffer form.
+    id = idUtils.fromMultibase(arg);
+    if (id == null) throw new vaultErrors.ErrorInvalidVaultId();
+    id = Buffer.from(id);
+  }
+
+  // checking if valid buffer.
+  if (isVaultIdRaw(id)) return id;
   throw new vaultErrors.ErrorInvalidVaultId();
 }
 
-function generateVaultId(nodeId: NodeId): VaultId {
-  const vaultId = uuid();
-  return (vaultId + ':' + nodeId) as VaultId;
+function isVaultId(arg: any): arg is VaultId {
+  if (typeof arg !== 'string') return false;
+  let id = idUtils.fromMultibase(arg);
+  if (id == null) return false;
+  return Buffer.from(id).length === 16;
 }
 
-function splitVaultId(vaultId: VaultId): VaultId {
-  const vid = vaultId.split(':');
-  return vid[0] as VaultId;
+function makeVaultId(arg: any): VaultId {
+  let id = arg;
+  if ((id instanceof Buffer)) {
+    id = idUtils.toMultibase(arg, 'base58btc');
+  }
+  if(isVaultId(id)) return id;
+  throw new vaultErrors.ErrorInvalidVaultId();
+}
+
+const randomIdGenerator = new IdRandom();
+function generateVaultId(): VaultId {
+  return makeVaultId(Buffer.from(randomIdGenerator.get()) as VaultIdRaw);
+}
+
+// FIXME, deprecated. we don't split the VaultId anymore
+function splitVaultId(vaultId: VaultId): VaultId{
+  return vaultId;
 }
 
 async function fileExists(fs: FileSystem, path: string): Promise<boolean> {
@@ -120,7 +150,7 @@ async function* readdirRecursivelyEFS2(
  * Searches a list of vaults for the given vault Id and associated name
  * @throws If the vault Id does not exist
  */
-function searchVaultName(vaultList: VaultList, vaultId: VaultId): VaultName {
+function searchVaultName(vaultList: VaultList, vaultId: VaultIdRaw): VaultName {
   let vaultName: VaultName | undefined;
 
   // Search each element in the list of vaults
@@ -191,7 +221,8 @@ async function* requestPack(
   const responseBuffers: Array<Buffer> = [];
 
   const meta = new grpc.Metadata();
-  meta.set('vault-id', vaultId);
+  // FIXME make it a VaultIdReadable
+  meta.set('vault-id', makeVaultId(vaultId));
 
   const stream = client.vaultsGitPackGet(meta);
   const write = promisify(stream.write).bind(stream);
@@ -233,11 +264,13 @@ async function requestVaultNames(
 }
 
 export {
+  isVaultIdRaw,
   isVaultId,
+  makeVaultIdRaw,
   makeVaultId,
   generateVaultKey,
   generateVaultId,
-  splitVaultId,
+  // splitVaultId,
   fileExists,
   readdirRecursively,
   readdirRecursivelyEFS,

@@ -1,5 +1,5 @@
 import type { NodeId } from "../nodes/types";
-import type { VaultAction, VaultId, VaultName } from "../vaults/types";
+import type { VaultAction, VaultId, VaultIdRaw, VaultName } from "../vaults/types";
 import type { SessionManager } from "../sessions";
 import type { VaultInternal, VaultManager } from "../vaults";
 
@@ -10,7 +10,7 @@ import * as clientPB from "../proto/js/Client_pb";
 import { VaultMessage } from "../proto/js/Client_pb";
 import { isNodeId, makeNodeId } from "../nodes/utils";
 import NameOrIdCase = VaultMessage.NameOrIdCase;
-import { makeVaultId } from "../vaults/utils";
+import { makeVaultId, makeVaultIdRaw } from "../vaults/utils";
 import * as clientErrors from './errors';
 
 const createVaultRPC = ({
@@ -139,7 +139,7 @@ const createVaultRPC = ({
           return;
         }
         // Vault id
-        const vaultId = vaultMessage.getVaultId() as VaultId;
+        const vaultId = makeVaultId(vaultMessage.getVaultId());
         // Node id
         const id = makeNodeId(nodeMessage.getNodeId());
 
