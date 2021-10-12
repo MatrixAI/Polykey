@@ -3,7 +3,7 @@ import type { PublicKeyPem } from '../keys/types';
 import type { Sigchain } from '../sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
 import type { ClaimId } from '../claims/types';
-import type { NodeId, NodeAddress, NodeData, NodeBucket } from '../nodes/types';
+import type { NodeId, NodeAddress, NodeData, NodeBucket, NodeConnectionMap } from '../nodes/types';
 import type { SignedNotification } from '../notifications/types';
 import type { Host, Port } from '../network/types';
 import type { FileSystem, Timer } from '../types';
@@ -47,7 +47,8 @@ class NodeManager {
   protected revProxy: ReverseProxy;
 
   // Active connections to other nodes
-  protected connections: Map<NodeId, NodeConnection> = new Map();
+  // protected connections: Map<NodeId, NodeConnection> = new Map();
+  protected connections: NodeConnectionMap = new Map();
   // Node ID -> node address mappings for the bootstrap/broker nodes
   protected brokerNodes: NodeBucket = {};
   protected brokerNodeConnections: Map<NodeId, NodeConnection> = new Map();
@@ -146,8 +147,12 @@ class NodeManager {
 
   public async stop() {
     this.logger.info('Stopping Node Manager');
-    for (const [, conn] of this.connections) {
-      await conn.stop();
+    for (const n in this.connections) {
+      const targetNodeId = n as NodeId;
+      const connLock = this.connections.get(targetNodeId);
+      if (connLock?.connection != null) {
+        await connLock.connection.stop();
+      }
     }
     for (const [, conn] of this.brokerNodeConnections) {
       await conn.stop();
@@ -246,11 +251,7 @@ class NodeManager {
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getPublicKey(targetNodeId: NodeId): Promise<PublicKeyPem> {
-    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
-    const connection: NodeConnection = await this.createConnectionToNode(
-      targetNodeId,
-      targetAddress,
-    );
+    const connection = await this.getConnectionToNode(targetNodeId);
     const publicKey = connection.getExpectedPublicKey(
       targetNodeId,
     ) as PublicKeyPem;
@@ -278,11 +279,7 @@ class NodeManager {
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async requestChainData(targetNodeId: NodeId): Promise<ChainData> {
-    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
-    const connection: NodeConnection = await this.createConnectionToNode(
-      targetNodeId,
-      targetAddress,
-    );
+    const connection = await this.getConnectionToNode(targetNodeId);
     // Verify the node's chain with its own public key
     const unverifiedChainData = await connection.getChainData();
     const publicKey = connection.getExpectedPublicKey(
@@ -310,9 +307,7 @@ class NodeManager {
           endPublicKey = this.keyManager.getRootKeyPairPem().publicKey;
           // Otherwise, get the public key from the root cert chain (by connection)
         } else {
-          const endAddress: NodeAddress = await this.findNode(endNodeId);
-          const endConnection: NodeConnection =
-            await this.createConnectionToNode(endNodeId, endAddress);
+          const endConnection = await this.getConnectionToNode(endNodeId);
           endPublicKey = endConnection.getExpectedPublicKey(
             endNodeId,
           ) as PublicKeyPem;
@@ -339,10 +334,8 @@ class NodeManager {
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async claimNode(targetNodeId: NodeId): Promise<void> {
-    const targetAddress: NodeAddress = await this.findNode(targetNodeId);
-    const connection: NodeConnection = await this.createConnectionToNode(
+    const connection: NodeConnection = await this.getConnectionToNode(
       targetNodeId,
-      targetAddress,
     );
     await this.sigchain.transaction(async (sigchain) => {
       // 2. Create your intermediary claim
@@ -384,9 +377,9 @@ class NodeManager {
 
   /**
    * Forwards a received hole punch message on to the target.
-   * The node is assumed to be known, and a connection to the node is also assumed
-   * to have already been established (as right now, this will only be called by
-   * a 'broker' node).
+   * If not known, the node ID -> address mapping is attempted to be discovered
+   * through Kademlia (note, however, this is currently only called by a 'broker'
+   * node).
    * @param message the original relay message (assumed to be created in
    * nodeConnection.start())
    */
@@ -394,10 +387,7 @@ class NodeManager {
   public async relayHolePunchMessage(
     message: agentPB.RelayMessage,
   ): Promise<void> {
-    const conn = this.connections.get(message.getTargetId() as NodeId);
-    if (conn === undefined) {
-      throw new nodesErrors.ErrorNodeConnectionNotExist();
-    }
+    const conn = await this.getConnectionToNode(message.getTargetId() as NodeId);
     await conn.sendHolePunchMessage(
       message.getSrcId() as NodeId,
       message.getTargetId() as NodeId,
@@ -414,63 +404,71 @@ class NodeManager {
     nodeId: NodeId,
     message: SignedNotification,
   ): Promise<void> {
-    const targetAddress: NodeAddress = await this.findNode(nodeId);
-    const connection: NodeConnection = await this.createConnectionToNode(
-      nodeId,
-      targetAddress,
-    );
+    const connection: NodeConnection = await this.getConnectionToNode(nodeId);
     await connection.sendNotification(message);
   }
 
-  public getConnectionToNode(targetNodeId: NodeId): NodeConnection {
-    const conn = this.connections.get(targetNodeId);
-    if (conn != null) {
-      return conn;
-    } else {
-      throw new nodesErrors.ErrorNodeConnectionNotExist();
-    }
-  }
-
   /**
-   * Treat this node as the client, and attempt to create a unidirectional
-   * connection to another node (server). Either by retrieving a pre-existing
-   * one, or by instantiating a new GRPCClientAgent.
-   *
-   * @param targetNodeId ID of the node wanting to connect to
-   * @param targetNodeAddress host and port of the node wanting to connect to
+   * Treat this node as the client, and attempt to create/retrieve an existing
+   * undirectional connection to another node (server).
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
-  public async createConnectionToNode(
-    targetNodeId: NodeId,
-    targetNodeAddress: NodeAddress,
-  ): Promise<NodeConnection> {
-    return await this._transaction(async () => {
-      // Throw error if trying to connect to self
-      if (targetNodeId === this.getNodeId()) {
-        throw new nodesErrors.ErrorNodeGraphSelfConnect();
+  public async getConnectionToNode(targetNodeId: NodeId): Promise<NodeConnection> {
+    const targetAddress = await this.findNode(targetNodeId);
+    let connLock = this.connections.get(targetNodeId);
+    // If there's already an entry in the map, we have 2 cases:
+    // 1. The connection already exists
+    // 2. The connection is currently being created by another concurrent thread
+    if (connLock != null) {
+      // Return the connection if it already exists
+      if (connLock.connection != null) {
+        return connLock.connection;
       }
-      // Attempt to get an existing connection
-      const existingConnection: NodeConnection | undefined =
-        this.connections.get(targetNodeId);
-      if (existingConnection != null) {
-        return existingConnection;
+      // Otherwise, it's expected to be currently being created by some other thread
+      // Wait for the lock to release
+      let release;
+      try {
+        release = await connLock.lock.acquire();
+      } finally {
+        release();
       }
-      // Otherwise, create a new connection
-      const nodeConnection = await NodeConnection.createNodeConnection({
-        targetNodeId: targetNodeId,
-        targetHost: targetNodeAddress.ip,
-        targetPort: targetNodeAddress.port,
-        forwardProxy: this.fwdProxy,
-        keyManager: this.keyManager,
-        logger: this.logger,
-      });
-      await nodeConnection.start({
-        brokerConnections: this.brokerNodeConnections,
-      });
-      // Add it to the map of active connections
-      this.connections.set(targetNodeId, nodeConnection);
-      return nodeConnection;
-    });
+      // Once the lock is released, then it's sufficient to recursively call the
+      // function. It will most likely enter the case where we already have an
+      // entry in the map (or, an error occurred, and the entry is removed - in
+      // which case, this thread will create the connection).
+      return await this.getConnectionToNode(targetNodeId);
+
+    // Otherwise, we need to create an entry
+    } else {
+      let lock = new Mutex();
+      this.connections.set(targetNodeId, { lock });
+      let release;
+      try {
+        release = await lock.acquire();
+        const connection = await NodeConnection.createNodeConnection({
+          targetNodeId: targetNodeId,
+          targetHost: targetAddress.ip,
+          targetPort: targetAddress.port,
+          forwardProxy: this.fwdProxy,
+          keyManager: this.keyManager,
+          logger: this.logger,
+        });
+        await connection.start({
+          brokerConnections: this.brokerNodeConnections,
+        });
+        // Add it to the map of active connections
+        this.connections.set(targetNodeId, { connection, lock });
+        return connection;
+      } catch (e) {
+        // We need to make sure to delete any added lock if we encounter an error
+        // Otherwise, we can enter a state where we have a lock in the map, but
+        // no NodeConnection being created
+        this.connections.delete(targetNodeId);
+        throw e;
+      } finally {
+        release();
+      }
+    }
   }
 
   /**
@@ -543,8 +541,8 @@ class NodeManager {
    * @throws ErrorNodeConnectionNotExist if a connection to the target does not exist
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
-  public getClient(targetNodeId: NodeId): GRPCClientAgent {
-    const conn = this.connections.get(targetNodeId);
+  public async getClient(targetNodeId: NodeId): Promise<GRPCClientAgent> {
+    const conn = await this.getConnectionToNode(targetNodeId);
     if (conn != null) {
       return conn.getClient();
     } else {
@@ -589,21 +587,8 @@ class NodeManager {
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async scanNodeVaults(nodeId: string): Promise<Array<string>> {
-    // Create a connection to the specified node
-    const nodeAddress = await this.getNode(nodeId as NodeId);
-    if (nodeAddress == null) {
-      // Throw an error if node is not recognised
-      throw new nodesErrors.ErrorNodeConnectionNotExist(
-        'Node does not exist in node store',
-      );
-    }
-
     // Create a connection to another node
-    const connection = await this.createConnectionToNode(
-      nodeId as NodeId,
-      nodeAddress,
-    );
-
+    const connection = await this.getConnectionToNode(nodeId as NodeId);
     // Scan the vaults of the node over the connection
     return await connection.scanVaults();
   }

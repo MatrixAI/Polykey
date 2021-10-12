@@ -316,10 +316,7 @@ describe.skip('CLI vaults', () => {
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
-        await polykeyAgent.nodes.createConnectionToNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
-        } as NodeAddress);
+        await polykeyAgent.nodes.getConnectionToNode(targetNodeId);
         const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
         const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
         // Server agent: start sending hole-punching packets back to the 'client'
@@ -397,10 +394,7 @@ describe.skip('CLI vaults', () => {
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
-        await polykeyAgent.nodes.createConnectionToNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
-        } as NodeAddress);
+        await polykeyAgent.nodes.getConnectionToNode(targetNodeId);
         const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
         const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
         // Server agent: start sending hole-punching packets back to the 'client'
@@ -474,10 +468,7 @@ describe.skip('CLI vaults', () => {
         port: targetPort,
       });
       // Client agent: Start sending hole-punching packets to the target
-      await polykeyAgent.nodes.createConnectionToNode(targetNodeId, {
-        ip: targetHost,
-        port: targetPort,
-      } as NodeAddress);
+      await polykeyAgent.nodes.getConnectionToNode(targetNodeId);
       const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
       const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
       // Server agent: start sending hole-punching packets back to the 'client'

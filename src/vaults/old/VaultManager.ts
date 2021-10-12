@@ -519,15 +519,8 @@ class VaultManager {
    */
   public async cloneVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
     // Create a connection to the specified node
-    const nodeAddress = await this.nodeManager.getNode(nodeId);
-    if (nodeAddress == null) {
-      // Throw an error if node is not recognised
-      throw new nodesErrors.ErrorNodeConnectionNotExist(
-        'Node does not exist in node store',
-      );
-    }
-    this.nodeManager.createConnectionToNode(nodeId, nodeAddress);
-    const client = this.nodeManager.getClient(nodeId);
+    await this.nodeManager.getConnectionToNode(nodeId);
+    const client = await this.nodeManager.getClient(nodeId);
 
     // Compile the vault Id
     const id = `${vaultsUtils.splitVaultId(vaultId)}:${nodeId}`;
@@ -604,15 +597,8 @@ class VaultManager {
     }
 
     // Create a connection to the specified node
-    const nodeAddress = await this.nodeManager.getNode(node);
-    if (nodeAddress == null) {
-      // Throw an error if node is not recognised
-      throw new nodesErrors.ErrorNodeConnectionNotExist(
-        'Node does not exist in node store',
-      );
-    }
-    this.nodeManager.createConnectionToNode(node, nodeAddress);
-    const client = this.nodeManager.getClient(node);
+    await this.nodeManager.getConnectionToNode(node);
+    const client = await this.nodeManager.getClient(node);
 
     // Compile the vault Id
     const id = `${vaultsUtils.splitVaultId(vaultId)}:${node}` as VaultId;
