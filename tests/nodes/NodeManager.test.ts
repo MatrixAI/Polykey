@@ -284,7 +284,7 @@ describe('NodeManager', () => {
       await y.sigchain.clearDB();
     });
 
-    test.only('can successfully cross sign a claim', async () => {
+    test('can successfully cross sign a claim', async () => {
       // Make the call to initialise the cross-signing process:
       // 2. X <- sends its intermediary signed claim <- Y
       // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
