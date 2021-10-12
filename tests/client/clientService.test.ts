@@ -33,9 +33,9 @@ import { ErrorSessionTokenInvalid } from '@/errors';
 import { checkAgentRunning } from '@/agent/utils';
 import { NotificationData } from '@/notifications/types';
 import { makeNodeId } from '@/nodes/utils';
-import { VaultName } from "@/vaults/types";
+import { VaultFacade, VaultId, VaultName } from "@/vaults/types";
 import { VaultsVersionMessage } from "@/proto/js/Client_pb";
-import { isVaultId } from "@/vaults/utils";
+import { isVaultIdRaw, makeVaultId } from "@/vaults/utils";
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -348,7 +348,7 @@ describe('Client service', () => {
       const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
       const vaultList2 = ['Vault2', 'Vault3', 'Vault4', 'Vault5'];
 
-      const vaults: Array<VaultInternal> = [];
+      const vaults: Array<VaultFacade> = [];
 
       for (const vaultName of vaultList) {
         vaults.push(await vaultManager.createVault(vaultName as VaultName));
@@ -725,6 +725,7 @@ describe('Client service', () => {
       const secrets2 = await vault.access(async efs => {
         return await efs.readdir('.');
       })
+      fail("not implemented")
       console.log(secrets2);
       expect(secrets2).toEqual(secrets.sort()); // FIXME, failing because its not supported.
 
@@ -771,9 +772,9 @@ describe('Client service', () => {
         );
 
       // Creating a vault.
-      await vaultManager.createVault(vaultName);
+      const vault = await vaultManager.createVault(vaultName);
       const vaults = await vaultManager.listVaults();
-      const vaultId = vaults[0].id;
+      const vaultId = vault.vaultId;
 
       // Creating a gestalts state
       await createGestaltState();
@@ -806,9 +807,9 @@ describe('Client service', () => {
         );
 
       // Creating a vault
-      await vaultManager.createVault(vaultName);
+      const vault = await vaultManager.createVault(vaultName);
       const vaults = await vaultManager.listVaults();
-      const vaultId = vaults[0].id;
+      const vaultId = vault.vaultId;
 
       // Creating a gestalts state
       await createGestaltState();
@@ -858,11 +859,11 @@ describe('Client service', () => {
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer1.name, secretVer1.content);
         })
-        const ver1Oid = (await vault.log(1))[0].oid;
+        const ver1Oid = (await vault.log())[0].oid;
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer2.name, secretVer2.content);
         })
-        const ver2Oid = (await vault.log(1))[0].oid;
+        const ver2Oid = (await vault.log())[0].oid;
 
         // Revert the version
         const vaultMessage = new clientPB.VaultMessage();
@@ -913,11 +914,11 @@ describe('Client service', () => {
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer1.name, secretVer1.content);
         })
-        const ver1Oid = (await vault.log(1))[0].oid;
+        const ver1Oid = (await vault.log())[0].oid;
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer2.name, secretVer2.content);
         })
-        const ver2Oid = (await vault.log(1))[0].oid;
+        const ver2Oid = (await vault.log())[0].oid;
 
         // Revert the version
         const vaultMessage = new clientPB.VaultMessage();
@@ -2162,7 +2163,7 @@ describe('Client service', () => {
       } as NotificationData;
       const vaultShareData = {
         type: 'VaultShare',
-        vaultId: 'vaultId',
+        vaultId: 'zVaultIdxxxxxxxxxxxxxxx' as VaultId,
         vaultName: 'vaultName',
         actions: {
           pull: null,

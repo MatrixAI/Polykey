@@ -3,7 +3,7 @@ import type { PermissionId, Permission, VaultActions } from './types';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeId } from '../nodes/types';
 import type { GestaltAction } from '../gestalts/types';
-import type { VaultAction, VaultId } from '../vaults/types';
+import type { VaultAction, VaultIdRaw, VaultId } from "../vaults/types";
 import type { Ref } from '../types';
 
 import { Mutex } from 'async-mutex';
@@ -69,7 +69,7 @@ class ACL {
     const aclPermsDb = await this.db.level(this.aclPermsDbDomain[1], aclDb);
     // Nodes stores NodeId -> PermissionId
     const aclNodesDb = await this.db.level(this.aclNodesDbDomain[1], aclDb);
-    // Vaults stores VaultId -> Record<NodeId, null>
+    // Vaults stores VaultIdString -> Record<NodeId, null>
     // note that the NodeId in each array must be in their own unique gestalt
     // the NodeId in each array may be missing if it had been previously deleted
     const aclVaultsDb = await this.db.level(this.aclVaultsDbDomain[1], aclDb);

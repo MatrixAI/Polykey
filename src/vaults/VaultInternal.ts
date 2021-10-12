@@ -4,13 +4,13 @@ import type {
   FileOptions,
   SecretList,
   SecretName,
-  VaultId,
+  VaultIdRaw,
   VaultKey,
   VaultName,
   FileSystemReadable,
   FileSystemWritable,
-  CommitLog,
-} from './types';
+  CommitLog, VaultId
+} from "./types";
 import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
 import type { ReadCommitResult } from 'isomorphic-git';
@@ -31,6 +31,7 @@ import * as gitUtils from '../git/utils';
 import * as vaultsErrors from './errors';
 import * as gitErrors from '../git/errors';
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
+import { makeVaultId } from "./utils";
 
 interface VaultInternal extends CreateDestroy {}
 @CreateDestroy()

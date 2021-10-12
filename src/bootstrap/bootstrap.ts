@@ -68,7 +68,6 @@ async function bootstrapPolykeyState(
 async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
   try {
     const files = await fs.promises.readdir(nodePath);
-    console.log(files);
     //Checking if directory structure matches keynode structure. Possibly check the private and public key and the level db for keys)
     if (
       files.includes('keys') &&

@@ -1,7 +1,7 @@
 import type { NodeId, NodeInfo, NodeAddress } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
-import type { VaultActions, VaultId, VaultKey, VaultName } from "@/vaults/types";
+import type { VaultActions, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
 import type { NotificationData } from '@/notifications/types';
 
 import fs from 'fs';
@@ -23,6 +23,7 @@ import { AgentService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
 import { makeCrypto } from '../utils';
+import { makeVaultId } from "@/vaults/utils";
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -522,7 +523,7 @@ describe('NotificationsManager', () => {
 
     const notificationData: NotificationData = {
       type: 'VaultShare',
-      vaultId: 'vaultId' as VaultId,
+      vaultId: makeVaultId('zVaultIdxxxxxxxxxxxxxx'),
       vaultName: 'vaultName' as VaultName,
       actions: {
         clone: null,

@@ -5,7 +5,8 @@ import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
 import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
-import { isVaultId } from '../../vaults/utils'
+import { isVaultIdRaw } from '../../vaults/utils'
+import { isVaultId } from "../../vaults/utils";
 
 const version = createCommand('version', {
   description: {

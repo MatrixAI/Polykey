@@ -1,7 +1,7 @@
 import type { NodeId, NodeAddress, NodeInfo } from '@/nodes/types';
 import type { ProviderId, IdentityId, IdentityInfo } from '@/identities/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { VaultId, VaultKey, VaultName } from '@/vaults/types';
+import type { VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
 import type { ChainData } from '@/sigchain/types';
 
 import os, { type } from "os";
