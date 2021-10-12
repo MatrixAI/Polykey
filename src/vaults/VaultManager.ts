@@ -32,7 +32,7 @@ import * as nodesErrors from '../nodes/errors';
 import * as aclErrors from '../acl/errors';
 import * as gestaltErrors from '../gestalts/errors';
 import { errors as dbErrors } from '@matrixai/db';
-import { EncryptedFS } from 'encryptedfs';
+import { EncryptedFS, POJO } from 'encryptedfs';
 import VaultInternal from './VaultInternal';
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 
@@ -49,6 +49,7 @@ class VaultManager {
   protected workerManager?: WorkerManager;
   protected vaultsKey: VaultKey;
   protected vaultsMap: VaultMap;
+  protected vaultCreation: Map<VaultName, MutexInterface>;
   protected vaultsDbDomain: string;
   protected vaultsNamesDbDomain: Array<string>;
   protected vaultsDb: DBLevel;
@@ -141,6 +142,7 @@ class VaultManager {
     this.vaultsDb = vaultsDb;
     this.vaultsNamesDb = vaultsNamesDb;
     this.vaultsMap = new Map();
+    this.vaultCreation = new Map();
     this.efs = efs;
     this.fs = fs ?? require('fs');
     this.vaultsKey = vaultsKey;
@@ -151,7 +153,6 @@ class VaultManager {
     f: (vaultManager: VaultManager) => Promise<T>,
     lock: MutexInterface
   ): Promise<T> {
-    console.log('2');
     const release = await lock.acquire();
     try {
       return await f(this);
@@ -176,12 +177,6 @@ class VaultManager {
             r();
       }
     }
-    // if (lock.isLocked()) {
-    //   console.log('1')
-    //   return await f();
-    // } else {
-      // return await this.transaction(f, lock);
-    // }
   }
 
   public async destroy(): Promise<void> {
@@ -191,40 +186,52 @@ class VaultManager {
       await vault.vault?.destroy();
     }
     await this.efs.stop();
-    // Shouldn't this be removed as well if we arent destroying state here?
-    // await this.efs.destroy();
     this.logger.info('Destroyed Vault Manager');
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
-  public async getVaultId(
-    vaultName: VaultName,
-  ): Promise<VaultId | undefined> {
-    const vaultId = await this.db.get<VaultId>(
+  public async getVaultName(
+    vaultId: VaultId,
+  ): Promise<VaultName | undefined> {
+    const vaultMeta = await this.db.get<POJO>(
       this.vaultsNamesDbDomain,
-      vaultName,
+      vaultId,
     );
-    return vaultId;
+    if (vaultMeta == null) throw new vaultsErrors.ErrorVaultUndefined();
+    return vaultMeta.name;
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async createVault(vaultName: VaultName): Promise<VaultFacade> {
-    const existingId = await this.getVaultId(vaultName);
-    if (existingId != null) throw new vaultsErrors.ErrorVaultDefined();
-    const vaultId = await this.generateVaultId();
-    await this.db.put(this.vaultsNamesDbDomain, vaultName, vaultId);
-    await this.efs.mkdir(path.join(vaultId, 'contents'), { recursive: true });
-    const efs = await this.efs.chroot(path.join(vaultId, 'contents'));
-    await efs.start();
-    const vault = await VaultInternal.create({
-      vaultId,
-      efsRoot: this.efs,
-      efsVault: efs,
-      logger: this.logger.getChild(VaultInternal.name),
-      fresh: true,
-    });
-    this.vaultsMap.set(vaultId, { lock: new Mutex(), vault });
-    return vault;
+    // let lock = this.vaultCreation.get(vaultName);
+    // if (!lock) lock = new Mutex();
+    // this.vaultCreation.set(vaultName, lock);
+    // const release = await lock.acquire();
+    // try {
+      // const existingId = await this.getVaultId(vaultName);
+      // if (existingId != null) throw new vaultsErrors.ErrorVaultDefined();
+      const vaultId = await this.generateVaultId();
+      const lock = new Mutex();
+      this.vaultsMap.set(vaultId, { lock });
+      return await this._transaction(async () => {
+        await this.db.put(this.vaultsNamesDbDomain, vaultId, { name: vaultName });
+        await this.efs.mkdir(path.join(vaultId, 'contents'), { recursive: true });
+        const efs = await this.efs.chroot(path.join(vaultId, 'contents'));
+        await efs.start();
+        const vault = await VaultInternal.create({
+          vaultId,
+          efsRoot: this.efs,
+          efsVault: efs,
+          logger: this.logger.getChild(VaultInternal.name),
+          fresh: true,
+        });
+        this.vaultsMap.set(vaultId, { lock, vault });
+        return vault;
+      }, [vaultId]);
+    // } finally {
+    //   release();
+    //   this.vaultCreation.delete(vaultName);
+    // }
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
@@ -235,7 +242,7 @@ class VaultManager {
       if (!vaultName) return;
       await this.db.del(
         this.vaultsNamesDbDomain,
-        vaultName,
+        vaultId,
       );
       this.vaultsMap.delete(vaultId);
       await this.efs.rmdir(vaultId, { recursive: true });
@@ -261,11 +268,11 @@ class VaultManager {
   public async listVaults(nodeId?: NodeId): Promise<VaultList> {
     const vaults: VaultList = new Map();
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
-      const dbId = (o as any).value;
-      const dbName = (o as any).key.toString() as VaultName;
-      const vaultId = await this.db.deserializeDecrypt<VaultId>(dbId, false);
+      const dbMeta = (o as any).value;
+      const dbId = (o as any).key;
+      const vaultMeta = await this.db.deserializeDecrypt<POJO>(dbMeta, false);
       if (!nodeId) {
-        vaults.set(dbName, vaultId);
+        vaults.set(vaultMeta.name, dbId.toString());
       } else {
         // TODO: Handle what other nodes can see with their permissions
       }
@@ -279,33 +286,21 @@ class VaultManager {
     newVaultName: VaultName,
   ): Promise<void> {
     await this._transaction(async () => {
-      const vaultName = await this.getVaultName(vaultId);
-      if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
-      const ops: Array<DBOp> = [
-        {
-          type: 'del',
-          domain: this.vaultsNamesDbDomain,
-          key: vaultName,
-        },
-        {
-          type: 'put',
-          domain: this.vaultsNamesDbDomain,
-          key: newVaultName,
-          value: vaultId,
-        },
-      ];
-      await this.db.batch(ops);
+      const meta = await this.db.get<POJO>(this.vaultsNamesDbDomain, vaultId);
+      if (!meta) throw new vaultsErrors.ErrorVaultUndefined();
+      meta.name = newVaultName;
+      await this.db.put(this.vaultsNamesDbDomain, vaultId, meta);
     }, [vaultId]);
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
-  public async getVaultName(vaultId: VaultId): Promise<VaultName | undefined> {
+  public async getVaultId(vaultName: VaultName): Promise<VaultId | undefined> {
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
-      const dbId = (o as any).value;
-      const dbName = (o as any).key;
-      const dbIdDecrypted = await this.db.deserializeDecrypt<VaultId>(dbId, false);
-      if (vaultId === dbIdDecrypted) {
-        return dbName.toString();
+      const dbMeta = (o as any).value;
+      const dbId = (o as any).key;
+      const vaultMeta = await this.db.deserializeDecrypt<POJO>(dbMeta, false);
+      if (vaultName === vaultMeta.name) {
+        return dbId.toString();
       }
     }
   }

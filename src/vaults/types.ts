@@ -23,6 +23,10 @@ type VaultAction = 'clone' | 'pull';
 
 type VaultList = Map<VaultName, VaultId>;
 
+type VaultMetadata = {
+  name: VaultName;
+}
+
 type SecretName = string;
 
 type SecretList = string[];
@@ -174,6 +178,7 @@ export type {
   VaultName,
   VaultList,
   VaultMap,
+  VaultMetadata,
   VaultPermissions,
   FileChange,
   FileChanges,

@@ -285,6 +285,13 @@ describe('VaultManager', () => {
     });
     expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
   });
+  test.skip('cannot concurrently create the same vault', async () => {
+    const vaults = Promise.all([
+      vaultManager.createVault(vaultName),
+      vaultManager.createVault(vaultName),
+    ]);
+    await expect(() => vaults).rejects.toThrow(vaultErrors.ErrorVaultDefined);
+  });
   test('can concurrently rename the same vault', async () => {
     const vault = await vaultManager.createVault(vaultName);
     await Promise.all([
@@ -292,6 +299,14 @@ describe('VaultManager', () => {
       vaultManager.renameVault(vault.vaultId, thirdVaultName),
     ]);
     await expect(vaultManager.getVaultName(vault.vaultId)).resolves.toBe(thirdVaultName);
+  });
+  test('can concurrently open and rename the same vault', async () => {
+    const vault = await vaultManager.createVault(vaultName);
+    await Promise.all([
+      vaultManager.renameVault(vault.vaultId, secondVaultName),
+      vaultManager.openVault(vault.vaultId),
+    ]);
+    await expect(vaultManager.getVaultName(vault.vaultId)).resolves.toBe(secondVaultName);
   });
   test('can save the commit state of a vault', async () => {
     const vault = await vaultManager.createVault(vaultName);
