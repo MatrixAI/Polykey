@@ -10,7 +10,7 @@ import * as clientPB from "../proto/js/Client_pb";
 import { VaultMessage } from "../proto/js/Client_pb";
 import { isNodeId, makeNodeId } from "../nodes/utils";
 import NameOrIdCase = VaultMessage.NameOrIdCase;
-import { makeVaultId, makeVaultIdRaw } from "../vaults/utils";
+import { makeVaultId } from "../vaults/utils";
 import * as clientErrors from './errors';
 
 const createVaultRPC = ({
@@ -620,22 +620,13 @@ const createVaultRPC = ({
 
         //getting vault ID
         const vaultMessage = vaultsVersionMessage.getVault();
-        let vaultId: VaultId;
-        switch(vaultMessage?.getNameOrIdCase()) {
-          case NameOrIdCase.VAULT_NAME:
-            vaultId = (await vaultManager.getVaultId(vaultMessage?.getVaultName() as VaultName))!
-            break;
-          case NameOrIdCase.VAULT_ID:
-            vaultId = makeVaultId(vaultMessage?.getVaultId());
-            break;
-          case NameOrIdCase.NAME_OR_ID_NOT_SET:
-          default:
-            // Here be dragons
-            throw new clientErrors.ErrorClient('Vault name or ID was not provided');
+        if (vaultMessage == null) {
+          callback({ code: grpc.status.NOT_FOUND }, null);
+          return;
         }
+        const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
 
         // Doing the deed
-
         const vault = await vaultManager.openVault(vaultId);
         const latestOid = (await vault.log())[0].oid;
         let versionId = vaultsVersionMessage.getVersionId();

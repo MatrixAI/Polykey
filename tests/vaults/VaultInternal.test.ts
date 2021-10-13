@@ -1,5 +1,5 @@
 import type { NodeId } from '@/nodes/types';
-import type { VaultFacade, VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
+import type { Vault, VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
@@ -371,9 +371,9 @@ describe('VaultInternal', () => {
       expect(log[0].oid).toStrictEqual(commit);
     });
   });
-  test('VaultFacade only exposes limited commands of VaultInternal', async () => {
+  test('Vault only exposes limited commands of VaultInternal', async () => {
     // converting a vault to the interface
-    const vaultInterface = vault as VaultFacade;
+    const vaultInterface = vault as Vault;
 
     // Using the avaliable functions.
     await vaultInterface.commit(async efs => {

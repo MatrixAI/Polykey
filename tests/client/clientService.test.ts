@@ -14,7 +14,7 @@ import { PolykeyAgent, PolykeyClient } from '@';
 import { clientPB } from '@/client';
 import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
-import { VaultInternal, VaultManager } from "@/vaults";
+import { VaultManager } from "@/vaults";
 import { IdentitiesManager } from '@/identities';
 import { KeyManager } from '@/keys';
 import { ForwardProxy } from '@/network';
@@ -33,9 +33,7 @@ import { ErrorSessionTokenInvalid } from '@/errors';
 import { checkAgentRunning } from '@/agent/utils';
 import { NotificationData } from '@/notifications/types';
 import { makeNodeId } from '@/nodes/utils';
-import { VaultFacade, VaultId, VaultName } from "@/vaults/types";
-import { VaultsVersionMessage } from "@/proto/js/Client_pb";
-import { isVaultIdRaw, makeVaultId } from "@/vaults/utils";
+import { Vault, VaultId, VaultName } from "@/vaults/types";
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -348,7 +346,7 @@ describe('Client service', () => {
       const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
       const vaultList2 = ['Vault2', 'Vault3', 'Vault4', 'Vault5'];
 
-      const vaults: Array<VaultFacade> = [];
+      const vaults: Array<Vault> = [];
 
       for (const vaultName of vaultList) {
         vaults.push(await vaultManager.createVault(vaultName as VaultName));
