@@ -158,7 +158,7 @@ type commitType = typeof VaultInternal.prototype.commit;
 type accessType = typeof VaultInternal.prototype.access;
 type logType = typeof VaultInternal.prototype.log;
 type versionType = typeof VaultInternal.prototype.version;
-interface VaultFacade {
+interface Vault {
   baseDir: typeof VaultInternal.prototype.baseDir;
   gitDir: typeof VaultInternal.prototype.gitDir;
   vaultId: typeof VaultInternal.prototype.vaultId;
@@ -193,6 +193,6 @@ export type {
   FileOptions,
   FileSystemReadable,
   FileSystemWritable,
-  VaultFacade,
+  Vault,
   CommitLog,
 };

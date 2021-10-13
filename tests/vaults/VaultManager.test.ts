@@ -27,7 +27,7 @@ import { errors as gitErrors } from '@/git';
 import { utils as vaultUtils } from '@/vaults';
 import { makeCrypto } from '../utils';
 import { assert } from 'console';
-import { FileSystemReadable, FileSystemWritable, VaultFacade } from "@/vaults/types";
+import { FileSystemReadable, FileSystemWritable, Vault } from "@/vaults/types";
 
 describe('VaultManager', () => {
   const password = 'password';

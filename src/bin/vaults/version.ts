@@ -1,11 +1,10 @@
-import { clientPB, utils as clientUtils } from '../../client';
+import { clientPB } from '../../client';
 import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
 import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
-import { isVaultIdRaw } from '../../vaults/utils'
 import { isVaultId } from "../../vaults/utils";
 
 const version = createCommand('version', {
@@ -81,7 +80,7 @@ version.action(async (vault, versionId, options) => {
     } else if (err instanceof vaultErrors.ErrorVaultCommitUndefined) {
       // Warning that the versionId was invalid
       data =  [
-        `AError: ${err.message}`,
+        `Error: ${err.message}`,
         `The VersionID provided was invalid or not in the version history.`
       ];
     } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
