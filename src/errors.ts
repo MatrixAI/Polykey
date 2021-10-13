@@ -34,6 +34,8 @@ class ErrorUndefinedBehaviour extends ErrorPolykey {}
 
 class ErrorStateVersionMismatch extends ErrorPolykey {}
 
+class ErrorInvalidId extends ErrorPolykey {}
+
 export {
   ErrorPolykey,
   ErrorPolykeyAgentNotRunning,
@@ -42,6 +44,7 @@ export {
   ErrorPolykeyClientDestroyed,
   ErrorUndefinedBehaviour,
   ErrorStateVersionMismatch,
+  ErrorInvalidId,
 };
 
 /**

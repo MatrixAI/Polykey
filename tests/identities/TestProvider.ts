@@ -16,9 +16,9 @@ class TestProvider extends Provider {
   public readonly id = 'test-provider' as ProviderId;
 
   protected linkIdCounter: number = 0;
-  protected users: Record<IdentityId, POJO>;
-  protected links: Record<IdentityClaimId, string>;
-  protected userLinks: Record<IdentityId, Array<IdentityClaimId>>;
+  protected users: Record<IdentityId | string, POJO>; // FIXME: the string union on VaultId is to prevent some false errors.
+  protected links: Record<IdentityClaimId | string, string>; // FIXME: the string union on VaultId is to prevent some false errors.
+  protected userLinks: Record<IdentityId | string, Array<IdentityClaimId | string>>; // FIXME: the string union on VaultId is to prevent some false errors.
   protected userTokens: Record<string, IdentityId>;
 
   public constructor() {
@@ -210,7 +210,7 @@ class TestProvider extends Provider {
     tokenData = await this.checkToken(tokenData, authIdentityId);
     const claimIds = this.userLinks[identityId] ?? [];
     for (const claimId of claimIds) {
-      const claimInfo = await this.getClaim(authIdentityId, claimId);
+      const claimInfo = await this.getClaim(authIdentityId, claimId as IdentityClaimId);
       if (claimInfo) {
         yield claimInfo;
       }
