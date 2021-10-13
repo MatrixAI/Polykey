@@ -1,8 +1,10 @@
 import type { Opaque } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { VaultIdRaw, VaultName, VaultActions, VaultId } from "../vaults/types";
+import { RawRandomId } from "../GenericIdTypes";
 
-type NotificationId = Opaque<'NotificationId', string>;
+type NotificationId = Opaque<'NotificationId', RawRandomId>;
+
 
 type GestaltInvite = {
   type: 'GestaltInvite';

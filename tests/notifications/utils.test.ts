@@ -14,12 +14,35 @@ import fromKeyLike from 'jose/jwk/from_key_like';
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';
+import { CreateNotificationIdGenerator } from "@/notifications/utils";
+import { sleep } from "@/utils";
 
 describe('Notifications utils', () => {
+  const nodeId = 'SomeRandomNodeId' as NodeId;
+
   test('generates notification ids', async () => {
-    const id1 = notificationsUtils.generateNotifId() as NotificationId;
-    const id2 = notificationsUtils.generateNotifId() as NotificationId;
-    expect(id1 < id2).toBeTruthy();
+    const generator =  CreateNotificationIdGenerator(nodeId);
+    let oldId = generator();
+    let currentId;
+
+    for (let i = 0; i < 100; i++){
+      currentId = generator();
+      expect(Buffer.compare(oldId, currentId)).toBeTruthy();
+      oldId = currentId;
+    }
+  });
+  test('Generator maintains order between instances', async () => {
+    let generator = CreateNotificationIdGenerator(nodeId);
+    let lastId = generator();
+    let currentId;
+
+    for (let i = 0; i < 100; i++) {
+      generator = CreateNotificationIdGenerator(nodeId, lastId);
+      currentId = generator();
+      expect(Buffer.compare(lastId, currentId)).toBeTruthy();
+      lastId = currentId;
+      await sleep(10);
+    }
   });
 
   test('signs notifications', async () => {

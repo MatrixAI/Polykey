@@ -3,8 +3,8 @@ import type {
   GestaltInvite,
   VaultShare,
   Notification,
-  SignedNotification,
-} from './types';
+  SignedNotification, NotificationId
+} from "./types";
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 import type { VaultIdRaw } from '../vaults/types';
@@ -24,6 +24,27 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
+import { IdSortable } from "@matrixai/id";
+import { isRawRandomId, makeRawRandomId } from "@/GenericIdTypes";
+import { toArrayBuffer } from "@matrixai/db/dist/utils";
+
+function isNotificationId(arg: any):arg is NotificationId {
+  return isRawRandomId<NotificationId>(arg);
+}
+
+function makeNotificationId(arg: any){
+  return makeRawRandomId<NotificationId>(arg);
+}
+
+function CreateNotificationIdGenerator(nodeId: NodeId, lastId?: NotificationId){
+  let lastId_: ArrayBuffer | undefined;
+  if(lastId != null) lastId_ = toArrayBuffer(lastId);
+  const idSortableGenerator = new IdSortable({
+    lastId: lastId_,
+    nodeId: toArrayBuffer(Buffer.from(nodeId)),
+  });
+  return (): NotificationId => makeNotificationId(Buffer.from(idSortableGenerator.get()));
+}
 
 const timestamp = mlts();
 function generateNotifId(): string {
@@ -137,6 +158,9 @@ function validateVaultShareNotification(
 }
 
 export {
+  isNotificationId,
+  makeNotificationId,
+  CreateNotificationIdGenerator,
   generateNotifId,
   signNotification,
   verifyAndDecodeNotif,
