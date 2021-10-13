@@ -21,7 +21,7 @@ describe('Notifications utils', () => {
   const nodeId = 'SomeRandomNodeId' as NodeId;
 
   test('generates notification ids', async () => {
-    const generator =  CreateNotificationIdGenerator(nodeId);
+    const generator =  CreateNotificationIdGenerator();
     let oldId = generator();
     let currentId;
 
@@ -32,12 +32,12 @@ describe('Notifications utils', () => {
     }
   });
   test('Generator maintains order between instances', async () => {
-    let generator = CreateNotificationIdGenerator(nodeId);
+    let generator = CreateNotificationIdGenerator();
     let lastId = generator();
     let currentId;
 
     for (let i = 0; i < 100; i++) {
-      generator = CreateNotificationIdGenerator(nodeId, lastId);
+      generator = CreateNotificationIdGenerator(lastId);
       currentId = generator();
       expect(Buffer.compare(lastId, currentId)).toBeTruthy();
       lastId = currentId;

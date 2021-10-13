@@ -50,9 +50,6 @@ function makeRandomId<T extends RandomId>(arg: any): T {
   throw new ErrorInvalidId();
 }
 
-// IdSortable
-
-
 export {
   RawRandomId,
   RandomId,

@@ -5,6 +5,7 @@ import { RawRandomId } from "../GenericIdTypes";
 
 type NotificationId = Opaque<'NotificationId', RawRandomId>;
 
+type NotificationIdGenerator = () => NotificationId;
 
 type GestaltInvite = {
   type: 'GestaltInvite';
@@ -32,6 +33,7 @@ type SignedNotification = Opaque<'SignedNotification', string>;
 
 export type {
   NotificationId,
+  NotificationIdGenerator,
   NotificationData,
   Notification,
   SignedNotification,

@@ -3,7 +3,7 @@ import type {
   GestaltInvite,
   VaultShare,
   Notification,
-  SignedNotification, NotificationId
+  SignedNotification, NotificationId, NotificationIdGenerator
 } from "./types";
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
@@ -36,12 +36,11 @@ function makeNotificationId(arg: any){
   return makeRawRandomId<NotificationId>(arg);
 }
 
-function CreateNotificationIdGenerator(nodeId: NodeId, lastId?: NotificationId){
+function CreateNotificationIdGenerator(lastId?: NotificationId): NotificationIdGenerator{
   let lastId_: ArrayBuffer | undefined;
   if(lastId != null) lastId_ = toArrayBuffer(lastId);
   const idSortableGenerator = new IdSortable({
     lastId: lastId_,
-    nodeId: toArrayBuffer(Buffer.from(nodeId)),
   });
   return (): NotificationId => makeNotificationId(Buffer.from(idSortableGenerator.get()));
 }
