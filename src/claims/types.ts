@@ -18,7 +18,7 @@ type Claim = {
     data: ClaimData; // Our custom payload data
     iat: number; // Timestamp (initialised at JWS field)
   };
-  signatures: Record<NodeId, SignatureData>; // Signee node ID -> claim signature
+  signatures: Record<NodeId | string , SignatureData>; // Signee node ID -> claim signature // FIXME: the string union on VaultId is to prevent some false errors.
 };
 
 /**

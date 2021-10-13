@@ -17,14 +17,14 @@ import { GRPCClientAgent } from '../agent';
 
 import * as keysUtils from '../keys/utils';
 import { errors as vaultErrors } from './';
+import { isRandomId, isRawRandomId, makeRandomId, makeRawRandomId } from "../GenericIdTypes";
 
 async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
   return await keysUtils.generateKey(bits) as VaultKey;
 }
 
-function isVaultIdRaw(arg: any): arg is VaultIdRaw {
-  if (!( arg instanceof Buffer)) return false;
-  return arg.length === 16;
+function isVaultIdRaw(arg: any) {
+  return isRawRandomId<VaultIdRaw>(arg);
 }
 
 /**
@@ -35,34 +35,15 @@ function isVaultIdRaw(arg: any): arg is VaultIdRaw {
  * @returns VaultIdRaw
  */
 function makeVaultIdRaw(arg: any): VaultIdRaw {
-  let id = arg;
-  // Checking and converting a string
-  if (typeof arg === 'string'){
-    // Covert the string to the Buffer form.
-    id = idUtils.fromMultibase(arg);
-    if (id == null) throw new vaultErrors.ErrorInvalidVaultId();
-    id = Buffer.from(id);
-  }
-
-  // checking if valid buffer.
-  if (isVaultIdRaw(id)) return id;
-  throw new vaultErrors.ErrorInvalidVaultId();
+  return makeRawRandomId<VaultIdRaw>(arg);
 }
 
 function isVaultId(arg: any): arg is VaultId {
-  if (typeof arg !== 'string') return false;
-  let id = idUtils.fromMultibase(arg);
-  if (id == null) return false;
-  return Buffer.from(id).length === 16;
+  return isRandomId<VaultId>(arg);
 }
 
 function makeVaultId(arg: any): VaultId {
-  let id = arg;
-  if ((id instanceof Buffer)) {
-    id = idUtils.toMultibase(arg, 'base58btc');
-  }
-  if(isVaultId(id)) return id;
-  throw new vaultErrors.ErrorInvalidVaultId();
+  return makeRandomId<VaultId>(arg);
 }
 
 const randomIdGenerator = new IdRandom();

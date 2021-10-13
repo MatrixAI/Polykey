@@ -23,7 +23,7 @@ import { AgentService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
 import { makeCrypto } from '../utils';
-import { makeVaultId } from "@/vaults/utils";
+import { generateVaultId, makeVaultId } from "@/vaults/utils";
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -65,10 +65,11 @@ describe('NotificationsManager', () => {
 
   // Keep IPs unique. ideally we'd use the generated IP and port. but this is good for now.
   // If this fails again we shouldn't specify the port and IP.
-  const senderHost = '127.0.0.3' as Host;
-  const senderPort = 11110 as Port;
-  const receiverHost = '127.0.0.4' as Host;
-  const receiverPort = 11111 as Port;
+  const senderHost = '127.0.0.1' as Host;
+  let senderProxyPort: Port;
+  let senderEgressPort: Port;
+  const receiverHost = '127.0.0.2' as Host;
+  let receiverIngressPort: Port;
 
   beforeAll(async () => {
     receiverDataDir = await fs.promises.mkdtemp(
@@ -173,11 +174,11 @@ describe('NotificationsManager', () => {
 
     await revProxy.start({
       ingressHost: receiverHost,
-      ingressPort: receiverPort,
       serverHost: receiverHost,
       serverPort: server.getPort(),
       tlsConfig: revTLSConfig,
     });
+    receiverIngressPort = revProxy.getIngressPort();
   }, global.polykeyStartupTimeout * 2);
 
   beforeEach(async () => {
@@ -232,14 +233,16 @@ describe('NotificationsManager', () => {
     await fwdProxy.start({
       tlsConfig: fwdTLSConfig,
       proxyHost: senderHost,
-      proxyPort: senderPort,
+      // proxyPort: senderPort,
       egressHost: senderHost,
-      egressPort: senderPort,
+      // egressPort: senderPort,
     });
+    senderProxyPort = fwdProxy.getProxyPort();
+    senderEgressPort = fwdProxy.getEgressPort();
     await senderNodeManager.start();
     await senderNodeManager.setNode(receiverNodeId, {
       ip: receiverHost,
-      port: receiverPort,
+      port: receiverIngressPort,
     } as NodeAddress);
 
     await receiverNotificationsManager.clearNotifications();
@@ -253,7 +256,7 @@ describe('NotificationsManager', () => {
     });
 
     await senderNodeManager.stop();
-    await fwdProxy.stop();
+    await fwdProxy.stop(); // FIXME: why is this broken?
     await senderACL.destroy();
     await senderDb.stop();
     await senderKeyManager.destroy();
@@ -523,7 +526,7 @@ describe('NotificationsManager', () => {
 
     const notificationData: NotificationData = {
       type: 'VaultShare',
-      vaultId: makeVaultId('zVaultIdxxxxxxxxxxxxxx'),
+      vaultId: generateVaultId(),
       vaultName: 'vaultName' as VaultName,
       actions: {
         clone: null,

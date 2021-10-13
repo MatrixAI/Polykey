@@ -1,4 +1,4 @@
-import type { NotificationId, Notification, NotificationData } from './types';
+import type { NotificationId, Notification, NotificationData, NotificationIdGenerator } from "./types";
 import type { ACL } from '../acl';
 import type { DB, DBLevel } from '@matrixai/db';
 import type { KeyManager } from '../keys';
@@ -13,6 +13,7 @@ import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import { errors as dbErrors } from '@matrixai/db';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import { CreateNotificationIdGenerator } from "./utils";
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
@@ -40,6 +41,8 @@ class NotificationsManager {
   protected notificationsDb: DBLevel;
   protected notificationsMessagesDb: DBLevel;
   protected lock: Mutex = new Mutex();
+
+  protected notificationIdGenerator: NotificationIdGenerator;
 
   static async createNotificationsManager({
     acl,
@@ -118,6 +121,14 @@ class NotificationsManager {
     }
     this.notificationsDb = notificationsDb;
     this.notificationsMessagesDb = notificationsMessagesDb;
+
+    // Getting latest ID and creating ID generator
+    let latestId: NotificationId | undefined;
+    const keyStream = this.notificationsMessagesDb.createKeyStream({limit: 1, reverse: true});
+    for await (const o of keyStream) {
+      latestId = (o as any).key as NotificationId;
+    }
+    this.notificationIdGenerator = CreateNotificationIdGenerator(latestId);
     this.logger.info('Started Notifications Manager');
   }
 
@@ -200,7 +211,7 @@ class NotificationsManager {
           await this.removeNotification(oldestId!);
         }
         // Store the new notification in notificationsMessagesDb
-        const notificationId = notificationsUtils.generateNotifId();
+        const notificationId = this.notificationIdGenerator();
         await this.db.put(
           this.notificationsMessagesDbDomain,
           notificationId,

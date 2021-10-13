@@ -27,6 +27,7 @@ import createHash from 'sha.js';
 // Import * as vaultUtils from '../vaults/utils';
 import { errors as gitErrors } from './';
 import type { EncryptedFS } from 'encryptedfs';
+import efsWorker from 'encryptedfs/dist/workers/efsWorkerModule';
 
 const refpaths = (ref: string) => [
   `${ref}`,
@@ -96,7 +97,7 @@ async function writeRefsAdResponse({
   // are returned.
   for (const [key, value] of Object.entries(refs)) {
     stream.push(encode(`${value} ${key}${caps}\n`));
-    stream.push(encode(`${value} ${a}\n`));
+    // stream.push(encode(`${value} ${a}\n`));
     caps = '';
   }
   stream.push(Buffer.from('0000', 'utf8'));
@@ -172,19 +173,18 @@ async function listRefs(
   filepath: string,
 ): Promise<string[]> {
   const packedMap = packedRefs(fs, gitdir);
-  const files: string[] = [];
-  // Try {
-  //   for (const file of await vaultUtils.readdirRecursivelyEFS(
-  //     fs,
-  //     path.join(gitdir, filepath),
-  //   )) {
-  //     files.push(file);
-  //   }
-  //   files = files.map((x) => x.replace(path.join(gitdir, filepath, '/'), ''));
-  // } catch (err) {
-  //   files = [];
-  // }
-
+  let files: string[] = [];
+  try {
+    for await (const file of readdirRecursively(
+      fs,
+      path.join(gitdir, filepath),
+    )) {
+      files.push(file);
+    }
+    files = files.map((x) => x.replace(path.join(gitdir, filepath, '/'), ''));
+  } catch (err) {
+    files = [];
+  }
   for await (let key of Object.keys(packedMap)) {
     // Filter by prefix
     if (key.startsWith(filepath)) {
@@ -199,6 +199,27 @@ async function listRefs(
   // Since we just appended things onto an array, we need to sort them now
   files.sort(compareRefNames);
   return files;
+}
+
+async function* readdirRecursively(
+  fs: EncryptedFS,
+  dir: string,
+  dirs?: boolean,
+) {
+  const dirents = await fs.readdir(dir);
+  let secretPath: string;
+  for (const dirent of dirents) {
+    const res = dirent.toString(); // Makes string | buffer a string.
+    secretPath = path.join(dir, res);
+    if ((await fs.stat(secretPath)).isDirectory() && dirent !== '.git') {
+      if (dirs === true) {
+        yield secretPath;
+      }
+      yield* readdirRecursively(fs, secretPath, dirs);
+    } else if ((await fs.stat(secretPath)).isFile()) {
+      yield secretPath;
+    }
+  }
 }
 
 async function resolve(
@@ -296,7 +317,7 @@ async function packObjects({
   haves = haves ? haves : [];
   const since = undefined;
   for (const ref of refs) {
-    const commits = await log(fs, gitdir, ref, depth, since);
+    const commits = await log({ fs, gitdir, ref, depth, since });
     const oldshallows: string[] = [];
     for (let i = 0; i < commits.length; i++) {
       const commit = commits[i];
@@ -319,17 +340,21 @@ async function packObjects({
       }
     }
   }
-  const objects = await listObjects(fs, gitdir, Array.from(oids));
+  const objects = await listObjects({ fs, gitdir, oids: Array.from(oids) });
   const packstream = new PassThrough();
-  pack(fs, gitdir, [...objects], packstream);
+  pack({ fs, gitdir, oids: [...objects], outputStream: packstream });
   return { packstream, shallows, unshallows, acks };
 }
 
-async function listObjects(
-  fs: EncryptedFS,
+async function listObjects({
+  fs,
   gitdir = '.git',
+  oids,
+}:{
+  fs: EncryptedFS,
+  gitdir: string,
   oids: string[],
-): Promise<Array<string>> {
+}): Promise<Array<string>> {
   const commits = new Set<string>();
   const trees = new Set<string>();
   const blobs = new Set<string>();
@@ -435,14 +460,21 @@ function parseBuffer(buffer: Buffer): TreeObject {
   return _entries;
 }
 
-async function log(
-  fs: EncryptedFS,
+async function log({
+  fs,
   gitdir = '.git',
   ref = 'HEAD',
-  depth: number | undefined,
-  since: number | undefined, // Date
+  depth,
+  since,
   signing = false,
-): Promise<ReadCommitResult[]> {
+}:{
+  fs: EncryptedFS,
+  gitdir: string,
+  ref: string,
+  depth?: number,
+  since?: number, // Date
+  signing?: boolean,
+}): Promise<ReadCommitResult[]> {
   try {
     const sinceTimestamp =
       since === undefined ? undefined : Math.floor(since.valueOf() / 1000);
@@ -711,11 +743,13 @@ async function readObject({
   gitdir,
   oid,
   format = 'parsed',
+  encoding,
 }: {
   fs: EncryptedFS;
   gitdir: string;
   oid: string;
   format?: string;
+  encoding?: BufferEncoding;
 }): Promise<DeflatedObject | WrappedObject | RawObject> {
   const _format = format === 'parsed' ? 'content' : format;
   // Curry the current read method so that the packfile un-deltification
@@ -841,8 +875,12 @@ async function readObject({
       case 'blob':
         // Here we consider returning a raw Buffer as the 'content' format
         // and returning a string as the 'parsed' format
-        result.object = new Uint8Array(result.object);
-        result.format = 'content';
+        if (encoding) {
+          result.object = result.object.toString(encoding)
+        } else {
+          result.object = new Uint8Array(result.object);
+          result.format = 'content';
+        }
         break;
       default:
         throw new gitErrors.ErrorGitUndefinedType(
@@ -1120,13 +1158,18 @@ function unwrap(buffer: Buffer): {
   };
 }
 
-async function pack(
+async function pack({
+  fs,
+  gitdir = '.git',
+  oids,
+  outputStream,
+}:{
   fs: EncryptedFS,
-  gitdir: string = '.git',
+  gitdir: string,
   oids: string[],
   outputStream: PassThrough,
-): Promise<PassThrough> {
-  const hash = createHash('sha1');
+}): Promise<PassThrough> {
+  const hash = await createHash('sha1');
   function write(chunk: Buffer | string, enc?: BufferEncoding): void {
     if (enc != null) {
       outputStream.write(chunk, enc);
@@ -1163,7 +1206,6 @@ async function pack(
       length = length >>> 7;
     }
     // Lastly, we can compress and write the object.
-    // console.log(Buffer.from(object).toString());
     write(Buffer.from(pako.deflate(object)));
   }
 
@@ -1331,6 +1373,7 @@ export {
   createGitPacketLine,
   uploadPack,
   packObjects,
+  pack,
   mux,
   iteratorFromData,
   encode,

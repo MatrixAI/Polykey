@@ -401,7 +401,7 @@ describe('Claims utils', () => {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1',
+            kid: 'node1' as NodeId,
           },
         },
       }, // Signee node ID -> claim signature
@@ -426,14 +426,14 @@ describe('Claims utils', () => {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1',
+            kid: 'node1' as NodeId,
           },
         },
         node2: {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node2',
+            kid: 'node2' as NodeId,
           },
         },
       }, // Signee node ID -> claim signature
@@ -459,7 +459,7 @@ describe('Claims utils', () => {
           signature: 'signature',
           header: {
             alg: 'RS256',
-            kid: 'node1',
+            kid: 'node1' as NodeId,
           },
         },
       },

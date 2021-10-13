@@ -5,13 +5,14 @@ import type { MutexInterface } from 'async-mutex';
 import type { Callback, Path } from 'encryptedfs/dist/types';
 import type { FdIndex } from 'encryptedfs/dist/fd/types';
 import { EncryptedFS, permissions } from 'encryptedfs';
+import { RawRandomId, RandomId } from "../GenericIdTypes";
 
 /**
  * Randomly generated vault ID for each new vault
  */
-type VaultIdRaw = Opaque<'VaultIdRaw', Buffer>;
+type VaultIdRaw = Opaque<'VaultIdRaw', RawRandomId>;
 
-type VaultId = Opaque<'VaultId', string>;
+type VaultId = Opaque<'VaultId', RandomId>;
 
 type VaultName = Opaque<'VaultName', string>;
 
