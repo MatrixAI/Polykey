@@ -1,5 +1,7 @@
 import type { PassThrough } from 'readable-stream';
 import type { DeflatedObject, WrappedObject, RawObject } from 'isomorphic-git';
+import type fs from 'fs';
+import { EncryptedFS } from 'encryptedfs';
 
 type Config = {
   line: string;
