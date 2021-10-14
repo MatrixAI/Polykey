@@ -173,7 +173,7 @@ class Vault {
       }
 
       // Create the directory to the secret if it doesn't exist
-      await this.efs.mkdirp(path.dirname(secretName));
+      await this.efs.mkdir(path.dirname(secretName), {recursive: true});
 
       // Write the secret into the vault
       await this.efs.writeFile(secretName, content, {});
@@ -190,10 +190,8 @@ class Vault {
         ],
         `Add secret: ${secretName}`,
       );
-      if (await this.efs.exists(secretName)) {
-        return true;
-      }
-      return false;
+      return !!(await this.efs.exists(secretName));
+
     } finally {
       release();
     }

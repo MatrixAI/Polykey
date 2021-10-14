@@ -1,5 +1,5 @@
 import type { EncryptedFS } from 'encryptedfs';
-import type { VaultIdRaw, VaultId, VaultKey, VaultList, VaultName } from "./types";
+import type { VaultIdRaw, VaultId, VaultKey, VaultList, VaultName, FileSystemReadable } from "./types";
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 
@@ -76,21 +76,21 @@ async function* readdirRecursively(dir: string) {
 }
 
 async function* readdirRecursivelyEFS(
-  fs: EncryptedFS,
+  efs: FileSystemReadable,
   dir: string,
   dirs?: boolean,
 ) {
-  const dirents = await fs.readdir(dir);
+  const dirents = await efs.readdir(dir);
   let secretPath: string;
   for (const dirent of dirents) {
     const res = dirent.toString(); // Makes string | buffer a string.
     secretPath = path.join(dir, res);
-    if ((await fs.stat(secretPath)).isDirectory() && dirent !== '.git') {
+    if ((await efs.stat(secretPath)).isDirectory() && dirent !== '.git') {
       if (dirs === true) {
         yield secretPath;
       }
-      yield* readdirRecursivelyEFS(fs, secretPath, dirs);
-    } else if ((await fs.stat(secretPath)).isFile()) {
+      yield* readdirRecursivelyEFS(efs, secretPath, dirs);
+    } else if ((await efs.stat(secretPath)).isFile()) {
       yield secretPath;
     }
   }
