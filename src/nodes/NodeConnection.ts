@@ -4,7 +4,7 @@ import type { KeyManager } from '../keys';
 import type { SignedNotification } from '../notifications/types';
 import type { ChainDataEncoded } from '../sigchain/types';
 import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
-import type { ClaimId, ClaimEncoded, ClaimIntermediary } from '../claims/types';
+import type { ClaimId, ClaimEncoded, ClaimIntermediary, ClaimIdString } from "../claims/types";
 
 import Logger from '@matrixai/logger';
 import * as nodesUtils from './utils';
@@ -310,7 +310,7 @@ class NodeConnection {
     response
       .getChainDataMap()
       .forEach((claimMsg: agentPB.ClaimMessage, id: string) => {
-        const claimId = id as ClaimId;
+        const claimId = id as ClaimIdString;
         // Reconstruct the signatures array
         const signatures: Array<{ signature: string; protected: string }> = [];
         for (const signatureData of claimMsg.getSignaturesList()) {

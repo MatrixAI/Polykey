@@ -1,5 +1,5 @@
 import type { NodeId } from '../nodes/types';
-import type { ClaimId, ClaimEncoded, ClaimIntermediary } from '../claims/types';
+import type { ClaimId, ClaimEncoded, ClaimIntermediary, ClaimIdString } from "../claims/types";
 import type { VaultIdRaw } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
@@ -216,7 +216,7 @@ function createAgentService({
         const chainData = await nodeManager.getChainData();
         // Iterate through each claim in the chain, and serialize for transport
         for (const c in chainData) {
-          const claimId = c as ClaimId;
+          const claimId = c as ClaimIdString;
           const claim = chainData[claimId];
           const claimMessage = new agentPB.ClaimMessage();
           // Will always have a payload (never undefined) so cast as string

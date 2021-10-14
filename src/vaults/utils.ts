@@ -51,11 +51,6 @@ function generateVaultId(): VaultId {
   return makeVaultId(Buffer.from(randomIdGenerator.get()) as VaultIdRaw);
 }
 
-// FIXME, deprecated. we don't split the VaultId anymore
-function splitVaultId(vaultId: VaultId): VaultId{
-  return vaultId;
-}
-
 async function fileExists(fs: FileSystem, path: string): Promise<boolean> {
   try {
     const fh = await fs.promises.open(path, 'r');
@@ -251,7 +246,6 @@ export {
   makeVaultId,
   generateVaultKey,
   generateVaultId,
-  // splitVaultId,
   fileExists,
   readdirRecursively,
   readdirRecursivelyEFS,

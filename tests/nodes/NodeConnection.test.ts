@@ -24,6 +24,7 @@ import * as nodesUtils from '@/nodes/utils';
 import { makeCrypto } from '../utils';
 import { VaultKey, VaultName } from "@/vaults/types";
 
+// FIXME: This is not finishing properly.
 describe('NodeConnection', () => {
   const password = 'password';
   const node: NodeInfo = {
@@ -210,15 +211,19 @@ describe('NodeConnection', () => {
       recursive: true,
     });
     await revProxy.stop();
+    await revProxy.destroy();
     await serverKeyManager.destroy();
     await serverDb.stop();
+    await serverDb.destroy();
     await serverACL.destroy();
     await serverSigchain.destroy();
     await serverGestaltGraph.destroy();
     await serverVaultManager.destroy();
     await serverNodeManager.stop();
+    await serverNodeManager.destroy();
     await serverNotificationsManager.destroy();
     await server.stop();
+    await server.destroy();
   });
 
   test('connects to its target (via direct connection)', async () => {

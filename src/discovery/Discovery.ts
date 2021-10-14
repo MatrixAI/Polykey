@@ -10,7 +10,7 @@ import type {
 } from '../identities/types';
 import type { NodeManager } from '../nodes';
 import type { Provider, IdentitiesManager } from '../identities';
-import type { Claim, ClaimId, ClaimLinkIdentity } from '../claims/types';
+import type { Claim, ClaimId, ClaimIdString, ClaimLinkIdentity } from "../claims/types";
 
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from '../gestalts/utils';
@@ -129,7 +129,7 @@ class Discovery {
           const vertexChainDataEncoded = await this.nodeManager.getChainData();
           // Decode all our claims - no need to verify (on our own sigchain)
           for (const c in vertexChainDataEncoded) {
-            const claimId = c as ClaimId;
+            const claimId = c as ClaimIdString;
             vertexChainData[claimId] = claimsUtils.decodeClaim(
               vertexChainDataEncoded[claimId],
             );
@@ -158,7 +158,7 @@ class Discovery {
         // that this will iterate in lexicographical order of keys. For now,
         // this doesn't matter though (because of the previous comment).
         for (const claimId in vertexChainData) {
-          const claim: Claim = vertexChainData[claimId as ClaimId];
+          const claim: Claim = vertexChainData[claimId as ClaimIdString];
 
           // If the claim is to a node
           if (claim.payload.data.type === 'node') {

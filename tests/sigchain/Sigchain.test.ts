@@ -22,6 +22,7 @@ describe('Sigchain', () => {
   let keyManager: KeyManager;
   let db: DB;
   const srcNodeId = 'NodeId1' as NodeId;
+  let nodeId: NodeId;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -33,6 +34,7 @@ describe('Sigchain', () => {
       keysPath,
       logger,
     });
+    nodeId = keyManager.getNodeId();
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
     await db.start();
@@ -60,7 +62,10 @@ describe('Sigchain', () => {
       node2: 'NodeId2' as NodeId,
     };
     await sigchain.addClaim(cryptolink);
-    const claim = await sigchain.getClaim(1);
+
+    const claimId = await sigchain.getLatestClaimId();
+    expect(claimId).toBeTruthy();
+    const claim = await sigchain.getClaim(claimId!);
 
     // Check the claim is correct
     const decoded = claimsUtils.decodeClaim(claim);
@@ -102,6 +107,7 @@ describe('Sigchain', () => {
       node2: 'NodeId2' as NodeId,
     };
     await sigchain.addClaim(cryptolink);
+    const claimId1 = await sigchain.getLatestClaimId();
 
     const cryptolink2: ClaimData = {
       type: 'node',
@@ -109,9 +115,10 @@ describe('Sigchain', () => {
       node2: 'NodeId3' as NodeId,
     };
     await sigchain.addClaim(cryptolink2);
+    const claimId2 = await sigchain.getLatestClaimId();
 
-    const claim1 = await sigchain.getClaim(1);
-    const claim2 = await sigchain.getClaim(2);
+    const claim1 = await sigchain.getClaim(claimId1!);
+    const claim2 = await sigchain.getClaim(claimId2!);
 
     // Check the claim is correct
     const decoded1 = claimsUtils.decodeClaim(claim1);
@@ -278,9 +285,9 @@ describe('Sigchain', () => {
     }
 
     const chainData = await sigchain.getChainData();
+    const chainDataKeys = Object.keys(chainData).sort();
     for (let i = 1; i <= 10; i++) {
-      const claimId = claimsUtils.numToLexiString(i) as ClaimId;
-      const claim = chainData[claimId];
+      const claim = chainData[chainDataKeys[i - 1]];
       const decodedClaim = claimsUtils.decodeClaim(claim);
       if (i <= 5) {
         expect(decodedClaim.payload.data).toEqual({
@@ -323,6 +330,9 @@ describe('Sigchain', () => {
       }
     }
 
+    // Creating a map of seq -> claimId
+    const seqMap = await sigchain.getSeqMap();
+
     // Verify the nodes:
     const nodeLinks = await sigchain.getClaims('node');
     const decodedNodes = nodeLinks.map((n) => {
@@ -339,7 +349,7 @@ describe('Sigchain', () => {
       // Verify the structure of claim
       const expected: Claim = {
         payload: {
-          hPrev: claimsUtils.hashClaim(await sigchain.getClaim(seqNum - 1)),
+          hPrev: claimsUtils.hashClaim(await sigchain.getClaim(seqMap[seqNum - 1])),
           seq: expectedSeqNum,
           data: {
             type: 'node',
@@ -389,7 +399,7 @@ describe('Sigchain', () => {
           hPrev:
             expectedSeqNum === 1
               ? null
-              : claimsUtils.hashClaim(await sigchain.getClaim(seqNum - 1)),
+              : claimsUtils.hashClaim(await sigchain.getClaim(seqMap[seqNum - 1])),
           seq: expectedSeqNum,
           data: {
             type: 'identity',
