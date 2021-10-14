@@ -2,7 +2,7 @@ import type { PolykeyAgent } from '@';
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
-import type { ClaimId } from '@/claims/types';
+import type { ClaimId, ClaimIdString } from "@/claims/types";
 
 import os from 'os';
 import path from 'path';
@@ -19,6 +19,7 @@ import * as testUtils from '../utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as claimsUtils from '@/claims/utils';
 import { makeCrypto } from '../utils';
+import { makeNodeId } from "@/nodes/utils";
 
 describe('NodeManager', () => {
   const password = 'password';
@@ -105,6 +106,18 @@ describe('NodeManager', () => {
       recursive: true,
     });
   });
+  afterAll( async () => {
+    await nodeManager.stop()
+    await nodeManager.destroy()
+    await fwdProxy.stop()
+    await fwdProxy.destroy()
+    await revProxy.stop()
+    await revProxy.destroy()
+    await keyManager.destroy()
+    await db.stop()
+    await db.destroy()
+    await sigchain.destroy()
+  })
 
   test(
     'pings node',
@@ -139,6 +152,7 @@ describe('NodeManager', () => {
       expect(active2).toBe(true);
       // Turn server node offline again
       await server.stop();
+      await server.destroy();
       // Give time for the ping buffers to send and wait for timeout on
       // existing connection
       await sleep(30000);
@@ -168,7 +182,7 @@ describe('NodeManager', () => {
     'finds node (contacts remote node)',
     async () => {
       // Case 2: node can be found on the remote node
-      const nodeId = 'nodeId' as NodeId;
+      const nodeId = makeNodeId('TestNodeId1xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
       const nodeAddress: NodeAddress = {
         ip: '127.0.0.1' as Host,
         port: 11111 as Port,
@@ -190,7 +204,7 @@ describe('NodeManager', () => {
     'cannot find node (contacts remote node)',
     async () => {
       // Case 3: node exhausts all contacts and cannot find node
-      const nodeId = 'unfindableNode' as NodeId;
+      const nodeId = makeNodeId('TestNodeId2xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
       const server = await testUtils.setupRemoteKeynode({ logger: logger });
       await nodeManager.setNode(server.nodes.getNodeId(), {
         ip: server.revProxy.getIngressHost(),
@@ -217,7 +231,7 @@ describe('NodeManager', () => {
   );
   test('knows node (true and false case)', async () => {
     // Known node
-    const nodeId1 = 'nodeId1' as NodeId;
+    const nodeId1 = makeNodeId('TestNodeId3xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
     const nodeAddress1: NodeAddress = {
       ip: '127.0.0.1' as Host,
       port: 11111 as Port,
@@ -284,6 +298,7 @@ describe('NodeManager', () => {
       await y.sigchain.clearDB();
     });
 
+    // FIXME: this test is leaving something open and causing the test file to not fully finish.
     test('can successfully cross sign a claim', async () => {
       // Make the call to initialise the cross-signing process:
       // 2. X <- sends its intermediary signed claim <- Y
@@ -300,7 +315,7 @@ describe('NodeManager', () => {
       expect(Object.keys(xChain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(xChain)) {
-        const claimId = c as ClaimId;
+        const claimId = c as ClaimIdString;
         const claim = xChain[claimId];
         const decoded = claimsUtils.decodeClaim(claim);
         expect(decoded).toStrictEqual({
@@ -334,7 +349,7 @@ describe('NodeManager', () => {
       expect(Object.keys(yChain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(yChain)) {
-        const claimId = c as ClaimId;
+        const claimId = c as ClaimIdString;
         const claim = yChain[claimId];
         const decoded = claimsUtils.decodeClaim(claim);
         expect(decoded).toStrictEqual({

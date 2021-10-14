@@ -1,21 +1,16 @@
-import type { ChainDataEncoded } from './types';
-import type {
-  ClaimId,
-  ClaimEncoded,
-  ClaimIntermediary,
-  ClaimData,
-  ClaimType,
-} from '../claims/types';
-import type { NodeId } from '../nodes/types';
-import type { KeyManager } from '../keys';
-import type { DB, DBLevel, DBOp } from '@matrixai/db';
+import type { ChainDataEncoded } from "./types";
+import type { ClaimData, ClaimEncoded, ClaimId, ClaimIdGenerator, ClaimIntermediary, ClaimType } from "../claims/types";
+import type { NodeId } from "../nodes/types";
+import type { KeyManager } from "../keys";
+import type { DB, DBLevel, DBOp } from "@matrixai/db";
+import { errors as dbErrors } from "@matrixai/db";
 
-import Logger from '@matrixai/logger';
-import { Mutex } from 'async-mutex';
-import * as sigchainErrors from './errors';
-import * as claimsUtils from '../claims/utils';
-import { errors as dbErrors } from '@matrixai/db';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import Logger from "@matrixai/logger";
+import { Mutex } from "async-mutex";
+import * as sigchainErrors from "./errors";
+import * as claimsUtils from "../claims/utils";
+import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
+import { createClaimIdGenerator, makeClaimIdString } from "@/sigchain/utils";
 
 interface Sigchain extends CreateDestroy {}
 @CreateDestroy()
@@ -45,6 +40,8 @@ class Sigchain {
   protected sigchainMetadataDb: DBLevel;
   protected lock: Mutex = new Mutex();
 
+  protected generateClaimId: ClaimIdGenerator;
+
   static async createSigchain({
     keyManager,
     db,
@@ -59,7 +56,7 @@ class Sigchain {
     const logger_ = logger ?? new Logger('SigchainManager');
 
     const sigchain = new Sigchain({ db, keyManager, logger: logger_ });
-    await sigchain.create({ fresh });
+    await sigchain.create({ fresh, nodeId: keyManager.getNodeId() });
     return sigchain;
   }
 
@@ -81,7 +78,7 @@ class Sigchain {
     return this.lock.isLocked();
   }
 
-  private async create({ fresh }: { fresh: boolean }): Promise<void> {
+  private async create({ fresh, nodeId }: { fresh: boolean, nodeId: NodeId}): Promise<void> {
     this.logger.info('Creating Sigchain');
     if (!this.db.running) {
       throw new dbErrors.ErrorDBNotRunning();
@@ -125,6 +122,9 @@ class Sigchain {
       }
     });
 
+    // Creating the ID generator
+    const latestId = await this.getLatestClaimId();
+    this.generateClaimId = createClaimIdGenerator(nodeId, latestId);
     this.logger.info('Created Sigchain');
   }
 
@@ -196,6 +196,7 @@ class Sigchain {
    */
   @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async addClaim(claimData: ClaimData): Promise<void> {
+
     await this._transaction(async () => {
       const prevSequenceNumber = await this.getSequenceNumber();
       const newSequenceNumber = prevSequenceNumber + 1;
@@ -205,12 +206,13 @@ class Sigchain {
         seq: newSequenceNumber,
         data: claimData,
       });
+
       // Add the claim to the sigchain database, and update the sequence number
       const ops: Array<DBOp> = [
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(newSequenceNumber),
+          key: this.generateClaimId(),
           value: claim,
         },
         {
@@ -249,7 +251,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(expectedSequenceNumber),
+          key: this.generateClaimId(),
           value: claim,
         },
         {
@@ -302,7 +304,7 @@ class Sigchain {
           encryptedClaim,
           false,
         );
-        chainData[claimId] = claim;
+        chainData[makeClaimIdString(claimId)] = claim;
       }
       return chainData;
     });
@@ -362,8 +364,8 @@ class Sigchain {
   @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async getHashPrevious(): Promise<string | null> {
     return await this._transaction(async () => {
-      const prevSequenceNumber = await this.getSequenceNumber();
-      if (prevSequenceNumber === 0) {
+      const prevSequenceNumber = await this.getLatestClaimId();
+      if (prevSequenceNumber == null) {
         // If no other claims, then null
         return null;
       } else {
@@ -379,21 +381,45 @@ class Sigchain {
    * Use if you always expect a claim for this particular sequence number
    * (otherwise, if you want to check for existence, just use getSigchainDb()
    * and check if returned value is undefined).
-   * @param sequenceNumber the sequence number of the claim to retrieve
+   * @param claimId the ClaimId of the claim to retrieve
    * @returns the claim (a JWS)
    */
   @ready(new sigchainErrors.ErrorSigchainDestroyed())
-  public async getClaim(sequenceNumber: number): Promise<ClaimEncoded> {
+  public async getClaim(claimId: ClaimId): Promise<ClaimEncoded> {
     return await this._transaction(async () => {
       const claim = await this.db.get<ClaimEncoded>(
         this.sigchainClaimsDbDomain,
-        claimsUtils.numToLexiString(sequenceNumber),
+        claimId,
       );
       if (claim == null) {
         throw new sigchainErrors.ErrorSigchainClaimUndefined();
       }
       return claim;
     });
+  }
+
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
+  public async getLatestClaimId(): Promise<ClaimId | undefined> {
+    return await this._transaction(async () => {
+      let latestId: ClaimId | undefined;
+      const keyStream = this.sigchainClaimsDb.createKeyStream({limit: 1, reverse: true});
+      for await (const o of keyStream) {
+        latestId = (o as any) as ClaimId;
+      }
+      return latestId
+    });
+  }
+
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
+  public async getSeqMap() : Promise<Record<number, ClaimId>> {
+    const map: Record<number, ClaimId> = {};
+    const claimStream = this.sigchainClaimsDb.createKeyStream();
+    let seq = 1;
+    for await (const o of claimStream) {
+      map[seq] = (o as any) as ClaimId;
+      seq ++;
+    }
+    return map;
   }
 
   @ready(new sigchainErrors.ErrorSigchainDestroyed())

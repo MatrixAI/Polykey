@@ -122,11 +122,11 @@ class NotificationsManager {
     this.notificationsDb = notificationsDb;
     this.notificationsMessagesDb = notificationsMessagesDb;
 
-    // Getting latest ID and creating ID generator
+    // Getting latest ID and creating ID generator FIXME, does this need to be a transaction?
     let latestId: NotificationId | undefined;
     const keyStream = this.notificationsMessagesDb.createKeyStream({limit: 1, reverse: true});
     for await (const o of keyStream) {
-      latestId = (o as any).key as NotificationId;
+      latestId = (o as any) as NotificationId;
     }
     this.notificationIdGenerator = CreateNotificationIdGenerator(latestId);
     this.logger.info('Started Notifications Manager');

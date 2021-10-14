@@ -1,5 +1,5 @@
 import type { NodeAddress, NodeId, NodeInfo } from '@/nodes/types';
-import type { ClaimId, ClaimIntermediary } from '@/claims/types';
+import type { ClaimId, ClaimIdString, ClaimIntermediary } from "@/claims/types";
 import type { Host, Port, TLSConfig } from '@/network/types';
 
 import fs from 'fs';
@@ -24,6 +24,9 @@ import * as testUtils from './utils';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
 import { makeCrypto } from '../utils';
 import { VaultKey, VaultName } from "@/vaults/types";
+
+class ClaimIdstring {
+}
 
 describe('GRPC agent', () => {
   const password = 'password';
@@ -358,7 +361,7 @@ describe('GRPC agent', () => {
       expect(Object.keys(chain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(chain)) {
-        const claimId = c as ClaimId;
+        const claimId = c as ClaimIdString;
         expect(chain[claimId]).toStrictEqual(doublyResponse);
       }
     });
