@@ -34,6 +34,8 @@ type SecretName = string;
 
 type SecretList = string[];
 
+type SecretContent = Buffer | string;
+
 type VaultMap = Map<VaultId, {
   vault?: VaultInternal;
   lock: MutexInterface;
@@ -121,7 +123,7 @@ interface FileSystemReadable {
   utimes: typeof EncryptedFS.prototype.utimes,
 }
 
-interface FileSystemWritable {
+interface FileSystemWritable extends FileSystemReadable{
   chdir: typeof EncryptedFS.prototype.chdir,
   access: typeof EncryptedFS.prototype.access,
   appendFile: typeof EncryptedFS.prototype.appendFile,
@@ -190,6 +192,7 @@ export type {
   VaultActions,
   SecretName,
   SecretList,
+  SecretContent,
   FileOptions,
   FileSystemReadable,
   FileSystemWritable,

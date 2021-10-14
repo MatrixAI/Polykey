@@ -439,7 +439,7 @@ describe('KeyManager', () => {
       expect(keyManager.dbKey).toEqual(dbKey);
       await keyManager.destroy();
     });
-  })
+  });
   describe('vaultKey', () => {
     test('Creates a key when started.', async () => {
       const keysPath = `${dataDir}/keys`;
@@ -519,7 +519,7 @@ describe('KeyManager', () => {
       expect(keyManager.vaultKey).toEqual(vaultKey);
       await keyManager.destroy();
     });
-  })
+  });
 
   test('destroying the KeyManager prevents any further method calls.', async () => {
     const keysPath = `${dataDir}/keys`;

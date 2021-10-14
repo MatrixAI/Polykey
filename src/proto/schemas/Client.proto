@@ -43,7 +43,7 @@ service Client {
   rpc VaultsSecretsMkdir(VaultMkdirMessage) returns (StatusMessage) {};
   rpc VaultsSecretsStat(VaultMessage) returns (StatMessage) {};
   rpc VaultsSecretsDelete(SecretMessage) returns (StatusMessage) {};
-  rpc VaultsSecretsEdit(SecretEditMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsEdit(SecretMessage) returns (StatusMessage) {};
   rpc VaultsSecretsGet(SecretMessage) returns (SecretMessage) {};
   rpc VaultsSecretsRename(SecretRenameMessage) returns (StatusMessage) {};
   rpc VaultsSecretsNew(SecretMessage) returns (StatusMessage) {};
@@ -127,6 +127,7 @@ message VaultRenameMessage {
 message VaultMkdirMessage {
   VaultMessage vault = 1;
   string dir_name = 2;
+  bool recursive = 3;
 }
 
 message VaultPullMessage {
@@ -147,11 +148,7 @@ message SecretRenameMessage {
 message SecretMessage {
   VaultMessage vault = 1;
   string secret_name = 2;
-  string secret_content = 3;
-}
-
-message SecretEditMessage {
-  SecretMessage secret = 1;
+  bytes secret_content = 3;
 }
 
 message SecretDirectoryMessage {

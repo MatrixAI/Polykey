@@ -84,7 +84,6 @@ describe('Polykey', () => {
       await pk.start({});
       await pk.stop();
       const nodePathContents = await fs.promises.readdir(nodePath);
-      console.log(nodePathContents);
       expect(nodePathContents).toContain('keys');
       expect(nodePathContents).toContain('db');
       expect(nodePathContents).toContain('vaults');

@@ -49,7 +49,7 @@ create.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
+    const content = fs.readFileSync(options.filePath);
 
     vaultMessage.setVaultName(vaultName);
     secretMessage.setSecretName(secretName);
