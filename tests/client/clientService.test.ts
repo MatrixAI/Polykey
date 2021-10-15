@@ -34,6 +34,7 @@ import { checkAgentRunning } from '@/agent/utils';
 import { NotificationData } from '@/notifications/types';
 import { makeNodeId } from '@/nodes/utils';
 import { Vault, VaultId, VaultName } from "@/vaults/types";
+import { vaultOps } from '@/vaults';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -365,12 +366,10 @@ describe('Client service', () => {
       }
       expect(list.sort()).toStrictEqual(vaultList2.sort());
 
-      const res2 = deleteVault(vaultMessage, callCredentials)
-      await expect(() =>
-        res2
+      await expect(
+        deleteVault(vaultMessage, callCredentials)
       ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
 
-      (await res2).getSuccess()
     });
     test('should rename vaults', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
@@ -441,6 +440,7 @@ describe('Client service', () => {
       vaultMessage.setVaultId(vault.vaultId);
       vaultMkdirMessage.setVault(vaultMessage);
       vaultMkdirMessage.setDirName(dirPath);
+      vaultMkdirMessage.setRecursive(true);
 
       await mkdirVault(vaultMkdirMessage, callCredentials);
 
@@ -556,7 +556,7 @@ describe('Client service', () => {
       vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
-      secretMessage.setSecretContent('content-change');
+      secretMessage.setSecretContent(Buffer.from('content-change'));
       secretEditMessage.setSecret(secretMessage);
 
       await editSecretVault(secretEditMessage, callCredentials);
@@ -598,7 +598,7 @@ describe('Client service', () => {
 
       const response = await getSecretVault(secretMessage, callCredentials);
 
-      expect(response.getSecretContent()).toStrictEqual('Secret1');
+      expect(Buffer.from(response.getSecretContent()).toString()).toStrictEqual('Secret1');
 
     });
     test('should rename secrets in a vault', async () => {
@@ -671,7 +671,7 @@ describe('Client service', () => {
       vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
-      secretMessage.setSecretContent('secret-content');
+      secretMessage.setSecretContent(Buffer.from('secret-content'));
 
       const response = await newSecretVault(secretMessage, callCredentials);
 
@@ -687,7 +687,7 @@ describe('Client service', () => {
       })
       expect(secret).toStrictEqual('secret-content');
     });
-    // FIXME, this fails since newDirSecreVault is not currently supported,
+    // FIXME, this fails since newDirSecretVault is not currently supported,
     test('should add a directory of secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const newDirSecretVault =
@@ -720,16 +720,13 @@ describe('Client service', () => {
 
       await newDirSecretVault(secretDirectoryMessage, callCredentials);
 
-      const secrets2 = await vault.access(async efs => {
-        return await efs.readdir('.');
-      })
-      fail("not implemented")
-      console.log(secrets2);
-      expect(secrets2).toEqual(secrets.sort()); // FIXME, failing because its not supported.
+      const secrets2 = await vaultOps.listSecrets(vault)
+      expect(secrets2).toEqual(secrets.sort());
 
       // Remove temp directory
       await fs.promises.rmdir(tmpDir, { recursive: true });
     });
+    // TODO: Permissions not supported yet.
     test('should add permissions to a vault', async () => {
       const vaultName = 'vault1' as VaultName;
       const vaultsSetPerms =

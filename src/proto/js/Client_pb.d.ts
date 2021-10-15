@@ -216,6 +216,8 @@ export class VaultMkdirMessage extends jspb.Message {
     setVault(value?: VaultMessage): VaultMkdirMessage;
     getDirName(): string;
     setDirName(value: string): VaultMkdirMessage;
+    getRecursive(): boolean;
+    setRecursive(value: boolean): VaultMkdirMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultMkdirMessage.AsObject;
@@ -231,6 +233,7 @@ export namespace VaultMkdirMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
         dirName: string,
+        recursive: boolean,
     }
 }
 
@@ -326,8 +329,10 @@ export class SecretMessage extends jspb.Message {
     setVault(value?: VaultMessage): SecretMessage;
     getSecretName(): string;
     setSecretName(value: string): SecretMessage;
-    getSecretContent(): string;
-    setSecretContent(value: string): SecretMessage;
+    getSecretContent(): Uint8Array | string;
+    getSecretContent_asU8(): Uint8Array;
+    getSecretContent_asB64(): string;
+    setSecretContent(value: Uint8Array | string): SecretMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SecretMessage.AsObject;
@@ -343,7 +348,7 @@ export namespace SecretMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
         secretName: string,
-        secretContent: string,
+        secretContent: Uint8Array | string,
     }
 }
 

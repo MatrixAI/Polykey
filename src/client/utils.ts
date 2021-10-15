@@ -7,7 +7,7 @@ import * as grpc from '@grpc/grpc-js';
 import * as clientErrors from '../client/errors';
 import { VaultMessage } from '../proto/js/Client_pb';
 import { makeVaultId } from "../vaults/utils";
-import { ErrorInvalidVaultId } from "../vaults/errors";
+import { ErrorInvalidVaultId, ErrorVaultUndefined } from "../vaults/errors";
 
 async function parseVaultInput(
   vaultMessage: VaultMessage,
@@ -15,9 +15,11 @@ async function parseVaultInput(
 ): Promise<VaultId> {
   switch (vaultMessage.getNameOrIdCase()) {
     case VaultMessage.NameOrIdCase.VAULT_NAME: {
-      return (await vaultManager.getVaultId(
+      const vaultId = (await vaultManager.getVaultId(
         vaultMessage.getVaultName() as VaultName,
-      ))!;
+      ));
+      if (vaultId == null) throw new ErrorVaultUndefined();
+      return vaultId;
     }
     case VaultMessage.NameOrIdCase.VAULT_ID: {
       return makeVaultId(vaultMessage.getVaultId());

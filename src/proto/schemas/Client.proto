@@ -127,6 +127,7 @@ message VaultRenameMessage {
 message VaultMkdirMessage {
   VaultMessage vault = 1;
   string dir_name = 2;
+  bool recursive = 3;
 }
 
 message VaultPullMessage {
@@ -147,7 +148,7 @@ message SecretRenameMessage {
 message SecretMessage {
   VaultMessage vault = 1;
   string secret_name = 2;
-  string secret_content = 3;
+  bytes secret_content = 3;
 }
 
 message SecretEditMessage {

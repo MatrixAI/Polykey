@@ -2317,7 +2317,8 @@ proto.clientInterface.VaultMkdirMessage.prototype.toObject = function(opt_includ
 proto.clientInterface.VaultMkdirMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
     vault: (f = msg.getVault()) && proto.clientInterface.VaultMessage.toObject(includeInstance, f),
-    dirName: jspb.Message.getFieldWithDefault(msg, 2, "")
+    dirName: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    recursive: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -2363,6 +2364,10 @@ proto.clientInterface.VaultMkdirMessage.deserializeBinaryFromReader = function(m
       var value = /** @type {string} */ (reader.readString());
       msg.setDirName(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRecursive(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2404,6 +2409,13 @@ proto.clientInterface.VaultMkdirMessage.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       2,
+      f
+    );
+  }
+  f = message.getRecursive();
+  if (f) {
+    writer.writeBool(
+      3,
       f
     );
   }
@@ -2462,6 +2474,24 @@ proto.clientInterface.VaultMkdirMessage.prototype.getDirName = function() {
  */
 proto.clientInterface.VaultMkdirMessage.prototype.setDirName = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional bool recursive = 3;
+ * @return {boolean}
+ */
+proto.clientInterface.VaultMkdirMessage.prototype.getRecursive = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.clientInterface.VaultMkdirMessage} returns this
+ */
+proto.clientInterface.VaultMkdirMessage.prototype.setRecursive = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 
@@ -3084,7 +3114,7 @@ proto.clientInterface.SecretMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
     vault: (f = msg.getVault()) && proto.clientInterface.VaultMessage.toObject(includeInstance, f),
     secretName: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    secretContent: jspb.Message.getFieldWithDefault(msg, 3, "")
+    secretContent: msg.getSecretContent_asB64()
   };
 
   if (includeInstance) {
@@ -3131,7 +3161,7 @@ proto.clientInterface.SecretMessage.deserializeBinaryFromReader = function(msg, 
       msg.setSecretName(value);
       break;
     case 3:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
       msg.setSecretContent(value);
       break;
     default:
@@ -3178,9 +3208,9 @@ proto.clientInterface.SecretMessage.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getSecretContent();
+  f = message.getSecretContent_asU8();
   if (f.length > 0) {
-    writer.writeString(
+    writer.writeBytes(
       3,
       f
     );
@@ -3244,20 +3274,44 @@ proto.clientInterface.SecretMessage.prototype.setSecretName = function(value) {
 
 
 /**
- * optional string secret_content = 3;
- * @return {string}
+ * optional bytes secret_content = 3;
+ * @return {!(string|Uint8Array)}
  */
 proto.clientInterface.SecretMessage.prototype.getSecretContent = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /**
- * @param {string} value
+ * optional bytes secret_content = 3;
+ * This is a type-conversion wrapper around `getSecretContent()`
+ * @return {string}
+ */
+proto.clientInterface.SecretMessage.prototype.getSecretContent_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getSecretContent()));
+};
+
+
+/**
+ * optional bytes secret_content = 3;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getSecretContent()`
+ * @return {!Uint8Array}
+ */
+proto.clientInterface.SecretMessage.prototype.getSecretContent_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getSecretContent()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.clientInterface.SecretMessage} returns this
  */
 proto.clientInterface.SecretMessage.prototype.setSecretContent = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
+  return jspb.Message.setProto3BytesField(this, 3, value);
 };
 
 
