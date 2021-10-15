@@ -153,6 +153,10 @@ class NodeManager {
       if (connLock?.connection != null) {
         await connLock.connection.stop();
       }
+      // TODO: Potentially, we could instead re-start any connections in start
+      // This assumes that after stopping the proxies, their connections are 
+      // also still valid on restart though.
+      this.connections.delete(targetNodeId);
     }
     for (const [, conn] of this.brokerNodeConnections) {
       await conn.stop();
