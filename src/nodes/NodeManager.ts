@@ -418,7 +418,6 @@ class NodeManager {
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
   public async getConnectionToNode(targetNodeId: NodeId): Promise<NodeConnection> {
-    const targetAddress = await this.findNode(targetNodeId);
     let connLock = this.connections.get(targetNodeId);
     // If there's already an entry in the map, we have 2 cases:
     // 1. The connection already exists
@@ -449,6 +448,7 @@ class NodeManager {
       let release;
       try {
         release = await lock.acquire();
+        const targetAddress = await this.findNode(targetNodeId);
         const connection = await NodeConnection.createNodeConnection({
           targetNodeId: targetNodeId,
           targetHost: targetAddress.ip,
