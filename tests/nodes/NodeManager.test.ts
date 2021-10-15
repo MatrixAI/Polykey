@@ -119,6 +119,85 @@ describe('NodeManager', () => {
     await sigchain.destroy()
   })
 
+  describe('getConnectionToNode', () => {
+    let target: PolykeyAgent;
+    let targetNodeId: NodeId;
+    let targetNodeAddress: NodeAddress;
+
+    beforeAll(async () => {
+      target = await testUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+    }, global.polykeyStartupTimeout);
+
+    beforeEach(async () => {
+      await target.start({});
+      targetNodeId = target.keys.getNodeId();
+      targetNodeAddress = {
+        ip: target.revProxy.getIngressHost(),
+        port: target.revProxy.getIngressPort(),
+      };
+      await nodeManager.setNode(targetNodeId, targetNodeAddress);
+    });
+
+    afterEach(async () => {
+      // Delete the created node connection each time.
+      await target.stop();
+    });
+
+    afterAll(async () => {
+      await testUtils.cleanupRemoteKeynode(target);
+    });
+
+    test('creates new connection to node', async () => {
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const initialConnLock = nodeManager.connections.get(targetNodeId);
+      expect(initialConnLock).toBeUndefined();
+      await nodeManager.getConnectionToNode(targetNodeId);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const finalConnLock = nodeManager.connections.get(targetNodeId);
+      // Check entry is in map and lock is released
+      expect(finalConnLock).toBeDefined();
+      expect(finalConnLock?.lock.isLocked()).toBeFalsy();
+    });
+    test('gets existing connection to node', async () => {
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(0);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const initialConnLock = nodeManager.connections.get(targetNodeId);
+      expect(initialConnLock).toBeUndefined();
+      await nodeManager.getConnectionToNode(targetNodeId);
+      // Check we only have this single connection
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(1);
+      await nodeManager.getConnectionToNode(targetNodeId);
+      // Check we still only have this single connection
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(1);
+    });
+    test('concurrent connection creation to same target results in 1 connection', async () => {
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(0);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const initialConnLock = nodeManager.connections.get(targetNodeId);
+      expect(initialConnLock).toBeUndefined();
+      // Concurrently create connection to same target
+      await Promise.all([
+        nodeManager.getConnectionToNode(targetNodeId),
+        nodeManager.getConnectionToNode(targetNodeId),
+      ]);
+      // Check only 1 connection exists
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(1);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const finalConnLock = nodeManager.connections.get(targetNodeId);
+      // Check entry is in map and lock is released
+      expect(finalConnLock).toBeDefined();
+      expect(finalConnLock?.lock.isLocked()).toBeFalsy();
+    });
+
+  });
+
   test(
     'pings node',
     async () => {
