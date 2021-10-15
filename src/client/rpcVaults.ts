@@ -626,19 +626,13 @@ const createVaultRPC = ({
         // Doing the deed
         const vault = await vaultManager.openVault(vaultId);
         const latestOid = (await vault.log())[0].oid;
-        let versionId = vaultsVersionMessage.getVersionId();
-        switch(versionId.toLowerCase()) {
-          case 'end': // We can expand this for more tags
-          {
-            // Check the latest commit.
-            versionId = latestOid;
-          }
-            break;
-        }
+        const versionId = vaultsVersionMessage.getVersionId();
+
         await vault.version(versionId);
+        const currentVersionId = (await vault.log(0, versionId))[0]?.oid;
 
         // checking if latest version ID.
-        const isLatestVersion = latestOid === versionId;
+        const isLatestVersion = latestOid === currentVersionId;
 
         // Creating message
         const vaultsVersionResultMessage = new clientPB.VaultsVersionResultMessage();
@@ -647,6 +641,7 @@ const createVaultRPC = ({
         // Sending message
         callback(null, vaultsVersionResultMessage);
       } catch (err) {
+        console.error(err);
         callback(grpcUtils.fromError(err), null);
       }
     },

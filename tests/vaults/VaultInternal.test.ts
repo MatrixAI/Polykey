@@ -139,6 +139,9 @@ describe('VaultInternal', () => {
       await vault.version(initCommit);
       await vault.version('HEAD');
       await expect(efsVault.readdir('.')).resolves.toEqual(['test1', 'test2', 'test3']);
+      await vault.version(initCommit);
+      await vault.version('end');
+      await expect(efsVault.readdir('.')).resolves.toEqual(['test1', 'test2', 'test3']);
     });
     test('adjusts HEAD after vault mutation, discarding forward and preserving backwards history', async () => {
       const initCommit = (await vault.log(1))[0].oid;
