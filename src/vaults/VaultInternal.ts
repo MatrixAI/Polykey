@@ -33,6 +33,8 @@ import * as gitErrors from '../git/errors';
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 import { makeVaultId } from "./utils";
 
+const headTag = 'end';
+
 interface VaultInternal extends CreateDestroy {}
 @CreateDestroy()
 class VaultInternal {
@@ -247,12 +249,13 @@ class VaultInternal {
     depth?: number,
     commit?: string,
   ): Promise<Array<CommitLog>> {
+    const commit_ = commit?.toLowerCase() === headTag ? 'HEAD' : commit;
     const log = await git.log({
       fs: this._efsRoot,
       dir: this.baseDir,
       gitdir: this.gitDir,
       depth: depth,
-      ref: commit,
+      ref: commit_,
     });
     return log.map((readCommit) => {
       return {
@@ -265,15 +268,20 @@ class VaultInternal {
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async version(commit: string): Promise<void> {
+
+    // Checking for special tags.
+    const commit_ = commit.toLowerCase() === headTag ? 'HEAD' : commit;
+    // TODO: add a tag for the start of the histoy so we can use that as the operator.
+
     try {
       await git.checkout({
         fs: this._efsRoot,
         dir: this.baseDir,
         gitdir: this.gitDir,
-        ref: commit,
+        ref: commit_,
         noUpdateHead: true,
       });
-      this._workingDir = commit;
+      this._workingDir = commit_;
     } catch (err) {
       if (err.code === 'NotFoundError') throw new vaultsErrors.ErrorVaultCommitUndefined;
       throw err;
