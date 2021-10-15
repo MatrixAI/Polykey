@@ -332,7 +332,7 @@ const createVaultRPC = ({
     },
     vaultsSecretsEdit: async (
       call: grpc.ServerUnaryCall<
-        clientPB.SecretEditMessage,
+        clientPB.SecretMessage,
         clientPB.StatusMessage
       >,
       callback: grpc.sendUnaryData<clientPB.StatusMessage>,
@@ -344,7 +344,7 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const secretMessage = call.request.getSecret();
+        const secretMessage = call.request;
         if (secretMessage == null) {
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;

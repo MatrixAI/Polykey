@@ -550,16 +550,14 @@ describe('Client service', () => {
         }
       })
 
-      const secretEditMessage = new clientPB.SecretEditMessage();
       const secretMessage = new clientPB.SecretMessage();
       const vaultMessage = new clientPB.VaultMessage();
       vaultMessage.setVaultId(vault.vaultId);
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
       secretMessage.setSecretContent(Buffer.from('content-change'));
-      secretEditMessage.setSecret(secretMessage);
 
-      await editSecretVault(secretEditMessage, callCredentials);
+      await editSecretVault(secretMessage, callCredentials);
 
       await vault.access(async efs => {
         expect((await efs.readFile('Secret1')).toString()).toStrictEqual('content-change')
@@ -1990,7 +1988,7 @@ describe('Client service', () => {
         nodeMessage.setNodeId(nodeId);
         // So unfindableNode cannot be found
         await expect(() =>
-          nodesFind(nodeMessage, callCredentials)
+          nodesFind(nodeMessage, callCredentials),
         ).rejects.toThrow(nodesErrors.ErrorNodeGraphNodeNotFound);
       },
       global.failedConnectionTimeout * 2,

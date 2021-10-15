@@ -352,29 +352,6 @@ export namespace SecretMessage {
     }
 }
 
-export class SecretEditMessage extends jspb.Message { 
-
-    hasSecret(): boolean;
-    clearSecret(): void;
-    getSecret(): SecretMessage | undefined;
-    setSecret(value?: SecretMessage): SecretEditMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): SecretEditMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: SecretEditMessage): SecretEditMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: SecretEditMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): SecretEditMessage;
-    static deserializeBinaryFromReader(message: SecretEditMessage, reader: jspb.BinaryReader): SecretEditMessage;
-}
-
-export namespace SecretEditMessage {
-    export type AsObject = {
-        secret?: SecretMessage.AsObject,
-    }
-}
-
 export class SecretDirectoryMessage extends jspb.Message { 
 
     hasVault(): boolean;

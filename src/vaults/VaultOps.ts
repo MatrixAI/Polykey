@@ -225,7 +225,6 @@ async function addSecretDirectory(
           await efs.writeFile(relPath, content, {});
           logger?.info(`Added secret to directory at '${relPath}'`);
         } catch (err) {
-          console.error(err);
           // Warn of a failed addition but continue operation
           logger?.warn(`Adding secret ${relPath} failed`);
           throw err;

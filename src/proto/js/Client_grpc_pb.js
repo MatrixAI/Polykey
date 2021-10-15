@@ -246,17 +246,6 @@ function deserialize_clientInterface_SecretDirectoryMessage(buffer_arg) {
   return Client_pb.SecretDirectoryMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_clientInterface_SecretEditMessage(arg) {
-  if (!(arg instanceof Client_pb.SecretEditMessage)) {
-    throw new Error('Expected argument of type clientInterface.SecretEditMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_clientInterface_SecretEditMessage(buffer_arg) {
-  return Client_pb.SecretEditMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_clientInterface_SecretMessage(arg) {
   if (!(arg instanceof Client_pb.SecretMessage)) {
     throw new Error('Expected argument of type clientInterface.SecretMessage');
@@ -796,10 +785,10 @@ vaultsList: {
     path: '/clientInterface.Client/VaultsSecretsEdit',
     requestStream: false,
     responseStream: false,
-    requestType: Client_pb.SecretEditMessage,
+    requestType: Client_pb.SecretMessage,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_clientInterface_SecretEditMessage,
-    requestDeserialize: deserialize_clientInterface_SecretEditMessage,
+    requestSerialize: serialize_clientInterface_SecretMessage,
+    requestDeserialize: deserialize_clientInterface_SecretMessage,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
