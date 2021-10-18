@@ -15,6 +15,8 @@ import * as vaultsErrors from '@/vaults/errors';
 import * as utils from '@/utils';
 import * as errors from "@/vaults/errors";
 import { FileSystemReadable, FileSystemWritable } from "@/vaults/types";
+import { first } from 'cheerio/lib/api/traversing';
+import { sleep } from '@/utils';
 
 describe('VaultInternal', () => {
   let dataDir: string;
@@ -316,6 +318,60 @@ describe('VaultInternal', () => {
       expect(await vault.log()).toHaveLength(2);
 
     })
+    test('Locking occurs when making a commit.', async () => {
+      // We want to check if the locking is happening. so we need a way to see if an operation is being blocked.
+
+      let resolveDelay;
+      const delayPromise = new Promise((resolve, _reject) => {
+        resolveDelay = resolve;
+      })
+      let firstCommitResolved = false;
+      let firstCommitResolveTime;
+
+      const commit1 = vault.commit(async (efs) => {
+        await efs.writeFile(secret1.name, secret1.content);
+        await delayPromise; // Hold the lock hostage.
+        firstCommitResolved = true;
+        firstCommitResolveTime = Date.now()
+      });
+
+      // Now that we are holding the lock hostage,
+      // we want to check if any action resolves before the lock is released.
+
+      let secondCommitResolved = false;
+      let secondCommitResolveTime;
+      const commit2 = vault.commit(async (efs) => {
+        await efs.writeFile(secret2.name, secret2.content);
+        secondCommitResolved = true;
+        await sleep(2);
+        secondCommitResolveTime = Date.now();
+      });
+
+      // Give plenty of time for a commit to resolve.
+      await sleep(200);
+
+      // Now we want to check for the expected conditions.
+      // 1. Both commist have not completed.
+      // commit 1 is holding the lock.
+      expect(firstCommitResolved).toBeFalsy();
+      expect(secondCommitResolved).toBeFalsy();
+
+      // 2. We release the hostage so both should resolve.
+      await sleep(200);
+      resolveDelay();
+      await commit1;
+      await commit2;
+      expect(firstCommitResolved).toBeTruthy();
+      expect(secondCommitResolved).toBeTruthy();
+      expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
+
+      // Commit order should be commit2 -> commit1 -> init
+      const log = await vault.log();
+      expect(log[0].message).toContain(secret2.name);
+      expect(log[1].message).toContain(secret1.name);
+      console.log(log);
+
+    })
   });
   describe('Reading operations', () => {
     const secret1 = {name: 'secret-1', content: 'secret-content-1'}
@@ -373,6 +429,52 @@ describe('VaultInternal', () => {
       expect(log).toHaveLength(2);
       expect(log[0].oid).toStrictEqual(commit);
     });
+    test('Locking occurs when making an access.', async () => {
+      // We want to check if the locking is happening. so we need a way to see if an operation is being blocked.
+      let resolveDelay;
+      const delayPromise = new Promise((resolve, _reject) => {
+        resolveDelay = resolve;
+      })
+      let firstCommitResolved = false;
+      let firstCommitResolveTime;
+
+      const commit1 = vault.access(async (efs) => {
+        await efs.readFile(secret1.name);
+        await delayPromise; // Hold the lock hostage.
+        firstCommitResolved = true;
+        firstCommitResolveTime = Date.now()
+      });
+
+      // Now that we are holding the lock hostage,
+      // we want to check if any action resolves before the lock is released.
+
+      let secondCommitResolved = false;
+      let secondCommitResolveTime;
+      const commit2 = vault.access(async (efs) => {
+        await efs.readFile(secret2.name);
+        secondCommitResolved = true;
+        await sleep(10);
+        secondCommitResolveTime = Date.now();
+      });
+
+      // Give plenty of time for a commit to resolve.
+      await sleep(200);
+
+      // Now we want to check for the expected conditions.
+      // 1. Both commist have not completed.
+      // commit 1 is holding the lock.
+      expect(firstCommitResolved).toBeFalsy();
+      expect(secondCommitResolved).toBeFalsy();
+
+      // 2. We release the hostage so both should resolve.
+      await sleep(200);
+      resolveDelay();
+      await commit1;
+      await commit2;
+      expect(firstCommitResolved).toBeTruthy();
+      expect(secondCommitResolved).toBeTruthy();
+      expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
+    })
   });
   test('Vault only exposes limited commands of VaultInternal', async () => {
     // converting a vault to the interface
