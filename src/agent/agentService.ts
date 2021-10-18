@@ -1,5 +1,6 @@
 import type { NodeId } from '../nodes/types';
 import type { ClaimId, ClaimEncoded, ClaimIntermediary, ClaimIdString } from "../claims/types";
+import type { VaultId, VaultName } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '../utils';
@@ -18,6 +19,7 @@ import {
   utils as notificationsUtils,
   errors as notificationsErrors,
 } from '../notifications';
+import { errors as vaultsErrors } from '../vaults';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
 import { makeVaultId } from '../vaults/utils';
 import { makeNodeId } from "../nodes/utils";
@@ -56,23 +58,30 @@ function createAgentService({
       const genWritable = grpcUtils.generatorWritable(call);
 
       const request = call.request;
-      const vaultId = makeVaultId(request.getVaultId_asU8());
-
+      const vaultNameOrId = request.getVaultId_asU8();
+      let vaultId;
+      try {
+        vaultId = makeVaultId(vaultNameOrId);
+        await vaultManager.openVault(vaultId);
+      } catch (err) {
+        if (err instanceof vaultsErrors.ErrorVaultUndefined) {
+          vaultId = await vaultManager.getVaultId(idUtils.toString(vaultNameOrId) as VaultName)
+          await vaultManager.openVault(vaultId);
+        } else {
+          throw err;
+        }
+      }
+      // TODO: Check the permissions here
       const response = new agentPB.PackChunk();
-      const vault = await vaultManager.openVault(vaultId);
-
-      throw Error('Not implemented');
-      //FIXME: not implemented
-      // const responseGen = vault.handleInfoRequest();
-      //
-      // for await (const byte of responseGen) {
-      //   if (byte !== null) {
-      //     response.setChunk(byte);
-      //     await genWritable.next(response);
-      //   } else {
-      //     await genWritable.next(null);
-      //   }
-      // }
+      const responseGen = vaultManager.handleInfoRequest(vaultId);
+      for await (const byte of responseGen) {
+        if (byte !== null) {
+          response.setChunk(byte);
+          await genWritable.next(response);
+        } else {
+          await genWritable.next(null);
+        }
+      }
       await genWritable.next(null);
     },
     vaultsGitPackGet: async (
@@ -86,25 +95,30 @@ function createAgentService({
 
       call.on('end', async () => {
         const body = Buffer.concat(clientBodyBuffers);
-
         const meta = call.metadata;
-        const vaultId = makeVaultId(idUtils.fromString(meta.get('vault-id').pop()!.toString()));
-        if (vaultId == null) throw new ErrorGRPC('vault-name not in metadata.');
-        const vault = await vaultManager.openVault(vaultId);
-
+        const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
+        if (vaultNameOrId == null) throw new ErrorGRPC('vault-name not in metadata.');
+        let vaultId;
+        try {
+          vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
+          await vaultManager.openVault(vaultId);
+        } catch (err) {
+          if (err instanceof vaultsErrors.ErrorVaultUndefined) {
+            vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName)
+            await vaultManager.openVault(vaultId);
+          } else {
+            throw err;
+          }
+        }
+        // TODO: Check the permissions here
         const response = new agentPB.PackChunk();
-        let sideBand, progressStream;
-        throw Error('Not implemented');
-        // FIXME: handlePackRequest doesn't exist
-        // const [sideBand, progressStream] = await vault.handlePackRequest(
-        //   Buffer.from(body),
-        // );
-
+        const [sideBand, progressStream] = await vaultManager.handlePackRequest(
+          vaultId,
+          Buffer.from(body),
+        );
         response.setChunk(Buffer.from('0008NAK\n'));
         await write(response);
-
         const responseBuffers: Buffer[] = [];
-
         await new Promise<void>((resolve, reject) => {
           sideBand.on('data', async (data: Buffer) => {
             responseBuffers.push(data);
@@ -120,7 +134,6 @@ function createAgentService({
           progressStream.write(Buffer.from('0014progress is at 50%\n'));
           progressStream.end();
         });
-
         call.end();
       });
     },

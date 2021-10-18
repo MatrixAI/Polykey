@@ -16,6 +16,8 @@ import fs from 'fs';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { Mutex, MutexInterface } from 'async-mutex';
+import git from 'isomorphic-git';
+import { PassThrough } from 'readable-stream';
 
 import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
@@ -28,6 +30,7 @@ import * as utils from '../utils';
 import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
 import * as keysErrors from '../keys/errors';
+import * as gitUtils from '../git/utils';
 import * as gitErrors from '../git/errors';
 import * as nodesErrors from '../nodes/errors';
 import * as aclErrors from '../acl/errors';
@@ -38,6 +41,7 @@ import VaultInternal from './VaultInternal';
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 import { utils as idUtils } from '@matrixai/id';
 import { makeVaultId } from './utils';
+import { NotificationsManager } from '../notifications';
 
 interface VaultManager extends CreateDestroy {}
 @CreateDestroy()
@@ -46,6 +50,9 @@ class VaultManager {
 
   protected fs: FileSystem;
   protected nodeManager: NodeManager;
+  protected gestaltGraph: GestaltGraph;
+  protected acl: ACL;
+  protected notificationsManager: NotificationsManager;
   protected efs: EncryptedFS;
   protected db: DB;
   protected logger: Logger;
@@ -63,6 +70,8 @@ class VaultManager {
     vaultsPath,
     vaultsKey,
     nodeManager,
+    gestaltGraph,
+    acl,
     db,
     fs,
     logger,
@@ -71,6 +80,8 @@ class VaultManager {
     vaultsPath: string;
     vaultsKey: VaultKey;
     nodeManager: NodeManager;
+    gestaltGraph: GestaltGraph;
+    acl: ACL;
     db: DB;
     fs?: FileSystem;
     logger?: Logger;
@@ -103,8 +114,10 @@ class VaultManager {
     logger.info('Created Vault Manager');
     return new VaultManager({
       nodeManager,
-      vaultsKey,
+      gestaltGraph,
+      acl,
       db,
+      vaultsKey,
       vaultsDbDomain,
       vaultsNamesDbDomain,
       vaultsDb,
@@ -117,8 +130,10 @@ class VaultManager {
 
   constructor({
     nodeManager,
-    vaultsKey,
+    gestaltGraph,
+    acl,
     db,
+    vaultsKey,
     vaultsDbDomain,
     vaultsNamesDbDomain,
     vaultsDb,
@@ -128,8 +143,10 @@ class VaultManager {
     logger,
   }: {
     nodeManager: NodeManager;
-    vaultsKey: VaultKey;
+    gestaltGraph: GestaltGraph;
+    acl: ACL;
     db: DB;
+    vaultsKey: VaultKey;
     vaultsDbDomain: string;
     vaultsNamesDbDomain: Array<string>;
     vaultsDb: DBLevel;
@@ -139,6 +156,8 @@ class VaultManager {
     logger?: Logger;
   }) {
     this.nodeManager = nodeManager;
+    this.gestaltGraph = gestaltGraph;
+    this.acl = acl;
     this.db = db;
     this.vaultsDbDomain = vaultsDbDomain;
     this.vaultsNamesDbDomain = vaultsNamesDbDomain;
@@ -165,19 +184,19 @@ class VaultManager {
   }
 
   protected async _transaction<T>(f: () => Promise<T>, vaults: Array<VaultId> = []): Promise<T> {
-      const releases: Array<MutexInterface.Releaser> = [];
-      for (const vault of vaults) {
-          const lock = this.vaultsMap.get(vault);
-          if (lock) releases.push(await lock.lock.acquire());
-      }
-      try {
-          return await f();
-      }
-      finally {
-        // Release them in the opposite order
-        releases.reverse();
-        for (const r of releases) {
-            r();
+    const releases: Array<MutexInterface.Releaser> = [];
+    for (const vault of vaults) {
+        const lock = this.vaultsMap.get(vault);
+        if (lock) releases.push(await lock.lock.acquire());
+    }
+    try {
+        return await f();
+    }
+    finally {
+      // Release them in the opposite order
+      releases.reverse();
+      for (const r of releases) {
+          r();
       }
     }
   }
@@ -206,40 +225,24 @@ class VaultManager {
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async createVault(vaultName: VaultName): Promise<Vault> {
-    // let lock = this.vaultCreation.get(vaultName);
-    // if (!lock) lock = new Mutex();
-    // this.vaultCreation.set(vaultName, lock);
-    // const release = await lock.acquire();
-    // try {
-      // const existingId = await this.getVaultId(vaultName);
-      // if (existingId != null) throw new vaultsErrors.ErrorVaultDefined();
-      const vaultId = await this.generateVaultId();
-      const lock = new Mutex();
-      this.vaultsMap.set(vaultId, { lock });
-      return await this._transaction(async () => {
-        await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName });
-        await this.efs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), { recursive: true });
-        const efs = await this.efs.chroot(path.join(idUtils.toString(vaultId), 'contents'));
-        await efs.start();
-        const vault = await VaultInternal.create({
-          vaultId,
-          efsRoot: this.efs,
-          efsVault: efs,
-          logger: this.logger.getChild(VaultInternal.name),
-          fresh: true,
-        });
-        this.vaultsMap.set(vaultId, { lock, vault });
-        return vault;
-      }, [vaultId]);
-    // } finally {
-    //   release();
-    //   this.vaultCreation.delete(vaultName);
-    // }
+    const vaultId = await this.generateVaultId();
+    const lock = new Mutex();
+    this.vaultsMap.set(vaultId, { lock });
+    return await this._transaction(async () => {
+      await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName });
+      const vault = await VaultInternal.create({
+        vaultId,
+        efs: this.efs,
+        logger: this.logger.getChild(VaultInternal.name),
+        fresh: true,
+      });
+      this.vaultsMap.set(vaultId, { lock, vault });
+      return vault;
+    }, [vaultId]);
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async destroyVault(vaultId: VaultId) {
-    const lock = await this.getLock(vaultId);
     await this._transaction(async () => {
       const vaultName = await this.getVaultName(vaultId);
       if (!vaultName) return;
@@ -248,7 +251,7 @@ class VaultManager {
         idUtils.toBuffer(vaultId),
       );
       this.vaultsMap.delete(vaultId);
-      await this.efs.rmdir(idUtils.toString(vaultId), { recursive: true });
+      await this.efs.rmdir(vaultsUtils.makeVaultIdPretty(vaultId), { recursive: true });
     }, [vaultId]);
   }
 
@@ -268,17 +271,13 @@ class VaultManager {
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
-  public async listVaults(nodeId?: NodeId): Promise<VaultList> {
+  public async listVaults(): Promise<VaultList> {
     const vaults: VaultList = new Map();
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const dbMeta = (o as any).value;
       const dbId = (o as any).key;
       const vaultMeta = await this.db.deserializeDecrypt<POJO>(dbMeta, false);
-      if (!nodeId) {
-        vaults.set(vaultMeta.name, makeVaultId(dbId));
-      } else {
-        // TODO: Handle what other nodes can see with their permissions
-      }
+      vaults.set(vaultMeta.name, makeVaultId(dbId));
     }
     return vaults;
   }
@@ -308,6 +307,107 @@ class VaultManager {
     }
   }
 
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  public async shareVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
+    const vaultName = await this.getVaultName(vaultId);
+    if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
+    return await this.gestaltGraph._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
+        if (gestalt == null) {
+          throw new gestaltErrors.ErrorGestaltsGraphNodeIdMissing();
+        }
+        const nodes = gestalt.nodes;
+        for (const node in nodes) {
+          await this.acl.setNodeAction(nodeId, 'scan');
+          await this.acl.setVaultAction(vaultId, nodes[node].id, 'pull');
+          await this.acl.setVaultAction(vaultId, nodes[node].id, 'clone');
+        }
+        await this.notificationsManager.sendNotification(nodeId, {
+          type: 'VaultShare',
+          vaultId: idUtils.toString(vaultId),
+          vaultName,
+          actions: {
+            clone: null,
+            pull: null
+          }
+        });
+      });
+    });
+  }
+
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  public async cloneVault(nodeId: NodeId, vaultNameOrId: VaultId): Promise<Vault> {
+    const nodeConnection = await this.nodeManager.getConnectionToNode(nodeId);
+    const client = nodeConnection.getClient();
+    const gitRequest = await vaultsUtils.constructGitHandler(
+      client,
+      this.nodeManager.getNodeId(),
+    );
+    const vaultId = await this.generateVaultId();
+    const lock = new Mutex();
+    this.vaultsMap.set(vaultId, { lock });
+    return await this._transaction(async () => {
+      await this.efs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), { recursive: true });
+      await git.clone({
+        fs: this.efs,
+        http: gitRequest,
+        dir: path.join(idUtils.toString(vaultId), 'contents'),
+        gitdir: path.join(idUtils.toString(vaultId), '.git'),
+        url: `http://0.0.0.0/${vaultNameOrId}`,
+        singleBranch: true,
+      });
+      await this.efs.writeFile(
+        path.join(idUtils.toString(vaultId), '.git', 'packed-refs'),
+        '# pack-refs with: peeled fully-peeled sorted',
+      );
+      const workingDir = (await git.log({
+        fs: this.efs,
+        dir: path.join(idUtils.toString(vaultId), 'contents'),
+        gitdir: path.join(idUtils.toString(vaultId), '.git'),
+        depth: 1,
+      })).pop()!;
+      await this.efs.writeFile(path.join(idUtils.toString(vaultId), '.git', 'workingDir'), workingDir.oid);
+      const vault = await VaultInternal.create({
+        vaultId,
+        efs: this.efs,
+        logger: this.logger.getChild(VaultInternal.name),
+      });
+      this.vaultsMap.set(vaultId, { lock, vault });
+      await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: 'vaultName', defaultPull: nodeId });
+      return vault;
+    }, [vaultId]);
+  }
+
+  // public async pullVault(vaultId: VaultId, nodeId?: NodeId): Promise<void> {
+  //   const vault = await this.openVault(vaultId);
+  //   if (!nodeId) {
+  //     nodeId = await this.db.get<NodeId>(
+  //       this.vaultsNamesDbDomain,
+  //       vaultId,
+  //     );
+  //   }
+  //   if (!nodeId) {
+  //     // Throw an error if a linked vault cannot be found for the vault
+  //     throw new vaultsErrors.ErrorVaultUnlinked(
+  //       'Vault Id has not been cloned from remote repository',
+  //     );
+  //   }
+  //   const nodeConnection = await this.nodeManager.getConnectionToNode(nodeId);
+  //   const client = nodeConnection.getClient();
+  //   const gitRequest = await vaultsUtils.constructGitHandler(
+  //     client,
+  //     this.nodeManager.getNodeId(),
+  //   );
+
+  //   // Pull the vault
+  //   const vault = await this.getVault(vaultId);
+  //   await vault.pullVault(gitRequest, node);
+
+  //   // Set the default pulling node to the specified node Id
+  //   await this.setDefaultNode(vaultId, node);
+  // }
+
   protected async generateVaultId(): Promise<VaultId> {
     let vaultId = vaultsUtils.generateVaultId();
     let i = 0;
@@ -321,6 +421,46 @@ class VaultManager {
       vaultId = vaultsUtils.generateVaultId();
     }
     return vaultId;
+  }
+
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  public async *handleInfoRequest(vaultId: VaultId): AsyncGenerator<Buffer | null> {
+    const service = 'upload-pack';
+    yield Buffer.from(
+      gitUtils.createGitPacketLine('# service=git-' + service + '\n'),
+    );
+    yield Buffer.from('0000');
+    for (const buffer of (await gitUtils.uploadPack(this.efs, path.join(idUtils.toString(vaultId), '.git'), true)) ??
+      []) {
+      yield buffer;
+    }
+  }
+
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  public async handlePackRequest(vaultId: VaultId, body: Buffer): Promise<PassThrough[]> {
+    if (body.toString().slice(4, 8) === 'want') {
+      const wantedObjectId = body.toString().slice(9, 49);
+      const packResult = await gitUtils.packObjects({
+        fs: this.efs,
+        gitdir: path.join(idUtils.toString(vaultId), '.git'),
+        refs: [wantedObjectId],
+      });
+      const readable = new PassThrough();
+      const progressStream = new PassThrough();
+      const sideBand = gitUtils.mux(
+        'side-band-64',
+        readable,
+        packResult.packstream,
+        progressStream,
+      );
+      return [sideBand, progressStream];
+    } else {
+      throw new gitErrors.ErrorGitUnimplementedMethod(
+        `Request of type '${body
+          .toString()
+          .slice(4, 8)}' not valid, expected 'want'`,
+      );
+    }
   }
 
   protected async getVault(vaultId: VaultId): Promise<VaultInternal> {
@@ -339,12 +479,9 @@ class VaultManager {
         if (vault != null) {
           return vault;
         }
-        const efs = await this.efs.chroot(path.join(idUtils.toString(vaultId), 'contents'));
-        await efs.start();
         vault = await VaultInternal.create({
           vaultId,
-          efsRoot: this.efs,
-          efsVault: efs,
+          efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
@@ -360,12 +497,9 @@ class VaultManager {
       let release;
       try {
         release = await lock.acquire();
-        const efs = await this.efs.chroot(path.join(idUtils.toString(vaultId), 'contents'));
-        await efs.start();
         vault = await VaultInternal.create({
           vaultId,
-          efsRoot: this.efs,
-          efsVault: efs,
+          efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;

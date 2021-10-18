@@ -50,27 +50,35 @@ class VaultInternal {
 
   public static async create({
     vaultId,
-    efsRoot,
-    efsVault,
+    efs,
     logger,
     fresh = false,
   }: {
     vaultId: VaultId;
-    efsRoot: EncryptedFS;
-    efsVault: EncryptedFS;
+    efs: EncryptedFS;
     logger?: Logger;
     fresh?: boolean;
   }) {
     logger = logger ?? new Logger(this.constructor.name);
-    if(fresh){
+    if (fresh) {
+      try {
+        await efs.rmdir(makeVaultIdPretty(vaultId), { recursive: true });
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+      await efs.mkdir(path.join(makeVaultIdPretty(vaultId), 'contents'), { recursive: true });
+      const efsVault = await efs.chroot(path.join(makeVaultIdPretty(vaultId), 'contents'));
+      await efsVault.start();
       // Creating a new vault.
       await git.init({
-        fs: efsRoot,
+        fs: efs,
         dir: path.join(makeVaultIdPretty(vaultId), 'contents'),
         gitdir: path.join(makeVaultIdPretty(vaultId), '.git'),
       });
       const workingDir = await git.commit({
-        fs: efsRoot,
+        fs: efs,
         dir: path.join(makeVaultIdPretty(vaultId), 'contents'),
         gitdir: path.join(makeVaultIdPretty(vaultId), '.git'),
         author: {
@@ -78,14 +86,14 @@ class VaultInternal {
         },
         message: 'Initial Commit',
       });
-      await efsRoot.writeFile(
+      await efs.writeFile(
         path.join(makeVaultIdPretty(vaultId), '.git', 'packed-refs'),
         '# pack-refs with: peeled fully-peeled sorted',
       );
-      await efsRoot.writeFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), workingDir);
+      await efs.writeFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), workingDir);
       const vault = new VaultInternal({
         vaultId,
-        efsRoot,
+        efs,
         efsVault,
         workingDir,
         logger,
@@ -94,12 +102,14 @@ class VaultInternal {
       return vault;
     } else {
       // Loading an existing vault.
-      const workingDir = (await efsRoot.readFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), {
+      const efsVault = await efs.chroot(path.join(makeVaultIdPretty(vaultId), 'contents'));
+      await efsVault.start();
+      const workingDir = (await efs.readFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), {
         encoding: 'utf8',
       })) as string;
       const vault = new VaultInternal({
         vaultId,
-        efsRoot,
+        efs,
         efsVault,
         workingDir,
         logger,
@@ -112,13 +122,13 @@ class VaultInternal {
 
   constructor({
     vaultId,
-    efsRoot,
+    efs,
     efsVault,
     workingDir,
     logger,
   }: {
     vaultId: VaultId;
-    efsRoot: EncryptedFS;
+    efs: EncryptedFS;
     efsVault: EncryptedFS;
     workingDir: string;
     logger?: Logger;
@@ -126,7 +136,7 @@ class VaultInternal {
     this.baseDir = path.join(makeVaultIdPretty(vaultId), 'contents');
     this.gitDir = path.join(makeVaultIdPretty(vaultId), '.git');
     this.vaultId = vaultId;
-    this._efsRoot = efsRoot;
+    this._efsRoot = efs;
     this._efsVault = efsVault;
     this._workingDir = workingDir;
     this._logger = logger ?? new Logger(this.constructor.name);

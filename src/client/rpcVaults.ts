@@ -202,7 +202,7 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const vaults = await vaultManager.listVaults(nodeId);
+        const vaults = await vaultManager.listVaults();
         vaults.forEach(async (vaultId, vaultName) => {
           const vaultListMessage = new clientPB.VaultListMessage();
           vaultListMessage.setVaultName(vaultName);
