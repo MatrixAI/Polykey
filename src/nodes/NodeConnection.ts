@@ -329,7 +329,7 @@ class NodeConnection {
   }
 
   @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
-  public async claimNode(singlySignedClaim: ClaimIntermediary) {
+  public async claimNode(singlySignedClaim: ClaimIntermediary): Promise<ClaimEncoded> {
     const genClaims = this.client.nodesCrossSignClaim();
     try {
       // 2. Set up the intermediary claim message (the singly signed claim) to send
