@@ -33,7 +33,7 @@ message EchoMessage {
 
 // Vaults messages
 message InfoRequest {
-  string id = 1;
+  bytes vault_id = 1;
 }
 
 message PackChunk {

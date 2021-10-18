@@ -1,5 +1,5 @@
 import type { NodeId } from "../nodes/types";
-import type { VaultAction, VaultId, VaultIdRaw, VaultName } from "../vaults/types";
+import type { VaultAction, VaultName } from "../vaults/types";
 import type { SessionManager } from "../sessions";
 import type { VaultInternal, VaultManager } from "../vaults";
 
@@ -8,8 +8,8 @@ import * as grpc from "@grpc/grpc-js";
 import * as grpcUtils from "../grpc/utils";
 import * as clientPB from "../proto/js/Client_pb";
 import { isNodeId, makeNodeId } from "../nodes/utils";
-import { makeVaultId } from "../vaults/utils";
 import { vaultOps } from '../vaults';
+import { makeVaultId } from '@/vaults/utils';
 
 
 const createVaultRPC = ({
@@ -138,10 +138,12 @@ const createVaultRPC = ({
           return;
         }
         // Vault id
-        const vaultId = makeVaultId(vaultMessage.getVaultId());
+        const vaultId = makeVaultId(vaultMessage.getVaultId_asU8());
         // Node id
         const id = makeNodeId(nodeMessage.getNodeId());
 
+        throw Error('Not implemented');
+        // FIXME, not fully implemented
         // await vaultManager.cloneVault(vaultId, id);
         response.setSuccess(true);
         callback(null, response);

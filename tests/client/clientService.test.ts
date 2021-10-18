@@ -35,6 +35,8 @@ import { NotificationData } from '@/notifications/types';
 import { makeNodeId } from '@/nodes/utils';
 import { Vault, VaultId, VaultName } from "@/vaults/types";
 import { vaultOps } from '@/vaults';
+import { makeVaultId } from '@/vaults/utils';
+import { utils as idUtils } from '@matrixai/id';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -2156,7 +2158,7 @@ describe('Client service', () => {
       } as NotificationData;
       const vaultShareData = {
         type: 'VaultShare',
-        vaultId: 'zVaultIdxxxxxxxxxxxxxxx' as VaultId,
+        vaultId: makeVaultId(idUtils.fromString('Vault1xxxxxxxxxx')).toString(),
         vaultName: 'vaultName',
         actions: {
           pull: null,

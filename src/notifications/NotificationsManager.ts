@@ -14,6 +14,7 @@ import * as notificationsErrors from './errors';
 import { errors as dbErrors } from '@matrixai/db';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import { CreateNotificationIdGenerator } from "./utils";
+import { utils as idUtils} from '@matrixai/id';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
@@ -214,7 +215,7 @@ class NotificationsManager {
         const notificationId = this.notificationIdGenerator();
         await this.db.put(
           this.notificationsMessagesDbDomain,
-          notificationId,
+          idUtils.toBuffer(notificationId),
           notification,
         );
         // Number of messages += 1
@@ -307,7 +308,7 @@ class NotificationsManager {
     return await this._transaction(async () => {
       const notification = await this.db.get<Notification>(
         this.notificationsMessagesDbDomain,
-        notificationId,
+        idUtils.toBuffer(notificationId),
       );
       if (notification === undefined) {
         return undefined;
@@ -315,7 +316,7 @@ class NotificationsManager {
       notification.isRead = true;
       await this.db.put(
         this.notificationsMessagesDbDomain,
-        notificationId,
+        idUtils.toBuffer(notificationId),
         notification,
       );
       return notification;
@@ -387,7 +388,7 @@ class NotificationsManager {
         throw new notificationsErrors.ErrorNotificationsDb();
       }
 
-      await this.db.del(this.notificationsMessagesDbDomain, messageId);
+      await this.db.del(this.notificationsMessagesDbDomain, idUtils.toBuffer(messageId));
       await this.db.put(
         this.notificationsDbDomain,
         MESSAGE_COUNT_KEY,

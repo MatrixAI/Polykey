@@ -3,7 +3,7 @@ import type { PermissionId, Permission, VaultActions, PermissionIdString } from 
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeId } from '../nodes/types';
 import type { GestaltAction } from '../gestalts/types';
-import type { VaultAction, VaultIdRaw, VaultId } from "../vaults/types";
+import type { VaultAction, VaultId } from "../vaults/types";
 import type { Ref } from '../types';
 
 import { Mutex } from 'async-mutex';
@@ -12,7 +12,8 @@ import * as aclUtils from './utils';
 import * as aclErrors from './errors';
 import { errors as dbErrors } from '@matrixai/db';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import { makePermissionId, makePermissionIdString } from "./utils";
+import { makePermissionId } from "./utils";
+import { utils as idUtils } from '@matrixai/id';
 
 interface ACL extends CreateDestroy {}
 @CreateDestroy()
@@ -146,7 +147,7 @@ class ACL {
       for await (const o of this.aclNodesDb.createReadStream()) {
         const nodeId = (o as any).key as NodeId;
         const data = (o as any).value as Buffer;
-        const permId = makePermissionIdString(
+        const permId = makePermissionId(
           await this.db.deserializeDecrypt(
             data,
             true,
@@ -166,7 +167,7 @@ class ACL {
         } else {
           const permRef = (await this.db.get(
             this.aclPermsDbDomain,
-            makePermissionId(permId),
+            idUtils.toBuffer(permId),
           )) as Ref<Permission>;
           nodePerm = { [nodeId]: permRef.object };
           permIds[permId] = nodePerm;
@@ -226,7 +227,7 @@ class ACL {
           ops.push({
             type: 'put',
             domain: this.aclVaultsDbDomain,
-            key: vaultId,
+            key: idUtils.toBuffer(vaultId),
             value: nodeIds,
           });
         }
@@ -272,7 +273,7 @@ class ACL {
     return await this._transaction(async () => {
       const nodeIds = await this.db.get<Record<NodeId, null>>(
         this.aclVaultsDbDomain,
-        vaultId,
+        idUtils.toBuffer(vaultId),
       );
       if (nodeIds == null) {
         return {};
@@ -306,7 +307,7 @@ class ACL {
         for (const nodeId of nodeIdsGc) {
           delete nodeIds[nodeId];
         }
-        await this.db.put(this.aclVaultsDbDomain, vaultId, nodeIds);
+        await this.db.put(this.aclVaultsDbDomain, idUtils.toBuffer(vaultId), nodeIds);
       }
       return perms;
     });
@@ -339,14 +340,14 @@ class ACL {
           {
             type: 'put',
             domain: this.aclPermsDbDomain,
-            key: permId,
+            key: idUtils.toBuffer(permId),
             value: permRef,
           },
           {
             type: 'put',
             domain: this.aclNodesDbDomain,
             key: nodeId,
-            value: permId,
+            value: idUtils.toBuffer(permId),
             raw: true,
           },
         );
@@ -400,7 +401,7 @@ class ACL {
       const nodeIds =
         (await this.db.get<Record<NodeId, null>>(
           this.aclVaultsDbDomain,
-          vaultId,
+          idUtils.toBuffer(vaultId),
         )) ?? {};
       const permId = await this.db.get(
         this.aclNodesDbDomain,
@@ -438,7 +439,7 @@ class ACL {
         {
           type: 'put',
           domain: this.aclVaultsDbDomain,
-          key: vaultId,
+          key: idUtils.toBuffer(vaultId),
           value: nodeIds,
         },
       ];
@@ -455,7 +456,7 @@ class ACL {
     await this._transaction(async () => {
       const nodeIds = await this.db.get<Record<NodeId, null>>(
         this.aclVaultsDbDomain,
-        vaultId,
+        idUtils.toBuffer(vaultId),
       );
       if (nodeIds == null || !(nodeId in nodeIds)) {
         return;
@@ -504,35 +505,38 @@ class ACL {
   ): Promise<Array<DBOp>> {
     const ops: Array<DBOp> = [];
     const permIdCounts: Record<PermissionIdString, number> = {};
+    for await (const test of this.aclNodesDb.createKeyStream()) {
+    }
     for (const nodeId of nodeIds) {
-      const permId = await this.db.get(
+      const permIdBuffer = await this.db.get(
         this.aclNodesDbDomain,
         nodeId,
         true,
       );
-      if (permId == null) {
+      if (permIdBuffer == null) {
         continue;
       }
-      const permIdString = makePermissionIdString(permId);
-      permIdCounts[permIdString] = (permIdCounts[permIdString] ?? 0) + 1;
+      const permId = makePermissionId(permIdBuffer);
+      permIdCounts[permId] = (permIdCounts[permId] ?? 0) + 1;
     }
-    for (const permId in permIdCounts) {
+    for (const permIdString in permIdCounts) {
+      const permId = makePermissionId(idUtils.fromString(permIdString));
       const permRef = (await this.db.get(
         this.aclPermsDbDomain,
-        permId as PermissionIdString,
+        idUtils.toBuffer(permId),
       )) as Ref<Permission>;
       permRef.count = permRef.count - permIdCounts[permId];
       if (permRef.count === 0) {
         ops.push({
           type: 'del',
           domain: this.aclPermsDbDomain,
-          key: permId,
+          key: idUtils.toBuffer(permId),
         });
       } else {
         ops.push({
           type: 'put',
           domain: this.aclPermsDbDomain,
-          key: permId,
+          key: idUtils.toBuffer(permId),
           value: permRef,
         });
       }
@@ -545,7 +549,7 @@ class ACL {
     ops.push({
       domain: this.aclPermsDbDomain,
       type: 'put',
-      key: permId,
+      key: idUtils.toBuffer(permId),
       value: permRef,
     });
     for (const nodeId of nodeIds) {
@@ -553,7 +557,7 @@ class ACL {
         domain: this.aclNodesDbDomain,
         type: 'put',
         key: nodeId,
-        value: permId,
+        value: idUtils.toBuffer(permId),
         raw: true,
       });
     }
@@ -589,14 +593,14 @@ class ACL {
         {
           type: 'put',
           domain: this.aclPermsDbDomain,
-          key: permId,
+          key: idUtils.toBuffer(permId),
           value: permRef,
         },
         {
           type: 'put',
           domain: this.aclNodesDbDomain,
           key: nodeId,
-          value: permId,
+          value: idUtils.toBuffer(permId),
           raw: true,
         },
       );
@@ -670,7 +674,7 @@ class ACL {
     await this._transaction(async () => {
       const nodeIds = await this.db.get<Record<NodeId, null>>(
         this.aclVaultsDbDomain,
-        vaultId,
+        idUtils.toBuffer(vaultId),
       );
       if (nodeIds == null) {
         return;
@@ -702,7 +706,7 @@ class ACL {
       ops.push({
         type: 'del',
         domain: this.aclVaultsDbDomain,
-        key: vaultId,
+        key: idUtils.toBuffer(vaultId),
       });
       await this.db.batch(ops);
     });
@@ -809,7 +813,7 @@ class ACL {
   ): Promise<Array<DBOp>> {
     const nodeIds = await this.db.get<Record<NodeId, null>>(
       this.aclVaultsDbDomain,
-      vaultId,
+      idUtils.toBuffer(vaultId),
     );
     if (nodeIds == null) {
       throw new aclErrors.ErrorACLVaultIdMissing();
@@ -852,7 +856,7 @@ class ACL {
       ops.push({
         type: 'put',
         domain: this.aclVaultsDbDomain,
-        key: vaultIdJoin,
+        key: idUtils.toBuffer(vaultIdJoin),
         value: nodeIds,
       });
     }
@@ -864,7 +868,7 @@ class ACL {
       ops.push({
         type: 'put',
         domain: this.aclVaultsDbDomain,
-        key: vaultId,
+        key: idUtils.toBuffer(vaultId),
         value: nodeIds,
       });
     }

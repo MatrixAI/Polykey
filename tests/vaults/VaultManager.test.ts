@@ -1,7 +1,7 @@
 import type { NodeId, NodeAddress, NodeInfo } from '@/nodes/types';
 import type { ProviderId, IdentityId, IdentityInfo } from '@/identities/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
+import type { VaultId, VaultKey, VaultName } from "@/vaults/types";
 import type { ChainData } from '@/sigchain/types';
 
 import os, { type } from "os";
@@ -28,12 +28,15 @@ import { utils as vaultUtils } from '@/vaults';
 import { makeCrypto } from '../utils';
 import { assert } from 'console';
 import { FileSystemReadable, FileSystemWritable, Vault } from "@/vaults/types";
+import { makeVaultId } from '@/vaults/utils';
+import { utils as idUtils } from '@matrixai/id'
 
 describe('VaultManager', () => {
   const password = 'password';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  const nonExistantVaultId = makeVaultId(idUtils.fromString('DoesNotExist'));
   let dataDir: string;
   let vaultsPath: string;
   let vaultsKey: VaultKey;
@@ -143,7 +146,7 @@ describe('VaultManager', () => {
       // acl: acl,
       // gestaltGraph: gestaltGraph,
       fs,
-      logger,
+      logger: logger,
       fresh: true,
     });
   });
@@ -171,7 +174,7 @@ describe('VaultManager', () => {
     const theVault = await vaultManager.openVault(vault.vaultId);
     expect(vault).toBe(theVault);
     await expect(() =>
-      vaultManager.openVault('DoesNotExist' as VaultId),
+      vaultManager.openVault(nonExistantVaultId),
     ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
     const vaultNames = [
       'Vault1',
@@ -218,9 +221,9 @@ describe('VaultManager', () => {
     await vaultManager.renameVault(vault.vaultId, secondVaultName as VaultName);
     await expect(vaultManager.openVault(vault.vaultId)).resolves.toBe(vault);
     await expect(vaultManager.getVaultId(vaultName)).resolves.toBeUndefined();
-    await expect(vaultManager.getVaultId(secondVaultName)).resolves.toBe(vault.vaultId);
+    await expect(vaultManager.getVaultId(secondVaultName)).resolves.toStrictEqual(vault.vaultId);
     await expect(() =>
-      vaultManager.renameVault('DoesNotExist' as VaultId, 'DNE' as VaultName),
+      vaultManager.renameVault(nonExistantVaultId, 'DNE' as VaultName),
     ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
   });
   test('can delete a vault', async () => {
@@ -242,10 +245,10 @@ describe('VaultManager', () => {
     const vaultList = await vaultManager.listVaults();
     vaultList.forEach((vaultId, vaultName) => {
       vaultNames.push(vaultName);
-      vaultIds.push(vaultId);
+      vaultIds.push(vaultId.toString());
     });
     expect(vaultNames.sort()).toEqual([vaultName, secondVaultName].sort());
-    expect(vaultIds.sort()).toEqual([firstVault.vaultId, secondVault.vaultId].sort());
+    expect(vaultIds.sort()).toEqual([firstVault.vaultId.toString(), secondVault.vaultId.toString()].sort());
   });
   test('able to read and load existing metadata', async () => {
     const vaultNames = [
@@ -400,7 +403,7 @@ describe('VaultManager', () => {
     (await vaultManagerReloaded.listVaults()).forEach((_, vaultName) => vnAltered.push(vaultName));
     expect(vnAltered.sort()).toEqual(alteredVaultNames.sort());
     await vaultManagerReloaded.destroy();
-  });
+  }, global.defaultTimeout * 2);
   // test('able to update the default node repo to pull from', async () => {
   //   await vaultManager.start({});
   //   const vault1 = await vaultManager.createVault('MyTestVault');

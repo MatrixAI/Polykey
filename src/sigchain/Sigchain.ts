@@ -11,6 +11,7 @@ import * as sigchainErrors from "./errors";
 import * as claimsUtils from "../claims/utils";
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 import { createClaimIdGenerator, makeClaimIdString } from "@/sigchain/utils";
+import { utils as idUtils} from '@matrixai/id';
 
 interface Sigchain extends CreateDestroy {}
 @CreateDestroy()
@@ -212,7 +213,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: this.generateClaimId(),
+          key: idUtils.toBuffer(this.generateClaimId()),
           value: claim,
         },
         {
@@ -251,7 +252,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: this.generateClaimId(),
+          key: idUtils.toBuffer(this.generateClaimId()),
           value: claim,
         },
         {
@@ -389,7 +390,7 @@ class Sigchain {
     return await this._transaction(async () => {
       const claim = await this.db.get<ClaimEncoded>(
         this.sigchainClaimsDbDomain,
-        claimId,
+        idUtils.toBuffer(claimId),
       );
       if (claim == null) {
         throw new sigchainErrors.ErrorSigchainClaimUndefined();

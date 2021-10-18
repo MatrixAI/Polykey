@@ -1,4 +1,4 @@
-import type { VaultIdRaw } from '@/vaults/types';
+import type { VaultId } from '@/vaults/types';
 import type { NodeId } from '@/nodes/types';
 
 import fs from 'fs';
@@ -11,7 +11,7 @@ import * as vaultsUtils from '@/vaults/utils';
 import * as vaultsErrors from '@/vaults/errors';
 import Logger, { LogLevel } from '@matrixai/logger';
 import { makeNodeId } from "@/nodes/utils";
-import { isVaultIdRaw, makeVaultIdRaw, makeVaultId, } from "@/vaults/utils";
+import { isVaultId, makeVaultId, } from "@/vaults/utils";
 
 import { IdRandom } from "@matrixai/id";
 import * as uuid from 'uuid';
@@ -43,7 +43,7 @@ describe('Vaults utils', () => {
   test('VaultId type guard works', async () => {
     const nodeId = makeNodeId('A'.repeat(44));
     const vaultId = vaultsUtils.generateVaultId();
-    expect(isVaultIdRaw(vaultId)).toBeTruthy();
+    expect(isVaultId(vaultId)).toBeTruthy();
   })
   // TODO: this may be fully removed later. check if splitting is needed for vaultIds
   // test('vaultIds can be split', async () => {
@@ -128,20 +128,7 @@ describe('Vaults utils', () => {
   test('makeVaultId converts a buffer', async () => {
     const randomIdGen = new IdRandom();
     const idBuffer = Buffer.from(randomIdGen.get());
-    console.log(makeVaultIdRaw(idBuffer))
-  })
-  test('makeVaultString converts a VaultId', async () => {
-    const randomIdGen = new IdRandom();
-    const idBuffer = Buffer.from(randomIdGen.get());
-    const vaultId = makeVaultIdRaw(idBuffer)
-    makeVaultId(vaultId);
-  })
-  test('makeVaultId converts a string', async () => {
-    const randomIdGen = new IdRandom();
-    const idBuffer = Buffer.from(randomIdGen.get());
-    const vaultId = makeVaultIdRaw(idBuffer)
-    const vaultString = makeVaultId(vaultId);
-    makeVaultIdRaw(vaultString);
+    console.log(makeVaultId(idBuffer))
   })
 });
 

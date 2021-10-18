@@ -2,7 +2,7 @@ import type { Opaque } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
 import type { GeneralJWS, FlattenedJWSInput } from 'jose/types';
-import { RandomId, RawRandomId } from "../GenericIdTypes";
+import { Id, IdString } from '../GenericIdTypes';
 
 /**
  * A JSON-ified, decoded version of the ClaimEncoded type.
@@ -48,8 +48,8 @@ type SignatureData = {
  * differ. For example, the sigchain domain uses a lexicographic-integer as the
  * claim ID (representing the sequence number key of the claim).
  */
-type ClaimId = Opaque<'ClaimId', RawRandomId>;
-type ClaimIdString = Opaque<'ClaimIdString', RandomId>;
+type ClaimId = Opaque<'ClaimId', Id>;
+type ClaimIdString = Opaque<'ClaimIdString', IdString>;
 
 type ClaimIdGenerator = () => ClaimId;
 

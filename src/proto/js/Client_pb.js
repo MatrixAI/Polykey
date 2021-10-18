@@ -1732,7 +1732,7 @@ proto.clientInterface.VaultListMessage.prototype.toObject = function(opt_include
 proto.clientInterface.VaultListMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
     vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    vaultId: jspb.Message.getFieldWithDefault(msg, 2, "")
+    vaultId: msg.getVaultId_asB64()
   };
 
   if (includeInstance) {
@@ -1774,7 +1774,7 @@ proto.clientInterface.VaultListMessage.deserializeBinaryFromReader = function(ms
       msg.setVaultName(value);
       break;
     case 2:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
       msg.setVaultId(value);
       break;
     default:
@@ -1813,9 +1813,9 @@ proto.clientInterface.VaultListMessage.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getVaultId();
+  f = message.getVaultId_asU8();
   if (f.length > 0) {
-    writer.writeString(
+    writer.writeBytes(
       2,
       f
     );
@@ -1842,20 +1842,44 @@ proto.clientInterface.VaultListMessage.prototype.setVaultName = function(value) 
 
 
 /**
- * optional string vault_id = 2;
- * @return {string}
+ * optional bytes vault_id = 2;
+ * @return {!(string|Uint8Array)}
  */
 proto.clientInterface.VaultListMessage.prototype.getVaultId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
- * @param {string} value
+ * optional bytes vault_id = 2;
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {string}
+ */
+proto.clientInterface.VaultListMessage.prototype.getVaultId_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getVaultId()));
+};
+
+
+/**
+ * optional bytes vault_id = 2;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {!Uint8Array}
+ */
+proto.clientInterface.VaultListMessage.prototype.getVaultId_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getVaultId()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.clientInterface.VaultListMessage} returns this
  */
 proto.clientInterface.VaultListMessage.prototype.setVaultId = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
+  return jspb.Message.setProto3BytesField(this, 2, value);
 };
 
 
@@ -1918,7 +1942,7 @@ proto.clientInterface.VaultMessage.prototype.toObject = function(opt_includeInst
 proto.clientInterface.VaultMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
     vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    vaultId: jspb.Message.getFieldWithDefault(msg, 2, "")
+    vaultId: msg.getVaultId_asB64()
   };
 
   if (includeInstance) {
@@ -1960,7 +1984,7 @@ proto.clientInterface.VaultMessage.deserializeBinaryFromReader = function(msg, r
       msg.setVaultName(value);
       break;
     case 2:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
       msg.setVaultId(value);
       break;
     default:
@@ -1999,9 +2023,9 @@ proto.clientInterface.VaultMessage.serializeBinaryToWriter = function(message, w
       f
     );
   }
-  f = /** @type {string} */ (jspb.Message.getField(message, 2));
+  f = /** @type {!(string|Uint8Array)} */ (jspb.Message.getField(message, 2));
   if (f != null) {
-    writer.writeString(
+    writer.writeBytes(
       2,
       f
     );
@@ -2046,16 +2070,40 @@ proto.clientInterface.VaultMessage.prototype.hasVaultName = function() {
 
 
 /**
- * optional string vault_id = 2;
- * @return {string}
+ * optional bytes vault_id = 2;
+ * @return {!(string|Uint8Array)}
  */
 proto.clientInterface.VaultMessage.prototype.getVaultId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
- * @param {string} value
+ * optional bytes vault_id = 2;
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {string}
+ */
+proto.clientInterface.VaultMessage.prototype.getVaultId_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getVaultId()));
+};
+
+
+/**
+ * optional bytes vault_id = 2;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {!Uint8Array}
+ */
+proto.clientInterface.VaultMessage.prototype.getVaultId_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getVaultId()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.clientInterface.VaultMessage} returns this
  */
 proto.clientInterface.VaultMessage.prototype.setVaultId = function(value) {
@@ -8591,7 +8639,7 @@ proto.clientInterface.VaultShareTypeMessage.prototype.toObject = function(opt_in
  */
 proto.clientInterface.VaultShareTypeMessage.toObject = function(includeInstance, msg) {
   var f, obj = {
-    vaultId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    vaultId: msg.getVaultId_asB64(),
     vaultName: jspb.Message.getFieldWithDefault(msg, 2, ""),
     actionsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
   };
@@ -8631,7 +8679,7 @@ proto.clientInterface.VaultShareTypeMessage.deserializeBinaryFromReader = functi
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
       msg.setVaultId(value);
       break;
     case 2:
@@ -8671,9 +8719,9 @@ proto.clientInterface.VaultShareTypeMessage.prototype.serializeBinary = function
  */
 proto.clientInterface.VaultShareTypeMessage.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getVaultId();
+  f = message.getVaultId_asU8();
   if (f.length > 0) {
-    writer.writeString(
+    writer.writeBytes(
       1,
       f
     );
@@ -8696,20 +8744,44 @@ proto.clientInterface.VaultShareTypeMessage.serializeBinaryToWriter = function(m
 
 
 /**
- * optional string vault_id = 1;
- * @return {string}
+ * optional bytes vault_id = 1;
+ * @return {!(string|Uint8Array)}
  */
 proto.clientInterface.VaultShareTypeMessage.prototype.getVaultId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
- * @param {string} value
+ * optional bytes vault_id = 1;
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {string}
+ */
+proto.clientInterface.VaultShareTypeMessage.prototype.getVaultId_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getVaultId()));
+};
+
+
+/**
+ * optional bytes vault_id = 1;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {!Uint8Array}
+ */
+proto.clientInterface.VaultShareTypeMessage.prototype.getVaultId_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getVaultId()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.clientInterface.VaultShareTypeMessage} returns this
  */
 proto.clientInterface.VaultShareTypeMessage.prototype.setVaultId = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
+  return jspb.Message.setProto3BytesField(this, 1, value);
 };
 
 

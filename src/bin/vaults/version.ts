@@ -5,7 +5,7 @@ import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
 import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
-import { isVaultId } from "../../vaults/utils";
+// import { isVaultId } from "../../vaults/utils";
 
 const version = createCommand('version', {
   description: {
@@ -44,8 +44,10 @@ version.action(async (vault, versionId, options) => {
     const vaultsVersionMessage = new clientPB.VaultsVersionMessage();
 
     // check if vault ID or Name was provided.
-    if(isVaultId(vault)) vaultMessage.setVaultId(vault);
-    else vaultMessage.setVaultName(vault);
+    // FIXME, we can't use this method anymore.
+    throw Error('Need to fix this.');
+    // if(isVaultId(vault)) vaultMessage.setVaultId(vault);
+    // else vaultMessage.setVaultName(vault);
 
     vaultsVersionMessage.setVault(vaultMessage);
     vaultsVersionMessage.setVersionId(versionId);

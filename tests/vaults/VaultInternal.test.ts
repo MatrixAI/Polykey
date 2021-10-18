@@ -1,5 +1,5 @@
 import type { NodeId } from '@/nodes/types';
-import type { Vault, VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
+import type { Vault, VaultId, VaultKey, VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
@@ -8,7 +8,7 @@ import git from 'isomorphic-git';
 import { VaultInternal } from '@/vaults';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { generateVaultId, generateVaultKey } from '@/vaults/utils';
+import { generateVaultId, generateVaultKey, makeVaultIdPretty } from '@/vaults/utils';
 import { getRandomBytes } from '@/keys/utils';
 import { EncryptedFS } from 'encryptedfs';
 import * as vaultsErrors from '@/vaults/errors';
@@ -36,7 +36,7 @@ describe('VaultInternal', () => {
     dbPath = path.join(dataDir, 'db');
     await fs.promises.mkdir(dbPath);
     vaultId = generateVaultId();
-    vaultPath = path.join(vaultId, 'contents');
+    vaultPath = path.join(makeVaultIdPretty(vaultId), 'contents');
     efsRoot = await EncryptedFS.createEncryptedFS({
       dbPath,
       dbKey,

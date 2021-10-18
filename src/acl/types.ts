@@ -1,11 +1,11 @@
 import type { Opaque } from '../types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultActions, VaultId } from "../vaults/types";
-import { RandomId, RawRandomId } from "../GenericIdTypes";
+import { Id, IdString } from '../GenericIdTypes';
 
-type PermissionId = Buffer;//Opaque<'PermissionId', RawRandomId>;
+type PermissionId = Opaque<'PermissionId', Id>;
 
-type PermissionIdString = Opaque<'PermissionIdString', RandomId>;
+type PermissionIdString = Opaque<'PermissionIdString', IdString>;
 
 type Permission = {
   gestalt: GestaltActions;

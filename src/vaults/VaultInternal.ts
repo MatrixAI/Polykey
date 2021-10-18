@@ -4,12 +4,12 @@ import type {
   FileOptions,
   SecretList,
   SecretName,
-  VaultIdRaw,
+  VaultId,
   VaultKey,
   VaultName,
   FileSystemReadable,
   FileSystemWritable,
-  CommitLog, VaultId
+  CommitLog,
 } from "./types";
 import type { NodeId } from '../nodes/types';
 import type { WorkerManager } from '../workers';
@@ -31,7 +31,7 @@ import * as gitUtils from '../git/utils';
 import * as vaultsErrors from './errors';
 import * as gitErrors from '../git/errors';
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
-import { makeVaultId } from "./utils";
+import { makeVaultIdPretty } from './utils';
 
 const headTag = 'end';
 
@@ -66,23 +66,23 @@ class VaultInternal {
       // Creating a new vault.
       await git.init({
         fs: efsRoot,
-        dir: path.join(vaultId, 'contents'),
-        gitdir: path.join(vaultId, '.git'),
+        dir: path.join(makeVaultIdPretty(vaultId), 'contents'),
+        gitdir: path.join(makeVaultIdPretty(vaultId), '.git'),
       });
       const workingDir = await git.commit({
         fs: efsRoot,
-        dir: path.join(vaultId, 'contents'),
-        gitdir: path.join(vaultId, '.git'),
+        dir: path.join(makeVaultIdPretty(vaultId), 'contents'),
+        gitdir: path.join(makeVaultIdPretty(vaultId), '.git'),
         author: {
-          name: vaultId,
+          name: makeVaultIdPretty(vaultId),
         },
         message: 'Initial Commit',
       });
       await efsRoot.writeFile(
-        path.join(vaultId, '.git', 'packed-refs'),
+        path.join(makeVaultIdPretty(vaultId), '.git', 'packed-refs'),
         '# pack-refs with: peeled fully-peeled sorted',
       );
-      await efsRoot.writeFile(path.join(vaultId, '.git', 'workingDir'), workingDir);
+      await efsRoot.writeFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), workingDir);
       const vault = new VaultInternal({
         vaultId,
         efsRoot,
@@ -90,11 +90,11 @@ class VaultInternal {
         workingDir,
         logger,
       });
-      logger.info(`Initialising vault at '${vaultId}'`);
+      logger.info(`Initialising vault at '${makeVaultIdPretty(vaultId)}'`);
       return vault;
     } else {
       // Loading an existing vault.
-      const workingDir = (await efsRoot.readFile(path.join(vaultId, '.git', 'workingDir'), {
+      const workingDir = (await efsRoot.readFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), {
         encoding: 'utf8',
       })) as string;
       const vault = new VaultInternal({
@@ -104,7 +104,7 @@ class VaultInternal {
         workingDir,
         logger,
       });
-      logger.info(`Starting vault at '${vaultId}'`);
+      logger.info(`Starting vault at '${makeVaultIdPretty(vaultId)}'`);
       return vault;
     }
 
@@ -123,8 +123,8 @@ class VaultInternal {
     workingDir: string;
     logger?: Logger;
   }) {
-    this.baseDir = path.join(vaultId, 'contents');
-    this.gitDir = path.join(vaultId, '.git');
+    this.baseDir = path.join(makeVaultIdPretty(vaultId), 'contents');
+    this.gitDir = path.join(makeVaultIdPretty(vaultId), '.git');
     this.vaultId = vaultId;
     this._efsRoot = efsRoot;
     this._efsVault = efsVault;
@@ -137,13 +137,13 @@ class VaultInternal {
     const release = await this._lock.acquire();
     try {
       await this._efsRoot.writeFile(
-        path.join(this.vaultId, '.git', 'workingDirectory'),
+        path.join(makeVaultIdPretty(this.vaultId), '.git', 'workingDirectory'),
         this._workingDir,
       );
     } finally {
       release();
     }
-    this._logger.info(`Destroying vault at '${this.vaultId}'`);
+    this._logger.info(`Destroying vault at '${makeVaultIdPretty(this.vaultId)}'`);
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
@@ -196,7 +196,7 @@ class VaultInternal {
           dir: this.baseDir,
           gitdir: this.gitDir,
           author: {
-            name: this.vaultId,
+            name: makeVaultIdPretty(this.vaultId),
           },
           message: message.toString(),
         });

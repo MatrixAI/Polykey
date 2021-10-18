@@ -5,8 +5,9 @@ import type {
   VaultMap,
   VaultPermissions,
   VaultKey,
-  VaultList, Vault
-} from "./types";
+  VaultList,
+  Vault,
+} from './types';
 import type { FileSystem } from '../types';
 import type { WorkerManager } from '../workers';
 import type { NodeId } from '../nodes/types';
@@ -35,6 +36,8 @@ import { errors as dbErrors } from '@matrixai/db';
 import { EncryptedFS, POJO } from 'encryptedfs';
 import VaultInternal from './VaultInternal';
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
+import { utils as idUtils } from '@matrixai/id';
+import { makeVaultId } from './utils';
 
 interface VaultManager extends CreateDestroy {}
 @CreateDestroy()
@@ -195,7 +198,7 @@ class VaultManager {
   ): Promise<VaultName | undefined> {
     const vaultMeta = await this.db.get<POJO>(
       this.vaultsNamesDbDomain,
-      vaultId,
+      idUtils.toBuffer(vaultId),
     );
     if (vaultMeta == null) throw new vaultsErrors.ErrorVaultUndefined();
     return vaultMeta.name;
@@ -214,9 +217,9 @@ class VaultManager {
       const lock = new Mutex();
       this.vaultsMap.set(vaultId, { lock });
       return await this._transaction(async () => {
-        await this.db.put(this.vaultsNamesDbDomain, vaultId, { name: vaultName });
-        await this.efs.mkdir(path.join(vaultId, 'contents'), { recursive: true });
-        const efs = await this.efs.chroot(path.join(vaultId, 'contents'));
+        await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName });
+        await this.efs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), { recursive: true });
+        const efs = await this.efs.chroot(path.join(idUtils.toString(vaultId), 'contents'));
         await efs.start();
         const vault = await VaultInternal.create({
           vaultId,
@@ -242,10 +245,10 @@ class VaultManager {
       if (!vaultName) return;
       await this.db.del(
         this.vaultsNamesDbDomain,
-        vaultId,
+        idUtils.toBuffer(vaultId),
       );
       this.vaultsMap.delete(vaultId);
-      await this.efs.rmdir(vaultId, { recursive: true });
+      await this.efs.rmdir(idUtils.toString(vaultId), { recursive: true });
     }, [vaultId]);
   }
 
@@ -272,7 +275,7 @@ class VaultManager {
       const dbId = (o as any).key;
       const vaultMeta = await this.db.deserializeDecrypt<POJO>(dbMeta, false);
       if (!nodeId) {
-        vaults.set(vaultMeta.name, dbId.toString());
+        vaults.set(vaultMeta.name, makeVaultId(dbId));
       } else {
         // TODO: Handle what other nodes can see with their permissions
       }
@@ -286,10 +289,10 @@ class VaultManager {
     newVaultName: VaultName,
   ): Promise<void> {
     await this._transaction(async () => {
-      const meta = await this.db.get<POJO>(this.vaultsNamesDbDomain, vaultId);
+      const meta = await this.db.get<POJO>(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId));
       if (!meta) throw new vaultsErrors.ErrorVaultUndefined();
       meta.name = newVaultName;
-      await this.db.put(this.vaultsNamesDbDomain, vaultId, meta);
+      await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), meta);
     }, [vaultId]);
   }
 
@@ -300,7 +303,7 @@ class VaultManager {
       const dbId = (o as any).key;
       const vaultMeta = await this.db.deserializeDecrypt<POJO>(dbMeta, false);
       if (vaultName === vaultMeta.name) {
-        return dbId.toString();
+        return makeVaultId(dbId);
       }
     }
   }
@@ -308,7 +311,7 @@ class VaultManager {
   protected async generateVaultId(): Promise<VaultId> {
     let vaultId = vaultsUtils.generateVaultId();
     let i = 0;
-    while (await this.efs.exists(vaultId)) {
+    while (await this.efs.exists(idUtils.toString(vaultId))) {
       i++;
       if (i > 50) {
         throw new vaultsErrors.ErrorCreateVaultId(
@@ -336,7 +339,7 @@ class VaultManager {
         if (vault != null) {
           return vault;
         }
-        const efs = await this.efs.chroot(path.join(vaultId, 'contents'));
+        const efs = await this.efs.chroot(path.join(idUtils.toString(vaultId), 'contents'));
         await efs.start();
         vault = await VaultInternal.create({
           vaultId,
@@ -357,7 +360,7 @@ class VaultManager {
       let release;
       try {
         release = await lock.acquire();
-        const efs = await this.efs.chroot(path.join(vaultId, 'contents'));
+        const efs = await this.efs.chroot(path.join(idUtils.toString(vaultId), 'contents'));
         await efs.start();
         vault = await VaultInternal.create({
           vaultId,
