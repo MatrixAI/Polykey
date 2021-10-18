@@ -182,11 +182,7 @@ async function* requestInfo(
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
   const request = new agentPB.InfoRequest();
-<<<<<<< HEAD
-  request.setVaultId(vaultId);
-=======
-  request.setId(vaultNameOrId);
->>>>>>> Vault sharing and cloning
+  request.setVaultId(vaultNameOrId);
   const response = client.vaultsGitInfoGet(request);
 
   for await (const resp of response) {
