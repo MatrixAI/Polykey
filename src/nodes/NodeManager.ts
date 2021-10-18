@@ -147,9 +147,7 @@ class NodeManager {
 
   public async stop() {
     this.logger.info('Stopping Node Manager');
-    for (const n in this.connections) {
-      const targetNodeId = n as NodeId;
-      const connLock = this.connections.get(targetNodeId);
+    for (const [targetNodeId, connLock] of this.connections) {
       if (connLock?.connection != null) {
         await connLock.connection.stop();
       }
