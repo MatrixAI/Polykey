@@ -377,7 +377,6 @@ describe('NodeManager', () => {
       await y.sigchain.clearDB();
     });
 
-    // FIXME: this test is leaving something open and causing the test file to not fully finish.
     test('can successfully cross sign a claim', async () => {
       // Make the call to initialise the cross-signing process:
       // 2. X <- sends its intermediary signed claim <- Y
