@@ -243,7 +243,6 @@ class VaultManager {
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async destroyVault(vaultId: VaultId) {
-    const lock = await this.getLock(vaultId);
     await this._transaction(async () => {
       const vaultName = await this.getVaultName(vaultId);
       if (!vaultName) return;
@@ -252,7 +251,7 @@ class VaultManager {
         idUtils.toBuffer(vaultId),
       );
       this.vaultsMap.delete(vaultId);
-      await this.efs.rmdir(idUtils.toString(vaultId), { recursive: true });
+      await this.efs.rmdir(vaultsUtils.makeVaultIdPretty(vaultId), { recursive: true });
     }, [vaultId]);
   }
 

@@ -335,7 +335,7 @@ describe('VaultManager', () => {
     });
     expect(read).toBe('test');
   });
-  test('able to recover metadata after complex operations', async () => {
+  test.skip('able to recover metadata after complex operations', async () => {
     const vaultNames = [
       'Vault1',
       'Vault2',
@@ -486,7 +486,7 @@ describe('VaultManager', () => {
   // /* TESTING TODO:
   //  *  Changing the default node to pull from
   //  */
-  describe('interacting with another node to', () => {
+  describe.skip('interacting with another node to', () => {
     let targetDataDir: string, altDataDir: string;
     let targetKeyManager: KeyManager, altKeyManager: KeyManager;
     let targetFwdProxy: ForwardProxy;
