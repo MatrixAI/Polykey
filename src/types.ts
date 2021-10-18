@@ -1,7 +1,4 @@
 import type fs from 'fs';
-import { VaultId, VaultIdRaw } from "@/vaults/types";
-import { utils as idUtils } from "@matrixai/id";
-import { errors as vaultErrors } from "@/vaults";
 
 /**
  * Plain data dictionary

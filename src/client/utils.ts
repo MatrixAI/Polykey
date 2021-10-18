@@ -1,4 +1,4 @@
-import type { VaultId, VaultIdRaw, VaultName } from "../vaults/types";
+import type { VaultId, VaultName } from "../vaults/types";
 import type { Session } from '../sessions';
 import type { VaultManager } from '../vaults';
 import type { SessionToken } from '../sessions/types';
@@ -6,8 +6,8 @@ import type { SessionToken } from '../sessions/types';
 import * as grpc from '@grpc/grpc-js';
 import * as clientErrors from '../client/errors';
 import { VaultMessage } from '../proto/js/Client_pb';
-import { makeVaultId } from "../vaults/utils";
 import { ErrorInvalidVaultId, ErrorVaultUndefined } from "../vaults/errors";
+import { makeVaultId } from '@/vaults/utils';
 
 async function parseVaultInput(
   vaultMessage: VaultMessage,
@@ -22,7 +22,7 @@ async function parseVaultInput(
       return vaultId;
     }
     case VaultMessage.NameOrIdCase.VAULT_ID: {
-      return makeVaultId(vaultMessage.getVaultId());
+      return makeVaultId(vaultMessage.getVaultId_asU8());
     }
     case VaultMessage.NameOrIdCase.NAME_OR_ID_NOT_SET:
     default:

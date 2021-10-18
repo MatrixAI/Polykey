@@ -739,7 +739,7 @@ proto.agentInterface.InfoRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.agentInterface.InfoRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, "")
+    vaultId: msg.getVaultId_asB64()
   };
 
   if (includeInstance) {
@@ -777,8 +777,8 @@ proto.agentInterface.InfoRequest.deserializeBinaryFromReader = function(msg, rea
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setId(value);
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      msg.setVaultId(value);
       break;
     default:
       reader.skipField();
@@ -809,9 +809,9 @@ proto.agentInterface.InfoRequest.prototype.serializeBinary = function() {
  */
 proto.agentInterface.InfoRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getId();
+  f = message.getVaultId_asU8();
   if (f.length > 0) {
-    writer.writeString(
+    writer.writeBytes(
       1,
       f
     );
@@ -820,20 +820,44 @@ proto.agentInterface.InfoRequest.serializeBinaryToWriter = function(message, wri
 
 
 /**
- * optional string id = 1;
- * @return {string}
+ * optional bytes vault_id = 1;
+ * @return {!(string|Uint8Array)}
  */
-proto.agentInterface.InfoRequest.prototype.getId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+proto.agentInterface.InfoRequest.prototype.getVaultId = function() {
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
- * @param {string} value
+ * optional bytes vault_id = 1;
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {string}
+ */
+proto.agentInterface.InfoRequest.prototype.getVaultId_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getVaultId()));
+};
+
+
+/**
+ * optional bytes vault_id = 1;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getVaultId()`
+ * @return {!Uint8Array}
+ */
+proto.agentInterface.InfoRequest.prototype.getVaultId_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getVaultId()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
  * @return {!proto.agentInterface.InfoRequest} returns this
  */
-proto.agentInterface.InfoRequest.prototype.setId = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
+proto.agentInterface.InfoRequest.prototype.setVaultId = function(value) {
+  return jspb.Message.setProto3BytesField(this, 1, value);
 };
 
 

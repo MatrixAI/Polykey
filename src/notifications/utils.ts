@@ -7,7 +7,7 @@ import type {
 } from "./types";
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
-import type { VaultIdRaw } from '../vaults/types';
+import type { VaultId } from '../vaults/types';
 
 import mlts from 'monotonic-lexicographic-timestamp';
 import EmbeddedJWK from 'jose/jwk/embedded';
@@ -25,24 +25,22 @@ import {
 } from './schema';
 import * as notificationsErrors from './errors';
 import { IdSortable } from "@matrixai/id";
-import { isRawRandomId, makeRawRandomId } from "@/GenericIdTypes";
+import { isId, makeId } from "@/GenericIdTypes";
 import { toArrayBuffer } from "@matrixai/db/dist/utils";
 
 function isNotificationId(arg: any):arg is NotificationId {
-  return isRawRandomId<NotificationId>(arg);
+  return isId<NotificationId>(arg);
 }
 
 function makeNotificationId(arg: any){
-  return makeRawRandomId<NotificationId>(arg);
+  return makeId<NotificationId>(arg);
 }
 
 function CreateNotificationIdGenerator(lastId?: NotificationId): NotificationIdGenerator{
-  let lastId_: ArrayBuffer | undefined;
-  if(lastId != null) lastId_ = toArrayBuffer(lastId);
   const idSortableGenerator = new IdSortable({
-    lastId: lastId_,
+    lastId,
   });
-  return (): NotificationId => makeNotificationId(Buffer.from(idSortableGenerator.get()));
+  return (): NotificationId => makeNotificationId(idSortableGenerator.get());
 }
 
 const timestamp = mlts();
@@ -57,7 +55,7 @@ function constructGestaltInviteMessage(nodeId: NodeId): string {
 /**
  * Dummy for now
  */
-function constructVaultShareMessage(vaultId: VaultIdRaw): string {
+function constructVaultShareMessage(vaultId: VaultId): string {
   return `xxx has shared their vault with ID ${vaultId} with you.`;
 }
 

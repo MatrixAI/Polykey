@@ -1,7 +1,7 @@
 import type { NodeId, NodeInfo, NodeAddress } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
-import type { VaultActions, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
+import type { VaultActions, VaultId, VaultKey, VaultName } from "@/vaults/types";
 import type { NotificationData } from '@/notifications/types';
 
 import fs from 'fs';
@@ -23,7 +23,7 @@ import { AgentService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
 import { makeCrypto } from '../utils';
-import { generateVaultId, makeVaultId } from "@/vaults/utils";
+import { generateVaultId, makeVaultIdPretty } from '@/vaults/utils';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -256,7 +256,7 @@ describe('NotificationsManager', () => {
     });
 
     await senderNodeManager.stop();
-    await fwdProxy.stop(); // FIXME: why is this broken?
+    // await fwdProxy.stop(); // FIXME: why is this broken?
     await senderACL.destroy();
     await senderDb.stop();
     await senderKeyManager.destroy();
@@ -526,7 +526,7 @@ describe('NotificationsManager', () => {
 
     const notificationData: NotificationData = {
       type: 'VaultShare',
-      vaultId: generateVaultId(),
+      vaultId: generateVaultId().toString(),
       vaultName: 'vaultName' as VaultName,
       actions: {
         clone: null,

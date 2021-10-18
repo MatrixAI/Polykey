@@ -4,7 +4,7 @@ import type { ClaimId, ClaimIdString } from "../claims/types";
 
 import * as claimsUtils from '../claims/utils';
 import { IdSortable } from "@matrixai/id";
-import { isRandomId, isRawRandomId, makeRandomId, makeRawRandomId } from "@/GenericIdTypes";
+import { isIdString, isId, makeIdString, makeId } from "@/GenericIdTypes";
 import { NodeId } from "../nodes/types";
 import { toArrayBuffer } from "@matrixai/db/dist/utils";
 
@@ -33,25 +33,25 @@ async function verifyChainData(
 }
 
 function isClaimId(arg): arg is ClaimId {
-  return isRawRandomId<ClaimId>(arg);
+  return isId<ClaimId>(arg);
 }
 
 function makeClaimId(arg) {
-  return makeRawRandomId<ClaimId>(arg);
+  return makeId<ClaimId>(arg);
 }
 
 function isClaimIdString(arg): arg is ClaimIdString {
-  return isRandomId<ClaimIdString>(arg);
+  return isIdString<ClaimIdString>(arg);
 }
 
 function makeClaimIdString(arg) {
-  return makeRandomId<ClaimIdString>(arg);
+  return makeIdString<ClaimIdString>(arg);
 }
 
 function createClaimIdGenerator(nodeId: NodeId, lastClaimId?: ClaimId) {
   const generator = new IdSortable({
-    lastId: (lastClaimId != null) ? toArrayBuffer(lastClaimId) : lastClaimId,
-    nodeId: toArrayBuffer(Buffer.from(nodeId)),
+    lastId: lastClaimId,
+    nodeId: Buffer.from(nodeId),
   });
   return () => makeClaimId(Buffer.from(generator.get()));
 }

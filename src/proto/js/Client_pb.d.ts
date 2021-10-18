@@ -124,8 +124,10 @@ export namespace SessionTokenMessage {
 export class VaultListMessage extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): VaultListMessage;
-    getVaultId(): string;
-    setVaultId(value: string): VaultListMessage;
+    getVaultId(): Uint8Array | string;
+    getVaultId_asU8(): Uint8Array;
+    getVaultId_asB64(): string;
+    setVaultId(value: Uint8Array | string): VaultListMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultListMessage.AsObject;
@@ -140,7 +142,7 @@ export class VaultListMessage extends jspb.Message {
 export namespace VaultListMessage {
     export type AsObject = {
         vaultName: string,
-        vaultId: string,
+        vaultId: Uint8Array | string,
     }
 }
 
@@ -153,8 +155,10 @@ export class VaultMessage extends jspb.Message {
 
     hasVaultId(): boolean;
     clearVaultId(): void;
-    getVaultId(): string;
-    setVaultId(value: string): VaultMessage;
+    getVaultId(): Uint8Array | string;
+    getVaultId_asU8(): Uint8Array;
+    getVaultId_asB64(): string;
+    setVaultId(value: Uint8Array | string): VaultMessage;
 
     getNameOrIdCase(): VaultMessage.NameOrIdCase;
 
@@ -171,7 +175,7 @@ export class VaultMessage extends jspb.Message {
 export namespace VaultMessage {
     export type AsObject = {
         vaultName: string,
-        vaultId: string,
+        vaultId: Uint8Array | string,
     }
 
     export enum NameOrIdCase {
@@ -1116,8 +1120,10 @@ export namespace GeneralTypeMessage {
 }
 
 export class VaultShareTypeMessage extends jspb.Message { 
-    getVaultId(): string;
-    setVaultId(value: string): VaultShareTypeMessage;
+    getVaultId(): Uint8Array | string;
+    getVaultId_asU8(): Uint8Array;
+    getVaultId_asB64(): string;
+    setVaultId(value: Uint8Array | string): VaultShareTypeMessage;
     getVaultName(): string;
     setVaultName(value: string): VaultShareTypeMessage;
     clearActionsList(): void;
@@ -1137,7 +1143,7 @@ export class VaultShareTypeMessage extends jspb.Message {
 
 export namespace VaultShareTypeMessage {
     export type AsObject = {
-        vaultId: string,
+        vaultId: Uint8Array | string,
         vaultName: string,
         actionsList: Array<string>,
     }

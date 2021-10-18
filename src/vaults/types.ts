@@ -5,14 +5,14 @@ import type { MutexInterface } from 'async-mutex';
 import type { Callback, Path } from 'encryptedfs/dist/types';
 import type { FdIndex } from 'encryptedfs/dist/fd/types';
 import { EncryptedFS, permissions } from 'encryptedfs';
-import { RawRandomId, RandomId } from "../GenericIdTypes";
+import { Id, IdString } from '../GenericIdTypes';
 
 /**
  * Randomly generated vault ID for each new vault
  */
-type VaultIdRaw = Opaque<'VaultIdRaw', RawRandomId>;
+type VaultId = Opaque<'VaultId', Id>;
 
-type VaultId = Opaque<'VaultId', RandomId>;
+type VaultIdPretty = Opaque<'VaultIdPretty', IdString>;
 
 type VaultName = Opaque<'VaultName', string>;
 
@@ -57,17 +57,17 @@ type FileOptions = {
 type VaultMapOp_ =
   | {
       domain: 'vaults';
-      key: VaultIdRaw;
+      key: VaultId;
       value: Buffer;
     }
   | {
       domain: 'names';
       key: string;
-      value: VaultIdRaw;
+      value: VaultId;
     }
   | {
       domain: 'links';
-      key: VaultIdRaw;
+      key: VaultId;
       value: string;
     };
 
@@ -177,8 +177,8 @@ type CommitLog = {
 }
 
 export type {
-  VaultIdRaw,
   VaultId,
+  VaultIdPretty,
   VaultAction,
   VaultKey,
   VaultName,

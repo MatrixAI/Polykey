@@ -1,5 +1,12 @@
 import type { EncryptedFS } from 'encryptedfs';
-import type { VaultIdRaw, VaultId, VaultKey, VaultList, VaultName, FileSystemReadable } from "./types";
+import type {
+  VaultId,
+  VaultKey,
+  VaultList,
+  VaultName,
+  FileSystemReadable,
+  VaultIdPretty
+} from './types';
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 
@@ -17,14 +24,14 @@ import { GRPCClientAgent } from '../agent';
 
 import * as keysUtils from '../keys/utils';
 import { errors as vaultErrors } from './';
-import { isRandomId, isRawRandomId, makeRandomId, makeRawRandomId } from "../GenericIdTypes";
+import { isIdString, isId, makeIdString, makeId, stringToId, idToString } from '../GenericIdTypes';
 
 async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
   return await keysUtils.generateKey(bits) as VaultKey;
 }
 
-function isVaultIdRaw(arg: any) {
-  return isRawRandomId<VaultIdRaw>(arg);
+function isVaultId(arg: any) {
+  return isId<VaultId>(arg);
 }
 
 /**
@@ -32,23 +39,23 @@ function isVaultIdRaw(arg: any) {
  * This will take a multibase string of the ID or the raw Buffer of the ID.
  * @param arg - The variable we wish to convert
  * @throws vaultErrors.ErrorInvalidVaultId  if the arg can't be converted into a VaultId
- * @returns VaultIdRaw
+ * @returns VaultId
  */
-function makeVaultIdRaw(arg: any): VaultIdRaw {
-  return makeRawRandomId<VaultIdRaw>(arg);
-}
-
-function isVaultId(arg: any): arg is VaultId {
-  return isRandomId<VaultId>(arg);
-}
-
 function makeVaultId(arg: any): VaultId {
-  return makeRandomId<VaultId>(arg);
+  return makeId<VaultId>(arg);
+}
+
+function isVaultItPretty(arg: any): arg is VaultIdPretty {
+  return isIdString<VaultIdPretty>(arg);
+}
+
+function makeVaultIdPretty(arg: any): VaultIdPretty {
+  return makeIdString<VaultIdPretty>(arg);
 }
 
 const randomIdGenerator = new IdRandom();
 function generateVaultId(): VaultId {
-  return makeVaultId(Buffer.from(randomIdGenerator.get()) as VaultIdRaw);
+  return makeVaultId(randomIdGenerator.get());
 }
 
 async function fileExists(fs: FileSystem, path: string): Promise<boolean> {
@@ -126,7 +133,7 @@ async function* readdirRecursivelyEFS2(
  * Searches a list of vaults for the given vault Id and associated name
  * @throws If the vault Id does not exist
  */
-function searchVaultName(vaultList: VaultList, vaultId: VaultIdRaw): VaultName {
+function searchVaultName(vaultList: VaultList, vaultId: VaultId): VaultName {
   let vaultName: VaultName | undefined;
 
   // Search each element in the list of vaults
@@ -149,6 +156,7 @@ function searchVaultName(vaultList: VaultList, vaultId: VaultIdRaw): VaultName {
 /**
  * Creates a GitRequest object from the desired node connection.
  * @param client GRPC connection to desired node
+ * @param nodeId
  */
 async function constructGitHandler(
   client: GRPCClientAgent,
@@ -165,7 +173,7 @@ async function constructGitHandler(
 
 /**
  * Requests remote info from the connected node for the named vault.
- * @param vaultName Name of the desired vault
+ * @param vaultId ID of the desired vault
  * @param client A connection object to the node
  * @returns Async Generator of Uint8Arrays representing the Info Response
  */
@@ -174,7 +182,7 @@ async function* requestInfo(
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
   const request = new agentPB.InfoRequest();
-  request.setId(vaultId);
+  request.setVaultId(vaultId);
   const response = client.vaultsGitInfoGet(request);
 
   for await (const resp of response) {
@@ -184,7 +192,7 @@ async function* requestInfo(
 
 /**
  * Requests a pack from the connected node for the named vault
- * @param vaultName name of vault
+ * @param vaultId ID of vault
  * @param body contains the pack request
  * @param client A connection object to the node
  * @returns AsyncGenerator of Uint8Arrays representing the Pack Response
@@ -197,8 +205,7 @@ async function* requestPack(
   const responseBuffers: Array<Buffer> = [];
 
   const meta = new grpc.Metadata();
-  // FIXME make it a VaultIdReadable
-  meta.set('vault-id', makeVaultId(vaultId));
+  meta.set('vault-id', vaultId.toString());
 
   const stream = client.vaultsGitPackGet(meta);
   const write = promisify(stream.write).bind(stream);
@@ -222,6 +229,7 @@ async function* requestPack(
 /**
  * Requests the vault names from the connected node.
  * @param client A connection object to the node
+ * @param nodeId
  */
 async function requestVaultNames(
   client: GRPCClientAgent,
@@ -240,10 +248,10 @@ async function requestVaultNames(
 }
 
 export {
-  isVaultIdRaw,
   isVaultId,
-  makeVaultIdRaw,
+  isVaultItPretty,
   makeVaultId,
+  makeVaultIdPretty,
   generateVaultKey,
   generateVaultId,
   fileExists,

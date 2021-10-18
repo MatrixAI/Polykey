@@ -9,6 +9,7 @@ import { NodeAddress } from '@/nodes/types';
 import * as utils from './utils';
 import { makeNodeId } from '@/nodes/utils';
 import { VaultName } from "@/vaults/types";
+import { makeVaultIdPretty } from '@/vaults/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -334,7 +335,7 @@ describe.skip('CLI vaults', () => {
           '-ni',
           targetNodeId as string,
           '-vi',
-          vault.vaultId,
+          makeVaultIdPretty(vault.vaultId),
         ];
 
         // Vault does not exist on the source PolykeyAgent so the pull command throws an error which

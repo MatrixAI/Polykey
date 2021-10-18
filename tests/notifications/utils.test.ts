@@ -4,7 +4,7 @@ import type {
   Notification,
   NotificationData,
 } from '@/notifications/types';
-import type { VaultActions, VaultId, VaultIdRaw, VaultName } from "@/vaults/types";
+import type { VaultActions, VaultId, VaultName } from "@/vaults/types";
 
 import jwtVerify from 'jose/jwt/verify';
 import { createPublicKey } from 'crypto';
@@ -16,9 +16,12 @@ import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';
 import { CreateNotificationIdGenerator } from "@/notifications/utils";
 import { sleep } from "@/utils";
+import { makeVaultId } from '@/vaults/utils';
+import { utils as idUtils } from '@matrixai/id';
 
 describe('Notifications utils', () => {
   const nodeId = 'SomeRandomNodeId' as NodeId;
+  const vaultId = makeVaultId(idUtils.fromString('vaultIdxxxxxxxxx')).toString();
 
   test('generates notification ids', async () => {
     const generator =  CreateNotificationIdGenerator();
@@ -64,7 +67,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -147,7 +150,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -239,7 +242,7 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
@@ -296,7 +299,7 @@ describe('Notifications utils', () => {
     const notification4 = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: 'clone + pull',
       },

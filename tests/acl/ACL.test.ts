@@ -1,6 +1,6 @@
 import type { Permission } from '@/acl/types';
 import type { NodeId } from '@/nodes/types';
-import type { VaultId } from "@/vaults/types";
+import type { VaultId } from '@/vaults/types';
 
 import os from 'os';
 import path from 'path';
@@ -10,6 +10,8 @@ import { ACL, errors as aclErrors } from '@/acl';
 import { KeyManager } from '@/keys';
 import { DB } from '@matrixai/db';
 import { makeCrypto } from '../utils';
+import { utils as idUtils } from '@matrixai/id';
+import { makeVaultId } from '@/vaults/utils';
 
 describe('ACL', () => {
   const password = 'password';
@@ -39,10 +41,10 @@ describe('ACL', () => {
       crypto: makeCrypto(keyManager),
     });
     await db.start();
-    vaultId1 = 'zVault1xxxxxxxxxxxxxxxx' as VaultId;
-    vaultId2 = 'zVault2xxxxxxxxxxxxxxxx' as VaultId;
-    vaultId3 = 'zVault3xxxxxxxxxxxxxxxx' as VaultId;
-    vaultId4 = 'zVault4xxxxxxxxxxxxxxxx' as VaultId;
+    vaultId1 = makeVaultId(idUtils.fromString('vault1xxxxxxxxxx'));
+    vaultId2 = makeVaultId(idUtils.fromString('vault2xxxxxxxxxx'));
+    vaultId3 = makeVaultId(idUtils.fromString('vault3xxxxxxxxxx'));
+    vaultId4 = makeVaultId(idUtils.fromString('vault4xxxxxxxxxx'));
   });
   afterEach(async () => {
     await db.stop();
@@ -60,7 +62,7 @@ describe('ACL', () => {
         notify: null,
       },
       vaults: {
-        zVault1xxxxxxxxxxxxxxxx: { pull: null },
+        vault1xxxxxxxxxx: { pull: null },
       },
     });
     // Gestalt2
@@ -69,7 +71,7 @@ describe('ACL', () => {
         notify: null,
       },
       vaults: {
-        zVault2xxxxxxxxxxxxxxxx: { clone: null },
+        vault2xxxxxxxxxx: { clone: null },
       },
     });
     // Check g1 perm
@@ -133,7 +135,7 @@ describe('ACL', () => {
         notify: null,
       },
       vaults: {
-        zVault1xxxxxxxxxxxxxxxx: { pull: null },
+        vault1xxxxxxxxxx: { pull: null },
       },
     });
     await acl.unsetVaultAction(vaultId1, 'g1-1' as NodeId, 'pull');
@@ -145,7 +147,7 @@ describe('ACL', () => {
         notify: null,
       },
       vaults: {
-        zVault1xxxxxxxxxxxxxxxx: {},
+        vault1xxxxxxxxxx: {},
       },
     });
     await acl.setVaultAction(vaultId1, 'g1-1' as NodeId, 'pull');
@@ -155,13 +157,13 @@ describe('ACL', () => {
     expect(vaultPerm['g1-1'].vaults[vaultId1]).toHaveProperty('clone');
     const vaultPerms = await acl.getVaultPerms();
     expect(vaultPerms).toEqual({
-      zVault1xxxxxxxxxxxxxxxx: {
+      vault1xxxxxxxxxx: {
         'g1-1': {
           gestalt: {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: { pull: null, clone: null },
+            vault1xxxxxxxxxx: { pull: null, clone: null },
           },
         },
       },
@@ -175,7 +177,7 @@ describe('ACL', () => {
         notify: null,
       },
       vaults: {
-        zVault1xxxxxxxxxxxxxxxx: { pull: null },
+        vault1xxxxxxxxxx: { pull: null },
       },
     };
     await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, g1Perm);
@@ -203,7 +205,7 @@ describe('ACL', () => {
         notify: null,
       },
       vaults: {
-        zVault1xxxxxxxxxxxxxxxx: { clone: null },
+        vault1xxxxxxxxxx: { clone: null },
       },
     });
     await acl.setVaultAction(vaultId1, 'g1-1' as NodeId, 'pull');
@@ -217,39 +219,39 @@ describe('ACL', () => {
     expect(vaultPerm1['g1-1'].vaults[vaultId1]).toHaveProperty('pull');
     const vaultPerms = await acl.getVaultPerms();
     expect(vaultPerms).toMatchObject({
-      zVault1xxxxxxxxxxxxxxxx: {
+      vault1xxxxxxxxxx: {
         'g1-1': {
           gestalt: {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: { clone: null, pull: null },
-            zVault2xxxxxxxxxxxxxxxx: { clone: null, pull: null },
-            zVault3xxxxxxxxxxxxxxxx: { clone: null, pull: null },
+            vault1xxxxxxxxxx: { clone: null, pull: null },
+            vault2xxxxxxxxxx: { clone: null, pull: null },
+            vault3xxxxxxxxxx: { clone: null, pull: null },
           },
         },
       },
-      zVault2xxxxxxxxxxxxxxxx: {
+      vault2xxxxxxxxxx: {
         'g1-1': {
           gestalt: {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: { clone: null, pull: null },
-            zVault2xxxxxxxxxxxxxxxx: { clone: null, pull: null },
-            zVault3xxxxxxxxxxxxxxxx: { clone: null, pull: null },
+            vault1xxxxxxxxxx: { clone: null, pull: null },
+            vault2xxxxxxxxxx: { clone: null, pull: null },
+            vault3xxxxxxxxxx: { clone: null, pull: null },
           },
         },
       },
-      zVault3xxxxxxxxxxxxxxxx: {
+      vault3xxxxxxxxxx: {
         'g1-1': {
           gestalt: {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: { clone: null, pull: null },
-            zVault2xxxxxxxxxxxxxxxx: { clone: null, pull: null },
-            zVault3xxxxxxxxxxxxxxxx: { clone: null, pull: null },
+            vault1xxxxxxxxxx: { clone: null, pull: null },
+            vault2xxxxxxxxxx: { clone: null, pull: null },
+            vault3xxxxxxxxxx: { clone: null, pull: null },
           },
         },
       },
@@ -266,7 +268,7 @@ describe('ACL', () => {
         notify: null,
       },
       vaults: {
-        zVault1xxxxxxxxxxxxxxxx: { pull: null },
+        vault1xxxxxxxxxx: { pull: null },
       },
     };
     await acl.setNodesPerm(['g1-first', 'g1-second'] as Array<NodeId>, g1Perm);
@@ -300,8 +302,8 @@ describe('ACL', () => {
           notify: null,
         },
         vaults: {
-          zVault1xxxxxxxxxxxxxxxx: { clone: null },
-          zVault2xxxxxxxxxxxxxxxx: { pull: null },
+          vault1xxxxxxxxxx: { clone: null },
+          vault2xxxxxxxxxx: { pull: null },
         },
       },
     });
@@ -314,7 +316,7 @@ describe('ACL', () => {
           notify: null,
         },
         vaults: {
-          zVault2xxxxxxxxxxxxxxxx: { pull: null },
+          vault2xxxxxxxxxx: { pull: null },
         },
       },
     });
@@ -363,8 +365,8 @@ describe('ACL', () => {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: {},
-            zVault4xxxxxxxxxxxxxxxx: { pull: null },
+            vault1xxxxxxxxxx: {},
+            vault4xxxxxxxxxx: { pull: null },
           },
         },
         'g1-fourth': {
@@ -372,8 +374,8 @@ describe('ACL', () => {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: {},
-            zVault4xxxxxxxxxxxxxxxx: { pull: null },
+            vault1xxxxxxxxxx: {},
+            vault4xxxxxxxxxx: { pull: null },
           },
         },
         'g1-third': {
@@ -381,8 +383,8 @@ describe('ACL', () => {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: {},
-            zVault4xxxxxxxxxxxxxxxx: { pull: null },
+            vault1xxxxxxxxxx: {},
+            vault4xxxxxxxxxx: { pull: null },
           },
         },
       },
@@ -392,8 +394,8 @@ describe('ACL', () => {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: { clone: null },
-            zVault4xxxxxxxxxxxxxxxx: { clone: null },
+            vault1xxxxxxxxxx: { clone: null },
+            vault4xxxxxxxxxx: { clone: null },
           },
         },
         'g2-second': {
@@ -401,8 +403,8 @@ describe('ACL', () => {
             notify: null,
           },
           vaults: {
-            zVault1xxxxxxxxxxxxxxxx: { clone: null },
-            zVault4xxxxxxxxxxxxxxxx: { clone: null },
+            vault1xxxxxxxxxx: { clone: null },
+            vault4xxxxxxxxxx: { clone: null },
           },
         },
       },

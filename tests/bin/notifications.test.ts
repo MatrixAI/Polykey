@@ -1,6 +1,6 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { NotificationData } from '@/notifications/types';
-import type { VaultIdRaw, VaultName } from "@/vaults/types";
+import type { VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
@@ -9,7 +9,9 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as utils from './utils';
 import * as testUtils from './utils';
 import { PolykeyAgent } from '@';
-import { makeVaultId } from "@/vaults/utils";
+import { makeVaultId } from '@/vaults/utils';
+// import { makeVaultId } from "@/vaults/utils";
+import { utils as idUtils } from '@matrixai/id';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -325,7 +327,7 @@ describe('CLI Notifications', () => {
       };
       const notificationData3: NotificationData = {
         type: 'VaultShare',
-        vaultId: makeVaultId('vaultId'),
+        vaultId: makeVaultId(idUtils.fromString('vaultId')).toString(),
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,

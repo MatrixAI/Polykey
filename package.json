@@ -71,7 +71,7 @@
     "@grpc/grpc-js": "^1.2.5",
     "@matrixai/async-init": "^1.0.0",
     "@matrixai/db": "^1.0.1",
-    "@matrixai/id": "^1.0.0",
+    "@matrixai/id": "^2.0.0",
     "@matrixai/logger": "^2.0.1",
     "@matrixai/workers": "^1.2.3",
     "ajv": "^7.0.4",

@@ -1,6 +1,5 @@
 import type { NodeId } from '../nodes/types';
 import type { ClaimId, ClaimEncoded, ClaimIntermediary, ClaimIdString } from "../claims/types";
-import type { VaultIdRaw } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '../utils';
@@ -20,8 +19,9 @@ import {
   errors as notificationsErrors,
 } from '../notifications';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
-import { makeVaultId, makeVaultIdRaw } from "../vaults/utils";
+import { makeVaultId } from '../vaults/utils';
 import { makeNodeId } from "../nodes/utils";
+import { utils as idUtils } from '@matrixai/id';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -56,7 +56,7 @@ function createAgentService({
       const genWritable = grpcUtils.generatorWritable(call);
 
       const request = call.request;
-      const vaultId = makeVaultId(request.getId());
+      const vaultId = makeVaultId(request.getVaultId_asU8());
 
       const response = new agentPB.PackChunk();
       const vault = await vaultManager.openVault(vaultId);
@@ -88,7 +88,7 @@ function createAgentService({
         const body = Buffer.concat(clientBodyBuffers);
 
         const meta = call.metadata;
-        const vaultId = makeVaultId(meta.get('vault-id').pop()!.toString());
+        const vaultId = makeVaultId(idUtils.fromString(meta.get('vault-id').pop()!.toString()));
         if (vaultId == null) throw new ErrorGRPC('vault-name not in metadata.');
         const vault = await vaultManager.openVault(vaultId);
 
@@ -278,6 +278,7 @@ function createAgentService({
         const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
         await notificationsManager.receiveNotification(notification);
       } catch (err) {
+        console.error(err);
         if (err instanceof notificationsErrors.ErrorNotifications) {
           callback(grpcUtils.fromError(err), response);
         } else {
@@ -296,7 +297,7 @@ function createAgentService({
       const response = new agentPB.PermissionMessage();
       try {
         const nodeId = makeNodeId(call.request.getNodeId());
-        const vaultId = makeVaultIdRaw(call.request.getVaultId());
+        const vaultId = makeVaultId(call.request.getVaultId());
         throw Error('Not Implemented');
         // FIXME: getVaultPermissions not implemented.
         // const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
