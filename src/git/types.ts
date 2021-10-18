@@ -1,5 +1,4 @@
 import type { PassThrough } from 'readable-stream';
-import type { DeflatedObject, WrappedObject, RawObject } from 'isomorphic-git';
 import type fs from 'fs';
 import { EncryptedFS } from 'encryptedfs';
 
@@ -51,6 +50,30 @@ type PackIndex = {
   pack?: Buffer;
 };
 
+type RawObject = {
+  oid: string;
+  type: "blob" | "tree" | "commit" | "tag";
+  format: "content";
+  object: Buffer | string | Uint8Array;
+  source?: string | undefined;
+}
+
+type WrappedObject = {
+  oid: string;
+  type: "wrapped";
+  format: "wrapped";
+  object: Buffer | string | Uint8Array;
+  source?: string | undefined;
+}
+
+type DeflatedObject = {
+  oid: string;
+  type: "deflated";
+  format: "deflated";
+  object: Buffer | string | Uint8Array;
+  source?: string | undefined;
+}
+
 type BufferEncoding =
   | 'utf8'
   | 'hex'
@@ -72,4 +95,7 @@ export type {
   Identity,
   Pack,
   PackIndex,
+  RawObject,
+  WrappedObject,
+  DeflatedObject,
 };

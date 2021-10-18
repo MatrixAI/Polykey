@@ -9,7 +9,7 @@ import { KeyManager } from "@/keys";
 import Logger, { LogLevel, StreamHandler } from "@matrixai/logger";
 import { generateVaultId, makeVaultIdPretty } from '@/vaults/utils';
 import { getRandomBytes } from "@/keys/utils";
-
+import { utils as idUtils } from '@matrixai/id';
 
 describe('VaultOps', ()=> {
   const password = 'password';
@@ -57,15 +57,10 @@ describe('VaultOps', ()=> {
 
   beforeEach(async () => {
     vaultId = generateVaultId();
-    await baseEfs.mkdir(path.join(makeVaultIdPretty(vaultId), 'contents'), { recursive: true });
-    const efsVault = await baseEfs.chroot(path.join(makeVaultIdPretty(vaultId), 'contents'));
-    const efsRoot = await baseEfs.chroot(makeVaultIdPretty(vaultId));
-    await efsVault.start();
-    await efsRoot.start();
+    await baseEfs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), { recursive: true });
     vaultInternal = await VaultInternal.create({
       vaultId,
-      efsRoot,
-      efsVault,
+      efs: baseEfs,
       logger: logger.getChild(VaultInternal.name),
       fresh: true,
     });

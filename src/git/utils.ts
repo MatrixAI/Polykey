@@ -6,15 +6,15 @@ import type {
   Identity,
   Pack,
   PackIndex,
+  DeflatedObject,
+  WrappedObject,
+  RawObject,
 } from './types';
 import type {
   ReadCommitResult,
   CommitObject,
   TreeEntry,
   TreeObject,
-  DeflatedObject,
-  WrappedObject,
-  RawObject,
 } from 'isomorphic-git';
 // Import type { EncryptedFS } from '../types';
 
@@ -372,7 +372,7 @@ async function listObjects({
       await walk(tree);
     } else if (gitObject.type === 'tree') {
       trees.add(oid);
-      const tree = treeFrom(gitObject.object);
+      const tree = treeFrom(gitObject.object as Uint8Array);
       for (const entry of tree) {
         if (entry.type === 'blob') {
           blobs.add(entry.oid);
@@ -543,7 +543,7 @@ async function logCommit(
       `Expected type to be commit, but instead found ${gitObject.type}`,
     );
   }
-  const commit = commitFrom(Buffer.from(gitObject.object));
+  const commit = commitFrom(gitObject.object as Buffer | string);
   const payload = signing ? withoutSignature(commit) : '';
   const result = { oid: oid, commit: parse(commit), payload: payload };
   return result;
@@ -722,7 +722,7 @@ function simpleSign(n: number): number {
   return Math.sign(n) || (Object.is(n, -0) ? -1 : 1);
 }
 
-function commitFrom(commit: string | Buffer | CommitObject): string {
+function commitFrom(commit: string | Buffer): string {
   let commitRet: string;
   if (typeof commit === 'string') {
     commitRet = commit;
@@ -742,13 +742,52 @@ async function readObject({
   fs,
   gitdir,
   oid,
+  format,
+  encoding,
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  oid: string;
+  format?: 'parsed' | 'content';
+  encoding?: BufferEncoding;
+}): Promise<RawObject>;
+async function readObject({
+  fs,
+  gitdir,
+  oid,
+  format,
+  encoding,
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  oid: string;
+  format: 'deflated';
+  encoding?: BufferEncoding;
+}): Promise<DeflatedObject>;
+async function readObject({
+  fs,
+  gitdir,
+  oid,
+  format,
+  encoding,
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  oid: string;
+  format: 'wrapped';
+  encoding?: BufferEncoding;
+}): Promise<WrappedObject>;
+async function readObject({
+  fs,
+  gitdir,
+  oid,
   format = 'parsed',
   encoding,
 }: {
   fs: EncryptedFS;
   gitdir: string;
   oid: string;
-  format?: string;
+  format?: 'wrapped' | 'parsed' | 'deflated' | 'content';
   encoding?: BufferEncoding;
 }): Promise<DeflatedObject | WrappedObject | RawObject> {
   const _format = format === 'parsed' ? 'content' : format;
@@ -867,10 +906,10 @@ async function readObject({
     result.format = 'parsed';
     switch (result.type) {
       case 'commit':
-        result.object = parse(commitFrom(result.object));
+        result.object = commitFrom(result.object);
         break;
       case 'tree':
-        result.object = treeFrom(result.object).entries();
+        // result.object = treeFrom(result.object).entries();
         break;
       case 'blob':
         // Here we consider returning a raw Buffer as the 'content' format
@@ -1217,7 +1256,7 @@ async function pack({
   write(paddedChunk, 'hex');
   for (const oid of oids) {
     const { type, object } = await readObject({ fs, gitdir, oid });
-    writeObject(object, type);
+    writeObject(object as Uint8Array, type);
   }
   // Write SHA1 checksum
   const digest = hash.digest();

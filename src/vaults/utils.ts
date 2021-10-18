@@ -163,9 +163,9 @@ async function constructGitHandler(
   nodeId: NodeId,
 ): Promise<GitRequest> {
   const gitRequest = new GitRequest(
-    ((vaultId: VaultId) => requestInfo(vaultId, client)).bind(this),
-    ((vaultId: VaultId, body: Buffer) =>
-      requestPack(vaultId, body, client)).bind(this),
+    ((vaultNameOrId: VaultId | VaultName) => requestInfo(vaultNameOrId, client)).bind(this),
+    ((vaultNameOrId: VaultId | VaultName, body: Buffer) =>
+      requestPack(vaultNameOrId, body, client)).bind(this),
     (() => requestVaultNames(client, nodeId)).bind(this),
   );
   return gitRequest;
@@ -178,11 +178,15 @@ async function constructGitHandler(
  * @returns Async Generator of Uint8Arrays representing the Info Response
  */
 async function* requestInfo(
-  vaultId: VaultId,
+  vaultNameOrId: VaultId | VaultName,
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
   const request = new agentPB.InfoRequest();
+<<<<<<< HEAD
   request.setVaultId(vaultId);
+=======
+  request.setId(vaultNameOrId);
+>>>>>>> Vault sharing and cloning
   const response = client.vaultsGitInfoGet(request);
 
   for await (const resp of response) {
@@ -198,14 +202,15 @@ async function* requestInfo(
  * @returns AsyncGenerator of Uint8Arrays representing the Pack Response
  */
 async function* requestPack(
-  vaultId: VaultId,
+  vaultNameOrId: VaultId | VaultName,
   body: Buffer,
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
   const responseBuffers: Array<Buffer> = [];
 
   const meta = new grpc.Metadata();
-  meta.set('vault-id', vaultId.toString());
+  // FIXME make it a VaultIdReadable
+  meta.set('vaultNameOrId', vaultNameOrId.toString());
 
   const stream = client.vaultsGitPackGet(meta);
   const write = promisify(stream.write).bind(stream);

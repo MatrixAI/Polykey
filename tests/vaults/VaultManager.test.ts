@@ -12,7 +12,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { Sigchain } from '@/sigchain';
-import { VaultManager } from "@/vaults";
+import { VaultManager, vaultOps } from "@/vaults";
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { DB } from '@matrixai/db';
@@ -140,11 +140,10 @@ describe('VaultManager', () => {
     vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       vaultsKey,
-      // keyManager: keyManager,
       nodeManager,
       db,
-      // acl: acl,
-      // gestaltGraph: gestaltGraph,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs,
       logger: logger,
       fresh: true,
@@ -278,6 +277,8 @@ describe('VaultManager', () => {
       vaultsPath,
       vaultsKey,
       nodeManager,
+      gestaltGraph,
+      acl,
       db,
       logger,
     });
@@ -321,11 +322,10 @@ describe('VaultManager', () => {
     vaultManager = await VaultManager.createVaultManager({
       vaultsPath,
       vaultsKey,
-      // keyManager: keyManager,
       nodeManager,
       db,
-      // acl: acl,
-      // gestaltGraph: gestaltGraph,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs,
       logger,
     });
@@ -384,11 +384,10 @@ describe('VaultManager', () => {
     const vaultManagerReloaded = await VaultManager.createVaultManager({
       vaultsPath,
       vaultsKey,
-      // keyManager: keyManager,
       nodeManager,
       db,
-      // acl: acl,
-      // gestaltGraph: gestaltGraph,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs,
       logger,
     });
@@ -487,329 +486,329 @@ describe('VaultManager', () => {
   // /* TESTING TODO:
   //  *  Changing the default node to pull from
   //  */
-  // describe('interacting with another node to', () => {
-  //   let targetDataDir: string, altDataDir: string;
-  //   let targetKeyManager: KeyManager, altKeyManager: KeyManager;
-  //   let targetFwdProxy: ForwardProxy;
-  //   let targetDb: DB, altDb: DB;
-  //   let targetACL: ACL, altACL: ACL;
-  //   let targetGestaltGraph: GestaltGraph, altGestaltGraph: GestaltGraph;
-  //   let targetNodeManager: NodeManager, altNodeManager: NodeManager;
-  //   let targetVaultManager: VaultManager, altVaultManager: VaultManager;
-  //   let targetSigchain: Sigchain, altSigchain: Sigchain;
-  //   let targetNotificationsManager: NotificationsManager,
-  //     altNotificationsManager: NotificationsManager;
+  describe('interacting with another node to', () => {
+    let targetDataDir: string, altDataDir: string;
+    let targetKeyManager: KeyManager, altKeyManager: KeyManager;
+    let targetFwdProxy: ForwardProxy;
+    let targetDb: DB, altDb: DB;
+    let targetACL: ACL, altACL: ACL;
+    let targetGestaltGraph: GestaltGraph, altGestaltGraph: GestaltGraph;
+    let targetNodeManager: NodeManager, altNodeManager: NodeManager;
+    let targetVaultManager: VaultManager, altVaultManager: VaultManager;
+    let targetSigchain: Sigchain, altSigchain: Sigchain;
+    let targetNotificationsManager: NotificationsManager,
+      altNotificationsManager: NotificationsManager;
 
-  //   let targetNodeId: NodeId, altNodeId: NodeId;
-  //   let revTLSConfig: TLSConfig, altRevTLSConfig: TLSConfig;
+    let targetNodeId: NodeId, altNodeId: NodeId;
+    let revTLSConfig: TLSConfig, altRevTLSConfig: TLSConfig;
 
-  //   let targetAgentService: IAgentServer, altAgentService: IAgentServer;
-  //   let targetServer: GRPCServer, altServer: GRPCServer;
+    let targetAgentService: IAgentServer, altAgentService: IAgentServer;
+    let targetServer: GRPCServer, altServer: GRPCServer;
 
-  //   let node: NodeInfo;
+    let node: NodeInfo;
 
-  //   let altFwdProxy: ForwardProxy;
+    let altFwdProxy: ForwardProxy;
 
-  //   beforeAll(async () => {
-  //     altFwdProxy = await ForwardProxy.createForwardProxy({
-  //       authToken: 'abc',
-  //       logger: logger,
-  //     });
-  //   });
+    beforeAll(async () => {
+      altFwdProxy = await ForwardProxy.createForwardProxy({
+        authToken: 'abc',
+        logger: logger,
+      });
+    });
 
-  //   beforeEach(async () => {
-  //     node = {
-  //       id: nodeManager.getNodeId(),
-  //       chain: { nodes: {}, identities: {} } as ChainData,
-  //     };
-  //     targetDataDir = await fs.promises.mkdtemp(
-  //       path.join(os.tmpdir(), 'polykey-test-'),
-  //     );
-  //     targetKeyManager = await KeyManager.createKeyManager({
-  //       password,
-  //       keysPath: path.join(targetDataDir, 'keys'),
-  //       fs: fs,
-  //       logger: logger,
-  //     });
-  //     targetNodeId = targetKeyManager.getNodeId();
-  //     revTLSConfig = {
-  //       keyPrivatePem: targetKeyManager.getRootKeyPairPem().privateKey,
-  //       certChainPem: await targetKeyManager.getRootCertChainPem(),
-  //     };
-  //     targetFwdProxy = await ForwardProxy.createForwardProxy({
-  //       authToken: '',
-  //       logger: logger,
-  //     });
-  //     targetDb = await DB.createDB({
-  //       dbPath: path.join(targetDataDir, 'db'),
-  //       logger: logger,
-  //       crypto: makeCrypto(keyManager),
-  //     });
-  //     await targetDb.start();
-  //     targetSigchain = await Sigchain.createSigchain({
-  //       keyManager: targetKeyManager,
-  //       db: targetDb,
-  //       logger: logger,
-  //     });
-  //     targetNodeManager = await NodeManager.createNodeManager({
-  //       db: targetDb,
-  //       sigchain: targetSigchain,
-  //       keyManager: targetKeyManager,
-  //       fwdProxy: targetFwdProxy,
-  //       revProxy: revProxy,
-  //       fs: fs,
-  //       logger: logger,
-  //     });
-  //     await targetNodeManager.start();
-  //     targetACL = await ACL.createACL({
-  //       db: targetDb,
-  //       logger: logger,
-  //     });
-  //     targetNotificationsManager =
-  //       await NotificationsManager.createNotificationsManager({
-  //         acl: targetACL,
-  //         db: targetDb,
-  //         nodeManager: targetNodeManager,
-  //         keyManager: targetKeyManager,
-  //         messageCap: 5,
-  //         logger: logger,
-  //       });
-  //     targetGestaltGraph = await GestaltGraph.createGestaltGraph({
-  //       db: targetDb,
-  //       acl: targetACL,
-  //       logger: logger,
-  //     });
-  //     await targetGestaltGraph.setNode(node);
-  //     targetVaultManager = new VaultManager({
-  //       vaultsPath: path.join(targetDataDir, 'vaults'),
-  //       keyManager: targetKeyManager,
-  //       nodeManager: targetNodeManager,
-  //       db: targetDb,
-  //       acl: targetACL,
-  //       gestaltGraph: targetGestaltGraph,
-  //       logger: logger,
-  //     });
-  //     await targetVaultManager.start({});
-  //     targetAgentService = createAgentService({
-  //       keyManager: targetKeyManager,
-  //       vaultManager: targetVaultManager,
-  //       nodeManager: targetNodeManager,
-  //       sigchain: targetSigchain,
-  //       notificationsManager: targetNotificationsManager,
-  //     });
-  //     targetServer = await GRPCServer.createGRPCServer({
-  //       logger: logger,
-  //     });
-  //     await targetServer.start({
-  //       services: [[AgentService, targetAgentService]],
-  //       host: targetHost,
-  //     });
+    beforeEach(async () => {
+      node = {
+        id: nodeManager.getNodeId(),
+        chain: { nodes: {}, identities: {} } as ChainData,
+      };
+      targetDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      targetKeyManager = await KeyManager.createKeyManager({
+        password,
+        keysPath: path.join(targetDataDir, 'keys'),
+        fs: fs,
+        logger: logger,
+      });
+      targetNodeId = targetKeyManager.getNodeId();
+      revTLSConfig = {
+        keyPrivatePem: targetKeyManager.getRootKeyPairPem().privateKey,
+        certChainPem: await targetKeyManager.getRootCertChainPem(),
+      };
+      targetFwdProxy = await ForwardProxy.createForwardProxy({
+        authToken: '',
+        logger: logger,
+      });
+      targetDb = await DB.createDB({
+        dbPath: path.join(targetDataDir, 'db'),
+        logger: logger,
+        crypto: makeCrypto(keyManager),
+      });
+      await targetDb.start();
+      targetSigchain = await Sigchain.createSigchain({
+        keyManager: targetKeyManager,
+        db: targetDb,
+        logger: logger,
+      });
+      targetNodeManager = await NodeManager.createNodeManager({
+        db: targetDb,
+        sigchain: targetSigchain,
+        keyManager: targetKeyManager,
+        fwdProxy: targetFwdProxy,
+        revProxy: revProxy,
+        fs: fs,
+        logger: logger,
+      });
+      await targetNodeManager.start();
+      targetACL = await ACL.createACL({
+        db: targetDb,
+        logger: logger,
+      });
+      targetNotificationsManager =
+        await NotificationsManager.createNotificationsManager({
+          acl: targetACL,
+          db: targetDb,
+          nodeManager: targetNodeManager,
+          keyManager: targetKeyManager,
+          messageCap: 5,
+          logger: logger,
+        });
+      targetGestaltGraph = await GestaltGraph.createGestaltGraph({
+        db: targetDb,
+        acl: targetACL,
+        logger: logger,
+      });
+      await targetGestaltGraph.setNode(node);
+      const targetVaultKey = await vaultUtils.generateVaultKey();
+      targetVaultManager = await VaultManager.createVaultManager({
+        vaultsPath: path.join(targetDataDir, 'vaults'),
+        vaultsKey: targetVaultKey,
+        nodeManager: targetNodeManager,
+        db: targetDb,
+        acl: targetACL,
+        gestaltGraph: targetGestaltGraph,
+        logger: logger,
+        fresh: true,
+      });
+      targetAgentService = createAgentService({
+        keyManager: targetKeyManager,
+        vaultManager: targetVaultManager,
+        nodeManager: targetNodeManager,
+        sigchain: targetSigchain,
+        notificationsManager: targetNotificationsManager,
+      });
+      targetServer = await GRPCServer.createGRPCServer({
+        logger: logger,
+      });
+      await targetServer.start({
+        services: [[AgentService, targetAgentService]],
+        host: targetHost,
+      });
 
-  //     altDataDir = await fs.promises.mkdtemp(
-  //       path.join(os.tmpdir(), 'polykey-test-'),
-  //     );
-  //     altKeyManager = await KeyManager.createKeyManager({
-  //       password,
-  //       keysPath: path.join(altDataDir, 'keys'),
-  //       fs: fs,
-  //       logger: logger,
-  //     });
-  //     altNodeId = altKeyManager.getNodeId();
-  //     await targetGestaltGraph.setNode({
-  //       id: altNodeId,
-  //       chain: {},
-  //     });
-  //     altRevTLSConfig = {
-  //       keyPrivatePem: altKeyManager.getRootKeyPairPem().privateKey,
-  //       certChainPem: await altKeyManager.getRootCertChainPem(),
-  //     };
-  //     await altFwdProxy.start({
-  //       tlsConfig: {
-  //         keyPrivatePem: altKeyManager.getRootKeyPairPem().privateKey,
-  //         certChainPem: await altKeyManager.getRootCertChainPem(),
-  //       },
-  //       egressHost: altHost,
-  //       egressPort: altPort,
-  //     });
-  //     altDb = await DB.createDB({
-  //       dbPath: path.join(altDataDir, 'db'),
-  //       logger: logger,
-  //       crypto: makeCrypto(keyManager),
-  //     });
-  //     await altDb.start();
-  //     altSigchain = await Sigchain.createSigchain({
-  //       keyManager: altKeyManager,
-  //       db: altDb,
-  //       logger: logger,
-  //     });
-  //     altNodeManager = await NodeManager.createNodeManager({
-  //       db: altDb,
-  //       sigchain: altSigchain,
-  //       keyManager: altKeyManager,
-  //       fwdProxy: altFwdProxy,
-  //       revProxy: altRevProxy,
-  //       fs: fs,
-  //       logger: logger,
-  //     });
-  //     await altNodeManager.start();
-  //     altACL = await ACL.createACL({
-  //       db: altDb,
-  //       logger: logger,
-  //     });
-  //     altNotificationsManager =
-  //       await NotificationsManager.createNotificationsManager({
-  //         acl: altACL,
-  //         db: altDb,
-  //         nodeManager: altNodeManager,
-  //         keyManager: altKeyManager,
-  //         messageCap: 5,
-  //         logger: logger,
-  //       });
-  //     altGestaltGraph = await GestaltGraph.createGestaltGraph({
-  //       db: altDb,
-  //       acl: altACL,
-  //       logger: logger,
-  //     });
-  //     await altGestaltGraph.setNode(node);
-  //     altVaultManager = new VaultManager({
-  //       vaultsPath: path.join(altDataDir, 'vaults'),
-  //       keyManager: altKeyManager,
-  //       nodeManager: altNodeManager,
-  //       db: altDb,
-  //       acl: altACL,
-  //       gestaltGraph: altGestaltGraph,
-  //       logger: logger,
-  //     });
-  //     await altVaultManager.start({});
-  //     altAgentService = createAgentService({
-  //       keyManager: altKeyManager,
-  //       vaultManager: altVaultManager,
-  //       nodeManager: altNodeManager,
-  //       sigchain: altSigchain,
-  //       notificationsManager: altNotificationsManager,
-  //     });
-  //     altServer = await GRPCServer.createGRPCServer({
-  //       logger: logger,
-  //     });
-  //     await altServer.start({
-  //       services: [[AgentService, altAgentService]],
-  //       host: altHostIn,
-  //     });
+      altDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      altKeyManager = await KeyManager.createKeyManager({
+        password,
+        keysPath: path.join(altDataDir, 'keys'),
+        fs: fs,
+        logger: logger,
+      });
+      altNodeId = altKeyManager.getNodeId();
+      await targetGestaltGraph.setNode({
+        id: altNodeId,
+        chain: {},
+      });
+      altRevTLSConfig = {
+        keyPrivatePem: altKeyManager.getRootKeyPairPem().privateKey,
+        certChainPem: await altKeyManager.getRootCertChainPem(),
+      };
+      await altFwdProxy.start({
+        tlsConfig: {
+          keyPrivatePem: altKeyManager.getRootKeyPairPem().privateKey,
+          certChainPem: await altKeyManager.getRootCertChainPem(),
+        },
+        egressHost: altHost,
+        egressPort: altPort,
+      });
+      altDb = await DB.createDB({
+        dbPath: path.join(altDataDir, 'db'),
+        logger: logger,
+        crypto: makeCrypto(keyManager),
+      });
+      await altDb.start();
+      altSigchain = await Sigchain.createSigchain({
+        keyManager: altKeyManager,
+        db: altDb,
+        logger: logger,
+      });
+      altNodeManager = await NodeManager.createNodeManager({
+        db: altDb,
+        sigchain: altSigchain,
+        keyManager: altKeyManager,
+        fwdProxy: altFwdProxy,
+        revProxy: altRevProxy,
+        fs: fs,
+        logger: logger,
+      });
+      await altNodeManager.start();
+      altACL = await ACL.createACL({
+        db: altDb,
+        logger: logger,
+      });
+      altNotificationsManager =
+        await NotificationsManager.createNotificationsManager({
+          acl: altACL,
+          db: altDb,
+          nodeManager: altNodeManager,
+          keyManager: altKeyManager,
+          messageCap: 5,
+          logger: logger,
+        });
+      altGestaltGraph = await GestaltGraph.createGestaltGraph({
+        db: altDb,
+        acl: altACL,
+        logger: logger,
+      });
+      await altGestaltGraph.setNode(node);
+      const altVaultKey = await vaultUtils.generateVaultKey();
+      altVaultManager = await VaultManager.createVaultManager({
+        vaultsPath: path.join(altDataDir, 'vaults'),
+        vaultsKey: altVaultKey,
+        nodeManager: altNodeManager,
+        db: altDb,
+        acl: altACL,
+        gestaltGraph: altGestaltGraph,
+        logger: logger,
+      });
+      altAgentService = createAgentService({
+        keyManager: altKeyManager,
+        vaultManager: altVaultManager,
+        nodeManager: altNodeManager,
+        sigchain: altSigchain,
+        notificationsManager: altNotificationsManager,
+      });
+      altServer = await GRPCServer.createGRPCServer({
+        logger: logger,
+      });
+      await altServer.start({
+        services: [[AgentService, altAgentService]],
+        host: altHostIn,
+      });
 
-  //     await revProxy.start({
-  //       ingressHost: targetHost,
-  //       ingressPort: targetPort,
-  //       serverHost: targetHost,
-  //       serverPort: targetServer.getPort(),
-  //       tlsConfig: revTLSConfig,
-  //     });
+      await revProxy.start({
+        ingressHost: targetHost,
+        ingressPort: targetPort,
+        serverHost: targetHost,
+        serverPort: targetServer.getPort(),
+        tlsConfig: revTLSConfig,
+      });
 
-  //     await altRevProxy.start({
-  //       ingressHost: altHostIn,
-  //       ingressPort: altPortIn,
-  //       serverHost: altHostIn,
-  //       serverPort: altServer.getPort(),
-  //       tlsConfig: altRevTLSConfig,
-  //     });
-  //   }, global.polykeyStartupTimeout * 2);
+      await altRevProxy.start({
+        ingressHost: altHostIn,
+        ingressPort: altPortIn,
+        serverHost: altHostIn,
+        serverPort: altServer.getPort(),
+        tlsConfig: altRevTLSConfig,
+      });
+    }, global.polykeyStartupTimeout * 2);
 
-  //   afterEach(async () => {
-  //     await revProxy.closeConnection(altHost, altPort);
-  //     await revProxy.closeConnection(sourceHost, sourcePort);
-  //     await altRevProxy.closeConnection(sourceHost, sourcePort);
-  //     await fwdProxy.closeConnection(
-  //       fwdProxy.getEgressHost(),
-  //       fwdProxy.getEgressPort(),
-  //     );
-  //     await altFwdProxy.closeConnection(
-  //       altFwdProxy.getEgressHost(),
-  //       altFwdProxy.getEgressPort(),
-  //     );
-  //     await revProxy.stop();
-  //     await altRevProxy.stop();
-  //     await targetServer.stop();
-  //     await targetVaultManager.stop();
-  //     await targetGestaltGraph.destroy();
-  //     await targetNotificationsManager.destroy();
-  //     await targetACL.destroy();
-  //     await targetDb.stop();
-  //     await targetNodeManager.stop();
-  //     await targetKeyManager.destroy();
-  //     await fs.promises.rm(targetDataDir, {
-  //       force: true,
-  //       recursive: true,
-  //     });
-  //     await altServer.stop();
-  //     await altVaultManager.stop();
-  //     await altGestaltGraph.destroy();
-  //     await altNotificationsManager.destroy();
-  //     await altACL.destroy();
-  //     await altDb.stop();
-  //     await altNodeManager.stop();
-  //     await altKeyManager.destroy();
-  //     await fs.promises.rm(altDataDir, {
-  //       force: true,
-  //       recursive: true,
-  //     });
-  //   });
+    afterEach(async () => {
+      await revProxy.closeConnection(altHost, altPort);
+      await revProxy.closeConnection(sourceHost, sourcePort);
+      await altRevProxy.closeConnection(sourceHost, sourcePort);
+      await fwdProxy.closeConnection(
+        fwdProxy.getEgressHost(),
+        fwdProxy.getEgressPort(),
+      );
+      await altFwdProxy.closeConnection(
+        altFwdProxy.getEgressHost(),
+        altFwdProxy.getEgressPort(),
+      );
+      await revProxy.stop();
+      await altRevProxy.stop();
+      await targetServer.stop();
+      await targetVaultManager.destroy();
+      await targetGestaltGraph.destroy();
+      await targetNotificationsManager.destroy();
+      await targetACL.destroy();
+      await targetDb.stop();
+      await targetNodeManager.stop();
+      await targetKeyManager.destroy();
+      await fs.promises.rm(targetDataDir, {
+        force: true,
+        recursive: true,
+      });
+      await altServer.stop();
+      await altGestaltGraph.destroy();
+      await altVaultManager.destroy();
+      await altNotificationsManager.destroy();
+      await altACL.destroy();
+      await altDb.stop();
+      await altNodeManager.stop();
+      await altKeyManager.destroy();
+      await fs.promises.rm(altDataDir, {
+        force: true,
+        recursive: true,
+      });
+    });
 
-  //   afterAll(async () => {
-  //     await altFwdProxy.stop();
-  //   });
+    afterAll(async () => {
+      await altFwdProxy.stop();
+    });
 
-  //   test(
-  //     'clone and pull vaults',
-  //     async () => {
-  //       await vaultManager.start({});
-  //       await vaultManager.createVault('MyFirstVault');
-  //       await vaultManager.createVault('MyFirstVault copy');
-  //       const vault = await targetVaultManager.createVault('MyFirstVault');
-  //       await targetVaultManager.setVaultPermissions(
-  //         nodeManager.getNodeId(),
-  //         vault.vaultId,
-  //       );
-  //       const names: string[] = [];
-  //       for (let i = 0; i < 10; i++) {
-  //         const name = 'secret ' + i.toString();
-  //         names.push(name);
-  //         const content = 'Success?';
-  //         await vault.addSecret(name, content);
-  //       }
-  //       await nodeManager.setNode(targetNodeId, {
-  //         ip: targetHost,
-  //         port: targetPort,
-  //       } as NodeAddress);
-  //       await nodeManager.getConnectionToNode(targetNodeId);
-  //       await revProxy.openConnection(sourceHost, sourcePort);
-  //       await vaultManager.cloneVault(vault.vaultId, targetNodeId);
-  //       const vaultsList = await vaultManager.listVaults();
-  //       expect(vaultsList[2].name).toStrictEqual('MyFirstVault copy copy');
-  //       await expect(
-  //         vaultManager.getDefaultNode(vaultsList[2].id),
-  //       ).resolves.toBe(targetNodeId);
-  //       const clonedVault = await vaultManager.getVault(vaultsList[2].id);
-  //       expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
-  //         'Success?',
-  //       );
-  //       expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
-  //         names.sort(),
-  //       );
-  //       for (let i = 10; i < 20; i++) {
-  //         const name = 'secret ' + i.toString();
-  //         names.push(name);
-  //         const content = 'Second Success?';
-  //         await vault.addSecret(name, content);
-  //       }
-  //       await vaultManager.pullVault(clonedVault.vaultId, targetNodeId);
-  //       expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
-  //         names.sort(),
-  //       );
-  //       expect(await clonedVault.getSecret('secret 19')).toStrictEqual(
-  //         'Second Success?',
-  //       );
-  //     },
-  //     global.defaultTimeout * 2,
-  //   );
+    test(
+      'clone and pull vaults',
+      async () => {
+        // await vaultManager.createVault(vaultName);
+        // await vaultManager.createVault('MyFirstVault copy');
+        const vault = await targetVaultManager.createVault(vaultName);
+        // await targetVaultManager.setVaultPermissions(
+        //   nodeManager.getNodeId(),
+        //   vault.vaultId,
+        // );
+        const names: string[] = [];
+        for (let i = 0; i < 1; i++) {
+          const name = 'secret ' + i.toString();
+          names.push(name);
+          const content = 'Success?';
+          await vaultOps.addSecret(vault, name, content);
+        }
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetHost,
+          port: targetPort,
+        } as NodeAddress);
+        await nodeManager.getConnectionToNode(targetNodeId);
+        await revProxy.openConnection(sourceHost, sourcePort);
+        await vaultManager.cloneVault(targetNodeId, vault.vaultId);
+        const vaultsList = await vaultManager.listVaults();
+        // expect(vaultsList[2].name).toStrictEqual('MyFirstVault copy copy');
+        // await expect(
+        //   vaultManager.getDefaultNode(vaultsList[2].id),
+        // ).resolves.toBe(targetNodeId);
+        // const clonedVault = await vaultManager.getVault(vaultsList[2].id);
+        // expect(await clonedVault.getSecret('secret 9')).toStrictEqual(
+        //   'Success?',
+        // );
+        // expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
+        //   names.sort(),
+        // );
+        // for (let i = 10; i < 20; i++) {
+        //   const name = 'secret ' + i.toString();
+        //   names.push(name);
+        //   const content = 'Second Success?';
+        //   await vault.addSecret(name, content);
+        // }
+        // await vaultManager.pullVault(clonedVault.vaultId, targetNodeId);
+        // expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
+        //   names.sort(),
+        // );
+        // expect(await clonedVault.getSecret('secret 19')).toStrictEqual(
+        //   'Second Success?',
+        // );
+      },
+      global.defaultTimeout * 2,
+    );
   //   test(
   //     'reject clone and pull ops when permissions are not set',
   //     async () => {
@@ -1009,5 +1008,5 @@ describe('VaultManager', () => {
   //     },
   //     global.defaultTimeout * 2,
   //   );
-  // });
+  });
 });
