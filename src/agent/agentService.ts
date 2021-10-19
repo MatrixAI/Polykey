@@ -58,19 +58,24 @@ function createAgentService({
       const genWritable = grpcUtils.generatorWritable(call);
       const request = call.request;
       const vaultNameOrId = (request.getVaultId_asU8());
-      let vaultId;
+      let vaultId, vaultName;
       try {
         vaultId = makeVaultId(vaultNameOrId);
         await vaultManager.openVault(vaultId);
+        vaultName = await vaultManager.getVaultName(vaultId)
       } catch (err) {
         if (err instanceof vaultsErrors.ErrorVaultUndefined) {
           vaultId = await vaultManager.getVaultId(idUtils.toString(vaultNameOrId) as VaultName)
           await vaultManager.openVault(vaultId);
+          vaultName = idUtils.toString(vaultNameOrId);
         } else {
           throw err;
         }
       }
       // TODO: Check the permissions here
+      const meta = new grpc.Metadata();
+      meta.set('vaultName', vaultName);
+      genWritable.stream.sendMetadata(meta);
       const response = new agentPB.PackChunk();
       const responseGen = vaultManager.handleInfoRequest(vaultId);
       for await (const byte of responseGen) {
