@@ -280,6 +280,8 @@ class Polykey {
         vaultsPath: vaultsPath,
         vaultsKey: keys_.vaultKey,
         nodeManager: nodes_,
+        gestaltGraph: gestalts_,
+        acl: acl_,
         db: db_,
         fs: fs_,
         logger: logger_.getChild('VaultManager')
