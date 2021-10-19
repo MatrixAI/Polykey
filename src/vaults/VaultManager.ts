@@ -59,7 +59,6 @@ class VaultManager {
   protected workerManager?: WorkerManager;
   protected vaultsKey: VaultKey;
   protected vaultsMap: VaultMap;
-  protected vaultCreation: Map<VaultName, MutexInterface>;
   protected vaultsDbDomain: string;
   protected vaultsNamesDbDomain: Array<string>;
   protected vaultsDb: DBLevel;
@@ -164,7 +163,6 @@ class VaultManager {
     this.vaultsDb = vaultsDb;
     this.vaultsNamesDb = vaultsNamesDb;
     this.vaultsMap = new Map();
-    this.vaultCreation = new Map();
     this.efs = efs;
     this.fs = fs ?? require('fs');
     this.vaultsKey = vaultsKey;
@@ -186,7 +184,7 @@ class VaultManager {
   protected async _transaction<T>(f: () => Promise<T>, vaults: Array<VaultId> = []): Promise<T> {
     const releases: Array<MutexInterface.Releaser> = [];
     for (const vault of vaults) {
-        const lock = this.vaultsMap.get(vault);
+        const lock = this.vaultsMap.get(idUtils.toString(vault));
         if (lock) releases.push(await lock.lock.acquire());
     }
     try {
@@ -227,7 +225,7 @@ class VaultManager {
   public async createVault(vaultName: VaultName): Promise<Vault> {
     const vaultId = await this.generateVaultId();
     const lock = new Mutex();
-    this.vaultsMap.set(vaultId, { lock });
+    this.vaultsMap.set(idUtils.toString(vaultId), { lock });
     return await this._transaction(async () => {
       await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName });
       const vault = await VaultInternal.create({
@@ -236,7 +234,7 @@ class VaultManager {
         logger: this.logger.getChild(VaultInternal.name),
         fresh: true,
       });
-      this.vaultsMap.set(vaultId, { lock, vault });
+      this.vaultsMap.set(idUtils.toString(vaultId), { lock, vault });
       return vault;
     }, [vaultId]);
   }
@@ -250,7 +248,7 @@ class VaultManager {
         this.vaultsNamesDbDomain,
         idUtils.toBuffer(vaultId),
       );
-      this.vaultsMap.delete(vaultId);
+      const a = this.vaultsMap.delete(idUtils.toString(vaultId));
       await this.efs.rmdir(vaultsUtils.makeVaultIdPretty(vaultId), { recursive: true });
     }, [vaultId]);
   }
@@ -346,34 +344,34 @@ class VaultManager {
     );
     const vaultId = await this.generateVaultId();
     const lock = new Mutex();
-    this.vaultsMap.set(vaultId, { lock });
+    this.vaultsMap.set(idUtils.toString(vaultId), { lock });
     return await this._transaction(async () => {
-      await this.efs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), { recursive: true });
+      await this.efs.mkdir(path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'), { recursive: true });
       await git.clone({
         fs: this.efs,
         http: gitRequest,
-        dir: path.join(idUtils.toString(vaultId), 'contents'),
-        gitdir: path.join(idUtils.toString(vaultId), '.git'),
-        url: `http://0.0.0.0/${vaultNameOrId}`,
+        dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
+        gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
+        url: `http://0.0.0.0/${vaultsUtils.makeVaultIdPretty(vaultNameOrId)}`,
         singleBranch: true,
       });
       await this.efs.writeFile(
-        path.join(idUtils.toString(vaultId), '.git', 'packed-refs'),
+        path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git', 'packed-refs'),
         '# pack-refs with: peeled fully-peeled sorted',
       );
       const workingDir = (await git.log({
         fs: this.efs,
-        dir: path.join(idUtils.toString(vaultId), 'contents'),
-        gitdir: path.join(idUtils.toString(vaultId), '.git'),
+        dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
+        gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
         depth: 1,
       })).pop()!;
-      await this.efs.writeFile(path.join(idUtils.toString(vaultId), '.git', 'workingDir'), workingDir.oid);
+      await this.efs.writeFile(path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git', 'workingDir'), workingDir.oid);
       const vault = await VaultInternal.create({
         vaultId,
         efs: this.efs,
         logger: this.logger.getChild(VaultInternal.name),
       });
-      this.vaultsMap.set(vaultId, { lock, vault });
+      this.vaultsMap.set(idUtils.toString(vaultId), { lock, vault });
       await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: 'vaultName', defaultPull: nodeId });
       return vault;
     }, [vaultId]);
@@ -430,7 +428,7 @@ class VaultManager {
       gitUtils.createGitPacketLine('# service=git-' + service + '\n'),
     );
     yield Buffer.from('0000');
-    for (const buffer of (await gitUtils.uploadPack(this.efs, path.join(idUtils.toString(vaultId), '.git'), true)) ??
+    for (const buffer of (await gitUtils.uploadPack(this.efs, path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'), true)) ??
       []) {
       yield buffer;
     }
@@ -442,7 +440,7 @@ class VaultManager {
       const wantedObjectId = body.toString().slice(9, 49);
       const packResult = await gitUtils.packObjects({
         fs: this.efs,
-        gitdir: path.join(idUtils.toString(vaultId), '.git'),
+        gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
         refs: [wantedObjectId],
       });
       const readable = new PassThrough();
@@ -466,7 +464,7 @@ class VaultManager {
   protected async getVault(vaultId: VaultId): Promise<VaultInternal> {
     let vault: VaultInternal | undefined;
     let lock: MutexInterface;
-    let vaultAndLock = this.vaultsMap.get(vaultId);
+    let vaultAndLock = this.vaultsMap.get(idUtils.toString(vaultId));
     if (vaultAndLock != null) {
       ({ vault, lock } = vaultAndLock);
       if (vault != null) {
@@ -485,7 +483,7 @@ class VaultManager {
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
-        this.vaultsMap.set(vaultId, vaultAndLock);
+        this.vaultsMap.set(idUtils.toString(vaultId), vaultAndLock);
         return vault;
       } finally {
         release();
@@ -493,7 +491,7 @@ class VaultManager {
     } else {
       lock = new Mutex();
       vaultAndLock = { lock };
-      this.vaultsMap.set(vaultId, vaultAndLock);
+      this.vaultsMap.set(idUtils.toString(vaultId), vaultAndLock);
       let release;
       try {
         release = await lock.acquire();
@@ -503,7 +501,7 @@ class VaultManager {
           logger: this.logger.getChild(VaultInternal.name),
         });
         vaultAndLock.vault = vault;
-        this.vaultsMap.set(vaultId, vaultAndLock);
+        this.vaultsMap.set(idUtils.toString(vaultId), vaultAndLock);
         return vault;
       } finally {
         release();
@@ -512,11 +510,11 @@ class VaultManager {
   }
 
   protected async getLock(vaultId: VaultId): Promise<MutexInterface> {
-    const vaultLock = this.vaultsMap.get(vaultId);
+    const vaultLock = this.vaultsMap.get(idUtils.toString(vaultId));
     let lock = vaultLock?.lock;
     if (!lock) {
       lock = new Mutex();
-      this.vaultsMap.set(vaultId, { lock });
+      this.vaultsMap.set(idUtils.toString(vaultId), { lock });
     }
     return lock;
   }

@@ -163,8 +163,8 @@ async function constructGitHandler(
   nodeId: NodeId,
 ): Promise<GitRequest> {
   const gitRequest = new GitRequest(
-    ((vaultNameOrId: VaultId | VaultName) => requestInfo(vaultNameOrId, client)).bind(this),
-    ((vaultNameOrId: VaultId | VaultName, body: Buffer) =>
+    ((vaultNameOrId: string) => requestInfo(vaultNameOrId, client)).bind(this),
+    ((vaultNameOrId: string, body: Buffer) =>
       requestPack(vaultNameOrId, body, client)).bind(this),
     (() => requestVaultNames(client, nodeId)).bind(this),
   );
@@ -178,13 +178,12 @@ async function constructGitHandler(
  * @returns Async Generator of Uint8Arrays representing the Info Response
  */
 async function* requestInfo(
-  vaultNameOrId: VaultId | VaultName,
+  vaultNameOrId: string,
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
   const request = new agentPB.InfoRequest();
-  request.setVaultId(vaultNameOrId);
+  request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
   const response = client.vaultsGitInfoGet(request);
-
   for await (const resp of response) {
     yield resp.getChunk_asU8();
   }
@@ -198,7 +197,7 @@ async function* requestInfo(
  * @returns AsyncGenerator of Uint8Arrays representing the Pack Response
  */
 async function* requestPack(
-  vaultNameOrId: VaultId | VaultName,
+  vaultNameOrId: string,
   body: Buffer,
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
@@ -206,7 +205,7 @@ async function* requestPack(
 
   const meta = new grpc.Metadata();
   // FIXME make it a VaultIdReadable
-  meta.set('vaultNameOrId', vaultNameOrId.toString());
+  meta.set('vaultNameOrId', vaultNameOrId);
 
   const stream = client.vaultsGitPackGet(meta);
   const write = promisify(stream.write).bind(stream);

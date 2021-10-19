@@ -1,10 +1,14 @@
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
  */
-class GitRequest {
+
+ import { utils as idUtils } from '@matrixai/id';
+ import { makeVaultId } from '../vaults/utils';
+
+ class GitRequest {
   private requestInfo: (vaultNameOrId: string) => AsyncIterableIterator<Uint8Array>;
   private requestPack: (
-    vaultName: string,
+    vaultNameOrId: string,
     body: any,
   ) => AsyncIterableIterator<Uint8Array>;
   private requestVaultNames: () => Promise<string[]>;
@@ -43,7 +47,6 @@ class GitRequest {
       }
 
       const vaultNameOrId = match![1];
-
       const infoResponse = this.requestInfo(vaultNameOrId);
 
       return {
