@@ -422,6 +422,28 @@ function deserialize_clientInterface_VaultRenameMessage(buffer_arg) {
   return Client_pb.VaultRenameMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_clientInterface_VaultsLogEntryMessage(arg) {
+  if (!(arg instanceof Client_pb.VaultsLogEntryMessage)) {
+    throw new Error('Expected argument of type clientInterface.VaultsLogEntryMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_VaultsLogEntryMessage(buffer_arg) {
+  return Client_pb.VaultsLogEntryMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_clientInterface_VaultsLogMessage(arg) {
+  if (!(arg instanceof Client_pb.VaultsLogMessage)) {
+    throw new Error('Expected argument of type clientInterface.VaultsLogMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_clientInterface_VaultsLogMessage(buffer_arg) {
+  return Client_pb.VaultsLogMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_clientInterface_VaultsVersionMessage(arg) {
   if (!(arg instanceof Client_pb.VaultsVersionMessage)) {
     throw new Error('Expected argument of type clientInterface.VaultsVersionMessage');
@@ -879,6 +901,17 @@ vaultsList: {
     requestDeserialize: deserialize_clientInterface_VaultsVersionMessage,
     responseSerialize: serialize_clientInterface_VaultsVersionResultMessage,
     responseDeserialize: deserialize_clientInterface_VaultsVersionResultMessage,
+  },
+  vaultsLog: {
+    path: '/clientInterface.Client/VaultsLog',
+    requestStream: false,
+    responseStream: true,
+    requestType: Client_pb.VaultsLogMessage,
+    responseType: Client_pb.VaultsLogEntryMessage,
+    requestSerialize: serialize_clientInterface_VaultsLogMessage,
+    requestDeserialize: deserialize_clientInterface_VaultsLogMessage,
+    responseSerialize: serialize_clientInterface_VaultsLogEntryMessage,
+    responseDeserialize: deserialize_clientInterface_VaultsLogEntryMessage,
   },
   // Identities
 identitiesAuthenticate: {

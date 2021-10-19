@@ -132,6 +132,8 @@ describe('GRPC agent', () => {
       nodeManager: nodeManager,
       vaultsKey: keyManager.vaultKey,
       db: db,
+      acl: acl,
+      gestaltGraph: gestaltGraph,
       fs: fs,
       logger: logger
     });

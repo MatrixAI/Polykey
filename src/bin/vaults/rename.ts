@@ -43,7 +43,7 @@ rename.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setVaultName(options.vaultName);
+    vaultMessage.setNameOrId(options.vaultName);
     vaultRenameMessage.setNewName(options.newName);
 
     const pCall = grpcClient.vaultsRename(vaultRenameMessage);
@@ -55,12 +55,12 @@ rename.action(async (options) => {
 
     const responseMessage = await pCall;
     await p;
-    if (responseMessage.getVaultId()) {
+    if (responseMessage.getNameOrId()) {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Renamed vault: ${vaultMessage.getVaultName()} to ${vaultRenameMessage.getNewName()}`,
+            `Renamed vault: ${vaultMessage.getNameOrId()} to ${vaultRenameMessage.getNewName()}`,
           ],
         }),
       );
@@ -68,7 +68,7 @@ rename.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to rename vault: ${vaultMessage.getVaultName()}`],
+          data: [`Failed to rename vault: ${vaultMessage.getNameOrId()}`],
         }),
       );
     }

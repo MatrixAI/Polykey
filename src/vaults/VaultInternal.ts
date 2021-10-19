@@ -206,7 +206,7 @@ class VaultInternal {
           dir: this.baseDir,
           gitdir: this.gitDir,
           author: {
-            name: makeVaultIdPretty(this.vaultId),
+            name: makeVaultIdPretty(this.vaultId), // FIXME: Shouldn't this be the NodeId?
           },
           message: message.toString(),
         });
@@ -271,6 +271,7 @@ class VaultInternal {
       return {
         oid: readCommit.oid,
         committer: readCommit.commit.committer.name,
+        timeStamp: readCommit.commit.author.timestamp * 1000, // Needs to be in milliseconds for Date.
         message: readCommit.commit.message,
       };
     });

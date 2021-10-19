@@ -28,8 +28,12 @@ function makeId<T extends Id>(arg: any): T {
   // Checking and converting a string
   if (typeof arg === 'string'){
     // Covert the string to the Buffer form.
-    id = idUtils.fromMultibase(arg);
-    if (id == null) throw new ErrorInvalidId();
+    try {
+      id = idUtils.fromMultibase(arg);
+      if (id == null) throw new ErrorInvalidId();
+    } catch (err) {
+      throw new ErrorInvalidId();
+    }
   }
 
   // If its a buffer we convert it to a Id.

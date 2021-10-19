@@ -1,5 +1,5 @@
 import type { NodeId } from "../nodes/types";
-import type { VaultAction, VaultName } from "../vaults/types";
+import type { Vault, VaultAction, VaultName } from "../vaults/types";
 import type { SessionManager } from "../sessions";
 import type { VaultInternal, VaultManager } from "../vaults";
 
@@ -9,7 +9,9 @@ import * as grpcUtils from "../grpc/utils";
 import * as clientPB from "../proto/js/Client_pb";
 import { isNodeId, makeNodeId } from "../nodes/utils";
 import { vaultOps } from '../vaults';
-import { makeVaultId } from '@/vaults/utils';
+import { makeVaultId, makeVaultIdPretty } from "../vaults/utils";
+import { commit } from "isomorphic-git";
+import { parseVaultInput } from "./utils";
 
 
 const createVaultRPC = ({
@@ -51,15 +53,15 @@ const createVaultRPC = ({
       callback: grpc.sendUnaryData<clientPB.VaultMessage>,
     ): Promise<void> => {
       const response = new clientPB.VaultMessage();
-      let vault;
+      let vault: Vault;
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        vault = await vaultManager.createVault(call.request.getVaultName() as VaultName);
-        response.setVaultId(vault.vaultId);
+        vault = await vaultManager.createVault(call.request.getNameOrId() as VaultName);
+        response.setNameOrId(makeVaultIdPretty(vault.vaultId));
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
@@ -87,7 +89,7 @@ const createVaultRPC = ({
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         const newName = call.request.getNewName() as VaultName;
         await vaultManager.renameVault(id, newName);
-        response.setVaultId(id);
+        response.setNameOrId(makeVaultIdPretty(id));
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -138,7 +140,7 @@ const createVaultRPC = ({
           return;
         }
         // Vault id
-        const vaultId = makeVaultId(vaultMessage.getVaultId_asU8());
+        const vaultId = parseVaultInput(vaultMessage, vaultManager);
         // Node id
         const id = makeNodeId(nodeMessage.getNodeId());
 
@@ -645,6 +647,50 @@ const createVaultRPC = ({
       } catch (err) {
         console.error(err);
         callback(grpcUtils.fromError(err), null);
+      }
+    },
+    vaultsLog: async (
+      call: grpc.ServerWritableStream<
+        clientPB.VaultsLogMessage,
+        clientPB.VaultsLogEntryMessage
+        >,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+      try {
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+
+        //Getting the vault.
+        const vaultsLogMessage = call.request;
+        const vaultMessage = vaultsLogMessage.getVault();
+        if (vaultMessage == null) {
+          await genWritable.throw({ code: grpc.status.NOT_FOUND });
+          return;
+        }
+        const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
+        const vault = await vaultManager.openVault(vaultId);
+
+        // Getting the log
+        const depth = vaultsLogMessage.getLogDepth();
+        let commitId: string | undefined = vaultsLogMessage.getCommitId();
+        commitId = !!commitId ? commitId : undefined;
+        const log = await vault.log(depth, commitId);
+
+        let vaultsLogEntryMessage = new clientPB.VaultsLogEntryMessage();
+        for (const entry of log) {
+          vaultsLogEntryMessage.setOid(entry.oid);
+          vaultsLogEntryMessage.setCommitter(entry.committer);
+          vaultsLogEntryMessage.setTimeStamp(entry.timeStamp);
+          vaultsLogEntryMessage.setMessage(entry.message);
+          await genWritable.next(vaultsLogEntryMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        console.error(err);
+        await genWritable.throw(err);
       }
     },
   };

@@ -4,6 +4,7 @@ import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
+import { makeVaultIdPretty } from "@/vaults/utils";
 
 const clone = binUtils.createCommand('clone', {
   description: 'Clones a vault from another node',
@@ -42,7 +43,7 @@ clone.action(async (options) => {
   vaultCloneMessage.setNode(nodeMessage);
 
   nodeMessage.setNodeId(options.nodeId);
-  vaultMessage.setVaultId(options.vaultId);
+  vaultMessage.setNameOrId(makeVaultIdPretty(options.vaultId));
 
   try {
     await client.start({});
@@ -62,7 +63,7 @@ clone.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Clone Vault: ${vaultMessage.getVaultName()} from Node: ${nodeMessage.getNodeId()} successful`,
+          `Clone Vault: ${vaultMessage.getNameOrId()} from Node: ${nodeMessage.getNodeId()} successful`,
         ],
       }),
     );

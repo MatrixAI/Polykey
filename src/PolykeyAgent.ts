@@ -283,6 +283,8 @@ class Polykey {
         gestaltGraph: gestalts_,
         acl: acl_,
         db: db_,
+        acl: acl_,
+        gestaltGraph: gestalts_,
         fs: fs_,
         logger: logger_.getChild('VaultManager')
       });

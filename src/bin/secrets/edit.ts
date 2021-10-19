@@ -46,7 +46,7 @@ edit.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setVault(vaultMessage);
     secretMessage.setSecretName(secretName);
 
@@ -87,7 +87,7 @@ edit.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Edited secret: ${vaultMessage.getVaultName()} in vault: ${vaultMessage.getVaultName()}`,
+          `Edited secret: ${vaultMessage.getNameOrId()} in vault: ${vaultMessage.getNameOrId()}`,
         ],
       }),
     );

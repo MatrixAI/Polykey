@@ -44,7 +44,7 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     nodeMessage.setNodeId(nodeId);
 
     const pCall = grpcClient.vaultsPermissionsSet(setVaultPermsMessage);
@@ -63,7 +63,7 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
         data: [
           `Shared Vault: ${setVaultPermsMessage
             .getVault()
-            ?.getVaultName()} to: ${setVaultPermsMessage
+            ?.getNameOrId()} to: ${setVaultPermsMessage
             .getNode()
             ?.getNodeId()}`,
         ],

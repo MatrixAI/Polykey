@@ -8,7 +8,7 @@ import { PolykeyAgent } from '@';
 import { NodeAddress } from '@/nodes/types';
 import * as utils from './utils';
 import { makeNodeId } from '@/nodes/utils';
-import { VaultName } from "@/vaults/types";
+import { Vault, VaultName } from "@/vaults/types";
 import { makeVaultIdPretty } from '@/vaults/utils';
 
 /**
@@ -24,7 +24,7 @@ import { makeVaultIdPretty } from '@/vaults/utils';
  * - when in doubt test each modified or added test on it's own as well as the whole file.
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
-describe.skip('CLI vaults', () => {
+describe('CLI vaults', () => {
   const password = 'password';
   const logger = new Logger('CLI Test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
@@ -596,5 +596,63 @@ describe.skip('CLI vaults', () => {
       expect(result.stderr).toContain('invalid')
       expect(result.stderr).toContain('not found')
     });
+  })
+  describe('commandVaultLog', () => {
+    const vaultName = 'Vault1' as VaultName;
+    const secret1 = {name: 'secret1', content: 'Secret-1-content'};
+    const secret2 = {name: 'secret2', content: 'Secret-2-content'};
+
+    let vault: Vault;
+    let commit1Oid: string;
+    let commit2Oid: string;
+    let commit3Oid: string;
+
+    beforeAll(async () => {
+      vault = await polykeyAgent.vaults.createVault(vaultName);
+
+      await vault.commit(async efs => {
+        await efs.writeFile(secret1.name, secret1.content);
+      })
+      commit1Oid = (await vault.log(0))[0].oid
+
+      await vault.commit(async efs => {
+        await efs.writeFile(secret2.name, secret2.content);
+      })
+      commit2Oid = (await vault.log(0))[0].oid
+
+      await vault.commit(async efs => {
+        await efs.unlink(secret2.name);
+      })
+      commit3Oid = (await vault.log(0))[0].oid
+    })
+
+    test('Should get all commits', async () => {
+      const command = ['vaults', 'log', '-np', dataDir, vaultName];
+
+      const result = await utils.pkWithStdio([...command]);
+      expect(result.code).toEqual(0);
+      expect(result.stdout).toContain(commit1Oid);
+      expect(result.stdout).toContain(commit2Oid);
+      expect(result.stdout).toContain(commit3Oid);
+    })
+    test('should get a part of the log', async () => {
+      const command = ['vaults', 'log', '-np', dataDir, '-n', '2', vaultName];
+
+      const result = await utils.pkWithStdio([...command]);
+      expect(result.code).toEqual(0);
+      expect(result.stdout).not.toContain(commit1Oid);
+      expect(result.stdout).toContain(commit2Oid);
+      expect(result.stdout).toContain(commit3Oid);
+    })
+    test('should get a specific commit', async () => {
+      const command = ['vaults', 'log', '-np', dataDir, '-n', '1', vaultName, commit2Oid];
+
+      const result = await utils.pkWithStdio([...command]);
+      expect(result.code).toEqual(0);
+      expect(result.stdout).not.toContain(commit1Oid);
+      expect(result.stdout).toContain(commit2Oid);
+      expect(result.stdout).not.toContain(commit3Oid);
+    })
+    test.todo('test formatting of the output');
   })
 });

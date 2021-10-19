@@ -7,21 +7,21 @@ import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
 // import { isVaultId } from "../../vaults/utils";
 
-const version = createCommand('version', {
+const log = createCommand('log', {
   description: {
-    description: `Sets the vault to a certain version of it's history`,
+    description: `Gets the version history of a vault`,
     args: {
       vault: 'Name or ID of the vault',
-      versionId: 'ID of the version you want to switch to',
+      commitId: 'Id for a specific commit to read from.',
     },
   },
   verbose: true,
   format: true,
   nodePath: true,
 });
-version.arguments('<vault> <versionId>');
-version.alias('ver');
-version.action(async (vault, versionId, options) => {
+log.arguments('<vault> [commitId]');
+log.option('-n --number <number>', 'Number of entries to read');
+log.action(async (vault, commitId, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -41,36 +41,30 @@ version.action(async (vault, versionId, options) => {
     const grpcClient = client.grpcClient;
 
     const vaultMessage = new clientPB.VaultMessage();
-    const vaultsVersionMessage = new clientPB.VaultsVersionMessage();
+    vaultMessage.setNameOrId(vault);
 
-    // check if vault ID or Name was provided.
-    // FIXME, we can't use this method anymore.
-    throw Error('Need to fix this.');
-    // if(isVaultId(vault)) vaultMessage.setVaultId(vault);
-    // else vaultMessage.setNameOrId(vault);
+    const vaultsLogMessage = new clientPB.VaultsLogMessage();
+    vaultsLogMessage.setVault(vaultMessage);
+    vaultsLogMessage.setLogDepth(options.number);
+    vaultsLogMessage.setCommitId(commitId?? '');
 
-    vaultsVersionMessage.setVault(vaultMessage);
-    vaultsVersionMessage.setVersionId(versionId);
+    const output: string[] = [];
+    const test = await grpcClient.vaultsLog(vaultsLogMessage);
 
-    const statusMessage = await grpcClient.vaultsVersion(vaultsVersionMessage);
-
-    let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
-
-    if(versionId.toLowerCase() === 'end') {
-      successMessage = [`Vault ${vault} is now at the latest version.`];
+    for await (const test2 of test) {
+      const timeStamp = test2.getTimeStamp();
+      const date = new Date(timeStamp);
+      output.push(`commit ${test2.getOid()}`);
+      output.push(`Date: ${date.toDateString()}`);
+      output.push(`${test2.getMessage()}`);
+      // output.push(``);
     }
 
-    if(!statusMessage.getIsLatestVersion()) {
-      successMessage.push('')
-      successMessage.push('Note: any changes made to the contents of the vault while at this version ')
-      successMessage.push('will discard all changes applied to the vault in later versions. You will')
-      successMessage.push('not be able to return to these later versions if changes are made.')
-    }
-
+    // TODO: finish this.
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
-        data: successMessage,
+        data: output,
       }),
     );
   } catch (err) {
@@ -108,4 +102,4 @@ version.action(async (vault, versionId, options) => {
   }
 });
 
-export default version;
+export default log;

@@ -173,6 +173,7 @@ interface Vault {
 type CommitLog = {
   oid: string,
   committer: string,
+  timeStamp: number,
   message: string,
 }
 
