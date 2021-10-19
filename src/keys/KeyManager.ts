@@ -16,7 +16,7 @@ import * as keysErrors from './errors';
 import * as utils from '../utils';
 import * as networkUtils from '../network/utils';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import { VaultKey } from "../vaults/types";
+import { VaultKey } from '../vaults/types';
 
 /**
  * Manage Root Keys and Root Certificates
@@ -379,7 +379,7 @@ class KeyManager {
       this.writeRootKeyPair(rootKeyPair, password),
       this.writeRootCert(rootCert),
       this.writeKey(keysDbKeyPlain, this.dbKeyPath, rootKeyPair),
-      this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair)
+      this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
@@ -539,7 +539,10 @@ class KeyManager {
 
   // Functions that handle the DB key.
 
-  protected async setupKey(keyPath: string, bits: number = 256): Promise<Buffer> {
+  protected async setupKey(
+    keyPath: string,
+    bits: number = 256,
+  ): Promise<Buffer> {
     let keyDbKey: Buffer;
     if (await this.existsKey(keyPath)) {
       keyDbKey = await this.readKey(keyPath);
@@ -594,7 +597,11 @@ class KeyManager {
     return keysDbKeyPlain;
   }
 
-  protected async writeKey(dbKey: Buffer, keyPath: string, keyPair?: KeyPair): Promise<void> {
+  protected async writeKey(
+    dbKey: Buffer,
+    keyPath: string,
+    keyPair?: KeyPair,
+  ): Promise<void> {
     const keyPair_ = keyPair ?? this.rootKeyPair;
     const keysDbKeyCipher = keysUtils.encryptWithPublicKey(
       keyPair_.publicKey,
@@ -602,10 +609,7 @@ class KeyManager {
     );
     this.logger.info(`Writing ${keyPath}`);
     try {
-      await this.fs.promises.writeFile(
-        `${keyPath}.tmp`,
-        keysDbKeyCipher,
-      );
+      await this.fs.promises.writeFile(`${keyPath}.tmp`, keysDbKeyCipher);
       await this.fs.promises.rename(`${keyPath}.tmp`, keyPath);
     } catch (e) {
       throw new keysErrors.ErrorDBKeyWrite(e.message, {

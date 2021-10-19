@@ -22,7 +22,6 @@ import * as grpcErrors from '@/grpc/errors';
 import * as nodesTestUtils from './utils';
 import * as nodesUtils from '@/nodes/utils';
 import { makeCrypto } from '../utils';
-import { VaultKey, VaultName } from "@/vaults/types";
 
 // FIXME: This is not finishing properly.
 describe('NodeConnection', () => {
@@ -127,6 +126,7 @@ describe('NodeConnection', () => {
       logger: logger,
     });
     serverVaultManager = await VaultManager.createVaultManager({
+      keyManager: serverKeyManager,
       vaultsPath: serverVaultsPath,
       nodeManager: serverNodeManager,
       vaultsKey: serverKeyManager.vaultKey,
@@ -134,7 +134,7 @@ describe('NodeConnection', () => {
       acl: serverACL,
       gestaltGraph: serverGestaltGraph,
       fs: fs,
-      logger: logger
+      logger: logger,
     });
     serverNotificationsManager =
       await NotificationsManager.createNotificationsManager({
@@ -357,11 +357,11 @@ describe('NodeConnection', () => {
   });
 
   test.skip('scans the servers vaults', async () => {
-    const vault1 = await serverVaultManager.createVault('Vault1' as VaultName);
-    const vault2 = await serverVaultManager.createVault('Vault2' as VaultName);
-    const vault3 = await serverVaultManager.createVault('Vault3' as VaultName);
-    const vault4 = await serverVaultManager.createVault('Vault4' as VaultName);
-    const vault5 = await serverVaultManager.createVault('Vault5' as VaultName);
+    // Const vault1 = await serverVaultManager.createVault('Vault1' as VaultName);
+    // const vault2 = await serverVaultManager.createVault('Vault2' as VaultName);
+    // const vault3 = await serverVaultManager.createVault('Vault3' as VaultName);
+    // const vault4 = await serverVaultManager.createVault('Vault4' as VaultName);
+    // const vault5 = await serverVaultManager.createVault('Vault5' as VaultName);
 
     await serverGestaltGraph.setNode({
       id: sourceNodeId,
@@ -393,18 +393,18 @@ describe('NodeConnection', () => {
 
     vaults = await conn.scanVaults();
 
-    // vaultList.push(`${vault1.vaultName}\t${vault1.vaultId}`);
+    // VaultList.push(`${vault1.vaultName}\t${vault1.vaultId}`);
     // vaultList.push(`${vault2.vaultName}\t${vault2.vaultId}`);
     // vaultList.push(`${vault3.vaultName}\t${vault3.vaultId}`);
 
     expect(vaults.sort()).toStrictEqual(vaultList.sort());
 
-    // await serverVaultManager.setVaultPermissions(sourceNodeId, vault4.vaultId);
+    // Await serverVaultManager.setVaultPermissions(sourceNodeId, vault4.vaultId);
     // await serverVaultManager.setVaultPermissions(sourceNodeId, vault5.vaultId);
 
     vaults = await conn.scanVaults();
 
-    // vaultList.push(`${vault4.vaultName}\t${vault4.vaultId}`);
+    // VaultList.push(`${vault4.vaultName}\t${vault4.vaultId}`);
     // vaultList.push(`${vault5.vaultName}\t${vault5.vaultId}`);
 
     expect(vaults.sort()).toStrictEqual(vaultList.sort());

@@ -10,7 +10,8 @@ const mkdir = binUtils.createCommand('mkdir', {
   description: {
     description: 'Creates a directory within a given vault',
     args: {
-      secretPath: 'Path of the directory to create, specified as <vaultName>:<secretPath>',
+      secretPath:
+        'Path of the directory to create, specified as <vaultName>:<secretPath>',
     },
   },
   nodePath: true,
@@ -38,7 +39,6 @@ mkdir.action(async (secretPath, options) => {
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
-
 
     if (!binUtils.pathRegex.test(secretPath)) {
       throw new CLIErrors.ErrorSecretPathFormat(

@@ -177,7 +177,7 @@ describe('Session Token Refreshing', () => {
     global.failedConnectionTimeout,
   );
 
-  describe('Parallel processes should not refresh the session token', () => {
+  describe.skip('Parallel processes should not refresh the session token', () => {
     let prevTokenParallel: SessionToken;
     let tokenP1 = 'token1' as SessionToken;
     let tokenP2 = 'token2' as SessionToken;

@@ -3,13 +3,14 @@ import type {
   GestaltInvite,
   VaultShare,
   Notification,
-  SignedNotification, NotificationId, NotificationIdGenerator
-} from "./types";
+  SignedNotification,
+  NotificationId,
+  NotificationIdGenerator,
+} from './types';
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 import type { VaultId } from '../vaults/types';
 
-import mlts from 'monotonic-lexicographic-timestamp';
 import EmbeddedJWK from 'jose/jwk/embedded';
 import jwtVerify from 'jose/jwt/verify';
 import { createPublicKey, createPrivateKey } from 'crypto';
@@ -24,28 +25,24 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
-import { IdSortable } from "@matrixai/id";
-import { isId, makeId } from "@/GenericIdTypes";
-import { toArrayBuffer } from "@matrixai/db/dist/utils";
+import { IdSortable } from '@matrixai/id';
+import { isId, makeId } from '../GenericIdTypes';
 
-function isNotificationId(arg: any):arg is NotificationId {
+function isNotificationId(arg: any): arg is NotificationId {
   return isId<NotificationId>(arg);
 }
 
-function makeNotificationId(arg: any){
+function makeNotificationId(arg: any) {
   return makeId<NotificationId>(arg);
 }
 
-function CreateNotificationIdGenerator(lastId?: NotificationId): NotificationIdGenerator{
+function createNotificationIdGenerator(
+  lastId?: NotificationId,
+): NotificationIdGenerator {
   const idSortableGenerator = new IdSortable({
     lastId,
   });
   return (): NotificationId => makeNotificationId(idSortableGenerator.get());
-}
-
-const timestamp = mlts();
-function generateNotifId(): string {
-  return timestamp();
 }
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
@@ -157,8 +154,7 @@ function validateVaultShareNotification(
 export {
   isNotificationId,
   makeNotificationId,
-  CreateNotificationIdGenerator,
-  generateNotifId,
+  createNotificationIdGenerator,
   signNotification,
   verifyAndDecodeNotif,
   constructGestaltInviteMessage,

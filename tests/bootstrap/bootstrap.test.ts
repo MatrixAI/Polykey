@@ -21,7 +21,10 @@ describe('Bootstrap', () => {
   async function fakeKeynode(nodePath) {
     await fs.promises.mkdir(path.join(nodePath, 'keys'));
     await fs.promises.mkdir(path.join(nodePath, 'db'));
-    await fs.promises.writeFile(path.join(nodePath, 'versionFile'), 'Versions or something IDK');
+    await fs.promises.writeFile(
+      path.join(nodePath, 'versionFile'),
+      'Versions or something IDK',
+    );
   }
 
   beforeEach(async () => {

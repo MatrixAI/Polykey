@@ -15,7 +15,6 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GestaltGraph, utils as gestaltsUtils } from '@/gestalts';
-import { utils as claimsUtils } from '@/claims';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
 import { DB } from '@matrixai/db';
@@ -295,7 +294,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -303,7 +302,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -342,7 +341,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -397,9 +396,9 @@ describe('GestaltGraph', () => {
     // abc -> dee
     // abc -> GitHub
     const nodeInfo1Chain: Record<IdentityClaimId, Claim> = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     identityClaimAbcToGH.payload.seq = 2;
-    nodeInfo1Chain[claimsUtils.numToLexiString(2)] = identityClaimAbcToGH;
+    nodeInfo1Chain['B'] = identityClaimAbcToGH;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -407,7 +406,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -581,7 +580,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -589,7 +588,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -630,7 +629,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -638,7 +637,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -672,7 +671,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -680,7 +679,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -714,7 +713,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo3Chain: ChainData = {};
-    nodeInfo3Chain[claimsUtils.numToLexiString(1)] = nodeClaimZzzToDee;
+    nodeInfo3Chain['A'] = nodeClaimZzzToDee;
     const nodeInfo3Linked: NodeInfo = {
       id: 'zzz' as NodeId,
       chain: nodeInfo3Chain,
@@ -741,7 +740,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -801,7 +800,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -863,7 +862,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'def'. Contains claims:
     // def -> GitHub (abc)
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimDefToGH;
+    nodeInfo1Chain['A'] = identityClaimDefToGH;
     const nodeInfo2Linked: NodeInfo = {
       id: 'def' as NodeId,
       chain: nodeInfo2Chain,
@@ -928,7 +927,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -992,7 +991,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1042,7 +1041,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1050,7 +1049,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -1093,7 +1092,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1147,7 +1146,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1155,7 +1154,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,

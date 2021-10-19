@@ -1,4 +1,4 @@
-import type { Claim, ClaimId, ClaimData } from '@/claims/types';
+import type { Claim, ClaimData } from '@/claims/types';
 import type { NodeId } from '@/nodes/types';
 import type { ProviderId, IdentityId } from '@/identities/types';
 
@@ -22,7 +22,6 @@ describe('Sigchain', () => {
   let keyManager: KeyManager;
   let db: DB;
   const srcNodeId = 'NodeId1' as NodeId;
-  let nodeId: NodeId;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -34,7 +33,6 @@ describe('Sigchain', () => {
       keysPath,
       logger,
     });
-    nodeId = keyManager.getNodeId();
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
     await db.start();
@@ -243,7 +241,7 @@ describe('Sigchain', () => {
       kid: 'D' as NodeId,
     });
     await expect(() =>
-      sigchain.addExistingClaim(claimInvalidHash)
+      sigchain.addExistingClaim(claimInvalidHash),
     ).rejects.toThrow(sigchainErrors.ErrorSigchainInvalidHash);
 
     // Check a claim with an invalid sequence number will throw an exception
@@ -259,7 +257,7 @@ describe('Sigchain', () => {
       kid: 'D' as NodeId,
     });
     await expect(() =>
-      sigchain.addExistingClaim(claimInvalidSeqNum)
+      sigchain.addExistingClaim(claimInvalidSeqNum),
     ).rejects.toThrow(sigchainErrors.ErrorSigchainInvalidSequenceNum);
   });
   test('retrieves chain data', async () => {
@@ -349,7 +347,9 @@ describe('Sigchain', () => {
       // Verify the structure of claim
       const expected: Claim = {
         payload: {
-          hPrev: claimsUtils.hashClaim(await sigchain.getClaim(seqMap[seqNum - 1])),
+          hPrev: claimsUtils.hashClaim(
+            await sigchain.getClaim(seqMap[seqNum - 1]),
+          ),
           seq: expectedSeqNum,
           data: {
             type: 'node',
@@ -399,7 +399,9 @@ describe('Sigchain', () => {
           hPrev:
             expectedSeqNum === 1
               ? null
-              : claimsUtils.hashClaim(await sigchain.getClaim(seqMap[seqNum - 1])),
+              : claimsUtils.hashClaim(
+                  await sigchain.getClaim(seqMap[seqNum - 1]),
+                ),
           seq: expectedSeqNum,
           data: {
             type: 'identity',

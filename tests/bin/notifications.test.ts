@@ -1,6 +1,6 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { NotificationData } from '@/notifications/types';
-import type { VaultName } from "@/vaults/types";
+import type { VaultName } from '@/vaults/types';
 
 import os from 'os';
 import path from 'path';
@@ -10,7 +10,7 @@ import * as utils from './utils';
 import * as testUtils from './utils';
 import { PolykeyAgent } from '@';
 import { makeVaultId } from '@/vaults/utils';
-// import { makeVaultId } from "@/vaults/utils";
+// Import { makeVaultId } from "@/vaults/utils";
 import { utils as idUtils } from '@matrixai/id';
 
 /**

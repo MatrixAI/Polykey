@@ -1,17 +1,24 @@
-import type { ChainDataEncoded } from "./types";
-import type { ClaimData, ClaimEncoded, ClaimId, ClaimIdGenerator, ClaimIntermediary, ClaimType } from "../claims/types";
-import type { NodeId } from "../nodes/types";
-import type { KeyManager } from "../keys";
-import type { DB, DBLevel, DBOp } from "@matrixai/db";
-import { errors as dbErrors } from "@matrixai/db";
+import type { ChainDataEncoded } from './types';
+import type {
+  ClaimData,
+  ClaimEncoded,
+  ClaimId,
+  ClaimIdGenerator,
+  ClaimIntermediary,
+  ClaimType,
+} from '../claims/types';
+import type { NodeId } from '../nodes/types';
+import type { KeyManager } from '../keys';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
+import { errors as dbErrors } from '@matrixai/db';
 
-import Logger from "@matrixai/logger";
-import { Mutex } from "async-mutex";
-import * as sigchainErrors from "./errors";
-import * as claimsUtils from "../claims/utils";
-import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
-import { createClaimIdGenerator, makeClaimIdString } from "@/sigchain/utils";
-import { utils as idUtils} from '@matrixai/id';
+import Logger from '@matrixai/logger';
+import { Mutex } from 'async-mutex';
+import * as sigchainErrors from './errors';
+import * as claimsUtils from '../claims/utils';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import { createClaimIdGenerator, makeClaimIdString } from '../sigchain/utils';
+import { utils as idUtils } from '@matrixai/id';
 
 interface Sigchain extends CreateDestroy {}
 @CreateDestroy()
@@ -79,7 +86,13 @@ class Sigchain {
     return this.lock.isLocked();
   }
 
-  private async create({ fresh, nodeId }: { fresh: boolean, nodeId: NodeId}): Promise<void> {
+  private async create({
+    fresh,
+    nodeId,
+  }: {
+    fresh: boolean;
+    nodeId: NodeId;
+  }): Promise<void> {
     this.logger.info('Creating Sigchain');
     if (!this.db.running) {
       throw new dbErrors.ErrorDBNotRunning();
@@ -197,7 +210,6 @@ class Sigchain {
    */
   @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async addClaim(claimData: ClaimData): Promise<void> {
-
     await this._transaction(async () => {
       const prevSequenceNumber = await this.getSequenceNumber();
       const newSequenceNumber = prevSequenceNumber + 1;
@@ -403,22 +415,25 @@ class Sigchain {
   public async getLatestClaimId(): Promise<ClaimId | undefined> {
     return await this._transaction(async () => {
       let latestId: ClaimId | undefined;
-      const keyStream = this.sigchainClaimsDb.createKeyStream({limit: 1, reverse: true});
+      const keyStream = this.sigchainClaimsDb.createKeyStream({
+        limit: 1,
+        reverse: true,
+      });
       for await (const o of keyStream) {
-        latestId = (o as any) as ClaimId;
+        latestId = o as any as ClaimId;
       }
-      return latestId
+      return latestId;
     });
   }
 
   @ready(new sigchainErrors.ErrorSigchainDestroyed())
-  public async getSeqMap() : Promise<Record<number, ClaimId>> {
+  public async getSeqMap(): Promise<Record<number, ClaimId>> {
     const map: Record<number, ClaimId> = {};
     const claimStream = this.sigchainClaimsDb.createKeyStream();
     let seq = 1;
     for await (const o of claimStream) {
-      map[seq] = (o as any) as ClaimId;
-      seq ++;
+      map[seq] = o as any as ClaimId;
+      seq++;
     }
     return map;
   }

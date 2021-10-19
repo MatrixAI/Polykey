@@ -1,4 +1,4 @@
-import type { Claim, ClaimEncoded, ClaimIdString } from "../claims/types";
+import type { Claim, ClaimEncoded, ClaimIdString } from '../claims/types';
 
 /**
  * Serialized version of a node's sigchain.

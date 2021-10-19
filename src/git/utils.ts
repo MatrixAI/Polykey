@@ -27,7 +27,6 @@ import createHash from 'sha.js';
 // Import * as vaultUtils from '../vaults/utils';
 import { errors as gitErrors } from './';
 import type { EncryptedFS } from 'encryptedfs';
-import efsWorker from 'encryptedfs/dist/workers/efsWorkerModule';
 
 const refpaths = (ref: string) => [
   `${ref}`,
@@ -85,10 +84,8 @@ async function writeRefsAdResponse({
   const stream: Buffer[] = [];
   // Compose capabilities string
   let syms = '';
-  let a = '';
   for (const [key, value] of Object.entries(symrefs)) {
     syms += `symref=${key}:${value} `;
-    a = value;
   }
   let caps = `\x00${[...capabilities].join(
     ' ',
@@ -97,7 +94,7 @@ async function writeRefsAdResponse({
   // are returned.
   for (const [key, value] of Object.entries(refs)) {
     stream.push(encode(`${value} ${key}${caps}\n`));
-    // stream.push(encode(`${value} ${a}\n`));
+    // Stream.push(encode(`${value} ${a}\n`));
     caps = '';
   }
   stream.push(Buffer.from('0000', 'utf8'));
@@ -350,10 +347,10 @@ async function listObjects({
   fs,
   gitdir = '.git',
   oids,
-}:{
-  fs: EncryptedFS,
-  gitdir: string,
-  oids: string[],
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  oids: string[];
 }): Promise<Array<string>> {
   const commits = new Set<string>();
   const trees = new Set<string>();
@@ -467,13 +464,13 @@ async function log({
   depth,
   since,
   signing = false,
-}:{
-  fs: EncryptedFS,
-  gitdir: string,
-  ref: string,
-  depth?: number,
-  since?: number, // Date
-  signing?: boolean,
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  ref: string;
+  depth?: number;
+  since?: number; // Date
+  signing?: boolean;
 }): Promise<ReadCommitResult[]> {
   try {
     const sinceTimestamp =
@@ -909,13 +906,13 @@ async function readObject({
         result.object = commitFrom(result.object);
         break;
       case 'tree':
-        // result.object = treeFrom(result.object).entries();
+        // Result.object = treeFrom(result.object).entries();
         break;
       case 'blob':
         // Here we consider returning a raw Buffer as the 'content' format
         // and returning a string as the 'parsed' format
         if (encoding) {
-          result.object = result.object.toString(encoding)
+          result.object = result.object.toString(encoding);
         } else {
           result.object = new Uint8Array(result.object);
           result.format = 'content';
@@ -1202,11 +1199,11 @@ async function pack({
   gitdir = '.git',
   oids,
   outputStream,
-}:{
-  fs: EncryptedFS,
-  gitdir: string,
-  oids: string[],
-  outputStream: PassThrough,
+}: {
+  fs: EncryptedFS;
+  gitdir: string;
+  oids: string[];
+  outputStream: PassThrough;
 }): Promise<PassThrough> {
   const hash = await createHash('sha1');
   function write(chunk: Buffer | string, enc?: BufferEncoding): void {

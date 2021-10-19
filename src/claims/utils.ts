@@ -16,7 +16,6 @@ import { decode } from 'jose/util/base64url';
 import { createPublicKey, createPrivateKey } from 'crypto';
 import { md } from 'node-forge';
 import { DefinedError } from 'ajv';
-import lexi from 'lexicographic-integer';
 import canonicalize from 'canonicalize';
 import { agentPB } from '../agent';
 
@@ -138,24 +137,6 @@ async function signIntermediaryClaim({
     alg: alg,
   });
   return doublySignedClaim;
-}
-
-/**
- * Converts a number to a lexicographic hex string (for use in createClaim).
- * These can be used as numerical keys in leveldb. Because leveldb is stored
- * (and retrieved) in lexicographic order, using hex strings allows numbers
- * to be stored in numerical order.
- * e.g. 1 -> '01', 253 -> 'fb02'
- */
-function numToLexiString(num: number): string {
-  return lexi.pack(num, 'hex');
-}
-
-/**
- * Converts a lexicographic string back to its numerical form.
- */
-function lexiStringToNum(lexiString: string): number {
-  return lexi.unpack(lexiString);
 }
 
 /**
@@ -493,8 +474,6 @@ export {
   createClaim,
   signExistingClaim,
   signIntermediaryClaim,
-  numToLexiString,
-  lexiStringToNum,
   hashClaim,
   decodeClaim,
   decodeClaimHeader,

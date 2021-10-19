@@ -10,7 +10,7 @@ import type {
 } from '../identities/types';
 import type { NodeManager } from '../nodes';
 import type { Provider, IdentitiesManager } from '../identities';
-import type { Claim, ClaimId, ClaimIdString, ClaimLinkIdentity } from "../claims/types";
+import type { Claim, ClaimIdString, ClaimLinkIdentity } from '../claims/types';
 
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from '../gestalts/utils';
@@ -18,7 +18,7 @@ import * as claimsUtils from '../claims/utils';
 import { errors as identitiesErrors } from '../identities';
 import { errors as gestaltsErrors } from '../gestalts';
 import * as discoveryErrors from './errors';
-import { ChainData } from '@/sigchain/types';
+import { ChainData } from '../sigchain/types';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 
 interface Discovery extends CreateDestroy {}

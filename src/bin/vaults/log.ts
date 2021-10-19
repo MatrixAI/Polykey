@@ -5,7 +5,7 @@ import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
 import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
-// import { isVaultId } from "../../vaults/utils";
+// Import { isVaultId } from "../../vaults/utils";
 
 const log = createCommand('log', {
   description: {
@@ -46,21 +46,20 @@ log.action(async (vault, commitId, options) => {
     const vaultsLogMessage = new clientPB.VaultsLogMessage();
     vaultsLogMessage.setVault(vaultMessage);
     vaultsLogMessage.setLogDepth(options.number);
-    vaultsLogMessage.setCommitId(commitId?? '');
+    vaultsLogMessage.setCommitId(commitId ?? '');
 
     const output: string[] = [];
-    const test = await grpcClient.vaultsLog(vaultsLogMessage);
+    const log = await grpcClient.vaultsLog(vaultsLogMessage);
 
-    for await (const test2 of test) {
-      const timeStamp = test2.getTimeStamp();
+    for await (const entry of log) {
+      const timeStamp = entry.getTimeStamp();
       const date = new Date(timeStamp);
-      output.push(`commit ${test2.getOid()}`);
+      output.push(`commit ${entry.getOid()}`);
+      output.push(`committer ${entry.getCommitter()}`);
       output.push(`Date: ${date.toDateString()}`);
-      output.push(`${test2.getMessage()}`);
-      // output.push(``);
+      output.push(`${entry.getMessage()}`);
     }
 
-    // TODO: finish this.
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
@@ -75,15 +74,12 @@ log.action(async (vault, commitId, options) => {
       data = ['Error:', err.message];
     } else if (err instanceof vaultErrors.ErrorVaultCommitUndefined) {
       // Warning that the versionId was invalid
-      data =  [
-        `Error: ${err.message}`,
-        `The VersionID provided was invalid or not in the version history.`
-      ];
-    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
       data = [
         `Error: ${err.message}`,
-        `The VaultId was invalid or not found.`
-      ]
+        `The VersionID provided was invalid or not in the version history.`,
+      ];
+    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
+      data = [`Error: ${err.message}`, `The VaultId was invalid or not found.`];
     } else {
       data = ['Error:', err.message];
     }

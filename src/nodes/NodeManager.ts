@@ -2,8 +2,14 @@ import type { KeyManager } from '../keys';
 import type { PublicKeyPem } from '../keys/types';
 import type { Sigchain } from '../sigchain';
 import type { ChainData, ChainDataEncoded } from '../sigchain/types';
-import type { ClaimId, ClaimIdString } from "../claims/types";
-import type { NodeId, NodeAddress, NodeData, NodeBucket, NodeConnectionMap } from '../nodes/types';
+import type { ClaimIdString } from '../claims/types';
+import type {
+  NodeId,
+  NodeAddress,
+  NodeData,
+  NodeBucket,
+  NodeConnectionMap,
+} from '../nodes/types';
 import type { SignedNotification } from '../notifications/types';
 import type { Host, Port } from '../network/types';
 import type { FileSystem, Timer } from '../types';
@@ -152,7 +158,7 @@ class NodeManager {
         await connLock.connection.stop();
       }
       // TODO: Potentially, we could instead re-start any connections in start
-      // This assumes that after stopping the proxies, their connections are 
+      // This assumes that after stopping the proxies, their connections are
       // also still valid on restart though.
       this.connections.delete(targetNodeId);
     }
@@ -389,7 +395,9 @@ class NodeManager {
   public async relayHolePunchMessage(
     message: agentPB.RelayMessage,
   ): Promise<void> {
-    const conn = await this.getConnectionToNode(message.getTargetId() as NodeId);
+    const conn = await this.getConnectionToNode(
+      message.getTargetId() as NodeId,
+    );
     await conn.sendHolePunchMessage(
       message.getSrcId() as NodeId,
       message.getTargetId() as NodeId,
@@ -415,8 +423,10 @@ class NodeManager {
    * undirectional connection to another node (server).
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
-  public async getConnectionToNode(targetNodeId: NodeId): Promise<NodeConnection> {
-    let connLock = this.connections.get(targetNodeId);
+  public async getConnectionToNode(
+    targetNodeId: NodeId,
+  ): Promise<NodeConnection> {
+    const connLock = this.connections.get(targetNodeId);
     // If there's already an entry in the map, we have 2 cases:
     // 1. The connection already exists
     // 2. The connection is currently being created by another concurrent thread
@@ -439,9 +449,9 @@ class NodeManager {
       // which case, this thread will create the connection).
       return await this.getConnectionToNode(targetNodeId);
 
-    // Otherwise, we need to create an entry
+      // Otherwise, we need to create an entry
     } else {
-      let lock = new Mutex();
+      const lock = new Mutex();
       this.connections.set(targetNodeId, { lock });
       let release;
       try {

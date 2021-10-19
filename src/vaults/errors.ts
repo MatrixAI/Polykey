@@ -1,4 +1,4 @@
-import { ErrorForwardProxyNotStarted, ErrorPolykey } from "../errors";
+import { ErrorPolykey } from '../errors';
 
 class ErrorVaults extends ErrorPolykey {}
 

@@ -5,7 +5,7 @@ import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
 import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
-// import { isVaultId } from "../../vaults/utils";
+// Import { isVaultId } from "../../vaults/utils";
 
 const version = createCommand('version', {
   description: {
@@ -43,29 +43,25 @@ version.action(async (vault, versionId, options) => {
     const vaultMessage = new clientPB.VaultMessage();
     const vaultsVersionMessage = new clientPB.VaultsVersionMessage();
 
-    // check if vault ID or Name was provided.
-    // FIXME, we can't use this method anymore.
-    throw Error('Need to fix this.');
-    // if(isVaultId(vault)) vaultMessage.setVaultId(vault);
-    // else vaultMessage.setNameOrId(vault);
-
+    vaultMessage.setNameOrId(vault);
     vaultsVersionMessage.setVault(vaultMessage);
     vaultsVersionMessage.setVersionId(versionId);
 
-    const statusMessage = await grpcClient.vaultsVersion(vaultsVersionMessage);
+    await grpcClient.vaultsVersion(vaultsVersionMessage);
 
     let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
 
-    if(versionId.toLowerCase() === 'end') {
+    if (versionId.toLowerCase() === 'last') {
       successMessage = [`Vault ${vault} is now at the latest version.`];
     }
 
-    if(!statusMessage.getIsLatestVersion()) {
-      successMessage.push('')
-      successMessage.push('Note: any changes made to the contents of the vault while at this version ')
-      successMessage.push('will discard all changes applied to the vault in later versions. You will')
-      successMessage.push('not be able to return to these later versions if changes are made.')
-    }
+    /**
+     * Previous status message:
+     * ---
+     * Note: any changes made to the contents of the vault while at this version
+     * will discard all changes applied to the vault in later versions. You will
+     * not be able to return to these later versions if changes are made.
+     */
 
     process.stdout.write(
       outputFormatter({
@@ -81,15 +77,12 @@ version.action(async (vault, versionId, options) => {
       data = ['Error:', err.message];
     } else if (err instanceof vaultErrors.ErrorVaultCommitUndefined) {
       // Warning that the versionId was invalid
-      data =  [
-        `Error: ${err.message}`,
-        `The VersionID provided was invalid or not in the version history.`
-      ];
-    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
       data = [
         `Error: ${err.message}`,
-        `The VaultId was invalid or not found.`
-      ]
+        `The VersionID provided was invalid or not in the version history.`,
+      ];
+    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
+      data = [`Error: ${err.message}`, `The VaultId was invalid or not found.`];
     } else {
       data = ['Error:', err.message];
     }

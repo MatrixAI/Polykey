@@ -3,7 +3,7 @@ import type { TLSConfig } from '../network/types';
 import { GRPCClient, utils as grpcUtils } from '../grpc';
 import * as agentPB from '../proto/js/Agent_pb';
 import { AgentClient } from '../proto/js/Agent_grpc_pb';
-import { NodeId } from '@/nodes/types';
+import { NodeId } from '../nodes/types';
 import { Host, Port, ProxyConfig } from '../network/types';
 import Logger from '@matrixai/logger';
 import {

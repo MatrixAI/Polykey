@@ -5,14 +5,14 @@ import type {
   VaultList,
   VaultName,
   FileSystemReadable,
-  VaultIdPretty
+  VaultIdPretty,
 } from './types';
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 
 import fs from 'fs';
 import path from 'path';
-import { IdRandom,  utils as idUtils} from "@matrixai/id";
+import { IdRandom } from '@matrixai/id';
 
 import { GitRequest } from '../git';
 import * as grpc from '@grpc/grpc-js';
@@ -24,10 +24,10 @@ import { GRPCClientAgent } from '../agent';
 
 import * as keysUtils from '../keys/utils';
 import { errors as vaultErrors } from './';
-import { isIdString, isId, makeIdString, makeId, stringToId, idToString } from '../GenericIdTypes';
+import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
 
 async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
-  return await keysUtils.generateKey(bits) as VaultKey;
+  return (await keysUtils.generateKey(bits)) as VaultKey;
 }
 
 function isVaultId(arg: any) {
@@ -182,7 +182,7 @@ async function* requestInfo(
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
   const request = new agentPB.InfoRequest();
-  request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
+  // Request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
   const response = client.vaultsGitInfoGet(request);
   for await (const resp of response) {
     yield resp.getChunk_asU8();

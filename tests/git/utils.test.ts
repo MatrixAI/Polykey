@@ -5,10 +5,10 @@ import path from 'path';
 import * as gitUtils from '@/git/utils';
 import * as gitTestUtils from './utils';
 import * as gitErrors from '@/git/errors';
-import {  PackIndex } from '@/git/types';
+import { PackIndex } from '@/git/types';
 import { ReadCommitResult } from 'isomorphic-git';
-import { EncryptedFS } from "encryptedfs";
-import { KeyManager } from "@/keys";
+import { EncryptedFS } from 'encryptedfs';
+import { KeyManager } from '@/keys';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 describe('Git utils', () => {
@@ -60,7 +60,9 @@ describe('Git utils', () => {
     test('from .idx', async () => {
       const packDir = path.join('.git', 'objects', 'pack');
       const packfile = (await efs.promises.readdir(packDir))[0] as string;
-      const idx = await efs.promises.readFile(path.join(packDir, packfile)) as Buffer;
+      const idx = (await efs.promises.readFile(
+        path.join(packDir, packfile),
+      )) as Buffer;
       const p = gitUtils.fromIdx(idx) as PackIndex;
       expect(p).not.toBeUndefined();
       const packSha = packfile.substring(5, 45);
@@ -73,11 +75,7 @@ describe('Git utils', () => {
   });
   describe('Git Ref Manager', () => {
     test('listRefs', async () => {
-      const refs = await gitUtils.listRefs(
-        efs,
-        '.git',
-        'refs/heads',
-      );
+      const refs = await gitUtils.listRefs(efs, '.git', 'refs/heads');
       expect(refs).toEqual(['master']);
     });
   });
@@ -94,11 +92,7 @@ describe('Git utils', () => {
     expect(Buffer.compare(foo, Buffer.from('0004')) === 0).toBe(true);
   });
   test('upload pack', async () => {
-    const res = (await gitUtils.uploadPack(
-      efs,
-      '.git',
-      true,
-    )) as Buffer[];
+    const res = (await gitUtils.uploadPack(efs, '.git', true)) as Buffer[];
     const buffer = Buffer.concat(res);
     expect(buffer.toString('utf8')).toBe(
       `007d${firstCommit.oid} HEAD\0side-band-64k symref=HEAD:refs/heads/master agent=git/isomorphic-git@1.8.1
@@ -108,28 +102,15 @@ describe('Git utils', () => {
   });
   describe('Resolve refs', () => {
     test('resolving a commit oid', async () => {
-      const ref = await gitUtils.resolve(
-        efs,
-        '.git',
-        commits[0].oid,
-      );
+      const ref = await gitUtils.resolve(efs, '.git', commits[0].oid);
       expect(ref).toBe(firstCommit.oid);
     });
     test('HEAD', async () => {
-      const ref = await gitUtils.resolve(
-        efs,
-        '.git',
-        'HEAD',
-      );
+      const ref = await gitUtils.resolve(efs, '.git', 'HEAD');
       expect(ref).toBe(firstCommit.oid);
     });
     test('HEAD depth', async () => {
-      const ref = await gitUtils.resolve(
-        efs,
-        '.git',
-        'HEAD',
-        2,
-      );
+      const ref = await gitUtils.resolve(efs, '.git', 'HEAD', 2);
       expect(ref).toBe('refs/heads/master');
     });
     test('non-existant refs', async () => {

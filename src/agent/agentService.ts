@@ -1,6 +1,9 @@
-import type { NodeId } from '../nodes/types';
-import type { ClaimId, ClaimEncoded, ClaimIntermediary, ClaimIdString } from "../claims/types";
-import type { VaultId, VaultName } from '../vaults/types';
+import type {
+  ClaimEncoded,
+  ClaimIntermediary,
+  ClaimIdString,
+} from '../claims/types';
+import type { VaultName } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '../utils';
@@ -21,8 +24,8 @@ import {
 } from '../notifications';
 import { errors as vaultsErrors } from '../vaults';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
-import { makeVaultId } from '../vaults/utils';
-import { makeNodeId } from "../nodes/utils";
+import { makeVaultId, makeVaultIdPretty } from '../vaults/utils';
+import { makeNodeId } from '../nodes/utils';
 import { utils as idUtils } from '@matrixai/id';
 
 /**
@@ -57,17 +60,17 @@ function createAgentService({
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       const request = call.request;
-      const vaultNameOrId = (request.getVaultId_asU8());
+      const vaultNameOrId = request.getVaultId();
       let vaultId, vaultName;
       try {
-        vaultId = makeVaultId(vaultNameOrId);
+        vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
         await vaultManager.openVault(vaultId);
-        vaultName = await vaultManager.getVaultName(vaultId)
+        vaultName = await vaultManager.getVaultName(vaultId);
       } catch (err) {
         if (err instanceof vaultsErrors.ErrorVaultUndefined) {
-          vaultId = await vaultManager.getVaultId(idUtils.toString(vaultNameOrId) as VaultName)
+          vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
           await vaultManager.openVault(vaultId);
-          vaultName = idUtils.toString(vaultNameOrId);
+          vaultName = vaultNameOrId;
         } else {
           throw err;
         }
@@ -75,6 +78,7 @@ function createAgentService({
       // TODO: Check the permissions here
       const meta = new grpc.Metadata();
       meta.set('vaultName', vaultName);
+      meta.set('vaultId', makeVaultIdPretty(vaultId));
       genWritable.stream.sendMetadata(meta);
       const response = new agentPB.PackChunk();
       const responseGen = vaultManager.handleInfoRequest(vaultId);
@@ -101,14 +105,18 @@ function createAgentService({
         const body = Buffer.concat(clientBodyBuffers);
         const meta = call.metadata;
         const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
-        if (vaultNameOrId == null) throw new ErrorGRPC('vault-name not in metadata.');
+        if (vaultNameOrId == null)
+          throw new ErrorGRPC('vault-name not in metadata.');
         let vaultId;
         try {
           vaultId = makeVaultId(vaultNameOrId);
           await vaultManager.openVault(vaultId);
         } catch (err) {
-          if (err instanceof vaultsErrors.ErrorVaultUndefined) {
-            vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName)
+          if (
+            err instanceof vaultsErrors.ErrorVaultUndefined ||
+            err instanceof SyntaxError
+          ) {
+            vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
             await vaultManager.openVault(vaultId);
           } else {
             throw err;
@@ -151,7 +159,7 @@ function createAgentService({
       const response = new agentPB.VaultListMessage();
       const id = makeNodeId(call.request.getNodeId());
       try {
-        throw Error('Not implemented')
+        throw Error('Not implemented');
         // FIXME: handleVaultNamesRequest doesn't exist.
         // const listResponse = vaultManager.handleVaultNamesRequest(id);
         let listResponse;
@@ -295,7 +303,6 @@ function createAgentService({
         const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
         await notificationsManager.receiveNotification(notification);
       } catch (err) {
-        console.error(err);
         if (err instanceof notificationsErrors.ErrorNotifications) {
           callback(grpcUtils.fromError(err), response);
         } else {

@@ -1,39 +1,24 @@
-import type { FileSystem } from '../types';
 import type {
-  FileChanges,
-  FileOptions,
-  SecretList,
-  SecretName,
   VaultId,
-  VaultKey,
-  VaultName,
   FileSystemReadable,
   FileSystemWritable,
   CommitLog,
-} from "./types";
-import type { NodeId } from '../nodes/types';
-import type { WorkerManager } from '../workers';
-import type { ReadCommitResult } from 'isomorphic-git';
+} from './types';
 
-import fs from 'fs';
 import path from 'path';
 import git from 'isomorphic-git';
 import { Mutex } from 'async-mutex';
 import { EncryptedFS } from 'encryptedfs';
-import { PassThrough } from 'readable-stream';
 import Logger from '@matrixai/logger';
 import type { MutexInterface } from 'async-mutex';
 
-import { GitRequest } from '../git';
-
 import * as vaultsUtils from './utils';
-import * as gitUtils from '../git/utils';
 import * as vaultsErrors from './errors';
-import * as gitErrors from '../git/errors';
-import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import { makeVaultIdPretty } from './utils';
+import { KeyManager } from '../keys';
 
-const headTag = 'end';
+const lastTag = 'last';
 
 interface VaultInternal extends CreateDestroy {}
 @CreateDestroy()
@@ -42,19 +27,22 @@ class VaultInternal {
   public readonly gitDir: string;
   public readonly vaultId: VaultId;
 
-  protected _efsRoot: EncryptedFS;
-  protected _efsVault: EncryptedFS;
-  protected _logger: Logger;
-  protected _lock: MutexInterface;
-  protected _workingDir: string;
+  protected efsRoot: EncryptedFS;
+  protected efsVault: EncryptedFS;
+  protected logger: Logger;
+  protected lock: MutexInterface;
+  protected workingDir: string;
+  protected keyManager: KeyManager;
 
   public static async create({
     vaultId,
+    keyManager,
     efs,
     logger,
     fresh = false,
   }: {
     vaultId: VaultId;
+    keyManager: KeyManager;
     efs: EncryptedFS;
     logger?: Logger;
     fresh?: boolean;
@@ -68,8 +56,12 @@ class VaultInternal {
           throw err;
         }
       }
-      await efs.mkdir(path.join(makeVaultIdPretty(vaultId), 'contents'), { recursive: true });
-      const efsVault = await efs.chroot(path.join(makeVaultIdPretty(vaultId), 'contents'));
+      await efs.mkdir(path.join(makeVaultIdPretty(vaultId), 'contents'), {
+        recursive: true,
+      });
+      const efsVault = await efs.chroot(
+        path.join(makeVaultIdPretty(vaultId), 'contents'),
+      );
       await efsVault.start();
       // Creating a new vault.
       await git.init({
@@ -90,9 +82,13 @@ class VaultInternal {
         path.join(makeVaultIdPretty(vaultId), '.git', 'packed-refs'),
         '# pack-refs with: peeled fully-peeled sorted',
       );
-      await efs.writeFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), workingDir);
+      await efs.writeFile(
+        path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'),
+        workingDir,
+      );
       const vault = new VaultInternal({
         vaultId,
+        keyManager,
         efs,
         efsVault,
         workingDir,
@@ -102,13 +98,19 @@ class VaultInternal {
       return vault;
     } else {
       // Loading an existing vault.
-      const efsVault = await efs.chroot(path.join(makeVaultIdPretty(vaultId), 'contents'));
+      const efsVault = await efs.chroot(
+        path.join(makeVaultIdPretty(vaultId), 'contents'),
+      );
       await efsVault.start();
-      const workingDir = (await efs.readFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), {
-        encoding: 'utf8',
-      })) as string;
+      const workingDir = (await efs.readFile(
+        path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'),
+        {
+          encoding: 'utf8',
+        },
+      )) as string;
       const vault = new VaultInternal({
         vaultId,
+        keyManager,
         efs,
         efsVault,
         workingDir,
@@ -117,17 +119,18 @@ class VaultInternal {
       logger.info(`Starting vault at '${makeVaultIdPretty(vaultId)}'`);
       return vault;
     }
-
   }
 
   constructor({
     vaultId,
+    keyManager,
     efs,
     efsVault,
     workingDir,
     logger,
   }: {
     vaultId: VaultId;
+    keyManager: KeyManager;
     efs: EncryptedFS;
     efsVault: EncryptedFS;
     workingDir: string;
@@ -136,40 +139,45 @@ class VaultInternal {
     this.baseDir = path.join(makeVaultIdPretty(vaultId), 'contents');
     this.gitDir = path.join(makeVaultIdPretty(vaultId), '.git');
     this.vaultId = vaultId;
-    this._efsRoot = efs;
-    this._efsVault = efsVault;
-    this._workingDir = workingDir;
-    this._logger = logger ?? new Logger(this.constructor.name);
-    this._lock = new Mutex();
+    this.keyManager = keyManager;
+    this.efsRoot = efs;
+    this.efsVault = efsVault;
+    this.workingDir = workingDir;
+    this.logger = logger ?? new Logger(this.constructor.name);
+    this.lock = new Mutex();
   }
 
   public async destroy(): Promise<void> {
-    const release = await this._lock.acquire();
+    const release = await this.lock.acquire();
     try {
-      await this._efsRoot.writeFile(
+      await this.efsRoot.writeFile(
         path.join(makeVaultIdPretty(this.vaultId), '.git', 'workingDirectory'),
-        this._workingDir,
+        this.workingDir,
       );
     } finally {
       release();
     }
-    this._logger.info(`Destroying vault at '${makeVaultIdPretty(this.vaultId)}'`);
+    this.logger.info(
+      `Destroying vault at '${makeVaultIdPretty(this.vaultId)}'`,
+    );
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
-  public async commit(f: (fs: FileSystemWritable) => Promise<void>): Promise<void> {
-    const release = await this._lock.acquire();
+  public async commit(
+    f: (fs: FileSystemWritable) => Promise<void>,
+  ): Promise<void> {
+    const release = await this.lock.acquire();
     const message: string[] = [];
     await git.checkout({
-      fs: this._efsRoot,
+      fs: this.efsRoot,
       dir: this.baseDir,
       gitdir: this.gitDir,
-      ref: this._workingDir,
+      ref: this.workingDir,
     });
     try {
-      await f(this._efsVault);
+      await f(this.efsVault);
       const statusMatrix = await git.statusMatrix({
-        fs: this._efsRoot,
+        fs: this.efsRoot,
         dir: this.baseDir,
         gitdir: this.gitDir,
       });
@@ -179,14 +187,14 @@ class VaultInternal {
           if (file[2] === 0) {
             status = 'deleted';
             await git.remove({
-              fs: this._efsRoot,
+              fs: this.efsRoot,
               dir: this.baseDir,
               gitdir: this.gitDir,
               filepath: file[0],
             });
           } else {
             await git.add({
-              fs: this._efsRoot,
+              fs: this.efsRoot,
               dir: this.baseDir,
               gitdir: this.gitDir,
               filepath: file[0],
@@ -197,37 +205,37 @@ class VaultInternal {
               status = 'added';
             }
           }
-          message.push(file[0] + ' ' + status)
+          message.push(file[0] + ' ' + status);
         }
       }
       if (message.length !== 0) {
-        this._workingDir = await git.commit({
-          fs: this._efsRoot,
+        this.workingDir = await git.commit({
+          fs: this.efsRoot,
           dir: this.baseDir,
           gitdir: this.gitDir,
           author: {
-            name: makeVaultIdPretty(this.vaultId), // FIXME: Shouldn't this be the NodeId?
+            name: this.keyManager.getNodeId(),
           },
           message: message.toString(),
         });
       }
     } finally {
       const statusMatrix = await git.statusMatrix({
-        fs: this._efsRoot,
+        fs: this.efsRoot,
         dir: this.baseDir,
         gitdir: this.gitDir,
       });
       for await (const file of statusMatrix) {
         if (file[2] === 0) {
           await git.remove({
-            fs: this._efsRoot,
+            fs: this.efsRoot,
             dir: this.baseDir,
             gitdir: this.gitDir,
             filepath: file[0],
           });
         } else {
           await git.add({
-            fs: this._efsRoot,
+            fs: this.efsRoot,
             dir: this.baseDir,
             gitdir: this.gitDir,
             filepath: file[0],
@@ -235,33 +243,32 @@ class VaultInternal {
         }
       }
       await git.checkout({
-        fs: this._efsRoot,
+        fs: this.efsRoot,
         dir: this.baseDir,
         gitdir: this.gitDir,
-        ref: this._workingDir,
+        ref: this.workingDir,
       });
       release();
     }
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
-  public async access<T>(f: (fs: FileSystemReadable) => Promise<T>): Promise<T> {
-    const release = await this._lock.acquire();
+  public async access<T>(
+    f: (fs: FileSystemReadable) => Promise<T>,
+  ): Promise<T> {
+    const release = await this.lock.acquire();
     try {
-      return await f(this._efsVault);
+      return await f(this.efsVault);
     } finally {
       release();
     }
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
-  public async log(
-    depth?: number,
-    commit?: string,
-  ): Promise<Array<CommitLog>> {
-    const commit_ = commit?.toLowerCase() === headTag ? 'HEAD' : commit;
+  public async log(depth?: number, commit?: string): Promise<Array<CommitLog>> {
+    const commit_ = commit?.toLowerCase() === lastTag ? 'HEAD' : commit;
     const log = await git.log({
-      fs: this._efsRoot,
+      fs: this.efsRoot,
       dir: this.baseDir,
       gitdir: this.gitDir,
       depth: depth,
@@ -271,7 +278,7 @@ class VaultInternal {
       return {
         oid: readCommit.oid,
         committer: readCommit.commit.committer.name,
-        timeStamp: readCommit.commit.author.timestamp * 1000, // Needs to be in milliseconds for Date.
+        timeStamp: readCommit.commit.committer.timestamp * 1000, // Needs to be in milliseconds for Date.
         message: readCommit.commit.message,
       };
     });
@@ -279,24 +286,44 @@ class VaultInternal {
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async version(commit: string): Promise<void> {
-
     // Checking for special tags.
-    const commit_ = commit.toLowerCase() === headTag ? 'HEAD' : commit;
+    const commit_ = commit.toLowerCase() === lastTag ? 'HEAD' : commit;
     // TODO: add a tag for the start of the histoy so we can use that as the operator.
 
     try {
       await git.checkout({
-        fs: this._efsRoot,
+        fs: this.efsRoot,
         dir: this.baseDir,
         gitdir: this.gitDir,
         ref: commit_,
         noUpdateHead: true,
       });
-      this._workingDir = commit_;
+      this.workingDir = commit_;
     } catch (err) {
-      if (err.code === 'NotFoundError') throw new vaultsErrors.ErrorVaultCommitUndefined;
+      if (err.code === 'NotFoundError')
+        throw new vaultsErrors.ErrorVaultCommitUndefined();
       throw err;
     }
+  }
+
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
+  public async readWorkingDirectory(): Promise<void> {
+    const workingDir = (
+      await git.log({
+        fs: this.efsRoot,
+        dir: path.join(vaultsUtils.makeVaultIdPretty(this.vaultId), 'contents'),
+        gitdir: path.join(vaultsUtils.makeVaultIdPretty(this.vaultId), '.git'),
+        depth: 1,
+      })
+    ).pop()!;
+    await this.efsRoot.writeFile(
+      path.join(
+        vaultsUtils.makeVaultIdPretty(this.vaultId),
+        '.git',
+        'workingDir',
+      ),
+      workingDir.oid,
+    );
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())

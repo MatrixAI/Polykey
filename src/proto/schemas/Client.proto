@@ -110,7 +110,7 @@ message SessionTokenMessage {
 
 message VaultListMessage {
   string vault_name = 1;
-  bytes vault_id = 2;
+  string vault_id = 2;
 }
 
 message VaultMessage {
@@ -327,7 +327,7 @@ message GeneralTypeMessage {
 }
 
 message VaultShareTypeMessage {
-  bytes vault_id = 1;
+  string vault_id = 1;
   string vault_name = 2;
   repeated string actions = 3;
 }

@@ -4,8 +4,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import * as utils from './utils';
-import { VaultName } from "@/vaults/types";
-import { vaultOps } from "@/vaults";
+import { VaultName } from '@/vaults/types';
+import { vaultOps } from '@/vaults';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -86,9 +86,9 @@ describe('CLI secrets', () => {
 
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual(['MySecret']);
-      expect((await vaultOps.getSecret(vault, 'MySecret')).toString()).toStrictEqual(
-        'this is a secret',
-      );
+      expect(
+        (await vaultOps.getSecret(vault, 'MySecret')).toString(),
+      ).toStrictEqual('this is a secret');
     });
   });
   describe('commandDeleteSecret', () => {
@@ -170,7 +170,11 @@ describe('CLI secrets', () => {
       expect(result.code).toBe(0);
 
       await vaultOps.addSecret(vault, 'dir1/MySecret1', 'this is the secret 1');
-      await vaultOps.addSecret(vault, 'dir1/dir2/MySecret2', 'this is the secret 2');
+      await vaultOps.addSecret(
+        vault,
+        'dir1/dir2/MySecret2',
+        'this is the secret 2',
+      );
 
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual(
@@ -213,9 +217,9 @@ describe('CLI secrets', () => {
 
       await vaultOps.addSecret(vault, 'MySecret', 'original-content');
 
-      expect((await vaultOps.getSecret(vault, 'MySecret')).toString()).toStrictEqual(
-        'original-content',
-      );
+      expect(
+        (await vaultOps.getSecret(vault, 'MySecret')).toString(),
+      ).toStrictEqual('original-content');
 
       command = [
         'secrets',
@@ -234,10 +238,8 @@ describe('CLI secrets', () => {
       const list = await vaultOps.listSecrets(vault);
       expect(list.sort()).toStrictEqual(['MySecret']);
       expect(
-        (await vaultOps.getSecret(vault, 'MySecret')).toString()
-        ).toStrictEqual(
-        'updated-content',
-      );
+        (await vaultOps.getSecret(vault, 'MySecret')).toString(),
+      ).toStrictEqual('updated-content');
     });
   });
   describe('commandNewDirSecret', () => {
