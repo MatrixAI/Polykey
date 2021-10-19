@@ -52,6 +52,7 @@ service Client {
   rpc VaultsPermissionsUnset(UnsetVaultPermMessage) returns (StatusMessage) {}
   rpc VaultsPermissions(GetVaultPermMessage) returns (stream PermissionMessage) {};
   rpc VaultsVersion(VaultsVersionMessage) returns (VaultsVersionResultMessage) {};
+  rpc VaultsLog(VaultsLogMessage) returns (stream VaultsLogEntryMessage) {};
 
   // Identities
   rpc IdentitiesAuthenticate(ProviderMessage) returns (stream ProviderMessage) {};
@@ -113,10 +114,7 @@ message VaultListMessage {
 }
 
 message VaultMessage {
-  oneof name_or_Id {
-    string vault_name = 1;
-    bytes vault_id = 2;
-  }
+  string name_or_Id = 1;
 }
 
 message VaultRenameMessage {
@@ -187,6 +185,19 @@ message VaultsVersionMessage {
 
 message VaultsVersionResultMessage {
   bool is_latest_version = 1;
+}
+
+message VaultsLogMessage {
+  VaultMessage vault = 1;
+  int32 log_depth = 3;
+  string commit_id = 4;
+}
+
+message VaultsLogEntryMessage {
+  string oid = 1;
+  string committer = 2;
+  uint64 time_stamp = 4;
+  string message = 3;
 }
 
 // Nodes

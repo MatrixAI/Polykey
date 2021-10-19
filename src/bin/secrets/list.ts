@@ -35,7 +35,7 @@ list.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setVaultName(options.vaultName);
+    vaultMessage.setNameOrId(options.vaultName);
 
     const secretListGenerator = grpcClient.vaultsSecretsList(vaultMessage);
     const { p, resolveP } = utils.promise();

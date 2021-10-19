@@ -48,7 +48,7 @@ get.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setVault(vaultMessage);
     secretMessage.setSecretName(secretName);
 

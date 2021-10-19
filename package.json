@@ -68,7 +68,7 @@
     "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.2.5",
+    "@grpc/grpc-js": "1.3.7",
     "@matrixai/async-init": "^1.0.0",
     "@matrixai/db": "^1.0.1",
     "@matrixai/id": "^2.0.0",

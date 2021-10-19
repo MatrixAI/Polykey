@@ -47,7 +47,7 @@ mkdir.action(async (secretPath, options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     vaultMkdirMessage.setVault(vaultMessage);
     vaultMkdirMessage.setDirName(secretName);
     vaultMkdirMessage.setRecursive(options.recursive);
@@ -66,7 +66,7 @@ mkdir.action(async (secretPath, options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Directory: ${vaultMkdirMessage.getDirName()} created inside vault: ${vaultMessage.getVaultName()}`,
+          `Directory: ${vaultMkdirMessage.getDirName()} created inside vault: ${vaultMessage.getNameOrId()}`,
         ],
       }),
     );

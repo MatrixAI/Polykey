@@ -134,6 +134,8 @@ describe('NotificationsManager', () => {
       nodeManager: receiverNodeManager,
       vaultsKey: receiverKeyManager.vaultKey,
       db: receiverDb,
+      acl: receiverACL,
+      gestaltGraph: receiverGestaltGraph,
       fs: fs,
       logger: logger
     });

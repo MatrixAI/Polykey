@@ -39,7 +39,7 @@ dir.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setVaultName(options.vaultName);
+    vaultMessage.setNameOrId(options.vaultName);
     secretDirectoryMessage.setVault(vaultMessage);
     secretDirectoryMessage.setSecretDirectory(options.directoryPath);
 

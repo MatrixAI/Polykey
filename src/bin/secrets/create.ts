@@ -51,7 +51,7 @@ create.action(async (options) => {
 
     const content = fs.readFileSync(options.filePath);
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setSecretName(secretName);
     secretMessage.setSecretContent(content);
 
@@ -69,7 +69,7 @@ create.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${secretMessage.getSecretName()} successfully created in vault: ${vaultMessage.getVaultName()}`,
+            `Secret: ${secretMessage.getSecretName()} successfully created in vault: ${vaultMessage.getNameOrId()}`,
           ],
         }),
       );
@@ -78,7 +78,7 @@ create.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to create secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
+            `Failed to create secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()}`,
           ],
         }),
       );

@@ -10,6 +10,7 @@ import share from './share';
 import unshare from './unshare';
 import permissions from './permissions';
 import version from './version';
+import log from './log';
 import * as binUtils from '../utils';
 
 const commandVaults = binUtils.createCommand('vaults');
@@ -26,6 +27,6 @@ commandVaults.addCommand(share);
 commandVaults.addCommand(unshare);
 commandVaults.addCommand(permissions);
 commandVaults.addCommand(version);
-
+commandVaults.addCommand(log);
 
 export default commandVaults;

@@ -31,7 +31,7 @@ create.action(async (options) => {
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setVaultName(options.vaultName);
+  vaultMessage.setNameOrId(options.vaultName);
 
   try {
     await client.start({});
@@ -46,18 +46,18 @@ create.action(async (options) => {
 
     const responseMessage = await pCall;
     await p;
-    if (responseMessage.getVaultId()) {
+    if (responseMessage.getNameOrId()) {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Vault ${vaultMessage.getVaultName()} created successfully`],
+          data: [`Vault ${vaultMessage.getNameOrId()} created successfully`],
         }),
       );
     } else {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to create vault: ${vaultMessage.getVaultName()}.`],
+          data: [`Failed to create vault: ${vaultMessage.getNameOrId()}.`],
         }),
       );
     }

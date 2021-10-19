@@ -131,6 +131,8 @@ describe('NodeConnection', () => {
       nodeManager: serverNodeManager,
       vaultsKey: serverKeyManager.vaultKey,
       db: serverDb,
+      acl: serverACL,
+      gestaltGraph: serverGestaltGraph,
       fs: fs,
       logger: logger
     });

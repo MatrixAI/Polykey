@@ -48,7 +48,7 @@ update.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setSecretName(secretName);
 
     const content = fs.readFileSync(options.filePath);
@@ -69,7 +69,7 @@ update.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Updated secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
+          `Updated secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()}`,
         ],
       }),
     );
