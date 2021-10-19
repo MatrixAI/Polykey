@@ -9,7 +9,6 @@ import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 import type { VaultId } from '../vaults/types';
 
-import mlts from 'monotonic-lexicographic-timestamp';
 import EmbeddedJWK from 'jose/jwk/embedded';
 import jwtVerify from 'jose/jwt/verify';
 import { createPublicKey, createPrivateKey } from 'crypto';
@@ -26,7 +25,6 @@ import {
 import * as notificationsErrors from './errors';
 import { IdSortable } from "@matrixai/id";
 import { isId, makeId } from "@/GenericIdTypes";
-import { toArrayBuffer } from "@matrixai/db/dist/utils";
 
 function isNotificationId(arg: any):arg is NotificationId {
   return isId<NotificationId>(arg);
@@ -41,11 +39,6 @@ function CreateNotificationIdGenerator(lastId?: NotificationId): NotificationIdG
     lastId,
   });
   return (): NotificationId => makeNotificationId(idSortableGenerator.get());
-}
-
-const timestamp = mlts();
-function generateNotifId(): string {
-  return timestamp();
 }
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
@@ -158,7 +151,6 @@ export {
   isNotificationId,
   makeNotificationId,
   CreateNotificationIdGenerator,
-  generateNotifId,
   signNotification,
   verifyAndDecodeNotif,
   constructGestaltInviteMessage,

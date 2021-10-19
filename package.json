@@ -91,8 +91,6 @@
     "isomorphic-git": "^1.8.1",
     "jose": "^3.12.3",
     "level": "^7.0.0",
-    "lexicographic-integer": "^1.1.0",
-    "monotonic-lexicographic-timestamp": "^1.0.0",
     "node-forge": "^0.10.0",
     "pako": "^1.0.11",
     "prompts": "^2.4.1",

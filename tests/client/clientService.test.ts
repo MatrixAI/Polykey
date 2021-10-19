@@ -1148,7 +1148,6 @@ describe('Client service', () => {
 
         vaultMessage.setNameOrId(vaultName);
         vaultsLogMessage.setVault(vaultMessage);
-        vaultsLogMessage.setGetAll(true);
 
         const responseGen = await vaultLog(vaultsLogMessage, callCredentials);
         const logMessages: clientPB.VaultsLogEntryMessage[] = [];
