@@ -36,7 +36,7 @@ type SecretList = string[];
 
 type SecretContent = Buffer | string;
 
-type VaultMap = Map<VaultId, {
+type VaultMap = Map<string, {
   vault?: VaultInternal;
   lock: MutexInterface;
 }>;

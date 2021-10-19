@@ -56,9 +56,8 @@ function createAgentService({
       call: grpc.ServerWritableStream<agentPB.InfoRequest, agentPB.PackChunk>,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-
       const request = call.request;
-      const vaultNameOrId = request.getVaultId_asU8();
+      const vaultNameOrId = (request.getVaultId_asU8());
       let vaultId;
       try {
         vaultId = makeVaultId(vaultNameOrId);
@@ -100,7 +99,7 @@ function createAgentService({
         if (vaultNameOrId == null) throw new ErrorGRPC('vault-name not in metadata.');
         let vaultId;
         try {
-          vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
+          vaultId = makeVaultId(vaultNameOrId);
           await vaultManager.openVault(vaultId);
         } catch (err) {
           if (err instanceof vaultsErrors.ErrorVaultUndefined) {
