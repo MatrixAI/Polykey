@@ -300,6 +300,17 @@ class VaultInternal {
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
+  public async readWorkingDirectory(): Promise<void> {
+    const workingDir = (await git.log({
+      fs: this._efsRoot,
+      dir: path.join(vaultsUtils.makeVaultIdPretty(this.vaultId), 'contents'),
+      gitdir: path.join(vaultsUtils.makeVaultIdPretty(this.vaultId), '.git'),
+      depth: 1,
+    })).pop()!;
+    await this._efsRoot.writeFile(path.join(vaultsUtils.makeVaultIdPretty(this.vaultId), '.git', 'workingDir'), workingDir.oid);
+  }
+
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async applySchema(vs) {}
 }
 

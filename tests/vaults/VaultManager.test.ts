@@ -486,7 +486,7 @@ describe('VaultManager', () => {
   // /* TESTING TODO:
   //  *  Changing the default node to pull from
   //  */
-  describe.only('interacting with another node to', () => {
+  describe('interacting with another node to', () => {
     let targetDataDir: string, altDataDir: string;
     let targetKeyManager: KeyManager, altKeyManager: KeyManager;
     let targetFwdProxy: ForwardProxy;
@@ -783,7 +783,7 @@ describe('VaultManager', () => {
         await vaultManager.cloneVault(targetNodeId, vault.vaultId);
         const vaultId = await vaultManager.getVaultId(vaultName);
         const vaultClone = await vaultManager.openVault(vaultId!);
-        const file = await vaultClone.access(async (efs) => {
+        let file = await vaultClone.access(async (efs) => {
           return await efs.readFile('secret 0', { encoding: 'utf8' });
         });
         expect(file).toBe('Success?');
@@ -798,13 +798,17 @@ describe('VaultManager', () => {
         // expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
         //   names.sort(),
         // );
-        // for (let i = 10; i < 20; i++) {
-        //   const name = 'secret ' + i.toString();
-        //   names.push(name);
-        //   const content = 'Second Success?';
-        //   await vault.addSecret(name, content);
-        // }
-        // await vaultManager.pullVault(clonedVault.vaultId, targetNodeId);
+        for (let i = 1; i < 2; i++) {
+          const name = 'secret ' + i.toString();
+          names.push(name);
+          const content = 'Second Success?';
+          await vaultOps.addSecret(vault, name, content);
+        }
+        await vaultManager.pullVault({ vaultId: vaultClone.vaultId });
+        file = await vaultClone.access(async (efs) => {
+          return await efs.readFile('secret 1', { encoding: 'utf8' });
+        });
+        expect(file).toBe('Second Success?');
         // expect((await clonedVault.listSecrets()).sort()).toStrictEqual(
         //   names.sort(),
         // );

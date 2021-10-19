@@ -182,7 +182,7 @@ async function* requestInfo(
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
   const request = new agentPB.InfoRequest();
-  request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
+  // request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
   const response = client.vaultsGitInfoGet(request);
   for await (const resp of response) {
     yield resp.getChunk_asU8();

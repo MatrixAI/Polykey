@@ -21,7 +21,7 @@ import {
 } from '../notifications';
 import { errors as vaultsErrors } from '../vaults';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
-import { makeVaultId } from '../vaults/utils';
+import { makeVaultId, makeVaultIdPretty } from '../vaults/utils';
 import { makeNodeId } from "../nodes/utils";
 import { utils as idUtils } from '@matrixai/id';
 
@@ -57,17 +57,17 @@ function createAgentService({
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       const request = call.request;
-      const vaultNameOrId = (request.getVaultId_asU8());
+      const vaultNameOrId = request.getVaultId();
       let vaultId, vaultName;
       try {
-        vaultId = makeVaultId(vaultNameOrId);
+        vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
         await vaultManager.openVault(vaultId);
         vaultName = await vaultManager.getVaultName(vaultId)
       } catch (err) {
         if (err instanceof vaultsErrors.ErrorVaultUndefined) {
-          vaultId = await vaultManager.getVaultId(idUtils.toString(vaultNameOrId) as VaultName)
+          vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName)
           await vaultManager.openVault(vaultId);
-          vaultName = idUtils.toString(vaultNameOrId);
+          vaultName = vaultNameOrId;
         } else {
           throw err;
         }
@@ -75,6 +75,7 @@ function createAgentService({
       // TODO: Check the permissions here
       const meta = new grpc.Metadata();
       meta.set('vaultName', vaultName);
+      meta.set('vaultId', makeVaultIdPretty(vaultId));
       genWritable.stream.sendMetadata(meta);
       const response = new agentPB.PackChunk();
       const responseGen = vaultManager.handleInfoRequest(vaultId);
@@ -107,7 +108,7 @@ function createAgentService({
           vaultId = makeVaultId(vaultNameOrId);
           await vaultManager.openVault(vaultId);
         } catch (err) {
-          if (err instanceof vaultsErrors.ErrorVaultUndefined) {
+          if (err instanceof vaultsErrors.ErrorVaultUndefined || err instanceof SyntaxError) {
             vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName)
             await vaultManager.openVault(vaultId);
           } else {

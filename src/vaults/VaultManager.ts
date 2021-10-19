@@ -24,7 +24,6 @@ import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
 import { GestaltGraph } from '../gestalts';
 import { ACL } from '../acl';
-import { GitRequest } from '../git';
 import { agentPB } from '../agent';
 
 import * as utils from '../utils';
@@ -43,7 +42,6 @@ import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 import { utils as idUtils } from '@matrixai/id';
 import { makeVaultId } from './utils';
 import { NotificationsManager } from '../notifications';
-import { stringify } from 'querystring';
 
 interface VaultManager extends CreateDestroy {}
 @CreateDestroy()
@@ -268,6 +266,7 @@ class VaultManager {
     if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
     const vault = await this.getVault(vaultId);
     await vault.destroy();
+    this.vaultsMap.delete(idUtils.toString(vaultId));
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
@@ -337,8 +336,8 @@ class VaultManager {
   }
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
-  public async cloneVault(nodeId: NodeId, vaultNameOrId: VaultId): Promise<Vault> {
-    let vaultName;
+  public async cloneVault(nodeId: NodeId, vaultNameOrId: VaultId | VaultName): Promise<Vault> {
+    let vaultName, remoteVaultId;
     const nodeConnection = await this.nodeManager.getConnectionToNode(nodeId);
     const client = nodeConnection.getClient();
     const vaultId = await this.generateVaultId();
@@ -361,10 +360,15 @@ class VaultManager {
           const infoResponse = {
             async *[Symbol.iterator] () {
               const request = new agentPB.InfoRequest();
-              request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
+              if (typeof vaultNameOrId === 'string') {
+                request.setVaultId(vaultNameOrId);
+              } else {
+                request.setVaultId(idUtils.toString(vaultNameOrId));
+              }
               const response = client.vaultsGitInfoGet(request);
               response.stream.on('metadata', async (meta) => {
                 vaultName = meta.get('vaultName').pop()!.toString();
+                remoteVaultId = makeVaultId(meta.get('vaultId').pop()!.toString());
               });
               for await (const resp of response) {
                 yield resp.getChunk_asU8();
@@ -384,7 +388,11 @@ class VaultManager {
             async *[Symbol.iterator] () {
               const responseBuffers: Array<Buffer> = [];
               const meta = new grpc.Metadata();
-              meta.set('vaultNameOrId', vaultsUtils.makeVaultIdPretty(vaultNameOrId));
+              if (typeof vaultNameOrId === 'string') {
+                meta.set('vaultNameOrId', vaultNameOrId);
+              } else {
+                meta.set('vaultNameOrId', vaultsUtils.makeVaultIdPretty(vaultNameOrId));
+              }
               const stream = client.vaultsGitPackGet(meta);
               const write = utils.promisify(stream.write).bind(stream);
               stream.on('data', (d) => {
@@ -438,39 +446,149 @@ class VaultManager {
         logger: this.logger.getChild(VaultInternal.name),
       });
       this.vaultsMap.set(idUtils.toString(vaultId), { lock, vault });
-      await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName, defaultPull: nodeId });
+      await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName, defaultPullNode: nodeId, defaultPullVault: idUtils.toBuffer(remoteVaultId) });
       return vault;
     }, [vaultId]);
   }
 
-  // public async pullVault(vaultId: VaultId, nodeId?: NodeId): Promise<void> {
-  //   const vault = await this.openVault(vaultId);
-  //   if (!nodeId) {
-  //     nodeId = await this.db.get<NodeId>(
-  //       this.vaultsNamesDbDomain,
-  //       vaultId,
-  //     );
-  //   }
-  //   if (!nodeId) {
-  //     // Throw an error if a linked vault cannot be found for the vault
-  //     throw new vaultsErrors.ErrorVaultUnlinked(
-  //       'Vault Id has not been cloned from remote repository',
-  //     );
-  //   }
-  //   const nodeConnection = await this.nodeManager.getConnectionToNode(nodeId);
-  //   const client = nodeConnection.getClient();
-  //   const gitRequest = await vaultsUtils.constructGitHandler(
-  //     client,
-  //     this.nodeManager.getNodeId(),
-  //   );
-
-  //   // Pull the vault
-  //   const vault = await this.getVault(vaultId);
-  //   await vault.pullVault(gitRequest, node);
-
-  //   // Set the default pulling node to the specified node Id
-  //   await this.setDefaultNode(vaultId, node);
-  // }
+  public async pullVault({ vaultId, pullNodeId, pullVaultNameOrId }: { vaultId: VaultId, pullNodeId?: NodeId, pullVaultNameOrId?: VaultId | VaultName }): Promise<Vault> {
+    let metaChange = 0;
+    let vaultMeta, remoteVaultId;
+    return await this._transaction(async () => {
+      if (pullNodeId == null || pullVaultNameOrId == null) {
+        vaultMeta = await this.db.get<POJO>(
+          this.vaultsNamesDbDomain,
+          idUtils.toBuffer(vaultId),
+        );
+        if (!vaultMeta) throw new vaultsErrors.ErrorVaultUnlinked();
+        if (pullNodeId == null) {
+          pullNodeId = vaultMeta.defaultPullNode;
+        } else {
+          metaChange = 1;
+          vaultMeta.defaultPullNode = pullNodeId;
+        }
+        if (pullVaultNameOrId == null) {
+          pullVaultNameOrId = makeVaultId(idUtils.fromBuffer(Buffer.from(vaultMeta.defaultPullVault.data)));
+        } else {
+          metaChange = 1;
+          if (typeof pullVaultNameOrId === 'string') {
+            metaChange = 2;
+          } else {
+            vaultMeta.defaultPullVault = idUtils.toBuffer(pullVaultNameOrId);
+          }
+        }
+      }
+      const nodeConnection = await this.nodeManager.getConnectionToNode(pullNodeId!);
+      const client = nodeConnection.getClient();
+      const request = async ({
+        url,
+        method = 'GET',
+        headers = {},
+        body = [Buffer.from('')],
+      }: {
+        url: string,
+        method: string,
+        headers: POJO,
+        body: Buffer[],
+      }) => {
+        if (method === 'GET') {
+          const infoResponse = {
+            async *[Symbol.iterator] () {
+              const request = new agentPB.InfoRequest();
+              if (typeof pullVaultNameOrId === 'string') {
+                request.setVaultId(pullVaultNameOrId);
+              } else {
+                request.setVaultId(idUtils.toString(pullVaultNameOrId!));
+              }
+              const response = client.vaultsGitInfoGet(request);
+              response.stream.on('metadata', async (meta) => {
+                remoteVaultId = makeVaultId(meta.get('vaultId').pop()!.toString());
+              });
+              for await (const resp of response) {
+                yield resp.getChunk_asU8();
+              }
+            }
+          }
+          return {
+            url: url,
+            method: method,
+            body: infoResponse,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else if (method === 'POST') {
+          const packResponse = {
+            async *[Symbol.iterator] () {
+              const responseBuffers: Array<Buffer> = [];
+              const meta = new grpc.Metadata();
+              if (typeof pullVaultNameOrId === 'string') {
+                meta.set('vaultNameOrId', pullVaultNameOrId);
+              } else {
+                meta.set('vaultNameOrId', vaultsUtils.makeVaultIdPretty(pullVaultNameOrId));
+              }
+              const stream = client.vaultsGitPackGet(meta);
+              const write = utils.promisify(stream.write).bind(stream);
+              stream.on('data', (d) => {
+                responseBuffers.push(d.getChunk_asU8());
+              });
+              const chunk = new agentPB.PackChunk();
+              chunk.setChunk(body[0]);
+              write(chunk);
+              stream.end();
+              yield await new Promise<Uint8Array>((resolve) => {
+                stream.once('end', () => {
+                  resolve(Buffer.concat(responseBuffers));
+                });
+              });
+            }
+          }
+          return {
+            url: url,
+            method: method,
+            body: packResponse,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else {
+          throw new Error('Method not supported');
+        }
+      }
+      try {
+        await git.pull({
+          fs: this.efs,
+          http: { request },
+          dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
+          gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
+          url: `http://`,
+          ref: 'HEAD',
+          singleBranch: true,
+          author: {
+            name: pullNodeId,
+          },
+        });
+      } catch (err) {
+        if (err instanceof git.Errors.MergeNotSupportedError) {
+          throw new vaultsErrors.ErrorVaultMergeConflict(
+            'Merge Conflicts are not supported yet',
+          );
+        }
+        throw err;
+      }
+      if (metaChange !== 0) {
+        if (metaChange === 2) vaultMeta.defaultPullVault = remoteVaultId;
+        await this.db.put(
+          this.vaultsNamesDbDomain,
+          idUtils.toBuffer(vaultId),
+          vaultMeta,
+        );
+      }
+      const vault = await this.getVault(vaultId);
+      await vault.readWorkingDirectory();
+      return vault;
+    }, [vaultId]);
+  }
 
   protected async generateVaultId(): Promise<VaultId> {
     let vaultId = vaultsUtils.generateVaultId();
