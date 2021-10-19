@@ -486,7 +486,7 @@ describe('VaultManager', () => {
   // /* TESTING TODO:
   //  *  Changing the default node to pull from
   //  */
-  describe('interacting with another node to', () => {
+  describe.only('interacting with another node to', () => {
     let targetDataDir: string, altDataDir: string;
     let targetKeyManager: KeyManager, altKeyManager: KeyManager;
     let targetFwdProxy: ForwardProxy;
@@ -781,7 +781,12 @@ describe('VaultManager', () => {
         await nodeManager.getConnectionToNode(targetNodeId);
         await revProxy.openConnection(sourceHost, sourcePort);
         await vaultManager.cloneVault(targetNodeId, vault.vaultId);
-        const vaultsList = await vaultManager.listVaults();
+        const vaultId = await vaultManager.getVaultId(vaultName);
+        const vaultClone = await vaultManager.openVault(vaultId!);
+        const file = await vaultClone.access(async (efs) => {
+          return await efs.readFile('secret 0', { encoding: 'utf8' });
+        });
+        expect(file).toBe('Success?');
         // expect(vaultsList[2].name).toStrictEqual('MyFirstVault copy copy');
         // await expect(
         //   vaultManager.getDefaultNode(vaultsList[2].id),

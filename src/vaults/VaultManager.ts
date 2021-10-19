@@ -18,6 +18,7 @@ import Logger from '@matrixai/logger';
 import { Mutex, MutexInterface } from 'async-mutex';
 import git from 'isomorphic-git';
 import { PassThrough } from 'readable-stream';
+import * as grpc from '@grpc/grpc-js';
 
 import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
@@ -42,6 +43,7 @@ import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 import { utils as idUtils } from '@matrixai/id';
 import { makeVaultId } from './utils';
 import { NotificationsManager } from '../notifications';
+import { stringify } from 'querystring';
 
 interface VaultManager extends CreateDestroy {}
 @CreateDestroy()
@@ -336,23 +338,87 @@ class VaultManager {
 
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async cloneVault(nodeId: NodeId, vaultNameOrId: VaultId): Promise<Vault> {
+    let vaultName;
     const nodeConnection = await this.nodeManager.getConnectionToNode(nodeId);
     const client = nodeConnection.getClient();
-    const gitRequest = await vaultsUtils.constructGitHandler(
-      client,
-      this.nodeManager.getNodeId(),
-    );
     const vaultId = await this.generateVaultId();
     const lock = new Mutex();
     this.vaultsMap.set(idUtils.toString(vaultId), { lock });
     return await this._transaction(async () => {
       await this.efs.mkdir(path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'), { recursive: true });
+      const request = async ({
+          url,
+          method = 'GET',
+          headers = {},
+          body = [Buffer.from('')],
+      }: {
+        url: string,
+        method: string,
+        headers: POJO,
+        body: Buffer[],
+      }) => {
+        if (method === 'GET') {
+          const infoResponse = {
+            async *[Symbol.iterator] () {
+              const request = new agentPB.InfoRequest();
+              request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
+              const response = client.vaultsGitInfoGet(request);
+              response.stream.on('metadata', async (meta) => {
+                vaultName = meta.get('vaultName').pop()!.toString();
+              });
+              for await (const resp of response) {
+                yield resp.getChunk_asU8();
+              }
+            }
+          }
+          return {
+            url: url,
+            method: method,
+            body: infoResponse,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else if (method === 'POST') {
+          const packResponse = {
+            async *[Symbol.iterator] () {
+              const responseBuffers: Array<Buffer> = [];
+              const meta = new grpc.Metadata();
+              meta.set('vaultNameOrId', vaultsUtils.makeVaultIdPretty(vaultNameOrId));
+              const stream = client.vaultsGitPackGet(meta);
+              const write = utils.promisify(stream.write).bind(stream);
+              stream.on('data', (d) => {
+                responseBuffers.push(d.getChunk_asU8());
+              });
+              const chunk = new agentPB.PackChunk();
+              chunk.setChunk(body[0]);
+              write(chunk);
+              stream.end();
+              yield await new Promise<Uint8Array>((resolve) => {
+                stream.once('end', () => {
+                  resolve(Buffer.concat(responseBuffers));
+                });
+              });
+            }
+          }
+          return {
+            url: url,
+            method: method,
+            body: packResponse,
+            headers: headers,
+            statusCode: 200,
+            statusMessage: 'OK',
+          };
+        } else {
+          throw new Error('Method not supported');
+        }
+      }
       await git.clone({
         fs: this.efs,
-        http: gitRequest,
+        http: { request },
         dir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), 'contents'),
         gitdir: path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git'),
-        url: `http://0.0.0.0/${vaultsUtils.makeVaultIdPretty(vaultNameOrId)}`,
+        url: 'http://',
         singleBranch: true,
       });
       await this.efs.writeFile(
@@ -372,7 +438,7 @@ class VaultManager {
         logger: this.logger.getChild(VaultInternal.name),
       });
       this.vaultsMap.set(idUtils.toString(vaultId), { lock, vault });
-      await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: 'vaultName', defaultPull: nodeId });
+      await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName, defaultPull: nodeId });
       return vault;
     }, [vaultId]);
   }
