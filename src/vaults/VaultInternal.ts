@@ -47,14 +47,17 @@ class VaultInternal {
   protected _logger: Logger;
   protected _lock: MutexInterface;
   protected _workingDir: string;
+  protected _nodeId: string;
 
   public static async create({
     vaultId,
+    nodeId,
     efs,
     logger,
     fresh = false,
   }: {
     vaultId: VaultId;
+    nodeId: NodeId;
     efs: EncryptedFS;
     logger?: Logger;
     fresh?: boolean;
@@ -93,6 +96,7 @@ class VaultInternal {
       await efs.writeFile(path.join(makeVaultIdPretty(vaultId), '.git', 'workingDir'), workingDir);
       const vault = new VaultInternal({
         vaultId,
+        nodeId,
         efs,
         efsVault,
         workingDir,
@@ -109,6 +113,7 @@ class VaultInternal {
       })) as string;
       const vault = new VaultInternal({
         vaultId,
+        nodeId,
         efs,
         efsVault,
         workingDir,
@@ -122,12 +127,14 @@ class VaultInternal {
 
   constructor({
     vaultId,
+    nodeId,
     efs,
     efsVault,
     workingDir,
     logger,
   }: {
     vaultId: VaultId;
+    nodeId: NodeId;
     efs: EncryptedFS;
     efsVault: EncryptedFS;
     workingDir: string;
@@ -136,6 +143,7 @@ class VaultInternal {
     this.baseDir = path.join(makeVaultIdPretty(vaultId), 'contents');
     this.gitDir = path.join(makeVaultIdPretty(vaultId), '.git');
     this.vaultId = vaultId;
+    this._nodeId = nodeId;
     this._efsRoot = efs;
     this._efsVault = efsVault;
     this._workingDir = workingDir;
@@ -206,7 +214,7 @@ class VaultInternal {
           dir: this.baseDir,
           gitdir: this.gitDir,
           author: {
-            name: makeVaultIdPretty(this.vaultId), // FIXME: Shouldn't this be the NodeId?
+            name: this._nodeId,
           },
           message: message.toString(),
         });
@@ -271,7 +279,7 @@ class VaultInternal {
       return {
         oid: readCommit.oid,
         committer: readCommit.commit.committer.name,
-        timeStamp: readCommit.commit.author.timestamp * 1000, // Needs to be in milliseconds for Date.
+        timeStamp: readCommit.commit.committer.timestamp * 1000, // Needs to be in milliseconds for Date.
         message: readCommit.commit.message,
       };
     });

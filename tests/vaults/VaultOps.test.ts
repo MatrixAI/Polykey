@@ -10,6 +10,7 @@ import Logger, { LogLevel, StreamHandler } from "@matrixai/logger";
 import { generateVaultId, makeVaultIdPretty } from '@/vaults/utils';
 import { getRandomBytes } from "@/keys/utils";
 import { utils as idUtils } from '@matrixai/id';
+import { NodeId } from '@/nodes/types';
 
 describe('VaultOps', ()=> {
   const password = 'password';
@@ -59,6 +60,7 @@ describe('VaultOps', ()=> {
     vaultId = generateVaultId();
     await baseEfs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), { recursive: true });
     vaultInternal = await VaultInternal.create({
+      nodeId: 'DummyNodeId' as NodeId,
       vaultId,
       efs: baseEfs,
       logger: logger.getChild(VaultInternal.name),

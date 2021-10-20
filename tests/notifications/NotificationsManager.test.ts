@@ -130,6 +130,7 @@ describe('NotificationsManager', () => {
       logger: logger,
     });
     receiverVaultManager = await VaultManager.createVaultManager({
+      nodeId: receiverKeyManager.getNodeId(),
       vaultsPath: receiverVaultsPath,
       nodeManager: receiverNodeManager,
       vaultsKey: receiverKeyManager.vaultKey,

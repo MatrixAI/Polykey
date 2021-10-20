@@ -28,6 +28,7 @@ describe('VaultInternal', () => {
   let vaultId: VaultId;
   let efs: EncryptedFS;
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
+  const nodeId = 'DummyNodeId' as NodeId;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -49,6 +50,7 @@ describe('VaultInternal', () => {
     // await efsVault.start();
     vault = await VaultInternal.create({
       vaultId,
+      nodeId,
       efs,
       logger,
       fresh: true,
@@ -208,6 +210,7 @@ describe('VaultInternal', () => {
     await vault.destroy();
     vault = await VaultInternal.create({
       vaultId,
+      nodeId,
       efs,
       logger,
       fresh: false,
