@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import * as utils from '../../utils';
@@ -34,7 +34,7 @@ commandTrustGestalts.action(async (providerId, options) => {
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
-    const providerMessage = new clientPB.ProviderMessage();
+    const providerMessage = new messages.identities.Provider();
     providerMessage.setProviderId(providerId);
 
     const pCall = grpcClient.identitiesInfoGet(providerMessage);

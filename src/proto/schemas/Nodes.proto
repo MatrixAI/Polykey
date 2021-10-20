@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package Node;
+
+message Node {
+  string node_id = 1;
+}
+
+message Address {
+  string node_id = 1;
+  string host = 2;
+  int32 port = 3;
+}
+
+message Claim {
+  string node_id = 1;
+  bool force_invite = 2;
+}

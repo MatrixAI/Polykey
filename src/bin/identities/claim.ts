@@ -1,4 +1,4 @@
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
@@ -39,7 +39,7 @@ claim.action(async (providerId, identitiyId, options) => {
     const grpcClient = client.grpcClient;
 
     //Constructing message.
-    const providerMessage = new clientPB.ProviderMessage();
+    const providerMessage = new messages.identities.Provider();
     providerMessage.setProviderId(providerId);
     providerMessage.setMessage(identitiyId);
 

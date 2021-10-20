@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+import "Nodes.proto";
+
+package Vault;
+
+message List {
+  string vault_name = 1;
+  bytes vault_id = 2;
+}
+
+//FIXME: I'm thinking this should be a vault info that includes vault_name and vault_id
+// and only use vault_name when we are specifying a vaultNameOrId.
+message Vault {
+  string name_or_Id = 1;
+}
+
+message Rename {
+  Vault vault = 1;
+  string new_name = 2;
+}
+
+message Mkdir {
+  Vault vault = 1;
+  string dir_name = 2;
+  bool recursive = 3;
+}
+
+message Pull {
+  Vault vault = 1;
+  Node.Node node = 2;
+}
+
+message Clone {
+  Vault vault = 1;
+  Node.Node node = 2;
+}
+
+message Stat {
+  string stats = 1;
+}
+
+message PermSet {
+  Vault vault = 1;
+  Node.Node node = 2;
+}
+
+message PermUnset {
+  Vault vault = 1;
+  Node.Node node = 2;
+}
+
+message PermGet {
+  Vault vault = 1;
+  Node.Node node = 2;
+}
+
+message Permission {
+  string node_id = 1;
+  string action = 2;
+}
+
+message Version {
+  Vault vault = 1;
+  string version_id = 2;
+}
+
+message VersionResult {
+  bool is_latest_version = 1;
+}
+
+message Log {
+  Vault vault = 1;
+  int32 log_depth = 3;
+  string commit_id = 4;
+}
+
+message LogEntry {
+  string oid = 1;
+  string committer = 2;
+  uint64 time_stamp = 4;
+  string message = 3;
+}

@@ -6,7 +6,7 @@ import type { VaultManager } from '../vaults';
 import * as utils from './utils';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
-import * as clientPB from '../proto/js/Client_pb';
+import { messages } from ".";
 import { isNodeId, makeNodeId } from '../nodes/utils';
 import { vaultOps } from '../vaults';
 import { makeVaultIdPretty } from '../vaults/utils';

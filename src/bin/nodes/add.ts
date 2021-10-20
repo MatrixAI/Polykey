@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import * as utils from '../../utils';
@@ -32,7 +32,7 @@ add.action(async (node, host, port, options) => {
   }
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const nodeAddressMessage = new clientPB.NodeAddressMessage();
+  const nodeAddressMessage = new messages.nodes.Address();
 
   try {
     await client.start({});

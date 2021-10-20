@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package Identitiy;
+
+message Provider {
+  string provider_id = 1;
+  string message = 2;
+}
+
+message TokenSpecific {
+  Provider provider = 1;
+  string token = 2;
+}
+
+message Token {
+  string token = 1;
+}
+
+message ProviderSearch {
+  Provider provider = 1;
+  repeated string search_term = 2;
+}
+
+message Info {
+  Provider provider = 1;
+  string name = 3;
+  string email = 4;
+  string url = 5;
+}

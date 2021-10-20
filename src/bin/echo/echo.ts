@@ -1,7 +1,7 @@
 import PolykeyClient from '../../PolykeyClient';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { createCommand, outputFormatter } from '../utils';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 
 const echo = createCommand('echo', {
@@ -34,7 +34,7 @@ echo.action(async (text, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const echoMessage = new clientPB.EchoMessage();
+    const echoMessage = new messages.EchoMessage();
     echoMessage.setChallenge(text);
 
     const pCall = grpcClient.echo(echoMessage);

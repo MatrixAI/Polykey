@@ -14,7 +14,7 @@ import * as grpc from '@grpc/grpc-js';
 
 import { ClientService, IClientServer } from '../proto/js/Client_grpc_pb';
 
-import * as clientPB from '../proto/js/Client_pb';
+import { messages } from '.';
 
 import createEchoRPC from './rpcEcho';
 import createSessionRPC from './rpcSession';
@@ -102,24 +102,24 @@ function createClientService({
     }),
     nodesList: async (
       call: grpc.ServerWritableStream<
-        clientPB.EmptyMessage,
-        clientPB.NodeMessage
+        messages.EmptyMessage,
+        messages.nodes.Node
       >,
     ): Promise<void> => {
       // Call.request // PROCESS THE REQEUST MESSAGE
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new messages.nodes.Node();
       nodeMessage.setNodeId('some node name');
       const write = promisify(call.write).bind(call);
       await write(nodeMessage);
       call.end();
     },
     agentStop: async (
-      call: grpc.ServerUnaryCall<clientPB.EmptyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<messages.EmptyMessage, messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const response = new clientPB.EmptyMessage();
+        const response = new messages.EmptyMessage();
         setTimeout(async () => {
           await polykeyAgent.stop();
           await polykeyAgent.destroy();

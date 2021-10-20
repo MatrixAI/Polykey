@@ -1,6 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -37,9 +37,9 @@ clone.action(async (options) => {
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   try {
-    const vaultMessage = new clientPB.VaultMessage();
-    const nodeMessage = new clientPB.NodeMessage();
-    const vaultCloneMessage = new clientPB.VaultCloneMessage();
+    const vaultMessage = new messages.vaults.Vault();
+    const nodeMessage = new messages.nodes.Node();
+    const vaultCloneMessage = new messages.vaults.Clone();
     vaultCloneMessage.setVault(vaultMessage);
     vaultCloneMessage.setNode(nodeMessage);
 

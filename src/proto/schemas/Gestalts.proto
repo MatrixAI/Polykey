@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package Gestalt;
+
+message Gestalt {
+  string name = 1;
+}
+
+message Graph {
+  string gestalt_graph = 1;
+}
+
+message Trust {
+  string provider = 1;
+  string name = 2;
+  bool set = 3;
+}

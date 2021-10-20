@@ -1,7 +1,7 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { createCommand, outputFormatter } from '../utils';
 import { errors } from '../../grpc';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 
@@ -27,7 +27,7 @@ clear.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const emptyMessage = new clientPB.EmptyMessage();
+  const emptyMessage = new messages.EmptyMessage();
 
   try {
     await client.start({});

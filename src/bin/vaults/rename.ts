@@ -1,6 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -35,8 +35,8 @@ rename.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const vaultMessage = new clientPB.VaultMessage();
-  const vaultRenameMessage = new clientPB.VaultRenameMessage();
+  const vaultMessage = new messages.vaults.Vault();
+  const vaultRenameMessage = new messages.vaults.Rename();
   vaultRenameMessage.setVault(vaultMessage);
 
   try {

@@ -1,5 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -33,8 +33,8 @@ mkdir.action(async (secretPath, options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const vaultMkdirMessage = new clientPB.VaultMkdirMessage();
-  const vaultMessage = new clientPB.VaultMessage();
+  const vaultMkdirMessage = new messages.vaults.Mkdir();
+  const vaultMessage = new messages.vaults.Vault();
 
   try {
     await client.start({});

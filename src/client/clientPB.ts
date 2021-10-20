@@ -1,0 +1,10 @@
+export * from '../proto/js/Client_pb';
+export * as gestalts from '../proto/js/Gestalts_pb';
+export * as identities from '../proto/js/Identities_pb';
+export * as keys from '../proto/js/Keys_pb';
+export * as nodes from '../proto/js/Nodes_pb';
+export * as notifications from '../proto/js/Notifications_pb';
+export * as permissions from '../proto/js/Permissions_pb';
+export * as secrets from '../proto/js/Secrets_pb';
+export * as sessions from '../proto/js/Sessions_pb';
+export * as vaults from '../proto/js/Vaults_pb';

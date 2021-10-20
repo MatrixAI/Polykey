@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import * as utils from '../../utils';
@@ -28,7 +28,7 @@ list.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const emptyMessage = new clientPB.EmptyMessage();
+  const emptyMessage = new messages.EmptyMessage();
   let output: any;
   const gestalts: any = [];
   try {
@@ -61,7 +61,7 @@ list.action(async (options) => {
         });
       }
       //Getting the permissions for the gestalt.
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new messages.nodes.Node();
       nodeMessage.setNodeId(newGestalt.nodes[0].id);
       const actionsMessage = await grpcClient.gestaltsActionsGetByNode(
         nodeMessage,

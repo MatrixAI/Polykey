@@ -7,7 +7,7 @@ import * as grpcErrors from '../../grpc/errors';
 import PolykeyClient from '../../PolykeyClient';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { clientPB } from '../../client';
+import { messages } from '../../client';
 
 const unlock = binUtils.createCommand('unlock', {
   description:
@@ -19,7 +19,7 @@ const unlock = binUtils.createCommand('unlock', {
 });
 unlock.arguments('[password]');
 unlock.action(async (password, options) => {
-  const sessionPasswordMessage = new clientPB.PasswordMessage();
+  const sessionPasswordMessage = new messages.sessions.Password();
 
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [

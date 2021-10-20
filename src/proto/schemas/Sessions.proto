@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package Session;
+
+message Password {
+  oneof password_or_file{
+    string password = 1;
+    string password_file = 2;
+  }
+}
+
+message Token {
+  string token = 1;
+}

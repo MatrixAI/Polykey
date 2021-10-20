@@ -2,7 +2,7 @@ import type { TLSConfig } from '../network/types';
 
 import * as clientErrors from './errors';
 import { GRPCClient, utils as grpcUtils } from '../grpc';
-import * as clientPB from '../proto/js/Client_pb';
+import { messages } from '../client';
 import { ClientClient } from '../proto/js/Client_grpc_pb';
 import { Session } from '../sessions';
 import { NodeId } from '../nodes/types';
@@ -69,7 +69,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public echo(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EchoMessage>(
       this.client,
       this.client.echo,
     )(...args);
@@ -77,7 +77,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public agentStop(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.agentStop,
     )(...args);
@@ -85,7 +85,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public sessionUnlock(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.sessions.Token>(
       this.client,
       this.client.sessionUnlock,
     )(...args);
@@ -93,7 +93,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public sessionRefresh(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.sessions.Token>(
       this.client,
       this.client.sessionRefresh,
     )(...args);
@@ -101,7 +101,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public sessionLockAll(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.sessionLockAll,
     )(...args);
@@ -109,7 +109,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsList(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.vaults.List>(
       this.client,
       this.client.vaultsList,
     )(...args);
@@ -117,7 +117,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsCreate(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.vaults.Vault>(
       this.client,
       this.client.vaultsCreate,
     )(...args);
@@ -126,7 +126,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsRename(...args) {
     if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
-    return grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.vaults.Vault>(
       this.client,
       this.client.vaultsRename,
     )(...args);
@@ -134,7 +134,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsDelete(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsDelete,
     )(...args);
@@ -142,7 +142,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsClone(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsClone,
     )(...args);
@@ -150,7 +150,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPull(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsPull,
     )(...args);
@@ -158,7 +158,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsScan(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.vaults.List>(
       this.client,
       this.client.vaultsScan,
     )(...args);
@@ -166,7 +166,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPermissionsSet(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsPermissionsSet,
     )(...args);
@@ -174,7 +174,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPermissionsUnset(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsPermissionsUnset,
     )(...args);
@@ -182,7 +182,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultPermissions(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.vaults.Permission>(
       this.client,
       this.client.vaultsPermissions,
     )(...args);
@@ -190,7 +190,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsList(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.secrets.Secret>(
       this.client,
       this.client.vaultsSecretsList,
     )(...args);
@@ -198,7 +198,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsMkdir(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.vaultsSecretsMkdir,
     )(...args);
@@ -206,7 +206,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsStat(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.vaults.Stat>(
       this.client,
       this.client.vaultsSecretsStat,
     )(...args);
@@ -214,7 +214,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsDelete(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsSecretsDelete,
     )(...args);
@@ -222,7 +222,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsEdit(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsSecretsEdit,
     )(...args);
@@ -230,7 +230,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsGet(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.secrets.Secret>(
       this.client,
       this.client.vaultsSecretsGet,
     )(...args);
@@ -238,7 +238,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsRename(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsSecretsRename,
     )(...args);
@@ -246,7 +246,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsNew(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsSecretsNew,
     )(...args);
@@ -254,7 +254,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsNewDir(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.vaultsSecretsNewDir,
     )(...args);
@@ -262,7 +262,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsVersion(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.vaults.VersionResult>(
       this.client,
       this.client.vaultsVersion,
     )(...args);
@@ -270,7 +270,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsLog(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultsLogEntryMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.vaults.LogEntry>(
       this.client,
       this.client.vaultsLog,
     )(...args);
@@ -278,7 +278,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysKeyPairRoot(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.keys.KeyPair>(
       this.client,
       this.client.keysKeyPairRoot,
     )(...args);
@@ -286,7 +286,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysKeyPairReset(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.keysKeyPairReset,
     )(...args);
@@ -294,7 +294,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysKeyPairRenew(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.keysKeyPairRenew,
     )(...args);
@@ -302,7 +302,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysEncrypt(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.keys.Crypto>(
       this.client,
       this.client.keysEncrypt,
     )(...args);
@@ -310,7 +310,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysDecrypt(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.keys.Crypto>(
       this.client,
       this.client.keysDecrypt,
     )(...args);
@@ -318,7 +318,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysSign(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.keys.Crypto>(
       this.client,
       this.client.keysSign,
     )(...args);
@@ -326,7 +326,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysVerify(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.keysVerify,
     )(...args);
@@ -334,7 +334,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysPasswordChange(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.keysPasswordChange,
     )(...args);
@@ -342,7 +342,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysCertsGet(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.keys.Certificate>(
       this.client,
       this.client.keysCertsGet,
     )(...args);
@@ -350,7 +350,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysCertsChainGet(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.CertificateMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.keys.Certificate>(
       this.client,
       this.client.keysCertsChainGet,
     )(...args);
@@ -358,7 +358,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsGestaltList(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.gestalts.Gestalt>(
       this.client,
       this.client.gestaltsGestaltList,
     )(...args);
@@ -366,7 +366,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsGestaltGetByIdentity(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.GestaltGraphMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.gestalts.Graph>(
       this.client,
       this.client.gestaltsGestaltGetByIdentity,
     )(...args);
@@ -374,7 +374,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsGestaltGetByNode(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.GestaltGraphMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.gestalts.Graph>(
       this.client,
       this.client.gestaltsGestaltGetByNode,
     )(...args);
@@ -382,7 +382,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsDiscoveryByNode(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.gestalts.Gestalt>(
       this.client,
       this.client.gestaltsDiscoveryByNode,
     )(...args);
@@ -390,7 +390,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsDiscoveryByIdentity(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.gestalts.Gestalt>(
       this.client,
       this.client.gestaltsDiscoveryByIdentity,
     )(...args);
@@ -398,7 +398,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsGetByNode(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.permissions.Actions>(
       this.client,
       this.client.gestaltsActionsGetByNode,
     )(...args);
@@ -406,7 +406,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsGetByIdentity(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.permissions.Actions>(
       this.client,
       this.client.gestaltsActionsGetByIdentity,
     )(...args);
@@ -414,7 +414,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsSetByNode(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsSetByNode,
     )(...args);
@@ -422,7 +422,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsSetByIdentity(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsSetByIdentity,
     )(...args);
@@ -430,7 +430,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsUnsetByNode(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsUnsetByNode,
     )(...args);
@@ -438,7 +438,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsUnsetByIdentity(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsUnsetByIdentity,
     )(...args);
@@ -446,7 +446,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesTokenPut(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.identitiesTokenPut,
     )(...args);
@@ -454,7 +454,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesGetToken(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.TokenMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.identities.Token>(
       this.client,
       this.client.identitiesTokenGet,
     )(...args);
@@ -462,7 +462,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesTokenDelete(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.identitiesTokenDelete,
     )(...args);
@@ -470,7 +470,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesProvidersList(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.identities.Provider>(
       this.client,
       this.client.identitiesProvidersList,
     )(...args);
@@ -478,7 +478,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesAdd(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.nodesAdd,
     )(...args);
@@ -486,7 +486,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesPing(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.nodesPing,
     )(...args);
@@ -494,7 +494,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesClaim(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
       this.client,
       this.client.nodesClaim,
     )(...args);
@@ -502,7 +502,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesFind(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.nodes.Address>(
       this.client,
       this.client.nodesFind,
     )(...args);
@@ -510,7 +510,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesAuthenticate(...args) {
-    return grpcUtils.promisifyReadableStreamCall<clientPB.ProviderMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.identities.Provider>(
       this.client,
       this.client.identitiesAuthenticate,
     )(...args);
@@ -518,7 +518,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesInfoGetConnected(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.ProviderSearchMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.identities.ProviderSearch>(
       this.client,
       this.client.identitiesInfoGetConnected,
     )(...args);
@@ -526,7 +526,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesInfoGet(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.identities.Provider>(
       this.client,
       this.client.identitiesInfoGet,
     )(...args);
@@ -534,7 +534,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesClaim(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.identitiesClaim,
     )(...args);
@@ -542,7 +542,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsSend(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.notificationsSend,
     )(...args);
@@ -550,7 +550,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsRead(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.NotificationsListMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.notifications.List>(
       this.client,
       this.client.notificationsRead,
     )(...args);
@@ -558,7 +558,7 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsClear(...args) {
-    return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
       this.client,
       this.client.notificationsClear,
     )(...args);

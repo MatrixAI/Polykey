@@ -1,6 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -32,7 +32,7 @@ commandScanVaults.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const nodeMessage = new clientPB.NodeMessage();
+  const nodeMessage = new messages.nodes.Node();
   nodeMessage.setNodeId(options.nodeId);
 
   try {

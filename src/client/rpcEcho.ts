@@ -4,7 +4,7 @@ import * as utils from './utils';
 import * as errors from '../errors';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
-import * as clientPB from '../proto/js/Client_pb';
+import * as messages from '../proto/js/Client_pb';
 
 const createEchoRPC = ({
   sessionManager,
@@ -13,11 +13,11 @@ const createEchoRPC = ({
 }) => {
   return {
     echo: async (
-      call: grpc.ServerUnaryCall<clientPB.EchoMessage, clientPB.EchoMessage>,
-      callback: grpc.sendUnaryData<clientPB.EchoMessage>,
+      call: grpc.ServerUnaryCall<messages.EchoMessage, messages.EchoMessage>,
+      callback: grpc.sendUnaryData<messages.EchoMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EchoMessage();
-      const action = async (response: clientPB.EchoMessage) => {
+      const response = new messages.EchoMessage();
+      const action = async (response: messages.EchoMessage) => {
         const message = call.request.getChallenge();
         if (message === 'ThrowAnError') {
           throw new errors.ErrorPolykey('Error Thrown As Requested');

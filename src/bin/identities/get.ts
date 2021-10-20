@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import * as utils from '../../utils';
@@ -40,11 +40,11 @@ get.action(async (id, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    let res: clientPB.GestaltGraphMessage;
+    let res: messages.gestalts.Graph;
 
     if (nodeId) {
       //Getting from node.
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new messages.nodes.Node();
       nodeMessage.setNodeId(nodeId);
       const pCall = grpcClient.gestaltsGestaltGetByNode(nodeMessage);
       const { p, resolveP } = utils.promise();
@@ -56,7 +56,7 @@ get.action(async (id, options) => {
       await p;
     } else {
       //Getting from identity.
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new messages.identities.Provider();
       providerMessage.setProviderId(providerId!);
       providerMessage.setMessage(identityId!);
       const pCall = grpcClient.gestaltsGestaltGetByIdentity(providerMessage);

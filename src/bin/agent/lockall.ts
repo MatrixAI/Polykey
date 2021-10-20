@@ -5,7 +5,7 @@ import * as grpcErrors from '../../grpc/errors';
 import PolykeyClient from '../../PolykeyClient';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { clientPB } from '../../client';
+import { messages } from '../../client';
 
 const lockall = binUtils.createCommand('lockall', {
   description:
@@ -29,7 +29,7 @@ lockall.action(async (options) => {
   clientConfig['nodePath'] = nodePath;
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const m = new clientPB.EmptyMessage();
+  const m = new messages.EmptyMessage();
 
   try {
     await client.start({});

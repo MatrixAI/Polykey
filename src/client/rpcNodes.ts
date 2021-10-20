@@ -5,7 +5,7 @@ import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 
 import * as grpc from '@grpc/grpc-js';
-import * as clientPB from '../proto/js/Client_pb';
+import { messages } from '../client';
 import * as utils from '../client/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as grpcUtils from '../grpc/utils';
@@ -29,12 +29,12 @@ const createNodesRPC = ({
      */
     nodesAdd: async (
       call: grpc.ServerUnaryCall<
-        clientPB.NodeAddressMessage,
-        clientPB.EmptyMessage
+        messages.nodes.Address,
+        messages.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
+      const response = new messages.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -63,10 +63,10 @@ const createNodesRPC = ({
      * Checks if a remote node is online.
      */
     nodesPing: async (
-      call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.StatusMessage>,
-      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      call: grpc.ServerUnaryCall<messages.nodes.Node, messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.StatusMessage>,
     ): Promise<void> => {
-      const response = new clientPB.StatusMessage();
+      const response = new messages.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -89,12 +89,12 @@ const createNodesRPC = ({
      */
     nodesClaim: async (
       call: grpc.ServerUnaryCall<
-        clientPB.NodeClaimMessage,
-        clientPB.StatusMessage
+        messages.nodes.Claim,
+        messages.StatusMessage
       >,
-      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.StatusMessage>,
     ): Promise<void> => {
-      const response = new clientPB.StatusMessage();
+      const response = new messages.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -131,12 +131,12 @@ const createNodesRPC = ({
      */
     nodesFind: async (
       call: grpc.ServerUnaryCall<
-        clientPB.NodeMessage,
-        clientPB.NodeAddressMessage
+        messages.nodes.Node,
+        messages.nodes.Address
       >,
-      callback: grpc.sendUnaryData<clientPB.NodeAddressMessage>,
+      callback: grpc.sendUnaryData<messages.nodes.Address>,
     ): Promise<void> => {
-      const response = new clientPB.NodeAddressMessage();
+      const response = new messages.nodes.Address();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(

@@ -1,6 +1,6 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -35,9 +35,9 @@ pull.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const vaultMessage = new clientPB.VaultMessage();
-  const nodeMessage = new clientPB.NodeMessage();
-  const vaultPullMessage = new clientPB.VaultPullMessage();
+  const vaultMessage = new messages.vaults.Vault();
+  const nodeMessage = new messages.nodes.Node();
+  const vaultPullMessage = new messages.vaults.Pull();
   vaultPullMessage.setVault(vaultMessage);
   vaultPullMessage.setNode(nodeMessage);
 

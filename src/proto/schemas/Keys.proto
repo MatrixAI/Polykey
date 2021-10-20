@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package Key;
+
+message Crypto {
+  string data = 1;
+  string signature = 2;
+}
+
+message Key {
+  string name = 1;
+  string key = 2;
+}
+
+message KeyPair {
+  string public = 1;
+  string private = 2;
+}
+
+message Certificate {
+  string cert = 1;
+}

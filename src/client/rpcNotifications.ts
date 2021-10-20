@@ -3,7 +3,7 @@ import type { NotificationsManager } from '../notifications';
 
 import * as grpc from '@grpc/grpc-js';
 import * as utils from './utils';
-import * as clientPB from '../proto/js/Client_pb';
+import { messages } from '.';
 import * as grpcUtils from '../grpc/utils';
 import * as notificationsUtils from '../notifications/utils';
 import { makeNodeId } from '../nodes/utils';
@@ -18,10 +18,10 @@ const createNotificationsRPC = ({
   return {
     notificationsSend: async (
       call: grpc.ServerUnaryCall<
-        clientPB.NotificationsSendMessage,
-        clientPB.EmptyMessage
+        messages.notifications.Send,
+        messages.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -40,17 +40,17 @@ const createNotificationsRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new messages.EmptyMessage();
       callback(null, emptyMessage);
     },
     notificationsRead: async (
       call: grpc.ServerUnaryCall<
-        clientPB.NotificationsReadMessage,
-        clientPB.NotificationsListMessage
+        messages.notifications.Read,
+        messages.notifications.List
       >,
-      callback: grpc.sendUnaryData<clientPB.NotificationsListMessage>,
+      callback: grpc.sendUnaryData<messages.notifications.List>,
     ): Promise<void> => {
-      const response = new clientPB.NotificationsListMessage();
+      const response = new messages.notifications.List();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -73,12 +73,12 @@ const createNotificationsRPC = ({
           order,
         });
 
-        const notifMessages: Array<clientPB.NotificationsMessage> = [];
+        const notifMessages: Array<messages.notifications.Notification> = [];
         for (const notif of notifications) {
-          const notificationsMessage = new clientPB.NotificationsMessage();
+          const notificationsMessage = new messages.notifications.Notification();
           switch (notif.data.type) {
             case 'General': {
-              const generalMessage = new clientPB.GeneralTypeMessage();
+              const generalMessage = new messages.notifications.General();
               generalMessage.setMessage(notif.data.message);
               notificationsMessage.setGeneral(generalMessage);
               break;
@@ -88,7 +88,7 @@ const createNotificationsRPC = ({
               break;
             }
             case 'VaultShare': {
-              const vaultShareMessage = new clientPB.VaultShareTypeMessage();
+              const vaultShareMessage = new messages.notifications.Share();
               vaultShareMessage.setVaultId(notif.data.vaultId);
               vaultShareMessage.setVaultName(notif.data.vaultName);
               vaultShareMessage.setActionsList(Object.keys(notif.data.actions));
@@ -107,8 +107,8 @@ const createNotificationsRPC = ({
       callback(null, response);
     },
     notificationsClear: async (
-      call: grpc.ServerUnaryCall<clientPB.EmptyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<messages.EmptyMessage, messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -120,7 +120,7 @@ const createNotificationsRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new messages.EmptyMessage();
       callback(null, emptyMessage);
     },
   };

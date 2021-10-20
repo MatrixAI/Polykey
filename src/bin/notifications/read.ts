@@ -2,7 +2,7 @@ import type { Notification } from '../../notifications/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { createCommand, outputFormatter } from '../utils';
 import { errors } from '../../grpc';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as notificationsUtils from '../../notifications/utils';
@@ -48,7 +48,7 @@ read.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const notificationsReadMessage = new clientPB.NotificationsReadMessage();
+  const notificationsReadMessage = new messages.notifications.Read();
 
   try {
     await client.start({});
@@ -77,20 +77,20 @@ read.action(async (options) => {
     for (const message of notificationMessages) {
       let data;
       switch (message.getDataCase()) {
-        case clientPB.NotificationsMessage.DataCase.GENERAL: {
+        case messages.notifications.Notification.DataCase.GENERAL: {
           data = {
             type: 'General',
             message: message.getGeneral()!.getMessage(),
           };
           break;
         }
-        case clientPB.NotificationsMessage.DataCase.GESTALT_INVITE: {
+        case messages.notifications.Notification.DataCase.GESTALT_INVITE: {
           data = {
             type: 'GestaltInvite',
           };
           break;
         }
-        case clientPB.NotificationsMessage.DataCase.VAULT_SHARE: {
+        case messages.notifications.Notification.DataCase.VAULT_SHARE: {
           const actions = message.getVaultShare()!.getActionsList();
           data = {
             type: 'VaultShare',

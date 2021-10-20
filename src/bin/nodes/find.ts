@@ -1,7 +1,7 @@
 import type { Host, Port } from '../../network/types';
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { messages, utils as clientUtils } from '../../client';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { ErrorNodeGraphNodeNotFound } from '../../errors';
@@ -47,7 +47,7 @@ find.action(async (node, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const nodeMessage = new clientPB.NodeMessage();
+    const nodeMessage = new messages.nodes.Node();
     nodeMessage.setNodeId(node);
 
     const result = { success: false, message: '', id: '', host: '', port: 0 };

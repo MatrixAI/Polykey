@@ -8,7 +8,7 @@ import type { GRPCServer } from '../grpc';
 import * as utils from './utils';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
-import * as clientPB from '../proto/js/Client_pb';
+import { messages } from '../client';
 
 const createKeysRPC = ({
   keyManager,
@@ -28,12 +28,12 @@ const createKeysRPC = ({
   return {
     keysKeyPairRoot: async (
       call: grpc.ServerUnaryCall<
-        clientPB.EmptyMessage,
-        clientPB.KeyPairMessage
+        messages.EmptyMessage,
+        messages.keys.KeyPair
       >,
-      callback: grpc.sendUnaryData<clientPB.KeyPairMessage>,
+      callback: grpc.sendUnaryData<messages.keys.KeyPair>,
     ): Promise<void> => {
-      const response = new clientPB.KeyPairMessage();
+      const response = new messages.keys.KeyPair();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const keyPair = keyManager.getRootKeyPairPem();
@@ -45,10 +45,10 @@ const createKeysRPC = ({
       callback(null, response);
     },
     keysKeyPairReset: async (
-      call: grpc.ServerUnaryCall<clientPB.KeyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<messages.keys.Key, messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
+      const response = new messages.EmptyMessage();
       try {
         // Lock the nodeManager - because we need to do a database refresh too
         await nodeManager.transaction(async (nodeManager) => {
@@ -75,10 +75,10 @@ const createKeysRPC = ({
       callback(null, response);
     },
     keysKeyPairRenew: async (
-      call: grpc.ServerUnaryCall<clientPB.KeyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<messages.keys.Key, messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
+      const response = new messages.EmptyMessage();
       try {
         // Lock the nodeManager - because we need to do a database refresh too
         await nodeManager.transaction(async (nodeManager) => {
@@ -106,12 +106,12 @@ const createKeysRPC = ({
     },
     keysEncrypt: async (
       call: grpc.ServerUnaryCall<
-        clientPB.CryptoMessage,
-        clientPB.CryptoMessage
+        messages.keys.Crypto,
+        messages.keys.Crypto
       >,
-      callback: grpc.sendUnaryData<clientPB.CryptoMessage>,
+      callback: grpc.sendUnaryData<messages.keys.Crypto>,
     ): Promise<void> => {
-      const response = new clientPB.CryptoMessage();
+      const response = new messages.keys.Crypto();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -129,12 +129,12 @@ const createKeysRPC = ({
     },
     keysDecrypt: async (
       call: grpc.ServerUnaryCall<
-        clientPB.CryptoMessage,
-        clientPB.CryptoMessage
+        messages.keys.Crypto,
+        messages.keys.Crypto
       >,
-      callback: grpc.sendUnaryData<clientPB.CryptoMessage>,
+      callback: grpc.sendUnaryData<messages.keys.Crypto>,
     ): Promise<void> => {
-      const response = new clientPB.CryptoMessage();
+      const response = new messages.keys.Crypto();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -152,12 +152,12 @@ const createKeysRPC = ({
     },
     keysSign: async (
       call: grpc.ServerUnaryCall<
-        clientPB.CryptoMessage,
-        clientPB.CryptoMessage
+        messages.keys.Crypto,
+        messages.keys.Crypto
       >,
-      callback: grpc.sendUnaryData<clientPB.CryptoMessage>,
+      callback: grpc.sendUnaryData<messages.keys.Crypto>,
     ): Promise<void> => {
-      const response = new clientPB.CryptoMessage();
+      const response = new messages.keys.Crypto();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -175,12 +175,12 @@ const createKeysRPC = ({
     },
     keysVerify: async (
       call: grpc.ServerUnaryCall<
-        clientPB.CryptoMessage,
-        clientPB.StatusMessage
+        messages.keys.Crypto,
+        messages.StatusMessage
       >,
-      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.StatusMessage>,
     ): Promise<void> => {
-      const response = new clientPB.StatusMessage();
+      const response = new messages.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -199,12 +199,12 @@ const createKeysRPC = ({
     },
     keysPasswordChange: async (
       call: grpc.ServerUnaryCall<
-        clientPB.PasswordMessage,
-        clientPB.EmptyMessage
+        messages.sessions.Password,
+        messages.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
+      const response = new messages.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -219,12 +219,12 @@ const createKeysRPC = ({
     },
     keysCertsGet: async (
       call: grpc.ServerUnaryCall<
-        clientPB.EmptyMessage,
-        clientPB.CertificateMessage
+        messages.EmptyMessage,
+        messages.keys.Certificate
       >,
-      callback: grpc.sendUnaryData<clientPB.CertificateMessage>,
+      callback: grpc.sendUnaryData<messages.keys.Certificate>,
     ): Promise<void> => {
-      const response = new clientPB.CertificateMessage();
+      const response = new messages.keys.Certificate();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -240,8 +240,8 @@ const createKeysRPC = ({
     },
     keysCertsChainGet: async (
       call: grpc.ServerWritableStream<
-        clientPB.EmptyMessage,
-        clientPB.CertificateMessage
+        messages.EmptyMessage,
+        messages.keys.Certificate
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
@@ -252,9 +252,9 @@ const createKeysRPC = ({
         );
         call.sendMetadata(responseMeta);
         const certs: Array<string> = await keyManager.getRootCertChainPems();
-        let certMessage: clientPB.CertificateMessage;
+        let certMessage: messages.keys.Certificate;
         for (const cert of certs) {
-          certMessage = new clientPB.CertificateMessage();
+          certMessage = new messages.keys.Certificate();
           certMessage.setCert(cert);
           await genWritable.next(certMessage);
         }
