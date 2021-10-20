@@ -1022,7 +1022,7 @@ describe('Client service', () => {
         })
 
         // Switch back to the latest version
-        vaultVersionMessage.setVersionId('end');
+        vaultVersionMessage.setVersionId('last');
         const response2 = await vaultsVersion(vaultVersionMessage, callCredentials);
         expect(response2.getIsLatestVersion()).toBeTruthy();
 

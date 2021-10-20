@@ -157,7 +157,7 @@ describe('VaultInternal', () => {
       });
       expect(files).toEqual(['test1', 'test2', 'test3']);
       await vault.version(initCommit);
-      await vault.version('end');
+      await vault.version('last');
       files = await vault.access(async (efs) => {
         return await efs.readdir('.');
       });

@@ -33,7 +33,7 @@ import * as gitErrors from '../git/errors';
 import { CreateDestroy, ready } from "@matrixai/async-init/dist/CreateDestroy";
 import { makeVaultIdPretty } from './utils';
 
-const headTag = 'end';
+const lastTag = 'last';
 
 interface VaultInternal extends CreateDestroy {}
 @CreateDestroy()
@@ -209,6 +209,7 @@ class VaultInternal {
         }
       }
       if (message.length !== 0) {
+        console.log(this._nodeId)
         this._workingDir = await git.commit({
           fs: this._efsRoot,
           dir: this.baseDir,
@@ -267,7 +268,7 @@ class VaultInternal {
     depth?: number,
     commit?: string,
   ): Promise<Array<CommitLog>> {
-    const commit_ = commit?.toLowerCase() === headTag ? 'HEAD' : commit;
+    const commit_ = commit?.toLowerCase() === lastTag ? 'HEAD' : commit;
     const log = await git.log({
       fs: this._efsRoot,
       dir: this.baseDir,
@@ -289,7 +290,7 @@ class VaultInternal {
   public async version(commit: string): Promise<void> {
 
     // Checking for special tags.
-    const commit_ = commit.toLowerCase() === headTag ? 'HEAD' : commit;
+    const commit_ = commit.toLowerCase() === lastTag ? 'HEAD' : commit;
     // TODO: add a tag for the start of the histoy so we can use that as the operator.
 
     try {

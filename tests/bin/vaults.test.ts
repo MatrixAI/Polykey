@@ -564,7 +564,7 @@ describe('CLI vaults', () => {
       expect(result.code).toBe(0)
 
 
-      const command2 = ['vaults', 'version', '-np', dataDir, vaultName, 'end'];
+      const command2 = ['vaults', 'version', '-np', dataDir, vaultName, 'last'];
 
       const result2 = await utils.pkWithStdio([...command2]);
       expect(result2.code).toBe(0)
