@@ -1,6 +1,8 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -33,13 +35,13 @@ permissions.action(async (vaultName, nodeId, options) => {
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
-  const vaultMessage = new clientPB.VaultMessage();
+  const vaultMessage = new vaultsPB.Vault();
   vaultMessage.setNameOrId(vaultName);
 
-  const nodeMessage = new clientPB.NodeMessage();
+  const nodeMessage = new nodesPB.Node();
   nodeMessage.setNodeId(nodeId);
 
-  const getVaultMessage = new clientPB.GetVaultPermMessage();
+  const getVaultMessage = new vaultsPB.PermGet();
   getVaultMessage.setVault(vaultMessage);
   getVaultMessage.setNode(nodeMessage);
 

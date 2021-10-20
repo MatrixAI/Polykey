@@ -1,4 +1,4 @@
-import { clientPB } from '../../client';
+import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
@@ -40,10 +40,10 @@ log.action(async (vault, commitId, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const vaultMessage = new clientPB.VaultMessage();
+    const vaultMessage = new vaultsPB.Vault();
     vaultMessage.setNameOrId(vault);
 
-    const vaultsLogMessage = new clientPB.VaultsLogMessage();
+    const vaultsLogMessage = new vaultsPB.Log();
     vaultsLogMessage.setVault(vaultMessage);
     vaultsLogMessage.setLogDepth(options.number);
     vaultsLogMessage.setCommitId(commitId ?? '');

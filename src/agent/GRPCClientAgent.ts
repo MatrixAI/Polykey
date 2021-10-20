@@ -1,16 +1,18 @@
+import type { Host, Port, ProxyConfig } from '../network/types';
+import type { NodeId } from '../nodes/types';
 import type { TLSConfig } from '../network/types';
 
-import { GRPCClient, utils as grpcUtils } from '../grpc';
-import * as agentPB from '../proto/js/Agent_pb';
-import { AgentClient } from '../proto/js/Agent_grpc_pb';
-import { NodeId } from '../nodes/types';
-import { Host, Port, ProxyConfig } from '../network/types';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
   ready,
 } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { errors as grpcErrors } from '../grpc';
+import { GRPCClient, utils as grpcUtils, errors as grpcErrors } from '../grpc';
+import { AgentServiceClient } from '../proto/js/polykey/v1/agent_service_grpc_pb';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 
 /**
  * GRPC Agent Endpoints.
@@ -20,7 +22,7 @@ import { errors as grpcErrors } from '../grpc';
   new grpcErrors.ErrorGRPCClientNotStarted(),
   new grpcErrors.ErrorGRPCClientDestroyed(),
 )
-class GRPCClientAgent extends GRPCClient<AgentClient> {
+class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   static async createGRPCClientAgent({
     nodeId,
     host,
@@ -55,7 +57,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
     timeout?: number;
   } = {}): Promise<void> {
     await super.start({
-      clientConstructor: AgentClient,
+      clientConstructor: AgentServiceClient,
       tlsConfig,
       timeout,
     });
@@ -63,7 +65,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public echo(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.EchoMessage>(
+    return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
       this.client.echo,
     )(...args);
@@ -71,7 +73,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsGitInfoGet(...args) {
-    return grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+    return grpcUtils.promisifyReadableStreamCall<vaultsPB.PackChunk>(
       this.client,
       this.client.vaultsGitInfoGet,
     )(...args);
@@ -84,7 +86,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsScan(...args) {
-    return grpcUtils.promisifyReadableStreamCall<agentPB.VaultListMessage>(
+    return grpcUtils.promisifyReadableStreamCall<vaultsPB.Vault>(
       this.client,
       this.client.vaultsScan,
     )(...args);
@@ -92,7 +94,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesClosestLocalNodesGet(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.NodeTableMessage>(
+    return grpcUtils.promisifyUnaryCall<nodesPB.NodeTable>(
       this.client,
       this.client.nodesClosestLocalNodesGet,
     )(...args);
@@ -100,7 +102,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesClaimsGet(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.ClaimsMessage>(
+    return grpcUtils.promisifyUnaryCall<nodesPB.Claims>(
       this.client,
       this.client.nodesClaimsGet,
     )(...args);
@@ -108,7 +110,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesChainDataGet(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.ChainDataMessage>(
+    return grpcUtils.promisifyUnaryCall<nodesPB.ChainData>(
       this.client,
       this.client.nodesChainDataGet,
     )(...args);
@@ -116,7 +118,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesHolePunchMessageSend(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
       this.client.nodesHolePunchMessageSend,
     )(...args);
@@ -124,7 +126,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsSend(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.NotificationMessage>(
+    return grpcUtils.promisifyUnaryCall<notificationsPB.AgentNotification>(
       this.client,
       this.client.notificationsSend,
     )(...args);
@@ -132,7 +134,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPermisssionsCheck(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.PermissionMessage>(
+    return grpcUtils.promisifyUnaryCall<vaultsPB.NodePermissionAllowed>(
       this.client,
       this.client.vaultsPermisssionsCheck,
     )(...args);
@@ -141,8 +143,8 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesCrossSignClaim(...args) {
     return grpcUtils.promisifyDuplexStreamCall<
-      agentPB.CrossSignMessage,
-      agentPB.CrossSignMessage
+      nodesPB.CrossSign,
+      nodesPB.CrossSign
     >(
       this.client,
       this.client.nodesCrossSignClaim,

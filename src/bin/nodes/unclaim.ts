@@ -1,6 +1,6 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 
@@ -34,13 +34,13 @@ unclaim.action(async (node, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const echoMessage = new clientPB.EchoMessage();
+    const echoMessage = new utilsPB.EchoMessage();
     echoMessage.setChallenge('Hello world!');
     grpcClient.echo(echoMessage);
 
     //Claiming the node.
     //FIXME: Placeholder, not currently supported.
-    // const nodeMessage = new clientPB.NodeMessage();
+    // const nodeMessage = new nodesPB.Node();
     // nodeMessage.setName(node);
     // const res = await grpcClient.nodesAdd(nodeMessage);
     // console.log(JSON.stringify(res.toObject()));

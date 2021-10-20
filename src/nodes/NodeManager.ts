@@ -23,8 +23,8 @@ import { errors as dbErrors } from '@matrixai/db';
 import * as networkErrors from '../network/errors';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
-import * as agentPB from '../proto/js/Agent_pb';
 import { GRPCClientAgent } from '../agent';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import { ForwardProxy, ReverseProxy } from '../network';
 import { Mutex } from 'async-mutex';
 import {
@@ -392,9 +392,7 @@ class NodeManager {
    * nodeConnection.start())
    */
   @ready(new nodesErrors.ErrorNodeManagerNotStarted())
-  public async relayHolePunchMessage(
-    message: agentPB.RelayMessage,
-  ): Promise<void> {
+  public async relayHolePunchMessage(message: nodesPB.Relay): Promise<void> {
     const conn = await this.getConnectionToNode(
       message.getTargetId() as NodeId,
     );

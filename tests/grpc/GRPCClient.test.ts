@@ -3,7 +3,7 @@ import type { Host, Port } from '@/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as keysUtils } from '@/keys';
 import { utils as networkUtils } from '@/network';
-import * as testPB from '@/proto/js/Test_pb';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
 
 describe('GRPCClient', () => {
@@ -79,7 +79,7 @@ describe('GRPCClient', () => {
       },
       timeout: 1000,
     });
-    const m = new testPB.EchoMessage();
+    const m = new utilsPB.EchoMessage();
     m.setChallenge('a98u3e4d');
     const pCall = client.unary(m);
     expect(pCall.call.getPeer()).toBe(`dns:127.0.0.1:${port}`);

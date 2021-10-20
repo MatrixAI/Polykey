@@ -3,7 +3,7 @@ import type { Host, Port } from '@/network/types';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as keysUtils } from '@/keys';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
-import * as testPB from '@/proto/js/Test_pb';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { openTestServer, closeTestServer, GRPCClientTest } from '../grpc/utils';
 
 describe('network index', () => {
@@ -71,7 +71,7 @@ describe('network index', () => {
       logger,
     });
     await client.start();
-    const m = new testPB.EchoMessage();
+    const m = new utilsPB.EchoMessage();
     const challenge = 'Hello!';
     m.setChallenge(challenge);
     // Unary call

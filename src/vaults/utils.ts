@@ -19,8 +19,9 @@ import * as grpc from '@grpc/grpc-js';
 
 import { promisify } from '../utils';
 
-import * as agentPB from '../proto/js/Agent_pb';
 import { GRPCClientAgent } from '../agent';
+import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 
 import * as keysUtils from '../keys/utils';
 import { errors as vaultErrors } from './';
@@ -181,8 +182,8 @@ async function* requestInfo(
   vaultNameOrId: string,
   client: GRPCClientAgent,
 ): AsyncGenerator<Uint8Array> {
-  const request = new agentPB.InfoRequest();
-  // Request.setVaultId(idUtils.toBuffer(makeVaultId(vaultNameOrId)));
+  const request = new vaultsPB.Vault();
+  request.setNameOrId(vaultNameOrId);
   const response = client.vaultsGitInfoGet(request);
   for await (const resp of response) {
     yield resp.getChunk_asU8();
@@ -214,7 +215,7 @@ async function* requestPack(
     responseBuffers.push(d.getChunk_asU8());
   });
 
-  const chunk = new agentPB.PackChunk();
+  const chunk = new vaultsPB.PackChunk();
   chunk.setChunk(body);
   write(chunk);
   stream.end();
@@ -235,13 +236,13 @@ async function requestVaultNames(
   client: GRPCClientAgent,
   nodeId: NodeId,
 ): Promise<string[]> {
-  const request = new agentPB.NodeIdMessage();
+  const request = new nodesPB.Node();
   request.setNodeId(nodeId);
   const vaultList = client.vaultsScan(request);
   const data: string[] = [];
   for await (const vault of vaultList) {
-    const vaultMessage = vault.getVault_asU8();
-    data.push(Buffer.from(vaultMessage).toString());
+    const vaultMessage = vault.getNameOrId();
+    data.push(vaultMessage);
   }
 
   return data;

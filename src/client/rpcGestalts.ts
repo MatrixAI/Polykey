@@ -11,7 +11,11 @@ import * as grpc from '@grpc/grpc-js';
 import { makeGestaltAction } from '../gestalts/utils';
 
 import * as grpcUtils from '../grpc/utils';
-import * as clientPB from '../proto/js/Client_pb';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import * as gestaltsPB from '../proto/js/polykey/v1/gestalts/gestalts_pb';
+import * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
+import * as permissionsPB from '../proto/js/polykey/v1/permissions/permissions_pb';
 import { makeNodeId } from '../nodes/utils';
 
 const createGestaltsRPC = ({
@@ -25,13 +29,10 @@ const createGestaltsRPC = ({
 }) => {
   return {
     gestaltsGestaltGetByNode: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.NodeMessage,
-        clientPB.GestaltGraphMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.GestaltGraphMessage>,
+      call: grpc.ServerUnaryCall<nodesPB.Node, gestaltsPB.Graph>,
+      callback: grpc.sendUnaryData<gestaltsPB.Graph>,
     ): Promise<void> => {
-      const response = new clientPB.GestaltGraphMessage();
+      const response = new gestaltsPB.Graph();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -50,13 +51,10 @@ const createGestaltsRPC = ({
       callback(null, response);
     },
     gestaltsGestaltGetByIdentity: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.ProviderMessage,
-        clientPB.GestaltGraphMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.GestaltGraphMessage>,
+      call: grpc.ServerUnaryCall<identitiesPB.Provider, gestaltsPB.Graph>,
+      callback: grpc.sendUnaryData<gestaltsPB.Graph>,
     ): Promise<void> => {
-      const response = new clientPB.GestaltGraphMessage();
+      const response = new gestaltsPB.Graph();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -76,13 +74,10 @@ const createGestaltsRPC = ({
       callback(null, response);
     },
     gestaltsGestaltList: async (
-      call: grpc.ServerWritableStream<
-        clientPB.EmptyMessage,
-        clientPB.GestaltMessage
-      >,
+      call: grpc.ServerWritableStream<utilsPB.EmptyMessage, gestaltsPB.Gestalt>,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      let gestaltMessage: clientPB.GestaltMessage;
+      let gestaltMessage: gestaltsPB.Gestalt;
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -91,7 +86,7 @@ const createGestaltsRPC = ({
         call.sendMetadata(responseMeta);
         const certs: Array<Gestalt> = await gestaltGraph.getGestalts();
         for (const cert of certs) {
-          gestaltMessage = new clientPB.GestaltMessage();
+          gestaltMessage = new gestaltsPB.Gestalt();
           gestaltMessage.setName(JSON.stringify(cert));
           await genWritable.next(gestaltMessage);
         }
@@ -101,11 +96,11 @@ const createGestaltsRPC = ({
       }
     },
     gestaltsDiscoveryByNode: async (
-      call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<nodesPB.Node, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -125,14 +120,11 @@ const createGestaltsRPC = ({
       callback(null, emptyMessage);
     },
     gestaltsDiscoveryByIdentity: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.ProviderMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -153,11 +145,11 @@ const createGestaltsRPC = ({
       callback(null, emptyMessage);
     },
     gestaltsActionsGetByNode: async (
-      call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.ActionsMessage>,
-      callback: grpc.sendUnaryData<clientPB.ActionsMessage>,
+      call: grpc.ServerUnaryCall<nodesPB.Node, permissionsPB.Actions>,
+      callback: grpc.sendUnaryData<permissionsPB.Actions>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new clientPB.ActionsMessage();
+      const response = new permissionsPB.Actions();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -181,14 +173,11 @@ const createGestaltsRPC = ({
       callback(null, response);
     },
     gestaltsActionsGetByIdentity: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.ProviderMessage,
-        clientPB.ActionsMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.ActionsMessage>,
+      call: grpc.ServerUnaryCall<identitiesPB.Provider, permissionsPB.Actions>,
+      callback: grpc.sendUnaryData<permissionsPB.Actions>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new clientPB.ActionsMessage();
+      const response = new permissionsPB.Actions();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -215,14 +204,11 @@ const createGestaltsRPC = ({
       callback(null, response);
     },
     gestaltsActionsSetByNode: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.SetActionsMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<permissionsPB.ActionSet, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new clientPB.EmptyMessage();
+      const response = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -232,13 +218,13 @@ const createGestaltsRPC = ({
         //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
-          case clientPB.SetActionsMessage.NodeOrProviderCase
+          case permissionsPB.ActionSet.NodeOrProviderCase
             .NODE_OR_PROVIDER_NOT_SET:
-          case clientPB.SetActionsMessage.NodeOrProviderCase.IDENTITY:
+          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
             throw new errors.ErrorGRPCInvalidMessage(
               'Node not set for SetActionMessage.',
             );
-          case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:
+          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
             break; //This is fine.
         }
 
@@ -252,14 +238,11 @@ const createGestaltsRPC = ({
       callback(null, response);
     },
     gestaltsActionsSetByIdentity: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.SetActionsMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<permissionsPB.ActionSet, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new clientPB.EmptyMessage();
+      const response = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -269,13 +252,13 @@ const createGestaltsRPC = ({
         //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
-          case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:
-          case clientPB.SetActionsMessage.NodeOrProviderCase
+          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
+          case permissionsPB.ActionSet.NodeOrProviderCase
             .NODE_OR_PROVIDER_NOT_SET:
             throw new errors.ErrorGRPCInvalidMessage(
               'Identity not set for SetActionMessage.',
             );
-          case clientPB.SetActionsMessage.NodeOrProviderCase.IDENTITY:
+          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
             break; //This is fine.
         }
 
@@ -294,14 +277,11 @@ const createGestaltsRPC = ({
       callback(null, response);
     },
     gestaltsActionsUnsetByNode: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.SetActionsMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<permissionsPB.ActionSet, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new clientPB.EmptyMessage();
+      const response = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -311,13 +291,13 @@ const createGestaltsRPC = ({
         //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
-          case clientPB.SetActionsMessage.NodeOrProviderCase
+          case permissionsPB.ActionSet.NodeOrProviderCase
             .NODE_OR_PROVIDER_NOT_SET:
-          case clientPB.SetActionsMessage.NodeOrProviderCase.IDENTITY:
+          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
             throw new errors.ErrorGRPCInvalidMessage(
               'Node not set for SetActionMessage.',
             );
-          case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:
+          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
             break; //This is fine.
         }
 
@@ -331,14 +311,11 @@ const createGestaltsRPC = ({
       callback(null, response);
     },
     gestaltsActionsUnsetByIdentity: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.SetActionsMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<permissionsPB.ActionSet, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new clientPB.EmptyMessage();
+      const response = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -348,13 +325,13 @@ const createGestaltsRPC = ({
         //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
-          case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:
-          case clientPB.SetActionsMessage.NodeOrProviderCase
+          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
+          case permissionsPB.ActionSet.NodeOrProviderCase
             .NODE_OR_PROVIDER_NOT_SET:
             throw new errors.ErrorGRPCInvalidMessage(
               'Identity not set for SetActionMessage.',
             );
-          case clientPB.SetActionsMessage.NodeOrProviderCase.IDENTITY:
+          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
             break; //This is fine.
         }
 

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "polykey/v1/nodes/nodes.proto";
+import "polykey/v1/identities/identities.proto";
+
+package polykey.v1.permissions;
+
+message Actions {
+  repeated string action = 1;
+}
+
+message ActionSet {
+  oneof node_or_provider {
+    polykey.v1.nodes.Node node = 1;
+    polykey.v1.identities.Provider identity = 2;
+  }
+  string action = 3;
+}

@@ -6,7 +6,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 
 import { PolykeyClient } from '@';
-import { clientPB, GRPCClientClient } from '@/client';
+import { GRPCClientClient } from '@/client';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
 
 import * as testUtils from './utils';
@@ -72,7 +73,7 @@ describe('GRPCClientClient', () => {
     });
   });
   test('echo', async () => {
-    const echoMessage = new clientPB.EchoMessage();
+    const echoMessage = new utilsPB.EchoMessage();
     echoMessage.setChallenge('yes');
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
@@ -125,7 +126,7 @@ describe('TLS tests', () => {
     const client = pkClient.grpcClient;
     await pkClient.session.start({ token });
 
-    const echoMessage = new clientPB.EchoMessage();
+    const echoMessage = new utilsPB.EchoMessage();
     echoMessage.setChallenge('yes');
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');

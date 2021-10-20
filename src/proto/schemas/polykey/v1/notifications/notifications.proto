@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package polykey.v1.notifications;
+
+message Notification {
+  oneof data {
+    General general = 1;
+    string gestalt_invite = 2;
+    Share vault_share = 3;
+  };
+  string sender_id = 4;
+  bool is_read = 5;
+}
+
+message Send {
+  string receiver_id = 1;
+  General data = 2;
+}
+
+message Read {
+  bool unread = 1;
+  string number = 2;
+  string order = 3;
+}
+
+message List {
+  repeated Notification notification = 1;
+}
+
+message General {
+  string message = 1;
+}
+
+message Share {
+  string vault_id = 1;
+  string vault_name = 2;
+  repeated string actions = 3;
+}
+
+// Agent specific
+
+message AgentNotification {
+  string content = 1;
+}

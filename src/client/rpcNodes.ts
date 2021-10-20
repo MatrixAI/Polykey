@@ -5,7 +5,8 @@ import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 
 import * as grpc from '@grpc/grpc-js';
-import * as clientPB from '../proto/js/Client_pb';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import * as utils from '../client/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as grpcUtils from '../grpc/utils';
@@ -28,13 +29,10 @@ const createNodesRPC = ({
      * of the passed ID or host/port.
      */
     nodesAdd: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.NodeAddressMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<nodesPB.NodeAddress, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
+      const response = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -46,13 +44,15 @@ const createNodesRPC = ({
         if (!validNodeId) {
           throw new nodesErrors.ErrorInvalidNodeId();
         }
-        const validHost = nodesUtils.isValidHost(call.request.getHost());
+        const validHost = nodesUtils.isValidHost(
+          call.request.getAddress()!.getHost(),
+        );
         if (!validHost) {
           throw new nodesErrors.ErrorInvalidHost();
         }
         await nodeManager.setNode(makeNodeId(call.request.getNodeId()), {
-          ip: call.request.getHost(),
-          port: call.request.getPort(),
+          ip: call.request.getAddress()!.getHost(),
+          port: call.request.getAddress()!.getPort(),
         } as NodeAddress);
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -63,10 +63,10 @@ const createNodesRPC = ({
      * Checks if a remote node is online.
      */
     nodesPing: async (
-      call: grpc.ServerUnaryCall<clientPB.NodeMessage, clientPB.StatusMessage>,
-      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      call: grpc.ServerUnaryCall<nodesPB.Node, utilsPB.StatusMessage>,
+      callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
     ): Promise<void> => {
-      const response = new clientPB.StatusMessage();
+      const response = new utilsPB.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -88,13 +88,10 @@ const createNodesRPC = ({
      * other node and host node.
      */
     nodesClaim: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.NodeClaimMessage,
-        clientPB.StatusMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.StatusMessage>,
+      call: grpc.ServerUnaryCall<nodesPB.Claim, utilsPB.StatusMessage>,
+      callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
     ): Promise<void> => {
-      const response = new clientPB.StatusMessage();
+      const response = new utilsPB.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -130,13 +127,10 @@ const createNodesRPC = ({
      * @throws ErrorNodeGraphNodeNotFound if node address cannot be found
      */
     nodesFind: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.NodeMessage,
-        clientPB.NodeAddressMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.NodeAddressMessage>,
+      call: grpc.ServerUnaryCall<nodesPB.Node, nodesPB.NodeAddress>,
+      callback: grpc.sendUnaryData<nodesPB.NodeAddress>,
     ): Promise<void> => {
-      const response = new clientPB.NodeAddressMessage();
+      const response = new nodesPB.NodeAddress();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -145,9 +139,11 @@ const createNodesRPC = ({
         call.sendMetadata(responseMeta);
         const nodeId = makeNodeId(call.request.getNodeId());
         const address = await nodeManager.findNode(nodeId);
-        response.setNodeId(nodeId);
-        response.setHost(address.ip);
-        response.setPort(address.port);
+        response
+          .setNodeId(nodeId)
+          .setAddress(
+            new nodesPB.Address().setHost(address.ip).setPort(address.port),
+          );
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }

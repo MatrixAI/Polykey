@@ -1,6 +1,8 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { parseId } from './utils';
@@ -41,7 +43,7 @@ commandTrustGestalts.action(async (id, options) => {
     let actions;
     if (nodeId) {
       //Getting by Node.
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new nodesPB.Node();
       nodeMessage.setNodeId(nodeId);
       const pCall = grpcClient.gestaltsActionsGetByNode(nodeMessage);
       const { p, resolveP } = utils.promise();
@@ -54,7 +56,7 @@ commandTrustGestalts.action(async (id, options) => {
       actions = res.getActionList();
     } else {
       //Getting by Identity
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(providerId!);
       providerMessage.setMessage(identityId!);
       const pCall = grpcClient.gestaltsActionsGetByIdentity(providerMessage);

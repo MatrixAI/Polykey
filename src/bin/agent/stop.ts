@@ -1,5 +1,5 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB } from '../../client';
+import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -27,7 +27,7 @@ stop.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const emptyMessage = new clientPB.EmptyMessage();
+  const emptyMessage = new utilsPB.EmptyMessage();
 
   try {
     await client.start({});

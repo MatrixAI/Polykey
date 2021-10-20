@@ -17,9 +17,9 @@ import { GestaltGraph } from '@/gestalts';
 import { DB } from '@matrixai/db';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
-import { AgentService, createAgentService } from '@/agent';
+import { AgentServiceService, createAgentService } from '@/agent';
 import { NotificationsManager } from '@/notifications';
-import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
+import { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 
 import { errors as vaultErrors } from '@/vaults';
 import { utils as vaultUtils } from '@/vaults';
@@ -530,7 +530,8 @@ describe('VaultManager', () => {
     let targetNodeId: NodeId, altNodeId: NodeId;
     let revTLSConfig: TLSConfig, altRevTLSConfig: TLSConfig;
 
-    let targetAgentService: IAgentServer, altAgentService: IAgentServer;
+    let targetAgentService: IAgentServiceServer,
+      altAgentService: IAgentServiceServer;
     let targetServer: GRPCServer, altServer: GRPCServer;
 
     let node: NodeInfo;
@@ -630,7 +631,7 @@ describe('VaultManager', () => {
         logger: logger,
       });
       await targetServer.start({
-        services: [[AgentService, targetAgentService]],
+        services: [[AgentServiceService, targetAgentService]],
         host: targetHost,
       });
 
@@ -722,7 +723,7 @@ describe('VaultManager', () => {
         logger: logger,
       });
       await altServer.start({
-        services: [[AgentService, altAgentService]],
+        services: [[AgentServiceService, altAgentService]],
         host: altHostIn,
       });
 

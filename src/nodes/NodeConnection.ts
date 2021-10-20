@@ -17,8 +17,10 @@ import * as claimsUtils from '../claims/utils';
 import * as claimsErrors from '../claims/errors';
 import * as keysUtils from '../keys/utils';
 import * as vaultsUtils from '../vaults/utils';
-import { NodeAddressMessage } from '../proto/js/Agent_pb';
-import { agentPB, GRPCClientAgent } from '../agent';
+import { GRPCClientAgent } from '../agent';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import { ForwardProxy, utils as networkUtils } from '../network';
 import {
   CreateDestroyStartStop,
@@ -240,27 +242,22 @@ class NodeConnection {
   @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
   public async getClosestNodes(targetNodeId: NodeId): Promise<Array<NodeData>> {
     // Construct the message
-    const nodeIdMessage = new agentPB.NodeIdMessage();
+    const nodeIdMessage = new nodesPB.Node();
     nodeIdMessage.setNodeId(targetNodeId);
     // Send through client
     const response = await this.client.nodesClosestLocalNodesGet(nodeIdMessage);
     const nodes: Array<NodeData> = [];
     // Loop over each map element (from the returned response) and populate nodes
-    response
-      .getNodeTableMap()
-      .forEach((address: NodeAddressMessage, nodeId: string) => {
-        nodes.push({
-          id: nodeId as NodeId,
-          address: {
-            ip: address.getIp() as Host,
-            port: address.getPort() as Port,
-          },
-          distance: nodesUtils.calculateDistance(
-            targetNodeId,
-            nodeId as NodeId,
-          ),
-        });
+    response.getNodeTableMap().forEach((address, nodeId: string) => {
+      nodes.push({
+        id: nodeId as NodeId,
+        address: {
+          ip: address.getHost() as Host,
+          port: address.getPort() as Port,
+        },
+        distance: nodesUtils.calculateDistance(targetNodeId, nodeId as NodeId),
       });
+    });
     return nodes;
   }
 
@@ -281,7 +278,7 @@ class NodeConnection {
     egressAddress: string,
     signature: Buffer,
   ): Promise<void> {
-    const relayMsg = new agentPB.RelayMessage();
+    const relayMsg = new nodesPB.Relay();
     relayMsg.setSrcId(sourceNodeId);
     relayMsg.setTargetId(targetNodeId);
     relayMsg.setEgressAddress(egressAddress);
@@ -294,7 +291,7 @@ class NodeConnection {
    */
   @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
   public async sendNotification(message: SignedNotification): Promise<void> {
-    const notificationMsg = new agentPB.NotificationMessage();
+    const notificationMsg = new notificationsPB.AgentNotification();
     notificationMsg.setContent(message);
     await this.client.notificationsSend(notificationMsg);
     return;
@@ -308,27 +305,25 @@ class NodeConnection {
   @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
   public async getChainData(): Promise<ChainDataEncoded> {
     const chainData: ChainDataEncoded = {};
-    const emptyMsg = new agentPB.EmptyMessage();
+    const emptyMsg = new utilsPB.EmptyMessage();
     const response = await this.client.nodesChainDataGet(emptyMsg);
     // Reconstruct each claim from the returned ChainDataMessage
-    response
-      .getChainDataMap()
-      .forEach((claimMsg: agentPB.ClaimMessage, id: string) => {
-        const claimId = id as ClaimIdString;
-        // Reconstruct the signatures array
-        const signatures: Array<{ signature: string; protected: string }> = [];
-        for (const signatureData of claimMsg.getSignaturesList()) {
-          signatures.push({
-            signature: signatureData.getSignature(),
-            protected: signatureData.getProtected(),
-          });
-        }
-        // Add to the record of chain data, casting as expected ClaimEncoded
-        chainData[claimId] = {
-          signatures: signatures,
-          payload: claimMsg.getPayload(),
-        } as ClaimEncoded;
-      });
+    response.getChainDataMap().forEach((claimMsg, id: string) => {
+      const claimId = id as ClaimIdString;
+      // Reconstruct the signatures array
+      const signatures: Array<{ signature: string; protected: string }> = [];
+      for (const signatureData of claimMsg.getSignaturesList()) {
+        signatures.push({
+          signature: signatureData.getSignature(),
+          protected: signatureData.getProtected(),
+        });
+      }
+      // Add to the record of chain data, casting as expected ClaimEncoded
+      chainData[claimId] = {
+        signatures: signatures,
+        payload: claimMsg.getPayload(),
+      } as ClaimEncoded;
+    });
     return chainData;
   }
 

@@ -11,14 +11,23 @@ import * as grpc from '@grpc/grpc-js';
 
 import TestProvider from '../identities/TestProvider';
 import { PolykeyAgent, PolykeyClient } from '@';
-import { clientPB } from '@/client';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
+import * as notificationsPB from '@/proto/js/polykey/v1/notifications/notifications_pb';
+import * as sessionsPB from '@/proto/js/polykey/v1/sessions/sessions_pb';
+import * as gestaltsPB from '@/proto/js/polykey/v1/gestalts/gestalts_pb';
+import * as identitiesPB from '@/proto/js/polykey/v1/identities/identities_pb';
+import * as keysPB from '@/proto/js/polykey/v1/keys/keys_pb';
+import * as permissionsPB from '@/proto/js/polykey/v1/permissions/permissions_pb';
+import * as secretsPB from '@/proto/js/polykey/v1/secrets/secrets_pb';
 import { NodeManager } from '@/nodes';
 import { GestaltGraph } from '@/gestalts';
 import { VaultManager } from '@/vaults';
 import { IdentitiesManager } from '@/identities';
 import { KeyManager } from '@/keys';
 import { ForwardProxy } from '@/network';
-import { ClientClient } from '@/proto/js/Client_grpc_pb';
+import { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 
 import * as testKeynodeUtils from '../utils';
 import * as testUtils from './utils';
@@ -37,6 +46,9 @@ import { Vault, VaultName } from '@/vaults/types';
 import { vaultOps } from '@/vaults';
 import { makeVaultId, makeVaultIdPretty } from '@/vaults/utils';
 import { utils as idUtils } from '@matrixai/id';
+import { Any } from 'google-protobuf/google/protobuf/any_pb';
+import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb';
+import { Struct } from 'google-protobuf/google/protobuf/struct_pb';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -56,7 +68,7 @@ describe('Client service', () => {
   const logger = new Logger('ClientServerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let client: ClientClient;
+  let client: ClientServiceClient;
   let server: grpc.Server;
   let port: number;
 
@@ -188,13 +200,13 @@ describe('Client service', () => {
   });
 
   test('can echo', async () => {
-    const echo = grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
+    const echo = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
       client.echo,
     );
-    const m = new clientPB.EchoMessage();
+    const m = new utilsPB.EchoMessage();
     m.setChallenge('Hello');
-    const res: clientPB.EchoMessage = await echo(m, callCredentials);
+    const res: utilsPB.EchoMessage = await echo(m, callCredentials);
     expect(res.getChallenge()).toBe('Hello');
 
     // Hard Coded error
@@ -203,13 +215,12 @@ describe('Client service', () => {
   });
   describe('sessions', () => {
     test('can request a session', async () => {
-      const requestJWT =
-        grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
-          client,
-          client.sessionUnlock,
-        );
+      const requestJWT = grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
+        client,
+        client.sessionUnlock,
+      );
 
-      const passwordMessage = new clientPB.PasswordMessage();
+      const passwordMessage = new sessionsPB.Password();
       passwordMessage.setPasswordFile(passwordFile);
 
       const res = await requestJWT(passwordMessage);
@@ -220,26 +231,24 @@ describe('Client service', () => {
       expect(result).toBeTruthy();
     });
     test('can refresh session', async () => {
-      const requestJWT =
-        grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
-          client,
-          client.sessionUnlock,
-        );
+      const requestJWT = grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
+        client,
+        client.sessionUnlock,
+      );
 
-      const passwordMessage = new clientPB.PasswordMessage();
+      const passwordMessage = new sessionsPB.Password();
       passwordMessage.setPasswordFile(passwordFile);
 
       const res1 = await requestJWT(passwordMessage);
       const token1 = res1.getToken() as SessionToken;
       const callCredentialsRefresh = testUtils.createCallCredentials(token1);
 
-      const sessionRefresh =
-        grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
-          client,
-          client.sessionRefresh,
-        );
+      const sessionRefresh = grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
+        client,
+        client.sessionRefresh,
+      );
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
 
       const res2 = await sessionRefresh(emptyMessage, callCredentialsRefresh);
       expect(typeof res2.getToken()).toBe('string');
@@ -252,24 +261,24 @@ describe('Client service', () => {
     test('session can lock all', async () => {
       //Starts off unlocked.
 
-      const echo = grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
+      const echo = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
         client,
         client.echo,
       );
 
       // Checking that session is working.
-      const echoMessage = new clientPB.EchoMessage();
+      const echoMessage = new utilsPB.EchoMessage();
       echoMessage.setChallenge('Hello');
       const res = await echo(echoMessage, callCredentials);
       expect(res.getChallenge()).toBe('Hello');
 
       //Locking the session.
-      const sessionLockAll = grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
+      const sessionLockAll = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
         client,
         client.sessionLockAll,
       );
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       await sessionLockAll(emptyMessage, callCredentials);
 
       //Should reject the session token.
@@ -302,7 +311,7 @@ describe('Client service', () => {
         await newClient.start({});
         await newClient.session.start({ token });
 
-        const emptyMessage = new clientPB.EmptyMessage();
+        const emptyMessage = new utilsPB.EmptyMessage();
         await newClient.grpcClient.agentStop(emptyMessage);
         await sleep(10000);
 
@@ -321,11 +330,10 @@ describe('Client service', () => {
     });
 
     test('should get vaults', async () => {
-      const listVaults =
-        grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
-          client,
-          client.vaultsList,
-        );
+      const listVaults = grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
+        client,
+        client.vaultsList,
+      );
 
       const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
 
@@ -333,7 +341,7 @@ describe('Client service', () => {
         await vaultManager.createVault(vaultName as VaultName);
       }
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       const res = await listVaults(emptyMessage, callCredentials);
       const names: Array<string> = [];
       for await (const val of res) {
@@ -345,12 +353,12 @@ describe('Client service', () => {
     test('should create vault', async () => {
       const vaultName = 'NewVault' as VaultName;
 
-      const createVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
+      const createVault = grpcUtils.promisifyUnaryCall<vaultsPB.Vault>(
         client,
         client.vaultsCreate,
       );
 
-      const vaultMessage = new clientPB.VaultMessage();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(vaultName);
 
       const vaultId = await createVault(vaultMessage, callCredentials);
@@ -361,7 +369,7 @@ describe('Client service', () => {
       );
     });
     test('should delete vaults', async () => {
-      const deleteVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      const deleteVault = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
         client,
         client.vaultsDelete,
       );
@@ -375,7 +383,7 @@ describe('Client service', () => {
         vaults.push(await vaultManager.createVault(vaultName as VaultName));
       }
 
-      const vaultMessage = new clientPB.VaultMessage();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(vaultList[0]);
 
       const res = await deleteVault(vaultMessage, callCredentials);
@@ -395,15 +403,15 @@ describe('Client service', () => {
     test('should rename vaults', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const vaultRename = 'MyRenamedVault' as VaultName;
-      const renameVault = grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
+      const renameVault = grpcUtils.promisifyUnaryCall<vaultsPB.Vault>(
         client,
         client.vaultsRename,
       );
 
       const vault = await vaultManager.createVault(vaultName);
 
-      const vaultRenameMessage = new clientPB.VaultRenameMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const vaultRenameMessage = new vaultsPB.Rename();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       vaultRenameMessage.setVault(vaultMessage);
       vaultRenameMessage.setNewName(vaultRename);
@@ -417,7 +425,7 @@ describe('Client service', () => {
     //FIXME, fix this when vault secrets stat is re-implemented
     test.skip('should get stats for vaults', async () => {
       fail('not implemented');
-      const statsVault = grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
+      const statsVault = grpcUtils.promisifyUnaryCall<vaultsPB.Stat>(
         client,
         client.vaultsSecretsStat,
       );
@@ -427,7 +435,7 @@ describe('Client service', () => {
         'MySecondVault' as VaultName,
       );
 
-      const vaultMessage = new clientPB.VaultMessage();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
 
       const res = await statsVault(vaultMessage, callCredentials);
@@ -448,7 +456,7 @@ describe('Client service', () => {
     test('should make a directory in a vault', async () => {
       const vaultName = 'MySecondVault' as VaultName;
 
-      const mkdirVault = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      const mkdirVault = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
         client.vaultsSecretsMkdir,
       );
@@ -456,8 +464,8 @@ describe('Client service', () => {
       const vault = await vaultManager.createVault(vaultName);
       const dirPath = 'dir/dir1/dir2';
 
-      const vaultMkdirMessage = new clientPB.VaultMkdirMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const vaultMkdirMessage = new vaultsPB.Mkdir();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       vaultMkdirMessage.setVault(vaultMessage);
       vaultMkdirMessage.setDirName(dirPath);
@@ -472,7 +480,7 @@ describe('Client service', () => {
     test('should list secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const listSecretsVault =
-        grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
+        grpcUtils.promisifyReadableStreamCall<secretsPB.Secret>(
           client,
           client.vaultsSecretsList,
         );
@@ -493,10 +501,10 @@ describe('Client service', () => {
         }
       });
 
-      const vaultMessage = new clientPB.VaultMessage();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
 
-      const res = listSecretsVault(vaultMessage, callCredentials);
+      const res = await listSecretsVault(vaultMessage, callCredentials);
 
       const names: Array<string> = [];
       for await (const val of res) {
@@ -508,7 +516,7 @@ describe('Client service', () => {
     test('should delete secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const deleteSecretVault =
-        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.vaultsSecretsDelete,
         );
@@ -530,8 +538,8 @@ describe('Client service', () => {
         }
       });
 
-      const secretMessage = new clientPB.SecretMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const secretMessage = new secretsPB.Secret();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
@@ -547,7 +555,7 @@ describe('Client service', () => {
     test('should edit secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const editSecretVault =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.vaultsSecretsEdit,
         );
@@ -568,8 +576,8 @@ describe('Client service', () => {
         }
       });
 
-      const secretMessage = new clientPB.SecretMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const secretMessage = new secretsPB.Secret();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
@@ -586,11 +594,10 @@ describe('Client service', () => {
     test('should get secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
 
-      const getSecretVault =
-        grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
-          client,
-          client.vaultsSecretsGet,
-        );
+      const getSecretVault = grpcUtils.promisifyUnaryCall<secretsPB.Secret>(
+        client,
+        client.vaultsSecretsGet,
+      );
 
       const vault = await vaultManager.createVault(vaultName);
 
@@ -608,8 +615,8 @@ describe('Client service', () => {
         }
       });
 
-      const secretMessage = new clientPB.SecretMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const secretMessage = new secretsPB.Secret();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
@@ -624,7 +631,7 @@ describe('Client service', () => {
       const vaultName = 'MyFirstVault' as VaultName;
 
       const renameSecretVault =
-        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.vaultsSecretsRename,
         );
@@ -652,9 +659,9 @@ describe('Client service', () => {
         }
       });
 
-      const secretRenameMessage = new clientPB.SecretRenameMessage();
-      const vaultMessage = new clientPB.VaultMessage();
-      const secretMessage = new clientPB.SecretMessage();
+      const secretRenameMessage = new secretsPB.Rename();
+      const vaultMessage = new vaultsPB.Vault();
+      const secretMessage = new secretsPB.Secret();
 
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       secretMessage.setSecretName('Secret1');
@@ -677,15 +684,15 @@ describe('Client service', () => {
       const vaultName = 'MyFirstVault' as VaultName;
 
       const newSecretVault =
-        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.vaultsSecretsNew,
         );
 
       const vault = await vaultManager.createVault(vaultName);
 
-      const secretMessage = new clientPB.SecretMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const secretMessage = new secretsPB.Secret();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       secretMessage.setVault(vaultMessage);
       secretMessage.setSecretName('Secret1');
@@ -708,7 +715,7 @@ describe('Client service', () => {
     test('should add a directory of secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const newDirSecretVault =
-        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.vaultsSecretsNewDir,
         );
@@ -729,8 +736,8 @@ describe('Client service', () => {
 
       const vault = await vaultManager.createVault(vaultName);
 
-      const secretDirectoryMessage = new clientPB.SecretDirectoryMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const secretDirectoryMessage = new secretsPB.Directory();
+      const vaultMessage = new vaultsPB.Vault();
       vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
       secretDirectoryMessage.setVault(vaultMessage);
       secretDirectoryMessage.setSecretDirectory(tmpDir);
@@ -748,7 +755,7 @@ describe('Client service', () => {
       fail('Functionality not fully implemented');
       const vaultName = 'vault1' as VaultName;
       const vaultsSetPerms =
-        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.vaultsPermissionsSet,
         );
@@ -759,9 +766,9 @@ describe('Client service', () => {
       // Creating a gestalts state
       await createGestaltState();
 
-      const setVaultPermMessage = new clientPB.SetVaultPermMessage();
-      const nodeMessage = new clientPB.NodeMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const setVaultPermMessage = new vaultsPB.PermSet();
+      const nodeMessage = new nodesPB.Node();
+      const vaultMessage = new vaultsPB.Vault();
       nodeMessage.setNodeId(node2.id);
       vaultMessage.setNameOrId(vaultName);
       setVaultPermMessage.setVault(vaultMessage);
@@ -777,7 +784,7 @@ describe('Client service', () => {
     test.skip('should remove permissions to a vault', async () => {
       const vaultName = 'vault1' as VaultName;
       const vaultsUnsetPerms =
-        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.vaultsPermissionsUnset,
         );
@@ -793,9 +800,9 @@ describe('Client service', () => {
       // FIXME: not implemented yet
       // await vaultManager.setVaultPermissions(node2.id, vaultId);
 
-      const unsetVaultPermMessage = new clientPB.UnsetVaultPermMessage();
-      const nodeMessage = new clientPB.NodeMessage();
-      const vaultMessage = new clientPB.VaultMessage();
+      const unsetVaultPermMessage = new vaultsPB.PermUnset();
+      const nodeMessage = new nodesPB.Node();
+      const vaultMessage = new vaultsPB.Vault();
       nodeMessage.setNodeId(node2.id);
       vaultMessage.setNameOrId(vaults[0].name);
       unsetVaultPermMessage.setVault(vaultMessage);
@@ -811,7 +818,7 @@ describe('Client service', () => {
     test.skip('should get permissions to a vault', async () => {
       const vaultName = 'vault1' as VaultName;
       const vaultsPermissions =
-        grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
+        grpcUtils.promisifyReadableStreamCall<vaultsPB.Permission>(
           client,
           client.vaultsPermissions,
         );
@@ -828,16 +835,16 @@ describe('Client service', () => {
       // FIXME: not implemented yet
       // await vaultManager.setVaultPermissions(node2.id, vaultId);
 
-      const getVaultPermMessage = new clientPB.GetVaultPermMessage();
-      const vaultMessage = new clientPB.VaultMessage();
-      const nodeMessage = new clientPB.NodeMessage();
+      const getVaultPermMessage = new vaultsPB.PermGet();
+      const vaultMessage = new vaultsPB.Vault();
+      const nodeMessage = new nodesPB.Node();
       vaultMessage.setNameOrId(vaults[0].name);
       nodeMessage.setNodeId(node2.id);
       getVaultPermMessage.setVault(vaultMessage);
       getVaultPermMessage.setNode(nodeMessage);
       const resGen = vaultsPermissions(getVaultPermMessage, callCredentials);
 
-      const results: Array<clientPB.PermissionMessage.AsObject> = [];
+      const results: Array<vaultsPB.Permission.AsObject> = [];
       // FIXME
       // for await (const res of resGen) {
       //   results.push(res.toObject());
@@ -865,11 +872,10 @@ describe('Client service', () => {
         // Creating the vault
         vault = await vaultManager.createVault(vaultName);
 
-        vaultsVersion =
-          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-            client,
-            client.vaultsVersion,
-          );
+        vaultsVersion = grpcUtils.promisifyUnaryCall<vaultsPB.VersionResult>(
+          client,
+          client.vaultsVersion,
+        );
       });
 
       afterEach(async () => {
@@ -889,10 +895,10 @@ describe('Client service', () => {
         expect(ver1Oid).not.toEqual(ver2Oid);
 
         // Revert the version
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(vaultName);
 
-        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        const vaultVersionMessage = new vaultsPB.Version();
         vaultVersionMessage.setVault(vaultMessage);
         vaultVersionMessage.setVersionId(ver1Oid);
 
@@ -937,10 +943,10 @@ describe('Client service', () => {
         expect(ver1Oid).not.toEqual(ver2Oid);
 
         // Revert the version
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
 
-        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        const vaultVersionMessage = new vaultsPB.Version();
         vaultVersionMessage.setVault(vaultMessage);
         vaultVersionMessage.setVersionId(ver1Oid);
 
@@ -982,10 +988,10 @@ describe('Client service', () => {
         });
 
         // Revert the version
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
 
-        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        const vaultVersionMessage = new vaultsPB.Version();
         vaultVersionMessage.setVault(vaultMessage);
         vaultVersionMessage.setVersionId('invalidOid');
 
@@ -1007,10 +1013,10 @@ describe('Client service', () => {
         expect(ver1Oid).not.toEqual(ver2Oid);
 
         // Revert the version
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(vaultName);
 
-        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        const vaultVersionMessage = new vaultsPB.Version();
         vaultVersionMessage.setVault(vaultMessage);
         vaultVersionMessage.setVersionId(ver1Oid);
 
@@ -1064,10 +1070,10 @@ describe('Client service', () => {
         });
 
         // Revert the version
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(vaultName);
 
-        const vaultVersionMessage = new clientPB.VaultsVersionMessage();
+        const vaultVersionMessage = new vaultsPB.Version();
         vaultVersionMessage.setVault(vaultMessage);
         vaultVersionMessage.setVersionId(ver1Oid);
 
@@ -1116,11 +1122,10 @@ describe('Client service', () => {
       let commit3Oid: string;
 
       beforeEach(async () => {
-        vaultLog =
-          grpcUtils.promisifyReadableStreamCall<clientPB.VaultsLogEntryMessage>(
-            client,
-            client.vaultsLog,
-          );
+        vaultLog = grpcUtils.promisifyReadableStreamCall<vaultsPB.LogEntry>(
+          client,
+          client.vaultsLog,
+        );
 
         // Creating the vault
         vault = await vaultManager.createVault(vaultName);
@@ -1146,15 +1151,20 @@ describe('Client service', () => {
       });
 
       test('should get the full log', async () => {
+        const vaultLog =
+          grpcUtils.promisifyReadableStreamCall<vaultsPB.LogEntry>(
+            client,
+            client.vaultsLog,
+          );
         // Lovingly crafting the message
-        const vaultsLogMessage = new clientPB.VaultsLogMessage();
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultsLogMessage = new vaultsPB.Log();
+        const vaultMessage = new vaultsPB.Vault();
 
         vaultMessage.setNameOrId(vaultName);
         vaultsLogMessage.setVault(vaultMessage);
 
         const responseGen = await vaultLog(vaultsLogMessage, callCredentials);
-        const logMessages: clientPB.VaultsLogEntryMessage[] = [];
+        const logMessages: vaultsPB.LogEntry[] = [];
         for await (const entry of responseGen) {
           logMessages.push(entry);
         }
@@ -1166,15 +1176,15 @@ describe('Client service', () => {
       });
       test('should get a part of the log', async () => {
         // Lovingly crafting the message
-        const vaultsLogMessage = new clientPB.VaultsLogMessage();
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultsLogMessage = new vaultsPB.Log();
+        const vaultMessage = new vaultsPB.Vault();
 
         vaultMessage.setNameOrId(vaultName);
         vaultsLogMessage.setVault(vaultMessage);
         vaultsLogMessage.setLogDepth(2);
 
         const responseGen = await vaultLog(vaultsLogMessage, callCredentials);
-        const logMessages: clientPB.VaultsLogEntryMessage[] = [];
+        const logMessages: vaultsPB.LogEntry[] = [];
         for await (const entry of responseGen) {
           logMessages.push(entry);
         }
@@ -1185,15 +1195,15 @@ describe('Client service', () => {
       });
       test('should get a specific commit', async () => {
         // Lovingly crafting the message
-        const vaultsLogMessage = new clientPB.VaultsLogMessage();
-        const vaultMessage = new clientPB.VaultMessage();
+        const vaultsLogMessage = new vaultsPB.Log();
+        const vaultMessage = new vaultsPB.Vault();
 
         vaultMessage.setNameOrId(vaultName);
         vaultsLogMessage.setVault(vaultMessage);
         vaultsLogMessage.setCommitId(commit2Oid);
 
         const responseGen = await vaultLog(vaultsLogMessage, callCredentials);
-        const logMessages: clientPB.VaultsLogEntryMessage[] = [];
+        const logMessages: vaultsPB.LogEntry[] = [];
         for await (const entry of responseGen) {
           logMessages.push(entry);
         }
@@ -1205,15 +1215,14 @@ describe('Client service', () => {
   });
   describe('keys', () => {
     test('should get root keypair', async () => {
-      const getRootKeyPair =
-        grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
-          client,
-          client.keysKeyPairRoot,
-        );
+      const getRootKeyPair = grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
+        client,
+        client.keysKeyPairRoot,
+      );
 
       const keyPair = keyManager.getRootKeyPairPem();
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
 
       const key = await getRootKeyPair(emptyMessage, callCredentials);
 
@@ -1221,13 +1230,12 @@ describe('Client service', () => {
       expect(key.getPublic()).toBe(keyPair.publicKey);
     });
     test('should reset root keypair', async () => {
-      const getRootKeyPair =
-        grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
-          client,
-          client.keysKeyPairRoot,
-        );
+      const getRootKeyPair = grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
+        client,
+        client.keysKeyPairRoot,
+      );
 
-      const resetKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      const resetKeyPair = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
         client.keysKeyPairReset,
       );
@@ -1248,12 +1256,12 @@ describe('Client service', () => {
       expect(revTLSConfig1).toEqual(expectedTLSConfig1);
       expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
 
-      const keyMessage = new clientPB.KeyMessage();
+      const keyMessage = new keysPB.Key();
       keyMessage.setName('somepassphrase');
 
       await resetKeyPair(keyMessage, callCredentials);
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
 
       await fs.promises.writeFile(passwordFile, 'somepassphrase');
 
@@ -1284,7 +1292,7 @@ describe('Client service', () => {
       };
     });
     test('should renew root keypair', async () => {
-      const renewKeyPair = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      const renewKeyPair = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
         client.keysKeyPairRenew,
       );
@@ -1305,7 +1313,7 @@ describe('Client service', () => {
       expect(revTLSConfig1).toEqual(expectedTLSConfig1);
       expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
 
-      const keyMessage = new clientPB.KeyMessage();
+      const keyMessage = new keysPB.Key();
       keyMessage.setName('somepassphrase');
 
       await renewKeyPair(keyMessage, callCredentials);
@@ -1337,20 +1345,18 @@ describe('Client service', () => {
       };
     });
     test('should encrypt and decrypt with root keypair', async () => {
-      const encryptWithKeyPair =
-        grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
-          client,
-          client.keysEncrypt,
-        );
+      const encryptWithKeyPair = grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
+        client,
+        client.keysEncrypt,
+      );
 
-      const decryptWithKeyPair =
-        grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
-          client,
-          client.keysDecrypt,
-        );
+      const decryptWithKeyPair = grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
+        client,
+        client.keysDecrypt,
+      );
 
       const plainText = Buffer.from('abc');
-      const cryptoMessage = new clientPB.CryptoMessage();
+      const cryptoMessage = new keysPB.Crypto();
       cryptoMessage.setData(plainText.toString('binary'));
 
       const cipherText = await encryptWithKeyPair(
@@ -1367,20 +1373,19 @@ describe('Client service', () => {
       expect(plainText_.getData()).toBe(plainText.toString());
     });
     test('should encrypt and decrypt with root keypair', async () => {
-      const signWithKeyPair =
-        grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
-          client,
-          client.keysSign,
-        );
+      const signWithKeyPair = grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
+        client,
+        client.keysSign,
+      );
 
       const verifyWithKeyPair =
-        grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.keysVerify,
         );
 
       const data = Buffer.from('abc');
-      const cryptoMessage = new clientPB.CryptoMessage();
+      const cryptoMessage = new keysPB.Crypto();
       cryptoMessage.setData(data.toString('binary'));
 
       const signature = await signWithKeyPair(cryptoMessage, callCredentials);
@@ -1394,12 +1399,12 @@ describe('Client service', () => {
     test.skip('should change password', async () => {
       // FIXME: this and any change password, reset keys needs to be changed to use the new process.
       const changePasswordKeys =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.keysPasswordChange,
         );
 
-      const passwordMessage = new clientPB.PasswordMessage();
+      const passwordMessage = new sessionsPB.Password();
       passwordMessage.setPassword('newpassword');
 
       await changePasswordKeys(passwordMessage, callCredentials);
@@ -1425,19 +1430,18 @@ describe('Client service', () => {
       // Await vaultManager.start({});
     });
     test('should get the root certificate and chains', async () => {
-      const getCerts =
-        grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
-          client,
-          client.keysCertsGet,
-        );
+      const getCerts = grpcUtils.promisifyUnaryCall<keysPB.Certificate>(
+        client,
+        client.keysCertsGet,
+      );
 
       const getChainCerts =
-        grpcUtils.promisifyReadableStreamCall<clientPB.CertificateMessage>(
+        grpcUtils.promisifyReadableStreamCall<keysPB.Certificate>(
           client,
           client.keysCertsChainGet,
         );
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
 
       const res = getChainCerts(emptyMessage, callCredentials);
       const certs: Array<string> = [];
@@ -1457,12 +1461,12 @@ describe('Client service', () => {
   describe('identities', () => {
     test('should Authenticate an identity.', async () => {
       const identitiesAuthenticate =
-        grpcUtils.promisifyReadableStreamCall<clientPB.ProviderMessage>(
+        grpcUtils.promisifyReadableStreamCall<identitiesPB.Provider>(
           client,
           client.identitiesAuthenticate,
         );
 
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(testToken.providerId);
       providerMessage.setMessage(testToken.identityId);
 
@@ -1483,17 +1487,17 @@ describe('Client service', () => {
       expect((await gen.next()).done).toBeTruthy();
     });
     test('should manipulate tokens for providers', async () => {
-      const putToken = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      const putToken = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
         client.identitiesTokenPut,
       );
 
-      const getTokens = grpcUtils.promisifyUnaryCall<clientPB.TokenMessage>(
+      const getTokens = grpcUtils.promisifyUnaryCall<identitiesPB.Token>(
         client,
         client.identitiesTokenGet,
       );
 
-      const delToken = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      const delToken = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
         client.identitiesTokenDelete,
       );
@@ -1503,8 +1507,8 @@ describe('Client service', () => {
         accessToken: 'abc',
       };
 
-      const mp = new clientPB.ProviderMessage();
-      const m = new clientPB.TokenSpecificMessage();
+      const mp = new identitiesPB.Provider();
+      const m = new identitiesPB.TokenSpecific();
 
       mp.setProviderId(providerId);
       mp.setMessage(identityId);
@@ -1523,20 +1527,19 @@ describe('Client service', () => {
       expect(tokenData__.getToken()).toBe('');
     });
     test('should list providers.', async () => {
-      const providersGet =
-        grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
-          client,
-          client.identitiesProvidersList,
-        );
+      const providersGet = grpcUtils.promisifyUnaryCall<identitiesPB.Provider>(
+        client,
+        client.identitiesProvidersList,
+      );
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       const test = await providersGet(emptyMessage, callCredentials);
       // Expect(test.getId()).toContain('github.com');
       expect(test.getProviderId()).toContain('test-provider');
     });
     test('should list connected Identities.', async () => {
       const identitiesGetConnectedInfos =
-        grpcUtils.promisifyReadableStreamCall<clientPB.IdentityInfoMessage>(
+        grpcUtils.promisifyReadableStreamCall<identitiesPB.Info>(
           client,
           client.identitiesInfoGetConnected,
         );
@@ -1548,8 +1551,8 @@ describe('Client service', () => {
         testToken.tokenData,
       );
 
-      const providerSearchMessage = new clientPB.ProviderSearchMessage();
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerSearchMessage = new identitiesPB.ProviderSearch();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(testToken.providerId);
       providerMessage.setMessage(testToken.identityId);
       providerSearchMessage.setProvider(providerMessage);
@@ -1569,7 +1572,7 @@ describe('Client service', () => {
     });
     test('should get identity info.', async () => {
       const identitiesGetInfo =
-        grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
+        grpcUtils.promisifyUnaryCall<identitiesPB.Provider>(
           client,
           client.identitiesInfoGet,
         );
@@ -1581,7 +1584,7 @@ describe('Client service', () => {
       );
 
       //Geting the info.
-      const providerMessage1 = new clientPB.ProviderMessage();
+      const providerMessage1 = new identitiesPB.Provider();
       providerMessage1.setProviderId(testToken.providerId);
       const providerMessage = await identitiesGetInfo(
         providerMessage1,
@@ -1592,7 +1595,7 @@ describe('Client service', () => {
     });
     test('should augment a keynode.', async () => {
       const identitiesAugmentKeynode =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.identitiesClaim,
         );
@@ -1604,7 +1607,7 @@ describe('Client service', () => {
       );
 
       //Making the call.
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(testToken.providerId);
       providerMessage.setMessage(testToken.identityId);
       await identitiesAugmentKeynode(providerMessage, callCredentials);
@@ -1618,7 +1621,7 @@ describe('Client service', () => {
   describe('gestalts', () => {
     test('should get all gestalts', async () => {
       const listGestalts =
-        grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
+        grpcUtils.promisifyReadableStreamCall<gestaltsPB.Gestalt>(
           client,
           client.gestaltsGestaltList,
         );
@@ -1626,7 +1629,7 @@ describe('Client service', () => {
       await gestaltGraph.setNode(node2);
       await gestaltGraph.setIdentity(identity1);
 
-      const m = new clientPB.EmptyMessage();
+      const m = new utilsPB.EmptyMessage();
 
       const res = listGestalts(m, callCredentials);
 
@@ -1676,14 +1679,13 @@ describe('Client service', () => {
       });
     });
     test('should get gestalt from Node.', async () => {
-      const gestaltsGetNode =
-        grpcUtils.promisifyUnaryCall<clientPB.GestaltGraphMessage>(
-          client,
-          client.gestaltsGestaltGetByNode,
-        );
+      const gestaltsGetNode = grpcUtils.promisifyUnaryCall<gestaltsPB.Graph>(
+        client,
+        client.gestaltsGestaltGetByNode,
+      );
       await createGestaltState();
 
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new nodesPB.Node();
       nodeMessage.setNodeId(node2.id);
 
       //Making the call
@@ -1696,13 +1698,13 @@ describe('Client service', () => {
     });
     test('should get gestalt from identity.', async () => {
       const gestaltsGetIdentity =
-        grpcUtils.promisifyUnaryCall<clientPB.GestaltGraphMessage>(
+        grpcUtils.promisifyUnaryCall<gestaltsPB.Graph>(
           client,
           client.gestaltsGestaltGetByIdentity,
         );
       await createGestaltState();
       //Testing the call
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(identity1.providerId);
       providerMessage.setMessage(identity1.identityId);
       const res = await gestaltsGetIdentity(providerMessage, callCredentials);
@@ -1714,12 +1716,12 @@ describe('Client service', () => {
     });
     test('should discover gestalt via Node.', async () => {
       const gestaltsDiscoverNode =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.gestaltsDiscoveryByNode,
         );
 
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new nodesPB.Node();
       nodeMessage.setNodeId(node2.id);
       //I have no idea how to test this. so we just check for expected error for now.
       await expect(() =>
@@ -1728,7 +1730,7 @@ describe('Client service', () => {
     });
     test('should discover gestalt via Identity.', async () => {
       const gestaltsDiscoverIdentity =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.gestaltsDiscoveryByIdentity,
         );
@@ -1739,17 +1741,17 @@ describe('Client service', () => {
         testToken.tokenData,
       );
 
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(testToken.providerId);
       providerMessage.setMessage(testToken.identityId);
       //Technically contains a node, but no other thing, will succeed with no results.
       expect(
         await gestaltsDiscoverIdentity(providerMessage, callCredentials),
-      ).toBeInstanceOf(clientPB.EmptyMessage);
+      ).toBeInstanceOf(utilsPB.EmptyMessage);
     });
     test('should get gestalt permissions by node.', async () => {
       const gestaltsGetActionsByNode =
-        grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
+        grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
           client,
           client.gestaltsActionsGetByNode,
         );
@@ -1758,7 +1760,7 @@ describe('Client service', () => {
       await gestaltGraph.setGestaltActionByNode(node2.id, 'scan');
       await gestaltGraph.setGestaltActionByNode(node2.id, 'notify');
 
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new nodesPB.Node();
 
       nodeMessage.setNodeId(node2.id);
       // Should have permissions scan and notify as above.
@@ -1780,7 +1782,7 @@ describe('Client service', () => {
     });
     test('should get gestalt permissions by Identity.', async () => {
       const gestaltsGetActionsByIdentity =
-        grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
+        grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
           client,
           client.gestaltsActionsGetByIdentity,
         );
@@ -1799,7 +1801,7 @@ describe('Client service', () => {
         'notify',
       );
 
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(identity1.providerId);
       providerMessage.setMessage(identity1.identityId);
       // Should have permissions scan and notify as above.
@@ -1822,15 +1824,15 @@ describe('Client service', () => {
     });
     test('should set gestalt permissions by node.', async () => {
       const gestaltsSetActionByNode =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.gestaltsActionsSetByNode,
         );
       await gestaltGraph.setNode(node1);
       await gestaltGraph.setNode(node2);
 
-      const setActionsMessage = new clientPB.SetActionsMessage();
-      const nodeMessage = new clientPB.NodeMessage();
+      const setActionsMessage = new permissionsPB.ActionSet();
+      const nodeMessage = new nodesPB.Node();
       nodeMessage.setNodeId(node2.id);
       setActionsMessage.setNode(nodeMessage);
       setActionsMessage.setAction('scan');
@@ -1847,7 +1849,7 @@ describe('Client service', () => {
     });
     test('should set gestalt permissions by Identity.', async () => {
       const gestaltsSetActionByIdentity =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.gestaltsActionsSetByIdentity,
         );
@@ -1856,11 +1858,11 @@ describe('Client service', () => {
       await gestaltGraph.setIdentity(identity1);
       await gestaltGraph.linkNodeAndIdentity(node2, identity1);
 
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(identity1.providerId);
       providerMessage.setMessage(identity1.identityId);
 
-      const setActionsMessage = new clientPB.SetActionsMessage();
+      const setActionsMessage = new permissionsPB.ActionSet();
       setActionsMessage.setIdentity(providerMessage);
       setActionsMessage.setAction('scan');
       // Should have permissions scan and notify as above.
@@ -1882,7 +1884,7 @@ describe('Client service', () => {
     });
     test('should unset gestalt permissions by node.', async () => {
       const gestaltsUnsetActionByNode =
-        grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
+        grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
           client,
           client.gestaltsActionsUnsetByNode,
         );
@@ -1891,10 +1893,10 @@ describe('Client service', () => {
       await gestaltGraph.setGestaltActionByNode(node2.id, 'scan');
       await gestaltGraph.setGestaltActionByNode(node2.id, 'notify');
 
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new nodesPB.Node();
       nodeMessage.setNodeId(node2.id);
 
-      const setActionsMessage = new clientPB.SetActionsMessage();
+      const setActionsMessage = new permissionsPB.ActionSet();
       setActionsMessage.setNode(nodeMessage);
       setActionsMessage.setAction('scan');
 
@@ -1914,7 +1916,7 @@ describe('Client service', () => {
     });
     test('should unset gestalt permissions by Identity.', async () => {
       const gestaltsUnsetActionByIdentity =
-        grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
+        grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
           client,
           client.gestaltsActionsUnsetByIdentity,
         );
@@ -1933,11 +1935,11 @@ describe('Client service', () => {
         'notify',
       );
 
-      const providerMessage = new clientPB.ProviderMessage();
+      const providerMessage = new identitiesPB.Provider();
       providerMessage.setProviderId(identity1.providerId);
       providerMessage.setMessage(identity1.identityId);
 
-      const setActionsMessage = new clientPB.SetActionsMessage();
+      const setActionsMessage = new permissionsPB.ActionSet();
       setActionsMessage.setIdentity(providerMessage);
       setActionsMessage.setAction('scan');
 
@@ -1974,17 +1976,20 @@ describe('Client service', () => {
       await testKeynodeUtils.cleanupRemoteKeynode(server2);
     });
     test('should add a node', async () => {
-      const nodesAdd = grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+      const nodesAdd = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
         client,
         client.nodesAdd,
       );
       const nodeId = nodeId2;
       const host = '127.0.0.1';
       const port = 11111;
-      const nodeAddressMessage = new clientPB.NodeAddressMessage();
+      const nodeAddressMessage = new nodesPB.NodeAddress();
       nodeAddressMessage.setNodeId(nodeId);
-      nodeAddressMessage.setHost(host);
-      nodeAddressMessage.setPort(port);
+      const addressMessage = new nodesPB.Address();
+      addressMessage.setHost(host);
+      addressMessage.setPort(port);
+      nodeAddressMessage.setAddress(addressMessage);
+
       await nodesAdd(nodeAddressMessage, callCredentials);
       const nodeAddress = await nodeManager.getNode(nodeId);
       if (!nodeAddress) {
@@ -2000,11 +2005,11 @@ describe('Client service', () => {
         await server2.stop();
 
         // Case 1: cannot establish new connection, so offline
-        const nodesPing = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+        const nodesPing = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
           client,
           client.nodesPing,
         );
-        const nodeMessage = new clientPB.NodeMessage();
+        const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(serverNodeId);
         const res1 = await nodesPing(nodeMessage, callCredentials);
         expect(res1.getSuccess()).toEqual(false);
@@ -2025,11 +2030,10 @@ describe('Client service', () => {
       global.failedConnectionTimeout * 2,
     ); // Ping needs to timeout, so longer test timeout required
     test('should find a node (local)', async () => {
-      const nodesFind =
-        grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
-          client,
-          client.nodesFind,
-        );
+      const nodesFind = grpcUtils.promisifyUnaryCall<nodesPB.NodeAddress>(
+        client,
+        client.nodesFind,
+      );
       // Case 1: node already exists in the local node graph (no contact required)
       const nodeId = nodeId3;
       const nodeAddress: NodeAddress = {
@@ -2038,12 +2042,12 @@ describe('Client service', () => {
       };
       await nodeManager.setNode(nodeId, nodeAddress);
 
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new nodesPB.Node();
       nodeMessage.setNodeId(nodeId);
       const res = await nodesFind(nodeMessage, callCredentials);
       expect(res.getNodeId()).toEqual(nodeId);
-      expect(res.getHost()).toEqual(nodeAddress.ip);
-      expect(res.getPort()).toEqual(nodeAddress.port);
+      expect(res.getAddress()?.getHost()).toEqual(nodeAddress.ip);
+      expect(res.getAddress()?.getPort()).toEqual(nodeAddress.port);
     });
     // FIXME: this operation seems to be pretty slow.
     test.skip(
@@ -2058,17 +2062,16 @@ describe('Client service', () => {
         };
         // Setting the information on a remote node.
         await server.nodes.setNode(nodeId, nodeAddress);
-        const nodesFind =
-          grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
-            client,
-            client.nodesFind,
-          );
-        const nodeMessage = new clientPB.NodeMessage();
+        const nodesFind = grpcUtils.promisifyUnaryCall<nodesPB.NodeAddress>(
+          client,
+          client.nodesFind,
+        );
+        const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(nodeId);
         const res = await nodesFind(nodeMessage, callCredentials);
         expect(res.getNodeId()).toEqual(nodeId);
-        expect(res.getHost()).toEqual(nodeAddress.ip);
-        expect(res.getPort()).toEqual(nodeAddress.port);
+        expect(res.getAddress()?.getHost()).toEqual(nodeAddress.ip);
+        expect(res.getAddress()?.getPort()).toEqual(nodeAddress.port);
       },
       global.failedConnectionTimeout * 2,
     );
@@ -2084,12 +2087,11 @@ describe('Client service', () => {
           ip: '127.0.0.2' as Host,
           port: 22222 as Port,
         } as NodeAddress);
-        const nodesFind =
-          grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
-            client,
-            client.nodesFind,
-          );
-        const nodeMessage = new clientPB.NodeMessage();
+        const nodesFind = grpcUtils.promisifyUnaryCall<nodesPB.Address>(
+          client,
+          client.nodesFind,
+        );
+        const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(nodeId);
         // So unfindableNode cannot be found
         await expect(() =>
@@ -2142,11 +2144,11 @@ describe('Client service', () => {
     });
     test('should send a gestalt invite (no existing invitation)', async () => {
       // Node Claim Case 1: No invitations have been received
-      const nodesClaim = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      const nodesClaim = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
         client,
         client.nodesClaim,
       );
-      const nodeClaimMessage = new clientPB.NodeClaimMessage();
+      const nodeClaimMessage = new nodesPB.Claim();
       nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
       nodeClaimMessage.setForceInvite(false);
       const res = await nodesClaim(nodeClaimMessage, callCredentials);
@@ -2161,11 +2163,11 @@ describe('Client service', () => {
           type: 'GestaltInvite',
         },
       );
-      const nodesClaim = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      const nodesClaim = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
         client,
         client.nodesClaim,
       );
-      const nodeClaimMessage = new clientPB.NodeClaimMessage();
+      const nodeClaimMessage = new nodesPB.Claim();
       nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
       nodeClaimMessage.setForceInvite(true);
       const res = await nodesClaim(nodeClaimMessage, callCredentials);
@@ -2180,11 +2182,11 @@ describe('Client service', () => {
           type: 'GestaltInvite',
         },
       );
-      const nodesClaim = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
+      const nodesClaim = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
         client,
         client.nodesClaim,
       );
-      const nodeClaimMessage = new clientPB.NodeClaimMessage();
+      const nodeClaimMessage = new nodesPB.Claim();
       nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
       nodeClaimMessage.setForceInvite(false);
       const res = await nodesClaim(nodeClaimMessage, callCredentials);
@@ -2230,18 +2232,18 @@ describe('Client service', () => {
       await testKeynodeUtils.addRemoteDetails(polykeyAgent, receiver);
 
       const notificationsSend =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.notificationsSend,
         );
 
-      const notificationsSendMessage = new clientPB.NotificationsSendMessage();
-      const generalMessage = new clientPB.GeneralTypeMessage();
+      const notificationsSendMessage = new notificationsPB.Send();
+      const generalMessage = new notificationsPB.General();
       generalMessage.setMessage('msg');
       notificationsSendMessage.setReceiverId(receiver.nodes.getNodeId());
       notificationsSendMessage.setData(generalMessage);
 
-      // Send notification returns nothing - check remote node received messages
+      // Send notification returns nothing - check remote node received clientPB
       await notificationsSend(notificationsSendMessage, callCredentials);
       const notifs = await receiver.notifications.readNotifications();
       expect(notifs[0].data).toEqual({
@@ -2274,12 +2276,12 @@ describe('Client service', () => {
       await sender.notifications.sendNotification(node1.id, vaultShareData);
 
       const notificationsRead =
-        grpcUtils.promisifyUnaryCall<clientPB.NotificationsListMessage>(
+        grpcUtils.promisifyUnaryCall<notificationsPB.List>(
           client,
           client.notificationsRead,
         );
 
-      const notificationsReadMessage = new clientPB.NotificationsReadMessage();
+      const notificationsReadMessage = new notificationsPB.Read();
       notificationsReadMessage.setUnread(false);
       notificationsReadMessage.setNumber('all');
       notificationsReadMessage.setOrder('newest');
@@ -2319,12 +2321,12 @@ describe('Client service', () => {
       await sender.notifications.sendNotification(node1.id, msgData3);
 
       const notificationsRead =
-        grpcUtils.promisifyUnaryCall<clientPB.NotificationsListMessage>(
+        grpcUtils.promisifyUnaryCall<notificationsPB.List>(
           client,
           client.notificationsRead,
         );
 
-      const notificationsReadMessage = new clientPB.NotificationsReadMessage();
+      const notificationsReadMessage = new notificationsPB.Read();
       notificationsReadMessage.setUnread(false);
       notificationsReadMessage.setNumber('1');
       notificationsReadMessage.setOrder('newest');
@@ -2352,17 +2354,54 @@ describe('Client service', () => {
       await sender.notifications.sendNotification(node1.id, msgData2);
 
       const notificationsClear =
-        grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
           client,
           client.notificationsClear,
         );
 
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       await notificationsClear(emptyMessage, callCredentials);
 
       // Call read notifications to check there are none
       const notifs = await polykeyAgent.notifications.readNotifications();
       expect(notifs).toEqual([]);
     });
+  });
+});
+
+describe('google/protobuf message examples', () => {
+  test('testing Any message type', async () => {
+    const anyMessage = new Any();
+    const echoMessage = new utilsPB.EchoMessage();
+    anyMessage.pack(echoMessage.serializeBinary(), 'common.EchoMessage');
+    const test2 = anyMessage.unpack(
+      utilsPB.EchoMessage.deserializeBinary,
+      'common.EchoMessage',
+    );
+    expect(test2).toBeInstanceOf(utilsPB.EchoMessage); // Is a EchoMessage
+    const test3 = anyMessage.unpack(
+      utilsPB.StatusMessage.deserializeBinary,
+      'common.StatusMessage',
+    );
+    expect(test3).toBe(null); // Is null
+  });
+  test('testing TimeStamp message', async () => {
+    const timeStampMessage = new Timestamp();
+    const date = new Date(1000000);
+    timeStampMessage.fromDate(date);
+
+    expect(timeStampMessage.getNanos()).toEqual(0);
+    expect(timeStampMessage.getSeconds()).toEqual(date.getTime() / 1000);
+    expect(timeStampMessage.toDate()).toEqual(date);
+  });
+  test('testing structs usage', async () => {
+    const testObject = {
+      1: 1,
+      two: 2,
+      three: 'Three',
+    };
+    const structMessage = Struct.fromJavaScript(testObject);
+
+    expect(structMessage.toJavaScript()).toStrictEqual(testObject);
   });
 });

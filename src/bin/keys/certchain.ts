@@ -1,6 +1,7 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -24,7 +25,7 @@ certchain.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const emptyMessage = new clientPB.EmptyMessage();
+  const emptyMessage = new utilsPB.EmptyMessage();
 
   try {
     await client.start({});

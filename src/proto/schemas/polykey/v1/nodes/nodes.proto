@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package polykey.v1.nodes;
+
+//Shared
+
+message Node {
+  string node_id = 1;
+}
+
+message Address {
+  string host = 1;
+  int32 port = 2;
+}
+
+// Client specific
+
+message NodeAddress {
+  string node_id = 1;
+  Address address = 2;
+}
+
+message Claim {
+  string node_id = 1;
+  bool force_invite = 2;
+}
+
+// Agent specific.
+
+message Connection {
+  string a_id = 1;
+  string b_id = 2;
+  string a_ip = 3;
+  string b_ip = 4;
+}
+
+message Relay {
+  string src_id = 1;
+  string target_id = 2;
+  string egress_address = 3;
+  string signature = 4;
+}
+
+message NodeTable {
+  map<string, Address> node_table = 1;
+}
+
+// The specific ClaimType of Claims to get
+message ClaimType {
+  string claim_type = 1;
+}
+
+// A list of base64url encoded claims
+message Claims {
+  repeated AgentClaim claims = 1;
+}
+
+// A map of ClaimId -> ClaimEncoded
+message ChainData {
+  map<string, AgentClaim> chain_data = 1;
+}
+
+// The components of a ClaimEncoded type (i.e. a GeneralJWS) for GRPC transport
+message AgentClaim {
+  string payload = 1;  // base64 encoded
+  repeated Signature signatures = 2;
+}
+
+message Signature {
+  string signature = 1; // base64 encoded
+  string protected = 2; // base64 encoded ('protected' header field in GeneralJWS)
+}
+
+message ClaimIntermediary {
+  string payload = 1;
+  Signature signature = 2;
+}
+
+message CrossSign {
+  ClaimIntermediary singly_signed_claim = 1;
+  AgentClaim doubly_signed_claim = 2;
+}

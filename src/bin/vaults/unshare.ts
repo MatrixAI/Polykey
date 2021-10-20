@@ -1,6 +1,8 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -34,9 +36,9 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
-  const unsetVaultPermsMessage = new clientPB.UnsetVaultPermMessage();
-  const vaultMessage = new clientPB.VaultMessage();
-  const nodeMessage = new clientPB.NodeMessage();
+  const unsetVaultPermsMessage = new vaultsPB.PermUnset();
+  const vaultMessage = new vaultsPB.Vault();
+  const nodeMessage = new nodesPB.Node();
   unsetVaultPermsMessage.setVault(vaultMessage);
   unsetVaultPermsMessage.setNode(nodeMessage);
 

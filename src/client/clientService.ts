@@ -11,11 +11,19 @@ import type { GRPCServer } from '../grpc';
 
 import { promisify } from 'util';
 import * as grpc from '@grpc/grpc-js';
-
-import { ClientService, IClientServer } from '../proto/js/Client_grpc_pb';
-
-import * as clientPB from '../proto/js/Client_pb';
-
+import {
+  ClientServiceService,
+  IClientServiceServer,
+} from '../proto/js/polykey/v1/client_service_grpc_pb';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
+import * as sessionsPB from '../proto/js/polykey/v1/sessions/sessions_pb';
+import * as gestaltsPB from '../proto/js/polykey/v1/gestalts/gestalts_pb';
+import * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
+import * as keysPB from '../proto/js/polykey/v1/keys/keys_pb';
+import * as permissionsPB from '../proto/js/polykey/v1/permissions/permissions_pb';
 import createEchoRPC from './rpcEcho';
 import createSessionRPC from './rpcSession';
 import createVaultRPC from './rpcVaults';
@@ -60,7 +68,7 @@ function createClientService({
   revProxy: ReverseProxy;
   grpcServer: GRPCServer;
 }) {
-  const clientService: IClientServer = {
+  const clientService: IClientServiceServer = {
     ...createEchoRPC({
       sessionManager,
     }),
@@ -101,25 +109,22 @@ function createClientService({
       sessionManager,
     }),
     nodesList: async (
-      call: grpc.ServerWritableStream<
-        clientPB.EmptyMessage,
-        clientPB.NodeMessage
-      >,
+      call: grpc.ServerWritableStream<utilsPB.EmptyMessage, nodesPB.Node>,
     ): Promise<void> => {
       // Call.request // PROCESS THE REQEUST MESSAGE
-      const nodeMessage = new clientPB.NodeMessage();
+      const nodeMessage = new nodesPB.Node();
       nodeMessage.setNodeId('some node name');
       const write = promisify(call.write).bind(call);
       await write(nodeMessage);
       call.end();
     },
     agentStop: async (
-      call: grpc.ServerUnaryCall<clientPB.EmptyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const response = new clientPB.EmptyMessage();
+        const response = new utilsPB.EmptyMessage();
         setTimeout(async () => {
           await polykeyAgent.stop();
           await polykeyAgent.destroy();
@@ -136,4 +141,4 @@ function createClientService({
 
 export default createClientService;
 
-export { ClientService };
+export { ClientServiceService };

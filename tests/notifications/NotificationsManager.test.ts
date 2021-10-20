@@ -19,7 +19,7 @@ import { GestaltGraph } from '@/gestalts';
 import { NodeManager } from '@/nodes';
 import { NotificationsManager } from '@/notifications';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { AgentService, createAgentService } from '@/agent';
+import { AgentServiceService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
 import { makeCrypto } from '../utils';
@@ -169,7 +169,7 @@ describe('NotificationsManager', () => {
       logger: logger,
     });
     await server.start({
-      services: [[AgentService, agentService]],
+      services: [[AgentServiceService, agentService]],
       host: receiverHost,
     });
 
