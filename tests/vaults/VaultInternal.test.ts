@@ -291,6 +291,11 @@ describe('VaultInternal', () => {
       let log = await vault.log();
       expect(log[0].message).toContain(`${secret1.name} added`);
       expect(log[0].message).toContain(`${secret2.name} added`);
+      //checking contents
+      await vault.access(async efs => {
+        expect((await efs.readFile(secret1.name)).toString()).toEqual(secret1.content);
+        expect((await efs.readFile(secret2.name)).toString()).toEqual(secret2.content);
+      })
 
       // Modifying
       await vault.commit(async (efs) => {
@@ -298,18 +303,27 @@ describe('VaultInternal', () => {
       });
       log = await vault.log();
       expect(log[0].message).toContain(`${secret2.name} modified`);
+      // Checking changes
+      await vault.access(async efs => {
+        expect((await efs.readFile(secret2.name)).toString()).toEqual(`${secret2.content} new content`);
+      })
 
       // moving and removing
       await vault.commit(async (efs) => {
-        await efs.rename(secret1.name, secret1.name + '-new');
+        await efs.rename(secret1.name, `${secret1.name}-new`);
         await efs.unlink(secret2.name);
       });
+      // Checking changes.
+      await vault.access(async efs => {
+        expect((await efs.exists(secret1.name))).toBeFalsy();
+        expect((await efs.exists(`${secret1.name}-new`))).toBeTruthy();
+        expect((await efs.exists(secret2.name))).toBeFalsy();
+      })
 
       log = await vault.log();
       expect(log[0].message).toContain(`${secret1.name}-new added`)
       expect(log[0].message).toContain(`${secret1.name} deleted`)
       expect(log[0].message).toContain(`${secret2.name} deleted`)
-      //TODO: update this with all the expected messages.
     })
     test('No mutation to vault when part of a commit operation fails', async () => {
       // Failing commit operation
