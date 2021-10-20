@@ -49,18 +49,17 @@ log.action(async (vault, commitId, options) => {
     vaultsLogMessage.setCommitId(commitId?? '');
 
     const output: string[] = [];
-    const test = await grpcClient.vaultsLog(vaultsLogMessage);
+    const log = await grpcClient.vaultsLog(vaultsLogMessage);
 
-    for await (const test2 of test) {
-      const timeStamp = test2.getTimeStamp();
+    for await (const entry of log) {
+      const timeStamp = entry.getTimeStamp();
       const date = new Date(timeStamp);
-      output.push(`commit ${test2.getOid()}`);
+      output.push(`commit ${entry.getOid()}`);
+      output.push(`committer ${entry.getCommitter()}`);
       output.push(`Date: ${date.toDateString()}`);
-      output.push(`${test2.getMessage()}`);
-      // output.push(``);
+      output.push(`${entry.getMessage()}`);
     }
 
-    // TODO: finish this.
     process.stdout.write(
       outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
