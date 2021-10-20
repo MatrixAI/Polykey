@@ -1,6 +1,7 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { ErrorNodeGraphNodeNotFound } from '../../errors';
@@ -47,7 +48,7 @@ ping.action(async (node, options) => {
     const grpcClient = client.grpcClient;
 
     //Pinging a specific node.
-    const nodeMessage = new clientPB.NodeMessage();
+    const nodeMessage = new nodesPB.Node();
     nodeMessage.setNodeId(node);
     let statusMessage;
     let error;

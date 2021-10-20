@@ -1,7 +1,8 @@
 import type { Host, Port } from '../../network/types';
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import { ErrorNodeGraphNodeNotFound } from '../../errors';
@@ -47,7 +48,7 @@ find.action(async (node, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const nodeMessage = new clientPB.NodeMessage();
+    const nodeMessage = new nodesPB.Node();
     nodeMessage.setNodeId(node);
 
     const result = { success: false, message: '', id: '', host: '', port: 0 };
@@ -63,8 +64,8 @@ find.action(async (node, options) => {
 
       result.success = true;
       result.id = res.getNodeId();
-      result.host = res.getHost();
-      result.port = res.getPort();
+      result.host = res.getAddress()!.getHost();
+      result.port = res.getAddress()!.getPort();
       result.message = `Found node at ${buildAddress(
         result.host as Host,
         result.port as Port,

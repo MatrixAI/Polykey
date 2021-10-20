@@ -1,5 +1,7 @@
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
 import PolykeyClient from '../../PolykeyClient';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
@@ -32,8 +34,8 @@ dir.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const secretDirectoryMessage = new clientPB.SecretDirectoryMessage();
-  const vaultMessage = new clientPB.VaultMessage();
+  const secretDirectoryMessage = new secretsPB.Directory();
+  const vaultMessage = new vaultsPB.Vault();
 
   try {
     await client.start({});

@@ -4,7 +4,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GRPCServer, utils as grpcUtils } from '@/grpc';
 import { utils as keysUtils } from '@/keys';
 import { utils as networkUtils } from '@/network';
-import * as testPB from '@/proto/js/Test_pb';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
 
 describe('GRPCServer', () => {
@@ -23,7 +23,7 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
-      services: [[utils.TestService, utils.testService]],
+      services: [[utils.TestServiceService, utils.testService]],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {
@@ -47,7 +47,7 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
-      services: [[utils.TestService, utils.testService]],
+      services: [[utils.TestServiceService, utils.testService]],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {
@@ -69,11 +69,11 @@ describe('GRPCServer', () => {
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
       keysUtils.certToPem(clientCert),
     );
-    const unary = grpcUtils.promisifyUnaryCall<testPB.EchoMessage>(
+    const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client,
       client.unary,
     );
-    const m = new testPB.EchoMessage();
+    const m = new utilsPB.EchoMessage();
     m.setChallenge('a98u3e4d');
     const pCall = unary(m);
     expect(pCall.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
@@ -94,7 +94,7 @@ describe('GRPCServer', () => {
       31536000,
     );
     await server.start({
-      services: [[utils.TestService, utils.testService]],
+      services: [[utils.TestServiceService, utils.testService]],
       host: '127.0.0.1' as Host,
       port: 0 as Port,
       tlsConfig: {
@@ -117,11 +117,11 @@ describe('GRPCServer', () => {
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
       keysUtils.certToPem(clientCert),
     );
-    const unary1 = grpcUtils.promisifyUnaryCall<testPB.EchoMessage>(
+    const unary1 = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client1,
       client1.unary,
     );
-    const m1 = new testPB.EchoMessage();
+    const m1 = new utilsPB.EchoMessage();
     m1.setChallenge('98f7g98dfg71');
     const pCall1 = unary1(m1);
     expect(pCall1.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
@@ -140,7 +140,7 @@ describe('GRPCServer', () => {
       certChainPem: keysUtils.certToPem(serverCert2),
     });
     // Still using first connection
-    const m2 = new testPB.EchoMessage();
+    const m2 = new utilsPB.EchoMessage();
     m2.setChallenge('12308947239847');
     const pCall2 = unary1(m2);
     expect(pCall2.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
@@ -154,11 +154,11 @@ describe('GRPCServer', () => {
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
       keysUtils.certToPem(clientCert),
     );
-    const unary2 = grpcUtils.promisifyUnaryCall<testPB.EchoMessage>(
+    const unary2 = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       client2,
       client2.unary,
     );
-    const m3 = new testPB.EchoMessage();
+    const m3 = new utilsPB.EchoMessage();
     m3.setChallenge('aa89fusd98f');
     const pCall3 = unary2(m3);
     expect(pCall3.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);

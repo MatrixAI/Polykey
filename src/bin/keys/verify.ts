@@ -1,7 +1,8 @@
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
@@ -33,7 +34,7 @@ verify.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const cryptoMessage = new clientPB.CryptoMessage();
+  const cryptoMessage = new keysPB.Crypto();
 
   try {
     await client.start({});

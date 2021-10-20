@@ -1,6 +1,7 @@
 import { errors } from '../../grpc';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { clientPB, utils as clientUtils } from '../../client';
+import { utils as clientUtils } from '../../client';
+import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import PolykeyClient from '../../PolykeyClient';
 import { createCommand, outputFormatter } from '../utils';
 import * as utils from '../../utils';
@@ -45,7 +46,7 @@ claim.action(async (nodeId, options) => {
     const grpcClient = client.grpcClient;
 
     //Claiming the node.
-    const nodeClaimMessage = new clientPB.NodeClaimMessage();
+    const nodeClaimMessage = new nodesPB.Claim();
     nodeClaimMessage.setNodeId(nodeId);
     if (options.forceInvite) {
       nodeClaimMessage.setForceInvite(true);

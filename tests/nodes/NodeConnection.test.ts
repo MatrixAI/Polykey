@@ -11,7 +11,7 @@ import { VaultManager } from '@/vaults';
 import { KeyManager } from '@/keys';
 import { utils as networkUtils } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
-import { AgentService, createAgentService } from '@/agent';
+import { AgentServiceService, createAgentService } from '@/agent';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { DB } from '@matrixai/db';
@@ -196,7 +196,7 @@ describe('NodeConnection', () => {
       logger: logger,
     });
     await server.start({
-      services: [[AgentService, agentService]],
+      services: [[AgentServiceService, agentService]],
       host: targetHost,
     });
     revTLSConfig = {

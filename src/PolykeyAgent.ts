@@ -22,10 +22,10 @@ import { SessionManager } from './sessions';
 import { certNodeId } from './network/utils';
 import { IdentitiesManager } from './identities';
 import { ForwardProxy, ReverseProxy } from './network';
-import { IAgentServer } from './proto/js/Agent_grpc_pb';
-import { IClientServer } from './proto/js/Client_grpc_pb';
-import { createAgentService, AgentService } from './agent';
-import { createClientService, ClientService } from './client';
+import { IAgentServiceServer } from './proto/js/polykey/v1/agent_service_grpc_pb';
+import { IClientServiceServer } from './proto/js/polykey/v1/client_service_grpc_pb';
+import { createAgentService, AgentServiceService } from './agent';
+import { createClientService, ClientServiceService } from './client';
 import { GithubProvider } from './identities/providers';
 import config from './config';
 import { ErrorStateVersionMismatch } from './errors';
@@ -58,12 +58,12 @@ class Polykey {
   public readonly clientGrpcServer: GRPCServer;
   public readonly clientGrpcHost: string;
   public readonly clientGrpcPort: number;
-  protected clientService: IClientServer;
+  protected clientService: IClientServiceServer;
   // Agent server
   public readonly agentGrpcServer: GRPCServer;
   public readonly agentGrpcHost: string;
   public readonly agentGrpcPort: number;
-  protected agentService: IAgentServer;
+  protected agentService: IAgentServiceServer;
 
   // Proxies
   public readonly fwdProxy: ForwardProxy;
@@ -529,7 +529,7 @@ class Polykey {
     // GRPC Server
     // Client server
     await this.clientGrpcServer.start({
-      services: [[ClientService, this.clientService]],
+      services: [[ClientServiceService, this.clientService]],
       host: this.clientGrpcHost as Host,
       port: this.clientGrpcPort as Port,
       tlsConfig: {
@@ -539,7 +539,7 @@ class Polykey {
     });
     // Agent server
     await this.agentGrpcServer.start({
-      services: [[AgentService, this.agentService]],
+      services: [[AgentServiceService, this.agentService]],
       host: this.agentGrpcHost as Host,
       port: this.agentGrpcPort as Port,
     });

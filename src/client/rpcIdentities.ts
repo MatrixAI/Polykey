@@ -14,7 +14,8 @@ import * as utils from './utils';
 import * as errors from '../errors';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
-import * as clientPB from '../proto/js/Client_pb';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
 
 const createIdentitiesRPC = ({
   identitiesManager,
@@ -30,12 +31,12 @@ const createIdentitiesRPC = ({
   return {
     identitiesAuthenticate: async (
       call: grpc.ServerWritableStream<
-        clientPB.ProviderMessage,
-        clientPB.ProviderMessage
+        identitiesPB.Provider,
+        identitiesPB.Provider
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      const response = new clientPB.ProviderMessage();
+      const response = new identitiesPB.Provider();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -70,12 +71,12 @@ const createIdentitiesRPC = ({
     },
     identitiesTokenPut: async (
       call: grpc.ServerUnaryCall<
-        clientPB.TokenSpecificMessage,
-        clientPB.EmptyMessage
+        identitiesPB.TokenSpecific,
+        utilsPB.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
+      const response = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -94,13 +95,10 @@ const createIdentitiesRPC = ({
       callback(null, response);
     },
     identitiesTokenGet: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.ProviderMessage,
-        clientPB.TokenMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.TokenMessage>,
+      call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Token>,
+      callback: grpc.sendUnaryData<identitiesPB.Token>,
     ): Promise<void> => {
-      const response = new clientPB.TokenMessage();
+      const response = new identitiesPB.Token();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -118,13 +116,10 @@ const createIdentitiesRPC = ({
       callback(null, response);
     },
     identitiesTokenDelete: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.ProviderMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
-      const response = new clientPB.EmptyMessage();
+      const response = new utilsPB.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -141,13 +136,10 @@ const createIdentitiesRPC = ({
       callback(null, response);
     },
     identitiesProvidersList: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.EmptyMessage,
-        clientPB.ProviderMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.ProviderMessage>,
+      call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, identitiesPB.Provider>,
+      callback: grpc.sendUnaryData<identitiesPB.Provider>,
     ): Promise<void> => {
-      const response = new clientPB.ProviderMessage();
+      const response = new identitiesPB.Provider();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -163,8 +155,8 @@ const createIdentitiesRPC = ({
     },
     identitiesInfoGetConnected: async (
       call: grpc.ServerWritableStream<
-        clientPB.ProviderSearchMessage,
-        clientPB.IdentityInfoMessage
+        identitiesPB.ProviderSearch,
+        identitiesPB.Info
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
@@ -192,8 +184,8 @@ const createIdentitiesRPC = ({
         );
 
         for await (const identity of identities) {
-          const identityInfoMessage = new clientPB.IdentityInfoMessage();
-          const providerMessage = new clientPB.ProviderMessage();
+          const identityInfoMessage = new identitiesPB.Info();
+          const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(identity.providerId);
           providerMessage.setMessage(identity.identityId);
           identityInfoMessage.setProvider(providerMessage);
@@ -211,11 +203,8 @@ const createIdentitiesRPC = ({
      * Gets the first identityId of the local keynode.
      */
     identitiesInfoGet: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.ProviderMessage,
-        clientPB.ProviderMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.ProviderMessage>,
+      call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Provider>,
+      callback: grpc.sendUnaryData<identitiesPB.Provider>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -224,7 +213,7 @@ const createIdentitiesRPC = ({
         );
         call.sendMetadata(responseMeta);
         // Get's an identity out of all identities.
-        const providerMessage = new clientPB.ProviderMessage();
+        const providerMessage = new identitiesPB.Provider();
         const providerId = call.request.getProviderId() as ProviderId;
         const provider = identitiesManager.getProvider(providerId);
         if (provider == null) throw Error(`Invalid provider: ${providerId}`);
@@ -242,11 +231,8 @@ const createIdentitiesRPC = ({
      * Augments the keynode with a new identity.
      */
     identitiesClaim: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.ProviderMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       // To augment a keynode we need a provider, generate an oauthkey and then
       const info = call.request;
@@ -274,7 +260,7 @@ const createIdentitiesRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       callback(null, emptyMessage);
     },
   };

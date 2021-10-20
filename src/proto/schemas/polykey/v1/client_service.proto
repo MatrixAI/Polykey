@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+import "polykey/v1/gestalts/gestalts.proto";
+import "polykey/v1/identities/identities.proto";
+import "polykey/v1/keys/keys.proto";
+import "polykey/v1/nodes/nodes.proto";
+import "polykey/v1/notifications/notifications.proto";
+import "polykey/v1/permissions/permissions.proto";
+import "polykey/v1/secrets/secrets.proto";
+import "polykey/v1/sessions/sessions.proto";
+import "polykey/v1/vaults/vaults.proto";
+import "polykey/v1/utils/utils.proto";
+
+package polykey.v1;
+
+service ClientService {
+  rpc Echo(polykey.v1.utils.EchoMessage) returns (polykey.v1.utils.EchoMessage);
+
+  // Agent
+  rpc AgentStop(polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
+
+  // Session
+  rpc SessionUnlock (polykey.v1.sessions.Password) returns (polykey.v1.sessions.Token);
+  rpc SessionRefresh (polykey.v1.utils.EmptyMessage) returns (polykey.v1.sessions.Token);
+  rpc SessionLockAll (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.StatusMessage);
+
+  // Nodes
+  rpc NodesAdd(polykey.v1.nodes.NodeAddress) returns (polykey.v1.utils.EmptyMessage);
+  rpc NodesPing(polykey.v1.nodes.Node) returns (polykey.v1.utils.StatusMessage);
+  rpc NodesClaim(polykey.v1.nodes.Claim) returns (polykey.v1.utils.StatusMessage);
+  rpc NodesFind(polykey.v1.nodes.Node) returns (polykey.v1.nodes.NodeAddress);
+
+  // Keys
+  rpc KeysKeyPairRoot (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.KeyPair);
+  rpc KeysKeyPairReset (polykey.v1.keys.Key) returns (polykey.v1.utils.EmptyMessage);
+  rpc KeysKeyPairRenew (polykey.v1.keys.Key) returns (polykey.v1.utils.EmptyMessage);
+  rpc KeysEncrypt (polykey.v1.keys.Crypto) returns (polykey.v1.keys.Crypto);
+  rpc KeysDecrypt (polykey.v1.keys.Crypto) returns (polykey.v1.keys.Crypto);
+  rpc KeysSign (polykey.v1.keys.Crypto) returns (polykey.v1.keys.Crypto);
+  rpc KeysVerify (polykey.v1.keys.Crypto) returns (polykey.v1.utils.StatusMessage);
+  rpc KeysPasswordChange (polykey.v1.sessions.Password) returns (polykey.v1.utils.EmptyMessage);
+  rpc KeysCertsGet (polykey.v1.utils.EmptyMessage) returns (polykey.v1.keys.Certificate);
+  rpc KeysCertsChainGet (polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.keys.Certificate);
+
+  // Vaults
+  rpc VaultsList(polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.vaults.List);
+  rpc VaultsCreate(polykey.v1.vaults.Vault) returns (polykey.v1.vaults.Vault);
+  rpc VaultsRename(polykey.v1.vaults.Rename) returns (polykey.v1.vaults.Vault);
+  rpc VaultsDelete(polykey.v1.vaults.Vault) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsPull(polykey.v1.vaults.Pull) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsClone(polykey.v1.vaults.Clone) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsScan(polykey.v1.nodes.Node) returns (stream polykey.v1.vaults.List);
+  rpc VaultsSecretsList(polykey.v1.vaults.Vault) returns (stream polykey.v1.secrets.Secret);
+  rpc VaultsSecretsMkdir(polykey.v1.vaults.Mkdir) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsSecretsStat(polykey.v1.vaults.Vault) returns (polykey.v1.vaults.Stat);
+  rpc VaultsSecretsDelete(polykey.v1.secrets.Secret) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsSecretsEdit(polykey.v1.secrets.Secret) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsSecretsGet(polykey.v1.secrets.Secret) returns (polykey.v1.secrets.Secret);
+  rpc VaultsSecretsRename(polykey.v1.secrets.Rename) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsSecretsNew(polykey.v1.secrets.Secret) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsSecretsNewDir(polykey.v1.secrets.Directory) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsPermissionsSet(polykey.v1.vaults.PermSet) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsPermissionsUnset(polykey.v1.vaults.PermUnset) returns (polykey.v1.utils.StatusMessage);
+  rpc VaultsPermissions(polykey.v1.vaults.PermGet) returns (stream polykey.v1.vaults.Permission);
+  rpc VaultsVersion(polykey.v1.vaults.Version) returns (polykey.v1.vaults.VersionResult);
+  rpc VaultsLog(polykey.v1.vaults.Log) returns (stream polykey.v1.vaults.LogEntry);
+
+  // Identities
+  rpc IdentitiesAuthenticate(polykey.v1.identities.Provider) returns (stream polykey.v1.identities.Provider);
+  rpc IdentitiesTokenPut(polykey.v1.identities.TokenSpecific) returns (polykey.v1.utils.EmptyMessage);
+  rpc IdentitiesTokenGet(polykey.v1.identities.Provider) returns (polykey.v1.identities.Token);
+  rpc IdentitiesTokenDelete(polykey.v1.identities.Provider) returns (polykey.v1.utils.EmptyMessage);
+  rpc IdentitiesProvidersList(polykey.v1.utils.EmptyMessage) returns (polykey.v1.identities.Provider);
+  rpc IdentitiesInfoGet(polykey.v1.identities.Provider) returns (polykey.v1.identities.Provider);
+  rpc IdentitiesInfoGetConnected(polykey.v1.identities.ProviderSearch) returns (stream polykey.v1.identities.Info);
+  rpc IdentitiesClaim(polykey.v1.identities.Provider) returns (polykey.v1.utils.EmptyMessage);
+
+  // Gestalts
+  rpc GestaltsGestaltList(polykey.v1.utils.EmptyMessage) returns (stream polykey.v1.gestalts.Gestalt);
+  rpc GestaltsGestaltGetByNode(polykey.v1.nodes.Node) returns (polykey.v1.gestalts.Graph);
+  rpc GestaltsGestaltGetByIdentity(polykey.v1.identities.Provider) returns (polykey.v1.gestalts.Graph);
+  rpc GestaltsDiscoveryByNode(polykey.v1.nodes.Node) returns (polykey.v1.utils.EmptyMessage);
+  rpc GestaltsDiscoveryByIdentity(polykey.v1.identities.Provider) returns (polykey.v1.utils.EmptyMessage);
+  rpc GestaltsActionsGetByNode(polykey.v1.nodes.Node) returns (polykey.v1.permissions.Actions);
+  rpc GestaltsActionsGetByIdentity(polykey.v1.identities.Provider) returns (polykey.v1.permissions.Actions);
+  rpc GestaltsActionsSetByNode(polykey.v1.permissions.ActionSet) returns (polykey.v1.utils.EmptyMessage);
+  rpc GestaltsActionsSetByIdentity(polykey.v1.permissions.ActionSet) returns (polykey.v1.utils.EmptyMessage);
+  rpc GestaltsActionsUnsetByNode(polykey.v1.permissions.ActionSet) returns (polykey.v1.utils.EmptyMessage);
+  rpc GestaltsActionsUnsetByIdentity(polykey.v1.permissions.ActionSet) returns (polykey.v1.utils.EmptyMessage);
+
+  // Notifications
+  rpc NotificationsSend(polykey.v1.notifications.Send) returns (polykey.v1.utils.EmptyMessage);
+  rpc NotificationsRead(polykey.v1.notifications.Read) returns (polykey.v1.notifications.List);
+  rpc NotificationsClear(polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
+}

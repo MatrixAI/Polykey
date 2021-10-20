@@ -8,10 +8,12 @@ while [ -h "$source" ]; do # resolve $source until the file is no longer a symli
 done
 script_dir="$(cd -P "$(dirname "$source" )" >/dev/null && pwd)"
 
+shopt -qs globstar
+
 exec protoc \
   --proto_path="${script_dir}/../src/proto/schemas" \
   --plugin=protoc-gen-grpc="$(which grpc_node_plugin)" \
   --js_out=import_style=commonjs,binary:src/proto/js \
   --ts_out="grpc_js:${script_dir}/../src/proto/js" \
   --grpc_out="grpc_js:${script_dir}/../src/proto/js" \
-  "${script_dir}/../src/proto/schemas/"*.proto
+  "${script_dir}/../src/proto/schemas/"**/*.proto

@@ -22,8 +22,7 @@ import { KeyManager } from '../keys';
 import { NodeManager } from '../nodes';
 import { GestaltGraph } from '../gestalts';
 import { ACL } from '../acl';
-import { agentPB } from '../agent';
-
+import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import * as utils from '../utils';
 import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
@@ -379,11 +378,11 @@ class VaultManager {
         if (method === 'GET') {
           const infoResponse = {
             async *[Symbol.iterator]() {
-              const request = new agentPB.InfoRequest();
+              const request = new vaultsPB.Vault();
               if (typeof vaultNameOrId === 'string') {
-                request.setVaultId(vaultNameOrId);
+                request.setNameOrId(vaultNameOrId);
               } else {
-                request.setVaultId(idUtils.toString(vaultNameOrId));
+                request.setNameOrId(idUtils.toString(vaultNameOrId));
               }
               const response = client.vaultsGitInfoGet(request);
               response.stream.on('metadata', async (meta) => {
@@ -423,7 +422,7 @@ class VaultManager {
               stream.on('data', (d) => {
                 responseBuffers.push(d.getChunk_asU8());
               });
-              const chunk = new agentPB.PackChunk();
+              const chunk = new vaultsPB.PackChunk();
               chunk.setChunk(body[0]);
               write(chunk);
               stream.end();
@@ -545,11 +544,11 @@ class VaultManager {
         if (method === 'GET') {
           const infoResponse = {
             async *[Symbol.iterator]() {
-              const request = new agentPB.InfoRequest();
+              const request = new vaultsPB.Vault();
               if (typeof pullVaultNameOrId === 'string') {
-                request.setVaultId(pullVaultNameOrId);
+                request.setNameOrId(pullVaultNameOrId);
               } else {
-                request.setVaultId(idUtils.toString(pullVaultNameOrId!));
+                request.setNameOrId(idUtils.toString(pullVaultNameOrId!));
               }
               const response = client.vaultsGitInfoGet(request);
               response.stream.on('metadata', async (meta) => {
@@ -588,7 +587,7 @@ class VaultManager {
               stream.on('data', (d) => {
                 responseBuffers.push(d.getChunk_asU8());
               });
-              const chunk = new agentPB.PackChunk();
+              const chunk = new vaultsPB.PackChunk();
               chunk.setChunk(body[0]);
               write(chunk);
               stream.end();

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "polykey/v1/utils/utils.proto";
+
+package polykey.v1;
+
+service TestService {
+  rpc Unary(polykey.v1.utils.EchoMessage) returns (polykey.v1.utils.EchoMessage) {};
+  rpc ServerStream(polykey.v1.utils.EchoMessage) returns (stream polykey.v1.utils.EchoMessage) {};
+  rpc ClientStream(stream polykey.v1.utils.EchoMessage) returns (polykey.v1.utils.EchoMessage) {};
+  rpc DuplexStream(stream polykey.v1.utils.EchoMessage) returns (stream polykey.v1.utils.EchoMessage) {};
+}

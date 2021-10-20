@@ -3,7 +3,8 @@ import type { NotificationsManager } from '../notifications';
 
 import * as grpc from '@grpc/grpc-js';
 import * as utils from './utils';
-import * as clientPB from '../proto/js/Client_pb';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as grpcUtils from '../grpc/utils';
 import * as notificationsUtils from '../notifications/utils';
 import { makeNodeId } from '../nodes/utils';
@@ -17,11 +18,8 @@ const createNotificationsRPC = ({
 }) => {
   return {
     notificationsSend: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.NotificationsSendMessage,
-        clientPB.EmptyMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<notificationsPB.Send, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -40,17 +38,14 @@ const createNotificationsRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       callback(null, emptyMessage);
     },
     notificationsRead: async (
-      call: grpc.ServerUnaryCall<
-        clientPB.NotificationsReadMessage,
-        clientPB.NotificationsListMessage
-      >,
-      callback: grpc.sendUnaryData<clientPB.NotificationsListMessage>,
+      call: grpc.ServerUnaryCall<notificationsPB.Read, notificationsPB.List>,
+      callback: grpc.sendUnaryData<notificationsPB.List>,
     ): Promise<void> => {
-      const response = new clientPB.NotificationsListMessage();
+      const response = new notificationsPB.List();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -73,12 +68,12 @@ const createNotificationsRPC = ({
           order,
         });
 
-        const notifMessages: Array<clientPB.NotificationsMessage> = [];
+        const notifMessages: Array<notificationsPB.Notification> = [];
         for (const notif of notifications) {
-          const notificationsMessage = new clientPB.NotificationsMessage();
+          const notificationsMessage = new notificationsPB.Notification();
           switch (notif.data.type) {
             case 'General': {
-              const generalMessage = new clientPB.GeneralTypeMessage();
+              const generalMessage = new notificationsPB.General();
               generalMessage.setMessage(notif.data.message);
               notificationsMessage.setGeneral(generalMessage);
               break;
@@ -88,7 +83,7 @@ const createNotificationsRPC = ({
               break;
             }
             case 'VaultShare': {
-              const vaultShareMessage = new clientPB.VaultShareTypeMessage();
+              const vaultShareMessage = new notificationsPB.Share();
               vaultShareMessage.setVaultId(notif.data.vaultId);
               vaultShareMessage.setVaultName(notif.data.vaultName);
               vaultShareMessage.setActionsList(Object.keys(notif.data.actions));
@@ -107,8 +102,8 @@ const createNotificationsRPC = ({
       callback(null, response);
     },
     notificationsClear: async (
-      call: grpc.ServerUnaryCall<clientPB.EmptyMessage, clientPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<clientPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -120,7 +115,7 @@ const createNotificationsRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new clientPB.EmptyMessage();
+      const emptyMessage = new utilsPB.EmptyMessage();
       callback(null, emptyMessage);
     },
   };

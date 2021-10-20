@@ -3,8 +3,12 @@ import type { NodeId } from '@/nodes/types';
 import * as grpc from '@grpc/grpc-js';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { createAgentService, GRPCClientAgent, AgentService } from '@/agent';
-import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
+import {
+  createAgentService,
+  GRPCClientAgent,
+  AgentServiceService,
+} from '@/agent';
+import { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
@@ -25,7 +29,7 @@ async function openTestAgentServer({
   sigchain: Sigchain;
   notificationsManager: NotificationsManager;
 }) {
-  const agentService: IAgentServer = createAgentService({
+  const agentService: IAgentServiceServer = createAgentService({
     keyManager,
     vaultManager,
     nodeManager,
@@ -34,7 +38,7 @@ async function openTestAgentServer({
   });
 
   const server = new grpc.Server();
-  server.addService(AgentService, agentService);
+  server.addService(AgentServiceService, agentService);
   const bindAsync = promisify(server.bindAsync).bind(server);
   const port = await bindAsync(
     `127.0.0.1:0`,
