@@ -352,6 +352,9 @@ describe('VaultInternal', () => {
       let firstCommitResolved = false;
       let firstCommitResolveTime;
 
+      //@ts-ignore
+      expect(vault._lock.isLocked()).toBeFalsy();
+
       const commit1 = vault.commit(async (efs) => {
         await efs.writeFile(secret1.name, secret1.content);
         await delayPromise; // Hold the lock hostage.
@@ -360,6 +363,8 @@ describe('VaultInternal', () => {
       });
 
       // Now that we are holding the lock hostage,
+      //@ts-ignore
+      expect(vault._lock.isLocked()).toBeTruthy();
       // we want to check if any action resolves before the lock is released.
 
       let secondCommitResolved = false;
@@ -388,12 +393,13 @@ describe('VaultInternal', () => {
       expect(firstCommitResolved).toBeTruthy();
       expect(secondCommitResolved).toBeTruthy();
       expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
+      //@ts-ignore
+      expect(vault._lock.isLocked()).toBeFalsy();
 
       // Commit order should be commit2 -> commit1 -> init
       const log = await vault.log();
       expect(log[0].message).toContain(secret2.name);
       expect(log[1].message).toContain(secret1.name);
-      console.log(log);
 
     })
   });
@@ -462,6 +468,9 @@ describe('VaultInternal', () => {
       let firstCommitResolved = false;
       let firstCommitResolveTime;
 
+      //@ts-ignore
+      expect(vault._lock.isLocked()).toBeFalsy();
+
       const commit1 = vault.access(async (efs) => {
         await efs.readFile(secret1.name);
         await delayPromise; // Hold the lock hostage.
@@ -471,6 +480,8 @@ describe('VaultInternal', () => {
 
       // Now that we are holding the lock hostage,
       // we want to check if any action resolves before the lock is released.
+      //@ts-ignore
+      expect(vault._lock.isLocked()).toBeTruthy();
 
       let secondCommitResolved = false;
       let secondCommitResolveTime;
@@ -498,6 +509,8 @@ describe('VaultInternal', () => {
       expect(firstCommitResolved).toBeTruthy();
       expect(secondCommitResolved).toBeTruthy();
       expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
+      //@ts-ignore
+      expect(vault._lock.isLocked()).toBeFalsy();
     })
   });
   test('Vault only exposes limited commands of VaultInternal', async () => {
