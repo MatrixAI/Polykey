@@ -15,7 +15,6 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GestaltGraph, utils as gestaltsUtils } from '@/gestalts';
-import { utils as claimsUtils } from '@/claims';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
 import { DB } from '@matrixai/db';

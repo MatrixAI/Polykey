@@ -1,6 +1,9 @@
-import type { NodeId } from '../nodes/types';
-import type { ClaimId, ClaimEncoded, ClaimIntermediary, ClaimIdString } from "../claims/types";
-import type { VaultId, VaultName } from '../vaults/types';
+import type {
+  ClaimEncoded,
+  ClaimIntermediary,
+  ClaimIdString,
+} from '../claims/types';
+import type { VaultName } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '../utils';
@@ -22,7 +25,7 @@ import {
 import { errors as vaultsErrors } from '../vaults';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
 import { makeVaultId, makeVaultIdPretty } from '../vaults/utils';
-import { makeNodeId } from "../nodes/utils";
+import { makeNodeId } from '../nodes/utils';
 import { utils as idUtils } from '@matrixai/id';
 
 /**
@@ -62,10 +65,10 @@ function createAgentService({
       try {
         vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
         await vaultManager.openVault(vaultId);
-        vaultName = await vaultManager.getVaultName(vaultId)
+        vaultName = await vaultManager.getVaultName(vaultId);
       } catch (err) {
         if (err instanceof vaultsErrors.ErrorVaultUndefined) {
-          vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName)
+          vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
           await vaultManager.openVault(vaultId);
           vaultName = vaultNameOrId;
         } else {
@@ -102,14 +105,18 @@ function createAgentService({
         const body = Buffer.concat(clientBodyBuffers);
         const meta = call.metadata;
         const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
-        if (vaultNameOrId == null) throw new ErrorGRPC('vault-name not in metadata.');
+        if (vaultNameOrId == null)
+          throw new ErrorGRPC('vault-name not in metadata.');
         let vaultId;
         try {
           vaultId = makeVaultId(vaultNameOrId);
           await vaultManager.openVault(vaultId);
         } catch (err) {
-          if (err instanceof vaultsErrors.ErrorVaultUndefined || err instanceof SyntaxError) {
-            vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName)
+          if (
+            err instanceof vaultsErrors.ErrorVaultUndefined ||
+            err instanceof SyntaxError
+          ) {
+            vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
             await vaultManager.openVault(vaultId);
           } else {
             throw err;
@@ -152,7 +159,7 @@ function createAgentService({
       const response = new agentPB.VaultListMessage();
       const id = makeNodeId(call.request.getNodeId());
       try {
-        throw Error('Not implemented')
+        throw Error('Not implemented');
         // FIXME: handleVaultNamesRequest doesn't exist.
         // const listResponse = vaultManager.handleVaultNamesRequest(id);
         let listResponse;
@@ -296,7 +303,6 @@ function createAgentService({
         const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
         await notificationsManager.receiveNotification(notification);
       } catch (err) {
-        console.error(err);
         if (err instanceof notificationsErrors.ErrorNotifications) {
           callback(grpcUtils.fromError(err), response);
         } else {

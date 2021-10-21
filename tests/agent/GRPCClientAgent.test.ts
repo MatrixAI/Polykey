@@ -1,5 +1,5 @@
 import type { NodeAddress, NodeId, NodeInfo } from '@/nodes/types';
-import type { ClaimId, ClaimIdString, ClaimIntermediary } from "@/claims/types";
+import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 
 import fs from 'fs';
@@ -23,10 +23,7 @@ import TestNodeConnection from '../nodes/TestNodeConnection';
 import * as testUtils from './utils';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
 import { makeCrypto } from '../utils';
-import { VaultKey, VaultName } from "@/vaults/types";
-
-class ClaimIdstring {
-}
+import { VaultName } from '@/vaults/types';
 
 describe('GRPC agent', () => {
   const password = 'password';
@@ -136,7 +133,7 @@ describe('GRPC agent', () => {
       acl: acl,
       gestaltGraph: gestaltGraph,
       fs: fs,
-      logger: logger
+      logger: logger,
     });
 
     await db.start();
@@ -185,17 +182,17 @@ describe('GRPC agent', () => {
     // FIXME: permissions not implemented on vaults.
     const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
     await gestaltGraph.setNode(node1);
-    // await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
+    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     // await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
     const vaultPermMessage = new agentPB.VaultPermMessage();
     vaultPermMessage.setNodeId('12345');
-    // vaultPermMessage.setVaultId(vault.vaultId);
+    // VaultPermMessage.setVaultId(vault.vaultId);
     const response = await client.vaultsPermisssionsCheck(vaultPermMessage);
     expect(response.getPermission()).toBeFalsy();
-    // await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
+    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     const response2 = await client.vaultsPermisssionsCheck(vaultPermMessage);
     expect(response2.getPermission()).toBeTruthy();
-    // await vaultManager.deleteVault(vault.vaultId);
+    // Await vaultManager.deleteVault(vault.vaultId);
   });
   test.skip('can scan vaults', async () => {
     //FIXME, permissions not implemented on vaults
@@ -211,14 +208,14 @@ describe('GRPC agent', () => {
     }
     expect(data).toStrictEqual([]);
     fail();
-    // await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
+    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     const response2 = client.vaultsScan(nodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {
       const chunk = resp.getVault_asU8();
-      // data2.push(Buffer.from(chunk).toString());
+      // Data2.push(Buffer.from(chunk).toString());
     }
-    // expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
+    // Expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
     // await vaultManager.deleteVault(vault.vaultId);
   });
   test('Can connect over insecure connection.', async () => {

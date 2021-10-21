@@ -2,7 +2,7 @@ import type { PolykeyAgent } from '@';
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
-import type { ClaimId, ClaimIdString } from "@/claims/types";
+import type { ClaimIdString } from '@/claims/types';
 
 import os from 'os';
 import path from 'path';
@@ -19,7 +19,7 @@ import * as testUtils from '../utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as claimsUtils from '@/claims/utils';
 import { makeCrypto } from '../utils';
-import { makeNodeId } from "@/nodes/utils";
+import { makeNodeId } from '@/nodes/utils';
 
 describe('NodeManager', () => {
   const password = 'password';
@@ -106,18 +106,18 @@ describe('NodeManager', () => {
       recursive: true,
     });
   });
-  afterAll( async () => {
-    await nodeManager.stop()
-    await nodeManager.destroy()
-    await fwdProxy.stop()
-    await fwdProxy.destroy()
-    await revProxy.stop()
-    await revProxy.destroy()
-    await keyManager.destroy()
-    await db.stop()
-    await db.destroy()
-    await sigchain.destroy()
-  })
+  afterAll(async () => {
+    await nodeManager.stop();
+    await nodeManager.destroy();
+    await fwdProxy.stop();
+    await fwdProxy.destroy();
+    await revProxy.stop();
+    await revProxy.destroy();
+    await keyManager.destroy();
+    await db.stop();
+    await db.destroy();
+    await sigchain.destroy();
+  });
 
   describe('getConnectionToNode', () => {
     let target: PolykeyAgent;
@@ -195,7 +195,6 @@ describe('NodeManager', () => {
       expect(finalConnLock).toBeDefined();
       expect(finalConnLock?.lock.isLocked()).toBeFalsy();
     });
-
   });
 
   test(

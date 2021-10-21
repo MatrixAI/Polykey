@@ -1,8 +1,7 @@
-import type { Permission, PermissionId, PermissionIdString } from "./types";
+import type { Permission, PermissionId, PermissionIdString } from './types';
 
-import { utils as keysUtils } from '../keys';
-import { IdRandom } from "@matrixai/id";
-import { isIdString, isId, makeIdString, makeId } from "@/GenericIdTypes";
+import { IdRandom } from '@matrixai/id';
+import { isIdString, isId, makeIdString, makeId } from '@/GenericIdTypes';
 
 function isPermissionId(arg: any): arg is PermissionId {
   return isId<PermissionId>(arg);
@@ -50,6 +49,6 @@ export {
   permUnion,
   isPermissionId,
   makePermissionId,
-  // isPermissionIdString,
-  // makePermissionIdString,
+  isPermissionIdString,
+  makePermissionIdString,
 };

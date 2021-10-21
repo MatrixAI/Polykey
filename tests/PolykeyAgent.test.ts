@@ -20,7 +20,7 @@ describe('Polykey', () => {
     );
   });
   afterEach(async () => {
-    if(pk != null ){
+    if (pk != null) {
       await pk.stop();
       await pk.destroy();
     }
@@ -120,8 +120,7 @@ describe('Polykey', () => {
       await fs.promises.writeFile(versionFilePath, versionInfoString);
 
       // Attempt to start a polykeyAgent.
-      await expect (async () =>
-      {
+      await expect(async () => {
         pk = await PolykeyAgent.createPolykey({
           password,
           nodePath,

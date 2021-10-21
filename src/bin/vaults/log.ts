@@ -5,7 +5,7 @@ import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
 import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
-// import { isVaultId } from "../../vaults/utils";
+// Import { isVaultId } from "../../vaults/utils";
 
 const log = createCommand('log', {
   description: {
@@ -46,7 +46,7 @@ log.action(async (vault, commitId, options) => {
     const vaultsLogMessage = new clientPB.VaultsLogMessage();
     vaultsLogMessage.setVault(vaultMessage);
     vaultsLogMessage.setLogDepth(options.number);
-    vaultsLogMessage.setCommitId(commitId?? '');
+    vaultsLogMessage.setCommitId(commitId ?? '');
 
     const output: string[] = [];
     const log = await grpcClient.vaultsLog(vaultsLogMessage);
@@ -74,15 +74,12 @@ log.action(async (vault, commitId, options) => {
       data = ['Error:', err.message];
     } else if (err instanceof vaultErrors.ErrorVaultCommitUndefined) {
       // Warning that the versionId was invalid
-      data =  [
-        `Error: ${err.message}`,
-        `The VersionID provided was invalid or not in the version history.`
-      ];
-    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
       data = [
         `Error: ${err.message}`,
-        `The VaultId was invalid or not found.`
-      ]
+        `The VersionID provided was invalid or not in the version history.`,
+      ];
+    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
+      data = [`Error: ${err.message}`, `The VaultId was invalid or not found.`];
     } else {
       data = ['Error:', err.message];
     }

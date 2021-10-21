@@ -1,4 +1,9 @@
-import type { NotificationId, Notification, NotificationData, NotificationIdGenerator } from "./types";
+import type {
+  NotificationId,
+  Notification,
+  NotificationData,
+  NotificationIdGenerator,
+} from './types';
 import type { ACL } from '../acl';
 import type { DB, DBLevel } from '@matrixai/db';
 import type { KeyManager } from '../keys';
@@ -13,8 +18,8 @@ import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
 import { errors as dbErrors } from '@matrixai/db';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import { CreateNotificationIdGenerator } from "./utils";
-import { utils as idUtils} from '@matrixai/id';
+import { createNotificationIdGenerator } from './utils';
+import { utils as idUtils } from '@matrixai/id';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
@@ -125,11 +130,14 @@ class NotificationsManager {
 
     // Getting latest ID and creating ID generator FIXME, does this need to be a transaction?
     let latestId: NotificationId | undefined;
-    const keyStream = this.notificationsMessagesDb.createKeyStream({limit: 1, reverse: true});
+    const keyStream = this.notificationsMessagesDb.createKeyStream({
+      limit: 1,
+      reverse: true,
+    });
     for await (const o of keyStream) {
-      latestId = (o as any) as NotificationId;
+      latestId = o as any as NotificationId;
     }
-    this.notificationIdGenerator = CreateNotificationIdGenerator(latestId);
+    this.notificationIdGenerator = createNotificationIdGenerator(latestId);
     this.logger.info('Started Notifications Manager');
   }
 
@@ -388,7 +396,10 @@ class NotificationsManager {
         throw new notificationsErrors.ErrorNotificationsDb();
       }
 
-      await this.db.del(this.notificationsMessagesDbDomain, idUtils.toBuffer(messageId));
+      await this.db.del(
+        this.notificationsMessagesDbDomain,
+        idUtils.toBuffer(messageId),
+      );
       await this.db.put(
         this.notificationsDbDomain,
         MESSAGE_COUNT_KEY,

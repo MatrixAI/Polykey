@@ -517,7 +517,9 @@ class NodeGraph {
         // Add the node to the database so that we can find its address in
         // call to getConnectionToNode
         await this.setNode(nextNode.id, nextNode.address);
-        nodeConnection = await this.nodeManager.getConnectionToNode(nextNode.id);
+        nodeConnection = await this.nodeManager.getConnectionToNode(
+          nextNode.id,
+        );
       } catch (e) {
         // If we can't connect to the node, then skip it.
         continue;

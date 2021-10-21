@@ -10,7 +10,7 @@ import type {
 } from '../identities/types';
 import type { NodeManager } from '../nodes';
 import type { Provider, IdentitiesManager } from '../identities';
-import type { Claim, ClaimId, ClaimIdString, ClaimLinkIdentity } from "../claims/types";
+import type { Claim, ClaimIdString, ClaimLinkIdentity } from '../claims/types';
 
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from '../gestalts/utils';

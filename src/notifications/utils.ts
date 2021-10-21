@@ -3,8 +3,10 @@ import type {
   GestaltInvite,
   VaultShare,
   Notification,
-  SignedNotification, NotificationId, NotificationIdGenerator
-} from "./types";
+  SignedNotification,
+  NotificationId,
+  NotificationIdGenerator,
+} from './types';
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 import type { VaultId } from '../vaults/types';
@@ -23,18 +25,20 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
-import { IdSortable } from "@matrixai/id";
-import { isId, makeId } from "@/GenericIdTypes";
+import { IdSortable } from '@matrixai/id';
+import { isId, makeId } from '@/GenericIdTypes';
 
-function isNotificationId(arg: any):arg is NotificationId {
+function isNotificationId(arg: any): arg is NotificationId {
   return isId<NotificationId>(arg);
 }
 
-function makeNotificationId(arg: any){
+function makeNotificationId(arg: any) {
   return makeId<NotificationId>(arg);
 }
 
-function CreateNotificationIdGenerator(lastId?: NotificationId): NotificationIdGenerator{
+function createNotificationIdGenerator(
+  lastId?: NotificationId,
+): NotificationIdGenerator {
   const idSortableGenerator = new IdSortable({
     lastId,
   });
@@ -150,7 +154,7 @@ function validateVaultShareNotification(
 export {
   isNotificationId,
   makeNotificationId,
-  CreateNotificationIdGenerator,
+  createNotificationIdGenerator,
   signNotification,
   verifyAndDecodeNotif,
   constructGestaltInviteMessage,

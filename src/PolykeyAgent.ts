@@ -30,7 +30,6 @@ import { GithubProvider } from './identities/providers';
 import config from './config';
 import { ErrorStateVersionMismatch } from './errors';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { VaultKey } from "@/vaults/types";
 
 interface Polykey extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -172,9 +171,7 @@ class Polykey {
     const versionFilePath = path.join(nodePath_, 'versionFile');
     let versionInfo;
     try {
-      const versionFileContents = await fs_.promises.readFile(
-        versionFilePath,
-      );
+      const versionFileContents = await fs_.promises.readFile(versionFilePath);
       versionInfo = JSON.parse(versionFileContents.toString());
     } catch (err) {
       logger_.info(`Failed to open version file: ${err.message}`);
@@ -276,7 +273,7 @@ class Polykey {
       }));
     const vaults_ =
       vaultManager ??
-      await VaultManager.createVaultManager({
+      (await VaultManager.createVaultManager({
         keyManager: keys_,
         vaultsPath: vaultsPath,
         vaultsKey: keys_.vaultKey,
@@ -285,9 +282,9 @@ class Polykey {
         acl: acl_,
         db: db_,
         fs: fs_,
-        logger: logger_.getChild('VaultManager')
-      });
-    // vaults_.setWorkerManager(workers_); FIXME, need to be able to set this.
+        logger: logger_.getChild('VaultManager'),
+      }));
+    // Vaults_.setWorkerManager(workers_); FIXME, need to be able to set this.
     const identities_ =
       identitiesManager ??
       (await IdentitiesManager.createIdentitiesManager({

@@ -1,6 +1,4 @@
 import type { PassThrough } from 'readable-stream';
-import type fs from 'fs';
-import { EncryptedFS } from 'encryptedfs';
 
 type Config = {
   line: string;
@@ -52,27 +50,27 @@ type PackIndex = {
 
 type RawObject = {
   oid: string;
-  type: "blob" | "tree" | "commit" | "tag";
-  format: "content";
+  type: 'blob' | 'tree' | 'commit' | 'tag';
+  format: 'content';
   object: Buffer | string | Uint8Array;
   source?: string | undefined;
-}
+};
 
 type WrappedObject = {
   oid: string;
-  type: "wrapped";
-  format: "wrapped";
+  type: 'wrapped';
+  format: 'wrapped';
   object: Buffer | string | Uint8Array;
   source?: string | undefined;
-}
+};
 
 type DeflatedObject = {
   oid: string;
-  type: "deflated";
-  format: "deflated";
+  type: 'deflated';
+  format: 'deflated';
   object: Buffer | string | Uint8Array;
   source?: string | undefined;
-}
+};
 
 type BufferEncoding =
   | 'utf8'

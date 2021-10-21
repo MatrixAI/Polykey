@@ -4,7 +4,11 @@ import type { KeyManager } from '../keys';
 import type { SignedNotification } from '../notifications/types';
 import type { ChainDataEncoded } from '../sigchain/types';
 import type { Certificate, PublicKey, PublicKeyPem } from '../keys/types';
-import type { ClaimId, ClaimEncoded, ClaimIntermediary, ClaimIdString } from "../claims/types";
+import type {
+  ClaimEncoded,
+  ClaimIntermediary,
+  ClaimIdString,
+} from '../claims/types';
 
 import Logger from '@matrixai/logger';
 import * as nodesUtils from './utils';
@@ -329,7 +333,9 @@ class NodeConnection {
   }
 
   @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
-  public async claimNode(singlySignedClaim: ClaimIntermediary): Promise<ClaimEncoded> {
+  public async claimNode(
+    singlySignedClaim: ClaimIntermediary,
+  ): Promise<ClaimEncoded> {
     const genClaims = this.client.nodesCrossSignClaim();
     try {
       // 2. Set up the intermediary claim message (the singly signed claim) to send

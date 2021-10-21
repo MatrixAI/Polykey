@@ -1,9 +1,9 @@
-// import type { Buffer } from 'buffer';
-import type { PermissionId, Permission, VaultActions, PermissionIdString } from "./types";
+// Import type { Buffer } from 'buffer';
+import type { Permission, VaultActions, PermissionIdString } from './types';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeId } from '../nodes/types';
 import type { GestaltAction } from '../gestalts/types';
-import type { VaultAction, VaultId } from "../vaults/types";
+import type { VaultAction, VaultId } from '../vaults/types';
 import type { Ref } from '../types';
 
 import { Mutex } from 'async-mutex';
@@ -12,7 +12,7 @@ import * as aclUtils from './utils';
 import * as aclErrors from './errors';
 import { errors as dbErrors } from '@matrixai/db';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import { makePermissionId } from "./utils";
+import { makePermissionId } from './utils';
 import { utils as idUtils } from '@matrixai/id';
 
 interface ACL extends CreateDestroy {}
@@ -123,16 +123,8 @@ class ACL {
     nodeId2: NodeId,
   ): Promise<boolean> {
     return await this._transaction(async () => {
-      const permId1 = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId1,
-        true,
-      );
-      const permId2 = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId2,
-        true,
-      );
+      const permId1 = await this.db.get(this.aclNodesDbDomain, nodeId1, true);
+      const permId2 = await this.db.get(this.aclNodesDbDomain, nodeId2, true);
       if (permId1 != null && permId2 != null && permId1 === permId2) {
         return true;
       }
@@ -143,15 +135,15 @@ class ACL {
   @ready(new aclErrors.ErrorACLDestroyed())
   public async getNodePerms(): Promise<Array<Record<NodeId, Permission>>> {
     return await this._transaction(async () => {
-      const permIds: Record<PermissionIdString, Record<NodeId, Permission>> = {};
+      const permIds: Record<
+        PermissionIdString,
+        Record<NodeId, Permission>
+      > = {};
       for await (const o of this.aclNodesDb.createReadStream()) {
         const nodeId = (o as any).key as NodeId;
         const data = (o as any).value as Buffer;
         const permId = makePermissionId(
-          await this.db.deserializeDecrypt(
-            data,
-            true,
-          )
+          await this.db.deserializeDecrypt(data, true),
         );
         let nodePerm: Record<NodeId, Permission>;
         if (permId in permIds) {
@@ -245,11 +237,7 @@ class ACL {
   @ready(new aclErrors.ErrorACLDestroyed())
   public async getNodePerm(nodeId: NodeId): Promise<Permission | undefined> {
     return await this._transaction(async () => {
-      const permId = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId,
-        true,
-      );
+      const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
       if (permId == null) {
         return;
       }
@@ -307,7 +295,11 @@ class ACL {
         for (const nodeId of nodeIdsGc) {
           delete nodeIds[nodeId];
         }
-        await this.db.put(this.aclVaultsDbDomain, idUtils.toBuffer(vaultId), nodeIds);
+        await this.db.put(
+          this.aclVaultsDbDomain,
+          idUtils.toBuffer(vaultId),
+          nodeIds,
+        );
       }
       return perms;
     });
@@ -319,11 +311,7 @@ class ACL {
     action: GestaltAction,
   ): Promise<void> {
     return await this._transaction(async () => {
-      const permId = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId,
-        true,
-      );
+      const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
       const ops: Array<DBOp> = [];
       if (permId == null) {
         const permId = await aclUtils.generatePermId();
@@ -374,11 +362,7 @@ class ACL {
     action: GestaltAction,
   ): Promise<void> {
     return await this._transaction(async () => {
-      const permId = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId,
-        true,
-      );
+      const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
       if (permId == null) {
         return;
       }
@@ -403,11 +387,7 @@ class ACL {
           this.aclVaultsDbDomain,
           idUtils.toBuffer(vaultId),
         )) ?? {};
-      const permId = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId,
-        true,
-      );
+      const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
       if (permId == null) {
         throw new aclErrors.ErrorACLNodeIdMissing();
       }
@@ -461,11 +441,7 @@ class ACL {
       if (nodeIds == null || !(nodeId in nodeIds)) {
         return;
       }
-      const permId = await this.db.get(
-        this.aclNodesDbDomain,
-        nodeId,
-        true,
-      );
+      const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
       if (permId == null) {
         return;
       }
@@ -505,8 +481,6 @@ class ACL {
   ): Promise<Array<DBOp>> {
     const ops: Array<DBOp> = [];
     const permIdCounts: Record<PermissionIdString, number> = {};
-    for await (const test of this.aclNodesDb.createKeyStream()) {
-    }
     for (const nodeId of nodeIds) {
       const permIdBuffer = await this.db.get(
         this.aclNodesDbDomain,
@@ -577,11 +551,7 @@ class ACL {
     nodeId: NodeId,
     perm: Permission,
   ): Promise<Array<DBOp>> {
-    const permId = await this.db.get(
-      this.aclNodesDbDomain,
-      nodeId,
-      true,
-    );
+    const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
     const ops: Array<DBOp> = [];
     if (permId == null) {
       const permId = await aclUtils.generatePermId();
@@ -631,11 +601,7 @@ class ACL {
 
   @ready(new aclErrors.ErrorACLDestroyed())
   public async unsetNodePermOps(nodeId: NodeId): Promise<Array<DBOp>> {
-    const permId = await this.db.get(
-      this.aclNodesDbDomain,
-      nodeId,
-      true,
-    );
+    const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
     if (permId == null) {
       return [];
     }
@@ -730,11 +696,7 @@ class ACL {
     nodeIdsJoin: Array<NodeId>,
     perm?: Permission,
   ): Promise<Array<DBOp>> {
-    const permId = await this.db.get(
-      this.aclNodesDbDomain,
-      nodeId,
-      true,
-    );
+    const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
     if (permId == null) {
       throw new aclErrors.ErrorACLNodeIdMissing();
     }

@@ -48,7 +48,7 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
  * node IDs that will appear in the same bucket.
  * NOTE: For node IDs appearing in lower-indexed buckets (i.e. bucket indexes
  * roughly around 0-4), this will occasionally cause the node ID to overflow
- * into the next bucket instead. For safety, ensure this function is used for 
+ * into the next bucket instead. For safety, ensure this function is used for
  * nodes appearing in larger-indexed buckets.
  */
 function incrementNodeId(nodeId: NodeId): NodeId {

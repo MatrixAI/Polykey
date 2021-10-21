@@ -1,6 +1,6 @@
 import type { Opaque } from '../types';
 import type { GestaltAction } from '../gestalts/types';
-import type { VaultActions, VaultId } from "../vaults/types";
+import type { VaultActions, VaultId } from '../vaults/types';
 import { Id, IdString } from '../GenericIdTypes';
 
 type PermissionId = Opaque<'PermissionId', Id>;
@@ -14,4 +14,10 @@ type Permission = {
 
 type GestaltActions = Partial<Record<GestaltAction, null>>;
 
-export type { PermissionId, PermissionIdString, Permission, GestaltActions, VaultActions };
+export type {
+  PermissionId,
+  PermissionIdString,
+  Permission,
+  GestaltActions,
+  VaultActions,
+};

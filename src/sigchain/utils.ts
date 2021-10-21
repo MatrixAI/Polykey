@@ -1,12 +1,11 @@
 import type { PublicKeyPem } from '../keys/types';
 import type { ChainData, ChainDataEncoded } from './types';
-import type { ClaimId, ClaimIdString } from "../claims/types";
+import type { ClaimId, ClaimIdString } from '../claims/types';
 
 import * as claimsUtils from '../claims/utils';
-import { IdSortable } from "@matrixai/id";
-import { isIdString, isId, makeIdString, makeId } from "@/GenericIdTypes";
-import { NodeId } from "../nodes/types";
-import { toArrayBuffer } from "@matrixai/db/dist/utils";
+import { IdSortable } from '@matrixai/id';
+import { isIdString, isId, makeIdString, makeId } from '@/GenericIdTypes';
+import { NodeId } from '../nodes/types';
 
 /**
  * Verifies each claim in a ChainDataEncoded record, and returns a ChainData
@@ -25,9 +24,7 @@ async function verifyChainData(
       continue;
     }
     // If verified, add the claim to the decoded chain
-    decodedChain[claimId] = await claimsUtils.decodeClaim(
-      encodedClaim,
-    );
+    decodedChain[claimId] = await claimsUtils.decodeClaim(encodedClaim);
   }
   return decodedChain;
 }
@@ -62,5 +59,5 @@ export {
   makeClaimId,
   isClaimIdString,
   makeClaimIdString,
-  createClaimIdGenerator
+  createClaimIdGenerator,
 };

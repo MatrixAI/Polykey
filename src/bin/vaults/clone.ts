@@ -4,7 +4,7 @@ import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
-import { makeVaultIdPretty } from "@/vaults/utils";
+import { makeVaultIdPretty } from '@/vaults/utils';
 
 const clone = binUtils.createCommand('clone', {
   description: 'Clones a vault from another node',

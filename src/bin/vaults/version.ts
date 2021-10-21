@@ -5,7 +5,7 @@ import PolykeyClient from '../../PolykeyClient';
 import { errors } from '../../grpc';
 import { errors as vaultErrors } from '../../vaults';
 import * as utils from '../../utils';
-// import { isVaultId } from "../../vaults/utils";
+// Import { isVaultId } from "../../vaults/utils";
 
 const version = createCommand('version', {
   description: {
@@ -47,11 +47,11 @@ version.action(async (vault, versionId, options) => {
     vaultsVersionMessage.setVault(vaultMessage);
     vaultsVersionMessage.setVersionId(versionId);
 
-    const statusMessage = await grpcClient.vaultsVersion(vaultsVersionMessage);
+    await grpcClient.vaultsVersion(vaultsVersionMessage);
 
     let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
 
-    if(versionId.toLowerCase() === 'last') {
+    if (versionId.toLowerCase() === 'last') {
       successMessage = [`Vault ${vault} is now at the latest version.`];
     }
 
@@ -77,15 +77,12 @@ version.action(async (vault, versionId, options) => {
       data = ['Error:', err.message];
     } else if (err instanceof vaultErrors.ErrorVaultCommitUndefined) {
       // Warning that the versionId was invalid
-      data =  [
-        `Error: ${err.message}`,
-        `The VersionID provided was invalid or not in the version history.`
-      ];
-    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
       data = [
         `Error: ${err.message}`,
-        `The VaultId was invalid or not found.`
-      ]
+        `The VersionID provided was invalid or not in the version history.`,
+      ];
+    } else if (err instanceof vaultErrors.ErrorVaultUndefined) {
+      data = [`Error: ${err.message}`, `The VaultId was invalid or not found.`];
     } else {
       data = ['Error:', err.message];
     }
