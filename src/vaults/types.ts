@@ -1,6 +1,6 @@
 import type VaultInternal from './VaultInternal';
 import type { Opaque } from '../types';
-import type { NodeId } from '@/nodes/types';
+import type { NodeId } from '../nodes/types';
 import type { MutexInterface } from 'async-mutex';
 import type { Callback, Path } from 'encryptedfs/dist/types';
 import type { FdIndex } from 'encryptedfs/dist/fd/types';

@@ -17,7 +17,7 @@ import { Mutex } from 'async-mutex';
 import * as sigchainErrors from './errors';
 import * as claimsUtils from '../claims/utils';
 import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import { createClaimIdGenerator, makeClaimIdString } from '@/sigchain/utils';
+import { createClaimIdGenerator, makeClaimIdString } from '../sigchain/utils';
 import { utils as idUtils } from '@matrixai/id';
 
 interface Sigchain extends CreateDestroy {}

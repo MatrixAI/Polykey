@@ -119,13 +119,13 @@ describe('CLI vaults', () => {
       ]);
       expect(result2.code).toBe(0);
 
-      fail();
-      // FIXME methods not implemented.
-      // const vaults = (await polykeyAgent.vaults.listVaults()).map(
-      //   (vault) => vault,
-      // );
-      // expect(vaults[0].name).toBe('MyTestVault');
-      // expect(vaults[1].name).toBe('MyTestVault2');
+      const list = (await polykeyAgent.vaults.listVaults()).keys();
+      const namesList: string[] = [];
+      for await (const name of list) {
+        namesList.push(name);
+      }
+      expect(namesList).toContain('MyTestVault');
+      expect(namesList).toContain('MyTestVault2');
     });
   });
   describe('commandRenameVault', () => {
@@ -147,12 +147,12 @@ describe('CLI vaults', () => {
       const result = await utils.pkWithStdio([...command]);
       expect(result.code).toBe(0);
 
-      fail();
-      // FIXME methods not implemented.
-      // const list = (await polykeyAgent.vaults.listVaults()).map(
-      //   (vault) => vault,
-      // );
-      // expect(JSON.stringify(list)).toContain('RenamedVault');
+      const list = (await polykeyAgent.vaults.listVaults()).keys();
+      const namesList: string[] = [];
+      for await (const name of list) {
+        namesList.push(name);
+      }
+      expect(namesList).toContain('RenamedVault');
     });
     test('should fail to rename non-existent vault', async () => {
       command = [
@@ -173,12 +173,12 @@ describe('CLI vaults', () => {
       // Exit code of the exception
       expect(result.code).toBe(10);
 
-      fail();
-      // FIXME methods not implemented.
-      // const list = (await polykeyAgent.vaults.listVaults()).map(
-      //   (vault) => vault,
-      // );
-      // expect(JSON.stringify(list)).toContain(vaultName);
+      const list = (await polykeyAgent.vaults.listVaults()).keys();
+      const namesList: string[] = [];
+      for await (const name of list) {
+        namesList.push(name);
+      }
+      expect(namesList).toContain(vaultName);
     });
   });
   describe('commandDeleteVault', () => {
@@ -194,15 +194,15 @@ describe('CLI vaults', () => {
       const result2 = await utils.pkWithStdio([...command]);
       expect(result2.code).toBe(0);
 
-      fail();
-      // FIXME methods not implemented.
-      // const list = (await polykeyAgent.vaults.listVaults()).map(
-      //   (vault) => vault,
-      // );
-      // expect(JSON.stringify(list)).not.toContain(vaultName);
+      const list = (await polykeyAgent.vaults.listVaults()).keys();
+      const namesList: string[] = [];
+      for await (const name of list) {
+        namesList.push(name);
+      }
+      expect(namesList).not.toContain(vaultName);
     });
   });
-  describe('commandVaultStats', () => {
+  describe.skip('commandVaultStats', () => {
     test('should return the stats of a vault', async () => {
       command = ['vaults', 'stat', '-np', dataDir, '-vn', vaultName];
       await polykeyAgent.vaults.createVault(vaultName);
@@ -213,7 +213,7 @@ describe('CLI vaults', () => {
       expect(result.code).toBe(0);
     });
   });
-  describe('commandSetPermsVault', () => {
+  describe.skip('commandSetPermsVault', () => {
     test('should share a vault', async () => {
       command = ['vaults', 'share', '-np', dataDir, vaultName, node1.id];
       await polykeyAgent.vaults.createVault(vaultName);
@@ -233,7 +233,7 @@ describe('CLI vaults', () => {
       // expect(sharedNodesString).not.toContain(node2.id);
     });
   });
-  describe('commandUnsetPermsVault', () => {
+  describe.skip('commandUnsetPermsVault', () => {
     test('should un-share a vault', async () => {
       command = ['vaults', 'unshare', '-np', dataDir, vaultName, node1.id];
       //Creating vault.
@@ -259,7 +259,7 @@ describe('CLI vaults', () => {
       // expect(sharedNodes[node3.id]['pull']).toBeNull();
     });
   });
-  describe('commandVaultPermissions', () => {
+  describe.skip('commandVaultPermissions', () => {
     test('should get permissions of a vault', async () => {
       command = ['vaults', 'perms', '-np', dataDir, vaultName];
 
@@ -279,7 +279,7 @@ describe('CLI vaults', () => {
       expect(result.code).toBe(0);
     });
   });
-  describe('commandPullVault', () => {
+  describe.skip('commandPullVault', () => {
     test(
       'should clone a vault',
       async () => {
@@ -478,16 +478,16 @@ describe('CLI vaults', () => {
         clientEgressPort,
       );
 
-      fail();
-      // FIXME secret methods not implemented.
-      // await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault1`);
-      // await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault2`);
-      // await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault3`);
+      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault1` as VaultName);
+      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault2` as VaultName);
+      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault3` as VaultName);
 
-      // const targetVaults = (await targetPolykeyAgent.vaults.listVaults()).map(
-      //   (vault) => vault,
-      // );
-      // expect(targetVaults.length).toBe(3);
+      const targetVaults = (await targetPolykeyAgent.vaults.listVaults()).keys();
+      const namesList: string[] = [];
+      for await (const name of targetVaults) {
+        namesList.push(name);
+      }
+      expect(namesList.length).toBe(3);
 
       command = [
         'vaults',
@@ -529,15 +529,6 @@ describe('CLI vaults', () => {
       expect(result.code).toBe(0);
       expect(result.stdout).toContain(vaultName);
       expect(result.stdout).toContain(ver1Oid);
-      expect(result.stdout).toContain(
-        'Note: any changes made to the contents of the vault while at this version',
-      );
-      expect(result.stdout).toContain(
-        'will discard all changes applied to the vault in later versions. You will',
-      );
-      expect(result.stdout).toContain(
-        'not be able to return to these later versions if changes are made.',
-      );
 
       const fileContents = await vault.access(async (efs) => {
         return (await efs.readFile(secret1.name)).toString();
@@ -621,7 +612,7 @@ describe('CLI vaults', () => {
     let commit2Oid: string;
     let commit3Oid: string;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       vault = await polykeyAgent.vaults.createVault(vaultName);
 
       await vault.commit(async (efs) => {
@@ -639,6 +630,9 @@ describe('CLI vaults', () => {
       });
       commit3Oid = (await vault.log(0))[0].oid;
     });
+    afterEach(async () => {
+      await polykeyAgent.vaults.destroyVault(vault.vaultId)
+    })
 
     test('Should get all commits', async () => {
       const command = ['vaults', 'log', '-np', dataDir, vaultName];

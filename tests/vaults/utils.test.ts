@@ -99,7 +99,7 @@ describe('Vaults utils', () => {
   //     ['dir', 'dir/dir2', 'dir/dir2/dir3', 'dir/file'].sort(),
   //   );
   // });
-  test('can search for a vault name', async () => {
+  test.skip('can search for a vault name', async () => {
     // Const vaultList = ['a\tb', 'b\ta', '', 'c\tc', 'e\tf'];
 
     fail();

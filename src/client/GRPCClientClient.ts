@@ -5,7 +5,7 @@ import { GRPCClient, utils as grpcUtils } from '../grpc';
 import * as clientPB from '../proto/js/Client_pb';
 import { ClientClient } from '../proto/js/Client_grpc_pb';
 import { Session } from '../sessions';
-import { NodeId } from '@/nodes/types';
+import { NodeId } from '../nodes/types';
 import { Host, Port, ProxyConfig } from '../network/types';
 import Logger from '@matrixai/logger';
 import {

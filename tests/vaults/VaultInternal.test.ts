@@ -131,7 +131,7 @@ describe('VaultInternal', () => {
       await vault.commit(async (efs) => {
         await efs.writeFile('test4', 'testdata4');
       });
-    });
+    }, global.defaultTimeout * 2);
     test('can change to the HEAD commit', async () => {
       const initCommit = (await vault.log(1))[0].oid;
       await vault.commit(async (efs) => {

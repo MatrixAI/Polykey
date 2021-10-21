@@ -34,13 +34,12 @@ const createVaultRPC = ({
         );
         call.sendMetadata(responseMeta);
         const vaults = await vaultManager.listVaults();
-        let vaultListMessage: clientPB.VaultListMessage;
-        vaults.forEach(async (vaultId, vaultName) => {
-          vaultListMessage = new clientPB.VaultListMessage();
+        for await (const [vaultName, vaultId] of vaults) {
+          const vaultListMessage = new clientPB.VaultListMessage();
           vaultListMessage.setVaultName(vaultName);
-          vaultListMessage.setVaultId(vaultId);
+          vaultListMessage.setVaultId(makeVaultIdPretty(vaultId));
           await genWritable.next(vaultListMessage);
-        });
+        }
         await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);
@@ -208,7 +207,7 @@ const createVaultRPC = ({
         vaults.forEach(async (vaultId, vaultName) => {
           const vaultListMessage = new clientPB.VaultListMessage();
           vaultListMessage.setVaultName(vaultName);
-          vaultListMessage.setVaultId(vaultId);
+          vaultListMessage.setVaultId(makeVaultIdPretty(vaultId));
           await genWritable.next(vaultListMessage);
         });
         await genWritable.next(null);
@@ -634,6 +633,7 @@ const createVaultRPC = ({
         const currentVersionId = (await vault.log(0, versionId))[0]?.oid;
 
         // Checking if latest version ID.
+        console.log(latestOid, currentVersionId);
         const isLatestVersion = latestOid === currentVersionId;
 
         // Creating message

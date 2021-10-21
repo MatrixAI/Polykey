@@ -314,7 +314,7 @@ describe('Client service', () => {
       }
 
       const emptyMessage = new clientPB.EmptyMessage();
-      const res = listVaults(emptyMessage, callCredentials);
+      const res = await listVaults(emptyMessage, callCredentials);
       const names: Array<string> = [];
       for await (const val of res) {
         names.push(val.getVaultName());
@@ -336,7 +336,7 @@ describe('Client service', () => {
       const vaultId = await createVault(vaultMessage, callCredentials);
       const vaultList = await vaultManager.listVaults();
       expect(vaultList.get(vaultName)).toBeTruthy();
-      expect(vaultList.get(vaultName)).toBe(makeVaultId(vaultId.getNameOrId()));
+      expect(vaultList.get(vaultName)).toStrictEqual(makeVaultId(vaultId.getNameOrId()));
     });
     test('should delete vaults', async () => {
       const deleteVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
@@ -387,13 +387,14 @@ describe('Client service', () => {
       vaultRenameMessage.setNewName(vaultRename);
 
       const vaultId = await renameVault(vaultRenameMessage, callCredentials);
-      expect(makeVaultId(vaultId.getNameOrId())).toBe(vault.vaultId);
+      expect(makeVaultId(vaultId.getNameOrId())).toStrictEqual(vault.vaultId);
 
       const name = (await vaultManager.listVaults()).entries().next().value[0];
       expect(name).toBe(vaultRename);
     });
     //FIXME, fix this when vault secrets stat is re-implemented
-    test('should get stats for vaults', async () => {
+    test.skip('should get stats for vaults', async () => {
+      fail('not implemented');
       const statsVault = grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
         client,
         client.vaultsSecretsStat,
@@ -414,7 +415,6 @@ describe('Client service', () => {
       const res2 = await statsVault(vaultMessage, callCredentials);
       const stats2 = res2.getStats();
 
-      fail('not implemented');
       // FIXME
       // expect(stats1).toBe(
       //   JSON.stringify(await vaultManager.vaultStats(vault.vaultId)),
@@ -722,7 +722,8 @@ describe('Client service', () => {
       await fs.promises.rmdir(tmpDir, { recursive: true });
     });
     // TODO: Permissions not supported yet.
-    test('should add permissions to a vault', async () => {
+    test.skip('should add permissions to a vault', async () => {
+      fail('Functionality not fully implemented');
       const vaultName = 'vault1' as VaultName;
       const vaultsSetPerms =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
@@ -745,14 +746,13 @@ describe('Client service', () => {
       setVaultPermMessage.setNode(nodeMessage);
       await vaultsSetPerms(setVaultPermMessage, callCredentials);
 
-      fail('Functionality not fully implemented');
       // FIXME: this is not implemented yet.
       const result = 'Not implemented'; //Await vaultManager.getVaultPermissions(vaultId);
       const stringResult = JSON.stringify(result);
       expect(stringResult).toContain(node2.id);
       expect(stringResult).toContain('pull');
     });
-    test('should remove permissions to a vault', async () => {
+    test.skip('should remove permissions to a vault', async () => {
       const vaultName = 'vault1' as VaultName;
       const vaultsUnsetPerms =
         grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
@@ -786,7 +786,7 @@ describe('Client service', () => {
       // expect(stringResult).toContain(node2.id);
       // expect(stringResult.includes('pull')).toBeFalsy();
     });
-    test('should get permissions to a vault', async () => {
+    test.skip('should get permissions to a vault', async () => {
       const vaultName = 'vault1' as VaultName;
       const vaultsPermissions =
         grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
@@ -857,6 +857,7 @@ describe('Client service', () => {
           await efs.writeFile(secretVer2.name, secretVer2.content);
         });
         const ver2Oid = (await vault.log())[0].oid;
+        expect(ver1Oid).not.toEqual(ver2Oid);
 
         // Revert the version
         const vaultMessage = new clientPB.VaultMessage();
@@ -870,6 +871,7 @@ describe('Client service', () => {
           vaultVersionMessage,
           callCredentials,
         );
+        console.log(await vault.log());
         expect(response.getIsLatestVersion()).toBeFalsy();
 
         // Read old history
@@ -927,6 +929,8 @@ describe('Client service', () => {
           await efs.writeFile(secretVer2.name, secretVer2.content);
         });
         const ver2Oid = (await vault.log())[0].oid;
+        console.log(ver1Oid, ver2Oid);
+        expect(ver1Oid).not.toEqual(ver2Oid);
 
         // Revert the version
         const vaultMessage = new clientPB.VaultMessage();
@@ -940,6 +944,7 @@ describe('Client service', () => {
           vaultVersionMessage,
           callCredentials,
         );
+        console.log(await vault.log());
         expect(response.getIsLatestVersion()).toBeFalsy();
 
         // Read old history
@@ -1036,10 +1041,12 @@ describe('Client service', () => {
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer1.name, secretVer1.content);
         });
-        const ver1Oid = (await vault.log(1))[0].oid;
+        const ver1Oid = (await vault.log())[0].oid;
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer2.name, secretVer2.content);
         });
+        const ver2Oid = (await vault.log())[0].oid;
+        expect(ver1Oid).not.toEqual(ver2Oid);
 
         // Revert the version
         const vaultMessage = new clientPB.VaultMessage();
@@ -1053,6 +1060,7 @@ describe('Client service', () => {
           vaultVersionMessage,
           callCredentials,
         );
+        console.log(await vault.log());
         expect(response.getIsLatestVersion()).toBeFalsy();
 
         // Read old history
@@ -1170,7 +1178,7 @@ describe('Client service', () => {
       let commit2Oid: string;
       let commit3Oid: string;
 
-      beforeAll(async () => {
+      beforeEach(async () => {
         vaultLog =
           grpcUtils.promisifyReadableStreamCall<clientPB.VaultsLogEntryMessage>(
             client,
@@ -1196,7 +1204,7 @@ describe('Client service', () => {
         commit3Oid = (await vault.log(0))[0].oid;
       });
 
-      afterAll(async () => {
+      afterEach(async () => {
         await vaultManager.destroyVault(vault.vaultId);
       });
 

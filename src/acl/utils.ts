@@ -1,7 +1,7 @@
 import type { Permission, PermissionId, PermissionIdString } from './types';
 
 import { IdRandom } from '@matrixai/id';
-import { isIdString, isId, makeIdString, makeId } from '@/GenericIdTypes';
+import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
 
 function isPermissionId(arg: any): arg is PermissionId {
   return isId<PermissionId>(arg);

@@ -8,9 +8,9 @@ import {
   SecretName,
   Vault,
 } from './types';
-import * as vaultsErrors from '@/vaults/errors';
+import * as vaultsErrors from '../vaults/errors';
 import path from 'path';
-import * as vaultsUtils from '@/vaults/utils';
+import * as vaultsUtils from '../vaults/utils';
 import Logger from '@matrixai/logger';
 import * as fs from 'fs';
 

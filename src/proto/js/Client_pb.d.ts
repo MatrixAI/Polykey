@@ -124,10 +124,8 @@ export namespace SessionTokenMessage {
 export class VaultListMessage extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): VaultListMessage;
-    getVaultId(): Uint8Array | string;
-    getVaultId_asU8(): Uint8Array;
-    getVaultId_asB64(): string;
-    setVaultId(value: Uint8Array | string): VaultListMessage;
+    getVaultId(): string;
+    setVaultId(value: string): VaultListMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultListMessage.AsObject;
@@ -142,7 +140,7 @@ export class VaultListMessage extends jspb.Message {
 export namespace VaultListMessage {
     export type AsObject = {
         vaultName: string,
-        vaultId: Uint8Array | string,
+        vaultId: string,
     }
 }
 
@@ -1158,10 +1156,8 @@ export namespace GeneralTypeMessage {
 }
 
 export class VaultShareTypeMessage extends jspb.Message { 
-    getVaultId(): Uint8Array | string;
-    getVaultId_asU8(): Uint8Array;
-    getVaultId_asB64(): string;
-    setVaultId(value: Uint8Array | string): VaultShareTypeMessage;
+    getVaultId(): string;
+    setVaultId(value: string): VaultShareTypeMessage;
     getVaultName(): string;
     setVaultName(value: string): VaultShareTypeMessage;
     clearActionsList(): void;
@@ -1181,7 +1177,7 @@ export class VaultShareTypeMessage extends jspb.Message {
 
 export namespace VaultShareTypeMessage {
     export type AsObject = {
-        vaultId: Uint8Array | string,
+        vaultId: string,
         vaultName: string,
         actionsList: Array<string>,
     }

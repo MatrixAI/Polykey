@@ -7,8 +7,8 @@ import * as grpc from '@grpc/grpc-js';
 import * as clientErrors from '../client/errors';
 import { VaultMessage } from '../proto/js/Client_pb';
 import { ErrorVaultUndefined } from '../vaults/errors';
-import { makeVaultId } from '@/vaults/utils';
-import { ErrorInvalidId } from '@/errors';
+import { makeVaultId } from '../vaults/utils';
+import { ErrorInvalidId } from '../errors';
 
 async function parseVaultInput(
   vaultMessage: VaultMessage,

@@ -439,7 +439,7 @@ describe('CLI agent', () => {
         'secrets rm -sp vaultName:secretPath',
         'secrets get -sp vaultName:secretPath',
         'secrets ls -vn vaultName',
-        'secrets mkdir -sp vaultName:secretPath',
+        'secrets mkdir vaultName:secretPath',
         'secrets rename -sp vaultName:secretPath -sn secretName',
         'secrets update -sp vaultName:secretPath -fp secretPath',
         'secrets dir -vn vaultName -dp directory',
@@ -457,6 +457,7 @@ describe('CLI agent', () => {
         'vaults pull -vn vaultName -ni nodeId',
         'vaults scan -ni nodeId',
         'vaults version vaultName nodeId',
+        'vaults log vaultName',
       ];
 
       const commands = [
@@ -477,6 +478,7 @@ describe('CLI agent', () => {
           .replace(/passPath/g, dummyPath)
           .replace(/secretPath/g, dummyPath)
           .replace(/nodeId/g, dummyNodeId)
+          .replace(/vaultId/g, dummyNodeId)
           .split(' ');
         const nodePath = ['-np', activeAgentPath];
         return [...command, ...nodePath];

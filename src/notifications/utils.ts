@@ -26,7 +26,7 @@ import {
 } from './schema';
 import * as notificationsErrors from './errors';
 import { IdSortable } from '@matrixai/id';
-import { isId, makeId } from '@/GenericIdTypes';
+import { isId, makeId } from '../GenericIdTypes';
 
 function isNotificationId(arg: any): arg is NotificationId {
   return isId<NotificationId>(arg);

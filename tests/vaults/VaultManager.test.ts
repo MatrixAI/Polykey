@@ -200,7 +200,7 @@ describe('VaultManager', () => {
     expect((await vaultManager.listVaults()).size).toEqual(
       vaultNames.length + 1,
     );
-  });
+  }, global.defaultTimeout * 2);
   test('can open the same vault twice and perform mutations', async () => {
     const vault = await vaultManager.createVault(vaultName);
     const vaultCopyOne = await vaultManager.openVault(vault.vaultId);

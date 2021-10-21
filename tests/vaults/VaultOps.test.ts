@@ -133,7 +133,7 @@ describe('VaultOps', () => {
         name,
       );
     }
-  });
+  }, global.defaultTimeout * 2);
   test('updating secret content', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     await vaultOps.updateSecret(vault, 'secret-1', 'secret-content-change');
@@ -219,7 +219,7 @@ describe('VaultOps', () => {
         vault.access((efs) => efs.readdir('.')),
       ).resolves.not.toContain(name);
     }
-  });
+  }, global.defaultTimeout * 2);
   test('renaming a secret', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     await vaultOps.renameSecret(vault, 'secret-1', 'secret-change');
@@ -495,5 +495,5 @@ describe('VaultOps', () => {
       force: true,
       recursive: true,
     });
-  });
+  }, global.defaultTimeout * 3);
 });

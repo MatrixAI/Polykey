@@ -1,5 +1,5 @@
 import { utils as idUtils } from '@matrixai/id';
-import { ErrorInvalidId } from '@/errors';
+import { ErrorInvalidId } from './errors';
 import { Id as InternalId } from '@matrixai/id/dist/Id';
 
 /// This is the internal form of the Id.
