@@ -1,12 +1,14 @@
 import type { NodeAddress, NodeId, NodeInfo } from '@/nodes/types';
 import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
+import type { VaultName } from '@/vaults/types';
 
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
+import { Mutex } from 'async-mutex';
 
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
@@ -23,7 +25,6 @@ import TestNodeConnection from '../nodes/TestNodeConnection';
 import * as testUtils from './utils';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
 import { makeCrypto } from '../utils';
-import { VaultName } from '@/vaults/types';
 
 describe('GRPC agent', () => {
   const password = 'password';
@@ -260,7 +261,13 @@ describe('GRPC agent', () => {
         keyManager: keyManager,
       });
       // @ts-ignore - force push into the protected connections map
-      nodeManager.connections.set('Y' as NodeId, xToYNodeConnection);
+      nodeManager.connections.set(
+        'Y' as NodeId,
+        {
+          connection: xToYNodeConnection,
+          lock: new Mutex()
+        }
+      );
       await nodeManager.setNode(
         'Y' as NodeId,
         {
