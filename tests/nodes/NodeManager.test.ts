@@ -364,7 +364,7 @@ describe('NodeManager', () => {
 
       await x.nodes.setNode(yNodeId, yNodeAddress);
       await y.nodes.setNode(xNodeId, xNodeAddress);
-    });
+    }, global.polykeyStartupTimeout * 2);
     afterAll(async () => {
       await testUtils.cleanupRemoteKeynode(x);
       await testUtils.cleanupRemoteKeynode(y);
