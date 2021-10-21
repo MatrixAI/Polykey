@@ -59,8 +59,11 @@ describe('VaultOps', ()=> {
   beforeEach(async () => {
     vaultId = generateVaultId();
     await baseEfs.mkdir(path.join(idUtils.toString(vaultId), 'contents'), { recursive: true });
+    const fakeKeynode = {getNodeId:() => {
+        return "DummyNodeId" as NodeId;
+      }}
     vaultInternal = await VaultInternal.create({
-      nodeId: 'DummyNodeId' as NodeId,
+      keyManager: fakeKeynode as KeyManager,
       vaultId,
       efs: baseEfs,
       logger: logger.getChild(VaultInternal.name),

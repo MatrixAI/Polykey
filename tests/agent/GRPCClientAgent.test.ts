@@ -128,7 +128,7 @@ describe('GRPC agent', () => {
       });
 
     vaultManager = await VaultManager.createVaultManager({
-      nodeId:keyManager.getNodeId(),
+      keyManager: keyManager,
       vaultsPath: vaultsPath,
       nodeManager: nodeManager,
       vaultsKey: keyManager.vaultKey,

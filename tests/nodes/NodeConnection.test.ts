@@ -127,7 +127,7 @@ describe('NodeConnection', () => {
       logger: logger,
     });
     serverVaultManager = await VaultManager.createVaultManager({
-      nodeId: serverKeyManager.getNodeId(),
+      keyManager: serverKeyManager,
       vaultsPath: serverVaultsPath,
       nodeManager: serverNodeManager,
       vaultsKey: serverKeyManager.vaultKey,

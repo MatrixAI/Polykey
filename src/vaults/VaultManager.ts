@@ -63,11 +63,11 @@ class VaultManager {
   protected vaultsNamesDbDomain: Array<string>;
   protected vaultsDb: DBLevel;
   protected vaultsNamesDb: DBLevel;
-  protected nodeId: NodeId;
+  protected keyManager: KeyManager;
 
   static async createVaultManager({
     fresh = false,
-    nodeId,
+    keyManager,
     vaultsPath,
     vaultsKey,
     nodeManager,
@@ -78,7 +78,7 @@ class VaultManager {
     logger,
   }: {
     fresh?: boolean
-    nodeId: NodeId;
+    keyManager: KeyManager;
     vaultsPath: string;
     vaultsKey: VaultKey;
     nodeManager: NodeManager;
@@ -115,7 +115,7 @@ class VaultManager {
     await efs.start();
     logger.info('Created Vault Manager');
     return new VaultManager({
-      nodeId,
+      keyManager,
       nodeManager,
       gestaltGraph,
       acl,
@@ -132,7 +132,7 @@ class VaultManager {
   }
 
   constructor({
-    nodeId,
+    keyManager,
     nodeManager,
     gestaltGraph,
     acl,
@@ -146,7 +146,7 @@ class VaultManager {
     fs,
     logger,
   }: {
-    nodeId: NodeId;
+    keyManager: KeyManager;
     nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     acl: ACL;
@@ -236,7 +236,7 @@ class VaultManager {
       await this.db.put(this.vaultsNamesDbDomain, idUtils.toBuffer(vaultId), { name: vaultName });
       const vault = await VaultInternal.create({
         vaultId,
-        nodeId: this.nodeId,
+        keyManager: this.keyManager,
         efs: this.efs,
         logger: this.logger.getChild(VaultInternal.name),
         fresh: true,
@@ -449,7 +449,7 @@ class VaultManager {
       await this.efs.writeFile(path.join(vaultsUtils.makeVaultIdPretty(vaultId), '.git', 'workingDir'), workingDir.oid);
       const vault = await VaultInternal.create({
         vaultId,
-        nodeId: this.nodeId,
+        keyManager: this.keyManager,
         efs: this.efs,
         logger: this.logger.getChild(VaultInternal.name),
       });
@@ -671,7 +671,7 @@ class VaultManager {
         }
         vault = await VaultInternal.create({
           vaultId,
-          nodeId: this.nodeId,
+          keyManager: this.keyManager,
           efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
         });
@@ -690,7 +690,7 @@ class VaultManager {
         release = await lock.acquire();
         vault = await VaultInternal.create({
           vaultId,
-          nodeId: this.nodeId,
+          keyManager: this.keyManager,
           efs: this.efs,
           logger: this.logger.getChild(VaultInternal.name),
         });

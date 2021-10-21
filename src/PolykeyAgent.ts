@@ -277,7 +277,7 @@ class Polykey {
     const vaults_ =
       vaultManager ??
       await VaultManager.createVaultManager({
-        nodeId: keys_.getNodeId(),
+        keyManager: keys_,
         vaultsPath: vaultsPath,
         vaultsKey: keys_.vaultKey,
         nodeManager: nodes_,

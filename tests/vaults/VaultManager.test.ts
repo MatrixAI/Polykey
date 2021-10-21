@@ -138,7 +138,7 @@ describe('VaultManager', () => {
     });
 
     vaultManager = await VaultManager.createVaultManager({
-      nodeId: keyManager.getNodeId(),
+      keyManager: keyManager,
       vaultsPath,
       vaultsKey,
       nodeManager,
@@ -275,7 +275,7 @@ describe('VaultManager', () => {
     await db.stop();
     await db.start();
     vaultManager = await VaultManager.createVaultManager({
-      nodeId: keyManager.getNodeId(),
+      keyManager: keyManager,
       vaultsPath,
       vaultsKey,
       nodeManager,
@@ -322,7 +322,7 @@ describe('VaultManager', () => {
     await vaultManager.closeVault(vault.vaultId);
     await vaultManager.destroy();
     vaultManager = await VaultManager.createVaultManager({
-      nodeId: keyManager.getNodeId(),
+      keyManager: keyManager,
       vaultsPath,
       vaultsKey,
       nodeManager,
@@ -385,7 +385,7 @@ describe('VaultManager', () => {
 
     await db.start();
     const vaultManagerReloaded = await VaultManager.createVaultManager({
-      nodeId: keyManager.getNodeId(),
+      keyManager: keyManager,
       vaultsPath,
       vaultsKey,
       nodeManager,
@@ -585,7 +585,7 @@ describe('VaultManager', () => {
       await targetGestaltGraph.setNode(node);
       const targetVaultKey = await vaultUtils.generateVaultKey();
       targetVaultManager = await VaultManager.createVaultManager({
-        nodeId: keyManager.getNodeId(),
+        keyManager: keyManager,
         vaultsPath: path.join(targetDataDir, 'vaults'),
         vaultsKey: targetVaultKey,
         nodeManager: targetNodeManager,
@@ -678,7 +678,7 @@ describe('VaultManager', () => {
       await altGestaltGraph.setNode(node);
       const altVaultKey = await vaultUtils.generateVaultKey();
       altVaultManager = await VaultManager.createVaultManager({
-        nodeId: keyManager.getNodeId(),
+        keyManager: keyManager,
         vaultsPath: path.join(altDataDir, 'vaults'),
         vaultsKey: altVaultKey,
         nodeManager: altNodeManager,

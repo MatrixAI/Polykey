@@ -43,12 +43,7 @@ version.action(async (vault, versionId, options) => {
     const vaultMessage = new clientPB.VaultMessage();
     const vaultsVersionMessage = new clientPB.VaultsVersionMessage();
 
-    // check if vault ID or Name was provided.
-    // FIXME, we can't use this method anymore.
-    throw Error('Need to fix this.');
-    // if(isVaultId(vault)) vaultMessage.setVaultId(vault);
-    // else vaultMessage.setNameOrId(vault);
-
+    vaultMessage.setNameOrId(vault);
     vaultsVersionMessage.setVault(vaultMessage);
     vaultsVersionMessage.setVersionId(versionId);
 
@@ -56,16 +51,17 @@ version.action(async (vault, versionId, options) => {
 
     let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
 
-    if(versionId.toLowerCase() === 'end') {
+    if(versionId.toLowerCase() === 'last') {
       successMessage = [`Vault ${vault} is now at the latest version.`];
     }
 
-    if(!statusMessage.getIsLatestVersion()) {
-      successMessage.push('')
-      successMessage.push('Note: any changes made to the contents of the vault while at this version ')
-      successMessage.push('will discard all changes applied to the vault in later versions. You will')
-      successMessage.push('not be able to return to these later versions if changes are made.')
-    }
+    // Disabled for now.
+    // if(!statusMessage.getIsLatestVersion()) {
+    //   successMessage.push('')
+    //   successMessage.push('Note: any changes made to the contents of the vault while at this version ')
+    //   successMessage.push('will discard all changes applied to the vault in later versions. You will')
+    //   successMessage.push('not be able to return to these later versions if changes are made.')
+    // }
 
     process.stdout.write(
       outputFormatter({

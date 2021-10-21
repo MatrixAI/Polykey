@@ -17,6 +17,7 @@ import * as errors from "@/vaults/errors";
 import { FileSystemReadable, FileSystemWritable } from "@/vaults/types";
 import { first } from 'cheerio/lib/api/traversing';
 import { sleep } from '@/utils';
+import { KeyManager } from "@/keys";
 
 describe('VaultInternal', () => {
   let dataDir: string;
@@ -28,7 +29,7 @@ describe('VaultInternal', () => {
   let vaultId: VaultId;
   let efs: EncryptedFS;
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
-  const nodeId = 'DummyNodeId' as NodeId;
+  let keyManager: KeyManager;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -48,9 +49,11 @@ describe('VaultInternal', () => {
     // await efsRoot.mkdir(vaultPath, { recursive: true });
     // efsVault = await efsRoot.chroot(vaultPath);
     // await efsVault.start();
+    const keysPath = path.join(dataDir, 'KEYS');
+    keyManager = await KeyManager.createKeyManager({ keysPath, password: 'password' })
     vault = await VaultInternal.create({
       vaultId,
-      nodeId,
+      keyManager,
       efs,
       logger,
       fresh: true,
@@ -61,6 +64,7 @@ describe('VaultInternal', () => {
     await vault.destroy();
     // await efsVault.stop();
     await efs.stop();
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -210,7 +214,7 @@ describe('VaultInternal', () => {
     await vault.destroy();
     vault = await VaultInternal.create({
       vaultId,
-      nodeId,
+      keyManager,
       efs,
       logger,
       fresh: false,
@@ -367,7 +371,7 @@ describe('VaultInternal', () => {
       let firstCommitResolveTime;
 
       //@ts-ignore
-      expect(vault._lock.isLocked()).toBeFalsy();
+      expect(vault.lock.isLocked()).toBeFalsy();
 
       const commit1 = vault.commit(async (efs) => {
         await efs.writeFile(secret1.name, secret1.content);
@@ -378,7 +382,7 @@ describe('VaultInternal', () => {
 
       // Now that we are holding the lock hostage,
       //@ts-ignore
-      expect(vault._lock.isLocked()).toBeTruthy();
+      expect(vault.lock.isLocked()).toBeTruthy();
       // we want to check if any action resolves before the lock is released.
 
       let secondCommitResolved = false;
@@ -408,7 +412,7 @@ describe('VaultInternal', () => {
       expect(secondCommitResolved).toBeTruthy();
       expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
       //@ts-ignore
-      expect(vault._lock.isLocked()).toBeFalsy();
+      expect(vault.lock.isLocked()).toBeFalsy();
 
       // Commit order should be commit2 -> commit1 -> init
       const log = await vault.log();
@@ -483,7 +487,7 @@ describe('VaultInternal', () => {
       let firstCommitResolveTime;
 
       //@ts-ignore
-      expect(vault._lock.isLocked()).toBeFalsy();
+      expect(vault.lock.isLocked()).toBeFalsy();
 
       const commit1 = vault.access(async (efs) => {
         await efs.readFile(secret1.name);
@@ -495,7 +499,7 @@ describe('VaultInternal', () => {
       // Now that we are holding the lock hostage,
       // we want to check if any action resolves before the lock is released.
       //@ts-ignore
-      expect(vault._lock.isLocked()).toBeTruthy();
+      expect(vault.lock.isLocked()).toBeTruthy();
 
       let secondCommitResolved = false;
       let secondCommitResolveTime;
@@ -524,7 +528,7 @@ describe('VaultInternal', () => {
       expect(secondCommitResolved).toBeTruthy();
       expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
       //@ts-ignore
-      expect(vault._lock.isLocked()).toBeFalsy();
+      expect(vault.lock.isLocked()).toBeFalsy();
     })
   });
   test('Vault only exposes limited commands of VaultInternal', async () => {
