@@ -259,6 +259,7 @@ describe('GRPC agent', () => {
         targetPort: 0 as Port,
         forwardProxy: fwdProxy,
         keyManager: keyManager,
+        logger: logger,
       });
       // @ts-ignore - force push into the protected connections map
       nodeManager.connections.set(
