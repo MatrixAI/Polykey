@@ -55,13 +55,13 @@ version.action(async (vault, versionId, options) => {
       successMessage = [`Vault ${vault} is now at the latest version.`];
     }
 
-    // Disabled for now.
-    // if(!statusMessage.getIsLatestVersion()) {
-    //   successMessage.push('')
-    //   successMessage.push('Note: any changes made to the contents of the vault while at this version ')
-    //   successMessage.push('will discard all changes applied to the vault in later versions. You will')
-    //   successMessage.push('not be able to return to these later versions if changes are made.')
-    // }
+    /**
+     * Previous status message:
+     * ---
+     * Note: any changes made to the contents of the vault while at this version
+     * will discard all changes applied to the vault in later versions. You will
+     * not be able to return to these later versions if changes are made.
+     */
 
     process.stdout.write(
       outputFormatter({
