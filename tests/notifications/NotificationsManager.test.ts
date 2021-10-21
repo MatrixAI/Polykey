@@ -255,7 +255,7 @@ describe('NotificationsManager', () => {
     });
 
     await senderNodeManager.stop();
-    // Await fwdProxy.stop(); // FIXME: why is this broken?
+    await fwdProxy.stop();
     await senderACL.destroy();
     await senderDb.stop();
     await senderKeyManager.destroy();

@@ -117,7 +117,7 @@ describe('Notifications utils', () => {
     result = await jwtVerify(signedVaultShareNotification, EmbeddedJWK, {});
     expect(result.payload.data).toEqual({
       type: 'VaultShare',
-      vaultId: 'vaultId',
+      vaultId: vaultId,
       vaultName: 'vaultName',
       actions: {
         clone: null,
@@ -202,7 +202,7 @@ describe('Notifications utils', () => {
       );
     expect(decodedVaultShareNotification.data).toEqual({
       type: 'VaultShare',
-      vaultId: 'vaultId',
+      vaultId: vaultId,
       vaultName: 'vaultName',
       actions: {
         clone: null,
