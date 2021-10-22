@@ -168,14 +168,22 @@ class VaultInternal {
   ): Promise<void> {
     const release = await this.lock.acquire();
     const message: string[] = [];
-    await git.checkout({
-      fs: this.efsRoot,
-      dir: this.baseDir,
-      gitdir: this.gitDir,
-      ref: this.workingDir,
-    });
     try {
+      await git.checkout({
+        fs: this.efsRoot,
+        dir: this.baseDir,
+        gitdir: this.gitDir,
+        ref: this.workingDir,
+      });
       await f(this.efsVault);
+      for await (const file of vaultsUtils.readdirRecursivelyEFS(this.efsVault, '.', true)) {
+        await git.resetIndex({
+          fs: this.efsRoot,
+          dir: this.baseDir,
+          gitdir: this.gitDir,
+          filepath: file,
+        });
+      }
       const statusMatrix = await git.statusMatrix({
         fs: this.efsRoot,
         dir: this.baseDir,
