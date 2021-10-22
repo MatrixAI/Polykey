@@ -104,6 +104,7 @@ describe('CLI Identities', () => {
       nodePath: nodePath,
       logger: logger,
       cores: 1,
+      workerManager: null
     });
     await polykeyAgent.start({});
     keynode.id = polykeyAgent.nodes.getNodeId();

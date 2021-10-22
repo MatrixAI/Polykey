@@ -40,6 +40,7 @@ describe('agent utils', () => {
         nodePath: nodePath,
         logger: logger,
         cores: 1,
+        workerManager: null
       });
       await agent.start({});
       await expect(
@@ -98,6 +99,7 @@ describe('agent utils', () => {
         nodePath: nodePath,
         logger: logger,
         cores: 1,
+        workerManager: null
       });
       await agent.start({});
       await expect(

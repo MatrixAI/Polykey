@@ -52,6 +52,7 @@ describe('CLI agent', () => {
         nodePath: activeNodePath,
         logger,
         cores: 1,
+        workerManager: null,
       });
       await activeNode.start({});
     });
@@ -274,6 +275,7 @@ describe('CLI agent', () => {
         nodePath: activeAgentPath,
         logger: logger,
         cores: 1,
+        workerManager: null,
       });
       await activeAgent.start({});
     }, global.polykeyStartupTimeout);

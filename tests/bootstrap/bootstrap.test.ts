@@ -69,6 +69,7 @@ describe('Bootstrap', () => {
           nodePath: nodePath,
           logger: logger,
           cores: 1,
+          workerManager: null,
         });
         await pk.start({});
         await pk.stop();
@@ -113,6 +114,7 @@ describe('Bootstrap', () => {
         nodePath: nodePath,
         logger: logger,
         cores: 1,
+        workerManager: null,
       });
       await polykeyAgent.start({});
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeTruthy();

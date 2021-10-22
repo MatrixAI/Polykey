@@ -46,7 +46,7 @@ class Polykey {
   public readonly gestalts: GestaltGraph;
   public readonly identities: IdentitiesManager;
   public readonly notifications: NotificationsManager;
-  public readonly workers: WorkerManager;
+  public readonly workers?: WorkerManager;
   public readonly sigchain: Sigchain;
   public readonly acl: ACL;
   public readonly db: DB;
@@ -111,7 +111,7 @@ class Polykey {
     notificationsManager?: NotificationsManager;
     acl?: ACL;
     db?: DB;
-    workerManager?: WorkerManager;
+    workerManager?: WorkerManager | null;
     clientGrpcHost?: string;
     agentGrpcHost?: string;
     clientGrpcPort?: number;
@@ -193,12 +193,17 @@ class Polykey {
     // Writing current version info.
     await fs_.promises.writeFile(versionFilePath, JSON.stringify(config));
 
-    const workers_ =
-      workerManager ??
-      (await WorkerManager.createPolykeyWorkerManager({
-        cores,
-        logger: logger_.getChild('WorkerManager'),
-      }));
+    let workers_: WorkerManager | undefined = undefined
+    if (workerManager !== null) {
+      logger_.info('Creating a WorkerManager');
+      workers_ =
+        workerManager ??
+        (await WorkerManager.createPolykeyWorkerManager({
+          cores,
+          logger: logger_.getChild('WorkerManager')
+        }));
+    }
+
     const fwdProxy_ =
       fwdProxy ??
       (await ForwardProxy.createForwardProxy({
@@ -222,6 +227,11 @@ class Polykey {
         logger: logger_.getChild('KeyManager'),
         fresh,
       }));
+    if (workers_ != null) {
+      logger_.info('Setting workerManager for KeyManger.');
+      keys_.setWorkerManager(workers_);
+    }
+
     const db_ =
       db ??
       (await DB.createDB({
@@ -236,7 +246,11 @@ class Polykey {
           },
         },
       }));
-    db_.setWorkerManager(workers_);
+    // Setting the workerManager.
+    if (workers_ != null) {
+      logger_.info('Setting workerManager for DB');
+      db_.setWorkerManager(workers_);
+    }
     const sigchain_ =
       sigchain ??
       (await Sigchain.createSigchain({
@@ -386,7 +400,7 @@ class Polykey {
     notificationsManager: NotificationsManager;
     acl: ACL;
     db: DB;
-    workerManager: WorkerManager;
+    workerManager?: WorkerManager;
     clientGrpcHost: string;
     agentGrpcHost: string;
     clientGrpcPort: number;
@@ -495,7 +509,6 @@ class Polykey {
     }
 
     // Starting modules
-    this.keys.setWorkerManager(this.workers);
 
     // Getting NodeId
     const cert = this.keys.getRootCert();
@@ -596,7 +609,7 @@ class Polykey {
     await this.sigchain.destroy();
     await this.sessions.destroy();
     await this.acl.destroy();
-    await this.workers.destroy();
+    await this.workers?.destroy();
     // Await this.db.destroy(); // don't actually destroy this. it removes files.
     await this.keys.destroy();
     this.logger.info('Destroyed Polykey');
