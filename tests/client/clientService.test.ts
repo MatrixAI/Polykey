@@ -826,29 +826,36 @@ describe('Client service', () => {
       // expect(resultsString).toContain('pull');
     });
     describe('vault versions', () => {
-      test("should be able to switch a vault to a specific version of it's history using VaultName", async () => {
-        // Constants for current test.
-        const vaultName = 'historyVault' as VaultName;
+      const vaultName = 'Vault1' as VaultName;
+      const secretName = 'Secret-1';
+      const secretVer1 = {
+        name: secretName,
+        content: 'Secret-1-content-ver1',
+      };
+      const secretVer2 = {
+        name: secretName,
+        content: 'Secret-1-content-ver2',
+      };
+      let vaultsVersion;
 
-        const secretName = 'Secret-1';
-        const secretVer1 = {
-          name: secretName,
-          content: 'Secret-1-content-ver1',
-        };
-        const secretVer2 = {
-          name: secretName,
-          content: 'Secret-1-content-ver2',
-        };
+      let vault: Vault;
 
-        const vaultsVersion =
+      beforeEach(async () => {
+        // Creating the vault
+        vault = await vaultManager.createVault(vaultName);
+
+        vaultsVersion =
           grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
             client,
             client.vaultsVersion,
           );
+      });
 
-        // Create a vault
-        const vault = await vaultManager.createVault(vaultName);
+      afterEach(async () => {
+        await vaultManager.destroyVault(vault.vaultId);
+      });
 
+      test("should be able to switch a vault to a specific version of it's history using VaultName", async () => {
         // Commit some history
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer1.name, secretVer1.content);
@@ -897,29 +904,6 @@ describe('Client service', () => {
         });
       });
       test("should be able to switch a vault to a specific version of it's history using VaultId", async () => {
-        // Constants for current test.
-        const vaultName = 'historyVaultID' as VaultName;
-
-        const secretName = 'Secret-1';
-        const secretVer1 = {
-          name: secretName,
-          content: 'Secret-1-content-ver1',
-        };
-        const secretVer2 = {
-          name: secretName,
-          content: 'Secret-1-content-ver2',
-        };
-
-        const vaultsVersion =
-          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-            client,
-            client.vaultsVersion,
-          );
-
-        // Create a vault
-        const vault = await vaultManager.createVault(vaultName);
-        const vaultId = vault.vaultId;
-
         // Commit some history
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer1.name, secretVer1.content);
@@ -933,7 +917,7 @@ describe('Client service', () => {
 
         // Revert the version
         const vaultMessage = new clientPB.VaultMessage();
-        vaultMessage.setNameOrId(makeVaultIdPretty(vaultId));
+        vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
 
         const vaultVersionMessage = new clientPB.VaultsVersionMessage();
         vaultVersionMessage.setVault(vaultMessage);
@@ -968,29 +952,6 @@ describe('Client service', () => {
         });
       });
       test('should fail to find a non existent version', async () => {
-        // Constants for current test.
-        const vaultName = 'nonExistentVersionVault' as VaultName;
-
-        const secretName = 'Secret-1';
-        const secretVer1 = {
-          name: secretName,
-          content: 'Secret-1-content-ver1',
-        };
-        const secretVer2 = {
-          name: secretName,
-          content: 'Secret-1-content-ver2',
-        };
-
-        const vaultsVersion =
-          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-            client,
-            client.vaultsVersion,
-          );
-
-        // Create a vault
-        const vault = await vaultManager.createVault(vaultName);
-        const vaultId = vault.vaultId;
-
         // Commit some history
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer1.name, secretVer1.content);
@@ -1001,7 +962,7 @@ describe('Client service', () => {
 
         // Revert the version
         const vaultMessage = new clientPB.VaultMessage();
-        vaultMessage.setNameOrId(makeVaultIdPretty(vaultId));
+        vaultMessage.setNameOrId(makeVaultIdPretty(vault.vaultId));
 
         const vaultVersionMessage = new clientPB.VaultsVersionMessage();
         vaultVersionMessage.setVault(vaultMessage);
@@ -1013,28 +974,6 @@ describe('Client service', () => {
         );
       });
       test('should be able to go to the end of the vault history', async () => {
-        // Constants for current test.
-        const vaultName = 'historyVault' as VaultName;
-
-        const secretName = 'Secret-1';
-        const secretVer1 = {
-          name: secretName,
-          content: 'Secret-1-content-ver1',
-        };
-        const secretVer2 = {
-          name: secretName,
-          content: 'Secret-1-content-ver2',
-        };
-
-        const vaultsVersion =
-          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-            client,
-            client.vaultsVersion,
-          );
-
-        // Create a vault
-        const vault = await vaultManager.createVault(vaultName);
-
         // Commit some history
         await vault.commit(async (efs) => {
           await efs.writeFile(secretVer1.name, secretVer1.content);
@@ -1083,31 +1022,11 @@ describe('Client service', () => {
         });
       });
       test('should destroy newer history when writing to an old version', async () => {
-        // Constants for current test.
-        const vaultName = 'overwriteVault' as VaultName;
-
-        const secretVer1 = {
-          name: 'secret1',
-          content: 'Secret-1-content-ver1',
-        };
-        const secretVer2 = {
-          name: 'secret2',
-          content: 'Secret-1-content-ver2',
-        };
         const secretVer3 = {
           name: 'secret3',
           content: 'Secret-1-content-ver3',
         };
         const secretVerNew = { name: 'secretNew', content: 'NEW CONTENT' };
-
-        const vaultsVersion =
-          grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
-            client,
-            client.vaultsVersion,
-          );
-
-        // Create a vault
-        const vault = await vaultManager.createVault(vaultName);
 
         // Commit some history
         await vault.commit(async (efs) => {

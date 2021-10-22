@@ -607,7 +607,6 @@ describe('CLI vaults', () => {
     });
   });
   describe('commandVaultLog', () => {
-    const vaultName = 'Vault1' as VaultName;
     const secret1 = { name: 'secret1', content: 'Secret-1-content' };
     const secret2 = { name: 'secret2', content: 'Secret-2-content' };
 
