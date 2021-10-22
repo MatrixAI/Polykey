@@ -633,7 +633,6 @@ const createVaultRPC = ({
         const currentVersionId = (await vault.log(0, versionId))[0]?.oid;
 
         // Checking if latest version ID.
-        console.log(latestOid, currentVersionId);
         const isLatestVersion = latestOid === currentVersionId;
 
         // Creating message

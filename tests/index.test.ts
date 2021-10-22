@@ -19,6 +19,7 @@ describe('index', () => {
       nodePath: dataDir,
       logger,
       cores: 1,
+      workerManager: null
     });
     expect(pk).toBeInstanceOf(PolykeyAgent);
     await pk.stop();

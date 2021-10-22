@@ -21,6 +21,16 @@ describe('KeyManager', () => {
   ]);
   let dataDir: string;
   const cores = 1;
+  let workerManager: WorkerManager;
+  beforeAll( async () => {
+    workerManager = await WorkerManager.createPolykeyWorkerManager({
+      cores,
+      logger,
+    });
+  })
+  afterAll(async () => {
+    await workerManager.destroy();
+  })
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -64,10 +74,6 @@ describe('KeyManager', () => {
     await keyManager.destroy();
   });
   test('uses WorkerManager for generating root key pair', async () => {
-    const workerManager = await WorkerManager.createPolykeyWorkerManager({
-      cores,
-      logger,
-    });
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
       password,
@@ -80,7 +86,6 @@ describe('KeyManager', () => {
     expect(keysPathContents).toContain('root.key');
     await keyManager.destroy();
     keyManager.unsetWorkerManager();
-    await workerManager.destroy();
   });
   test('encrypting and decrypting with root key', async () => {
     const keysPath = `${dataDir}/keys`;
@@ -96,10 +101,6 @@ describe('KeyManager', () => {
     await keyManager.destroy();
   });
   test('uses WorkerManager for encryption and decryption with root key', async () => {
-    const workerManager = await WorkerManager.createPolykeyWorkerManager({
-      cores,
-      logger,
-    });
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
       password,
@@ -113,7 +114,6 @@ describe('KeyManager', () => {
     expect(plainText_.equals(plainText)).toBe(true);
     await keyManager.destroy();
     keyManager.unsetWorkerManager();
-    await workerManager.destroy();
   });
   test('encrypting beyond maximum size', async () => {
     const keysPath = `${dataDir}/keys`;
@@ -143,10 +143,7 @@ describe('KeyManager', () => {
     await keyManager.destroy();
   });
   test('uses WorkerManager for signing and verifying with root key', async () => {
-    const workerManager = await WorkerManager.createPolykeyWorkerManager({
-      cores,
-      logger,
-    });
+
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
       password,
@@ -160,7 +157,6 @@ describe('KeyManager', () => {
     expect(signed).toBe(true);
     await keyManager.destroy();
     keyManager.unsetWorkerManager();
-    await workerManager.destroy();
   });
   test('can change root key password', async () => {
     const keysPath = `${dataDir}/keys`;

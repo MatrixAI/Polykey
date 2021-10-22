@@ -37,7 +37,6 @@ import { Vault, VaultId, VaultName } from '@/vaults/types';
 import { vaultOps } from '@/vaults';
 import { makeVaultId, makeVaultIdPretty } from '@/vaults/utils';
 import { utils as idUtils } from '@matrixai/id';
-import { credentials } from '@grpc/grpc-js';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -121,6 +120,7 @@ describe('Client service', () => {
       logger,
       fwdProxy,
       cores: 1,
+      workerManager: null,
     });
 
     await polykeyAgent.start({});
@@ -270,6 +270,7 @@ describe('Client service', () => {
           nodePath: newNodePath,
           logger,
           cores: 1,
+          workerManager: null,
         });
 
         await agent.start({});
@@ -871,7 +872,6 @@ describe('Client service', () => {
           vaultVersionMessage,
           callCredentials,
         );
-        console.log(await vault.log());
         expect(response.getIsLatestVersion()).toBeFalsy();
 
         // Read old history
@@ -929,7 +929,6 @@ describe('Client service', () => {
           await efs.writeFile(secretVer2.name, secretVer2.content);
         });
         const ver2Oid = (await vault.log())[0].oid;
-        console.log(ver1Oid, ver2Oid);
         expect(ver1Oid).not.toEqual(ver2Oid);
 
         // Revert the version
@@ -944,7 +943,6 @@ describe('Client service', () => {
           vaultVersionMessage,
           callCredentials,
         );
-        console.log(await vault.log());
         expect(response.getIsLatestVersion()).toBeFalsy();
 
         // Read old history
@@ -1060,7 +1058,6 @@ describe('Client service', () => {
           vaultVersionMessage,
           callCredentials,
         );
-        console.log(await vault.log());
         expect(response.getIsLatestVersion()).toBeFalsy();
 
         // Read old history

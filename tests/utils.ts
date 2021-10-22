@@ -36,6 +36,7 @@ async function setupRemoteKeynode({
     nodePath: nodeDir,
     logger: logger,
     cores: 1,
+    workerManager: null
   });
   await remote.start({});
   return remote;
