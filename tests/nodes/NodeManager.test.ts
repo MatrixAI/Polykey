@@ -260,7 +260,7 @@ describe('NodeManager', () => {
     'finds node (contacts remote node)',
     async () => {
       // Case 2: node can be found on the remote node
-      const nodeId = makeNodeId('TestNodeId1xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
+      const nodeId = makeNodeId('zTestNdeId1xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
       const nodeAddress: NodeAddress = {
         ip: '127.0.0.1' as Host,
         port: 11111 as Port,

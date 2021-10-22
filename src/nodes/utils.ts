@@ -1,7 +1,7 @@
 import type { NodeId, NodeData } from './types';
 
 import { Validator } from 'ip-num';
-import { ErrorInvalidNodeId } from '../errors';
+import { isIdString, makeIdString } from '../GenericIdTypes';
 
 /**
  * Compute the distance between two nodes.
@@ -54,17 +54,15 @@ function calculateBucketIndex(
   return bucketIndex;
 }
 
-const validNodeId = /^[A-Za-z0-9]{44}$/;
 /**
  * Validates that a provided node ID string is a valid node ID.
  */
 function isNodeId(nodeId: string): nodeId is NodeId {
-  return validNodeId.test(nodeId);
+  return isIdString<NodeId>(nodeId, 32);
 }
 
 function makeNodeId(arg: any): NodeId {
-  if (isNodeId(arg)) return arg;
-  throw new ErrorInvalidNodeId('NodeID is not a base58 string of length 44');
+  return makeIdString<NodeId>(arg, 32, 'base32hex');
 }
 
 /**

@@ -133,14 +133,14 @@ describe('VaultOps', () => {
         name,
       );
     }
-  }, global.defaultTimeout * 2);
+  }, global.defaultTimeout * 4);
   test('updating secret content', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     await vaultOps.updateSecret(vault, 'secret-1', 'secret-content-change');
     expect(
       (await vaultOps.getSecret(vault, 'secret-1')).toString(),
     ).toStrictEqual('secret-content-change');
-  });
+  }, global.defaultTimeout * 4);
   test('updating secret content within a directory', async () => {
     await vaultOps.mkdir(vault, path.join('dir-1', 'dir-2'), {
       recursive: true,
@@ -219,7 +219,7 @@ describe('VaultOps', () => {
         vault.access((efs) => efs.readdir('.')),
       ).resolves.not.toContain(name);
     }
-  }, global.defaultTimeout * 2);
+  }, global.defaultTimeout * 4);
   test('renaming a secret', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     await vaultOps.renameSecret(vault, 'secret-1', 'secret-change');
@@ -335,7 +335,7 @@ describe('VaultOps', () => {
     await vaultOps.deleteSecret(vault, '.hidingDir', { recursive: true });
     list = await vaultOps.listSecrets(vault);
     expect(list.sort()).toStrictEqual([].sort());
-  });
+  }, global.defaultTimeout * 4);
   test('adding a directory of 1 secret', async () => {
     const secretDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'secret-directory-'),
@@ -495,5 +495,5 @@ describe('VaultOps', () => {
       force: true,
       recursive: true,
     });
-  }, global.defaultTimeout * 3);
+  }, global.defaultTimeout * 5);
 });

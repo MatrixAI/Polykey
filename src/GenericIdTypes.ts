@@ -1,6 +1,7 @@
 import { utils as idUtils } from '@matrixai/id';
 import { ErrorInvalidId } from './errors';
 import { Id as InternalId } from '@matrixai/id/dist/Id';
+import { MultibaseFormats } from '@matrixai/id/dist/utils';
 
 /// This is the internal form of the Id.
 export type Id = InternalId;
@@ -43,19 +44,21 @@ function makeId<T extends Id>(arg: any): T {
   throw new ErrorInvalidId();
 }
 
-function isIdString<T extends IdString>(arg: any): arg is T {
+function isIdString<T extends IdString>(arg: any, validByteLength: number = idValidByteLength): arg is T {
   if (typeof arg !== 'string') return false;
+  console.log(arg)
   const id = idUtils.fromMultibase(arg);
   if (id == null) return false;
-  return id.length === idValidByteLength;
+  return id.length === validByteLength;
 }
 
-function makeIdString<T extends IdString>(arg: any): T {
+function makeIdString<T extends IdString>(arg: any, validByteLength: number = idValidByteLength, format: MultibaseFormats = 'base58btc'): T {
   let id = arg;
   if (id instanceof Uint8Array) {
-    id = idUtils.toMultibase(arg, 'base58btc');
+    if (id.length !== validByteLength) throw new ErrorInvalidId();
+    return idUtils.toMultibase(arg, format) as T;
   }
-  if (isIdString<T>(id)) return id;
+  if (isIdString<T>(id, validByteLength)) return id;
   throw new ErrorInvalidId();
 }
 
