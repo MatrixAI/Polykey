@@ -1,6 +1,8 @@
 import type { NodeId } from '@/nodes/types';
 
 import * as nodesUtils from '@/nodes/utils';
+import { makeNodeId } from '@/nodes/utils';
+import { fromMultibase } from '@/GenericIdTypes';
 
 /**
  * Generates a node ID that, according to Kademlia, will be placed into 'nodeId's
@@ -12,7 +14,9 @@ import * as nodesUtils from '@/nodes/utils';
 function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   const lowerBoundDistance = BigInt(2) ** BigInt(bucketIndex);
   const bufferId = nodesUtils.nodeIdToU8(nodeId);
+  // console.log(bufferId);
   const bufferDistance = bigIntToBuffer(lowerBoundDistance);
+  // console.log(bufferDistance);
   // Console.log('Distance buffer:', bufferDistance);
   // console.log('Node ID buffer:', bufferId);
 
@@ -38,8 +42,8 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   // Reverse the XORed array back to normal
   newIdArray.reverse();
   // Convert to an ASCII string
-  const decoder = new TextDecoder('ascii');
-  return decoder.decode(newIdArray) as NodeId;
+  // console.log(newIdArray);
+  return makeNodeId(newIdArray);
 }
 
 /**
@@ -52,10 +56,10 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
  * nodes appearing in larger-indexed buckets.
  */
 function incrementNodeId(nodeId: NodeId): NodeId {
-  const lastCharIndex = nodeId.length - 1;
-  const newLastChar = String.fromCharCode(nodeId.charCodeAt(lastCharIndex) + 1);
-  const constructedId = nodeId.substring(0, lastCharIndex) + newLastChar;
-  return constructedId as NodeId;
+  const nodeIdArray = fromMultibase(nodeId)!;
+  const lastCharIndex = nodeIdArray.length - 1;
+  nodeIdArray[lastCharIndex] = nodeIdArray[lastCharIndex] + 1;
+  return makeNodeId(nodeIdArray);
 }
 
 /**

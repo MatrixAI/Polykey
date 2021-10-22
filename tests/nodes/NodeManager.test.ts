@@ -40,6 +40,11 @@ describe('NodeManager', () => {
   const serverHost = '::1' as Host;
   const serverPort = 1 as Port;
 
+  const nodeId1 = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
+  const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
+  const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
+  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+
   beforeAll(async () => {
     fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
@@ -245,7 +250,7 @@ describe('NodeManager', () => {
   ); // Ping needs to timeout (takes 20 seconds + setup + pulldown)
   test('finds node (local)', async () => {
     // Case 1: node already exists in the local node graph (no contact required)
-    const nodeId = 'nodeId' as NodeId;
+    const nodeId = nodeId1;
     const nodeAddress: NodeAddress = {
       ip: '127.0.0.1' as Host,
       port: 11111 as Port,
@@ -260,7 +265,7 @@ describe('NodeManager', () => {
     'finds node (contacts remote node)',
     async () => {
       // Case 2: node can be found on the remote node
-      const nodeId = makeNodeId('TestNodeId1xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
+      const nodeId = nodeId1;
       const nodeAddress: NodeAddress = {
         ip: '127.0.0.1' as Host,
         port: 11111 as Port,
@@ -282,7 +287,7 @@ describe('NodeManager', () => {
     'cannot find node (contacts remote node)',
     async () => {
       // Case 3: node exhausts all contacts and cannot find node
-      const nodeId = makeNodeId('TestNodeId2xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
+      const nodeId = nodeId1;
       const server = await testUtils.setupRemoteKeynode({ logger: logger });
       await nodeManager.setNode(server.nodes.getNodeId(), {
         ip: server.revProxy.getIngressHost(),
@@ -292,7 +297,7 @@ describe('NodeManager', () => {
       // Server will not be able to connect to this node (the only node in its
       // database), and will therefore not be able to locate the node.
       await server.nodes.setNode(
-        'dummyNode' as NodeId,
+        dummyNode,
         {
           ip: '127.0.0.2' as Host,
           port: 22222 as Port,
@@ -309,7 +314,6 @@ describe('NodeManager', () => {
   );
   test('knows node (true and false case)', async () => {
     // Known node
-    const nodeId1 = makeNodeId('TestNodeId3xxxxGzpzvdSn2kMubiy5DTqer3iuzD99X');
     const nodeAddress1: NodeAddress = {
       ip: '127.0.0.1' as Host,
       port: 11111 as Port,
@@ -318,7 +322,6 @@ describe('NodeManager', () => {
     expect(await nodeManager.knowsNode(nodeId1)).toBeTruthy();
 
     // Unknown node
-    const nodeId2 = 'nodeId2' as NodeId;
     expect(await nodeManager.knowsNode(nodeId2)).not.toBeTruthy();
   });
 

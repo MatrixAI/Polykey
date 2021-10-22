@@ -13,6 +13,8 @@ import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import { makeCrypto } from '../utils';
+import { isNodeId, makeNodeId } from '@/nodes/utils';
+import { fromMultibase, toMultibase} from '@/GenericIdTypes';
 
 describe('KeyManager', () => {
   const password = 'password';
@@ -516,7 +518,19 @@ describe('KeyManager', () => {
       await keyManager.destroy();
     });
   });
-
+  test('KeyManager generates a valid NodeId', async () => {
+    const keysPath = `${dataDir}/keys`;
+    const keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
+    const nodeId = keyManager.getNodeId();
+    console.log(nodeId);
+    console.log(isNodeId(nodeId))
+    console.log(makeNodeId(nodeId))
+    console.log(fromMultibase('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0'))
+  })
   test('destroying the KeyManager prevents any further method calls.', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({

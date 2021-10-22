@@ -22,6 +22,7 @@ import * as grpcErrors from '@/grpc/errors';
 import * as nodesTestUtils from './utils';
 import * as nodesUtils from '@/nodes/utils';
 import { makeCrypto } from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 // FIXME: This is not finishing properly.
 describe('NodeConnection', () => {
@@ -58,6 +59,17 @@ describe('NodeConnection', () => {
 
   let agentService;
   let server: GRPCServer;
+
+
+  const nodeIdGenerator = (number: number ) => {
+    const idArray = new Uint8Array([
+      223,  24,  34,  40,  46, 217,  4,  71,
+      103,  71,  59, 123, 143, 187,  9,  29,
+      157,  41, 131,  44,  68, 160, 79, 127,
+      137, 154, 221,  86, 157,  23, 77, number
+    ]);
+    return makeNodeId(idArray);
+  }
 
   // Meep IPs unique. Ideally we'd use the generated IP and port. But this is good for now.
   // If this fails again we shouldn't specify the port and IP.
@@ -290,7 +302,7 @@ describe('NodeConnection', () => {
     }
     // Now create and add 10 more nodes that are far away from this node
     for (let i = 1; i <= 10; i++) {
-      const farNodeId = ('NODEID' + i) as NodeId;
+      const farNodeId = nodeIdGenerator(i);
       const nodeAddress = {
         ip: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,

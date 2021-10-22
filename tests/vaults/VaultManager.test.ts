@@ -292,7 +292,7 @@ describe('VaultManager', () => {
       restartedVaultNames.push(vaultName);
     });
     expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
-  });
+  }, global.defaultTimeout * 2);
   test.skip('cannot concurrently create the same vault', async () => {
     const vaults = Promise.all([
       vaultManager.createVault(vaultName),

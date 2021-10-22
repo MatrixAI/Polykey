@@ -4,8 +4,9 @@ import type { Opaque } from '../types';
 import type { Host, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
+import { IdString } from '../GenericIdTypes';
 
-type NodeId = Opaque<'NodeId', string>;
+type NodeId = Opaque<'NodeId', IdString>;
 
 type NodeAddress = {
   ip: Host;

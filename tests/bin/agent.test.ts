@@ -80,7 +80,7 @@ describe('CLI agent', () => {
             '.',
           );
 
-          await poll(global.polykeyStartupTimeout * 1.5, async () => {
+          await poll(global.polykeyStartupTimeout * 3, async () => {
             return await agentUtils.checkAgentRunning(foregroundNodePath);
           });
 
@@ -98,12 +98,12 @@ describe('CLI agent', () => {
           );
           process.kill(lock.pid);
           await agent; //Waiting for agent to finish running.
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const test = await agentUtils.checkAgentRunning(foregroundNodePath);
             return !test;
           });
 
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const files = await fs.promises.readdir(foregroundNodePath);
             const test = files.includes('agent-lock.json');
             return !test;
@@ -144,7 +144,7 @@ describe('CLI agent', () => {
           const result = await testUtils.pkWithStdio(commands);
           expect(result.code).toBe(0);
 
-          await poll(global.polykeyStartupTimeout * 1.5, async () => {
+          await poll(global.polykeyStartupTimeout * 3, async () => {
             return await agentUtils.checkAgentRunning(backgroundNodePath);
           });
 
@@ -154,13 +154,13 @@ describe('CLI agent', () => {
           );
 
           process.kill(lock.pid);
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const test = await agentUtils.checkAgentRunning(backgroundNodePath);
             return !test;
           });
 
           //Checking that the lockfile was removed.
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const files = await fs.promises.readdir(foregroundNodePath);
             const test = files.includes('agent-lock.json');
             return !test;

@@ -1,7 +1,8 @@
-import type { NodeId, NodeData } from './types';
+import type { NodeData, NodeId } from './types';
 
 import { Validator } from 'ip-num';
-import { ErrorInvalidNodeId } from '../errors';
+import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
+import { ErrorInvalidNodeId } from './errors';
 
 /**
  * Compute the distance between two nodes.
@@ -36,7 +37,7 @@ function calculateDistance(nodeId1: NodeId, nodeId2: NodeId): BigInt {
 function calculateBucketIndex(
   sourceNode: NodeId,
   targetNode: NodeId,
-  nodeIdBits: number,
+  nodeIdBits: number = 256,
 ) {
   const distance = calculateDistance(sourceNode, targetNode);
   // Start at the last bucket: most likely to be here based on relation of
@@ -54,17 +55,15 @@ function calculateBucketIndex(
   return bucketIndex;
 }
 
-const validNodeId = /^[A-Za-z0-9]{44}$/;
 /**
  * Validates that a provided node ID string is a valid node ID.
  */
 function isNodeId(nodeId: string): nodeId is NodeId {
-  return validNodeId.test(nodeId);
+  return isIdString<NodeId>(nodeId, 32);
 }
 
 function makeNodeId(arg: any): NodeId {
-  if (isNodeId(arg)) return arg;
-  throw new ErrorInvalidNodeId('NodeID is not a base58 string of length 44');
+  return makeIdString<NodeId>(arg, 32, 'base32hex');
 }
 
 /**
@@ -79,13 +78,11 @@ function isValidHost(host: string): boolean {
 /**
  * Node ID to an array of 8-bit unsigned ints
  */
-function nodeIdToU8(id: string) {
-  const b = Buffer.from(id, 'ascii');
-  return new Uint8Array(
-    b.buffer,
-    b.byteOffset,
-    b.byteLength / Uint8Array.BYTES_PER_ELEMENT,
-  );
+function nodeIdToU8(id: string): Uint8Array {
+  // Converting from the multibase string to a buffer of hopefully 32 bytes.
+  const byteArray = fromMultibase(id);
+  if (byteArray == null) throw new ErrorInvalidNodeId()
+  return byteArray;
 }
 
 /**

@@ -105,6 +105,7 @@ async function spawnBackgroundAgent( // FIXME, this is broken.
         agentProcess.unref();
         agentProcess.disconnect();
         if (msg !== 'started') {
+          console.log(msg);
           externalReject(
             'something went wrong, child process did not start polykey agent',
           );

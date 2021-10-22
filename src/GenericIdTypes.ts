@@ -1,7 +1,10 @@
 import { utils as idUtils } from '@matrixai/id';
 import { ErrorInvalidId } from './errors';
 import { Id as InternalId } from '@matrixai/id/dist/Id';
+import type { Codec } from 'multiformats/bases/base';
+import { bases } from 'multiformats/basics';
 
+type MultibaseFormats = keyof typeof bases;
 /// This is the internal form of the Id.
 export type Id = InternalId;
 /// This is the user readable string form of the Id.
@@ -43,19 +46,21 @@ function makeId<T extends Id>(arg: any): T {
   throw new ErrorInvalidId();
 }
 
-function isIdString<T extends IdString>(arg: any): arg is T {
+function isIdString<T extends IdString>(arg: any, validByteLength: number = idValidByteLength): arg is T {
   if (typeof arg !== 'string') return false;
-  const id = idUtils.fromMultibase(arg);
+  const id = fromMultibase(arg);
   if (id == null) return false;
-  return id.length === idValidByteLength;
+  return id.length === validByteLength;
 }
 
-function makeIdString<T extends IdString>(arg: any): T {
+function makeIdString<T extends IdString>(arg: any, validByteLength: number = idValidByteLength, format: MultibaseFormats = 'base58btc'): T {
   let id = arg;
+  console.log(id);
   if (id instanceof Uint8Array) {
-    id = idUtils.toMultibase(arg, 'base58btc');
+    if (id.length !== validByteLength) throw new ErrorInvalidId();
+    return toMultibase(arg, format) as T;
   }
-  if (isIdString<T>(id)) return id;
+  if (isIdString<T>(id, validByteLength)) return id;
   throw new ErrorInvalidId();
 }
 
@@ -67,4 +72,33 @@ function stringToId(idString: IdString): Id {
   return idUtils.fromString(idString)!;
 }
 
-export { isId, makeId, isIdString, makeIdString, idToString, stringToId };
+// Multibase helper functions.
+const basesByPrefix: Record<string, Codec<string, string>> = {};
+for (const k in bases) {
+  const codec = bases[k];
+  basesByPrefix[codec.prefix] = codec;
+}
+
+/**
+ * Encodes an multibase ID string
+ */
+function toMultibase(id: Uint8Array, format: MultibaseFormats): string {
+  const codec = bases[format];
+  return codec.encode(id);
+}
+
+/**
+ * Decodes a multibase encoded ID
+ * Do not use this for generic multibase strings
+ */
+function fromMultibase(idString: string): Uint8Array | undefined {
+  const prefix = idString[0];
+  const codec = basesByPrefix[prefix];
+  if (codec == null) {
+    return;
+  }
+  const buffer = codec.decode(idString);
+  return new Uint8Array(buffer);
+}
+
+export { isId, makeId, isIdString, makeIdString, idToString, stringToId, toMultibase, fromMultibase};

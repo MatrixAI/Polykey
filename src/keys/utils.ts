@@ -31,7 +31,8 @@ import config from '../config';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
 import { promisify } from '../utils';
-import base58 from 'bs58';
+import { isNodeId, makeNodeId } from '../nodes/utils';
+import { fromMultibase, toMultibase } from '@matrixai/id/dist/utils';
 
 const ivSize = 16;
 const authTagSize = 16;
@@ -161,8 +162,7 @@ function publicKeyToFingerprintBytes(
 function publicKeyToFingerprint(publicKey: PublicKey): PublicKeyFingerprint {
   const fString = publicKeyToFingerprintBytes(publicKey);
   const fTypedArray = forgeUtil.binary.raw.decode(fString);
-  const f = base58.encode(fTypedArray);
-  // Const f = forgeUtil.binary.base64.encode(fTypedArray);
+  const f = makeNodeId(fTypedArray);
   return f;
 }
 

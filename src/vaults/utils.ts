@@ -45,7 +45,7 @@ function makeVaultId(arg: any): VaultId {
   return makeId<VaultId>(arg);
 }
 
-function isVaultItPretty(arg: any): arg is VaultIdPretty {
+function isVaultIdPretty(arg: any): arg is VaultIdPretty {
   return isIdString<VaultIdPretty>(arg);
 }
 
@@ -249,7 +249,7 @@ async function requestVaultNames(
 
 export {
   isVaultId,
-  isVaultItPretty,
+  isVaultIdPretty,
   makeVaultId,
   makeVaultIdPretty,
   generateVaultKey,
