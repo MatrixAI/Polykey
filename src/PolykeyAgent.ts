@@ -575,43 +575,36 @@ class Polykey {
    */
   public async stop() {
     this.logger.info('Stopping Polykey');
-
-    this.logger.info(
-      `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
-    );
-    await this.lockfile.stop(); // TODO: remove the lockfile when polykey is destroyed.
-    await this.revProxy.stop();
-    await this.nodes.stop();
-    await this.fwdProxy.stop();
-    await this.db.stop();
-
-    this.keys.unsetWorkerManager();
-
     // Stop GRPC Server
     await this.clientGrpcServer.stop();
     await this.agentGrpcServer.stop();
-
+    await this.lockfile.stop(); // TODO: remove the lockfile when polykey is destroyed.
+    await this.nodes.stop();
+    await this.revProxy.stop();
+    await this.fwdProxy.stop();
+    await this.db.stop();
+    this.keys.unsetWorkerManager();
     this.logger.info('Stopped Polykey');
   }
 
   public async destroy() {
     this.logger.info('Destroying Polykey');
-    await this.vaults.destroy();
-    await this.discovery.destroy();
     await this.agentGrpcServer.destroy();
     await this.clientGrpcServer.destroy();
-    await this.revProxy.destroy();
+    await this.sessions.destroy();
+    await this.notifications.destroy();
     await this.discovery.destroy();
+    await this.identities.destroy();
+    await this.vaults.destroy();
     await this.nodes.destroy();
     await this.gestalts.destroy();
-    await this.notifications.destroy();
-    await this.identities.destroy();
-    await this.sigchain.destroy();
-    await this.sessions.destroy();
     await this.acl.destroy();
+    await this.sigchain.destroy();
+    await this.revProxy.destroy();
+    await this.fwdProxy.destroy();
+    await this.keys.destroy();
     await this.workers?.destroy();
     // Await this.db.destroy(); // don't actually destroy this. it removes files.
-    await this.keys.destroy();
     this.logger.info('Destroyed Polykey');
   }
 }
