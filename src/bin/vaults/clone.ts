@@ -34,17 +34,17 @@ clone.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
-  const vaultMessage = new clientPB.VaultMessage();
-  const nodeMessage = new clientPB.NodeMessage();
-  const vaultCloneMessage = new clientPB.VaultCloneMessage();
-  vaultCloneMessage.setVault(vaultMessage);
-  vaultCloneMessage.setNode(nodeMessage);
-
-  nodeMessage.setNodeId(options.nodeId);
-  vaultMessage.setVaultId(options.vaultId);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   try {
+    const vaultMessage = new clientPB.VaultMessage();
+    const nodeMessage = new clientPB.NodeMessage();
+    const vaultCloneMessage = new clientPB.VaultCloneMessage();
+    vaultCloneMessage.setVault(vaultMessage);
+    vaultCloneMessage.setNode(nodeMessage);
+
+    nodeMessage.setNodeId(options.nodeId);
+    vaultMessage.setNameOrId(options.vaultId);
     await client.start({});
     const grpcClient = client.grpcClient;
 
@@ -62,7 +62,7 @@ clone.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Clone Vault: ${vaultMessage.getVaultName()} from Node: ${nodeMessage.getNodeId()} successful`,
+          `Clone Vault: ${vaultMessage.getNameOrId()} from Node: ${nodeMessage.getNodeId()} successful`,
         ],
       }),
     );
@@ -79,8 +79,8 @@ clone.action(async (options) => {
           message: err.message,
         }),
       );
-      throw err;
     }
+    throw err;
   } finally {
     await client.stop();
     options.nodePath = undefined;

@@ -10,36 +10,109 @@ import * as nodesTestUtils from './utils';
 import { NodeGraph, NodeManager } from '@/nodes';
 import { KeyManager } from '@/keys';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
+import { makeCrypto } from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
+// FIXME, some of these tests fail randomly.
 describe('NodeGraph', () => {
+  const password = 'password';
   let nodeGraph: NodeGraph;
   let nodeId: NodeId;
+
+  const nodeId1 = makeNodeId(
+    new Uint8Array([
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 5,
+    ]),
+  );
+  const nodeId2 = makeNodeId(
+    new Uint8Array([
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 8,
+    ]),
+  );
+  const nodeId3 = makeNodeId(
+    new Uint8Array([
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 124,
+    ]),
+  );
+  // Const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
+  // const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
+  const dummyNode = makeNodeId(
+    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+  );
 
   const logger = new Logger('NodeGraph Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const fwdProxy = new ForwardProxy({
-    authToken: 'auth',
-    logger: logger,
-  });
-  const revProxy = new ReverseProxy({
-    logger: logger,
-  });
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
 
+  const nodeIdGenerator = (number: number) => {
+    const idArray = new Uint8Array([
+      223,
+      24,
+      34,
+      40,
+      46,
+      217,
+      4,
+      71,
+      103,
+      71,
+      59,
+      123,
+      143,
+      187,
+      9,
+      29,
+      157,
+      41,
+      131,
+      44,
+      68,
+      160,
+      79,
+      127,
+      137,
+      154,
+      221,
+      86,
+      157,
+      23,
+      77,
+      number,
+    ]);
+    return makeNodeId(idArray);
+  };
+
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
+    fwdProxy = await ForwardProxy.createForwardProxy({
+      authToken: 'auth',
+      logger: logger,
+    });
+
+    revProxy = await ReverseProxy.createReverseProxy({
+      logger: logger,
+    });
+
     await fwdProxy.start({
       tlsConfig: {
         keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
@@ -47,17 +120,14 @@ describe('NodeGraph', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
-    sigchain = new Sigchain({
+    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
+    await db.start();
+    sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
       db: db,
       logger: logger,
     });
-    await sigchain.start();
-    nodeManager = new NodeManager({
+    nodeManager = await NodeManager.createNodeManager({
       db: db,
       sigchain: sigchain,
       keyManager: keyManager,
@@ -78,9 +148,9 @@ describe('NodeGraph', () => {
 
   afterAll(async () => {
     await db.stop();
-    await sigchain.stop();
+    await sigchain.destroy();
     await nodeManager.stop();
-    await keyManager.stop();
+    await keyManager.destroy();
     await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -90,7 +160,7 @@ describe('NodeGraph', () => {
 
   test('finds correct node address', async () => {
     // New node added
-    const newNode2Id = 'NODEID2' as NodeId;
+    const newNode2Id = nodeId1;
     const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
@@ -100,12 +170,12 @@ describe('NodeGraph', () => {
   });
   test('unable to find node address', async () => {
     // New node added
-    const newNode2Id = 'NODEID2' as NodeId;
+    const newNode2Id = nodeId1;
     const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Get node address (of non-existent node)
-    const foundAddress = await nodeGraph.getNode('NONEXISTING' as NodeId);
+    const foundAddress = await nodeGraph.getNode(dummyNode);
     expect(foundAddress).toBeUndefined();
   });
   test('adds a single node into a bucket', async () => {
@@ -128,8 +198,8 @@ describe('NodeGraph', () => {
     }
   });
   test('adds multiple nodes into the same bucket', async () => {
-    // Add 3 new nodes into bucket 2
-    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 2);
+    // Add 3 new nodes into bucket 4
+    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4);
     const newNode1Address = { ip: '4.4.4.4', port: 4444 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
 
@@ -140,8 +210,8 @@ describe('NodeGraph', () => {
     const newNode3Id = nodesTestUtils.incrementNodeId(newNode2Id);
     const newNode3Address = { ip: '6.6.6.6', port: 6666 } as NodeAddress;
     await nodeGraph.setNode(newNode3Id, newNode3Address);
-    // Based on XOR values, all 3 nodes should appear in bucket 2.
-    const bucket = await nodeGraph.getBucket(2);
+    // Based on XOR values, all 3 nodes should appear in bucket 4.
+    const bucket = await nodeGraph.getBucket(4);
     if (bucket) {
       expect(bucket[newNode1Id]).toEqual({
         address: { ip: '4.4.4.4', port: 4444 },
@@ -165,13 +235,13 @@ describe('NodeGraph', () => {
     const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 3);
     const newNode1Address = { ip: '1.1.1.1', port: 1111 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
-    // New node for bucket 351 (the highest possible bucket)
-    const newNode2Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 351);
+    // New node for bucket 255 (the highest possible bucket)
+    const newNode2Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 255);
     const newNode2Address = { ip: '2.2.2.2', port: 2222 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     const bucket3 = await nodeGraph.getBucket(3);
-    const bucket351 = await nodeGraph.getBucket(351);
+    const bucket351 = await nodeGraph.getBucket(255);
     if (bucket3 && bucket351) {
       expect(bucket3[newNode1Id]).toEqual({
         address: { ip: '1.1.1.1', port: 1111 },
@@ -211,8 +281,8 @@ describe('NodeGraph', () => {
     expect(newBucket).toBeUndefined();
   });
   test('deletes a single node (and retains remainder of bucket)', async () => {
-    // Add 3 new nodes into bucket 2
-    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 2);
+    // Add 3 new nodes into bucket 4
+    const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4);
     const newNode1Address = { ip: '4.4.4.4', port: 4444 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
 
@@ -223,8 +293,8 @@ describe('NodeGraph', () => {
     const newNode3Id = nodesTestUtils.incrementNodeId(newNode2Id);
     const newNode3Address = { ip: '6.6.6.6', port: 6666 } as NodeAddress;
     await nodeGraph.setNode(newNode3Id, newNode3Address);
-    // Based on XOR values, all 3 nodes should appear in bucket 2.
-    const bucket = await nodeGraph.getBucket(2);
+    // Based on XOR values, all 3 nodes should appear in bucket 4.
+    const bucket = await nodeGraph.getBucket(4);
     if (bucket) {
       expect(bucket[newNode1Id]).toEqual({
         address: { ip: '4.4.4.4', port: 4444 },
@@ -246,7 +316,7 @@ describe('NodeGraph', () => {
     // Delete the node
     await nodeGraph.unsetNode(newNode1Id);
     // Check node no longer exists in the bucket
-    const newBucket = await nodeGraph.getBucket(2);
+    const newBucket = await nodeGraph.getBucket(4);
     if (newBucket) {
       expect(newBucket[newNode1Id]).toBeUndefined();
       expect(bucket[newNode2Id]).toEqual({
@@ -322,23 +392,23 @@ describe('NodeGraph', () => {
     const node1Address = { ip: '1.1.1.1', port: 1111 } as NodeAddress;
     await nodeGraph.setNode(node1Id, node1Address);
 
-    // Bucket 2 (multiple nodes in 1 bucket):
-    const node21Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 2);
-    const node21Address = { ip: '21.21.21.21', port: 2222 } as NodeAddress;
-    await nodeGraph.setNode(node21Id, node21Address);
-    const node22Id = nodesTestUtils.incrementNodeId(node21Id);
-    const node22Address = { ip: '22.22.22.22', port: 2222 } as NodeAddress;
-    await nodeGraph.setNode(node22Id, node22Address);
+    // Bucket 4 (multiple nodes in 1 bucket):
+    const node41Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4);
+    const node41Address = { ip: '41.41.41.41', port: 4141 } as NodeAddress;
+    await nodeGraph.setNode(node41Id, node41Address);
+    const node42Id = nodesTestUtils.incrementNodeId(node41Id);
+    const node42Address = { ip: '42.42.42.42', port: 4242 } as NodeAddress;
+    await nodeGraph.setNode(node42Id, node42Address);
 
     // Bucket 10 (lexicographic ordering - should appear after 2):
     const node10Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 10);
     const node10Address = { ip: '10.10.10.10', port: 1010 } as NodeAddress;
     await nodeGraph.setNode(node10Id, node10Address);
 
-    // Bucket 351 (maximum):
-    const node351Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 351);
-    const node351Address = { ip: '351.351.351.351', port: 351 } as NodeAddress;
-    await nodeGraph.setNode(node351Id, node351Address);
+    // Bucket 255 (maximum):
+    const node255Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 255);
+    const node255Address = { ip: '255.255.255.255', port: 255 } as NodeAddress;
+    await nodeGraph.setNode(node255Id, node255Address);
 
     const buckets = await nodeGraph.getAllBuckets();
     expect(buckets.length).toBe(4);
@@ -352,12 +422,12 @@ describe('NodeGraph', () => {
         },
       },
       {
-        [node21Id]: {
-          address: { ip: '21.21.21.21', port: 2222 },
+        [node41Id]: {
+          address: { ip: '41.41.41.41', port: 4141 },
           lastUpdated: expect.any(String),
         },
-        [node22Id]: {
-          address: { ip: '22.22.22.22', port: 2222 },
+        [node42Id]: {
+          address: { ip: '42.42.42.42', port: 4242 },
           lastUpdated: expect.any(String),
         },
       },
@@ -368,8 +438,8 @@ describe('NodeGraph', () => {
         },
       },
       {
-        [node351Id]: {
-          address: { ip: '351.351.351.351', port: 351 },
+        [node255Id]: {
+          address: { ip: '255.255.255.255', port: 255 },
           lastUpdated: expect.any(String),
         },
       },
@@ -378,7 +448,7 @@ describe('NodeGraph', () => {
   test('refreshes buckets', async () => {
     const initialNodes: Record<NodeId, NodeData> = {};
     // Generate and add some nodes
-    for (let i = 1; i < 350; i += 20) {
+    for (let i = 1; i < 255; i += 20) {
       const newNodeId = nodesTestUtils.generateNodeIdForBucket(
         nodeManager.getNodeId(),
         i,
@@ -410,7 +480,7 @@ describe('NodeGraph', () => {
     let nodeCount = 0;
     for (const b of newBuckets) {
       for (const n of Object.keys(b)) {
-        const nodeId = n as NodeId;
+        const nodeId = makeNodeId(n);
         // Check that it was a node in the original DB
         expect(initialNodes[nodeId]).toBeDefined();
         // Check it's in the correct bucket
@@ -434,50 +504,50 @@ describe('NodeGraph', () => {
   });
   test('finds a single closest node', async () => {
     // New node added
-    const newNode2Id = 'NODEID2' as NodeId;
+    const newNode2Id = nodeId1;
     const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Find the closest nodes to some node, NODEID3
-    const closest = await nodeGraph.getClosestLocalNodes('NODEID3' as NodeId);
+    const closest = await nodeGraph.getClosestLocalNodes(nodeId3);
     expect(closest).toContainEqual({
-      id: 'NODEID2',
-      distance: 1n,
+      id: newNode2Id,
+      distance: 121n,
       address: { ip: '227.1.1.1', port: 4567 },
     });
   });
   test('finds 3 closest nodes', async () => {
     // Add 3 nodes
-    await nodeGraph.setNode(
-      'NODEID2' as NodeId,
-      { ip: '2.2.2.2', port: 2222 } as NodeAddress,
-    );
-    await nodeGraph.setNode(
-      'NODEID3' as NodeId,
-      { ip: '3.3.3.3', port: 3333 } as NodeAddress,
-    );
-    await nodeGraph.setNode(
-      'NODEID4' as NodeId,
-      { ip: '4.4.4.4', port: 4444 } as NodeAddress,
-    );
+    await nodeGraph.setNode(nodeId1, {
+      ip: '2.2.2.2',
+      port: 2222,
+    } as NodeAddress);
+    await nodeGraph.setNode(nodeId2, {
+      ip: '3.3.3.3',
+      port: 3333,
+    } as NodeAddress);
+    await nodeGraph.setNode(nodeId3, {
+      ip: '4.4.4.4',
+      port: 4444,
+    } as NodeAddress);
 
     // Find the closest nodes to some node, NODEID4
-    const closest = await nodeGraph.getClosestLocalNodes('NODEID4' as NodeId);
+    const closest = await nodeGraph.getClosestLocalNodes(nodeId3);
     expect(closest.length).toBe(3);
     expect(closest).toContainEqual({
-      id: 'NODEID4',
+      id: nodeId3,
       distance: 0n,
       address: { ip: '4.4.4.4', port: 4444 },
     });
     expect(closest).toContainEqual({
-      id: 'NODEID2',
-      distance: 6n,
-      address: { ip: '2.2.2.2', port: 2222 },
+      id: nodeId2,
+      distance: 116n,
+      address: { ip: '3.3.3.3', port: 3333 },
     });
     expect(closest).toContainEqual({
-      id: 'NODEID3',
-      distance: 7n,
-      address: { ip: '3.3.3.3', port: 3333 },
+      id: nodeId1,
+      distance: 121n,
+      address: { ip: '2.2.2.2', port: 2222 },
     });
   });
   test('finds the 20 closest nodes', async () => {
@@ -503,7 +573,7 @@ describe('NodeGraph', () => {
     }
     // Now create and add 10 more nodes that are far away from this node
     for (let i = 1; i <= 10; i++) {
-      const farNodeId = ('NODEID' + i) as NodeId;
+      const farNodeId = nodeIdGenerator(i);
       const nodeAddress = {
         ip: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,

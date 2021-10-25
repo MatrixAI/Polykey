@@ -19,18 +19,13 @@ async function bootstrapPolykeyState(
     new StreamHandler(),
   ]);
 
-  const polykeyAgent = new PolykeyAgent({
-    nodePath: nodePath,
-    logger: logger,
-  });
-
   // Checks
   // Checking for running agent.
   if (await agentUtils.checkAgentRunning(nodePath)) {
     throw new errors.ErrorAgentRunning('Agent currently running.');
   }
 
-  // checking keynode state.
+  // Checking keynode state.
   switch (await checkKeynodeState(nodePath)) {
     default: //Shouldn't be possible.
     case 'MALFORMED_KEYNODE':
@@ -45,9 +40,15 @@ async function bootstrapPolykeyState(
       );
     case 'EMPTY_DIRECTORY':
     case 'NO_DIRECTORY':
-      //this is fine.
+      //This is fine.
       break;
   }
+
+  const polykeyAgent = await PolykeyAgent.createPolykey({
+    password,
+    nodePath: nodePath,
+    logger: logger,
+  });
 
   // Setting FS editing mask.
   const umaskNew = 0o077;
@@ -55,24 +56,13 @@ async function bootstrapPolykeyState(
   await utils.mkdirExists(fs, nodePath, { recursive: true });
 
   // Starting and creating state (this will need to be changed with the new db stuff)
-  await polykeyAgent.keys.start({
-    password: password,
-  });
-  await polykeyAgent.db.start({ keyPair: polykeyAgent.keys.getRootKeyPair() });
   await polykeyAgent.nodes.start();
-  await polykeyAgent.acl.start();
-  await polykeyAgent.gestalts.start();
-  await polykeyAgent.vaults.start({});
-  await polykeyAgent.identities.start();
 
   // Stopping
-  await polykeyAgent.identities.stop();
-  await polykeyAgent.vaults.stop();
-  await polykeyAgent.gestalts.stop();
-  await polykeyAgent.acl.stop();
   await polykeyAgent.nodes.stop();
   await polykeyAgent.db.stop();
-  await polykeyAgent.keys.stop();
+
+  await polykeyAgent.destroy();
 }
 
 async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
@@ -81,18 +71,18 @@ async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
     //Checking if directory structure matches keynode structure. Possibly check the private and public key and the level db for keys)
     if (
       files.includes('keys') &&
-      files.includes('vaults') &&
-      files.includes('db')
+      files.includes('db') &&
+      files.includes('versionFile')
     ) {
       const keysPath = path.join(nodePath, 'keys');
       const keysFiles = await fs.promises.readdir(keysPath);
       if (
-        !keysFiles.includes('keys_db') &&
-        !keysFiles.includes('root_certs') &&
-        !keysFiles.includes('root.cert') &&
-        !keysFiles.includes('root.key') &&
-        !keysFiles.includes('root_pub') &&
-        !keysFiles.includes('keys_db_key')
+        !keysFiles.includes('db.key') ||
+        !keysFiles.includes('root_certs') ||
+        !keysFiles.includes('root.crt') ||
+        !keysFiles.includes('root.key') ||
+        !keysFiles.includes('root.pub') ||
+        !keysFiles.includes('vault.key')
       ) {
         return 'MALFORMED_KEYNODE';
       }

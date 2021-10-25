@@ -16,9 +16,12 @@ class TestProvider extends Provider {
   public readonly id = 'test-provider' as ProviderId;
 
   protected linkIdCounter: number = 0;
-  protected users: Record<IdentityId, POJO>;
-  protected links: Record<IdentityClaimId, string>;
-  protected userLinks: Record<IdentityId, Array<IdentityClaimId>>;
+  protected users: Record<IdentityId | string, POJO>; // FIXME: the string union on VaultId is to prevent some false errors.
+  protected links: Record<IdentityClaimId | string, string>; // FIXME: the string union on VaultId is to prevent some false errors.
+  protected userLinks: Record<
+    IdentityId | string,
+    Array<IdentityClaimId | string>
+  >; // FIXME: the string union on VaultId is to prevent some false errors.
   protected userTokens: Record<string, IdentityId>;
 
   public constructor() {
@@ -31,16 +34,6 @@ class TestProvider extends Provider {
         email: 'test_user2@test.com',
       },
     };
-    // this.links = {
-    //   test_link: JSON.stringify({
-    //     type: 'identity',
-    //     node: 'nodeid' as NodeId,
-    //     provider: this.id,
-    //     identity: 'test_link' as IdentityId,
-    //     timestamp: 1618650105,
-    //     signature: 'somesignature',
-    //   }),
-    // };
     this.links = {
       test_link: JSON.stringify({
         payload: {
@@ -92,7 +85,7 @@ class TestProvider extends Provider {
   public async *authenticate(): AsyncGenerator<string | undefined, IdentityId> {
     const code = 'randomtestcode';
     yield code;
-    // always gives back the abc123 token
+    // Always gives back the abc123 token
     const tokenData = { accessToken: 'abc123' };
     const identityId = await this.getIdentityId(tokenData);
     await this.putToken(identityId, tokenData);
@@ -220,7 +213,10 @@ class TestProvider extends Provider {
     tokenData = await this.checkToken(tokenData, authIdentityId);
     const claimIds = this.userLinks[identityId] ?? [];
     for (const claimId of claimIds) {
-      const claimInfo = await this.getClaim(authIdentityId, claimId);
+      const claimInfo = await this.getClaim(
+        authIdentityId,
+        claimId as IdentityClaimId,
+      );
       if (claimInfo) {
         yield claimInfo;
       }

@@ -1,9 +1,12 @@
+import type NodeConnection from './NodeConnection';
+import type { MutexInterface } from 'async-mutex';
 import type { Opaque } from '../types';
 import type { Host, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
+import { IdString } from '../GenericIdTypes';
 
-type NodeId = Opaque<'NodeId', string>;
+type NodeId = Opaque<'NodeId', IdString>;
 
 type NodeAddress = {
   ip: Host;
@@ -46,9 +49,21 @@ type NodeBucket = {
   };
 };
 
-type NodeConnection = {
-  placeholder: true;
-};
+/**
+ * Data structure to store all NodeConnections. If a connection to a node n does
+ * not exist, no entry for n will exist in the map. Alternatively, if a
+ * connection is currently being instantiated by some thread, an entry will
+ * exist in the map, but only with the lock (no connection object). Once a
+ * connection is instantiated, the entry in the map is updated to include the
+ * connection object.
+ */
+type NodeConnectionMap = Map<
+  NodeId,
+  {
+    connection?: NodeConnection;
+    lock: MutexInterface;
+  }
+>;
 
 // Only 1 domain, so don't need a 'domain' value (like /gestalts/types.ts)
 type NodeGraphOp_ = {
@@ -73,6 +88,6 @@ export type {
   NodeInfo,
   NodeBucketIndex,
   NodeBucket,
-  NodeConnection,
+  NodeConnectionMap,
   NodeGraphOp,
 };

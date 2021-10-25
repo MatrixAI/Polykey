@@ -2,6 +2,7 @@ import type { Opaque } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
 import type { GeneralJWS, FlattenedJWSInput } from 'jose/types';
+import { Id, IdString } from '../GenericIdTypes';
 
 /**
  * A JSON-ified, decoded version of the ClaimEncoded type.
@@ -13,12 +14,12 @@ import type { GeneralJWS, FlattenedJWSInput } from 'jose/types';
  */
 type Claim = {
   payload: {
-    hPrev: string | null; // hash of the previous claim (null if first claim)
-    seq: number; // sequence number of the claim
-    data: ClaimData; // our custom payload data
-    iat: number; // timestamp (initialised at JWS field)
+    hPrev: string | null; // Hash of the previous claim (null if first claim)
+    seq: number; // Sequence number of the claim
+    data: ClaimData; // Our custom payload data
+    iat: number; // Timestamp (initialised at JWS field)
   };
-  signatures: Record<NodeId, SignatureData>; // signee node ID -> claim signature
+  signatures: Record<NodeId | string, SignatureData>; // Signee node ID -> claim signature // FIXME: the string union on VaultId is to prevent some false errors.
 };
 
 /**
@@ -27,7 +28,7 @@ type Claim = {
  * This is only used in src/claims/schema.ts.
  */
 type ClaimValidation = Omit<Claim, 'signatures'> & {
-  signatures: Record<string, SignatureData>; // replaces NodeId key with string
+  signatures: Record<string, SignatureData>; // Replaces NodeId key with string
 };
 
 /**
@@ -36,8 +37,8 @@ type ClaimValidation = Omit<Claim, 'signatures'> & {
 type SignatureData = {
   signature: string;
   header: {
-    alg: string; // signing algorithm (e.g. RS256 for RSA keys)
-    kid: NodeId; // node ID of the signing keynode
+    alg: string; // Signing algorithm (e.g. RS256 for RSA keys)
+    kid: NodeId; // Node ID of the signing keynode
   };
 };
 
@@ -47,7 +48,10 @@ type SignatureData = {
  * differ. For example, the sigchain domain uses a lexicographic-integer as the
  * claim ID (representing the sequence number key of the claim).
  */
-type ClaimId = Opaque<'ClaimId', string>;
+type ClaimId = Opaque<'ClaimId', Id>;
+type ClaimIdString = Opaque<'ClaimIdString', IdString>;
+
+type ClaimIdGenerator = () => ClaimId;
 
 /**
  * A ClaimEncoded is an encoded version of Claim. It is exactly a JWS using
@@ -100,6 +104,8 @@ export type {
   ClaimIntermediary,
   SignatureData,
   ClaimId,
+  ClaimIdString,
+  ClaimIdGenerator,
   ClaimEncoded,
   ClaimData,
   ClaimLinkNode,

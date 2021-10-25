@@ -34,7 +34,7 @@ create.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const secretMessage = new clientPB.SecretMessage();
   const vaultMessage = new clientPB.VaultMessage();
   secretMessage.setVault(vaultMessage);
@@ -49,9 +49,9 @@ create.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
+    const content = fs.readFileSync(options.filePath);
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setSecretName(secretName);
     secretMessage.setSecretContent(content);
 
@@ -69,7 +69,7 @@ create.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${secretMessage.getSecretName()} successfully created in vault: ${vaultMessage.getVaultName()}`,
+            `Secret: ${secretMessage.getSecretName()} successfully created in vault: ${vaultMessage.getNameOrId()}`,
           ],
         }),
       );
@@ -78,7 +78,7 @@ create.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to create secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
+            `Failed to create secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()}`,
           ],
         }),
       );

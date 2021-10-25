@@ -2,7 +2,7 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorSession extends ErrorPolykey {}
 
-class ErrorSessionManagerNotStarted extends ErrorSession {}
+class ErrorSessionManagerDestroyed extends ErrorSession {}
 
 class ErrorSessionNotStarted extends ErrorSession {
   description: string = 'Client session not started, JWT token not claimed';
@@ -22,7 +22,7 @@ class ErrorSessionTokenNotFound extends ErrorSession {
 
 export {
   ErrorSession,
-  ErrorSessionManagerNotStarted,
+  ErrorSessionManagerDestroyed,
   ErrorSessionNotStarted,
   ErrorReadingPrivateKey,
   ErrorSessionTokenInvalid,

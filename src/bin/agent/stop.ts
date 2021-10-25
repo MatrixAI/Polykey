@@ -26,7 +26,7 @@ stop.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const emptyMessage = new clientPB.EmptyMessage();
 
   try {

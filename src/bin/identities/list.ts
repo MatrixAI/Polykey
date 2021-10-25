@@ -27,7 +27,7 @@ list.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const emptyMessage = new clientPB.EmptyMessage();
   let output: any;
   const gestalts: any = [];
@@ -83,11 +83,11 @@ list.action(async (options) => {
         output.push(`gestalt ${count}`);
         output.push(`permissions: ${gestalt.permissions ?? 'None'}`);
 
-        //listing nodes
+        //Listing nodes
         for (const node of gestalt.nodes) {
           output.push(`${node.id}`);
         }
-        //listing identities
+        //Listing identities
         for (const identity of gestalt.identities) {
           output.push(`${identity.providerId}:${identity.identityId}`);
         }

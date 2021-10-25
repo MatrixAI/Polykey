@@ -57,11 +57,11 @@ class ConnectionReverse extends Connection {
       }
       this.logger.info('Starting Connection Reverse');
       this._started = true;
-      // promise for ready
+      // Promise for ready
       const { p: readyP, resolveP: resolveReadyP } = promise<void>();
-      // promise for server connection
+      // Promise for server connection
       const { p: socketP, resolveP: resolveSocketP } = promise<void>();
-      // promise for start errors
+      // Promise for start errors
       const { p: errorP, rejectP: rejectErrorP } = promise<void>();
       this.resolveReadyP = resolveReadyP;
       this.utpSocket.on('message', this.handleMessage);
@@ -88,7 +88,7 @@ class ConnectionReverse extends Connection {
           errorP,
           ...(timer != null ? [timer.timerP] : []),
         ]);
-        // send punch & ready signal
+        // Send punch & ready signal
         await this.send(networkUtils.pingBuffer);
         punchInterval = setInterval(async () => {
           await this.send(networkUtils.pingBuffer);
@@ -159,9 +159,9 @@ class ConnectionReverse extends Connection {
       }
       this.logger.info('Composing Connection Reverse');
       this._composed = true;
-      // promise for secure establishment
+      // Promise for secure establishment
       const { p: secureP, resolveP: resolveSecureP } = promise<void>();
-      // promise for compose errors
+      // Promise for compose errors
       const { p: errorP, rejectP: rejectErrorP } = promise<void>();
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(this.tlsConfig.keyPrivatePem, 'ascii'),
@@ -196,13 +196,13 @@ class ConnectionReverse extends Connection {
       const clientCertChain = networkUtils.getCertificateChain(tlsSocket);
       networkUtils.verifyClientCertificateChain(clientCertChain);
       tlsSocket.off('error', handleComposeError);
-      // propagate end, error, close and data
+      // Propagate end, error, close and data
       tlsSocket.on('end', () => {
         if (utpConn.destroyed) {
-          // the utp connection may already be destroyed
+          // The utp connection may already be destroyed
           tlsSocket.destroy();
         } else {
-          // prevent half open connections
+          // Prevent half open connections
           tlsSocket.end();
         }
       });
@@ -278,7 +278,7 @@ class ConnectionReverse extends Connection {
     data: Buffer,
     remoteInfo: { address: string; port: number },
   ) => {
-    // ignore messages not intended for this target
+    // Ignore messages not intended for this target
     if (remoteInfo.address !== this.host || remoteInfo.port !== this.port) {
       return;
     }
@@ -288,9 +288,9 @@ class ConnectionReverse extends Connection {
     } catch (e) {
       return;
     }
-    // don't reset timeout until timeout is initialised
+    // Don't reset timeout until timeout is initialised
     if (this.timeout != null) {
-      // any message should reset the timeout
+      // Any message should reset the timeout
       this.stopTimeout();
       this.startTimeout();
     }
@@ -314,7 +314,7 @@ class ConnectionReverse extends Connection {
   };
 
   protected handleEnd = () => {
-    // prevent half open connections
+    // Prevent half open connections
     this.serverSocket.end();
   };
 }

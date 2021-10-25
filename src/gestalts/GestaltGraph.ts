@@ -10,19 +10,21 @@ import type {
 } from './types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { ProviderId, IdentityId, IdentityInfo } from '../identities/types';
-import type { DBLevel, DBOp } from '../db/types';
 import type { Permission } from '../acl/types';
-import type { DB } from '../db';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { ACL } from '../acl';
 
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
 import { utils as aclUtils, errors as aclErrors } from '../acl';
 import * as utils from '../utils';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 
+interface GestaltGraph extends CreateDestroy {}
+@CreateDestroy()
 class GestaltGraph {
   protected logger: Logger;
   protected db: DB;
@@ -34,78 +36,72 @@ class GestaltGraph {
     this.graphDbDomain,
     'identities',
   ];
-  protected graphDb: DBLevel<string>;
-  protected graphMatrixDb: DBLevel<GestaltKey>;
-  protected graphNodesDb: DBLevel<GestaltNodeKey>;
-  protected graphIdentitiesDb: DBLevel<GestaltIdentityKey>;
+  protected graphDb: DBLevel;
+  protected graphMatrixDb: DBLevel;
+  protected graphNodesDb: DBLevel;
+  protected graphIdentitiesDb: DBLevel;
   protected lock: Mutex = new Mutex();
-  protected _started: boolean = false;
 
-  constructor({ db, acl, logger }: { db: DB; acl: ACL; logger?: Logger }) {
-    this.logger = logger ?? new Logger(this.constructor.name);
-    this.db = db;
-    this.acl = acl;
+  static async createGestaltGraph({
+    db,
+    acl,
+    logger,
+    fresh = false,
+  }: {
+    db: DB;
+    acl: ACL;
+    logger?: Logger;
+    fresh?: boolean;
+  }): Promise<GestaltGraph> {
+    const logger_ = logger ?? new Logger(this.constructor.name);
+    const gestaltGraph = new GestaltGraph({ acl, db, logger: logger_ });
+    await gestaltGraph.create({ fresh });
+    return gestaltGraph;
   }
 
-  get started(): boolean {
-    return this._started;
+  constructor({ db, acl, logger }: { db: DB; acl: ACL; logger: Logger }) {
+    this.logger = logger;
+    this.db = db;
+    this.acl = acl;
   }
 
   get locked(): boolean {
     return this.lock.isLocked();
   }
 
-  async start({
-    fresh = false,
-  }: {
-    fresh?: boolean;
-  } = {}) {
-    try {
-      if (this._started) {
-        return;
-      }
-      this.logger.info('Starting Gestalt Graph');
-      this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
-      }
-      if (!this.acl.started) {
-        throw new aclErrors.ErrorACLNotStarted();
-      }
-      const graphDb = await this.db.level<string>(this.graphDbDomain);
-      const graphMatrixDb = await this.db.level<GestaltKey>(
-        this.graphMatrixDbDomain[1],
-        graphDb,
-      );
-      const graphNodesDb = await this.db.level<GestaltNodeKey>(
-        this.graphNodesDbDomain[1],
-        graphDb,
-      );
-      const graphIdentitiesDb = await this.db.level<GestaltIdentityKey>(
-        this.graphIdentitiesDbDomain[1],
-        graphDb,
-      );
-      if (fresh) {
-        await graphDb.clear();
-      }
-      this.graphDb = graphDb;
-      this.graphMatrixDb = graphMatrixDb;
-      this.graphNodesDb = graphNodesDb;
-      this.graphIdentitiesDb = graphIdentitiesDb;
-      this.logger.info('Started Gestalts Graph');
-    } catch (e) {
-      this._started = false;
-      throw e;
+  private async create({ fresh }: { fresh: boolean }) {
+    this.logger.info('Starting Gestalt Graph');
+    if (!this.db.running) {
+      throw new dbErrors.ErrorDBNotRunning();
     }
+    if (this.acl.destroyed) {
+      throw new aclErrors.ErrorACLDestroyed();
+    }
+    const graphDb = await this.db.level(this.graphDbDomain);
+    const graphMatrixDb = await this.db.level(
+      this.graphMatrixDbDomain[1],
+      graphDb,
+    );
+    const graphNodesDb = await this.db.level(
+      this.graphNodesDbDomain[1],
+      graphDb,
+    );
+    const graphIdentitiesDb = await this.db.level(
+      this.graphIdentitiesDbDomain[1],
+      graphDb,
+    );
+    if (fresh) {
+      await graphDb.clear();
+    }
+    this.graphDb = graphDb;
+    this.graphMatrixDb = graphMatrixDb;
+    this.graphNodesDb = graphNodesDb;
+    this.graphIdentitiesDb = graphIdentitiesDb;
+    this.logger.info('Started Gestalts Graph');
   }
 
-  async stop() {
-    if (!this._started) {
-      return;
-    }
-    this.logger.info('Stopping Gestalt Graph');
-    this._started = false;
-    this.logger.info('Stopped Gestalt Graph');
+  async destroy() {
+    this.logger.info('Destroyed Gestalt Graph');
   }
 
   /**
@@ -136,13 +132,17 @@ class GestaltGraph {
     }
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async getGestalts(): Promise<Array<Gestalt>> {
     return await this._transaction(async () => {
       const unvisited: Map<GestaltKey, GestaltKeySet> = new Map();
       for await (const o of this.graphMatrixDb.createReadStream()) {
-        const gK = (o as any).key as GestaltKey;
+        const gK = (o as any).key.toString() as GestaltKey;
         const data = (o as any).value as Buffer;
-        const gKs = this.db.unserializeDecrypt<GestaltKeySet>(data);
+        const gKs = await this.db.deserializeDecrypt<GestaltKeySet>(
+          data,
+          false,
+        );
         unvisited.set(gK, gKs);
       }
       const gestalts: Array<Gestalt> = [];
@@ -187,11 +187,13 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async getGestaltByNode(nodeId: NodeId): Promise<Gestalt | undefined> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     return this.getGestaltByKey(nodeKey);
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async getGestaltByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -200,6 +202,7 @@ class GestaltGraph {
     return this.getGestaltByKey(identityKey);
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async setIdentity(identityInfo: IdentityInfo): Promise<void> {
     return await this._transaction(async () => {
       const ops = await this.setIdentityOps(identityInfo);
@@ -207,6 +210,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async setIdentityOps(
     identityInfo: IdentityInfo,
   ): Promise<Array<DBOp>> {
@@ -236,6 +240,7 @@ class GestaltGraph {
     return ops;
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unsetIdentity(providerId: ProviderId, identityId: IdentityId) {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
@@ -245,6 +250,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unsetIdentityOps(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -275,7 +281,7 @@ class GestaltGraph {
         );
       }
     }
-    // ensure that an empty key set is still deleted
+    // Ensure that an empty key set is still deleted
     ops.push({
       type: 'del',
       domain: this.graphMatrixDbDomain,
@@ -290,6 +296,7 @@ class GestaltGraph {
    * If this is a new node, it will set a new node pointer
    * to a new gestalt permission in the acl
    */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async setNode(nodeInfo: NodeInfo): Promise<void> {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
@@ -299,6 +306,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async setNodeOps(nodeInfo: NodeInfo): Promise<Array<DBOp>> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeInfo.id);
     const ops: Array<DBOp> = [];
@@ -308,7 +316,7 @@ class GestaltGraph {
     );
     if (nodeKeyKeys == null) {
       nodeKeyKeys = {};
-      // sets the gestalt in the acl
+      // Sets the gestalt in the acl
       ops.push(
         ...(await this.acl.setNodePermOps(nodeInfo.id, {
           gestalt: {},
@@ -338,6 +346,7 @@ class GestaltGraph {
    * If this node exists, it will remove the node pointer
    * to the gestalt permission in the acl
    */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unsetNode(nodeId: NodeId): Promise<void> {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
@@ -347,6 +356,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unsetNodeOps(nodeId: NodeId): Promise<Array<DBOp>> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     const nodeKeyKeys = await this.db.get<GestaltKeySet>(
@@ -376,18 +386,19 @@ class GestaltGraph {
         );
       }
     }
-    // ensure that an empty key set is still deleted
+    // Ensure that an empty key set is still deleted
     ops.push({
       type: 'del',
       domain: this.graphMatrixDbDomain,
       key: nodeKey,
     });
-    // unsets the gestalt in the acl
+    // Unsets the gestalt in the acl
     // this must be done after all unlinking operations
     ops.push(...(await this.acl.unsetNodePermOps(nodeId)));
     return ops;
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async linkNodeAndIdentity(
     nodeInfo: NodeInfo,
     identityInfo: IdentityInfo,
@@ -400,6 +411,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async linkNodeAndIdentityOps(
     nodeInfo: NodeInfo,
     identityInfo: IdentityInfo,
@@ -418,7 +430,7 @@ class GestaltGraph {
       this.graphMatrixDbDomain,
       identityKey,
     );
-    // if they are already connected we do nothing
+    // If they are already connected we do nothing
     if (
       nodeKeyKeys &&
       identityKey in nodeKeyKeys &&
@@ -437,7 +449,7 @@ class GestaltGraph {
       identityNew = true;
       identityKeyKeys = {};
     }
-    // acl changes depend on the situation:
+    // Acl changes depend on the situation:
     // if both node and identity are new  then
     //   set a new permission for the node
     // if both node and identity exists then
@@ -473,14 +485,14 @@ class GestaltGraph {
         identityNodeKeys,
         (key) => gestaltsUtils.ungestaltKey(key).nodeId,
       );
-      // these must exist
+      // These must exist
       const nodePerm = (await this.acl.getNodePerm(nodeInfo.id)) as Permission;
       const identityPerm = (await this.acl.getNodePerm(
         identityNodeIds[0],
       )) as Permission;
-      // union the perms together
+      // Union the perms together
       const permNew = aclUtils.permUnion(nodePerm, identityPerm);
-      // node perm is updated and identity perm is joined to node perm
+      // Node perm is updated and identity perm is joined to node perm
       // this has to be done as 1 call to acl in order to combine ref count update
       // and the perm record update
       ops.push(
@@ -543,6 +555,7 @@ class GestaltGraph {
     return ops;
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async linkNodeAndNode(
     nodeInfo1: NodeInfo,
     nodeInfo2: NodeInfo,
@@ -555,6 +568,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async linkNodeAndNodeOps(
     nodeInfo1: NodeInfo,
     nodeInfo2: NodeInfo,
@@ -570,7 +584,7 @@ class GestaltGraph {
       this.graphMatrixDbDomain,
       nodeKey2,
     );
-    // if they are already connected we do nothing
+    // If they are already connected we do nothing
     if (
       nodeKeyKeys1 &&
       nodeKey2 in nodeKeyKeys1 &&
@@ -589,7 +603,7 @@ class GestaltGraph {
       nodeNew2 = true;
       nodeKeyKeys2 = {};
     }
-    // acl changes depend on the situation:
+    // Acl changes depend on the situation:
     // if both node1 and node2 are new  then
     //   set a new permission for both nodes
     // if both node1 and node2 exists then
@@ -615,16 +629,16 @@ class GestaltGraph {
         nodeNodeKeys2,
         (key) => gestaltsUtils.ungestaltKey(key).nodeId,
       );
-      // these must exist
+      // These must exist
       const nodePerm1 = (await this.acl.getNodePerm(
         nodeInfo1.id,
       )) as Permission;
       const nodePerm2 = (await this.acl.getNodePerm(
         nodeInfo2.id,
       )) as Permission;
-      // union the perms together
+      // Union the perms together
       const permNew = aclUtils.permUnion(nodePerm1, nodePerm2);
-      // node perm 1 is updated and node perm 2 is joined to node perm 2
+      // Node perm 1 is updated and node perm 2 is joined to node perm 2
       // this has to be done as 1 call to acl in order to combine ref count update
       // and the perm record update
       ops.push(
@@ -674,6 +688,7 @@ class GestaltGraph {
     return ops;
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unlinkNodeAndIdentity(
     nodeId: NodeId,
     providerId: ProviderId,
@@ -691,6 +706,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unlinkNodeAndIdentityOps(
     nodeId: NodeId,
     providerId: ProviderId,
@@ -729,7 +745,7 @@ class GestaltGraph {
       });
     }
     if (nodeKeyKeys && identityKeyKeys && unlinking) {
-      // check if the gestalts have split
+      // Check if the gestalts have split
       // if so, the node gestalt will inherit a new copy of the permission
       const [, gestaltNodeKeys, gestaltIdentityKeys] =
         await this.traverseGestalt(
@@ -741,15 +757,16 @@ class GestaltGraph {
           gestaltNodeKeys,
           (key) => gestaltsUtils.ungestaltKey(key).nodeId,
         );
-        // it is assumed that an existing gestalt has a permission
+        // It is assumed that an existing gestalt has a permission
         const perm = (await this.acl.getNodePerm(nodeId)) as Permission;
-        // this remaps all existing nodes to a new permission
+        // This remaps all existing nodes to a new permission
         ops.push(...(await this.acl.setNodesPermOps(nodeIds, perm)));
       }
     }
     return ops;
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unlinkNodeAndNode(
     nodeId1: NodeId,
     nodeId2: NodeId,
@@ -762,6 +779,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unlinkNodeAndNodeOps(
     nodeId1: NodeId,
     nodeId2: NodeId,
@@ -799,7 +817,7 @@ class GestaltGraph {
       });
     }
     if (nodeKeyKeys1 && nodeKeyKeys2 && unlinking) {
-      // check if the gestalts have split
+      // Check if the gestalts have split
       // if so, the node gestalt will inherit a new copy of the permission
       const [, gestaltNodeKeys] = await this.traverseGestalt(
         Object.keys(nodeKeyKeys1) as Array<GestaltKey>,
@@ -810,15 +828,16 @@ class GestaltGraph {
           gestaltNodeKeys,
           (key) => gestaltsUtils.ungestaltKey(key).nodeId,
         );
-        // it is assumed that an existing gestalt has a permission
+        // It is assumed that an existing gestalt has a permission
         const perm = (await this.acl.getNodePerm(nodeId1)) as Permission;
-        // this remaps all existing nodes to a new permission
+        // This remaps all existing nodes to a new permission
         ops.push(...(await this.acl.setNodesPermOps(nodeIds, perm)));
       }
     }
     return ops;
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async getGestaltActionsByNode(
     nodeId: NodeId,
   ): Promise<GestaltActions | undefined> {
@@ -840,6 +859,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async getGestaltActionsByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -879,6 +899,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async setGestaltActionByNode(
     nodeId: NodeId,
     action: GestaltAction,
@@ -897,6 +918,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async setGestaltActionByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -925,7 +947,7 @@ class GestaltGraph {
           nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
           break;
         }
-        // if there are no linked nodes, this cannot proceed
+        // If there are no linked nodes, this cannot proceed
         if (nodeId == null) {
           throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         }
@@ -934,6 +956,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unsetGestaltActionByNode(
     nodeId: NodeId,
     action: GestaltAction,
@@ -952,6 +975,7 @@ class GestaltGraph {
     });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async unsetGestaltActionByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -980,7 +1004,7 @@ class GestaltGraph {
           nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
           break;
         }
-        // if there are no linked nodes, this cannot proceed
+        // If there are no linked nodes, this cannot proceed
         if (nodeId == null) {
           throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
         }
@@ -998,7 +1022,7 @@ class GestaltGraph {
         nodes: {},
         identities: {},
       };
-      // we are not using traverseGestalt
+      // We are not using traverseGestalt
       // because this requires keeping track of the vertexKeys
       const queue = [gK];
       const visited = new Set<GestaltKey>();
@@ -1082,6 +1106,7 @@ class GestaltGraph {
     return [visited, visitedNodes, visitedIdentities];
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async clearDB() {
     await this.graphDb.clear();
   }

@@ -44,8 +44,8 @@ export namespace EchoMessage {
 }
 
 export class InfoRequest extends jspb.Message { 
-    getId(): string;
-    setId(value: string): InfoRequest;
+    getVaultId(): string;
+    setVaultId(value: string): InfoRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InfoRequest.AsObject;
@@ -59,7 +59,7 @@ export class InfoRequest extends jspb.Message {
 
 export namespace InfoRequest {
     export type AsObject = {
-        id: string,
+        vaultId: string,
     }
 }
 

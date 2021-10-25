@@ -31,7 +31,7 @@ add.action(async (node, host, port, options) => {
     clientConfig['nodePath'] = options.nodePath;
   }
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const nodeAddressMessage = new clientPB.NodeAddressMessage();
 
   try {

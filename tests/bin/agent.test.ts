@@ -14,11 +14,10 @@ import PolykeyAgent from '@/PolykeyAgent';
 
 import { Lockfile } from '@/lockfile';
 import { poll } from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 describe('CLI agent', () => {
-  const passwordFileExitCode = 64;
   const noJWTFailCode = 77;
-  const invalidJWTFailCode = 65;
   const password = 'password';
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
@@ -28,7 +27,6 @@ describe('CLI agent', () => {
     let dataDir: string;
     let foregroundNodePath: string;
     let backgroundNodePath: string;
-    let callCredentials;
 
     let inactiveNodePath: string;
     let activeNodePath: string;
@@ -50,14 +48,18 @@ describe('CLI agent', () => {
         new StreamHandler(),
       ]);
 
-      activeNode = new PolykeyAgent({
+      activeNode = await PolykeyAgent.createPolykey({
+        password,
         nodePath: activeNodePath,
         logger,
+        cores: 1,
+        workerManager: null,
       });
-      await activeNode.start({ password });
+      await activeNode.start({});
     });
     afterAll(async () => {
       await activeNode.stop();
+      await activeNode.destroy();
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,
@@ -79,7 +81,7 @@ describe('CLI agent', () => {
             '.',
           );
 
-          await poll(global.polykeyStartupTimeout * 1.5, async () => {
+          await poll(global.polykeyStartupTimeout * 3, async () => {
             return await agentUtils.checkAgentRunning(foregroundNodePath);
           });
 
@@ -97,12 +99,12 @@ describe('CLI agent', () => {
           );
           process.kill(lock.pid);
           await agent; //Waiting for agent to finish running.
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const test = await agentUtils.checkAgentRunning(foregroundNodePath);
             return !test;
           });
 
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const files = await fs.promises.readdir(foregroundNodePath);
             const test = files.includes('agent-lock.json');
             return !test;
@@ -111,7 +113,7 @@ describe('CLI agent', () => {
         global.polykeyStartupTimeout * 5,
       );
       test('should fail to start if an agent is already running at the path', async () => {
-        //can't await this, it never completes while running.
+        //Can't await this, it never completes while running.
         const result = await testUtils.pkWithStdio([
           'agent',
           'start',
@@ -125,6 +127,7 @@ describe('CLI agent', () => {
       });
     });
     describe('Starting the agent in the background', () => {
+      // FIXME, failing on it's own.
       test(
         'should start the agent and clean up the lockfile when a kill signal is received',
         async () => {
@@ -142,7 +145,7 @@ describe('CLI agent', () => {
           const result = await testUtils.pkWithStdio(commands);
           expect(result.code).toBe(0);
 
-          await poll(global.polykeyStartupTimeout * 1.5, async () => {
+          await poll(global.polykeyStartupTimeout * 3, async () => {
             return await agentUtils.checkAgentRunning(backgroundNodePath);
           });
 
@@ -150,14 +153,15 @@ describe('CLI agent', () => {
             fs,
             path.join(backgroundNodePath, 'agent-lock.json'),
           );
+
           process.kill(lock.pid);
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const test = await agentUtils.checkAgentRunning(backgroundNodePath);
             return !test;
           });
 
           //Checking that the lockfile was removed.
-          await poll(global.polykeyStartupTimeout, async () => {
+          await poll(global.polykeyStartupTimeout * 2, async () => {
             const files = await fs.promises.readdir(foregroundNodePath);
             const test = files.includes('agent-lock.json');
             return !test;
@@ -267,14 +271,18 @@ describe('CLI agent', () => {
       inactiveAgentPath = path.join(dataDir, 'InactiveAgent');
       await fs.promises.writeFile(passwordFile, password);
 
-      activeAgent = new PolykeyAgent({
+      activeAgent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: activeAgentPath,
         logger: logger,
+        cores: 1,
+        workerManager: null,
       });
-      await activeAgent.start({ password });
+      await activeAgent.start({});
     }, global.polykeyStartupTimeout);
     afterAll(async () => {
       await activeAgent.stop();
+      await activeAgent.destroy();
       await fs.promises.rm(dataDir, {
         force: true,
         recursive: true,
@@ -341,7 +349,7 @@ describe('CLI agent', () => {
           { encoding: 'utf-8' },
         );
 
-        await expect(
+        await expect(() =>
           activeAgent.sessions.verifyToken(content as SessionToken),
         ).rejects.toThrow(sessionErrors.ErrorSessionTokenInvalid);
       });
@@ -387,9 +395,9 @@ describe('CLI agent', () => {
         ]);
         expect(result.code).toBe(0);
 
-        await expect(activeAgent.sessions.verifyToken(token)).rejects.toThrow(
-          sessionErrors.ErrorSessionTokenInvalid,
-        );
+        await expect(() =>
+          activeAgent.sessions.verifyToken(token),
+        ).rejects.toThrow(sessionErrors.ErrorSessionTokenInvalid);
       });
     });
     describe('Bin commands should fail when session is locked.', () => {
@@ -434,7 +442,7 @@ describe('CLI agent', () => {
         'secrets rm -sp vaultName:secretPath',
         'secrets get -sp vaultName:secretPath',
         'secrets ls -vn vaultName',
-        'secrets mkdir -sp vaultName:secretPath',
+        'secrets mkdir vaultName:secretPath',
         'secrets rename -sp vaultName:secretPath -sn secretName',
         'secrets update -sp vaultName:secretPath -fp secretPath',
         'secrets dir -vn vaultName -dp directory',
@@ -451,6 +459,8 @@ describe('CLI agent', () => {
         'vaults clone -ni nodeId -vi vaultId',
         'vaults pull -vn vaultName -ni nodeId',
         'vaults scan -ni nodeId',
+        'vaults version vaultName nodeId',
+        'vaults log vaultName',
       ];
 
       const commands = [
@@ -463,12 +473,18 @@ describe('CLI agent', () => {
         ['Vault', vaultCommands],
       ];
 
+      const dummyVaultId = 'A'.repeat(44);
+      const dummyNodeId = makeNodeId(
+        'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+      );
       function generateCommand(commandString: string) {
         const command = commandString
           .replace(/filePath/g, dummyPath)
           .replace(/sigPath/g, dummyPath)
           .replace(/passPath/g, dummyPath)
           .replace(/secretPath/g, dummyPath)
+          .replace(/nodeId/g, dummyNodeId)
+          .replace(/vaultId/g, dummyVaultId)
           .split(' ');
         const nodePath = ['-np', activeAgentPath];
         return [...command, ...nodePath];

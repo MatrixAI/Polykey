@@ -4,6 +4,8 @@ class ErrorNodes extends ErrorPolykey {}
 
 class ErrorNodeManagerNotStarted extends ErrorNodes {}
 
+class ErrorNodeManagerDestroyed extends ErrorNodes {}
+
 class ErrorNodeGraphNotStarted extends ErrorNodes {}
 
 // Cannot locate a node through getClosestGlobalNodes
@@ -18,6 +20,8 @@ class ErrorNodeGraphEmptyDatabase extends ErrorNodes {}
 class ErrorNodeGraphInvalidBucketIndex extends ErrorNodes {}
 
 class ErrorNodeConnectionNotStarted extends ErrorNodes {}
+
+class ErrorNodeConnectionDestroyed extends ErrorNodes {}
 
 class ErrorNodeConnectionNotExist extends ErrorNodes {}
 
@@ -38,6 +42,7 @@ class ErrorInvalidHost extends ErrorNodes {
 export {
   ErrorNodes,
   ErrorNodeManagerNotStarted,
+  ErrorNodeManagerDestroyed,
   ErrorNodeGraphNotStarted,
   ErrorNodeGraphNodeNotFound,
   ErrorNodeGraphNodeIdMissing,
@@ -45,6 +50,7 @@ export {
   ErrorNodeGraphEmptyDatabase,
   ErrorNodeGraphInvalidBucketIndex,
   ErrorNodeConnectionNotStarted,
+  ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionNotExist,
   ErrorNodeConnectionInfoNotExist,
   ErrorNodeConnectionPublicKeyNotFound,

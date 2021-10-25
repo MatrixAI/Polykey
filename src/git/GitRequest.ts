@@ -1,18 +1,21 @@
 /**
  * Responsible for converting HTTP messages from isomorphic-git into requests and sending them to a specific node.
  */
+
 class GitRequest {
-  private requestInfo: (vaultName: string) => AsyncIterableIterator<Uint8Array>;
+  private requestInfo: (
+    vaultNameOrId: string,
+  ) => AsyncIterableIterator<Uint8Array>;
   private requestPack: (
-    vaultName: string,
+    vaultNameOrId: string,
     body: any,
   ) => AsyncIterableIterator<Uint8Array>;
   private requestVaultNames: () => Promise<string[]>;
 
   constructor(
-    requestInfo: (vaultName: string) => AsyncIterableIterator<Uint8Array>,
+    requestInfo: (vaultNameOrId: string) => AsyncIterableIterator<Uint8Array>,
     requestPack: (
-      vaultName: string,
+      vaultNameOrId: string,
       body: Buffer,
     ) => AsyncIterableIterator<Uint8Array>,
     requestVaultNames: () => Promise<string[]>,
@@ -42,9 +45,8 @@ class GitRequest {
         throw new Error('Error');
       }
 
-      const vaultId = match![1];
-
-      const infoResponse = this.requestInfo(vaultId);
+      const vaultNameOrId = match![1];
+      const infoResponse = this.requestInfo(vaultNameOrId);
 
       return {
         url: url,
@@ -60,9 +62,9 @@ class GitRequest {
         throw new Error('Error');
       }
 
-      const vaultId = match![1];
+      const vaultNameOrId = match![1];
 
-      const packResponse = this.requestPack(vaultId, body[0]);
+      const packResponse = this.requestPack(vaultNameOrId, body[0]);
 
       return {
         url: url,

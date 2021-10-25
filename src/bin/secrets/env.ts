@@ -36,7 +36,7 @@ env.action(async (options, command) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
   const secretMessage = new clientPB.SecretMessage();
   secretMessage.setVault(vaultMessage);
@@ -75,7 +75,7 @@ env.action(async (options, command) => {
     const grpcClient = client.grpcClient;
 
     for (const obj of parsedPathList) {
-      vaultMessage.setVaultName(obj.vaultName);
+      vaultMessage.setNameOrId(obj.vaultName);
       secretMessage.setSecretName(obj.secretName);
       const pCall = grpcClient.vaultsSecretsGet(secretMessage);
       const { p, resolveP } = utils.promise();

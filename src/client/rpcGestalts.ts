@@ -1,18 +1,18 @@
 import type { Discovery } from '../discovery';
 import type { GestaltGraph } from '../gestalts';
 import type { SessionManager } from '../sessions';
-import type { NodeId } from '../nodes/types';
-import type { Gestalt, GestaltAction } from '../gestalts/types';
+import type { Gestalt } from '../gestalts/types';
 import type { IdentityId, ProviderId } from '../identities/types';
 
 import * as utils from './utils';
 import * as errors from '../errors';
 import * as grpc from '@grpc/grpc-js';
 
-import { checkGestaltAction } from '../gestalts/utils';
+import { makeGestaltAction } from '../gestalts/utils';
 
 import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
+import { makeNodeId } from '../nodes/utils';
 
 const createGestaltsRPC = ({
   gestaltGraph,
@@ -39,7 +39,7 @@ const createGestaltsRPC = ({
         );
         call.sendMetadata(responseMeta);
         const gestalt = await gestaltGraph.getGestaltByNode(
-          call.request.getNodeId() as NodeId,
+          makeNodeId(call.request.getNodeId()),
         );
         if (gestalt != null) {
           response.setGestaltGraph(JSON.stringify(gestalt));
@@ -112,10 +112,12 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //constructing identity info.
-        const gen = discovery.discoverGestaltByNode(info.getNodeId() as NodeId);
+        //Constructing identity info.
+        const gen = discovery.discoverGestaltByNode(
+          makeNodeId(info.getNodeId()),
+        );
         for await (const _ of gen) {
-          // empty
+          // Empty
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -137,13 +139,13 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //constructing identity info.
+        //Constructing identity info.
         const gen = discovery.discoverGestaltByIdentity(
           info.getProviderId() as ProviderId,
           info.getMessage() as IdentityId,
         );
         for await (const _ of gen) {
-          // empty
+          // Empty
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -163,7 +165,7 @@ const createGestaltsRPC = ({
         );
         call.sendMetadata(responseMeta);
         const result = await gestaltGraph.getGestaltActionsByNode(
-          info.getNodeId() as NodeId,
+          makeNodeId(info.getNodeId()),
         );
         if (result == null) {
           // Node doesn't exist, so no permissions. might throw error instead TBD.
@@ -227,7 +229,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase
@@ -241,9 +243,8 @@ const createGestaltsRPC = ({
         }
 
         //Setting the action.
-        const action = info.getAction() as GestaltAction;
-        checkGestaltAction(action);
-        const nodeId = info.getNode()?.getNodeId() as NodeId;
+        const action = makeGestaltAction(info.getAction());
+        const nodeId = makeNodeId(info.getNode()?.getNodeId());
         await gestaltGraph.setGestaltActionByNode(nodeId, action);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -265,7 +266,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:
@@ -279,8 +280,7 @@ const createGestaltsRPC = ({
         }
 
         //Setting the action.
-        const action = info.getAction() as GestaltAction;
-        checkGestaltAction(action);
+        const action = makeGestaltAction(info.getAction());
         const providerId = info.getIdentity()?.getProviderId() as ProviderId;
         const identityId = info.getIdentity()?.getMessage() as IdentityId;
         await gestaltGraph.setGestaltActionByIdentity(
@@ -308,7 +308,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase
@@ -322,9 +322,8 @@ const createGestaltsRPC = ({
         }
 
         //Setting the action.
-        const action = info.getAction() as GestaltAction;
-        checkGestaltAction(action);
-        const nodeId = info.getNode()?.getNodeId() as NodeId;
+        const action = makeGestaltAction(info.getAction());
+        const nodeId = makeNodeId(info.getNode()?.getNodeId());
         await gestaltGraph.unsetGestaltActionByNode(nodeId, action);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -346,7 +345,7 @@ const createGestaltsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        //checking
+        //Checking
         switch (info.getNodeOrProviderCase()) {
           default:
           case clientPB.SetActionsMessage.NodeOrProviderCase.NODE:
@@ -360,8 +359,7 @@ const createGestaltsRPC = ({
         }
 
         //Setting the action.
-        const action = info.getAction() as GestaltAction;
-        checkGestaltAction(action);
+        const action = makeGestaltAction(info.getAction());
         const providerId = info.getIdentity()?.getProviderId() as ProviderId;
         const identityId = info.getIdentity()?.getMessage() as IdentityId;
         await gestaltGraph.unsetGestaltActionByIdentity(

@@ -1,6 +1,9 @@
-import type { NodeId } from '../nodes/types';
-import type { ClaimId, ClaimEncoded, ClaimIntermediary } from '../claims/types';
-import type { VaultId } from '../vaults/types';
+import type {
+  ClaimEncoded,
+  ClaimIntermediary,
+  ClaimIdString,
+} from '../claims/types';
+import type { VaultName } from '../vaults/types';
 
 import * as grpc from '@grpc/grpc-js';
 import { promisify } from '../utils';
@@ -19,7 +22,11 @@ import {
   utils as notificationsUtils,
   errors as notificationsErrors,
 } from '../notifications';
+import { errors as vaultsErrors } from '../vaults';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
+import { makeVaultId, makeVaultIdPretty } from '../vaults/utils';
+import { makeNodeId } from '../nodes/utils';
+import { utils as idUtils } from '@matrixai/id';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -52,14 +59,29 @@ function createAgentService({
       call: grpc.ServerWritableStream<agentPB.InfoRequest, agentPB.PackChunk>,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-
       const request = call.request;
-      const vaultId = request.getId() as VaultId;
-
+      const vaultNameOrId = request.getVaultId();
+      let vaultId, vaultName;
+      try {
+        vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
+        await vaultManager.openVault(vaultId);
+        vaultName = await vaultManager.getVaultName(vaultId);
+      } catch (err) {
+        if (err instanceof vaultsErrors.ErrorVaultUndefined) {
+          vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
+          await vaultManager.openVault(vaultId);
+          vaultName = vaultNameOrId;
+        } else {
+          throw err;
+        }
+      }
+      // TODO: Check the permissions here
+      const meta = new grpc.Metadata();
+      meta.set('vaultName', vaultName);
+      meta.set('vaultId', makeVaultIdPretty(vaultId));
+      genWritable.stream.sendMetadata(meta);
       const response = new agentPB.PackChunk();
-      const vault = await vaultManager.getVault(vaultId);
-      const responseGen = vault.handleInfoRequest();
-
+      const responseGen = vaultManager.handleInfoRequest(vaultId);
       for await (const byte of responseGen) {
         if (byte !== null) {
           response.setChunk(byte);
@@ -81,22 +103,34 @@ function createAgentService({
 
       call.on('end', async () => {
         const body = Buffer.concat(clientBodyBuffers);
-
         const meta = call.metadata;
-        const vaultId = meta.get('vault-id').pop()?.toString() as VaultId;
-        if (vaultId == null) throw new ErrorGRPC('vault-name not in metadata.');
-        const vault = await vaultManager.getVault(vaultId);
-
+        const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
+        if (vaultNameOrId == null)
+          throw new ErrorGRPC('vault-name not in metadata.');
+        let vaultId;
+        try {
+          vaultId = makeVaultId(vaultNameOrId);
+          await vaultManager.openVault(vaultId);
+        } catch (err) {
+          if (
+            err instanceof vaultsErrors.ErrorVaultUndefined ||
+            err instanceof SyntaxError
+          ) {
+            vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
+            await vaultManager.openVault(vaultId);
+          } else {
+            throw err;
+          }
+        }
+        // TODO: Check the permissions here
         const response = new agentPB.PackChunk();
-        const [sideBand, progressStream] = await vault.handlePackRequest(
+        const [sideBand, progressStream] = await vaultManager.handlePackRequest(
+          vaultId,
           Buffer.from(body),
         );
-
         response.setChunk(Buffer.from('0008NAK\n'));
         await write(response);
-
         const responseBuffers: Buffer[] = [];
-
         await new Promise<void>((resolve, reject) => {
           sideBand.on('data', async (data: Buffer) => {
             responseBuffers.push(data);
@@ -112,7 +146,6 @@ function createAgentService({
           progressStream.write(Buffer.from('0014progress is at 50%\n'));
           progressStream.end();
         });
-
         call.end();
       });
     },
@@ -124,10 +157,12 @@ function createAgentService({
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       const response = new agentPB.VaultListMessage();
-      const id = call.request.getNodeId() as NodeId;
+      const id = makeNodeId(call.request.getNodeId());
       try {
-        const listResponse = vaultManager.handleVaultNamesRequest(id);
-
+        throw Error('Not implemented');
+        // FIXME: handleVaultNamesRequest doesn't exist.
+        // const listResponse = vaultManager.handleVaultNamesRequest(id);
+        let listResponse;
         for await (const vault of listResponse) {
           if (vault !== null) {
             response.setVault(vault);
@@ -156,7 +191,7 @@ function createAgentService({
     ): Promise<void> => {
       const response = new agentPB.NodeTableMessage();
       try {
-        const targetNodeId = call.request.getNodeId() as NodeId;
+        const targetNodeId = makeNodeId(call.request.getNodeId());
         // Get all local nodes that are closest to the target node from the request
         const closestNodes = await nodeManager.getClosestLocalNodes(
           targetNodeId,
@@ -186,7 +221,7 @@ function createAgentService({
       callback: grpc.sendUnaryData<agentPB.ClaimsMessage>,
     ): Promise<void> => {
       const response = new agentPB.ClaimsMessage();
-      // response.setClaimsList(
+      // Response.setClaimsList(
       //   await sigchain.getClaims(call.request.getClaimtype() as ClaimType)
       // );
       callback(null, response);
@@ -206,7 +241,7 @@ function createAgentService({
         const chainData = await nodeManager.getChainData();
         // Iterate through each claim in the chain, and serialize for transport
         for (const c in chainData) {
-          const claimId = c as ClaimId;
+          const claimId = c as ClaimIdString;
           const claim = chainData[claimId];
           const claimMessage = new agentPB.ClaimMessage();
           // Will always have a payload (never undefined) so cast as string
@@ -237,18 +272,18 @@ function createAgentService({
         // If so, then we want to make this node start sending hole punching packets
         // back to the source node.
         if (
-          nodeManager.getNodeId() === (call.request.getTargetId() as NodeId)
+          nodeManager.getNodeId() === makeNodeId(call.request.getTargetId())
         ) {
           const [host, port] = networkUtils.parseAddress(
             call.request.getEgressAddress(),
           );
           await nodeManager.openConnection(host, port);
           // Otherwise, find if node in table
-          // If so, ask the nodemanager to relay to the node
+          // If so, ask the nodeManager to relay to the node
         } else if (
-          await nodeManager.knowsNode(call.request.getSrcId() as NodeId)
+          await nodeManager.knowsNode(makeNodeId(call.request.getSrcId()))
         ) {
-          nodeManager.relayHolePunchMessage(call.request);
+          nodeManager.relayHolePunchMessage(call.request); // FIXME: don't we want to await this?
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -285,9 +320,12 @@ function createAgentService({
     ): Promise<void> => {
       const response = new agentPB.PermissionMessage();
       try {
-        const nodeId = call.request.getNodeId() as NodeId;
-        const vaultId = call.request.getVaultId() as VaultId;
-        const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
+        const nodeId = makeNodeId(call.request.getNodeId());
+        const vaultId = makeVaultId(call.request.getVaultId());
+        throw Error('Not Implemented');
+        // FIXME: getVaultPermissions not implemented.
+        // const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
+        let result;
         if (result[nodeId] === undefined) {
           response.setPermission(false);
         } else if (result[nodeId]['pull'] === undefined) {

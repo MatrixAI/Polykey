@@ -38,7 +38,7 @@ describe('utils', () => {
   });
   test('encryption and decryption of private key', async () => {
     const keyPair = await keysUtils.generateKeyPair(4096);
-    // try first password
+    // Try first password
     const password = (await keysUtils.getRandomBytes(10)).toString('base64');
     const privateKeyPemEncrypted = keysUtils.encryptPrivateKey(
       keyPair.privateKey,
@@ -51,7 +51,7 @@ describe('utils', () => {
     expect(pki.privateKeyToPem(privateKey)).toBe(
       pki.privateKeyToPem(keyPair.privateKey),
     );
-    // change to second password
+    // Change to second password
     const password2 = (await keysUtils.getRandomBytes(10)).toString('base64');
     const privateKeyPemEncrypted2 = keysUtils.encryptPrivateKey(
       privateKey,
@@ -64,7 +64,7 @@ describe('utils', () => {
     expect(pki.privateKeyToPem(privateKey2)).toBe(
       pki.privateKeyToPem(keyPair.privateKey),
     );
-    // wrong password
+    // Wrong password
     const password3 = (await keysUtils.getRandomBytes(10)).toString('base64');
     expect(() => {
       keysUtils.decryptPrivateKey(privateKeyPemEncrypted2, password3);

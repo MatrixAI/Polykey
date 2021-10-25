@@ -29,7 +29,7 @@ deleteSecret.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
   const secretMessage = new clientPB.SecretMessage();
 
@@ -43,7 +43,7 @@ deleteSecret.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setVault(vaultMessage);
     secretMessage.setSecretName(secretName);
 
@@ -61,7 +61,7 @@ deleteSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()} successfully deleted`,
+            `Secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()} successfully deleted`,
           ],
         }),
       );
@@ -70,7 +70,7 @@ deleteSecret.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Failed to delete secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
+            `Failed to delete secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()}`,
           ],
         }),
       );

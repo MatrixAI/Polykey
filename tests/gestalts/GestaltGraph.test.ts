@@ -15,12 +15,13 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GestaltGraph, utils as gestaltsUtils } from '@/gestalts';
-import { utils as claimsUtils } from '@/claims';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
+import { makeCrypto } from '../utils';
 
 describe('GestaltGraph', () => {
+  const pass = 'password';
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -29,11 +30,11 @@ describe('GestaltGraph', () => {
   let db: DB;
   let acl: ACL;
 
-  // abc <--> dee claims:
+  // Abc <--> dee claims:
   const abcDeeSignatures: Record<NodeId, SignatureData> = {};
   let nodeClaimAbcToDee: Claim;
   let nodeClaimDeeToAbc: Claim;
-  // abc <--> GitHub claims:
+  // Abc <--> GitHub claims:
   const abcSignature: Record<NodeId, SignatureData> = {};
   let identityClaimAbcToGH: Claim;
   let identityClaimGHToAbc: IdentityClaim;
@@ -43,15 +44,20 @@ describe('GestaltGraph', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
-    const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
+    keyManager = await KeyManager.createKeyManager({
+      password: pass,
+      keysPath,
+      logger,
     });
-    acl = new ACL({ db, logger });
-    await acl.start();
+    const dbPath = `${dataDir}/db`;
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: makeCrypto(keyManager),
+    });
+    await db.start();
+
+    acl = await ACL.createACL({ db, logger });
 
     // Initialise some dummy claims:
     abcDeeSignatures['abc'] = 'abcSignature';
@@ -77,7 +83,7 @@ describe('GestaltGraph', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'dee' as NodeId,
+          node1: 'dee' as NodeId, //TODO: use type guards for all `as NodeID` usages here.
           node2: 'abc' as NodeId,
         },
         iat: 1618203162,
@@ -119,21 +125,21 @@ describe('GestaltGraph', () => {
     };
   });
   afterEach(async () => {
-    await acl.stop();
+    await acl.destroy();
     await db.stop();
-    await keyManager.stop();
+    await db.destroy();
+    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
   test('get, set and unset node', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -151,15 +157,14 @@ describe('GestaltGraph', () => {
     await expect(
       gestaltGraph.getGestaltByNode(nodeInfo.id),
     ).resolves.toBeUndefined();
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('get, set and unset identity', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
@@ -193,15 +198,14 @@ describe('GestaltGraph', () => {
         identityInfo.identityId,
       ),
     ).resolves.toBeUndefined();
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('setting independent node and identity gestalts', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -233,15 +237,14 @@ describe('GestaltGraph', () => {
       nodes: {},
       identities: { [gkIdentity]: identityInfo },
     });
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('start and stop preserves state', async () => {
-    const gestaltGraph = new GestaltGraph({
+    let gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -253,8 +256,13 @@ describe('GestaltGraph', () => {
     };
     await gestaltGraph.setNode(nodeInfo);
     await gestaltGraph.setIdentity(identityInfo);
-    await gestaltGraph.stop();
-    await gestaltGraph.start();
+    await gestaltGraph.destroy();
+
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+    });
     const gestaltNode = await gestaltGraph.getGestaltByNode(nodeInfo.id);
     const gestaltIdentity = await gestaltGraph.getGestaltByIdentity(
       identityInfo.providerId,
@@ -275,19 +283,18 @@ describe('GestaltGraph', () => {
       nodes: {},
       identities: { [gkIdentity]: identityInfo },
     });
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('link node to node', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -295,7 +302,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -323,19 +330,18 @@ describe('GestaltGraph', () => {
       },
       identities: {},
     });
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('link node to identity', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -378,22 +384,21 @@ describe('GestaltGraph', () => {
         [gkIdentity]: identityInfo,
       },
     });
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('link node to node and identity', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     // abc -> GitHub
     const nodeInfo1Chain: Record<IdentityClaimId, Claim> = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     identityClaimAbcToGH.payload.seq = 2;
-    nodeInfo1Chain[claimsUtils.numToLexiString(2)] = identityClaimAbcToGH;
+    nodeInfo1Chain['B'] = identityClaimAbcToGH;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -401,7 +406,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -455,15 +460,14 @@ describe('GestaltGraph', () => {
         [gkIdentity]: identityInfo,
       },
     });
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('getting all gestalts', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -484,15 +488,24 @@ describe('GestaltGraph', () => {
     expect(gestalts).toContainEqual(identityGestalt);
     expect(gestalts).toContainEqual(nodeGestalt);
     expect(gestalts).toHaveLength(2);
-    await gestaltGraph.stop();
+
+    // Check if the two combine after linking.
+    await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo);
+    const gestalts2 = await gestaltGraph.getGestalts();
+    expect(gestalts2).toHaveLength(1);
+    const gestalts2String = JSON.stringify(gestalts2[0]);
+    expect(gestalts2String).toContain(nodeInfo.id);
+    expect(gestalts2String).toContain(identityInfo.providerId);
+    expect(gestalts2String).toContain(identityInfo.identityId);
+
+    await gestaltGraph.destroy();
   });
   test('new node gestalts creates a new acl record', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -508,15 +521,14 @@ describe('GestaltGraph', () => {
     const actions = await gestaltGraph.getGestaltActionsByNode(nodeInfo.id);
     expect(actions).toBeDefined();
     expect(actions).toMatchObject({});
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('new identity gestalts does not create a new acl record', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
@@ -528,15 +540,14 @@ describe('GestaltGraph', () => {
       identityInfo.identityId,
     );
     expect(actions).toBeUndefined();
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('set and unset gestalt actions', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -557,20 +568,19 @@ describe('GestaltGraph', () => {
     await gestaltGraph.unsetGestaltActionByNode(nodeInfo.id, 'notify');
     actions = await gestaltGraph.getGestaltActionsByNode(nodeInfo.id);
     expect(actions).not.toHaveProperty('notify');
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('linking 2 new nodes results in a merged permission', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // 2 new nodes should have the same permission
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -578,7 +588,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -595,15 +605,14 @@ describe('GestaltGraph', () => {
     actions2 = await gestaltGraph.getGestaltActionsByNode(nodeInfo2.id);
     expect(actions1).toEqual({ notify: null });
     expect(actions1).toEqual(actions2);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('linking 2 existing nodes results in a merged permission', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // 2 existing nodes will have a joined permission
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
@@ -620,7 +629,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -628,7 +637,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -644,16 +653,15 @@ describe('GestaltGraph', () => {
     expect(actions2).not.toBeUndefined();
     expect(actions1).toEqual({ notify: null, scan: null });
     expect(actions1).toEqual(actions2);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('link existing node to new node', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
-    // node 1 exists, but node 2 is new
+    // Node 1 exists, but node 2 is new
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -663,7 +671,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1Linked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -671,7 +679,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2Linked: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -684,7 +692,7 @@ describe('GestaltGraph', () => {
     expect(actions2).not.toBeUndefined();
     expect(actions1).toEqual({ notify: null });
     expect(actions1).toEqual(actions2);
-    // node 3 is new and linking to node 2 which is now exists
+    // Node 3 is new and linking to node 2 which is now exists
     const zzzDeeSignatures: Record<NodeId, SignatureData> = {};
     zzzDeeSignatures['zzz'] = 'zzzSignature';
     zzzDeeSignatures['dee'] = 'deeSignature';
@@ -705,7 +713,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo3Chain: ChainData = {};
-    nodeInfo3Chain[claimsUtils.numToLexiString(1)] = nodeClaimZzzToDee;
+    nodeInfo3Chain['A'] = nodeClaimZzzToDee;
     const nodeInfo3Linked: NodeInfo = {
       id: 'zzz' as NodeId,
       chain: nodeInfo3Chain,
@@ -721,19 +729,18 @@ describe('GestaltGraph', () => {
     expect(actions3).not.toBeUndefined();
     expect(actions3).toEqual({ notify: null });
     expect(actions3).toEqual(actions2);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('linking new node and new identity results in a merged permission', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -770,15 +777,14 @@ describe('GestaltGraph', () => {
     );
     expect(actions1).toEqual({ notify: null });
     expect(actions1).toEqual(actions2);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('linking existing node and existing identity results in merged permission', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -794,7 +800,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -856,7 +862,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'def'. Contains claims:
     // def -> GitHub (abc)
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimDefToGH;
+    nodeInfo1Chain['A'] = identityClaimDefToGH;
     const nodeInfo2Linked: NodeInfo = {
       id: 'def' as NodeId,
       chain: nodeInfo2Chain,
@@ -905,15 +911,14 @@ describe('GestaltGraph', () => {
     expect(actions2).toEqual({ notify: null, scan: null });
     expect(actions1).toEqual(actions2);
     expect(actions2).toEqual(actions3);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('link existing node to new identity', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: {},
@@ -922,7 +927,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -969,15 +974,14 @@ describe('GestaltGraph', () => {
       scan: null,
       notify: null,
     });
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('link new node to existing identity', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     const identityInfo: IdentityInfo = {
       providerId: 'github.com' as ProviderId,
       identityId: 'abc' as IdentityId,
@@ -987,7 +991,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfoLinked: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1026,19 +1030,18 @@ describe('GestaltGraph', () => {
       scan: null,
       notify: null,
     });
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('splitting node and node results in split inherited permissions', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1046,7 +1049,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -1078,19 +1081,18 @@ describe('GestaltGraph', () => {
     expect(perm1).not.toEqual(perm2);
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(2);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('splitting node and identity results in split inherited permissions unless the identity is a loner', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> GitHub
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = identityClaimAbcToGH;
+    nodeInfo1Chain['A'] = identityClaimAbcToGH;
     const nodeInfo: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1129,23 +1131,22 @@ describe('GestaltGraph', () => {
       identityInfo.identityId,
     );
     expect(actions1).toEqual({ scan: null, notify: null });
-    // identity no longer has attached node therefore it has no permissions
+    // Identity no longer has attached node therefore it has no permissions
     expect(actions2).toBeUndefined();
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
   test('removing a gestalt removes the permission', async () => {
-    const gestaltGraph = new GestaltGraph({
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
       acl,
       logger,
     });
-    await gestaltGraph.start();
     // NodeInfo on node 'abc'. Contains claims:
     // abc -> dee
     const nodeInfo1Chain: ChainData = {};
-    nodeInfo1Chain[claimsUtils.numToLexiString(1)] = nodeClaimAbcToDee;
+    nodeInfo1Chain['A'] = nodeClaimAbcToDee;
     const nodeInfo1: NodeInfo = {
       id: 'abc' as NodeId,
       chain: nodeInfo1Chain,
@@ -1153,7 +1154,7 @@ describe('GestaltGraph', () => {
     // NodeInfo on node 'dee'. Contains claims:
     // dee -> abc
     const nodeInfo2Chain: ChainData = {};
-    nodeInfo2Chain[claimsUtils.numToLexiString(1)] = nodeClaimDeeToAbc;
+    nodeInfo2Chain['A'] = nodeClaimDeeToAbc;
     const nodeInfo2: NodeInfo = {
       id: 'dee' as NodeId,
       chain: nodeInfo2Chain,
@@ -1165,7 +1166,7 @@ describe('GestaltGraph', () => {
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);
     await gestaltGraph.unsetNode(nodeInfo1.id);
-    // it's still 1 node perm
+    // It's still 1 node perm
     // its just that node 1 is eliminated
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);
@@ -1174,6 +1175,6 @@ describe('GestaltGraph', () => {
     await gestaltGraph.unsetNode(nodeInfo2.id);
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(0);
-    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
   });
 });

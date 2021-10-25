@@ -1,10 +1,6 @@
 import type { NodeId } from '@/nodes/types';
-import type {
-  NotificationId,
-  Notification,
-  NotificationData,
-} from '@/notifications/types';
-import type { VaultActions, VaultId, VaultName } from '@/vaults/types';
+import type { Notification, NotificationData } from '@/notifications/types';
+import type { VaultActions, VaultName } from '@/vaults/types';
 
 import jwtVerify from 'jose/jwt/verify';
 import { createPublicKey } from 'crypto';
@@ -14,12 +10,40 @@ import fromKeyLike from 'jose/jwk/from_key_like';
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
 import * as notificationsErrors from '@/notifications/errors';
+import { createNotificationIdGenerator } from '@/notifications/utils';
+import { sleep } from '@/utils';
+import { makeVaultId } from '@/vaults/utils';
+import { utils as idUtils } from '@matrixai/id';
 
 describe('Notifications utils', () => {
+  const nodeId = 'SomeRandomNodeId' as NodeId;
+  const vaultId = makeVaultId(
+    idUtils.fromString('vaultIdxxxxxxxxx'),
+  ).toString();
+
   test('generates notification ids', async () => {
-    const id1 = notificationsUtils.generateNotifId() as NotificationId;
-    const id2 = notificationsUtils.generateNotifId() as NotificationId;
-    expect(id1 < id2).toBeTruthy();
+    const generator = createNotificationIdGenerator();
+    let oldId = generator();
+    let currentId;
+
+    for (let i = 0; i < 100; i++) {
+      currentId = generator();
+      expect(Buffer.compare(oldId, currentId)).toBeTruthy();
+      oldId = currentId;
+    }
+  });
+  test('Generator maintains order between instances', async () => {
+    let generator = createNotificationIdGenerator();
+    let lastId = generator();
+    let currentId;
+
+    for (let i = 0; i < 100; i++) {
+      generator = createNotificationIdGenerator(lastId);
+      currentId = generator();
+      expect(Buffer.compare(lastId, currentId)).toBeTruthy();
+      lastId = currentId;
+      await sleep(10);
+    }
   });
 
   test('signs notifications', async () => {
@@ -28,27 +52,27 @@ describe('Notifications utils', () => {
         type: 'General',
         message: 'msg',
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     const gestaltInviteNotification: Notification = {
       data: {
         type: 'GestaltInvite',
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
           pull: null,
         } as VaultActions,
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
 
@@ -78,7 +102,7 @@ describe('Notifications utils', () => {
       type: 'General',
       message: 'msg',
     });
-    expect(result.payload.senderId).toEqual('nodeId');
+    expect(result.payload.senderId).toEqual(nodeId);
     expect(result.payload.isRead).toBeFalsy();
     expect(result.protectedHeader.jwk).toEqual(jwkPublicKey);
 
@@ -86,21 +110,21 @@ describe('Notifications utils', () => {
     expect(result.payload.data).toEqual({
       type: 'GestaltInvite',
     });
-    expect(result.payload.senderId).toEqual('nodeId');
+    expect(result.payload.senderId).toEqual(nodeId);
     expect(result.payload.isRead).toBeFalsy();
     expect(result.protectedHeader.jwk).toEqual(jwkPublicKey);
 
     result = await jwtVerify(signedVaultShareNotification, EmbeddedJWK, {});
     expect(result.payload.data).toEqual({
       type: 'VaultShare',
-      vaultId: 'vaultId',
+      vaultId: vaultId,
       vaultName: 'vaultName',
       actions: {
         clone: null,
         pull: null,
       },
     });
-    expect(result.payload.senderId).toEqual('nodeId');
+    expect(result.payload.senderId).toEqual(nodeId);
     expect(result.payload.isRead).toBeFalsy();
     expect(result.protectedHeader.jwk).toEqual(jwkPublicKey);
   });
@@ -111,27 +135,27 @@ describe('Notifications utils', () => {
         type: 'General',
         message: 'msg',
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     const gestaltInviteNotification: Notification = {
       data: {
         type: 'GestaltInvite',
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
           pull: null,
         } as VaultActions,
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
 
@@ -159,7 +183,7 @@ describe('Notifications utils', () => {
       type: 'General',
       message: 'msg',
     });
-    expect(decodedGeneralNotification.senderId).toEqual('nodeId');
+    expect(decodedGeneralNotification.senderId).toEqual(nodeId);
     expect(decodedGeneralNotification.isRead).toBeFalsy();
 
     const decodedGestaltInviteNotification =
@@ -169,7 +193,7 @@ describe('Notifications utils', () => {
     expect(decodedGestaltInviteNotification.data).toEqual({
       type: 'GestaltInvite',
     });
-    expect(decodedGestaltInviteNotification.senderId).toEqual('nodeId');
+    expect(decodedGestaltInviteNotification.senderId).toEqual(nodeId);
     expect(decodedGestaltInviteNotification.isRead).toBeFalsy();
 
     const decodedVaultShareNotification =
@@ -178,14 +202,14 @@ describe('Notifications utils', () => {
       );
     expect(decodedVaultShareNotification.data).toEqual({
       type: 'VaultShare',
-      vaultId: 'vaultId',
+      vaultId: vaultId,
       vaultName: 'vaultName',
       actions: {
         clone: null,
         pull: null,
       },
     });
-    expect(decodedVaultShareNotification.senderId).toEqual('nodeId');
+    expect(decodedVaultShareNotification.senderId).toEqual(nodeId);
     expect(decodedVaultShareNotification.isRead).toBeFalsy();
   });
 
@@ -206,7 +230,7 @@ describe('Notifications utils', () => {
       data: {
         type: 'GestaltInvite',
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     expect(
@@ -216,14 +240,14 @@ describe('Notifications utils', () => {
     const vaultShareNotification: Notification = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: {
           clone: null,
           pull: null,
         } as VaultActions,
       } as NotificationData,
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     expect(
@@ -237,7 +261,7 @@ describe('Notifications utils', () => {
       data: {
         type: 'Invalid Type',
       },
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     expect(() =>
@@ -249,7 +273,7 @@ describe('Notifications utils', () => {
       data: {
         type: 'General',
       },
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     expect(() =>
@@ -262,7 +286,7 @@ describe('Notifications utils', () => {
         type: 'GestaltInvite',
         message: 'msg',
       },
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     expect(() =>
@@ -273,11 +297,11 @@ describe('Notifications utils', () => {
     const notification4 = {
       data: {
         type: 'VaultShare',
-        vaultId: 'vaultId' as VaultId,
+        vaultId: vaultId,
         vaultName: 'vaultName' as VaultName,
         actions: 'clone + pull',
       },
-      senderId: 'nodeId' as NodeId,
+      senderId: nodeId,
       isRead: false,
     };
     expect(() =>
@@ -290,7 +314,7 @@ describe('Notifications utils', () => {
         type: 'General',
         message: 'message',
       },
-      sendingId: 'nodeId' as NodeId,
+      sendingId: nodeId,
       isRead: false,
     };
     expect(() =>

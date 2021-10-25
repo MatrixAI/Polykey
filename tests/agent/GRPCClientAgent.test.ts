@@ -1,12 +1,14 @@
-import type { NodeAddress, NodeId, NodeInfo } from '@/nodes/types';
-import type { ClaimId, ClaimIntermediary } from '@/claims/types';
+import type { NodeAddress, NodeInfo } from '@/nodes/types';
+import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
+import type { VaultName } from '@/vaults/types';
 
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
+import { Mutex } from 'async-mutex';
 
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
@@ -16,19 +18,22 @@ import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { agentPB, GRPCClientAgent } from '@/agent';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { NotificationsManager } from '@/notifications';
 import TestNodeConnection from '../nodes/TestNodeConnection';
 
 import * as testUtils from './utils';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
+import { makeCrypto } from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 describe('GRPC agent', () => {
+  const password = 'password';
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const node1: NodeInfo = {
-    id: '12345' as NodeId,
+    id: makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug'),
     chain: {},
   };
 
@@ -61,45 +66,47 @@ describe('GRPC agent', () => {
     vaultsPath = path.join(dataDir, 'vaults');
     dbPath = path.join(dataDir, 'db');
 
-    fwdProxy = new ForwardProxy({
+    fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
       logger: logger,
     });
 
-    revProxy = new ReverseProxy({
+    revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
 
-    keyManager = new KeyManager({
+    keyManager = await KeyManager.createKeyManager({
+      password,
       keysPath,
       fs: fs,
       logger: logger,
     });
 
-    db = new DB({
+    db = await DB.createDB({
       dbPath: dbPath,
       fs: fs,
       logger: logger,
+      crypto: makeCrypto(keyManager),
     });
 
-    acl = new ACL({
+    acl = await ACL.createACL({
       db: db,
       logger: logger,
     });
 
-    gestaltGraph = new GestaltGraph({
+    gestaltGraph = await GestaltGraph.createGestaltGraph({
       db: db,
       acl: acl,
       logger: logger,
     });
 
-    sigchain = new Sigchain({
+    sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
       db: db,
       logger: logger,
     });
 
-    nodeManager = new NodeManager({
+    nodeManager = await NodeManager.createNodeManager({
       db: db,
       sigchain: sigchain,
       keyManager: keyManager,
@@ -109,19 +116,21 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    notificationsManager = new NotificationsManager({
-      acl: acl,
-      db: db,
-      nodeManager: nodeManager,
-      keyManager: keyManager,
-      messageCap: 5,
-      logger: logger,
-    });
+    notificationsManager =
+      await NotificationsManager.createNotificationsManager({
+        acl: acl,
+        db: db,
+        nodeManager: nodeManager,
+        keyManager: keyManager,
+        messageCap: 5,
+        logger: logger,
+      });
 
-    vaultManager = new VaultManager({
-      vaultsPath: vaultsPath,
+    vaultManager = await VaultManager.createVaultManager({
       keyManager: keyManager,
+      vaultsPath: vaultsPath,
       nodeManager: nodeManager,
+      vaultsKey: keyManager.vaultKey,
       db: db,
       acl: acl,
       gestaltGraph: gestaltGraph,
@@ -129,19 +138,13 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    await keyManager.start({ password: 'password' });
-    await db.start({ keyPair: keyManager.getRootKeyPair() });
+    await db.start();
     const tlsConfig: TLSConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: await keyManager.getRootCertChainPem(),
     };
     await fwdProxy.start({ tlsConfig });
-    await acl.start();
-    await gestaltGraph.start();
     await nodeManager.start();
-    await sigchain.start();
-    await notificationsManager.start();
-    await vaultManager.start({});
     [server, port] = await testUtils.openTestAgentServer({
       keyManager,
       vaultManager,
@@ -155,15 +158,15 @@ describe('GRPC agent', () => {
     await testUtils.closeTestAgentClient(client);
     await testUtils.closeTestAgentServer(server);
 
-    await vaultManager.stop();
-    await notificationsManager.stop();
-    await sigchain.stop();
+    await vaultManager.destroy();
+    await notificationsManager.destroy();
+    await sigchain.destroy();
     await nodeManager.stop();
-    await gestaltGraph.stop();
-    await acl.stop();
+    await gestaltGraph.destroy();
+    await acl.destroy();
     await fwdProxy.stop();
     await db.stop();
-    await keyManager.stop();
+    await keyManager.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -177,42 +180,45 @@ describe('GRPC agent', () => {
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
   });
-  test('can check permissions', async () => {
-    const vault = await vaultManager.createVault('TestAgentVault');
+  test.skip('can check permissions', async () => {
+    // FIXME: permissions not implemented on vaults.
+    const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
     await gestaltGraph.setNode(node1);
-    await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
+    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
+    // await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
     const vaultPermMessage = new agentPB.VaultPermMessage();
-    vaultPermMessage.setNodeId('12345');
-    vaultPermMessage.setVaultId(vault.vaultId);
+    vaultPermMessage.setNodeId(node1.id);
+    // VaultPermMessage.setVaultId(vault.vaultId);
     const response = await client.vaultsPermisssionsCheck(vaultPermMessage);
     expect(response.getPermission()).toBeFalsy();
-    await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
+    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     const response2 = await client.vaultsPermisssionsCheck(vaultPermMessage);
     expect(response2.getPermission()).toBeTruthy();
-    await vaultManager.deleteVault(vault.vaultId);
+    // Await vaultManager.deleteVault(vault.vaultId);
   });
-  test('can scan vaults', async () => {
-    const vault = await vaultManager.createVault('TestAgentVault');
+  test.skip('can scan vaults', async () => {
+    //FIXME, permissions not implemented on vaults
+    const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
     await gestaltGraph.setNode(node1);
-    const NodeIdMessage = new agentPB.NodeIdMessage();
-    NodeIdMessage.setNodeId('12345');
-    const response = client.vaultsScan(NodeIdMessage);
+    const nodeIdMessage = new agentPB.NodeIdMessage();
+    nodeIdMessage.setNodeId(node1.id);
+    const response = client.vaultsScan(nodeIdMessage);
     const data: string[] = [];
     for await (const resp of response) {
       const chunk = resp.getVault_asU8();
       data.push(Buffer.from(chunk).toString());
     }
     expect(data).toStrictEqual([]);
-    await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = client.vaultsScan(NodeIdMessage);
+    fail();
+    // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
+    const response2 = client.vaultsScan(nodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {
       const chunk = resp.getVault_asU8();
-      data2.push(Buffer.from(chunk).toString());
+      // Data2.push(Buffer.from(chunk).toString());
     }
-    expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
-    await vaultManager.deleteVault(vault.vaultId);
+    // Expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
+    // await vaultManager.deleteVault(vault.vaultId);
   });
   test('Can connect over insecure connection.', async () => {
     const echoMessage = new agentPB.EchoMessage();
@@ -236,34 +242,46 @@ describe('GRPC agent', () => {
 
     let xToYNodeConnection: TestNodeConnection;
 
+    const nodeIdX = makeNodeId(
+      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+    );
+    const nodeIdY = makeNodeId(
+      'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+    );
+
     beforeEach(async () => {
       yKeysPath = path.join(dataDir, 'keys-y');
-      yKeyManager = new KeyManager({ keysPath: yKeysPath, fs, logger });
-      await yKeyManager.start({ password: 'password' });
+      yKeyManager = await KeyManager.createKeyManager({
+        password,
+        keysPath: yKeysPath,
+        fs,
+        logger,
+      });
 
       // Manually inject Y's public key into a dummy NodeConnection object, such
       // that it can be used to verify the claim signature
-      xToYNodeConnection = new TestNodeConnection({
+      xToYNodeConnection = await TestNodeConnection.createTestNodeConnection({
         publicKey: yKeyManager.getRootKeyPairPem().publicKey,
-        targetNodeId: 'Y' as NodeId,
+        targetNodeId: nodeIdY,
         targetHost: 'unnecessary' as Host,
         targetPort: 0 as Port,
         forwardProxy: fwdProxy,
         keyManager: keyManager,
+        logger: logger,
       });
       // @ts-ignore - force push into the protected connections map
-      nodeManager.connections.set('Y' as NodeId, xToYNodeConnection);
-      await nodeManager.setNode(
-        'Y' as NodeId,
-        {
-          ip: 'unnecessary' as Host,
-          port: 0 as Port,
-        } as NodeAddress,
-      );
+      nodeManager.connections.set(nodeIdY, {
+        connection: xToYNodeConnection,
+        lock: new Mutex(),
+      });
+      await nodeManager.setNode(nodeIdY, {
+        ip: 'unnecessary' as Host,
+        port: 0 as Port,
+      } as NodeAddress);
     });
 
     afterEach(async () => {
-      await yKeyManager.stop();
+      await yKeyManager.destroy();
     });
 
     test('can successfully cross sign a claim', async () => {
@@ -277,10 +295,10 @@ describe('GRPC agent', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'Y' as NodeId,
-          node2: 'X' as NodeId,
+          node1: nodeIdY,
+          node2: nodeIdX,
         },
-        kid: 'Y' as NodeId,
+        kid: nodeIdY,
       });
       const intermediary: ClaimIntermediary = {
         payload: claim.payload,
@@ -331,7 +349,7 @@ describe('GRPC agent', () => {
       const doublyResponse = await claimsUtils.signIntermediaryClaim({
         claim: constructedIntermediary,
         privateKey: yKeyManager.getRootKeyPairPem().privateKey,
-        signeeNodeId: 'Y' as NodeId,
+        signeeNodeId: nodeIdY,
       });
       const doublyMessage = claimsUtils.createCrossSignMessage({
         doublySignedClaim: doublyResponse,
@@ -353,7 +371,7 @@ describe('GRPC agent', () => {
       expect(Object.keys(chain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(chain)) {
-        const claimId = c as ClaimId;
+        const claimId = c as ClaimIdString;
         expect(chain[claimId]).toStrictEqual(doublyResponse);
       }
     });
@@ -363,7 +381,7 @@ describe('GRPC agent', () => {
       // 2. X <- sends its intermediary signed claim <- Y
       const crossSignMessageUndefinedSingly = new agentPB.CrossSignMessage();
       await genClaims.write(crossSignMessageUndefinedSingly);
-      await expect(genClaims.read()).rejects.toThrow(
+      await expect(() => genClaims.read()).rejects.toThrow(
         claimsErrors.ErrorUndefinedSinglySignedClaim,
       );
       expect(genClaims.stream.destroyed).toBe(true);
@@ -381,7 +399,7 @@ describe('GRPC agent', () => {
         intermediaryNoSignature,
       );
       await genClaims.write(crossSignMessageUndefinedSinglySignature);
-      await expect(genClaims.read()).rejects.toThrow(
+      await expect(() => genClaims.read()).rejects.toThrow(
         claimsErrors.ErrorUndefinedSignature,
       );
       expect(genClaims.stream.destroyed).toBe(true);

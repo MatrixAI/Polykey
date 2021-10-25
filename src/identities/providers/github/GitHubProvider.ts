@@ -61,7 +61,7 @@ class GitHubProvider extends Provider {
     const data = await response.text();
     const authParams = new URLSearchParams(data);
     const deviceCode = authParams.get('device_code');
-    // convert seconds to milliseconds
+    // Convert seconds to milliseconds
     let pollInterval = parseInt(authParams.get('interval') ?? '1') * 1000;
     const userCode = authParams.get('user_code');
     if (!deviceCode || !userCode) {
@@ -69,7 +69,7 @@ class GitHubProvider extends Provider {
         `Provider device code request did not return the device_code or the user_code`,
       );
     }
-    // this code needs to be used by the user to manually enter
+    // This code needs to be used by the user to manually enter
     yield userCode;
     // Promise.race does not cancel unfinished promises
     // the finished condition variable is needed to stop the pollAccessToken process
@@ -124,7 +124,7 @@ class GitHubProvider extends Provider {
             await sleep(pollInterval);
             continue;
           } else if (data.error === 'slow_down') {
-            // convert seconds to milliseconds
+            // Convert seconds to milliseconds
             pollInterval = parseInt(data.get('interval') ?? '1') * 1000;
             await sleep(pollInterval);
             continue;
@@ -360,7 +360,7 @@ class GitHubProvider extends Provider {
    */
   public async publishClaim(
     authIdentityId: IdentityId,
-    identityClaim: Claim, // give claim we want to publush
+    identityClaim: Claim, // Give claim we want to publush
   ): Promise<IdentityClaim> {
     let tokenData = await this.getToken(authIdentityId);
     if (tokenData == null) {
@@ -486,7 +486,7 @@ class GitHubProvider extends Provider {
       url.searchParams.set('p', pageNum.toString());
       url.searchParams.set(
         'q',
-        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`, //githubidentityclaim
+        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`, //Githubidentityclaim
       );
       const request = new Request(url.toString(), { method: 'GET' });
       const response = await fetch(request);

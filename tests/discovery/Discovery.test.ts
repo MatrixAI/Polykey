@@ -28,21 +28,25 @@ describe('Discovery', () => {
     let nodePath: string;
 
     beforeAll(async () => {
-      //creating directories and paths.
+      //Creating directories and paths.
       dataDirEach = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
       nodePath = path.join(dataDirEach, 'node');
 
-      polykeyAgent = new PolykeyAgent({
+      polykeyAgent = await PolykeyAgent.createPolykey({
+        password,
         nodePath,
         logger,
+        cores: 1,
+        workerManager: null,
       });
       discovery = polykeyAgent.discovery;
     });
 
     afterAll(async () => {
       await polykeyAgent.stop();
+      await polykeyAgent.destroy();
       await fs.promises.rm(dataDirEach, {
         force: true,
         recursive: true,
@@ -54,15 +58,14 @@ describe('Discovery', () => {
     test(
       'Starts and stops',
       async () => {
-        await polykeyAgent.start({ password });
+        await polykeyAgent.start({});
 
         //Not started.
-        await polykeyAgent.discovery.stop();
-        expect(discovery.started).toBeFalsy();
+        expect(discovery.destroyed).toBeFalsy();
 
-        //starting.
-        await discovery.start();
-        expect(discovery.started).toBeTruthy();
+        //Starting.
+        await discovery.destroy();
+        expect(discovery.destroyed).toBeTruthy();
       },
       global.polykeyStartupTimeout,
     );
@@ -135,7 +138,8 @@ describe('Discovery', () => {
       const discoverProcess = nodeA.discovery.discoverGestaltByNode(
         nodeB.nodes.getNodeId(),
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.
@@ -156,7 +160,8 @@ describe('Discovery', () => {
         testProvider.id,
         identityId,
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.
@@ -248,7 +253,8 @@ describe('Discovery', () => {
         testProvider.id,
         identityIdB,
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.
@@ -269,7 +275,8 @@ describe('Discovery', () => {
         testProvider.id,
         identityIdA,
       );
-      for await (const step of discoverProcess) {
+      for await (const _step of discoverProcess) {
+        // Waiting for the discovery process to finish.
       }
 
       //We expect to find a gestalt now.

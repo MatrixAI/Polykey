@@ -1,4 +1,3 @@
-import type { NodeId } from '../nodes/types';
 import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 
@@ -7,6 +6,7 @@ import * as utils from './utils';
 import * as clientPB from '../proto/js/Client_pb';
 import * as grpcUtils from '../grpc/utils';
 import * as notificationsUtils from '../notifications/utils';
+import { makeNodeId } from '../nodes/utils';
 
 const createNotificationsRPC = ({
   notificationsManager,
@@ -29,7 +29,7 @@ const createNotificationsRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const receivingId = call.request.getReceiverId() as NodeId;
+        const receivingId = makeNodeId(call.request.getReceiverId());
         const data = {
           type: 'General',
           message: call.request.getData()?.getMessage(),

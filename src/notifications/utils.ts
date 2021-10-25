@@ -4,12 +4,13 @@ import type {
   VaultShare,
   Notification,
   SignedNotification,
+  NotificationId,
+  NotificationIdGenerator,
 } from './types';
 import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 import type { VaultId } from '../vaults/types';
 
-import mlts from 'monotonic-lexicographic-timestamp';
 import EmbeddedJWK from 'jose/jwk/embedded';
 import jwtVerify from 'jose/jwt/verify';
 import { createPublicKey, createPrivateKey } from 'crypto';
@@ -24,10 +25,24 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
+import { IdSortable } from '@matrixai/id';
+import { isId, makeId } from '../GenericIdTypes';
 
-const timestamp = mlts();
-function generateNotifId(): string {
-  return timestamp();
+function isNotificationId(arg: any): arg is NotificationId {
+  return isId<NotificationId>(arg);
+}
+
+function makeNotificationId(arg: any) {
+  return makeId<NotificationId>(arg);
+}
+
+function createNotificationIdGenerator(
+  lastId?: NotificationId,
+): NotificationIdGenerator {
+  const idSortableGenerator = new IdSortable({
+    lastId,
+  });
+  return (): NotificationId => makeNotificationId(idSortableGenerator.get());
 }
 
 function constructGestaltInviteMessage(nodeId: NodeId): string {
@@ -35,7 +50,7 @@ function constructGestaltInviteMessage(nodeId: NodeId): string {
 }
 
 /**
- * dummy for now
+ * Dummy for now
  */
 function constructVaultShareMessage(vaultId: VaultId): string {
   return `xxx has shared their vault with ID ${vaultId} with you.`;
@@ -75,7 +90,7 @@ async function verifyAndDecodeNotif(notifJWT: string): Promise<Notification> {
     ) {
       throw err;
     } else {
-      // error came from jose
+      // Error came from jose
       throw new notificationsErrors.ErrorNotificationsParse();
     }
   }
@@ -137,7 +152,9 @@ function validateVaultShareNotification(
 }
 
 export {
-  generateNotifId,
+  isNotificationId,
+  makeNotificationId,
+  createNotificationIdGenerator,
   signNotification,
   verifyAndDecodeNotif,
   constructGestaltInviteMessage,

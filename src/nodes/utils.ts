@@ -1,8 +1,8 @@
-import type { NodeId, NodeData } from './types';
+import type { NodeData, NodeId } from './types';
 
 import { Validator } from 'ip-num';
-
-const validNodeId = /^[A-Za-z0-9+/]{43}=$/;
+import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
+import { ErrorInvalidNodeId } from './errors';
 
 /**
  * Compute the distance between two nodes.
@@ -37,16 +37,16 @@ function calculateDistance(nodeId1: NodeId, nodeId2: NodeId): BigInt {
 function calculateBucketIndex(
   sourceNode: NodeId,
   targetNode: NodeId,
-  nodeIdBits: number,
+  nodeIdBits: number = 256,
 ) {
   const distance = calculateDistance(sourceNode, targetNode);
-  // start at the last bucket: most likely to be here based on relation of
+  // Start at the last bucket: most likely to be here based on relation of
   // bucket index to distance
   let bucketIndex = nodeIdBits - 1;
   for (; bucketIndex >= 0; bucketIndex--) {
     const lowerBound = BigInt(2) ** BigInt(bucketIndex);
     const upperBound = BigInt(2) ** BigInt(bucketIndex + 1);
-    // if 2^i <= distance (from current node) < 2^(i+1),
+    // If 2^i <= distance (from current node) < 2^(i+1),
     // then break and return current index
     if (lowerBound <= distance && distance < upperBound) {
       break;
@@ -58,8 +58,12 @@ function calculateBucketIndex(
 /**
  * Validates that a provided node ID string is a valid node ID.
  */
-function isNodeId(nodeId: string): boolean {
-  return validNodeId.test(nodeId);
+function isNodeId(nodeId: string): nodeId is NodeId {
+  return isIdString<NodeId>(nodeId, 32);
+}
+
+function makeNodeId(arg: any): NodeId {
+  return makeIdString<NodeId>(arg, 32, 'base32hex');
 }
 
 /**
@@ -74,13 +78,11 @@ function isValidHost(host: string): boolean {
 /**
  * Node ID to an array of 8-bit unsigned ints
  */
-function nodeIdToU8(id: string) {
-  const b = Buffer.from(id, 'ascii');
-  return new Uint8Array(
-    b.buffer,
-    b.byteOffset,
-    b.byteLength / Uint8Array.BYTES_PER_ELEMENT,
-  );
+function nodeIdToU8(id: string): Uint8Array {
+  // Converting from the multibase string to a buffer of hopefully 32 bytes.
+  const byteArray = fromMultibase(id);
+  if (byteArray == null) throw new ErrorInvalidNodeId();
+  return byteArray;
 }
 
 /**
@@ -100,6 +102,7 @@ export {
   calculateDistance,
   calculateBucketIndex,
   isNodeId,
+  makeNodeId,
   isValidHost,
   nodeIdToU8,
   sortByDistance,

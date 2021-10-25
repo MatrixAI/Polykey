@@ -1,8 +1,8 @@
+import type { TransferDescriptor } from 'threads';
 import type { PublicKeyAsn1, PrivateKeyAsn1, KeyPairAsn1 } from '../keys/types';
 
 import { utils as keysUtils } from '../keys';
-import { isWorkerRuntime } from 'threads/worker';
-import efsWorker from 'encryptedfs/dist/workers/efsWorkerModule';
+import { isWorkerRuntime, Transfer } from 'threads/worker';
 
 /**
  * Worker object that contains all functions that will be executed in parallel
@@ -12,7 +12,27 @@ import efsWorker from 'encryptedfs/dist/workers/efsWorkerModule';
  * The caller must always await because the fucntions will run on the pool
  */
 const polykeyWorker = {
-  ...efsWorker,
+  // EFS functions
+  async encrypt(
+    key: ArrayBuffer,
+    plainText: ArrayBuffer,
+  ): Promise<TransferDescriptor<ArrayBuffer>> {
+    const cipherText = await keysUtils.encryptWithKey(key, plainText);
+    return Transfer(cipherText);
+  },
+  async decrypt(
+    key: ArrayBuffer,
+    cipherText: ArrayBuffer,
+  ): Promise<TransferDescriptor<ArrayBuffer> | undefined> {
+    const plainText = await keysUtils.decryptWithKey(key, cipherText);
+    if (plainText != null) {
+      return Transfer(plainText);
+    } else {
+      return;
+    }
+  },
+
+  // Normal functions
   /**
    * Check if we are running in the worker.
    * Only used for testing
@@ -29,6 +49,8 @@ const polykeyWorker = {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
     return;
   },
+
+  // KeyManager operations
   /**
    * Generate KeyPair
    */
@@ -70,6 +92,67 @@ const polykeyWorker = {
     const publicKey = keysUtils.publicKeyFromAsn1(publicKeyAsn1);
     const signed = keysUtils.verifyWithPublicKey(publicKey, data_, signature_);
     return signed;
+  },
+
+  // These operations are "overwriting" the EFS ops
+  // they are using our crypto mechanisms
+  // during parallel execution
+  // unless we are injecting our own crypto mechanism in it
+  // so they are sharing the same system
+  // so it seems the proper way to do this
+  // would be ensure that we have a common interface for a crypto utility
+  // like an object containing the relevant operations
+
+  // DB operations
+  /**
+   * Zero copy encryption of plain text to cipher text
+   */
+  async encryptWithKey(
+    key: ArrayBuffer,
+    keyOffset: number,
+    keyLength: number,
+    plainText: ArrayBuffer,
+    plainTextOffset: number,
+    plainTextLength: number,
+  ): Promise<TransferDescriptor<[ArrayBuffer, number, number]>> {
+    const key_ = Buffer.from(key, keyOffset, keyLength);
+    const plainText_ = Buffer.from(plainText, plainTextOffset, plainTextLength);
+    const cipherText = Buffer.from(
+      await keysUtils.encryptWithKey(key_, plainText_),
+    );
+    return Transfer(
+      [cipherText.buffer, cipherText.byteOffset, cipherText.byteLength],
+      [cipherText.buffer],
+    );
+  },
+  /**
+   * Zero copy decryption of cipher text to plain text
+   */
+  async decryptWithKey(
+    key: ArrayBuffer,
+    keyOffset: number,
+    keyLength: number,
+    cipherText: ArrayBuffer,
+    cipherTextOffset: number,
+    cipherTextLength: number,
+  ): Promise<TransferDescriptor<[ArrayBuffer, number, number]> | undefined> {
+    const key_ = Buffer.from(key, keyOffset, keyLength);
+    const cipherText_ = Buffer.from(
+      cipherText,
+      cipherTextOffset,
+      cipherTextLength,
+    );
+    const plainText = Buffer.from(
+      (await keysUtils.decryptWithKey(key_, cipherText_))!,
+    );
+    if (plainText != null) {
+      return Transfer(
+        [plainText.buffer, plainText.byteOffset, plainText.byteLength],
+        [plainText.buffer],
+      );
+    } else {
+      return;
+    }
   },
 };
 

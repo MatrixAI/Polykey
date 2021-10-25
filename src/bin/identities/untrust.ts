@@ -20,7 +20,7 @@ const commandTrustGestalts = createCommand('untrust', {
 
 commandTrustGestalts.arguments('<id>');
 commandTrustGestalts.action(async (id, options) => {
-  //parsing ID.
+  //Parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
   const clientConfig = {};
@@ -35,7 +35,7 @@ commandTrustGestalts.action(async (id, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const action = 'notify';
   try {
     await client.start({});

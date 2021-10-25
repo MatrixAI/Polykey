@@ -1,14 +1,23 @@
 import type { Opaque } from '../types';
 import type { GestaltAction } from '../gestalts/types';
-import type { VaultId, VaultActions } from '../vaults/types';
+import type { VaultActions, VaultId } from '../vaults/types';
+import { Id, IdString } from '../GenericIdTypes';
 
-type PermissionId = Opaque<'PermissionId', string>;
+type PermissionId = Opaque<'PermissionId', Id>;
+
+type PermissionIdString = Opaque<'PermissionIdString', IdString>;
 
 type Permission = {
   gestalt: GestaltActions;
-  vaults: Record<VaultId, VaultActions>;
+  vaults: Record<VaultId | string, VaultActions>; // FIXME: the string union on VaultId is to prevent some false errors.
 };
 
 type GestaltActions = Partial<Record<GestaltAction, null>>;
 
-export type { PermissionId, Permission, GestaltActions, VaultActions };
+export type {
+  PermissionId,
+  PermissionIdString,
+  Permission,
+  GestaltActions,
+  VaultActions,
+};

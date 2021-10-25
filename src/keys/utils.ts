@@ -30,7 +30,11 @@ import {
 import config from '../config';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
-import { promisify } from 'encryptedfs/dist/util';
+import { promisify } from '../utils';
+import { makeNodeId } from '../nodes/utils';
+
+const ivSize = 16;
+const authTagSize = 16;
 
 /**
  * Polykey OIDs start at 1.3.6.1.4.1.57167.2
@@ -54,7 +58,7 @@ async function generateDeterministicKeyPair(
 ): Promise<KeyPair> {
   const prng = random.createInstance();
   prng.seedFileSync = (needed: number) => {
-    // using bip39 seed generation parameters
+    // Using bip39 seed generation parameters
     // no passphrase is considered here
     return pkcs5.pbkdf2(seed, 'mnemonic', 2048, needed, md.sha512.create());
   };
@@ -157,7 +161,7 @@ function publicKeyToFingerprintBytes(
 function publicKeyToFingerprint(publicKey: PublicKey): PublicKeyFingerprint {
   const fString = publicKeyToFingerprintBytes(publicKey);
   const fTypedArray = forgeUtil.binary.raw.decode(fString);
-  const f = forgeUtil.binary.base64.encode(fTypedArray);
+  const f = makeNodeId(fTypedArray);
   return f;
 }
 
@@ -179,7 +183,7 @@ function decryptPrivateKey(
   privateKeyEncryptedPem: PrivateKeyPem,
   password: string,
 ): PrivateKey {
-  // using the wrong password can return a null
+  // Using the wrong password can return a null
   // or it could throw an exception
   // the exact exception can be different
   const privateKeyDecrypted = pki.decryptRsaPrivateKey(
@@ -354,7 +358,7 @@ function certFromDer(certDer: string): Certificate {
 }
 
 function certCopy(cert: Certificate): Certificate {
-  // ideally we would use
+  // Ideally we would use
   // certFromAsn1(certToAsn1(cert))
   // however this bugged:
   // https://github.com/digitalbazaar/forge/issues/866
@@ -389,7 +393,7 @@ function certVerifiedNode(cert: Certificate): boolean {
     }
     return true;
   });
-  // calculate the certificate digest
+  // Calculate the certificate digest
   const certDigest = md.sha256.create();
 
   let verified;
@@ -409,14 +413,14 @@ function certVerifiedNode(cert: Certificate): boolean {
       return false;
     }
   } finally {
-    // roll back the mutations to the child certificate
+    // Roll back the mutations to the child certificate
     cert.setExtensions(extensionsOrig);
   }
   return verified;
 }
 
 function encryptWithPublicKey(publicKey: PublicKey, plainText: Buffer): Buffer {
-  // sha256 is 256 bits or 32 bytes
+  // Sha256 is 256 bits or 32 bytes
   const maxSize = maxEncryptSize(publicKeyBitSize(publicKey) / 8, 32);
   if (plainText.byteLength > maxSize) {
     throw new keysErrors.ErrorEncryptSize(
@@ -480,7 +484,7 @@ function verifyWithPublicKey(
 }
 
 function maxEncryptSize(keyByteSize: number, hashByteSize: number) {
-  // see: https://tools.ietf.org/html/rfc3447#section-7.1
+  // See: https://tools.ietf.org/html/rfc3447#section-7.1
   return keyByteSize - 2 * hashByteSize - 2;
 }
 
@@ -502,36 +506,47 @@ async function generateKey(bits: number = 256): Promise<Buffer> {
   return key;
 }
 
-function encryptWithKey(key: Buffer, plainText: Buffer): Buffer {
-  const iv = getRandomBytesSync(16);
-  const c = cipher.createCipher('AES-GCM', key.toString('binary'));
-  c.start({ iv: iv.toString('binary'), tagLength: 128 });
+async function encryptWithKey(
+  key: ArrayBuffer,
+  plainText: ArrayBuffer,
+): Promise<ArrayBuffer> {
+  const iv = getRandomBytesSync(ivSize);
+  const c = cipher.createCipher('AES-GCM', Buffer.from(key).toString('binary'));
+  c.start({ iv: iv.toString('binary'), tagLength: authTagSize * 8 });
   c.update(forgeUtil.createBuffer(plainText));
   c.finish();
   const cipherText = Buffer.from(c.output.getBytes(), 'binary');
   const authTag = Buffer.from(c.mode.tag.getBytes(), 'binary');
   const data = Buffer.concat([iv, authTag, cipherText]);
-  return data;
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 }
 
-function decryptWithKey(key: Buffer, cipherText: Buffer): Buffer | undefined {
-  if (cipherText.length <= 32) {
+async function decryptWithKey(
+  key: ArrayBuffer,
+  cipherText: ArrayBuffer,
+): Promise<ArrayBuffer | undefined> {
+  const cipherTextBuf = Buffer.from(cipherText);
+  if (cipherTextBuf.byteLength <= 32) {
     return;
   }
-  const iv = cipherText.subarray(0, 16);
-  const authTag = cipherText.subarray(16, 32);
-  const cipherText_ = cipherText.subarray(32);
-  const d = cipher.createDecipher('AES-GCM', key.toString('binary'));
+  const iv = cipherTextBuf.subarray(0, ivSize);
+  const authTag = cipherTextBuf.subarray(ivSize, ivSize + authTagSize);
+  const cipherText_ = cipherTextBuf.subarray(ivSize + authTagSize);
+  const d = cipher.createDecipher(
+    'AES-GCM',
+    Buffer.from(key).toString('binary'),
+  );
   d.start({
     iv: iv.toString('binary'),
-    tagLength: 128,
+    tagLength: authTagSize * 8,
     tag: forgeUtil.createBuffer(authTag),
   });
   d.update(forgeUtil.createBuffer(cipherText_));
   if (!d.finish()) {
     return;
   }
-  return Buffer.from(d.output.getBytes(), 'binary');
+  const data = Buffer.from(d.output.getBytes(), 'binary');
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
 }
 
 export {

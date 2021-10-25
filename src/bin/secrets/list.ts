@@ -28,14 +28,14 @@ list.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setVaultName(options.vaultName);
+    vaultMessage.setNameOrId(options.vaultName);
 
     const secretListGenerator = grpcClient.vaultsSecretsList(vaultMessage);
     const { p, resolveP } = utils.promise();

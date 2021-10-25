@@ -53,7 +53,7 @@ async function openTestAgentClient(port: number): Promise<GRPCClientAgent> {
   const logger = new Logger('AgentClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const agentClient = new GRPCClientAgent({
+  const agentClient = await GRPCClientAgent.createGRPCClientAgent({
     nodeId: 'NODEID' as NodeId,
     host: '127.0.0.1' as Host,
     port: port as Port,

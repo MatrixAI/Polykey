@@ -31,7 +31,7 @@ send.action(async (nodeId, message, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const notificationsSendMessage = new clientPB.NotificationsSendMessage();
   const generalMessage = new clientPB.GeneralTypeMessage();
 

@@ -10,22 +10,47 @@ import type {
 } from '../identities/types';
 import type { NodeManager } from '../nodes';
 import type { Provider, IdentitiesManager } from '../identities';
-import type { Claim, ClaimId, ClaimLinkIdentity } from '../claims/types';
+import type { Claim, ClaimIdString, ClaimLinkIdentity } from '../claims/types';
 
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as claimsUtils from '../claims/utils';
 import { errors as identitiesErrors } from '../identities';
-import { errors as nodesErrors } from '../nodes';
 import { errors as gestaltsErrors } from '../gestalts';
-import { ChainData } from '@/sigchain/types';
+import * as discoveryErrors from './errors';
+import { ChainData } from '../sigchain/types';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 
+interface Discovery extends CreateDestroy {}
+@CreateDestroy()
 class Discovery {
   protected gestaltGraph: GestaltGraph;
   protected identitiesManager: IdentitiesManager;
   protected nodeManager: NodeManager;
   protected logger: Logger;
-  protected _started: boolean = false;
+
+  static async createDiscovery({
+    gestaltGraph,
+    identitiesManager,
+    nodeManager,
+    logger,
+  }: {
+    gestaltGraph: GestaltGraph;
+    identitiesManager: IdentitiesManager;
+    nodeManager: NodeManager;
+    logger?: Logger;
+  }): Promise<Discovery> {
+    const logger_ = logger ?? new Logger(this.constructor.name);
+
+    const discovery = new Discovery({
+      gestaltGraph,
+      identitiesManager,
+      logger: logger_,
+      nodeManager,
+    });
+    await discovery.create();
+    return discovery;
+  }
 
   constructor({
     gestaltGraph,
@@ -36,55 +61,35 @@ class Discovery {
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
-    logger?: Logger;
+    logger: Logger;
   }) {
     this.gestaltGraph = gestaltGraph;
     this.identitiesManager = identitiesManager;
     this.nodeManager = nodeManager;
-    this.logger = logger ?? new Logger(this.constructor.name);
+    this.logger = logger;
   }
 
-  get started(): boolean {
-    return this._started;
-  }
-
-  public async start(): Promise<void> {
-    try {
-      if (this._started) {
-        return;
-      }
-      this.logger.info('Starting Discovery');
-      this._started = true;
-      if (!this.gestaltGraph.started) {
-        throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
-      }
-      if (!this.identitiesManager.started) {
-        throw new identitiesErrors.ErrorIdentitiesManagerNotStarted();
-      }
-      if (!this.nodeManager.started) {
-        throw new nodesErrors.ErrorNodeManagerNotStarted();
-      }
-      this.logger.info('Started Discovery');
-    } catch (e) {
-      this._started = false;
-      throw e;
+  private async create(): Promise<void> {
+    this.logger.info('Creating Discovery');
+    if (this.gestaltGraph.destroyed) {
+      throw new gestaltsErrors.ErrorGestaltsGraphDestroyed();
     }
-  }
-
-  public async stop() {
-    if (!this._started) {
-      return;
+    if (this.identitiesManager.destroyed) {
+      throw new identitiesErrors.ErrorIdentitiesManagerDestroyed();
     }
-    this.logger.info('Stopping Discovery');
-    this._started = false;
-    this.logger.info('Stopped Discovery');
+    this.logger.info('Created Discovery');
   }
 
+  public async destroy() {
+    this.logger.info('Destroyed Discovery');
+  }
+  @ready(new discoveryErrors.ErrorDiscoveryDestroyed())
   public discoverGestaltByNode(nodeId: NodeId) {
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     return this.discoverGestalt(nodeKey);
   }
 
+  @ready(new discoveryErrors.ErrorDiscoveryDestroyed())
   public discoverGestaltByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -124,7 +129,7 @@ class Discovery {
           const vertexChainDataEncoded = await this.nodeManager.getChainData();
           // Decode all our claims - no need to verify (on our own sigchain)
           for (const c in vertexChainDataEncoded) {
-            const claimId = c as ClaimId;
+            const claimId = c as ClaimIdString;
             vertexChainData[claimId] = claimsUtils.decodeClaim(
               vertexChainDataEncoded[claimId],
             );
@@ -153,7 +158,7 @@ class Discovery {
         // that this will iterate in lexicographical order of keys. For now,
         // this doesn't matter though (because of the previous comment).
         for (const claimId in vertexChainData) {
-          const claim: Claim = vertexChainData[claimId as ClaimId];
+          const claim: Claim = vertexChainData[claimId as ClaimIdString];
 
           // If the claim is to a node
           if (claim.payload.data.type === 'node') {

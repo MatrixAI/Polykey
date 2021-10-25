@@ -35,15 +35,19 @@ describe('agent utils', () => {
     });
 
     test('True if agent running.', async () => {
-      const agent = new PolykeyAgent({
+      const agent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: nodePath,
         logger: logger,
+        cores: 1,
+        workerManager: null,
       });
-      await agent.start({ password });
+      await agent.start({});
       await expect(
         agentUtils.checkAgentRunning(nodePath),
       ).resolves.toBeTruthy();
       await agent.stop();
+      await agent.destroy();
     });
   });
   describe('spawnBackgroundAgent', () => {
@@ -68,7 +72,7 @@ describe('agent utils', () => {
         ).resolves.toBeFalsy();
         const pid = await agentUtils.spawnBackgroundAgent(nodePath, password);
         expect(typeof pid).toBe('number'); //Returns a number.
-        expect(pid > 0).toBeTruthy(); // non-zero
+        expect(pid > 0).toBeTruthy(); // Non-zero
         await poll(global.polykeyStartupTimeout * 1.5, async () => {
           return await agentUtils.checkAgentRunning(nodePath);
         });
@@ -90,16 +94,19 @@ describe('agent utils', () => {
       global.polykeyStartupTimeout * 3.5,
     );
     test('Should throw error if agent already running.', async () => {
-      const agent = new PolykeyAgent({
+      const agent = await PolykeyAgent.createPolykey({
+        password,
         nodePath: nodePath,
         logger: logger,
+        cores: 1,
+        workerManager: null,
       });
-      await agent.start({ password });
+      await agent.start({});
       await expect(
         agentUtils.checkAgentRunning(nodePath),
       ).resolves.toBeTruthy();
 
-      await expect(
+      await expect(() =>
         agentUtils.spawnBackgroundAgent(nodePath, password),
       ).rejects.toThrow('running');
       await expect(
@@ -107,6 +114,7 @@ describe('agent utils', () => {
       ).resolves.toBeTruthy(); //Check that it is running.
 
       await agent.stop();
+      await agent.destroy();
     });
   });
 });

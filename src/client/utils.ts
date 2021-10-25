@@ -1,4 +1,4 @@
-import type { VaultId } from '../vaults/types';
+import type { VaultId, VaultName } from '../vaults/types';
 import type { Session } from '../sessions';
 import type { VaultManager } from '../vaults';
 import type { SessionToken } from '../sessions/types';
@@ -6,24 +6,32 @@ import type { SessionToken } from '../sessions/types';
 import * as grpc from '@grpc/grpc-js';
 import * as clientErrors from '../client/errors';
 import { VaultMessage } from '../proto/js/Client_pb';
+import { ErrorVaultUndefined } from '../vaults/errors';
+import { makeVaultId } from '../vaults/utils';
+import { ErrorInvalidId } from '../errors';
 
 async function parseVaultInput(
   vaultMessage: VaultMessage,
   vaultManager: VaultManager,
 ): Promise<VaultId> {
-  switch (vaultMessage.getNameOrIdCase()) {
-    case VaultMessage.NameOrIdCase.VAULT_NAME: {
-      return (await vaultManager.getVaultId(
-        vaultMessage.getVaultName(),
-      )) as VaultId;
-    }
-    case VaultMessage.NameOrIdCase.VAULT_ID: {
-      return vaultMessage.getVaultId() as VaultId;
-    }
-    case VaultMessage.NameOrIdCase.NAME_OR_ID_NOT_SET:
-    default:
-      return '' as VaultId;
+  const vaultNameOrid = vaultMessage.getNameOrId();
+  // Check if it is an existing vault name.
+  const possibleVaultId = await vaultManager.getVaultId(
+    vaultNameOrid as VaultName,
+  );
+  if (possibleVaultId != null) return possibleVaultId;
+
+  // Check if it is an existing vault Id.
+  try {
+    const tempVaultId = makeVaultId(vaultNameOrid);
+    const possibleVaultName = await vaultManager.getVaultName(tempVaultId);
+    if (possibleVaultName != null) return tempVaultId;
+  } catch (err) {
+    if (!(err instanceof ErrorInvalidId)) throw err;
+    // Else do nothing.
   }
+  // It does not exist, throwing error.
+  throw new ErrorVaultUndefined('Vault was not found.');
 }
 
 /**

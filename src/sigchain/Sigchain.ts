@@ -1,22 +1,27 @@
 import type { ChainDataEncoded } from './types';
 import type {
-  ClaimId,
-  ClaimEncoded,
-  ClaimIntermediary,
   ClaimData,
+  ClaimEncoded,
+  ClaimId,
+  ClaimIdGenerator,
+  ClaimIntermediary,
   ClaimType,
 } from '../claims/types';
 import type { NodeId } from '../nodes/types';
 import type { KeyManager } from '../keys';
-import type { DB } from '../db';
-import type { DBLevel, DBOp } from '../db/types';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
+import { errors as dbErrors } from '@matrixai/db';
 
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
 import * as sigchainErrors from './errors';
 import * as claimsUtils from '../claims/utils';
-import * as dbErrors from '../db/errors';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import { createClaimIdGenerator, makeClaimIdString } from '../sigchain/utils';
+import { utils as idUtils } from '@matrixai/id';
 
+interface Sigchain extends CreateDestroy {}
+@CreateDestroy()
 class Sigchain {
   public readonly sigchainPath: string;
   public readonly sigchainDbPath: string;
@@ -34,15 +39,34 @@ class Sigchain {
     this.sigchainDbDomain,
     'metadata',
   ];
-  protected sigchainDb: DBLevel<string>;
+  protected sigchainDb: DBLevel;
   // ClaimId (the lexicographic integer of the sequence number)
   // -> ClaimEncoded (a JWS in General JSON Serialization)
-  protected sigchainClaimsDb: DBLevel<ClaimId>;
+  protected sigchainClaimsDb: DBLevel;
   // Sub-level database for numerical metadata to be persisted
   // e.g. "sequenceNumber" -> current sequence number
-  protected sigchainMetadataDb: DBLevel<string>;
+  protected sigchainMetadataDb: DBLevel;
   protected lock: Mutex = new Mutex();
-  protected _started: boolean = false;
+
+  protected generateClaimId: ClaimIdGenerator;
+
+  static async createSigchain({
+    keyManager,
+    db,
+    logger,
+    fresh = false,
+  }: {
+    keyManager: KeyManager;
+    db: DB;
+    logger?: Logger;
+    fresh?: boolean;
+  }): Promise<Sigchain> {
+    const logger_ = logger ?? new Logger('SigchainManager');
+
+    const sigchain = new Sigchain({ db, keyManager, logger: logger_ });
+    await sigchain.create({ fresh, nodeId: keyManager.getNodeId() });
+    return sigchain;
+  }
 
   constructor({
     keyManager,
@@ -51,88 +75,75 @@ class Sigchain {
   }: {
     keyManager: KeyManager;
     db: DB;
-    logger?: Logger;
+    logger: Logger;
   }) {
     this.keyManager = keyManager;
-    this.logger = logger ?? new Logger('SigchainManager');
+    this.logger = logger;
     this.db = db;
-  }
-
-  get started(): boolean {
-    return this._started;
   }
 
   get locked(): boolean {
     return this.lock.isLocked();
   }
 
-  public async start({
-    fresh = false,
+  private async create({
+    fresh,
+    nodeId,
   }: {
-    fresh?: boolean;
-  } = {}): Promise<void> {
-    try {
-      if (this._started) {
-        return;
-      }
-      this.logger.info('Starting Sigchain');
-      this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
-      }
-      // Top-level database for the sigchain domain
-      const sigchainDb = await this.db.level<string>(this.sigchainDbDomain);
-      // ClaimId (the lexicographic integer of the sequence number)
-      // -> ClaimEncoded (a JWS in General JSON Serialization)
-      const sigchainClaimsDb = await this.db.level<ClaimId>(
-        this.sigchainClaimsDbDomain[1],
-        sigchainDb,
-      );
-      // Sub-level database for numerical metadata to be persisted
-      // e.g. "sequenceNumber" -> current sequence number
-      const sigchainMetadataDb = await this.db.level<string>(
-        this.sigchainMetadataDbDomain[1],
-        sigchainDb,
-      );
-      if (fresh) {
-        await sigchainDb.clear();
-      }
-      this.sigchainDb = sigchainDb;
-      this.sigchainClaimsDb = sigchainClaimsDb;
-      this.sigchainMetadataDb = sigchainMetadataDb;
+    fresh: boolean;
+    nodeId: NodeId;
+  }): Promise<void> {
+    this.logger.info('Creating Sigchain');
+    if (!this.db.running) {
+      throw new dbErrors.ErrorDBNotRunning();
+    }
+    // Top-level database for the sigchain domain
+    const sigchainDb = await this.db.level(this.sigchainDbDomain);
+    // ClaimId (the lexicographic integer of the sequence number)
+    // -> ClaimEncoded (a JWS in General JSON Serialization)
+    const sigchainClaimsDb = await this.db.level(
+      this.sigchainClaimsDbDomain[1],
+      sigchainDb,
+    );
+    // Sub-level database for numerical metadata to be persisted
+    // e.g. "sequenceNumber" -> current sequence number
+    const sigchainMetadataDb = await this.db.level(
+      this.sigchainMetadataDbDomain[1],
+      sigchainDb,
+    );
+    if (fresh) {
+      await sigchainDb.clear();
+    }
+    this.sigchainDb = sigchainDb;
+    this.sigchainClaimsDb = sigchainClaimsDb;
+    this.sigchainMetadataDb = sigchainMetadataDb;
 
-      // Initialise the sequence number (if not already done).
-      // First claim in the sigchain has a sequence number of 1.
-      // Therefore, with no claims in the sigchain, the previous sequence number
-      // is set to 0.
-      await this._transaction(async () => {
-        const sequenceNumber = await this.db.get<number | null>(
+    // Initialise the sequence number (if not already done).
+    // First claim in the sigchain has a sequence number of 1.
+    // Therefore, with no claims in the sigchain, the previous sequence number
+    // is set to 0.
+    await this._transaction(async () => {
+      const sequenceNumber = await this.db.get<number | null>(
+        this.sigchainMetadataDbDomain,
+        this.sequenceNumberKey,
+      );
+      if (sequenceNumber == null) {
+        await this.db.put(
           this.sigchainMetadataDbDomain,
           this.sequenceNumberKey,
+          0,
         );
-        if (sequenceNumber == null) {
-          await this.db.put(
-            this.sigchainMetadataDbDomain,
-            this.sequenceNumberKey,
-            0,
-          );
-        }
-      });
+      }
+    });
 
-      this.logger.info('Started Sigchain');
-    } catch (e) {
-      this._started = false;
-      throw e;
-    }
+    // Creating the ID generator
+    const latestId = await this.getLatestClaimId();
+    this.generateClaimId = createClaimIdGenerator(nodeId, latestId);
+    this.logger.info('Created Sigchain');
   }
 
-  public async stop() {
-    if (!this._started) {
-      return;
-    }
-    this.logger.info('Stopping Sigchain');
-    this._started = false;
-    this.logger.info('Stopped Sigchain');
+  public async destroy() {
+    this.logger.info('Destroyed Sigchain');
   }
 
   /**
@@ -197,6 +208,7 @@ class Sigchain {
   /**
    * Appends a claim (of any type) to the sigchain.
    */
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async addClaim(claimData: ClaimData): Promise<void> {
     await this._transaction(async () => {
       const prevSequenceNumber = await this.getSequenceNumber();
@@ -207,12 +219,13 @@ class Sigchain {
         seq: newSequenceNumber,
         data: claimData,
       });
+
       // Add the claim to the sigchain database, and update the sequence number
       const ops: Array<DBOp> = [
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(newSequenceNumber) as ClaimId,
+          key: idUtils.toBuffer(this.generateClaimId()),
           value: claim,
         },
         {
@@ -234,6 +247,7 @@ class Sigchain {
    * acquired in order to execute. Otherwise, a race condition may occur, and
    * an exception could be thrown.
    */
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async addExistingClaim(claim: ClaimEncoded): Promise<void> {
     await this._transaction(async () => {
       const decodedClaim = claimsUtils.decodeClaim(claim);
@@ -250,7 +264,7 @@ class Sigchain {
         {
           type: 'put',
           domain: this.sigchainClaimsDbDomain,
-          key: claimsUtils.numToLexiString(expectedSequenceNumber) as ClaimId,
+          key: idUtils.toBuffer(this.generateClaimId()),
           value: claim,
         },
         {
@@ -268,6 +282,7 @@ class Sigchain {
    * Creates an intermediary claim (a claim that expects an additional signature
    * from another keynode before being appended to the sigchain).
    */
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async createIntermediaryClaim(
     claimData: ClaimData,
   ): Promise<ClaimIntermediary> {
@@ -291,14 +306,18 @@ class Sigchain {
    * @returns record of ClaimId -> base64url encoded claims. Use
    * claimUtils.decodeClaim() to decode each claim.
    */
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async getChainData(): Promise<ChainDataEncoded> {
     return await this._transaction(async () => {
       const chainData: ChainDataEncoded = {};
       for await (const o of this.sigchainClaimsDb.createReadStream()) {
         const claimId = (o as any).key as ClaimId;
         const encryptedClaim = (o as any).value;
-        const claim = this.db.unserializeDecrypt<ClaimEncoded>(encryptedClaim);
-        chainData[claimId] = claim;
+        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(
+          encryptedClaim,
+          false,
+        );
+        chainData[makeClaimIdString(claimId)] = claim;
       }
       return chainData;
     });
@@ -312,12 +331,16 @@ class Sigchain {
    * NOTE: no verification of claim performed here. This should be done by the
    * requesting client.
    */
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async getClaims(claimType: ClaimType): Promise<Array<ClaimEncoded>> {
     return await this._transaction(async () => {
       const relevantClaims: Array<ClaimEncoded> = [];
       for await (const o of this.sigchainClaimsDb.createReadStream()) {
         const data = (o as any).value;
-        const claim = this.db.unserializeDecrypt<ClaimEncoded>(data);
+        const claim = await this.db.deserializeDecrypt<ClaimEncoded>(
+          data,
+          false,
+        );
         const decodedClaim = claimsUtils.decodeClaim(claim);
         if (decodedClaim.payload.data.type === claimType) {
           relevantClaims.push(claim);
@@ -332,6 +355,7 @@ class Sigchain {
    * claim in the sigchain (i.e. the previous sequence number).
    * @returns previous sequence number
    */
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async getSequenceNumber(): Promise<number> {
     return await this._transaction(async () => {
       const sequenceNumber = await this.db.get<number>(
@@ -350,10 +374,11 @@ class Sigchain {
   /**
    * Helper function to compute the hash of the previous claim.
    */
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async getHashPrevious(): Promise<string | null> {
     return await this._transaction(async () => {
-      const prevSequenceNumber = await this.getSequenceNumber();
-      if (prevSequenceNumber === 0) {
+      const prevSequenceNumber = await this.getLatestClaimId();
+      if (prevSequenceNumber == null) {
         // If no other claims, then null
         return null;
       } else {
@@ -369,14 +394,15 @@ class Sigchain {
    * Use if you always expect a claim for this particular sequence number
    * (otherwise, if you want to check for existence, just use getSigchainDb()
    * and check if returned value is undefined).
-   * @param sequenceNumber the sequence number of the claim to retrieve
+   * @param claimId the ClaimId of the claim to retrieve
    * @returns the claim (a JWS)
    */
-  public async getClaim(sequenceNumber: number): Promise<ClaimEncoded> {
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
+  public async getClaim(claimId: ClaimId): Promise<ClaimEncoded> {
     return await this._transaction(async () => {
       const claim = await this.db.get<ClaimEncoded>(
         this.sigchainClaimsDbDomain,
-        claimsUtils.numToLexiString(sequenceNumber) as ClaimId,
+        idUtils.toBuffer(claimId),
       );
       if (claim == null) {
         throw new sigchainErrors.ErrorSigchainClaimUndefined();
@@ -385,6 +411,34 @@ class Sigchain {
     });
   }
 
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
+  public async getLatestClaimId(): Promise<ClaimId | undefined> {
+    return await this._transaction(async () => {
+      let latestId: ClaimId | undefined;
+      const keyStream = this.sigchainClaimsDb.createKeyStream({
+        limit: 1,
+        reverse: true,
+      });
+      for await (const o of keyStream) {
+        latestId = o as any as ClaimId;
+      }
+      return latestId;
+    });
+  }
+
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
+  public async getSeqMap(): Promise<Record<number, ClaimId>> {
+    const map: Record<number, ClaimId> = {};
+    const claimStream = this.sigchainClaimsDb.createKeyStream();
+    let seq = 1;
+    for await (const o of claimStream) {
+      map[seq] = o as any as ClaimId;
+      seq++;
+    }
+    return map;
+  }
+
+  @ready(new sigchainErrors.ErrorSigchainDestroyed())
   public async clearDB() {
     this.sigchainDb.clear();
 

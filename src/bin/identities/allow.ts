@@ -23,7 +23,7 @@ const allow = createCommand('allow', {
 
 allow.arguments('<id> <permissions>');
 allow.action(async (id, permissions, options) => {
-  //parsing ID.
+  //Parsing ID.
   const { providerId, identityId, nodeId } = parseId(id);
 
   const clientConfig = {};
@@ -37,7 +37,7 @@ allow.action(async (id, permissions, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const gestaltTrustMessage = new clientPB.GestaltTrustMessage();
   gestaltTrustMessage.setSet(options.trust);
 

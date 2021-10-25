@@ -28,9 +28,9 @@ stat.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setVaultName(options.vaultName);
+  vaultMessage.setNameOrId(options.vaultName);
 
   try {
     await client.start({});
@@ -50,7 +50,7 @@ stat.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `${vaultMessage.getVaultId()}:\t\t${responseMessage.getStats()}`,
+          `${vaultMessage.getNameOrId()}:\t\t${responseMessage.getStats()}`,
         ],
       }),
     );

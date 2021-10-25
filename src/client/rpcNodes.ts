@@ -1,5 +1,5 @@
 import type { NodeManager } from '../nodes';
-import type { NodeAddress, NodeId } from '../nodes/types';
+import type { NodeAddress } from '../nodes/types';
 import type { NotificationData } from '../notifications/types';
 import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
@@ -10,6 +10,7 @@ import * as utils from '../client/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as grpcUtils from '../grpc/utils';
 import * as nodesErrors from '../nodes/errors';
+import { makeNodeId } from '../nodes/utils';
 
 const createNodesRPC = ({
   nodeManager,
@@ -49,13 +50,10 @@ const createNodesRPC = ({
         if (!validHost) {
           throw new nodesErrors.ErrorInvalidHost();
         }
-        await nodeManager.setNode(
-          call.request.getNodeId() as NodeId,
-          {
-            ip: call.request.getHost(),
-            port: call.request.getPort(),
-          } as NodeAddress,
-        );
+        await nodeManager.setNode(makeNodeId(call.request.getNodeId()), {
+          ip: call.request.getHost(),
+          port: call.request.getPort(),
+        } as NodeAddress);
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }
@@ -76,7 +74,7 @@ const createNodesRPC = ({
         );
         call.sendMetadata(responseMeta);
         const status = await nodeManager.pingNode(
-          call.request.getNodeId() as NodeId,
+          makeNodeId(call.request.getNodeId()),
         );
         response.setSuccess(status);
       } catch (err) {
@@ -103,12 +101,12 @@ const createNodesRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const remoteNodeId = call.request.getNodeId() as NodeId;
+        const remoteNodeId = makeNodeId(call.request.getNodeId());
         const gestaltInvite = await notificationsManager.findGestaltInvite(
           remoteNodeId,
         );
 
-        // check first whether there is an existing gestalt invite from the remote node
+        // Check first whether there is an existing gestalt invite from the remote node
         // or if we want to force an invitation rather than a claim
         if (gestaltInvite === undefined || call.request.getForceInvite()) {
           const data = {
@@ -117,7 +115,7 @@ const createNodesRPC = ({
           await notificationsManager.sendNotification(remoteNodeId, data);
           response.setSuccess(false);
         } else {
-          // there is an existing invitation, and we want to claim the node
+          // There is an existing invitation, and we want to claim the node
           await nodeManager.claimNode(remoteNodeId);
           response.setSuccess(true);
         }
@@ -145,7 +143,7 @@ const createNodesRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const nodeId = call.request.getNodeId() as NodeId;
+        const nodeId = makeNodeId(call.request.getNodeId());
         const address = await nodeManager.findNode(nodeId);
         response.setNodeId(nodeId);
         response.setHost(address.ip);

@@ -32,8 +32,7 @@ describe('CLI keys', () => {
   let newNodePath2: string;
   let command: Array<string>;
 
-  // constants
-  const jwtTokenExitCode = 77;
+  // Constants
   const password = 'password';
 
   beforeAll(async () => {
@@ -46,21 +45,30 @@ describe('CLI keys', () => {
     newNodePath2 = path.join(dataDir, 'newNode2');
 
     await fs.promises.writeFile(passwordFile, password);
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: nodePath,
       logger: logger,
+      cores: 1,
+      workerManager: null,
     });
-    newPolykeyAgent1 = new PolykeyAgent({
+    newPolykeyAgent1 = await PolykeyAgent.createPolykey({
+      password,
       nodePath: newNodePath1,
       logger: logger,
+      cores: 1,
+      workerManager: null,
     });
-    newPolykeyAgent2 = new PolykeyAgent({
+    newPolykeyAgent2 = await PolykeyAgent.createPolykey({
+      password,
       nodePath: newNodePath2,
       logger: logger,
+      cores: 1,
+      workerManager: null,
     });
-    await polykeyAgent.start({ password });
-    await newPolykeyAgent1.start({ password });
-    await newPolykeyAgent2.start({ password });
+    await polykeyAgent.start({});
+    await newPolykeyAgent1.start({});
+    await newPolykeyAgent2.start({});
 
     await utils.pkWithStdio([
       'agent',
@@ -81,8 +89,11 @@ describe('CLI keys', () => {
   }, global.polykeyStartupTimeout * 2);
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
     await newPolykeyAgent1.stop();
+    await newPolykeyAgent1.destroy();
     await newPolykeyAgent2.stop();
+    await newPolykeyAgent2.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -203,7 +214,18 @@ describe('CLI keys', () => {
       expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
 
       await polykeyAgent.stop();
-      await polykeyAgent.start({ password: 'password-new' });
+      await polykeyAgent.destroy();
+
+      polykeyAgent = await PolykeyAgent.createPolykey({
+        password: 'password-new',
+        nodePath: nodePath,
+        logger: logger,
+        cores: 1,
+        workerManager: null,
+      });
+      await polykeyAgent.start({});
+      await polykeyAgent.stop();
+      await polykeyAgent.destroy();
     });
   });
   describe('commandResetKeyPair', () => {
@@ -222,7 +244,16 @@ describe('CLI keys', () => {
       expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
 
       await newPolykeyAgent1.stop();
-      await newPolykeyAgent1.start({ password: 'password-new-new' });
+      await newPolykeyAgent1.destroy();
+
+      newPolykeyAgent1 = await PolykeyAgent.createPolykey({
+        password: 'password-new-new',
+        nodePath: newNodePath1,
+        logger: logger,
+        cores: 1,
+        workerManager: null,
+      });
+      await newPolykeyAgent1.start({});
 
       await utils.pkWithStdio(['agent', 'lock', '-np', newNodePath1]);
     });
@@ -235,7 +266,16 @@ describe('CLI keys', () => {
         await fs.promises.writeFile(passPath, 'password-change');
 
         await newPolykeyAgent2.stop();
-        await newPolykeyAgent2.start({ password });
+        await newPolykeyAgent2.destroy();
+
+        newPolykeyAgent2 = await PolykeyAgent.createPolykey({
+          password,
+          nodePath: newNodePath2,
+          logger: logger,
+          cores: 1,
+          workerManager: null,
+        });
+        await newPolykeyAgent2.start({});
 
         command = ['keys', 'password', '-np', newNodePath2, '-pp', passPath];
 
@@ -243,7 +283,15 @@ describe('CLI keys', () => {
         expect(result2.code).toBe(0);
 
         await newPolykeyAgent2.stop();
-        await newPolykeyAgent2.start({ password: 'password-change' });
+        await newPolykeyAgent2.destroy();
+        newPolykeyAgent2 = await PolykeyAgent.createPolykey({
+          password: 'password-change',
+          nodePath: newNodePath2,
+          logger: logger,
+          cores: 1,
+          workerManager: null,
+        });
+        await newPolykeyAgent2.start({});
 
         await utils.pkWithStdio(['agent', 'lock', '-np', newNodePath2]);
       },

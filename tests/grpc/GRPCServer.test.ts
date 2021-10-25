@@ -12,7 +12,7 @@ describe('GRPCServer', () => {
     new StreamHandler(),
   ]);
   test('starting and stopping the server', async () => {
-    const server = new GRPCServer({
+    const server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     const keyPair = await keysUtils.generateKeyPair(4096);
@@ -36,7 +36,7 @@ describe('GRPCServer', () => {
     await server.stop();
   });
   test('connecting to the server securely', async () => {
-    const server = new GRPCServer({
+    const server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     const serverKeyPair = await keysUtils.generateKeyPair(4096);
@@ -83,7 +83,7 @@ describe('GRPCServer', () => {
     await server.stop();
   });
   test('changing the private key and certificate on the fly', async () => {
-    const server = new GRPCServer({
+    const server = await GRPCServer.createGRPCServer({
       logger: logger,
     });
     const serverKeyPair1 = await keysUtils.generateKeyPair(4096);
@@ -109,7 +109,7 @@ describe('GRPCServer', () => {
       clientKeyPair.privateKey,
       31536000,
     );
-    // first client connection
+    // First client connection
     const nodeIdServer1 = networkUtils.certNodeId(serverCert1);
     const client1 = await utils.openTestClientSecure(
       nodeIdServer1,
@@ -127,7 +127,7 @@ describe('GRPCServer', () => {
     expect(pCall1.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
     const m1_ = await pCall1;
     expect(m1_.getChallenge()).toBe(m1.getChallenge());
-    // change key and certificate
+    // Change key and certificate
     const serverKeyPair2 = await keysUtils.generateKeyPair(4096);
     const serverCert2 = keysUtils.generateCertificate(
       serverKeyPair2.publicKey,
@@ -139,14 +139,14 @@ describe('GRPCServer', () => {
       keyPrivatePem: keysUtils.privateKeyToPem(serverKeyPair2.privateKey),
       certChainPem: keysUtils.certToPem(serverCert2),
     });
-    // still using first connection
+    // Still using first connection
     const m2 = new testPB.EchoMessage();
     m2.setChallenge('12308947239847');
     const pCall2 = unary1(m2);
     expect(pCall2.call.getPeer()).toBe(`dns:127.0.0.1:${server.getPort()}`);
     const m2_ = await pCall2;
     expect(m2_.getChallenge()).toBe(m2.getChallenge());
-    // second client connection
+    // Second client connection
     const nodeIdServer2 = networkUtils.certNodeId(serverCert2);
     const client2 = await utils.openTestClientSecure(
       nodeIdServer2,

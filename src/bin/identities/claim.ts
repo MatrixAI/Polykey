@@ -31,19 +31,19 @@ claim.action(async (providerId, identitiyId, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   try {
-    //starting client
+    //Starting client
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    //constructing message.
+    //Constructing message.
     const providerMessage = new clientPB.ProviderMessage();
     providerMessage.setProviderId(providerId);
     providerMessage.setMessage(identitiyId);
 
-    //sending message.
+    //Sending message.
     const pCall = grpcClient.identitiesClaim(providerMessage);
     const { p, resolveP } = utils.promise();
     pCall.call.on('metadata', async (meta) => {

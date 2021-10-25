@@ -20,6 +20,7 @@ import * as utils from './utils';
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
 describe('CLI Echo', () => {
+  const password = 'password';
   const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -36,13 +37,14 @@ describe('CLI Echo', () => {
     nodePath = path.join(dataDir, 'keynode');
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: nodePath,
       logger: logger,
+      cores: 1,
+      workerManager: null,
     });
-    await polykeyAgent.start({
-      password: 'password',
-    });
+    await polykeyAgent.start({});
 
     // Authorize session
     await utils.pkWithStdio([
@@ -56,6 +58,7 @@ describe('CLI Echo', () => {
   }, global.polykeyStartupTimeout);
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
     await fs.promises.rmdir(dataDir, { recursive: true });
   });
 

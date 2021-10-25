@@ -15,6 +15,7 @@ import * as testUtils from './utils';
 import { Session } from '@/sessions';
 
 describe('GRPCClientClient', () => {
+  const password = 'password';
   const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -33,25 +34,28 @@ describe('GRPCClientClient', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'node');
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath,
       logger: logger,
+      cores: 1,
+      workerManager: null,
     });
 
-    await polykeyAgent.start({ password: 'password ' });
+    await polykeyAgent.start({});
     nodeId = polykeyAgent.nodes.getNodeId();
     [server, port] = await testUtils.openTestClientServer({
       polykeyAgent,
     });
 
-    client = new GRPCClientClient({
+    client = await GRPCClientClient.createGRPCCLientClient({
       nodeId: nodeId,
       host: '127.0.0.1' as Host,
       port: port as Port,
       logger: logger,
     });
     const clientPath = path.join(nodePath, 'client');
-    const session = new Session({ clientPath });
+    const session = new Session({ clientPath, logger });
     const token = await polykeyAgent.sessions.generateToken();
     await session.start({ token });
     await client.start({ timeout: 10000, session });
@@ -61,6 +65,7 @@ describe('GRPCClientClient', () => {
     await testUtils.closeTestClientServer(server);
 
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -72,5 +77,7 @@ describe('GRPCClientClient', () => {
     echoMessage.setChallenge('yes');
     const response = await client.echo(echoMessage);
     expect(response.getChallenge()).toBe('yes');
+    await client.stop();
+    await client.destroy();
   });
 });

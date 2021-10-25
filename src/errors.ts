@@ -22,11 +22,30 @@ class ErrorPolykey extends CustomError {
   }
 }
 
+class ErrorPolykeyAgentNotRunning extends ErrorPolykey {}
+
+class ErrorPolykeyAgentDestroyed extends ErrorPolykey {}
+
+class ErrorPolykeyClientNotRunning extends ErrorPolykey {}
+
+class ErrorPolykeyClientDestroyed extends ErrorPolykey {}
+
 class ErrorUndefinedBehaviour extends ErrorPolykey {}
 
 class ErrorStateVersionMismatch extends ErrorPolykey {}
 
-export { ErrorPolykey, ErrorUndefinedBehaviour, ErrorStateVersionMismatch };
+class ErrorInvalidId extends ErrorPolykey {}
+
+export {
+  ErrorPolykey,
+  ErrorPolykeyAgentNotRunning,
+  ErrorPolykeyAgentDestroyed,
+  ErrorPolykeyClientNotRunning,
+  ErrorPolykeyClientDestroyed,
+  ErrorUndefinedBehaviour,
+  ErrorStateVersionMismatch,
+  ErrorInvalidId,
+};
 
 /**
  * Recursively export all domain-level error classes
@@ -34,7 +53,7 @@ export { ErrorPolykey, ErrorUndefinedBehaviour, ErrorStateVersionMismatch };
  * reference all Polykey errors
  */
 export * from './acl/errors';
-export * from './db/errors';
+export { errors } from '@matrixai/db';
 export * from './sessions/errors';
 export * from './keys/errors';
 export * from './vaults/errors';

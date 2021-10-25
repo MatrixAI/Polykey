@@ -28,9 +28,9 @@ deleteVault.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
-  vaultMessage.setVaultName(options.vaultName);
+  vaultMessage.setNameOrId(options.vaultName);
 
   try {
     await client.start({});
@@ -49,14 +49,14 @@ deleteVault.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Vault: ${vaultMessage.getVaultId()} deleted successfully`],
+          data: [`Vault: ${vaultMessage.getNameOrId()} deleted successfully`],
         }),
       );
     } else {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to delete vault: ${vaultMessage.getVaultId()}`],
+          data: [`Failed to delete vault: ${vaultMessage.getNameOrId()}`],
         }),
       );
     }

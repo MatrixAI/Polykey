@@ -106,7 +106,7 @@ function createClientService({
         clientPB.NodeMessage
       >,
     ): Promise<void> => {
-      // call.request // PROCESS THE REQEUST MESSAGE
+      // Call.request // PROCESS THE REQEUST MESSAGE
       const nodeMessage = new clientPB.NodeMessage();
       nodeMessage.setNodeId('some node name');
       const write = promisify(call.write).bind(call);
@@ -122,6 +122,7 @@ function createClientService({
         const response = new clientPB.EmptyMessage();
         setTimeout(async () => {
           await polykeyAgent.stop();
+          await polykeyAgent.destroy();
         }, 50);
         callback(null, response);
       } catch (err) {

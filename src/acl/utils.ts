@@ -1,11 +1,27 @@
-import type { Permission, PermissionId } from './types';
+import type { Permission, PermissionId, PermissionIdString } from './types';
 
-import base58 from 'bs58';
-import { utils as keysUtils } from '../keys';
+import { IdRandom } from '@matrixai/id';
+import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
 
+function isPermissionId(arg: any): arg is PermissionId {
+  return isId<PermissionId>(arg);
+}
+
+function makePermissionId(arg: any) {
+  return makeId<PermissionId>(arg);
+}
+
+function isPermissionIdString(arg: any): arg is PermissionIdString {
+  return isIdString<PermissionIdString>(arg);
+}
+
+function makePermissionIdString(arg: any) {
+  return makeIdString<PermissionIdString>(arg);
+}
+
+const randomIdGenerator = new IdRandom();
 async function generatePermId(): Promise<PermissionId> {
-  const id = await keysUtils.getRandomBytes(32);
-  return base58.encode(id) as PermissionId;
+  return makePermissionId(randomIdGenerator.get());
 }
 
 function permUnion(perm1: Permission, perm2: Permission): Permission {
@@ -28,4 +44,11 @@ function permUnion(perm1: Permission, perm2: Permission): Permission {
   return perm;
 }
 
-export { generatePermId, permUnion };
+export {
+  generatePermId,
+  permUnion,
+  isPermissionId,
+  makePermissionId,
+  isPermissionIdString,
+  makePermissionIdString,
+};

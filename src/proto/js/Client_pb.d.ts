@@ -145,18 +145,8 @@ export namespace VaultListMessage {
 }
 
 export class VaultMessage extends jspb.Message { 
-
-    hasVaultName(): boolean;
-    clearVaultName(): void;
-    getVaultName(): string;
-    setVaultName(value: string): VaultMessage;
-
-    hasVaultId(): boolean;
-    clearVaultId(): void;
-    getVaultId(): string;
-    setVaultId(value: string): VaultMessage;
-
-    getNameOrIdCase(): VaultMessage.NameOrIdCase;
+    getNameOrId(): string;
+    setNameOrId(value: string): VaultMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultMessage.AsObject;
@@ -170,16 +160,8 @@ export class VaultMessage extends jspb.Message {
 
 export namespace VaultMessage {
     export type AsObject = {
-        vaultName: string,
-        vaultId: string,
+        nameOrId: string,
     }
-
-    export enum NameOrIdCase {
-        NAME_OR_ID_NOT_SET = 0,
-        VAULT_NAME = 1,
-        VAULT_ID = 2,
-    }
-
 }
 
 export class VaultRenameMessage extends jspb.Message { 
@@ -216,6 +198,8 @@ export class VaultMkdirMessage extends jspb.Message {
     setVault(value?: VaultMessage): VaultMkdirMessage;
     getDirName(): string;
     setDirName(value: string): VaultMkdirMessage;
+    getRecursive(): boolean;
+    setRecursive(value: boolean): VaultMkdirMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): VaultMkdirMessage.AsObject;
@@ -231,6 +215,7 @@ export namespace VaultMkdirMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
         dirName: string,
+        recursive: boolean,
     }
 }
 
@@ -326,8 +311,10 @@ export class SecretMessage extends jspb.Message {
     setVault(value?: VaultMessage): SecretMessage;
     getSecretName(): string;
     setSecretName(value: string): SecretMessage;
-    getSecretContent(): string;
-    setSecretContent(value: string): SecretMessage;
+    getSecretContent(): Uint8Array | string;
+    getSecretContent_asU8(): Uint8Array;
+    getSecretContent_asB64(): string;
+    setSecretContent(value: Uint8Array | string): SecretMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): SecretMessage.AsObject;
@@ -343,30 +330,7 @@ export namespace SecretMessage {
     export type AsObject = {
         vault?: VaultMessage.AsObject,
         secretName: string,
-        secretContent: string,
-    }
-}
-
-export class SecretEditMessage extends jspb.Message { 
-
-    hasSecret(): boolean;
-    clearSecret(): void;
-    getSecret(): SecretMessage | undefined;
-    setSecret(value?: SecretMessage): SecretEditMessage;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): SecretEditMessage.AsObject;
-    static toObject(includeInstance: boolean, msg: SecretEditMessage): SecretEditMessage.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: SecretEditMessage, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): SecretEditMessage;
-    static deserializeBinaryFromReader(message: SecretEditMessage, reader: jspb.BinaryReader): SecretEditMessage;
-}
-
-export namespace SecretEditMessage {
-    export type AsObject = {
-        secret?: SecretMessage.AsObject,
+        secretContent: Uint8Array | string,
     }
 }
 
@@ -523,6 +487,110 @@ export namespace PermissionMessage {
     export type AsObject = {
         nodeId: string,
         action: string,
+    }
+}
+
+export class VaultsVersionMessage extends jspb.Message { 
+
+    hasVault(): boolean;
+    clearVault(): void;
+    getVault(): VaultMessage | undefined;
+    setVault(value?: VaultMessage): VaultsVersionMessage;
+    getVersionId(): string;
+    setVersionId(value: string): VaultsVersionMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultsVersionMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultsVersionMessage): VaultsVersionMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultsVersionMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultsVersionMessage;
+    static deserializeBinaryFromReader(message: VaultsVersionMessage, reader: jspb.BinaryReader): VaultsVersionMessage;
+}
+
+export namespace VaultsVersionMessage {
+    export type AsObject = {
+        vault?: VaultMessage.AsObject,
+        versionId: string,
+    }
+}
+
+export class VaultsVersionResultMessage extends jspb.Message { 
+    getIsLatestVersion(): boolean;
+    setIsLatestVersion(value: boolean): VaultsVersionResultMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultsVersionResultMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultsVersionResultMessage): VaultsVersionResultMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultsVersionResultMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultsVersionResultMessage;
+    static deserializeBinaryFromReader(message: VaultsVersionResultMessage, reader: jspb.BinaryReader): VaultsVersionResultMessage;
+}
+
+export namespace VaultsVersionResultMessage {
+    export type AsObject = {
+        isLatestVersion: boolean,
+    }
+}
+
+export class VaultsLogMessage extends jspb.Message { 
+
+    hasVault(): boolean;
+    clearVault(): void;
+    getVault(): VaultMessage | undefined;
+    setVault(value?: VaultMessage): VaultsLogMessage;
+    getLogDepth(): number;
+    setLogDepth(value: number): VaultsLogMessage;
+    getCommitId(): string;
+    setCommitId(value: string): VaultsLogMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultsLogMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultsLogMessage): VaultsLogMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultsLogMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultsLogMessage;
+    static deserializeBinaryFromReader(message: VaultsLogMessage, reader: jspb.BinaryReader): VaultsLogMessage;
+}
+
+export namespace VaultsLogMessage {
+    export type AsObject = {
+        vault?: VaultMessage.AsObject,
+        logDepth: number,
+        commitId: string,
+    }
+}
+
+export class VaultsLogEntryMessage extends jspb.Message { 
+    getOid(): string;
+    setOid(value: string): VaultsLogEntryMessage;
+    getCommitter(): string;
+    setCommitter(value: string): VaultsLogEntryMessage;
+    getTimeStamp(): number;
+    setTimeStamp(value: number): VaultsLogEntryMessage;
+    getMessage(): string;
+    setMessage(value: string): VaultsLogEntryMessage;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): VaultsLogEntryMessage.AsObject;
+    static toObject(includeInstance: boolean, msg: VaultsLogEntryMessage): VaultsLogEntryMessage.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: VaultsLogEntryMessage, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): VaultsLogEntryMessage;
+    static deserializeBinaryFromReader(message: VaultsLogEntryMessage, reader: jspb.BinaryReader): VaultsLogEntryMessage;
+}
+
+export namespace VaultsLogEntryMessage {
+    export type AsObject = {
+        oid: string,
+        committer: string,
+        timeStamp: number,
+        message: string,
     }
 }
 

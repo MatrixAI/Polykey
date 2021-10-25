@@ -28,7 +28,7 @@ lockall.action(async (options) => {
     : utils.getDefaultNodePath();
   clientConfig['nodePath'] = nodePath;
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const m = new clientPB.EmptyMessage();
 
   try {

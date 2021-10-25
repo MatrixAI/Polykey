@@ -20,7 +20,7 @@ describe('ReverseProxy', () => {
   ]);
   let keyPairPem: KeyPairPem, certPem: string;
 
-  // helper functions
+  // Helper functions
   function server(end: boolean = false) {
     const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
     const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
@@ -65,10 +65,10 @@ describe('ReverseProxy', () => {
     certPem = keysUtils.certToPem(cert);
   });
   test('starting and stopping the reverse proxy', async () => {
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
-    // starting the rev proxy doesn't start a connection to the server
+    // Starting the rev proxy doesn't start a connection to the server
     await revProxy.start({
       serverHost: '::1' as Host,
       serverPort: 1 as Port,
@@ -99,7 +99,7 @@ describe('ReverseProxy', () => {
     await revProxy.stop();
   });
   test('open connection to port 0 fails', async () => {
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
     const {
@@ -129,7 +129,7 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('open connection timeout due to lack of ready signal', async () => {
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
     const {
@@ -150,7 +150,7 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    // this UTP client will just hang and not respond
+    // This UTP client will just hang and not respond
     const utpSocket = UTP();
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     await utpSocketBind(0, '127.0.0.1');
@@ -172,7 +172,7 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('open connection success', async () => {
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
     const {
@@ -222,7 +222,7 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('open connection to multiple clients', async () => {
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
     const {
@@ -245,7 +245,7 @@ describe('ReverseProxy', () => {
     });
     const ingressHost = revProxy.getIngressHost();
     const ingressPort = revProxy.getIngressPort();
-    // first client
+    // First client
     const utpSocket1 = UTP();
     const handleMessage1 = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
@@ -261,7 +261,7 @@ describe('ReverseProxy', () => {
     const utpSocketBind1 = promisify(utpSocket1.bind).bind(utpSocket1);
     await utpSocketBind1(0, '127.0.0.1');
     const utpSocketPort1 = utpSocket1.address().port;
-    // second client
+    // Second client
     const utpSocket2 = UTP();
     const handleMessage2 = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
@@ -295,10 +295,10 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('closed connection due to ending server', async () => {
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
-    // this server will force end
+    // This server will force end
     const {
       serverListen,
       serverClose,
@@ -337,11 +337,11 @@ describe('ReverseProxy', () => {
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
     expect(revProxy.getConnectionCount()).toBe(1);
     await expect(serverConnP).resolves.toBeUndefined();
-    // the server closed the connection
+    // The server closed the connection
     await expect(serverConnClosedP).resolves.toBeUndefined();
-    // wait for the end signal to be received
+    // Wait for the end signal to be received
     await sleep(2000);
-    // the rev proxy won't have this connection
+    // The rev proxy won't have this connection
     expect(revProxy.getConnectionCount()).toBe(0);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -350,11 +350,11 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('connect timeout due to hanging client', async () => {
-    // connConnectTime will affect ErrorConnectionComposeTimeout during compose
+    // ConnConnectTime will affect ErrorConnectionComposeTimeout during compose
     // connTimeoutTime will affect ErrorConnectionTimeout which is needed
     // because failing to connect to the open connection
     // doesn't automatically mean the connection is destroyed
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       connConnectTime: 3000,
       connTimeoutTime: 3000,
       logger: logger,
@@ -396,7 +396,7 @@ describe('ReverseProxy', () => {
     const utpSocketPort = utpSocket.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
     expect(revProxy.getConnectionCount()).toBe(1);
-    // this retries multiple times
+    // This retries multiple times
     const utpConn = utpSocket.connect(ingressPort, ingressHost);
     utpConn.setTimeout(2000, () => {
       utpConn.emit('error', new Error('TIMED OUT'));
@@ -411,10 +411,10 @@ describe('ReverseProxy', () => {
     utpConn.on('close', () => {
       resolveUtpConnClosedP();
     });
-    // the client connection times out
+    // The client connection times out
     await expect(utpConnErrorP).rejects.toThrow(/TIMED OUT/);
     await utpConnClosedP;
-    // wait for the open connection to timeout
+    // Wait for the open connection to timeout
     await sleep(3000);
     expect(revProxy.getConnectionCount()).toBe(0);
     await expect(serverConnP).resolves.toBeUndefined();
@@ -426,11 +426,11 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('connect fails due to missing client certificates', async () => {
-    // connConnectTime will affect ErrorConnectionComposeTimeout during compose
+    // ConnConnectTime will affect ErrorConnectionComposeTimeout during compose
     // connTimeoutTime will affect ErrorConnectionTimeout which is needed
     // because failing to connect to the open connection
     // doesn't automatically mean the connection is destroyed
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       connConnectTime: 3000,
       connTimeoutTime: 3000,
       logger: logger,
@@ -475,7 +475,7 @@ describe('ReverseProxy', () => {
     const { p: tlsSocketClosedP, resolveP: resolveTlsSocketClosedP } =
       promise<void>();
     const utpConn = utpSocket.connect(ingressPort, ingressHost);
-    // this will propagate the error to tlsSocket
+    // This will propagate the error to tlsSocket
     utpConn.setTimeout(2000, () => {
       utpConn.emit('error', new Error('TIMED OUT'));
     });
@@ -507,12 +507,12 @@ describe('ReverseProxy', () => {
     tlsSocket.on('close', () => {
       resolveTlsSocketClosedP();
     });
-    // reverse proxy will close the connection
+    // Reverse proxy will close the connection
     await tlsSocketClosedP;
-    // we won't receive an error because it will be closed
+    // We won't receive an error because it will be closed
     expect(errored).toBe(false);
     expect(secureConnection).toBe(true);
-    // wait for the open connection to timeout
+    // Wait for the open connection to timeout
     await sleep(3000);
     expect(revProxy.getConnectionCount()).toBe(0);
     await expect(serverConnP).resolves.toBeUndefined();
@@ -542,7 +542,7 @@ describe('ReverseProxy', () => {
       serverPort,
     } = server();
     await serverListen(0, '127.0.0.1');
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
     await revProxy.start({
@@ -616,7 +616,7 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('stopping the proxy with open connections', async () => {
-    const revProxy = new ReverseProxy({
+    const revProxy = await ReverseProxy.createReverseProxy({
       logger: logger,
     });
     const {

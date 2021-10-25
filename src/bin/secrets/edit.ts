@@ -32,8 +32,7 @@ edit.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
-  const secretEditMessage = new clientPB.SecretEditMessage();
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const secretMessage = new clientPB.SecretMessage();
   const vaultMessage = new clientPB.VaultMessage();
 
@@ -47,12 +46,11 @@ edit.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setVault(vaultMessage);
     secretMessage.setSecretName(secretName);
-    secretEditMessage.setSecret(secretMessage);
 
-    const pCall = grpcClient.vaultsSecretsGet(secretEditMessage);
+    const pCall = grpcClient.vaultsSecretsGet(secretMessage);
     const { p, resolveP } = utils.promise();
     pCall.call.on('metadata', async (meta) => {
       await clientUtils.refreshSession(meta, client.session);
@@ -71,12 +69,12 @@ edit.action(async (options) => {
 
     execSync(`$EDITOR \"${tmpFile}\"`, { stdio: 'inherit' });
 
-    const content = fs.readFileSync(tmpFile, { encoding: 'utf-8' });
+    const content = fs.readFileSync(tmpFile);
 
     secretMessage.setVault(vaultMessage);
     secretMessage.setSecretContent(content);
     await grpcClient.vaultsSecretsEdit(
-      secretEditMessage,
+      secretMessage,
       await client.session.createCallCredentials(),
     );
 
@@ -89,7 +87,7 @@ edit.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Edited secret: ${vaultMessage.getVaultName()} in vault: ${vaultMessage.getVaultName()}`,
+          `Edited secret: ${vaultMessage.getNameOrId()} in vault: ${vaultMessage.getNameOrId()}`,
         ],
       }),
     );

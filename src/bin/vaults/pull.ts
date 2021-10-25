@@ -34,7 +34,7 @@ pull.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
   const nodeMessage = new clientPB.NodeMessage();
   const vaultPullMessage = new clientPB.VaultPullMessage();
@@ -42,7 +42,7 @@ pull.action(async (options) => {
   vaultPullMessage.setNode(nodeMessage);
 
   nodeMessage.setNodeId(options.nodeId);
-  vaultMessage.setVaultName(options.vaultName);
+  vaultMessage.setNameOrId(options.vaultName);
 
   try {
     await client.start({});
@@ -62,7 +62,7 @@ pull.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Pull Vault: ${vaultMessage.getVaultName()} from Node: ${nodeMessage.getNodeId()} successful`,
+          `Pull Vault: ${vaultMessage.getNameOrId()} from Node: ${nodeMessage.getNodeId()} successful`,
         ],
       }),
     );

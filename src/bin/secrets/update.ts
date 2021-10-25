@@ -33,12 +33,10 @@ update.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
   const secretMessage = new clientPB.SecretMessage();
-  const secretEditMessage = new clientPB.SecretEditMessage();
   secretMessage.setVault(vaultMessage);
-  secretEditMessage.setSecret(secretMessage);
 
   try {
     await client.start({});
@@ -50,14 +48,14 @@ update.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     secretMessage.setSecretName(secretName);
 
-    const content = fs.readFileSync(options.filePath, { encoding: 'utf-8' });
+    const content = fs.readFileSync(options.filePath);
 
     secretMessage.setSecretContent(content);
 
-    const pCall = grpcClient.vaultsSecretsEdit(secretEditMessage);
+    const pCall = grpcClient.vaultsSecretsEdit(secretMessage);
     const { p, resolveP } = utils.promise();
     pCall.call.on('metadata', async (meta) => {
       await clientUtils.refreshSession(meta, client.session);
@@ -71,7 +69,7 @@ update.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Updated secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()}`,
+          `Updated secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()}`,
         ],
       }),
     );
@@ -96,6 +94,7 @@ update.action(async (options) => {
     options.nodePath = undefined;
     options.verbose = undefined;
     options.format = undefined;
+    options.filePath = undefined;
   }
 });
 

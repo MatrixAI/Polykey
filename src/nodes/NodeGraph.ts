@@ -1,13 +1,6 @@
-import type {
-  NodeId,
-  NodeAddress,
-  NodeBucketIndex,
-  NodeBucket,
-  NodeData,
-} from './types';
+import type { NodeId, NodeAddress, NodeBucket, NodeData } from './types';
 import type { Host, Port } from '../network/types';
-import type { DB } from '../db';
-import type { DBLevel, DBOp } from '../db/types';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeConnection } from '../nodes';
 
 import { Mutex } from 'async-mutex';
@@ -15,18 +8,18 @@ import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
 import NodeManager from './NodeManager';
 import { utils as nodesUtils, errors as nodesErrors } from './';
-import { errors as dbErrors } from '../db';
+import { errors as dbErrors } from '@matrixai/db';
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer information
  * We maintain a map of buckets. Where each bucket has k number of node infos
  */
 class NodeGraph {
-  // node id has 44 characters which is 352 bits
-  public readonly nodeIdBits: number = 352;
-  // max number of nodes in each k-bucket (a.k.a. k)
+  // Internally, node ID is a 32 byte array
+  public readonly nodeIdBits: number = 256;
+  // Max number of nodes in each k-bucket (a.k.a. k)
   public readonly maxNodesPerBucket: number = 20;
-  // max parallel connections (a.k.a. alpha)
+  // Max parallel connections (a.k.a. alpha)
   public readonly maxConcurrentNodeConnections: number = 3;
 
   protected logger: Logger;
@@ -37,8 +30,8 @@ class NodeGraph {
     this.nodeGraphDbDomain,
     'buckets',
   ];
-  protected nodeGraphDb: DBLevel<string>;
-  protected nodeGraphBucketsDb: DBLevel<NodeBucketIndex>;
+  protected nodeGraphDb: DBLevel;
+  protected nodeGraphBucketsDb: DBLevel;
   protected lock: Mutex = new Mutex();
   protected _started: boolean = false;
 
@@ -72,15 +65,15 @@ class NodeGraph {
     try {
       this.logger.info('Starting Node Graph');
       this._started = true;
-      if (!this.db.started) {
-        throw new dbErrors.ErrorDBNotStarted();
+      if (!this.db.running) {
+        throw new dbErrors.ErrorDBNotRunning();
       }
-      if (!this.nodeManager.started) {
+      if (!this.nodeManager.running) {
         throw new nodesErrors.ErrorNodeManagerNotStarted();
       }
-      const nodeGraphDb = await this.db.level<string>(this.nodeGraphDbDomain);
-      // buckets stores NodeBucketIndex -> NodeBucket
-      const nodeGraphBucketsDb = await this.db.level<NodeBucketIndex>(
+      const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);
+      // Buckets stores NodeBucketIndex -> NodeBucket
+      const nodeGraphBucketsDb = await this.db.level(
         this.nodeGraphBucketsDbDomain[1],
         nodeGraphDb,
       );
@@ -96,8 +89,8 @@ class NodeGraph {
       for (const [, conn] of this.nodeManager.getBrokerNodeConnections()) {
         const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
         for (const n of nodes) {
-          await this.nodeManager.createConnectionToNode(n.id, n.address);
           await this.setNode(n.id, n.address);
+          await this.nodeManager.getConnectionToNode(n.id);
         }
       }
       this.logger.info('Started Node Graph');
@@ -159,7 +152,7 @@ class NodeGraph {
       const bucketIndex = this.getBucketIndex(nodeId);
       const bucket = await this.db.get<NodeBucket>(
         this.nodeGraphBucketsDbDomain,
-        bucketIndex.toString(),
+        bucketIndex,
       );
       if (bucket != null && nodeId in bucket) {
         return bucket[nodeId].address;
@@ -175,7 +168,7 @@ class NodeGraph {
     return await this._transaction(async () => {
       const bucket = await this.db.get<NodeBucket>(
         this.nodeGraphBucketsDbDomain,
-        lexi.pack(bucketIndex, 'hex').toString(),
+        lexi.pack(bucketIndex, 'hex'),
       );
       // Cast the non-primitive types correctly (ensures type safety when using them)
       for (const nodeId in bucket) {
@@ -211,7 +204,7 @@ class NodeGraph {
     const bucketIndex = this.getBucketIndex(nodeId);
     let bucket = await this.db.get<NodeBucket>(
       this.nodeGraphBucketsDbDomain,
-      bucketIndex.toString(),
+      bucketIndex,
     );
     if (bucket == null) {
       bucket = {};
@@ -231,7 +224,7 @@ class NodeGraph {
       {
         type: 'put',
         domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex.toString(),
+        key: bucketIndex,
         value: bucket,
       },
     ];
@@ -262,7 +255,7 @@ class NodeGraph {
     const bucketIndex = this.getBucketIndex(nodeId);
     const bucket = await this.db.get<NodeBucket>(
       this.nodeGraphBucketsDbDomain,
-      bucketIndex.toString(),
+      bucketIndex,
     );
     const ops: Array<DBOp> = [];
     if (bucket != null && nodeId in bucket) {
@@ -273,7 +266,7 @@ class NodeGraph {
       ops.push({
         type: 'put',
         domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex.toString(),
+        key: bucketIndex,
         value: bucket,
       });
     } else {
@@ -296,7 +289,7 @@ class NodeGraph {
     const bucketIndex = this.getBucketIndex(nodeId);
     const bucket = await this.db.get<NodeBucket>(
       this.nodeGraphBucketsDbDomain,
-      bucketIndex.toString(),
+      bucketIndex,
     );
     const ops: Array<DBOp> = [];
     if (bucket == null) {
@@ -307,13 +300,13 @@ class NodeGraph {
       ops.push({
         type: 'del',
         domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex.toString(),
+        key: bucketIndex,
       });
     } else {
       ops.push({
         type: 'put',
         domain: this.nodeGraphBucketsDbDomain,
-        key: bucketIndex.toString(),
+        key: bucketIndex,
         value: bucket,
       });
     }
@@ -325,16 +318,16 @@ class NodeGraph {
    * bucket database). Packs it as a lexicographic integer, such that the order
    * of buckets in leveldb is numerical order.
    */
-  protected getBucketIndex(nodeId: NodeId): number {
+  protected getBucketIndex(nodeId: NodeId): string {
     const index = nodesUtils.calculateBucketIndex(
       this.getNodeId(),
       nodeId,
       this.nodeIdBits,
     );
-    return lexi.pack(index, 'hex');
+    return lexi.pack(index, 'hex') as string;
   }
 
-  // ok so here is where we must start refactoring this
+  // Ok so here is where we must start refactoring this
 
   // this might be better to stream this directly to where it is being used
   // cause the subsequent functions are using this
@@ -347,12 +340,13 @@ class NodeGraph {
       const vals: Array<string | Buffer> = [];
       for await (const o of this.nodeGraphBucketsDb.createReadStream()) {
         const data = (o as any).value as Buffer;
-        const bucket = this.db.unserializeDecrypt<NodeBucket>(data);
-        bucket;
+        const bucket = await this.db.deserializeDecrypt<NodeBucket>(
+          data,
+          false,
+        );
         buckets.push(bucket);
         vals.push(o);
       }
-      // console.log(vals);
       return buckets;
     });
   }
@@ -388,7 +382,7 @@ class NodeGraph {
       for (const b of buckets) {
         for (const n of Object.keys(b)) {
           const nodeId = n as NodeId;
-          const newIndex = this.getBucketIndex(nodeId).toString();
+          const newIndex = this.getBucketIndex(nodeId);
           let expectedBucket = tempBuckets[newIndex];
           // The following is moreorless copied from setNodeOps
           if (expectedBucket == null) {
@@ -433,7 +427,7 @@ class NodeGraph {
    * i.e. FIND_NODE RPC from Kademlia spec
    *
    * @param targetNodeId the node ID to find other nodes closest to it
-   * @param numclosest the number of closest nodes to return (by default, returns
+   * @param numClosest the number of closest nodes to return (by default, returns
    * according to the maximum number of nodes per bucket)
    * @returns a mapping containing exactly k nodeIds -> nodeAddresses (unless the
    * current node has less than k nodes in all of its buckets, in which case it
@@ -486,7 +480,7 @@ class NodeGraph {
     if (!this._started) {
       throw new nodesErrors.ErrorNodeGraphNotStarted();
     }
-    let foundTarget: boolean = false;
+    // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
     const shortlist: Array<NodeData> = await this.getClosestLocalNodes(
@@ -505,7 +499,7 @@ class NodeGraph {
     const contacted: { [nodeId: string]: boolean } = {};
     // Iterate until we've found found and contacted k nodes
     while (Object.keys(contacted).length <= this.maxNodesPerBucket) {
-      // while (!foundTarget) {
+      // While (!foundTarget) {
       // Remove the node from the front of the array
       const nextNode = shortlist.shift();
       // If we have no nodes left in the shortlist, then stop
@@ -520,9 +514,11 @@ class NodeGraph {
       // create a new one)
       let nodeConnection: NodeConnection;
       try {
-        nodeConnection = await this.nodeManager.createConnectionToNode(
+        // Add the node to the database so that we can find its address in
+        // call to getConnectionToNode
+        await this.setNode(nextNode.id, nextNode.address);
+        nodeConnection = await this.nodeManager.getConnectionToNode(
           nextNode.id,
-          nextNode.address,
         );
       } catch (e) {
         // If we can't connect to the node, then skip it.
@@ -539,7 +535,7 @@ class NodeGraph {
           continue;
         }
         if (nodeData.id === targetNodeId) {
-          foundTarget = true;
+          // FoundTarget = true;
           // Attempt to create a connection to the node. Will throw an error
           // (ErrorConnectionStart, from ConnectionForward) if the connection
           // cannot be established

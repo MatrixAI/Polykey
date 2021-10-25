@@ -6,7 +6,7 @@ import process from 'process';
 import Logger from '@matrixai/logger';
 import * as utils from './utils';
 import * as errors from './errors';
-import { KeyManager } from './keys';
+import { KeyManager, utils as keyUtils } from './keys';
 import { GRPCServer } from './grpc';
 import { Lockfile } from './lockfile';
 import { NodeManager } from './nodes';
@@ -15,7 +15,7 @@ import { GestaltGraph } from './gestalts';
 import { NotificationsManager } from './notifications';
 import { Sigchain } from './sigchain';
 import { ACL } from './acl';
-import { DB } from './db';
+import { DB } from '@matrixai/db';
 import { Discovery } from './discovery';
 import { WorkerManager } from './workers';
 import { SessionManager } from './sessions';
@@ -29,7 +29,13 @@ import { createClientService, ClientService } from './client';
 import { GithubProvider } from './identities/providers';
 import config from './config';
 import { ErrorStateVersionMismatch } from './errors';
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
+interface Polykey extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new errors.ErrorPolykeyAgentNotRunning(),
+  new errors.ErrorPolykeyAgentDestroyed(),
+)
 class Polykey {
   public readonly nodePath: string;
   public readonly lockfile: Lockfile;
@@ -40,7 +46,7 @@ class Polykey {
   public readonly gestalts: GestaltGraph;
   public readonly identities: IdentitiesManager;
   public readonly notifications: NotificationsManager;
-  public readonly workers: WorkerManager;
+  public readonly workers?: WorkerManager;
   public readonly sigchain: Sigchain;
   public readonly acl: ACL;
   public readonly db: DB;
@@ -65,7 +71,8 @@ class Polykey {
   protected fs: FileSystem;
   protected logger: Logger;
 
-  constructor({
+  public static async createPolykey({
+    password,
     nodePath,
     keyManager,
     vaultManager,
@@ -87,7 +94,13 @@ class Polykey {
     fs,
     logger,
     discovery,
+    fresh = false,
+    rootKeyPairBits,
+    rootCertDuration,
+    dbKeyBits,
+    cores,
   }: {
+    password: string;
     nodePath?: string;
     keyManager?: KeyManager;
     vaultManager?: VaultManager;
@@ -98,7 +111,7 @@ class Polykey {
     notificationsManager?: NotificationsManager;
     acl?: ACL;
     db?: DB;
-    workerManager?: WorkerManager;
+    workerManager?: WorkerManager | null;
     clientGrpcHost?: string;
     agentGrpcHost?: string;
     clientGrpcPort?: number;
@@ -109,134 +122,332 @@ class Polykey {
     fs?: FileSystem;
     logger?: Logger;
     discovery?: Discovery;
-  } = {}) {
-    this.clientGrpcHost = clientGrpcHost ?? '127.0.0.1';
-    this.clientGrpcPort = clientGrpcPort ?? 0;
-    this.agentGrpcHost = agentGrpcHost ?? '127.0.0.1';
-    this.agentGrpcPort = agentGrpcPort ?? 0;
-    this.logger = logger ?? new Logger('Polykey');
-    this.fs = fs ?? require('fs');
-    this.nodePath = path.resolve(nodePath ?? utils.getDefaultNodePath());
-    const keysPath = path.join(this.nodePath, 'keys');
-    const vaultsPath = path.join(this.nodePath, 'vaults');
-    const dbPath = path.join(this.nodePath, 'db');
+    fresh?: boolean;
+    rootKeyPairBits?: number;
+    rootCertDuration?: number;
+    dbKeyBits?: number;
+    cores?: number;
+  }): Promise<Polykey> {
+    const clientGrpcHost_ = clientGrpcHost ?? '127.0.0.1';
+    const clientGrpcPort_ = clientGrpcPort ?? 0;
+    const agentGrpcHost_ = agentGrpcHost ?? '127.0.0.1';
+    const agentGrpcPort_ = agentGrpcPort ?? 0;
+    const logger_ = logger ?? new Logger('Polykey');
+    const fs_ = fs ?? require('fs');
+    const nodePath_ = path.resolve(nodePath ?? utils.getDefaultNodePath());
+    const keysPath = path.join(nodePath_, 'keys');
+    const vaultsPath = path.join(nodePath_, 'vaults');
+    const dbPath = path.join(nodePath_, 'db');
 
-    this.fwdProxy =
+    if (
+      (await Lockfile.checkLock(
+        fs_,
+        path.join(nodePath_, 'agent-lock.json'),
+      )) !== 'DOESNOTEXIST'
+    ) {
+      // Interrogate Lock File
+      const lock = await Lockfile.parseLock(
+        fs_,
+        path.join(nodePath_, 'agent-lock.json'),
+      );
+
+      if (utils.pidIsRunning(lock.pid)) {
+        logger_.error(`PolykeyAgent already started at pid: ${lock.pid}`);
+        throw new errors.ErrorPolykey(
+          `PolykeyAgent already started at pid: ${lock.pid}`,
+        );
+      }
+    }
+
+    const umaskNew = 0o077;
+    logger_.info(`Setting umask to ${umaskNew.toString(8).padStart(3, '0')}`);
+    process.umask(umaskNew);
+
+    logger_.info(`Setting node path to ${nodePath_}`);
+    await utils.mkdirExists(fs_, nodePath_, { recursive: true });
+
+    // Checking the state version
+    // reading the contents of the file
+    const versionFilePath = path.join(nodePath_, 'versionFile');
+    let versionInfo;
+    try {
+      const versionFileContents = await fs_.promises.readFile(versionFilePath);
+      versionInfo = JSON.parse(versionFileContents.toString());
+    } catch (err) {
+      logger_.info(`Failed to open version file: ${err.message}`);
+    }
+    if (versionInfo != null) {
+      // Checking state version
+      if (versionInfo.stateVersion !== config.stateVersion) {
+        throw new ErrorStateVersionMismatch(
+          `The agent state version of ${config.stateVersion} does not match the keynode state version of ${versionInfo.stateVersion}`,
+        );
+      }
+      // Checking version
+      if (versionInfo.version !== config.version) {
+        logger_.info(
+          `The version of the Agent ${config.version} does not match the version of the keynode ${versionInfo.version}`,
+        );
+      }
+    }
+    // Writing current version info.
+    await fs_.promises.writeFile(versionFilePath, JSON.stringify(config));
+
+    let workers_: WorkerManager | undefined = undefined;
+    if (workerManager !== null) {
+      logger_.info('Creating a WorkerManager');
+      workers_ =
+        workerManager ??
+        (await WorkerManager.createPolykeyWorkerManager({
+          cores,
+          logger: logger_.getChild('WorkerManager'),
+        }));
+    }
+
+    const fwdProxy_ =
       fwdProxy ??
-      new ForwardProxy({
+      (await ForwardProxy.createForwardProxy({
         authToken: authToken ?? ' ',
-        logger: this.logger,
-      });
-    this.revProxy =
+        logger: logger_,
+      }));
+    const revProxy_ =
       revProxy ??
-      new ReverseProxy({
-        logger: this.logger,
-      });
+      (await ReverseProxy.createReverseProxy({
+        logger: logger_,
+      }));
+    const keys_ =
+      keyManager ??
+      (await KeyManager.createKeyManager({
+        keysPath,
+        password,
+        rootKeyPairBits,
+        rootCertDuration,
+        dbKeyBits,
+        fs: fs_,
+        logger: logger_.getChild('KeyManager'),
+        fresh,
+      }));
+    if (workers_ != null) {
+      logger_.info('Setting workerManager for KeyManger.');
+      keys_.setWorkerManager(workers_);
+    }
+
+    const db_ =
+      db ??
+      (await DB.createDB({
+        dbPath: dbPath,
+        fs: fs_,
+        logger: logger_,
+        crypto: {
+          key: keys_.dbKey,
+          ops: {
+            encrypt: keyUtils.encryptWithKey,
+            decrypt: keyUtils.decryptWithKey,
+          },
+        },
+      }));
+    // Setting the workerManager.
+    if (workers_ != null) {
+      logger_.info('Setting workerManager for DB');
+      db_.setWorkerManager(workers_);
+    }
+    const sigchain_ =
+      sigchain ??
+      (await Sigchain.createSigchain({
+        keyManager: keys_,
+        db: db_,
+        logger: logger_.getChild('Sigchain'),
+        fresh,
+      }));
+    const acl_ =
+      acl ??
+      (await ACL.createACL({
+        db: db_,
+        logger: logger_.getChild('ACL'),
+        fresh,
+      }));
+    const gestalts_ =
+      gestaltGraph ??
+      (await GestaltGraph.createGestaltGraph({
+        db: db_,
+        acl: acl_,
+        logger: logger_.getChild('GestaltGraph'),
+        fresh,
+      }));
+    const nodes_ =
+      nodeManager ??
+      (await NodeManager.createNodeManager({
+        db: db_,
+        sigchain: sigchain_,
+        keyManager: keys_,
+        fwdProxy: fwdProxy_,
+        revProxy: revProxy_,
+        fs: fs_,
+        logger: logger_.getChild('NodeManager'),
+      }));
+    const vaults_ =
+      vaultManager ??
+      (await VaultManager.createVaultManager({
+        keyManager: keys_,
+        vaultsPath: vaultsPath,
+        vaultsKey: keys_.vaultKey,
+        nodeManager: nodes_,
+        gestaltGraph: gestalts_,
+        acl: acl_,
+        db: db_,
+        fs: fs_,
+        logger: logger_.getChild('VaultManager'),
+      }));
+    // Vaults_.setWorkerManager(workers_); FIXME, need to be able to set this.
+    const identities_ =
+      identitiesManager ??
+      (await IdentitiesManager.createIdentitiesManager({
+        db: db_,
+        logger: logger_.getChild('IdentitiesManager'),
+        fresh,
+      }));
+    const discovery_ =
+      discovery ??
+      (await Discovery.createDiscovery({
+        gestaltGraph: gestalts_,
+        identitiesManager: identities_,
+        nodeManager: nodes_,
+        logger: logger_.getChild('Discovery'),
+      }));
+    const notifications_ =
+      notificationsManager ??
+      (await NotificationsManager.createNotificationsManager({
+        acl: acl_,
+        db: db_,
+        nodeManager: nodes_,
+        keyManager: keys_,
+        logger: logger_.getChild('NotificationsManager'),
+        fresh,
+      }));
+
+    const sessionManager = await SessionManager.createSessionManager({
+      db: db_,
+      logger: logger,
+      bits: rootKeyPairBits ?? 4096,
+    });
+
+    const clientGrpcServer_ = await GRPCServer.createGRPCServer({
+      logger: logger_.getChild('ClientServer'),
+    });
+    const agentGrpcServer_ = await GRPCServer.createGRPCServer({
+      logger: logger_.getChild('AgentServer'),
+    });
+
+    return new Polykey({
+      acl: acl_,
+      agentGrpcHost: agentGrpcHost_,
+      agentGrpcPort: agentGrpcPort_,
+      clientGrpcHost: clientGrpcHost_,
+      clientGrpcPort: clientGrpcPort_,
+      db: db_,
+      discovery: discovery_,
+      fs: fs_,
+      fwdProxy: fwdProxy_,
+      gestaltGraph: gestalts_,
+      identitiesManager: identities_,
+      keyManager: keys_,
+      logger: logger_,
+      nodeManager: nodes_,
+      nodePath: nodePath_,
+      notificationsManager: notifications_,
+      revProxy: revProxy_,
+      sigchain: sigchain_,
+      vaultManager: vaults_,
+      workerManager: workers_,
+      sessionManager: sessionManager,
+      clientGrpcServer: clientGrpcServer_,
+      agentGrpcServer: agentGrpcServer_,
+    });
+  }
+
+  constructor({
+    nodePath,
+    keyManager,
+    vaultManager,
+    nodeManager,
+    gestaltGraph,
+    identitiesManager,
+    sigchain,
+    notificationsManager,
+    acl,
+    db,
+    workerManager,
+    clientGrpcHost,
+    agentGrpcHost,
+    clientGrpcPort,
+    agentGrpcPort,
+    fwdProxy,
+    revProxy,
+    fs,
+    logger,
+    discovery,
+    sessionManager,
+    clientGrpcServer,
+    agentGrpcServer,
+  }: {
+    nodePath: string;
+    keyManager: KeyManager;
+    vaultManager: VaultManager;
+    nodeManager: NodeManager;
+    gestaltGraph: GestaltGraph;
+    identitiesManager: IdentitiesManager;
+    sigchain: Sigchain;
+    notificationsManager: NotificationsManager;
+    acl: ACL;
+    db: DB;
+    workerManager?: WorkerManager;
+    clientGrpcHost: string;
+    agentGrpcHost: string;
+    clientGrpcPort: number;
+    agentGrpcPort: number;
+    fwdProxy: ForwardProxy;
+    revProxy: ReverseProxy;
+    fs: FileSystem;
+    logger: Logger;
+    discovery: Discovery;
+    sessionManager: SessionManager;
+    clientGrpcServer: GRPCServer;
+    agentGrpcServer: GRPCServer;
+  }) {
+    this.clientGrpcHost = clientGrpcHost;
+    this.clientGrpcPort = clientGrpcPort;
+    this.agentGrpcHost = agentGrpcHost;
+    this.agentGrpcPort = agentGrpcPort;
+    this.logger = logger;
+    this.fs = fs;
+    this.nodePath = path.resolve(nodePath ?? utils.getDefaultNodePath());
+
+    this.fwdProxy = fwdProxy;
+    this.revProxy = revProxy;
 
     this.lockfile = new Lockfile({
       nodePath: this.nodePath,
       fs: this.fs,
       logger: this.logger.getChild('Lockfile'),
     });
-    this.keys =
-      keyManager ??
-      new KeyManager({
-        keysPath,
-        fs: this.fs,
-        logger: this.logger.getChild('KeyManager'),
-      });
-    this.db =
-      db ??
-      new DB({
-        dbPath: dbPath,
-        fs: this.fs,
-        logger: this.logger,
-      });
-    this.sigchain =
-      sigchain ??
-      new Sigchain({
-        keyManager: this.keys,
-        db: this.db,
-        logger: this.logger.getChild('Sigchain'),
-      });
-    this.acl =
-      acl ??
-      new ACL({
-        db: this.db,
-        logger: this.logger.getChild('ACL'),
-      });
-    this.gestalts =
-      gestaltGraph ??
-      new GestaltGraph({
-        db: this.db,
-        acl: this.acl,
-        logger: this.logger.getChild('GestaltGraph'),
-      });
-    this.nodes =
-      nodeManager ??
-      new NodeManager({
-        db: this.db,
-        sigchain: this.sigchain,
-        keyManager: this.keys,
-        fwdProxy: this.fwdProxy,
-        revProxy: this.revProxy,
-        fs: this.fs,
-        logger: this.logger.getChild('NodeManager'),
-      });
-    this.vaults =
-      vaultManager ??
-      new VaultManager({
-        vaultsPath: vaultsPath,
-        keyManager: this.keys,
-        nodeManager: this.nodes,
-        db: this.db,
-        acl: this.acl,
-        gestaltGraph: this.gestalts,
-        fs: this.fs,
-        logger: this.logger.getChild('VaultManager'),
-      });
-    this.identities =
-      identitiesManager ??
-      new IdentitiesManager({
-        db: this.db,
-        logger: this.logger.getChild('IdentitiesManager'),
-      });
-    this.discovery =
-      discovery ??
-      new Discovery({
-        gestaltGraph: this.gestalts,
-        identitiesManager: this.identities,
-        nodeManager: this.nodes,
-        logger: this.logger.getChild('Discovery'),
-      });
-    this.notifications =
-      notificationsManager ??
-      new NotificationsManager({
-        acl: this.acl,
-        db: this.db,
-        nodeManager: this.nodes,
-        keyManager: this.keys,
-        logger: this.logger.getChild('NotificationsManager'),
-      });
-    this.workers =
-      workerManager ??
-      new WorkerManager({
-        logger: this.logger.getChild('WorkerManager'),
-      });
-    this.sessions = new SessionManager({
-      db: this.db,
-      logger: logger,
-    });
+    this.keys = keyManager;
+    this.db = db;
+    this.sigchain = sigchain;
+    this.acl = acl;
+    this.gestalts = gestaltGraph;
+    this.nodes = nodeManager;
+    this.vaults = vaultManager;
+    this.identities = identitiesManager;
+    this.discovery = discovery;
+    this.notifications = notificationsManager;
+    this.workers = workerManager;
+    this.sessions = sessionManager;
 
     // Create GRPC Servers (services will be injected on start)
     // Client server
-    this.clientGrpcServer = new GRPCServer({
-      logger: this.logger.getChild('ClientServer'),
-    });
+    this.clientGrpcServer = clientGrpcServer;
     // Agent Server
-    this.agentGrpcServer = new GRPCServer({
-      logger: this.logger.getChild('AgentServer'),
-    });
+    this.agentGrpcServer = agentGrpcServer;
 
     // Get GRPC Services
     this.clientService = createClientService({
@@ -274,27 +485,8 @@ class Polykey {
    * Asynchronously start the PolykeyAgent
    * @param options: password, bits, duration, fresh
    */
-  public async start({
-    password,
-    rootKeyPairBits,
-    rootCertDuration,
-    fresh = false,
-  }: {
-    password: string;
-    rootKeyPairBits?: number;
-    rootCertDuration?: number;
-    fresh?: boolean;
-  }) {
+  public async start({ fresh = false }: { fresh?: boolean }) {
     this.logger.info('Starting Polykey');
-
-    const umaskNew = 0o077;
-    this.logger.info(
-      `Setting umask to ${umaskNew.toString(8).padStart(3, '0')}`,
-    );
-    process.umask(umaskNew);
-
-    this.logger.info(`Setting node path to ${this.nodePath}`);
-    await utils.mkdirExists(this.fs, this.nodePath, { recursive: true });
 
     if (
       (await Lockfile.checkLock(
@@ -316,67 +508,18 @@ class Polykey {
       }
     }
 
-    // checking the state version
-    // reading the contents of the file
-    const versionFilePath = path.join(this.nodePath, 'versionFile');
-    let versionInfo;
-    try {
-      const versionFileContents = await this.fs.promises.readFile(
-        versionFilePath,
-      );
-      versionInfo = JSON.parse(versionFileContents.toString());
-    } catch (err) {
-      this.logger.info(`Failed to open version file: ${err.message}`);
-    }
-    if (versionInfo != null) {
-      // checking state version
-      if (versionInfo.stateVersion !== config.stateVersion) {
-        throw new ErrorStateVersionMismatch(
-          `The agent state version of ${config.stateVersion} does not match the keynode state version of ${versionInfo.stateVersion}`,
-        );
-      }
-      // checking version
-      if (versionInfo.version !== config.version) {
-        this.logger.info(
-          `The version of the Agent ${config.version} does not match the version of the keynode ${versionInfo.version}`,
-        );
-      }
-    }
-    // writing current version info.
-    await this.fs.promises.writeFile(versionFilePath, JSON.stringify(config));
-
-    // starting modules
-    await this.workers.start();
-    this.keys.setWorkerManager(this.workers);
-    await this.keys.start({
-      password,
-      rootKeyPairBits,
-      rootCertDuration,
-      fresh,
-    });
+    // Starting modules
 
     // Getting NodeId
     const cert = this.keys.getRootCert();
     const nodeId = certNodeId(cert);
 
-    await this.db.start({
-      keyPair: this.keys.getRootKeyPair(),
-      bits: rootKeyPairBits,
-    });
+    await this.db.start();
 
-    await this.acl.start({ fresh });
-
-    await this.sigchain.start({ fresh });
     await this.nodes.start({ fresh });
-    await this.gestalts.start({ fresh });
-    await this.vaults.start({ fresh });
-    await this.identities.start({ fresh });
-    await this.notifications.start({ fresh });
 
     const keyPrivatePem = this.keys.getRootKeyPairPem().privateKey;
     const certChainPem = await this.keys.getRootCertChainPem();
-
-    await this.discovery.start();
 
     // GRPC Server
     // Client server
@@ -412,7 +555,7 @@ class Polykey {
       },
     });
 
-    await this.lockfile.start({ nodeId });
+    await this.lockfile.start({ nodeId }); // TODO: start the lockfile when Polykey is created.
     await this.lockfile.updateLockfile('host', this.clientGrpcHost);
     await this.lockfile.updateLockfile('port', this.clientGrpcServer.getPort());
     await this.lockfile.updateLockfile(
@@ -424,10 +567,6 @@ class Polykey {
       this.fwdProxy.getProxyPort(),
     );
 
-    await this.sessions.start({
-      bits: rootKeyPairBits ?? 4096,
-    });
-
     this.logger.info('Started Polykey');
   }
 
@@ -436,44 +575,37 @@ class Polykey {
    */
   public async stop() {
     this.logger.info('Stopping Polykey');
-
-    await this.sessions.stop();
-
-    this.logger.info(
-      `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
-    );
-    await this.lockfile.stop();
-
-    await this.revProxy.stop();
-
-    await this.discovery.stop();
-
-    await this.notifications.stop();
-
-    await this.identities.stop();
-
-    await this.vaults.stop();
-    await this.gestalts.stop();
-    await this.nodes.stop();
-    await this.sigchain.stop();
-
-    await this.fwdProxy.stop();
-
-    await this.db.stop();
-
-    await this.keys.stop();
-    this.keys.unsetWorkerManager();
-    await this.workers.stop();
-
     // Stop GRPC Server
     await this.clientGrpcServer.stop();
     await this.agentGrpcServer.stop();
-
+    await this.lockfile.stop(); // TODO: remove the lockfile when polykey is destroyed.
+    await this.nodes.stop();
+    await this.revProxy.stop();
+    await this.fwdProxy.stop();
+    await this.db.stop();
+    this.keys.unsetWorkerManager();
     this.logger.info('Stopped Polykey');
   }
 
   public async destroy() {
-    return;
+    this.logger.info('Destroying Polykey');
+    await this.agentGrpcServer.destroy();
+    await this.clientGrpcServer.destroy();
+    await this.sessions.destroy();
+    await this.notifications.destroy();
+    await this.discovery.destroy();
+    await this.identities.destroy();
+    await this.vaults.destroy();
+    await this.nodes.destroy();
+    await this.gestalts.destroy();
+    await this.acl.destroy();
+    await this.sigchain.destroy();
+    await this.revProxy.destroy();
+    await this.fwdProxy.destroy();
+    await this.keys.destroy();
+    await this.workers?.destroy();
+    // Await this.db.destroy(); // don't actually destroy this. it removes files.
+    this.logger.info('Destroyed Polykey');
   }
 }
 

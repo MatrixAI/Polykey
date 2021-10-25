@@ -2,7 +2,7 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorACL extends ErrorPolykey {}
 
-class ErrorACLNotStarted extends ErrorACL {}
+class ErrorACLDestroyed extends ErrorACL {}
 
 class ErrorACLNodeIdMissing extends ErrorACL {}
 
@@ -12,7 +12,7 @@ class ErrorACLNodeIdExists extends ErrorACL {}
 
 export {
   ErrorACL,
-  ErrorACLNotStarted,
+  ErrorACLDestroyed,
   ErrorACLNodeIdMissing,
   ErrorACLVaultIdMissing,
   ErrorACLNodeIdExists,

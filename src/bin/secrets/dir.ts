@@ -31,7 +31,7 @@ dir.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const secretDirectoryMessage = new clientPB.SecretDirectoryMessage();
   const vaultMessage = new clientPB.VaultMessage();
 
@@ -39,7 +39,7 @@ dir.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setVaultName(options.vaultName);
+    vaultMessage.setNameOrId(options.vaultName);
     secretDirectoryMessage.setVault(vaultMessage);
     secretDirectoryMessage.setSecretDirectory(options.directoryPath);
 

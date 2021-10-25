@@ -5,8 +5,46 @@ import { GRPCClient, utils as grpcUtils } from '../grpc';
 import * as clientPB from '../proto/js/Client_pb';
 import { ClientClient } from '../proto/js/Client_grpc_pb';
 import { Session } from '../sessions';
+import { NodeId } from '../nodes/types';
+import { Host, Port, ProxyConfig } from '../network/types';
+import Logger from '@matrixai/logger';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { errors as grpcErrors } from '../grpc';
 
+@CreateDestroyStartStop(
+  new grpcErrors.ErrorGRPCClientNotStarted(),
+  new grpcErrors.ErrorGRPCClientDestroyed(),
+)
 class GRPCClientClient extends GRPCClient<ClientClient> {
+  static async createGRPCCLientClient({
+    nodeId,
+    host,
+    port,
+    proxyConfig,
+    logger,
+  }: {
+    nodeId: NodeId;
+    host: Host;
+    port: Port;
+    proxyConfig?: ProxyConfig;
+    logger?: Logger;
+  }): Promise<GRPCClientClient> {
+    const logger_ = logger ?? new Logger('GRPCClientClient');
+    logger_.info('Creating GRPCClientClient');
+    const grpcClientClient = new GRPCClientClient({
+      host,
+      logger: logger_,
+      nodeId,
+      port,
+      proxyConfig,
+    });
+    logger_.info('Created GRPCClientAgent');
+    return grpcClientClient;
+  }
+
   public async start({
     tlsConfig,
     session,
@@ -25,62 +63,67 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     });
   }
 
+  public async destroy() {
+    this.logger.info('Destroyed GRPCClientClient');
+  }
+
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public echo(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EchoMessage>(
       this.client,
       this.client.echo,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public agentStop(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.agentStop,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public sessionUnlock(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
       this.client,
       this.client.sessionUnlock,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public sessionRefresh(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.SessionTokenMessage>(
       this.client,
       this.client.sessionRefresh,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public sessionLockAll(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.sessionLockAll,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsList(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
       this.client,
       this.client.vaultsList,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsCreate(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
       this.client,
       this.client.vaultsCreate,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsRename(...args) {
     if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.VaultMessage>(
@@ -89,416 +132,432 @@ class GRPCClientClient extends GRPCClient<ClientClient> {
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsDelete(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsDelete,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsClone(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsClone,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPull(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsPull,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsScan(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.VaultListMessage>(
       this.client,
       this.client.vaultsScan,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPermissionsSet(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsPermissionsSet,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPermissionsUnset(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsPermissionsUnset,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultPermissions(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.PermissionMessage>(
       this.client,
       this.client.vaultsPermissions,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsList(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.SecretMessage>(
       this.client,
       this.client.vaultsSecretsList,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsMkdir(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.vaultsSecretsMkdir,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsStat(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatMessage>(
       this.client,
       this.client.vaultsSecretsStat,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsDelete(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsSecretsDelete,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsEdit(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsSecretsEdit,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsGet(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.SecretMessage>(
       this.client,
       this.client.vaultsSecretsGet,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsRename(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsSecretsRename,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsNew(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsSecretsNew,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsSecretsNewDir(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.vaultsSecretsNewDir,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  public vaultsVersion(...args) {
+    return grpcUtils.promisifyUnaryCall<clientPB.VaultsVersionResultMessage>(
+      this.client,
+      this.client.vaultsVersion,
+    )(...args);
+  }
+
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  public vaultsLog(...args) {
+    return grpcUtils.promisifyReadableStreamCall<clientPB.VaultsLogEntryMessage>(
+      this.client,
+      this.client.vaultsLog,
+    )(...args);
+  }
+
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysKeyPairRoot(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.KeyPairMessage>(
       this.client,
       this.client.keysKeyPairRoot,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysKeyPairReset(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.keysKeyPairReset,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysKeyPairRenew(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.keysKeyPairRenew,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysEncrypt(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
       this.client,
       this.client.keysEncrypt,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysDecrypt(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
       this.client,
       this.client.keysDecrypt,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysSign(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.CryptoMessage>(
       this.client,
       this.client.keysSign,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysVerify(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.keysVerify,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysPasswordChange(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.keysPasswordChange,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysCertsGet(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.CertificateMessage>(
       this.client,
       this.client.keysCertsGet,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysCertsChainGet(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.CertificateMessage>(
       this.client,
       this.client.keysCertsChainGet,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsGestaltList(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.GestaltMessage>(
       this.client,
       this.client.gestaltsGestaltList,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsGestaltGetByIdentity(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.GestaltGraphMessage>(
       this.client,
       this.client.gestaltsGestaltGetByIdentity,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsGestaltGetByNode(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.GestaltGraphMessage>(
       this.client,
       this.client.gestaltsGestaltGetByNode,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsDiscoveryByNode(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
       this.client,
       this.client.gestaltsDiscoveryByNode,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsDiscoveryByIdentity(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.GestaltMessage>(
       this.client,
       this.client.gestaltsDiscoveryByIdentity,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsGetByNode(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
       this.client,
       this.client.gestaltsActionsGetByNode,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsGetByIdentity(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.ActionsMessage>(
       this.client,
       this.client.gestaltsActionsGetByIdentity,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsSetByNode(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsSetByNode,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsSetByIdentity(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsSetByIdentity,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsUnsetByNode(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsUnsetByNode,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public gestaltsActionsUnsetByIdentity(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.gestaltsActionsUnsetByIdentity,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesTokenPut(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.identitiesTokenPut,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesGetToken(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.TokenMessage>(
       this.client,
       this.client.identitiesTokenGet,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesTokenDelete(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.identitiesTokenDelete,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesProvidersList(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
       this.client,
       this.client.identitiesProvidersList,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesAdd(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.nodesAdd,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesPing(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.nodesPing,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesClaim(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(
       this.client,
       this.client.nodesClaim,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesFind(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.NodeAddressMessage>(
       this.client,
       this.client.nodesFind,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesAuthenticate(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyReadableStreamCall<clientPB.ProviderMessage>(
       this.client,
       this.client.identitiesAuthenticate,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesInfoGetConnected(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.ProviderSearchMessage>(
       this.client,
       this.client.identitiesInfoGetConnected,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesInfoGet(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.ProviderMessage>(
       this.client,
       this.client.identitiesInfoGet,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public identitiesClaim(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.identitiesClaim,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsSend(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.notificationsSend,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsRead(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.NotificationsListMessage>(
       this.client,
       this.client.notificationsRead,
     )(...args);
   }
 
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsClear(...args) {
-    if (!this._started) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<clientPB.EmptyMessage>(
       this.client,
       this.client.notificationsClear,

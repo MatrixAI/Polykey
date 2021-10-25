@@ -1,5 +1,4 @@
 import type { PassThrough } from 'readable-stream';
-import type { DeflatedObject, WrappedObject, RawObject } from 'isomorphic-git';
 
 type Config = {
   line: string;
@@ -15,12 +14,6 @@ type Refs = {
 
 type SymRefs = {
   [key: string]: string;
-};
-
-type RefsAdResponse = {
-  capabilities: Array<string>;
-  refs: Refs;
-  symrefs: SymRefs;
 };
 
 type Ack = {
@@ -49,10 +42,34 @@ type PackIndex = {
   hashes: string[];
   offsets: Map<string, number>;
   packfileSha: string;
-  getExternalRefDelta: (
+  getExternalRefDelta?: (
     oid: string,
   ) => Promise<DeflatedObject | WrappedObject | RawObject>;
   pack?: Buffer;
+};
+
+type RawObject = {
+  oid: string;
+  type: 'blob' | 'tree' | 'commit' | 'tag';
+  format: 'content';
+  object: Buffer | string | Uint8Array;
+  source?: string | undefined;
+};
+
+type WrappedObject = {
+  oid: string;
+  type: 'wrapped';
+  format: 'wrapped';
+  object: Buffer | string | Uint8Array;
+  source?: string | undefined;
+};
+
+type DeflatedObject = {
+  oid: string;
+  type: 'deflated';
+  format: 'deflated';
+  object: Buffer | string | Uint8Array;
+  source?: string | undefined;
 };
 
 type BufferEncoding =
@@ -69,11 +86,14 @@ type BufferEncoding =
 
 export type {
   Refs,
-  RefsAdResponse,
+  SymRefs,
   Ack,
   Packfile,
   BufferEncoding,
   Identity,
   Pack,
   PackIndex,
+  RawObject,
+  WrappedObject,
+  DeflatedObject,
 };

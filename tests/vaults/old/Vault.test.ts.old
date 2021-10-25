@@ -1,11 +1,11 @@
 import type { NodeId } from '@/nodes/types';
-import type { VaultId, VaultKey } from '@/vaults/types';
+import type { VaultId, VaultIdRaw, VaultKey, VaultName } from "@/vaults/types";
 
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import git from 'isomorphic-git';
-import Vault from '@/vaults/Vault';
+import Vault from '@/vaults/old/Vault';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { generateVaultId, generateVaultKey } from '@/vaults/utils';
@@ -14,21 +14,21 @@ import { EncryptedFS } from 'encryptedfs';
 import * as errors from '@/vaults/errors';
 import * as utils from '@/utils';
 
-describe('Vault is', () => {
+describe.skip('Vault is', () => {
   let dataDir: string;
   let vault: Vault;
   let key: VaultKey;
   let vaultId: VaultId;
   let efsDir: string;
   const logger = new Logger('Vault', LogLevel.WARN, [new StreamHandler()]);
-  const name = 'vault-1';
+  const name = 'vault-1' as VaultName;
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     key = await generateVaultKey();
-    vaultId = generateVaultId('nodeId' as NodeId);
+    vaultId = generateVaultId();
     efsDir = path.join(dataDir, vaultId);
     await fs.promises.mkdir(efsDir);
     vault = new Vault({
@@ -73,7 +73,7 @@ describe('Vault is', () => {
     await vault.addSecret('secret-1', 'secret-content');
     const secret = await vault.getSecret('secret-1');
     expect(secret).toBe('secret-content');
-    await expect(vault.getSecret('doesnotexist')).rejects.toThrow(
+    await expect(() => vault.getSecret('doesnotexist')).rejects.toThrow(
       errors.ErrorSecretUndefined,
     );
     await vault.stop();
@@ -156,7 +156,7 @@ describe('Vault is', () => {
     await vault.addSecret('secret-1', 'secret-content');
     await vault.mkdir('dir-1');
     await vault.deleteSecret('secret-1');
-    await expect(vault.deleteSecret('dir-1')).rejects.toThrow(
+    await expect(() => vault.deleteSecret('dir-1')).rejects.toThrow(
       errors.ErrorRecursive,
     );
     await expect(
@@ -166,7 +166,7 @@ describe('Vault is', () => {
   });
   test('deleting a secret within a directory', async () => {
     await vault.start({ key });
-    await expect(vault.mkdir(path.join('dir-1', 'dir-2'))).rejects.toThrow(
+    await expect(() => vault.mkdir(path.join('dir-1', 'dir-2'))).rejects.toThrow(
       errors.ErrorRecursive,
     );
     await vault.mkdir(path.join('dir-1', 'dir-2'), { recursive: true });
@@ -196,7 +196,7 @@ describe('Vault is', () => {
   });
   test('renaming a vault', async () => {
     await vault.start({ key });
-    await vault.renameVault('vault-change');
+    await vault.renameVault('vault-change' as VaultName);
     expect(vault.vaultName).toEqual('vault-change');
     await vault.stop();
   });
@@ -313,7 +313,10 @@ describe('Vault is', () => {
   test(
     'adding and committing a secret 100 times on efs',
     async () => {
-      const efs = new EncryptedFS(await getRandomBytes(32), fs, dataDir);
+      const efs = await EncryptedFS.createEncryptedFS({
+        dbKey: await getRandomBytes(32),
+        dbPath: dataDir,
+      });
       const exists = utils.promisify(efs.exists).bind(efs);
       const mkdir = utils.promisify(efs.mkdir).bind(efs);
       const writeFile = utils.promisify(efs.writeFile).bind(efs);
@@ -542,4 +545,21 @@ describe('Vault is', () => {
     expect(content).toBe('secret-content');
     await vault2.stop();
   });
+  // Test('able to erase dirty commits on start up', async () => {
+  //   await vault.start({ key });
+  //   await vault.addSecret('secret-1', 'secret-content');
+  //   await vault.mkdir('dir-1', { recursive: true });
+  //   await vault.addSecret('dir-1/secret-1', 'secret-content');
+  //   await vault.start({ key });
+  //   await fs.promises.writeFile(path.join(dataDir, `${vault.vaultId}:nodeID`), 'dirty-commit');
+  //   const vault2 = new Vault({
+  //     vaultId: vaultId,
+  //     vaultName: name,
+  //     baseDir: efsDir,
+  //     fs: fs,
+  //     logger: logger,
+  //   });
+  //   await vault2.start({ key });
+  //   await vault2.stop();
+  // });
 });

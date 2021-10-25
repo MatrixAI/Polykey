@@ -32,7 +32,7 @@ rename.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMessage = new clientPB.VaultMessage();
   const secretMessage = new clientPB.SecretMessage();
   const secretRenameMessage = new clientPB.SecretRenameMessage();
@@ -49,7 +49,7 @@ rename.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
 
     secretMessage.setSecretName(secretName);
 
@@ -69,7 +69,7 @@ rename.action(async (options) => {
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
           data: [
-            `Renamed secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getVaultName()} to ${secretRenameMessage.getNewName()}`,
+            `Renamed secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()} to ${secretRenameMessage.getNewName()}`,
           ],
         }),
       );
@@ -77,7 +77,7 @@ rename.action(async (options) => {
       process.stdout.write(
         binUtils.outputFormatter({
           type: options.format === 'json' ? 'json' : 'list',
-          data: [`Failed to renamed secret: ${vaultMessage.getVaultName()}`],
+          data: [`Failed to renamed secret: ${vaultMessage.getNameOrId()}`],
         }),
       );
     }

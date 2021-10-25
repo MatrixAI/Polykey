@@ -2,14 +2,14 @@ import type { PolykeyAgent } from '@';
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
-import type { ClaimId } from '@/claims/types';
+import type { ClaimIdString } from '@/claims/types';
 
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import { DB } from '@/db';
+import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { ForwardProxy, ReverseProxy } from '@/network';
@@ -18,21 +18,19 @@ import { sleep } from '@/utils';
 import * as testUtils from '../utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as claimsUtils from '@/claims/utils';
+import { makeCrypto } from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 describe('NodeManager', () => {
+  const password = 'password';
   const logger = new Logger('NodeManagerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
   let nodeManager: NodeManager;
 
-  const fwdProxy = new ForwardProxy({
-    authToken: 'abc',
-    logger: logger,
-  });
-  const revProxy = new ReverseProxy({
-    logger: logger,
-  });
+  let fwdProxy: ForwardProxy;
+  let revProxy: ReverseProxy;
   let keyManager: KeyManager;
   let keyPairPem: KeyPairPem;
   let certPem: CertificatePem;
@@ -42,13 +40,35 @@ describe('NodeManager', () => {
   const serverHost = '::1' as Host;
   const serverPort = 1 as Port;
 
+  const nodeId1 = makeNodeId(
+    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+  );
+  const nodeId2 = makeNodeId(
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+  );
+  const dummyNode = makeNodeId(
+    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+  );
+
+  beforeAll(async () => {
+    fwdProxy = await ForwardProxy.createForwardProxy({
+      authToken: 'abc',
+      logger: logger,
+    });
+    revProxy = await ReverseProxy.createReverseProxy({
+      logger: logger,
+    });
+  });
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     const keysPath = `${dataDir}/keys`;
-    keyManager = new KeyManager({ keysPath, logger });
-    await keyManager.start({ password: 'password' });
+    keyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath,
+      logger,
+    });
 
     const cert = keyManager.getRootCert();
     keyPairPem = keyManager.getRootKeyPairPem();
@@ -69,14 +89,11 @@ describe('NodeManager', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = new DB({ dbPath, logger });
-    await db.start({
-      keyPair: keyManager.getRootKeyPair(),
-    });
-    sigchain = new Sigchain({ keyManager, db, logger });
-    await sigchain.start();
+    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
+    await db.start();
+    sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
 
-    nodeManager = new NodeManager({
+    nodeManager = await NodeManager.createNodeManager({
       db,
       sigchain,
       keyManager,
@@ -88,14 +105,105 @@ describe('NodeManager', () => {
   });
   afterEach(async () => {
     await nodeManager.stop();
-    await sigchain.stop();
+    await sigchain.destroy();
     await db.stop();
-    await keyManager.stop();
+    await db.destroy();
+    await keyManager.destroy();
     await fwdProxy.stop();
     await revProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
+    });
+  });
+  afterAll(async () => {
+    await nodeManager.stop();
+    await nodeManager.destroy();
+    await fwdProxy.stop();
+    await fwdProxy.destroy();
+    await revProxy.stop();
+    await revProxy.destroy();
+    await keyManager.destroy();
+    await db.stop();
+    await db.destroy();
+    await sigchain.destroy();
+  });
+
+  describe('getConnectionToNode', () => {
+    let target: PolykeyAgent;
+    let targetNodeId: NodeId;
+    let targetNodeAddress: NodeAddress;
+
+    beforeAll(async () => {
+      target = await testUtils.setupRemoteKeynode({
+        logger: logger,
+      });
+    }, global.polykeyStartupTimeout);
+
+    beforeEach(async () => {
+      await target.start({});
+      targetNodeId = target.keys.getNodeId();
+      targetNodeAddress = {
+        ip: target.revProxy.getIngressHost(),
+        port: target.revProxy.getIngressPort(),
+      };
+      await nodeManager.setNode(targetNodeId, targetNodeAddress);
+    });
+
+    afterEach(async () => {
+      // Delete the created node connection each time.
+      await target.stop();
+    });
+
+    afterAll(async () => {
+      await testUtils.cleanupRemoteKeynode(target);
+    });
+
+    test('creates new connection to node', async () => {
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const initialConnLock = nodeManager.connections.get(targetNodeId);
+      expect(initialConnLock).toBeUndefined();
+      await nodeManager.getConnectionToNode(targetNodeId);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const finalConnLock = nodeManager.connections.get(targetNodeId);
+      // Check entry is in map and lock is released
+      expect(finalConnLock).toBeDefined();
+      expect(finalConnLock?.lock.isLocked()).toBeFalsy();
+    });
+    test('gets existing connection to node', async () => {
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(0);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const initialConnLock = nodeManager.connections.get(targetNodeId);
+      expect(initialConnLock).toBeUndefined();
+      await nodeManager.getConnectionToNode(targetNodeId);
+      // Check we only have this single connection
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(1);
+      await nodeManager.getConnectionToNode(targetNodeId);
+      // Check we still only have this single connection
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(1);
+    });
+    test('concurrent connection creation to same target results in 1 connection', async () => {
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(0);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const initialConnLock = nodeManager.connections.get(targetNodeId);
+      expect(initialConnLock).toBeUndefined();
+      // Concurrently create connection to same target
+      await Promise.all([
+        nodeManager.getConnectionToNode(targetNodeId),
+        nodeManager.getConnectionToNode(targetNodeId),
+      ]);
+      // Check only 1 connection exists
+      // @ts-ignore accessing protected NodeConnectionMap
+      expect(nodeManager.connections.size).toBe(1);
+      // @ts-ignore get connection + lock from protected NodeConnectionMap
+      const finalConnLock = nodeManager.connections.get(targetNodeId);
+      // Check entry is in map and lock is released
+      expect(finalConnLock).toBeDefined();
+      expect(finalConnLock?.lock.isLocked()).toBeFalsy();
     });
   });
 
@@ -119,7 +227,7 @@ describe('NodeManager', () => {
       const active1 = await nodeManager.pingNode(serverNodeId);
       expect(active1).toBe(false);
       // Bring server node online
-      await server.start({ password: 'password' });
+      await server.start({});
       // Update the node address (only changes because we start and stop)
       serverNodeAddress = {
         ip: server.revProxy.getIngressHost(),
@@ -132,6 +240,7 @@ describe('NodeManager', () => {
       expect(active2).toBe(true);
       // Turn server node offline again
       await server.stop();
+      await server.destroy();
       // Give time for the ping buffers to send and wait for timeout on
       // existing connection
       await sleep(30000);
@@ -143,10 +252,10 @@ describe('NodeManager', () => {
       await testUtils.cleanupRemoteKeynode(server);
     },
     global.failedConnectionTimeout * 2,
-  ); // ping needs to timeout (takes 20 seconds + setup + pulldown)
+  ); // Ping needs to timeout (takes 20 seconds + setup + pulldown)
   test('finds node (local)', async () => {
     // Case 1: node already exists in the local node graph (no contact required)
-    const nodeId = 'nodeId' as NodeId;
+    const nodeId = nodeId1;
     const nodeAddress: NodeAddress = {
       ip: '127.0.0.1' as Host,
       port: 11111 as Port,
@@ -161,7 +270,7 @@ describe('NodeManager', () => {
     'finds node (contacts remote node)',
     async () => {
       // Case 2: node can be found on the remote node
-      const nodeId = 'nodeId' as NodeId;
+      const nodeId = nodeId1;
       const nodeAddress: NodeAddress = {
         ip: '127.0.0.1' as Host,
         port: 11111 as Port,
@@ -183,7 +292,7 @@ describe('NodeManager', () => {
     'cannot find node (contacts remote node)',
     async () => {
       // Case 3: node exhausts all contacts and cannot find node
-      const nodeId = 'unfindableNode' as NodeId;
+      const nodeId = nodeId1;
       const server = await testUtils.setupRemoteKeynode({ logger: logger });
       await nodeManager.setNode(server.nodes.getNodeId(), {
         ip: server.revProxy.getIngressHost(),
@@ -192,15 +301,12 @@ describe('NodeManager', () => {
       // Add a dummy node to the server node graph database
       // Server will not be able to connect to this node (the only node in its
       // database), and will therefore not be able to locate the node.
-      await server.nodes.setNode(
-        'dummyNode' as NodeId,
-        {
-          ip: '127.0.0.2' as Host,
-          port: 22222 as Port,
-        } as NodeAddress,
-      );
+      await server.nodes.setNode(dummyNode, {
+        ip: '127.0.0.2' as Host,
+        port: 22222 as Port,
+      } as NodeAddress);
       // So unfindableNode cannot be found
-      await expect(nodeManager.findNode(nodeId)).rejects.toThrowError(
+      await expect(() => nodeManager.findNode(nodeId)).rejects.toThrowError(
         nodesErrors.ErrorNodeGraphNodeNotFound,
       );
 
@@ -210,7 +316,6 @@ describe('NodeManager', () => {
   );
   test('knows node (true and false case)', async () => {
     // Known node
-    const nodeId1 = 'nodeId1' as NodeId;
     const nodeAddress1: NodeAddress = {
       ip: '127.0.0.1' as Host,
       port: 11111 as Port,
@@ -219,7 +324,6 @@ describe('NodeManager', () => {
     expect(await nodeManager.knowsNode(nodeId1)).toBeTruthy();
 
     // Unknown node
-    const nodeId2 = 'nodeId2' as NodeId;
     expect(await nodeManager.knowsNode(nodeId2)).not.toBeTruthy();
   });
 
@@ -265,7 +369,7 @@ describe('NodeManager', () => {
 
       await x.nodes.setNode(yNodeId, yNodeAddress);
       await y.nodes.setNode(xNodeId, xNodeAddress);
-    });
+    }, global.polykeyStartupTimeout * 2);
     afterAll(async () => {
       await testUtils.cleanupRemoteKeynode(x);
       await testUtils.cleanupRemoteKeynode(y);
@@ -293,7 +397,7 @@ describe('NodeManager', () => {
       expect(Object.keys(xChain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(xChain)) {
-        const claimId = c as ClaimId;
+        const claimId = c as ClaimIdString;
         const claim = xChain[claimId];
         const decoded = claimsUtils.decodeClaim(claim);
         expect(decoded).toStrictEqual({
@@ -327,7 +431,7 @@ describe('NodeManager', () => {
       expect(Object.keys(yChain).length).toBe(1);
       // Iterate just to be safe, but expected to only have this single claim
       for (const c of Object.keys(yChain)) {
-        const claimId = c as ClaimId;
+        const claimId = c as ClaimIdString;
         const claim = yChain[claimId];
         const decoded = claimsUtils.decodeClaim(claim);
         expect(decoded).toStrictEqual({

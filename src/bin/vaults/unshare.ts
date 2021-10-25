@@ -32,7 +32,7 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
   const unsetVaultPermsMessage = new clientPB.UnsetVaultPermMessage();
   const vaultMessage = new clientPB.VaultMessage();
@@ -44,7 +44,7 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     nodeMessage.setNodeId(nodeId);
 
     const pCall = grpcClient.vaultsPermissionsUnset(unsetVaultPermsMessage);
@@ -63,7 +63,7 @@ commandVaultShare.action(async (vaultName, nodeId, options) => {
         data: [
           `Unshared Vault: ${unsetVaultPermsMessage
             .getVault()
-            ?.getVaultName()} to: ${unsetVaultPermsMessage
+            ?.getNameOrId()} to: ${unsetVaultPermsMessage
             .getNode()
             ?.getNodeId()}`,
         ],

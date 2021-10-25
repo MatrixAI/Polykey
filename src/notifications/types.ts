@@ -1,15 +1,18 @@
 import type { Opaque } from '../types';
 import type { NodeId } from '../nodes/types';
-import type { VaultId, VaultName, VaultActions } from '../vaults/types';
+import type { VaultName, VaultActions } from '../vaults/types';
+import type { Id, IdString } from '../GenericIdTypes';
 
-type NotificationId = Opaque<'NotificationId', string>;
+type NotificationId = Opaque<'NotificationId', Id>;
+
+type NotificationIdGenerator = () => NotificationId;
 
 type GestaltInvite = {
   type: 'GestaltInvite';
 };
 type VaultShare = {
   type: 'VaultShare';
-  vaultId: VaultId;
+  vaultId: IdString;
   vaultName: VaultName;
   actions: VaultActions;
 };
@@ -30,6 +33,7 @@ type SignedNotification = Opaque<'SignedNotification', string>;
 
 export type {
   NotificationId,
+  NotificationIdGenerator,
   NotificationData,
   Notification,
   SignedNotification,

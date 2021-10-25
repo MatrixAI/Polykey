@@ -62,7 +62,7 @@ function clientSecureCredentials(
   );
   // @ts-ignore hack for undocumented property
   const connectionOptions = credentials.connectionOptions;
-  // disable default certificate path validation logic
+  // Disable default certificate path validation logic
   // polykey has custom certificate path validation logic
   connectionOptions['rejectUnauthorized'] = false;
   return credentials;
@@ -76,7 +76,7 @@ function serverSecureCredentials(
   keyPrivatePem: PrivateKeyPem,
   certChainPem: CertificatePemChain,
 ): grpc.ServerCredentials {
-  // this ensures that we get the client certificate
+  // This ensures that we get the client certificate
   const checkClientCertificate = false;
   const credentials = grpc.ServerCredentials.createSsl(
     null,
@@ -90,7 +90,7 @@ function serverSecureCredentials(
   );
   // @ts-ignore hack for undocumented property
   credentials.options['rejectUnauthorized'] = false;
-  // disable default certificate path validation logic
+  // Disable default certificate path validation logic
   // polykey has custom certificate path validation logic
   // options['rejectUnauthorized'] = false;
   return credentials;
@@ -146,11 +146,11 @@ function toError(e: ServiceError): errors.ErrorPolykey {
   const errorName = e.metadata.get('name')[0] as string;
   const errorMessage = e.metadata.get('message')[0] as string;
   const errorData = e.metadata.get('data')[0] as string;
-  // grpc.status is an enum
+  // Grpc.status is an enum
   // this will iterate the enum values then enum keys
   // they will all be of string type
   for (const key in grpc.status) {
-    // skip all enum values and
+    // Skip all enum values and
     // check if the error code matches a known grpc status
     // @ts-ignore grpc.status[key] is in fact a string
     if (isNaN(parseInt(key)) && e.code === grpc.status[key]) {
@@ -267,13 +267,13 @@ function generatorReadable(stream: any) {
     try {
       let vR = yield;
       if (vR === null) {
-        // destroying the stream at the beginning can trigger an error
+        // Destroying the stream at the beginning can trigger an error
         // here we just ignore it
         stream.once('error', () => {});
         stream.destroy();
         return;
       }
-      // stream is destroyed when iteration finishes
+      // Stream is destroyed when iteration finishes
       for await (const data of stream) {
         vR = yield data;
         if (vR === null) {
@@ -287,7 +287,7 @@ function generatorReadable(stream: any) {
     }
   };
   const g: any = gf();
-  // start the generator to the first yield
+  // Start the generator to the first yield
   g.next();
   g.stream = stream;
   g.read = g.next;
@@ -344,7 +344,7 @@ function generatorWritable(stream: any) {
     }
   };
   const g: any = gf();
-  // start the generator to the first yield
+  // Start the generator to the first yield
   g.next();
   g.stream = stream;
   g.write = g.next;

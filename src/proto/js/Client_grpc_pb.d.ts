@@ -46,6 +46,8 @@ interface IClientService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
     vaultsPermissionsSet: IClientService_IVaultsPermissionsSet;
     vaultsPermissionsUnset: IClientService_IVaultsPermissionsUnset;
     vaultsPermissions: IClientService_IVaultsPermissions;
+    vaultsVersion: IClientService_IVaultsVersion;
+    vaultsLog: IClientService_IVaultsLog;
     identitiesAuthenticate: IClientService_IIdentitiesAuthenticate;
     identitiesTokenPut: IClientService_IIdentitiesTokenPut;
     identitiesTokenGet: IClientService_IIdentitiesTokenGet;
@@ -340,12 +342,12 @@ interface IClientService_IVaultsSecretsDelete extends grpc.MethodDefinition<Clie
     responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
 }
-interface IClientService_IVaultsSecretsEdit extends grpc.MethodDefinition<Client_pb.SecretEditMessage, Client_pb.StatusMessage> {
+interface IClientService_IVaultsSecretsEdit extends grpc.MethodDefinition<Client_pb.SecretMessage, Client_pb.StatusMessage> {
     path: "/clientInterface.Client/VaultsSecretsEdit";
     requestStream: false;
     responseStream: false;
-    requestSerialize: grpc.serialize<Client_pb.SecretEditMessage>;
-    requestDeserialize: grpc.deserialize<Client_pb.SecretEditMessage>;
+    requestSerialize: grpc.serialize<Client_pb.SecretMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.SecretMessage>;
     responseSerialize: grpc.serialize<Client_pb.StatusMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.StatusMessage>;
 }
@@ -411,6 +413,24 @@ interface IClientService_IVaultsPermissions extends grpc.MethodDefinition<Client
     requestDeserialize: grpc.deserialize<Client_pb.GetVaultPermMessage>;
     responseSerialize: grpc.serialize<Client_pb.PermissionMessage>;
     responseDeserialize: grpc.deserialize<Client_pb.PermissionMessage>;
+}
+interface IClientService_IVaultsVersion extends grpc.MethodDefinition<Client_pb.VaultsVersionMessage, Client_pb.VaultsVersionResultMessage> {
+    path: "/clientInterface.Client/VaultsVersion";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<Client_pb.VaultsVersionMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.VaultsVersionMessage>;
+    responseSerialize: grpc.serialize<Client_pb.VaultsVersionResultMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.VaultsVersionResultMessage>;
+}
+interface IClientService_IVaultsLog extends grpc.MethodDefinition<Client_pb.VaultsLogMessage, Client_pb.VaultsLogEntryMessage> {
+    path: "/clientInterface.Client/VaultsLog";
+    requestStream: false;
+    responseStream: true;
+    requestSerialize: grpc.serialize<Client_pb.VaultsLogMessage>;
+    requestDeserialize: grpc.deserialize<Client_pb.VaultsLogMessage>;
+    responseSerialize: grpc.serialize<Client_pb.VaultsLogEntryMessage>;
+    responseDeserialize: grpc.deserialize<Client_pb.VaultsLogEntryMessage>;
 }
 interface IClientService_IIdentitiesAuthenticate extends grpc.MethodDefinition<Client_pb.ProviderMessage, Client_pb.ProviderMessage> {
     path: "/clientInterface.Client/IdentitiesAuthenticate";
@@ -644,7 +664,7 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     vaultsSecretsMkdir: grpc.handleUnaryCall<Client_pb.VaultMkdirMessage, Client_pb.StatusMessage>;
     vaultsSecretsStat: grpc.handleUnaryCall<Client_pb.VaultMessage, Client_pb.StatMessage>;
     vaultsSecretsDelete: grpc.handleUnaryCall<Client_pb.SecretMessage, Client_pb.StatusMessage>;
-    vaultsSecretsEdit: grpc.handleUnaryCall<Client_pb.SecretEditMessage, Client_pb.StatusMessage>;
+    vaultsSecretsEdit: grpc.handleUnaryCall<Client_pb.SecretMessage, Client_pb.StatusMessage>;
     vaultsSecretsGet: grpc.handleUnaryCall<Client_pb.SecretMessage, Client_pb.SecretMessage>;
     vaultsSecretsRename: grpc.handleUnaryCall<Client_pb.SecretRenameMessage, Client_pb.StatusMessage>;
     vaultsSecretsNew: grpc.handleUnaryCall<Client_pb.SecretMessage, Client_pb.StatusMessage>;
@@ -652,6 +672,8 @@ export interface IClientServer extends grpc.UntypedServiceImplementation {
     vaultsPermissionsSet: grpc.handleUnaryCall<Client_pb.SetVaultPermMessage, Client_pb.StatusMessage>;
     vaultsPermissionsUnset: grpc.handleUnaryCall<Client_pb.UnsetVaultPermMessage, Client_pb.StatusMessage>;
     vaultsPermissions: grpc.handleServerStreamingCall<Client_pb.GetVaultPermMessage, Client_pb.PermissionMessage>;
+    vaultsVersion: grpc.handleUnaryCall<Client_pb.VaultsVersionMessage, Client_pb.VaultsVersionResultMessage>;
+    vaultsLog: grpc.handleServerStreamingCall<Client_pb.VaultsLogMessage, Client_pb.VaultsLogEntryMessage>;
     identitiesAuthenticate: grpc.handleServerStreamingCall<Client_pb.ProviderMessage, Client_pb.ProviderMessage>;
     identitiesTokenPut: grpc.handleUnaryCall<Client_pb.TokenSpecificMessage, Client_pb.EmptyMessage>;
     identitiesTokenGet: grpc.handleUnaryCall<Client_pb.ProviderMessage, Client_pb.TokenMessage>;
@@ -763,9 +785,9 @@ export interface IClientClient {
     vaultsSecretsDelete(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsSecretsDelete(request: Client_pb.SecretMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsSecretsDelete(request: Client_pb.SecretMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsSecretsEdit(request: Client_pb.SecretEditMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsSecretsEdit(request: Client_pb.SecretEditMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    vaultsSecretsEdit(request: Client_pb.SecretEditMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsSecretsEdit(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsSecretsEdit(request: Client_pb.SecretMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    vaultsSecretsEdit(request: Client_pb.SecretMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsSecretsGet(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     vaultsSecretsGet(request: Client_pb.SecretMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     vaultsSecretsGet(request: Client_pb.SecretMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
@@ -786,6 +808,11 @@ export interface IClientClient {
     vaultsPermissionsUnset(request: Client_pb.UnsetVaultPermMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     vaultsPermissions(request: Client_pb.GetVaultPermMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
     vaultsPermissions(request: Client_pb.GetVaultPermMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
+    vaultsVersion(request: Client_pb.VaultsVersionMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.VaultsVersionResultMessage) => void): grpc.ClientUnaryCall;
+    vaultsVersion(request: Client_pb.VaultsVersionMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.VaultsVersionResultMessage) => void): grpc.ClientUnaryCall;
+    vaultsVersion(request: Client_pb.VaultsVersionMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.VaultsVersionResultMessage) => void): grpc.ClientUnaryCall;
+    vaultsLog(request: Client_pb.VaultsLogMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultsLogEntryMessage>;
+    vaultsLog(request: Client_pb.VaultsLogMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultsLogEntryMessage>;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
     identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
     identitiesTokenPut(request: Client_pb.TokenSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -939,9 +966,9 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public vaultsSecretsDelete(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsSecretsDelete(request: Client_pb.SecretMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsSecretsDelete(request: Client_pb.SecretMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsSecretsEdit(request: Client_pb.SecretEditMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsSecretsEdit(request: Client_pb.SecretEditMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
-    public vaultsSecretsEdit(request: Client_pb.SecretEditMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsSecretsEdit(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsSecretsEdit(request: Client_pb.SecretMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
+    public vaultsSecretsEdit(request: Client_pb.SecretMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsSecretsGet(request: Client_pb.SecretMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     public vaultsSecretsGet(request: Client_pb.SecretMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
     public vaultsSecretsGet(request: Client_pb.SecretMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.SecretMessage) => void): grpc.ClientUnaryCall;
@@ -962,6 +989,11 @@ export class ClientClient extends grpc.Client implements IClientClient {
     public vaultsPermissionsUnset(request: Client_pb.UnsetVaultPermMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.StatusMessage) => void): grpc.ClientUnaryCall;
     public vaultsPermissions(request: Client_pb.GetVaultPermMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
     public vaultsPermissions(request: Client_pb.GetVaultPermMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.PermissionMessage>;
+    public vaultsVersion(request: Client_pb.VaultsVersionMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.VaultsVersionResultMessage) => void): grpc.ClientUnaryCall;
+    public vaultsVersion(request: Client_pb.VaultsVersionMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: Client_pb.VaultsVersionResultMessage) => void): grpc.ClientUnaryCall;
+    public vaultsVersion(request: Client_pb.VaultsVersionMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: Client_pb.VaultsVersionResultMessage) => void): grpc.ClientUnaryCall;
+    public vaultsLog(request: Client_pb.VaultsLogMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultsLogEntryMessage>;
+    public vaultsLog(request: Client_pb.VaultsLogMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.VaultsLogEntryMessage>;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
     public identitiesAuthenticate(request: Client_pb.ProviderMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<Client_pb.ProviderMessage>;
     public identitiesTokenPut(request: Client_pb.TokenSpecificMessage, callback: (error: grpc.ServiceError | null, response: Client_pb.EmptyMessage) => void): grpc.ClientUnaryCall;

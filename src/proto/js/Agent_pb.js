@@ -739,7 +739,7 @@ proto.agentInterface.InfoRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.agentInterface.InfoRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, "")
+    vaultId: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -778,7 +778,7 @@ proto.agentInterface.InfoRequest.deserializeBinaryFromReader = function(msg, rea
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setId(value);
+      msg.setVaultId(value);
       break;
     default:
       reader.skipField();
@@ -809,7 +809,7 @@ proto.agentInterface.InfoRequest.prototype.serializeBinary = function() {
  */
 proto.agentInterface.InfoRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getId();
+  f = message.getVaultId();
   if (f.length > 0) {
     writer.writeString(
       1,
@@ -820,10 +820,10 @@ proto.agentInterface.InfoRequest.serializeBinaryToWriter = function(message, wri
 
 
 /**
- * optional string id = 1;
+ * optional string vault_id = 1;
  * @return {string}
  */
-proto.agentInterface.InfoRequest.prototype.getId = function() {
+proto.agentInterface.InfoRequest.prototype.getVaultId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -832,7 +832,7 @@ proto.agentInterface.InfoRequest.prototype.getId = function() {
  * @param {string} value
  * @return {!proto.agentInterface.InfoRequest} returns this
  */
-proto.agentInterface.InfoRequest.prototype.setId = function(value) {
+proto.agentInterface.InfoRequest.prototype.setVaultId = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 

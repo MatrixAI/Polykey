@@ -26,14 +26,14 @@ async function checkAgentRunning(nodePath: string): Promise<boolean> {
   return false;
 }
 
-async function spawnBackgroundAgent(
+async function spawnBackgroundAgent( // FIXME, this is broken.
   nodePath: string,
   password: string,
 ): Promise<number> {
   //Checking agent running.
   if (await checkAgentRunning(nodePath)) {
     throw new agentErrors.ErrorAgentRunning(
-      'Unable to spawn Agent, already running at: ' + nodePath,
+      `Unable to spawn Agent, already running at: ${nodePath}`,
     );
   }
 
@@ -79,7 +79,7 @@ async function spawnBackgroundAgent(
     spawnPath = DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node';
   }
 
-  //spawning the process.
+  //Spawning the process.
   const agentProcess = spawn(spawnPath, [DAEMON_SCRIPT_PATH], options);
 
   const startOptions = {

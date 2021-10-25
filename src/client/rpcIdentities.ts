@@ -208,7 +208,7 @@ const createIdentitiesRPC = ({
       }
     },
     /**
-     * gets the first identityId of the local keynode.
+     * Gets the first identityId of the local keynode.
      */
     identitiesInfoGet: async (
       call: grpc.ServerUnaryCall<

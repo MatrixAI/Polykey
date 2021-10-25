@@ -6,6 +6,7 @@ import fs from 'fs';
 import Logger from '@matrixai/logger';
 import { PolykeyAgent } from '../src';
 import { sleep } from '@/utils';
+import { KeyManager, utils as keyUtils } from '@/keys';
 
 /**
  * Helper function to create a remote keynode to contact.
@@ -22,7 +23,7 @@ async function setupRemoteKeynode({
   // Create and start the keynode + its temp directory
   let nodeDir: string;
   if (dataDir) {
-    //add the directory.
+    //Add the directory.
     nodeDir = path.join(dataDir, `remoteNode`);
     await fs.promises.mkdir(nodeDir, { recursive: true });
   } else {
@@ -30,11 +31,14 @@ async function setupRemoteKeynode({
       path.join(os.tmpdir(), 'polykey-test-remote-'),
     );
   }
-  const remote = new PolykeyAgent({
+  const remote = await PolykeyAgent.createPolykey({
+    password: 'password',
     nodePath: nodeDir,
     logger: logger,
+    cores: 1,
+    workerManager: null,
   });
-  await remote.start({ password: 'password' });
+  await remote.start({});
   return remote;
 }
 
@@ -44,6 +48,7 @@ async function setupRemoteKeynode({
  */
 async function cleanupRemoteKeynode(node: PolykeyAgent): Promise<void> {
   await node.stop();
+  await node.destroy();
   await fs.promises.rm(node.nodePath, {
     force: true,
     recursive: true,
@@ -75,4 +80,20 @@ async function poll(
   expect(await condition()).toBeTruthy();
 }
 
-export { setupRemoteKeynode, cleanupRemoteKeynode, addRemoteDetails, poll };
+function makeCrypto(keyManager: KeyManager) {
+  return {
+    key: keyManager.dbKey,
+    ops: {
+      encrypt: keyUtils.encryptWithKey,
+      decrypt: keyUtils.decryptWithKey,
+    },
+  };
+}
+
+export {
+  setupRemoteKeynode,
+  cleanupRemoteKeynode,
+  addRemoteDetails,
+  poll,
+  makeCrypto,
+};

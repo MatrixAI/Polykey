@@ -1,4 +1,4 @@
-import type { NodeId, NodeInfo } from '@/nodes/types';
+import type { NodeInfo } from '@/nodes/types';
 import type {
   IdentityId,
   IdentityInfo,
@@ -19,6 +19,7 @@ import {
   setupRemoteKeynode,
 } from '../utils';
 import { ClaimLinkIdentity, ClaimLinkNode } from '@/claims/types';
+import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -34,35 +35,52 @@ import { ClaimLinkIdentity, ClaimLinkNode } from '@/claims/types';
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
 describe('CLI Identities', () => {
-  // test dependent variables
+  const password = 'password';
+  // Test dependent variables
   let dataDir: string;
   let nodePath: string;
   let passwordFile: string;
   let polykeyAgent: PolykeyAgent;
   let testProvider: TestProvider;
 
-  // defining constants
+  // Defining constants
+  const nodeId1 = makeNodeId(
+    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+  );
+  const nodeId2 = makeNodeId(
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+  );
+  const nodeId3 = makeNodeId(
+    'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug',
+  );
+  const nodeId4 = makeNodeId(
+    'vm5guqfrrhlrsa70qpauen8jd0lmb0v6j8r8c94p34n738vlvu7vg',
+  );
+  const dummyNode = makeNodeId(
+    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+  );
+
   const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const node1: NodeInfo = {
-    id: '123' as NodeId,
+    id: nodeId1,
     chain: {},
   };
   const keynode: NodeInfo = {
-    id: '123' as NodeId,
+    id: nodeId2,
     chain: {},
   };
   const node2: NodeInfo = {
-    id: '456' as NodeId,
+    id: nodeId3,
     chain: {},
   };
   const node3: NodeInfo = {
-    id: '789' as NodeId,
+    id: nodeId4,
     chain: {},
   };
   const invaldNode: NodeInfo = {
-    id: 'invalid' as NodeId,
+    id: dummyNode,
     chain: {},
   };
   const identity1: IdentityInfo = {
@@ -75,13 +93,6 @@ describe('CLI Identities', () => {
     identityId: 'onetwothree' as IdentityId,
     claims: {},
   };
-  const token = {
-    providerId: 'github.com' as ProviderId,
-    identityId: 'tegefaulkes' as IdentityId,
-    tokenData: {
-      accessToken: 'DO NOT PUSH A TOKEN.',
-    },
-  };
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
@@ -90,12 +101,12 @@ describe('CLI Identities', () => {
     },
   };
 
-  // helper functions
+  // Helper functions
   function genCommands(options: Array<string>) {
     return ['identities', ...options, '-np', nodePath];
   }
 
-  // setup and teardown
+  // Setup and teardown
   beforeAll(async () => {
     //This handles the expensive setting up of the polykey agent.
     dataDir = await fs.promises.mkdtemp(
@@ -104,13 +115,14 @@ describe('CLI Identities', () => {
     nodePath = path.join(dataDir, 'keynode');
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = new PolykeyAgent({
+    polykeyAgent = await PolykeyAgent.createPolykey({
+      password,
       nodePath: nodePath,
       logger: logger,
+      cores: 1,
+      workerManager: null,
     });
-    await polykeyAgent.start({
-      password: 'password',
-    });
+    await polykeyAgent.start({});
     keynode.id = polykeyAgent.nodes.getNodeId();
 
     testProvider = new TestProvider();
@@ -128,6 +140,7 @@ describe('CLI Identities', () => {
   }, global.polykeyStartupTimeout);
   afterAll(async () => {
     await polykeyAgent.stop();
+    await polykeyAgent.destroy();
     await fs.promises.rmdir(dataDir, { recursive: true });
   });
   beforeEach(async () => {
@@ -145,7 +158,7 @@ describe('CLI Identities', () => {
     await polykeyAgent.gestalts.clearDB();
   });
 
-  // tests
+  // Tests
   describe('commandAllowGestalts', () => {
     test('Should allow permissions on node.', async () => {
       const commands = genCommands(['allow', node1.id, 'notify']);
@@ -171,7 +184,7 @@ describe('CLI Identities', () => {
       //Should fail for invalid action.
       const command3 = genCommands(['allow', node1.id, 'invalid']);
       const result3 = await testUtils.pkWithStdio(command3);
-      expect(result3.code).toBe(1); //should fail.
+      expect(result3.code).toBe(1); //Should fail.
 
       //Cleaning up changes to state.
       await polykeyAgent.gestalts.unsetGestaltActionByNode(node1.id, 'notify');
@@ -216,7 +229,7 @@ describe('CLI Identities', () => {
         'invalid',
       ]);
       const result3 = await testUtils.pkWithStdio(command3);
-      expect(result3.code).toBe(1); //should fail.
+      expect(result3.code).toBe(1); //Should fail.
 
       //Cleaning up changes to state.
       await polykeyAgent.gestalts.unsetGestaltActionByIdentity(
@@ -232,11 +245,11 @@ describe('CLI Identities', () => {
     });
     test('Should fail on invalid inputs.', async () => {
       let result;
-      //invalid node.
+      //Invalid node.
       result = await testUtils.pkWithStdio(
         genCommands(['allow', invaldNode.id, 'scan']),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
 
       //invalid identity
       result = await testUtils.pkWithStdio(
@@ -249,13 +262,13 @@ describe('CLI Identities', () => {
           'scan',
         ]),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
 
       //invalid permission.
       result = await testUtils.pkWithStdio(
         genCommands(['allow', invaldNode.id, 'invalidPermission']),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
     });
   });
   describe('commandDisallowGestalts', () => {
@@ -306,11 +319,11 @@ describe('CLI Identities', () => {
     });
     test('Should fail on invalid inputs.', async () => {
       let result;
-      //invalid node.
+      //Invalid node.
       result = await testUtils.pkWithStdio(
         genCommands(['disallow', invaldNode.id, 'scan']),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
 
       //invalid identity
       result = await testUtils.pkWithStdio(
@@ -323,13 +336,13 @@ describe('CLI Identities', () => {
           'scan',
         ]),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
 
       //invalid permission.
       result = await testUtils.pkWithStdio(
         genCommands(['disallow', node1.id, 'invalidPermission']),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
     });
   });
   describe('commandPermissionsGestalts', () => {
@@ -398,11 +411,11 @@ describe('CLI Identities', () => {
     });
     test('Should fail on invalid inputs.', async () => {
       let result;
-      //invalid node.
+      //Invalid node.
       result = await testUtils.pkWithStdio(
         genCommands(['trust', invaldNode.id]),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
 
       //invalid identity
       result = await testUtils.pkWithStdio(
@@ -414,7 +427,7 @@ describe('CLI Identities', () => {
           ),
         ]),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
     });
   });
   describe('commandUntrustGestalts', () => {
@@ -464,11 +477,11 @@ describe('CLI Identities', () => {
     });
     test('Should fail on invalid inputs.', async () => {
       let result;
-      //invalid node.
+      //Invalid node.
       result = await testUtils.pkWithStdio(
         genCommands(['trust', invaldNode.id]),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
 
       //invalid identity
       result = await testUtils.pkWithStdio(
@@ -480,7 +493,7 @@ describe('CLI Identities', () => {
           ),
         ]),
       );
-      expect(result.code === 0).toBeFalsy(); //fails..
+      expect(result.code === 0).toBeFalsy(); //Fails..
     });
   });
   describe('commandClaimKeynode', () => {
@@ -508,7 +521,7 @@ describe('CLI Identities', () => {
   });
   describe('commandAuthenticateProvider', () => {
     test('Should authenticate an identity with a provider.', async () => {
-      //attempt to authenticate.
+      //Attempt to authenticate.
       const commands = [
         'identities',
         'authenticate',
@@ -605,10 +618,10 @@ describe('CLI Identities', () => {
     });
   });
   describe('commandDiscoverGestalts', () => {
-    // test variables
+    // Test variables
     let nodeB: PolykeyAgent;
     let nodeC: PolykeyAgent;
-    // let testProvider: TestProvider;
+    // Let testProvider: TestProvider;
     let identityId: IdentityId;
 
     beforeAll(async () => {
@@ -654,12 +667,12 @@ describe('CLI Identities', () => {
       await nodeB.sigchain.addClaim(claimIdentToB);
     }, global.polykeyStartupTimeout);
     afterAll(async () => {
-      // clean up the remote gestalt state here.
+      // Clean up the remote gestalt state here.
       await cleanupRemoteKeynode(nodeB);
       await cleanupRemoteKeynode(nodeC);
     });
     afterEach(async () => {
-      // clean the local nodes gestalt graph here.
+      // Clean the local nodes gestalt graph here.
       await polykeyAgent.gestalts.clearDB();
       await nodeB.gestalts.clearDB();
       await nodeC.gestalts.clearDB();
@@ -697,7 +710,7 @@ describe('CLI Identities', () => {
         identityString(testProvider.id, identityId),
       ];
       const result = await testUtils.pk(commands);
-      expect(result).toBe(0); //Nothing to discover.
+      expect(result).toBe(0);
 
       //We expect to find a gestalt now.
       const gestalt = await polykeyAgent.gestalts.getGestalts();

@@ -1,12 +1,16 @@
 import type { NodeId } from '../nodes/types';
-import type { VaultAction, VaultId } from '../vaults/types';
+import type { Vault, VaultAction, VaultName } from '../vaults/types';
 import type { SessionManager } from '../sessions';
-import type { VaultManager, Vault } from '../vaults';
+import type { VaultManager } from '../vaults';
 
 import * as utils from './utils';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
 import * as clientPB from '../proto/js/Client_pb';
+import { isNodeId, makeNodeId } from '../nodes/utils';
+import { vaultOps } from '../vaults';
+import { makeVaultIdPretty } from '../vaults/utils';
+import { parseVaultInput } from './utils';
 
 const createVaultRPC = ({
   vaultManager,
@@ -29,15 +33,11 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const vaults: Array<{
-          name: string;
-          id: string;
-        }> = await vaultManager.listVaults();
-        let vaultListMessage: clientPB.VaultListMessage;
-        for (const vault of vaults) {
-          vaultListMessage = new clientPB.VaultListMessage();
-          vaultListMessage.setVaultName(vault.name);
-          vaultListMessage.setVaultId(vault.id);
+        const vaults = await vaultManager.listVaults();
+        for await (const [vaultName, vaultId] of vaults) {
+          const vaultListMessage = new clientPB.VaultListMessage();
+          vaultListMessage.setVaultName(vaultName);
+          vaultListMessage.setVaultId(makeVaultIdPretty(vaultId));
           await genWritable.next(vaultListMessage);
         }
         await genWritable.next(null);
@@ -57,8 +57,10 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        vault = await vaultManager.createVault(call.request.getVaultName());
-        response.setVaultId(vault.vaultId);
+        vault = await vaultManager.createVault(
+          call.request.getNameOrId() as VaultName,
+        );
+        response.setNameOrId(makeVaultIdPretty(vault.vaultId));
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
@@ -67,7 +69,7 @@ const createVaultRPC = ({
     vaultsRename: async (
       call: grpc.ServerUnaryCall<
         clientPB.VaultRenameMessage,
-        clientPB.StatusMessage
+        clientPB.VaultMessage
       >,
       callback: grpc.sendUnaryData<clientPB.VaultMessage>,
     ): Promise<void> => {
@@ -84,9 +86,9 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const newName = call.request.getNewName();
+        const newName = call.request.getNewName() as VaultName;
         await vaultManager.renameVault(id, newName);
-        response.setVaultId(id);
+        response.setNameOrId(makeVaultIdPretty(id));
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -105,8 +107,8 @@ const createVaultRPC = ({
         );
         call.sendMetadata(responseMeta);
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const result = await vaultManager.deleteVault(id);
-        response.setSuccess(result);
+        await vaultManager.destroyVault(id!);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -136,12 +138,14 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        // vault id
-        const vaultId = vaultMessage.getVaultId() as VaultId;
-        // node id
-        const id = nodeMessage.getNodeId() as NodeId;
+        // Vault id
+        const vaultId = parseVaultInput(vaultMessage, vaultManager);
+        // Node id
+        const id = makeNodeId(nodeMessage.getNodeId());
 
-        await vaultManager.cloneVault(vaultId, id);
+        throw Error('Not implemented');
+        // FIXME, not fully implemented
+        // await vaultManager.cloneVault(vaultId, id);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -172,12 +176,12 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        // vault name
+        // Vault name
         const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
-        // node id
-        const id = nodeMessage.getNodeId() as NodeId;
+        // Node id
+        const id = makeNodeId(nodeMessage.getNodeId());
 
-        await vaultManager.pullVault(vaultId, id);
+        // Await vaultManager.pullVault(vaultId, id);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -191,7 +195,7 @@ const createVaultRPC = ({
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      const nodeId = call.request.getNodeId() as NodeId;
+      const nodeId = makeNodeId(call.request.getNodeId());
 
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -199,14 +203,13 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const vaults = await vaultManager.scanVaults(nodeId);
-        let vaultListMessage: clientPB.VaultListMessage;
-        for (const vault of vaults) {
-          vaultListMessage = new clientPB.VaultListMessage();
-          vaultListMessage.setVaultName(vault.name);
-          vaultListMessage.setVaultId(vault.id);
+        const vaults = await vaultManager.listVaults();
+        vaults.forEach(async (vaultId, vaultName) => {
+          const vaultListMessage = new clientPB.VaultListMessage();
+          vaultListMessage.setVaultName(vaultName);
+          vaultListMessage.setVaultId(makeVaultIdPretty(vaultId));
           await genWritable.next(vaultListMessage);
-        }
+        });
         await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);
@@ -227,12 +230,9 @@ const createVaultRPC = ({
         );
         call.sendMetadata(responseMeta);
         const vaultMessage = call.request;
-        const id = await await utils.parseVaultInput(
-          vaultMessage,
-          vaultManager,
-        );
-        const vault = await vaultManager.getVault(id);
-        const secrets: Array<string> = await vault.listSecrets();
+        const id = await utils.parseVaultInput(vaultMessage, vaultManager);
+        const vault = await vaultManager.openVault(id);
+        const secrets = await vaultOps.listSecrets(vault);
         let secretMessage: clientPB.SecretMessage;
         for (const secret of secrets) {
           secretMessage = new clientPB.SecretMessage();
@@ -258,17 +258,19 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const vaultMessage = call.request.getVault();
+
+        const vaultMkdirMessge = call.request;
+        const vaultMessage = vaultMkdirMessge.getVault();
         if (vaultMessage == null) {
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
-        const success = await vault.mkdir(call.request.getDirName(), {
-          recursive: true,
+        const vault = await vaultManager.openVault(id);
+        await vaultOps.mkdir(vault, vaultMkdirMessge.getDirName(), {
+          recursive: vaultMkdirMessge.getRecursive(),
         });
-        response.setSuccess(success);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -287,8 +289,11 @@ const createVaultRPC = ({
         call.sendMetadata(responseMeta);
         const vaultMessage = call.request;
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const stats = await vaultManager.vaultStats(id);
-        response.setStats(JSON.stringify(stats));
+        const vault = await vaultManager.openVault(id);
+        // FIXME, reimplement this.
+        throw Error('Not Implemented');
+        // Const stats = await vaultManager.vaultStats(id);
+        // response.setStats(JSON.stringify(stats)););
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -314,11 +319,10 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
-        const success = await vault.deleteSecret(call.request.getSecretName(), {
-          recursive: true,
-        });
-        response.setSuccess(success);
+        const vault = await vaultManager.openVault(id);
+        const secretName = call.request.getSecretName();
+        await vaultOps.deleteSecret(vault, secretName);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -326,7 +330,7 @@ const createVaultRPC = ({
     },
     vaultsSecretsEdit: async (
       call: grpc.ServerUnaryCall<
-        clientPB.SecretEditMessage,
+        clientPB.SecretMessage,
         clientPB.StatusMessage
       >,
       callback: grpc.sendUnaryData<clientPB.StatusMessage>,
@@ -338,7 +342,7 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        const secretMessage = call.request.getSecret();
+        const secretMessage = call.request;
         if (secretMessage == null) {
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
@@ -349,10 +353,10 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
-        const secret = secretMessage.getSecretName();
-        const content = secretMessage.getSecretContent();
-        await vault.updateSecret(secret, content);
+        const vault = await vaultManager.openVault(id);
+        const secretName = secretMessage.getSecretName();
+        const secretContent = Buffer.from(secretMessage.getSecretContent());
+        await vaultOps.updateSecret(vault, secretName, secretContent);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -376,10 +380,11 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
+        const secretName = call.request.getSecretName();
+        const secretContent = await vaultOps.getSecret(vault, secretName);
 
-        const secret = await vault.getSecret(call.request.getSecretName());
-        response.setSecretContent(secret);
+        response.setSecretContent(secretContent);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -410,11 +415,11 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
         const oldSecret = secretMessage.getSecretName();
         const newSecret = call.request.getNewName();
-        const success = await vault.renameSecret(oldSecret, newSecret);
-        response.setSuccess(success);
+        await vaultOps.renameSecret(vault, oldSecret, newSecret);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -440,11 +445,11 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
         const secret = call.request.getSecretName();
-        const content = call.request.getSecretContent();
-        const success = await vault.addSecret(secret, content);
-        response.setSuccess(success);
+        const content = Buffer.from(call.request.getSecretContent());
+        await vaultOps.addSecret(vault, secret, content);
+        response.setSuccess(true);
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -470,10 +475,9 @@ const createVaultRPC = ({
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        const vault = await vaultManager.getVault(id);
+        const vault = await vaultManager.openVault(id);
         const secretsPath = call.request.getSecretDirectory();
-
-        await vault.addSecretDirectory(secretsPath);
+        await vaultOps.addSecretDirectory(vault, secretsPath);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -498,14 +502,15 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        const node = nodeMessage.getNodeId() as NodeId;
+        const node = makeNodeId(nodeMessage.getNodeId());
         const vaultMessage = call.request.getVault();
         if (vaultMessage == null) {
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        await vaultManager.setVaultPermissions(node, id);
+        throw Error('Not Implemented');
+        // Await vaultManager.setVaultPermissions(node, id); // FIXME
         const response = new clientPB.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
@@ -531,14 +536,15 @@ const createVaultRPC = ({
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
-        const node = nodeMessage.getNodeId() as NodeId;
+        const node = makeNodeId(nodeMessage.getNodeId());
         const vaultMessage = call.request.getVault();
         if (vaultMessage == null) {
           callback({ code: grpc.status.NOT_FOUND }, null);
           return;
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
-        await vaultManager.unsetVaultPermissions(node, id);
+        throw Error('Not implemented');
+        // Await vaultManager.unsetVaultPermissions(node, id); // FIXME
         const response = new clientPB.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
@@ -565,7 +571,7 @@ const createVaultRPC = ({
           await genWritable.throw({ code: grpc.status.NOT_FOUND });
           return;
         }
-        const node = nodeMessage.getNodeId() as NodeId;
+        const node = nodeMessage.getNodeId();
         const vaultMessage = call.request.getVault();
         if (vaultMessage == null) {
           await genWritable.throw({ code: grpc.status.NOT_FOUND });
@@ -573,18 +579,110 @@ const createVaultRPC = ({
         }
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         let perms: Record<NodeId, VaultAction>;
-        if (node != null) {
-          perms = await vaultManager.getVaultPermissions(id, node);
+        throw Error('Not implemented');
+        // FIXME
+        if (isNodeId(node)) {
+          // Perms = await vaultManager.getVaultPermissions(id, node);
         } else {
-          perms = await vaultManager.getVaultPermissions(id);
+          // Perms = await vaultManager.getVaultPermissions(id);
         }
         const permissionMessage = new clientPB.PermissionMessage();
-        for (const nodeId in perms) {
-          permissionMessage.setNodeId(nodeId);
-          if (perms[nodeId]['pull'] !== undefined) {
-            permissionMessage.setAction('pull');
-          }
-          await genWritable.next(permissionMessage);
+        // For (const nodeId in perms) {
+        //   permissionMessage.setNodeId(nodeId);
+        //   if (perms[nodeId]['pull'] !== undefined) {
+        //     permissionMessage.setAction('pull');
+        //   }
+        //   await genWritable.next(permissionMessage);
+        // }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
+      }
+    },
+    vaultsVersion: async (
+      call: grpc.ServerUnaryCall<
+        clientPB.VaultsVersionMessage,
+        clientPB.VaultsVersionResultMessage
+      >,
+      callback: grpc.sendUnaryData<clientPB.VaultsVersionResultMessage>,
+    ): Promise<void> => {
+      try {
+        //Checking session token
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+
+        const vaultsVersionMessage = call.request;
+
+        //Getting vault ID
+        const vaultMessage = vaultsVersionMessage.getVault();
+        if (vaultMessage == null) {
+          callback({ code: grpc.status.NOT_FOUND }, null);
+          return;
+        }
+        const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
+
+        // Doing the deed
+        const vault = await vaultManager.openVault(vaultId);
+        const latestOid = (await vault.log())[0].oid;
+        const versionId = vaultsVersionMessage.getVersionId();
+
+        await vault.version(versionId);
+        const currentVersionId = (await vault.log(0, versionId))[0]?.oid;
+
+        // Checking if latest version ID.
+        const isLatestVersion = latestOid === currentVersionId;
+
+        // Creating message
+        const vaultsVersionResultMessage =
+          new clientPB.VaultsVersionResultMessage();
+        vaultsVersionResultMessage.setIsLatestVersion(isLatestVersion);
+
+        // Sending message
+        callback(null, vaultsVersionResultMessage);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
+      }
+    },
+    vaultsLog: async (
+      call: grpc.ServerWritableStream<
+        clientPB.VaultsLogMessage,
+        clientPB.VaultsLogEntryMessage
+      >,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+      try {
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+
+        //Getting the vault.
+        const vaultsLogMessage = call.request;
+        const vaultMessage = vaultsLogMessage.getVault();
+        if (vaultMessage == null) {
+          await genWritable.throw({ code: grpc.status.NOT_FOUND });
+          return;
+        }
+        const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
+        const vault = await vaultManager.openVault(vaultId);
+
+        // Getting the log
+        const depth = vaultsLogMessage.getLogDepth();
+        let commitId: string | undefined = vaultsLogMessage.getCommitId();
+        commitId = commitId ? commitId : undefined;
+        const log = await vault.log(depth, commitId);
+
+        const vaultsLogEntryMessage = new clientPB.VaultsLogEntryMessage();
+        for (const entry of log) {
+          vaultsLogEntryMessage.setOid(entry.oid);
+          vaultsLogEntryMessage.setCommitter(entry.committer);
+          vaultsLogEntryMessage.setTimeStamp(entry.timeStamp);
+          vaultsLogEntryMessage.setMessage(entry.message);
+          await genWritable.next(vaultsLogEntryMessage);
         }
         await genWritable.next(null);
       } catch (err) {

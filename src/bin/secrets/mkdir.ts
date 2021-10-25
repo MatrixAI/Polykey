@@ -7,16 +7,20 @@ import * as CLIErrors from '../errors';
 import * as grpcErrors from '../../grpc/errors';
 
 const mkdir = binUtils.createCommand('mkdir', {
-  description: 'Creates a directory within a given vault',
+  description: {
+    description: 'Creates a directory within a given vault',
+    args: {
+      secretPath:
+        'Path of the directory to create, specified as <vaultName>:<secretPath>',
+    },
+  },
   nodePath: true,
   verbose: true,
   format: true,
 });
-mkdir.requiredOption(
-  '-sp, --secret-path <secretPath>',
-  '(required) Path of the directory to create, specified as <vaultName>:<secretPath>',
-);
-mkdir.action(async (options) => {
+mkdir.arguments('<secretPath>');
+mkdir.option('-r, --recursive', 'Recursivly create the directory');
+mkdir.action(async (secretPath, options) => {
   const clientConfig = {};
   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
     new StreamHandler(),
@@ -28,7 +32,7 @@ mkdir.action(async (options) => {
     ? options.nodePath
     : utils.getDefaultNodePath();
 
-  const client = new PolykeyClient(clientConfig);
+  const client = await PolykeyClient.createPolykeyClient(clientConfig);
   const vaultMkdirMessage = new clientPB.VaultMkdirMessage();
   const vaultMessage = new clientPB.VaultMessage();
 
@@ -36,7 +40,6 @@ mkdir.action(async (options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const secretPath: string = options.secretPath;
     if (!binUtils.pathRegex.test(secretPath)) {
       throw new CLIErrors.ErrorSecretPathFormat(
         "Please specify a new secret name using the format: '<vaultName>:<secretPath>'",
@@ -44,9 +47,10 @@ mkdir.action(async (options) => {
     }
     const [, vaultName, secretName] = secretPath.match(binUtils.pathRegex)!;
 
-    vaultMessage.setVaultName(vaultName);
+    vaultMessage.setNameOrId(vaultName);
     vaultMkdirMessage.setVault(vaultMessage);
     vaultMkdirMessage.setDirName(secretName);
+    vaultMkdirMessage.setRecursive(options.recursive);
 
     const pCall = grpcClient.vaultsSecretsMkdir(vaultMkdirMessage);
     const { p, resolveP } = utils.promise();
@@ -62,7 +66,7 @@ mkdir.action(async (options) => {
       binUtils.outputFormatter({
         type: options.format === 'json' ? 'json' : 'list',
         data: [
-          `Directory: ${vaultMkdirMessage.getDirName()} created inside vault: ${vaultMessage.getVaultName()}`,
+          `Directory: ${vaultMkdirMessage.getDirName()} created inside vault: ${vaultMessage.getNameOrId()}`,
         ],
       }),
     );
