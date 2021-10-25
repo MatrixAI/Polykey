@@ -1,7 +1,6 @@
 import type { NodeId } from '@/nodes/types';
 import * as nodesUtils from '@/nodes/utils';
 import { isNodeId, makeNodeId } from '@/nodes/utils';
-import { toMultibase } from '@/GenericIdTypes';
 
 describe('Nodes utils', () => {
   test('basic distance calculation', async () => {

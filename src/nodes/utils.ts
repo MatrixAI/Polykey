@@ -80,7 +80,6 @@ function isValidHost(host: string): boolean {
  */
 function nodeIdToU8(id: string): Uint8Array {
   // Converting from the multibase string to a buffer of hopefully 32 bytes.
-  console.log(id);
   const byteArray = fromMultibase(id);
   if (byteArray == null) throw new ErrorInvalidNodeId()
   return byteArray;

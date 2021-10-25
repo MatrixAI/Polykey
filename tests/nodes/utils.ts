@@ -14,9 +14,9 @@ import { fromMultibase } from '@/GenericIdTypes';
 function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   const lowerBoundDistance = BigInt(2) ** BigInt(bucketIndex);
   const bufferId = nodesUtils.nodeIdToU8(nodeId);
-  console.log(bufferId);
+  // console.log(bufferId);
   const bufferDistance = bigIntToBuffer(lowerBoundDistance);
-  console.log(bufferDistance);
+  // console.log(bufferDistance);
   // Console.log('Distance buffer:', bufferDistance);
   // console.log('Node ID buffer:', bufferId);
 
@@ -42,7 +42,7 @@ function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   // Reverse the XORed array back to normal
   newIdArray.reverse();
   // Convert to an ASCII string
-  console.log(newIdArray);
+  // console.log(newIdArray);
   return makeNodeId(newIdArray);
 }
 
