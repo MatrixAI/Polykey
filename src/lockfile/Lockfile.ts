@@ -70,6 +70,9 @@ class Lockfile {
 
   public async stop() {
     if (this._started) {
+      this.logger.info(
+        `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
+      );
       await this.deleteLock();
     }
     this._started = false;

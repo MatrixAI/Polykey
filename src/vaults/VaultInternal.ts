@@ -176,20 +176,29 @@ class VaultInternal {
         ref: this.workingDir,
       });
       await f(this.efsVault);
-      for await (const file of vaultsUtils.readdirRecursivelyEFS(this.efsVault, '.', true)) {
-        await git.resetIndex({
-          fs: this.efsRoot,
-          dir: this.baseDir,
-          gitdir: this.gitDir,
-          filepath: file,
-        });
-      }
       const statusMatrix = await git.statusMatrix({
         fs: this.efsRoot,
         dir: this.baseDir,
         gitdir: this.gitDir,
       });
-      for await (const file of statusMatrix) {
+      for (let file of statusMatrix) {
+        if (file[1] === file[2] && file[2] === file[3]) {
+          await git.resetIndex({
+            fs: this.efsRoot,
+            dir: this.baseDir,
+            gitdir: this.gitDir,
+            filepath: file[0],
+          });
+          file = (
+            await git.statusMatrix({
+              fs: this.efsRoot,
+              dir: this.baseDir,
+              gitdir: this.gitDir,
+              filepaths: [file[0]],
+            })
+          ).pop()!;
+          if (file[1] === file[2] && file[2] === file[3]) continue;
+        }
         if (file[2] !== file[3]) {
           let status: 'added' | 'modified' | 'deleted';
           if (file[2] === 0) {

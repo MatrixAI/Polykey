@@ -14,9 +14,9 @@ import { fromMultibase } from '@/GenericIdTypes';
 function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
   const lowerBoundDistance = BigInt(2) ** BigInt(bucketIndex);
   const bufferId = nodesUtils.nodeIdToU8(nodeId);
-  // console.log(bufferId);
+  // Console.log(bufferId);
   const bufferDistance = bigIntToBuffer(lowerBoundDistance);
-  // console.log(bufferDistance);
+  // Console.log(bufferDistance);
   // Console.log('Distance buffer:', bufferDistance);
   // console.log('Node ID buffer:', bufferId);
 

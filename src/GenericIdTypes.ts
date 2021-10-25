@@ -46,16 +46,22 @@ function makeId<T extends Id>(arg: any): T {
   throw new ErrorInvalidId();
 }
 
-function isIdString<T extends IdString>(arg: any, validByteLength: number = idValidByteLength): arg is T {
+function isIdString<T extends IdString>(
+  arg: any,
+  validByteLength: number = idValidByteLength,
+): arg is T {
   if (typeof arg !== 'string') return false;
   const id = fromMultibase(arg);
   if (id == null) return false;
   return id.length === validByteLength;
 }
 
-function makeIdString<T extends IdString>(arg: any, validByteLength: number = idValidByteLength, format: MultibaseFormats = 'base58btc'): T {
-  let id = arg;
-  console.log(id);
+function makeIdString<T extends IdString>(
+  arg: any,
+  validByteLength: number = idValidByteLength,
+  format: MultibaseFormats = 'base58btc',
+): T {
+  const id = arg;
   if (id instanceof Uint8Array) {
     if (id.length !== validByteLength) throw new ErrorInvalidId();
     return toMultibase(arg, format) as T;
@@ -101,4 +107,13 @@ function fromMultibase(idString: string): Uint8Array | undefined {
   return new Uint8Array(buffer);
 }
 
-export { isId, makeId, isIdString, makeIdString, idToString, stringToId, toMultibase, fromMultibase};
+export {
+  isId,
+  makeId,
+  isIdString,
+  makeIdString,
+  idToString,
+  stringToId,
+  toMultibase,
+  fromMultibase,
+};

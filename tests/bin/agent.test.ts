@@ -14,6 +14,7 @@ import PolykeyAgent from '@/PolykeyAgent';
 
 import { Lockfile } from '@/lockfile';
 import { poll } from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 describe('CLI agent', () => {
   const noJWTFailCode = 77;
@@ -472,7 +473,10 @@ describe('CLI agent', () => {
         ['Vault', vaultCommands],
       ];
 
-      const dummyNodeId = 'A'.repeat(44);
+      const dummyVaultId = 'A'.repeat(44);
+      const dummyNodeId = makeNodeId(
+        'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+      );
       function generateCommand(commandString: string) {
         const command = commandString
           .replace(/filePath/g, dummyPath)
@@ -480,7 +484,7 @@ describe('CLI agent', () => {
           .replace(/passPath/g, dummyPath)
           .replace(/secretPath/g, dummyPath)
           .replace(/nodeId/g, dummyNodeId)
-          .replace(/vaultId/g, dummyNodeId)
+          .replace(/vaultId/g, dummyVaultId)
           .split(' ');
         const nodePath = ['-np', activeAgentPath];
         return [...command, ...nodePath];

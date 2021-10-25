@@ -39,7 +39,7 @@ describe('GRPCClientClient', () => {
       nodePath,
       logger: logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
 
     await polykeyAgent.start({});

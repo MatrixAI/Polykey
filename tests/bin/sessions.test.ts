@@ -56,7 +56,7 @@ describe('Session Token Refreshing', () => {
       nodePath: nodePath,
       logger: logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     await polykeyAgent.start({});
 

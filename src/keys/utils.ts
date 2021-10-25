@@ -31,8 +31,7 @@ import config from '../config';
 import * as utils from '../utils';
 import * as keysErrors from './errors';
 import { promisify } from '../utils';
-import { isNodeId, makeNodeId } from '../nodes/utils';
-import { fromMultibase, toMultibase } from '@matrixai/id/dist/utils';
+import { makeNodeId } from '../nodes/utils';
 
 const ivSize = 16;
 const authTagSize = 16;

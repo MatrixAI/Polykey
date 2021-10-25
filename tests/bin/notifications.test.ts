@@ -64,14 +64,14 @@ describe('CLI Notifications', () => {
       nodePath: senderNodePath,
       logger: logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     receiverPolykeyAgent = await PolykeyAgent.createPolykey({
       password,
       nodePath: receiverNodePath,
       logger: logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     await senderPolykeyAgent.start({});
     await receiverPolykeyAgent.start({});

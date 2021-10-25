@@ -15,7 +15,9 @@ import { NodeId } from '@/nodes/types';
 describe('VaultOps', () => {
   const password = 'password';
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
-  // Const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [new StreamHandler()]);
+  const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [
+    new StreamHandler(),
+  ]);
 
   let dataDir: string;
 
@@ -120,27 +122,35 @@ describe('VaultOps', () => {
       );
     });
   });
-  test('adding and committing a secret 10 times', async () => {
-    const content = 'secret-content';
-    for (let i = 0; i < 10; i++) {
-      const name = 'secret ' + i.toString();
-      await vaultOps.addSecret(vault, name, content);
-      expect((await vaultOps.getSecret(vault, name)).toString()).toStrictEqual(
-        content,
-      );
+  test(
+    'adding and committing a secret 10 times',
+    async () => {
+      const content = 'secret-content';
+      for (let i = 0; i < 10; i++) {
+        const name = 'secret ' + i.toString();
+        await vaultOps.addSecret(vault, name, content);
+        expect(
+          (await vaultOps.getSecret(vault, name)).toString(),
+        ).toStrictEqual(content);
 
-      await expect(vault.access((efs) => efs.readdir('.'))).resolves.toContain(
-        name,
-      );
-    }
-  }, global.defaultTimeout * 4);
-  test('updating secret content', async () => {
-    await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    await vaultOps.updateSecret(vault, 'secret-1', 'secret-content-change');
-    expect(
-      (await vaultOps.getSecret(vault, 'secret-1')).toString(),
-    ).toStrictEqual('secret-content-change');
-  }, global.defaultTimeout * 4);
+        await expect(
+          vault.access((efs) => efs.readdir('.')),
+        ).resolves.toContain(name);
+      }
+    },
+    global.defaultTimeout * 4,
+  );
+  test(
+    'updating secret content',
+    async () => {
+      await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
+      await vaultOps.updateSecret(vault, 'secret-1', 'secret-content-change');
+      expect(
+        (await vaultOps.getSecret(vault, 'secret-1')).toString(),
+      ).toStrictEqual('secret-content-change');
+    },
+    global.defaultTimeout * 4,
+  );
   test('updating secret content within a directory', async () => {
     await vaultOps.mkdir(vault, path.join('dir-1', 'dir-2'), {
       recursive: true,
@@ -199,27 +209,36 @@ describe('VaultOps', () => {
       path.join('dir-1', 'dir-2', 'secret-1'),
       'secret-content',
     );
-    await vaultOps.deleteSecret(vault, path.join('dir-1', 'dir-2'), {
-      recursive: true,
-    });
+    await vaultOps.deleteSecret(
+      vault,
+      path.join('dir-1', 'dir-2'),
+      {
+        recursive: true,
+      },
+      probeLogger,
+    );
     await expect(
       vault.access((efs) => efs.readdir('dir-1')),
     ).resolves.not.toContain('dir-2');
   });
-  test('deleting a secret 10 times', async () => {
-    for (let i = 0; i < 10; i++) {
-      const name = 'secret ' + i.toString();
-      const content = 'secret-content';
-      await vaultOps.addSecret(vault, name, content);
-      expect((await vaultOps.getSecret(vault, name)).toString()).toStrictEqual(
-        content,
-      );
-      await vaultOps.deleteSecret(vault, name, { recursive: true });
-      await expect(
-        vault.access((efs) => efs.readdir('.')),
-      ).resolves.not.toContain(name);
-    }
-  }, global.defaultTimeout * 4);
+  test(
+    'deleting a secret 10 times',
+    async () => {
+      for (let i = 0; i < 10; i++) {
+        const name = 'secret ' + i.toString();
+        const content = 'secret-content';
+        await vaultOps.addSecret(vault, name, content);
+        expect(
+          (await vaultOps.getSecret(vault, name)).toString(),
+        ).toStrictEqual(content);
+        await vaultOps.deleteSecret(vault, name, { recursive: true });
+        await expect(
+          vault.access((efs) => efs.readdir('.')),
+        ).resolves.not.toContain(name);
+      }
+    },
+    global.defaultTimeout * 4,
+  );
   test('renaming a secret', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     await vaultOps.renameSecret(vault, 'secret-1', 'secret-change');
@@ -303,39 +322,43 @@ describe('VaultOps', () => {
       ['.hiddenSecret', '.hiddenDir/.hiddenInSecret'].sort(),
     );
   });
-  test('updating and deleting hidden files and directories', async () => {
-    await vaultOps.addSecret(vault, '.hiddenSecret', 'hidden_contents');
-    await vaultOps.mkdir(vault, '.hiddenDir', { recursive: true });
-    await vaultOps.addSecret(
-      vault,
-      '.hiddenDir/.hiddenInSecret',
-      'hidden_inside',
-    );
-    await vaultOps.updateSecret(vault, '.hiddenSecret', 'change_contents');
-    await vaultOps.updateSecret(
-      vault,
-      '.hiddenDir/.hiddenInSecret',
-      'change_inside',
-    );
-    await vaultOps.renameSecret(vault, '.hiddenSecret', '.hidingSecret');
-    await vaultOps.renameSecret(vault, '.hiddenDir', '.hidingDir');
-    let list = await vaultOps.listSecrets(vault);
-    expect(list.sort()).toStrictEqual(
-      ['.hidingSecret', '.hidingDir/.hiddenInSecret'].sort(),
-    );
-    expect(
-      (await vaultOps.getSecret(vault, '.hidingSecret')).toString(),
-    ).toStrictEqual('change_contents');
-    await expect(
-      (
-        await vaultOps.getSecret(vault, '.hidingDir/.hiddenInSecret')
-      ).toString(),
-    ).toStrictEqual('change_inside');
-    await vaultOps.deleteSecret(vault, '.hidingSecret', { recursive: true });
-    await vaultOps.deleteSecret(vault, '.hidingDir', { recursive: true });
-    list = await vaultOps.listSecrets(vault);
-    expect(list.sort()).toStrictEqual([].sort());
-  }, global.defaultTimeout * 4);
+  test(
+    'updating and deleting hidden files and directories',
+    async () => {
+      await vaultOps.addSecret(vault, '.hiddenSecret', 'hidden_contents');
+      await vaultOps.mkdir(vault, '.hiddenDir', { recursive: true });
+      await vaultOps.addSecret(
+        vault,
+        '.hiddenDir/.hiddenInSecret',
+        'hidden_inside',
+      );
+      await vaultOps.updateSecret(vault, '.hiddenSecret', 'change_contents');
+      await vaultOps.updateSecret(
+        vault,
+        '.hiddenDir/.hiddenInSecret',
+        'change_inside',
+      );
+      await vaultOps.renameSecret(vault, '.hiddenSecret', '.hidingSecret');
+      await vaultOps.renameSecret(vault, '.hiddenDir', '.hidingDir');
+      let list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual(
+        ['.hidingSecret', '.hidingDir/.hiddenInSecret'].sort(),
+      );
+      expect(
+        (await vaultOps.getSecret(vault, '.hidingSecret')).toString(),
+      ).toStrictEqual('change_contents');
+      await expect(
+        (
+          await vaultOps.getSecret(vault, '.hidingDir/.hiddenInSecret')
+        ).toString(),
+      ).toStrictEqual('change_inside');
+      await vaultOps.deleteSecret(vault, '.hidingSecret', { recursive: true });
+      await vaultOps.deleteSecret(vault, '.hidingDir', { recursive: true });
+      list = await vaultOps.listSecrets(vault);
+      expect(list.sort()).toStrictEqual([].sort());
+    },
+    global.defaultTimeout * 4,
+  );
   test('adding a directory of 1 secret', async () => {
     const secretDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'secret-directory-'),
@@ -448,52 +471,56 @@ describe('VaultOps', () => {
       recursive: true,
     });
   });
-  test('adding a directory of 100 secrets with some secrets already existing', async () => {
-    const secretDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'secret-directory-'),
-    );
-    const secretDirName = path.basename(secretDir);
-    for (let i = 0; i < 50; i++) {
-      const name = 'secret ' + i.toString();
-      const content = 'this is secret ' + i.toString();
-      await fs.promises.writeFile(
-        path.join(secretDir, name),
-        Buffer.from(content),
+  test(
+    'adding a directory of 100 secrets with some secrets already existing',
+    async () => {
+      const secretDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'secret-directory-'),
       );
-    }
+      const secretDirName = path.basename(secretDir);
+      for (let i = 0; i < 50; i++) {
+        const name = 'secret ' + i.toString();
+        const content = 'this is secret ' + i.toString();
+        await fs.promises.writeFile(
+          path.join(secretDir, name),
+          Buffer.from(content),
+        );
+      }
 
-    await vaultOps.mkdir(vault, secretDirName, { recursive: false });
-    await vaultOps.addSecret(
-      vault,
-      path.join(secretDirName, 'secret 8'),
-      'secret-content',
-    );
-    await vaultOps.addSecret(
-      vault,
-      path.join(secretDirName, 'secret 9'),
-      'secret-content',
-    );
-    await vaultOps.addSecretDirectory(vault, secretDir);
+      await vaultOps.mkdir(vault, secretDirName, { recursive: false });
+      await vaultOps.addSecret(
+        vault,
+        path.join(secretDirName, 'secret 8'),
+        'secret-content',
+      );
+      await vaultOps.addSecret(
+        vault,
+        path.join(secretDirName, 'secret 9'),
+        'secret-content',
+      );
+      await vaultOps.addSecretDirectory(vault, secretDir);
 
-    for (let j = 0; j < 8; j++) {
-      await expect(
-        vault.access((efs) => efs.readdir(secretDirName)),
-      ).resolves.toContain('secret ' + j.toString());
-    }
-    expect(
-      (
-        await vaultOps.getSecret(vault, path.join(secretDirName, 'secret 8'))
-      ).toString(),
-    ).toStrictEqual('this is secret 8');
-    expect(
-      (
-        await vaultOps.getSecret(vault, path.join(secretDirName, 'secret 9'))
-      ).toString(),
-    ).toStrictEqual('this is secret 9');
+      for (let j = 0; j < 8; j++) {
+        await expect(
+          vault.access((efs) => efs.readdir(secretDirName)),
+        ).resolves.toContain('secret ' + j.toString());
+      }
+      expect(
+        (
+          await vaultOps.getSecret(vault, path.join(secretDirName, 'secret 8'))
+        ).toString(),
+      ).toStrictEqual('this is secret 8');
+      expect(
+        (
+          await vaultOps.getSecret(vault, path.join(secretDirName, 'secret 9'))
+        ).toString(),
+      ).toStrictEqual('this is secret 9');
 
-    await fs.promises.rm(secretDir, {
-      force: true,
-      recursive: true,
-    });
-  }, global.defaultTimeout * 5);
+      await fs.promises.rm(secretDir, {
+        force: true,
+        recursive: true,
+      });
+    },
+    global.defaultTimeout * 5,
+  );
 });

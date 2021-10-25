@@ -34,16 +34,26 @@ describe('CLI vaults', () => {
   let vaultName: VaultName;
 
   // Constants
+  const nodeId1 = makeNodeId(
+    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+  );
+  const nodeId2 = makeNodeId(
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+  );
+  const nodeId3 = makeNodeId(
+    'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug',
+  );
+
   const node1: NodeInfo = {
-    id: makeNodeId('1'.repeat(44)),
+    id: nodeId1,
     chain: {},
   };
   const node2: NodeInfo = {
-    id: makeNodeId('2'.repeat(44)),
+    id: nodeId2,
     chain: {},
   };
   const node3: NodeInfo = {
-    id: makeNodeId('3'.repeat(44)),
+    id: nodeId3,
     chain: {},
   };
 
@@ -64,7 +74,7 @@ describe('CLI vaults', () => {
       nodePath: dataDir,
       logger: logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     await polykeyAgent.start({});
     await polykeyAgent.gestalts.setNode(node1);
@@ -292,7 +302,7 @@ describe('CLI vaults', () => {
           nodePath: dataDir2,
           logger: logger,
           cores: 1,
-          workerManager: null
+          workerManager: null,
         });
         await targetPolykeyAgent.start({});
         const vault = await targetPolykeyAgent.vaults.createVault(vaultName);
@@ -370,7 +380,7 @@ describe('CLI vaults', () => {
           nodePath: dataDir2,
           logger: logger,
           cores: 1,
-          workerManager: null
+          workerManager: null,
         });
         await targetPolykeyAgent.start({});
         await targetPolykeyAgent.vaults.createVault(vaultName);
@@ -460,7 +470,7 @@ describe('CLI vaults', () => {
         nodePath: dataDir2,
         logger: logger,
         cores: 1,
-        workerManager: null
+        workerManager: null,
       });
       await targetPolykeyAgent.start({});
 
@@ -482,11 +492,19 @@ describe('CLI vaults', () => {
         clientEgressPort,
       );
 
-      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault1` as VaultName);
-      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault2` as VaultName);
-      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault3` as VaultName);
+      await targetPolykeyAgent.vaults.createVault(
+        `${vaultName}-Vault1` as VaultName,
+      );
+      await targetPolykeyAgent.vaults.createVault(
+        `${vaultName}-Vault2` as VaultName,
+      );
+      await targetPolykeyAgent.vaults.createVault(
+        `${vaultName}-Vault3` as VaultName,
+      );
 
-      const targetVaults = (await targetPolykeyAgent.vaults.listVaults()).keys();
+      const targetVaults = (
+        await targetPolykeyAgent.vaults.listVaults()
+      ).keys();
       const namesList: string[] = [];
       for await (const name of targetVaults) {
         namesList.push(name);
@@ -634,8 +652,8 @@ describe('CLI vaults', () => {
       commit3Oid = (await vault.log(0))[0].oid;
     });
     afterEach(async () => {
-      await polykeyAgent.vaults.destroyVault(vault.vaultId)
-    })
+      await polykeyAgent.vaults.destroyVault(vault.vaultId);
+    });
 
     test('Should get all commits', async () => {
       const command = ['vaults', 'log', '-np', dataDir, vaultName];
