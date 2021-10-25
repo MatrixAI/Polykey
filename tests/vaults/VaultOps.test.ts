@@ -202,7 +202,6 @@ describe('VaultOps', () => {
     await vaultOps.deleteSecret(vault, path.join('dir-1', 'dir-2'), {
       recursive: true,
     }, probeLogger);
-    console.log(await vault.access((efs) => efs.readdir(path.join('dir-1', 'dir-2'))));
     await expect(
       vault.access((efs) => efs.readdir('dir-1')),
     ).resolves.not.toContain('dir-2');
@@ -321,9 +320,6 @@ describe('VaultOps', () => {
     await vaultOps.renameSecret(vault, '.hiddenSecret', '.hidingSecret');
     await vaultOps.renameSecret(vault, '.hiddenDir', '.hidingDir');
     let list = await vaultOps.listSecrets(vault);
-    console.log(await vault.log());
-    console.log(await vault.access((efs) => efs.readdir('.')));
-    console.log(await vault.access((efs) => efs.readdir(path.join('dir-1', 'dir-2'))));
     expect(list.sort()).toStrictEqual(
       ['.hidingSecret', '.hidingDir/.hiddenInSecret'].sort(),
     );
