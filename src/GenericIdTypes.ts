@@ -55,7 +55,6 @@ function isIdString<T extends IdString>(arg: any, validByteLength: number = idVa
 
 function makeIdString<T extends IdString>(arg: any, validByteLength: number = idValidByteLength, format: MultibaseFormats = 'base58btc'): T {
   let id = arg;
-  console.log(id);
   if (id instanceof Uint8Array) {
     if (id.length !== validByteLength) throw new ErrorInvalidId();
     return toMultibase(arg, format) as T;
