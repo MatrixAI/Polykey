@@ -24,7 +24,6 @@ import * as nodesUtils from '@/nodes/utils';
 import { makeCrypto } from '../utils';
 import { makeNodeId } from '@/nodes/utils';
 
-// FIXME: This is not finishing properly.
 describe('NodeConnection', () => {
   const password = 'password';
   const node: NodeInfo = {
@@ -210,25 +209,15 @@ describe('NodeConnection', () => {
     sourceNodeId = clientKeyManager.getNodeId();
   });
   afterEach(async () => {
+    await serverNodeManager.clearDB();
+    await fwdProxy.stop();
+    await clientKeyManager.destroy();
     await fs.promises.rm(clientDataDir, {
       force: true,
       recursive: true,
     });
-    await clientKeyManager.destroy();
-    await fwdProxy.stop();
-
-    await serverNodeManager.clearDB();
   });
   afterAll(async () => {
-    await fs.promises.rm(serverDataDir, {
-      force: true,
-      recursive: true,
-    });
-    await revProxy.stop();
-    await revProxy.destroy();
-    await serverKeyManager.destroy();
-    await serverDb.stop();
-    await serverDb.destroy();
     await serverACL.destroy();
     await serverSigchain.destroy();
     await serverGestaltGraph.destroy();
@@ -238,6 +227,15 @@ describe('NodeConnection', () => {
     await serverNotificationsManager.destroy();
     await server.stop();
     await server.destroy();
+    await revProxy.stop();
+    await revProxy.destroy();
+    await serverKeyManager.destroy();
+    await serverDb.stop();
+    await serverDb.destroy();
+    await fs.promises.rm(serverDataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   test('connects to its target (via direct connection)', async () => {
