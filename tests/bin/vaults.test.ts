@@ -34,12 +34,15 @@ describe('CLI vaults', () => {
   let vaultName: VaultName;
 
   // Constants
-  const nodeId1 = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-  const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
-  const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
-  const nodeId4 = makeNodeId('vm5guqfrrhlrsa70qpauen8jd0lmb0v6j8r8c94p34n738vlvu7vg');
-  const nodeId5 = makeNodeId('vlm1hn7hcs6pqdmhk6fnehvfkn1ee5ta8md0610onr7e75r737l3g');
-  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+  const nodeId1 = makeNodeId(
+    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+  );
+  const nodeId2 = makeNodeId(
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+  );
+  const nodeId3 = makeNodeId(
+    'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug',
+  );
 
   const node1: NodeInfo = {
     id: nodeId1,
@@ -71,7 +74,7 @@ describe('CLI vaults', () => {
       nodePath: dataDir,
       logger: logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     await polykeyAgent.start({});
     await polykeyAgent.gestalts.setNode(node1);
@@ -299,7 +302,7 @@ describe('CLI vaults', () => {
           nodePath: dataDir2,
           logger: logger,
           cores: 1,
-          workerManager: null
+          workerManager: null,
         });
         await targetPolykeyAgent.start({});
         const vault = await targetPolykeyAgent.vaults.createVault(vaultName);
@@ -377,7 +380,7 @@ describe('CLI vaults', () => {
           nodePath: dataDir2,
           logger: logger,
           cores: 1,
-          workerManager: null
+          workerManager: null,
         });
         await targetPolykeyAgent.start({});
         await targetPolykeyAgent.vaults.createVault(vaultName);
@@ -467,7 +470,7 @@ describe('CLI vaults', () => {
         nodePath: dataDir2,
         logger: logger,
         cores: 1,
-        workerManager: null
+        workerManager: null,
       });
       await targetPolykeyAgent.start({});
 
@@ -489,11 +492,19 @@ describe('CLI vaults', () => {
         clientEgressPort,
       );
 
-      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault1` as VaultName);
-      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault2` as VaultName);
-      await targetPolykeyAgent.vaults.createVault(`${vaultName}-Vault3` as VaultName);
+      await targetPolykeyAgent.vaults.createVault(
+        `${vaultName}-Vault1` as VaultName,
+      );
+      await targetPolykeyAgent.vaults.createVault(
+        `${vaultName}-Vault2` as VaultName,
+      );
+      await targetPolykeyAgent.vaults.createVault(
+        `${vaultName}-Vault3` as VaultName,
+      );
 
-      const targetVaults = (await targetPolykeyAgent.vaults.listVaults()).keys();
+      const targetVaults = (
+        await targetPolykeyAgent.vaults.listVaults()
+      ).keys();
       const namesList: string[] = [];
       for await (const name of targetVaults) {
         namesList.push(name);
@@ -641,8 +652,8 @@ describe('CLI vaults', () => {
       commit3Oid = (await vault.log(0))[0].oid;
     });
     afterEach(async () => {
-      await polykeyAgent.vaults.destroyVault(vault.vaultId)
-    })
+      await polykeyAgent.vaults.destroyVault(vault.vaultId);
+    });
 
     test('Should get all commits', async () => {
       const command = ['vaults', 'log', '-np', dataDir, vaultName];

@@ -21,27 +21,29 @@ describe('NodeGraph', () => {
   let nodeGraph: NodeGraph;
   let nodeId: NodeId;
 
-  const nodeId1 = makeNodeId(new Uint8Array([
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 5
-  ]));
-  const nodeId2 = makeNodeId(new Uint8Array([
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 8
-  ]));
-  const nodeId3 = makeNodeId(new Uint8Array([
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 124,
-  ]));
-  // const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
+  const nodeId1 = makeNodeId(
+    new Uint8Array([
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 5,
+    ]),
+  );
+  const nodeId2 = makeNodeId(
+    new Uint8Array([
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 8,
+    ]),
+  );
+  const nodeId3 = makeNodeId(
+    new Uint8Array([
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 124,
+    ]),
+  );
+  // Const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
   // const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
-  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+  const dummyNode = makeNodeId(
+    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+  );
 
   const logger = new Logger('NodeGraph Test', LogLevel.WARN, [
     new StreamHandler(),
@@ -54,15 +56,43 @@ describe('NodeGraph', () => {
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
 
-  const nodeIdGenerator = (number: number ) => {
+  const nodeIdGenerator = (number: number) => {
     const idArray = new Uint8Array([
-      223,  24,  34,  40,  46, 217,  4,  71,
-      103,  71,  59, 123, 143, 187,  9,  29,
-      157,  41, 131,  44,  68, 160, 79, 127,
-      137, 154, 221,  86, 157,  23, 77, number
+      223,
+      24,
+      34,
+      40,
+      46,
+      217,
+      4,
+      71,
+      103,
+      71,
+      59,
+      123,
+      143,
+      187,
+      9,
+      29,
+      157,
+      41,
+      131,
+      44,
+      68,
+      160,
+      79,
+      127,
+      137,
+      154,
+      221,
+      86,
+      157,
+      23,
+      77,
+      number,
     ]);
     return makeNodeId(idArray);
-  }
+  };
 
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -488,18 +518,18 @@ describe('NodeGraph', () => {
   });
   test('finds 3 closest nodes', async () => {
     // Add 3 nodes
-    await nodeGraph.setNode(
-      nodeId1,
-      { ip: '2.2.2.2', port: 2222 } as NodeAddress,
-    );
-    await nodeGraph.setNode(
-      nodeId2,
-      { ip: '3.3.3.3', port: 3333 } as NodeAddress,
-    );
-    await nodeGraph.setNode(
-      nodeId3,
-      { ip: '4.4.4.4', port: 4444 } as NodeAddress,
-    );
+    await nodeGraph.setNode(nodeId1, {
+      ip: '2.2.2.2',
+      port: 2222,
+    } as NodeAddress);
+    await nodeGraph.setNode(nodeId2, {
+      ip: '3.3.3.3',
+      port: 3333,
+    } as NodeAddress);
+    await nodeGraph.setNode(nodeId3, {
+      ip: '4.4.4.4',
+      port: 4444,
+    } as NodeAddress);
 
     // Find the closest nodes to some node, NODEID4
     const closest = await nodeGraph.getClosestLocalNodes(nodeId3);

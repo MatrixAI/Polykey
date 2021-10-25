@@ -40,10 +40,15 @@ describe('NodeManager', () => {
   const serverHost = '::1' as Host;
   const serverPort = 1 as Port;
 
-  const nodeId1 = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-  const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
-  const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
-  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+  const nodeId1 = makeNodeId(
+    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+  );
+  const nodeId2 = makeNodeId(
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+  );
+  const dummyNode = makeNodeId(
+    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+  );
 
   beforeAll(async () => {
     fwdProxy = await ForwardProxy.createForwardProxy({
@@ -296,13 +301,10 @@ describe('NodeManager', () => {
       // Add a dummy node to the server node graph database
       // Server will not be able to connect to this node (the only node in its
       // database), and will therefore not be able to locate the node.
-      await server.nodes.setNode(
-        dummyNode,
-        {
-          ip: '127.0.0.2' as Host,
-          port: 22222 as Port,
-        } as NodeAddress,
-      );
+      await server.nodes.setNode(dummyNode, {
+        ip: '127.0.0.2' as Host,
+        port: 22222 as Port,
+      } as NodeAddress);
       // So unfindableNode cannot be found
       await expect(() => nodeManager.findNode(nodeId)).rejects.toThrowError(
         nodesErrors.ErrorNodeGraphNodeNotFound,

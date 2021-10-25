@@ -106,32 +106,36 @@ describe('VaultInternal', () => {
       });
       expect(files).toEqual(['test1', 'test2', 'test3']);
     });
-    test('does not allow changing to an unrecognised commit', async () => {
-      await expect(() => vault.version('unrecognisedcommit')).rejects.toThrow(
-        vaultsErrors.ErrorVaultCommitUndefined,
-      );
-      await vault.commit(async (efs) => {
-        await efs.writeFile('test1', 'testdata1');
-      });
-      const secondCommit = (await vault.log(1))[0].oid;
-      await vault.commit(async (efs) => {
-        await efs.writeFile('test2', 'testdata2');
-      });
-      await vault.commit(async (efs) => {
-        await efs.writeFile('test3', 'testdata3');
-      });
-      const fourthCommit = (await vault.log(1))[0].oid;
-      await vault.version(secondCommit);
-      await vault.commit(async (efs) => {
-        const fd = await efs.open('test3', 'w');
-        await efs.write(fd, 'testdata6', 3, 6);
-        await efs.close(fd);
-      });
-      await vault.version(fourthCommit);
-      await vault.commit(async (efs) => {
-        await efs.writeFile('test4', 'testdata4');
-      });
-    }, global.defaultTimeout * 2);
+    test(
+      'does not allow changing to an unrecognised commit',
+      async () => {
+        await expect(() => vault.version('unrecognisedcommit')).rejects.toThrow(
+          vaultsErrors.ErrorVaultCommitUndefined,
+        );
+        await vault.commit(async (efs) => {
+          await efs.writeFile('test1', 'testdata1');
+        });
+        const secondCommit = (await vault.log(1))[0].oid;
+        await vault.commit(async (efs) => {
+          await efs.writeFile('test2', 'testdata2');
+        });
+        await vault.commit(async (efs) => {
+          await efs.writeFile('test3', 'testdata3');
+        });
+        const fourthCommit = (await vault.log(1))[0].oid;
+        await vault.version(secondCommit);
+        await vault.commit(async (efs) => {
+          const fd = await efs.open('test3', 'w');
+          await efs.write(fd, 'testdata6', 3, 6);
+          await efs.close(fd);
+        });
+        await vault.version(fourthCommit);
+        await vault.commit(async (efs) => {
+          await efs.writeFile('test4', 'testdata4');
+        });
+      },
+      global.defaultTimeout * 2,
+    );
     test('can change to the HEAD commit', async () => {
       const initCommit = (await vault.log(1))[0].oid;
       await vault.commit(async (efs) => {

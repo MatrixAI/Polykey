@@ -474,7 +474,9 @@ describe('CLI agent', () => {
       ];
 
       const dummyVaultId = 'A'.repeat(44);
-      const dummyNodeId = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+      const dummyNodeId = makeNodeId(
+        'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+      );
       function generateCommand(commandString: string) {
         const command = commandString
           .replace(/filePath/g, dummyPath)

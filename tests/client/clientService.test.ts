@@ -76,12 +76,24 @@ describe('Client service', () => {
   let callCredentials: SessionCredentials;
 
   //Node and identity infos.
-  const nodeId1 = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-  const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
-  const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
-  const nodeId4 = makeNodeId('vm5guqfrrhlrsa70qpauen8jd0lmb0v6j8r8c94p34n738vlvu7vg');
-  const nodeId5 = makeNodeId('vlm1hn7hcs6pqdmhk6fnehvfkn1ee5ta8md0610onr7e75r737l3g');
-  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+  const nodeId1 = makeNodeId(
+    'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+  );
+  const nodeId2 = makeNodeId(
+    'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+  );
+  const nodeId3 = makeNodeId(
+    'v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug',
+  );
+  const nodeId4 = makeNodeId(
+    'vm5guqfrrhlrsa70qpauen8jd0lmb0v6j8r8c94p34n738vlvu7vg',
+  );
+  const nodeId5 = makeNodeId(
+    'vlm1hn7hcs6pqdmhk6fnehvfkn1ee5ta8md0610onr7e75r737l3g',
+  );
+  const dummyNode = makeNodeId(
+    'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
+  );
 
   const testToken = {
     providerId: 'test-provider' as ProviderId,
@@ -344,7 +356,9 @@ describe('Client service', () => {
       const vaultId = await createVault(vaultMessage, callCredentials);
       const vaultList = await vaultManager.listVaults();
       expect(vaultList.get(vaultName)).toBeTruthy();
-      expect(vaultList.get(vaultName)).toStrictEqual(makeVaultId(vaultId.getNameOrId()));
+      expect(vaultList.get(vaultName)).toStrictEqual(
+        makeVaultId(vaultId.getNameOrId()),
+      );
     });
     test('should delete vaults', async () => {
       const deleteVault = grpcUtils.promisifyUnaryCall<clientPB.StatusMessage>(

@@ -4,7 +4,6 @@ import { clientPB, utils as clientUtils } from '../../client';
 import * as utils from '../../utils';
 import * as binUtils from '../utils';
 import * as grpcErrors from '../../grpc/errors';
-import { makeVaultIdPretty } from '../../vaults/utils';
 
 const clone = binUtils.createCommand('clone', {
   description: 'Clones a vault from another node',
@@ -34,7 +33,6 @@ clone.action(async (options) => {
   clientConfig['nodePath'] = options.nodePath
     ? options.nodePath
     : utils.getDefaultNodePath();
-  console.log('asdadasd');
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
 
@@ -69,7 +67,6 @@ clone.action(async (options) => {
       }),
     );
   } catch (err) {
-    console.error(err);
     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
       process.stderr.write(`${err.message}\n`);
     } else if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {

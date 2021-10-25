@@ -18,9 +18,12 @@ describe('WorkerManager', () => {
   afterAll(async () => {
     await workerManager.destroy();
     expect(workerManager.destroyed).toBeTruthy();
-  })
+  });
   test('construction has no side effects', async () => {
-    const tempWorker = await WorkerManager.createPolykeyWorkerManager({ cores, logger });
+    const tempWorker = await WorkerManager.createPolykeyWorkerManager({
+      cores,
+      logger,
+    });
     await tempWorker.destroy();
   });
   test('call runs in the main thread', async () => {

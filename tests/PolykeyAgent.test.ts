@@ -38,7 +38,7 @@ describe('Polykey', () => {
         nodePath,
         logger,
         cores: 1,
-        workerManager: null
+        workerManager: null,
       });
       expect(pk).toBeInstanceOf(PolykeyAgent);
     },
@@ -62,7 +62,7 @@ describe('Polykey', () => {
         nodePath,
         logger,
         cores: 1,
-        workerManager: null
+        workerManager: null,
       });
       await pk.start({});
       const nodePathContents = await fs.promises.readdir(nodePath);
@@ -82,7 +82,7 @@ describe('Polykey', () => {
         nodePath,
         logger,
         cores: 1,
-        workerManager: null
+        workerManager: null,
       });
       await pk.start({});
       await pk.stop();
@@ -101,7 +101,7 @@ describe('Polykey', () => {
       nodePath,
       logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     const providers = pk.identities.getProviders();
     // Exists
@@ -130,7 +130,7 @@ describe('Polykey', () => {
           nodePath,
           logger,
           cores: 1,
-          workerManager: null
+          workerManager: null,
         });
       }).rejects.toThrow(ErrorStateVersionMismatch);
     },
@@ -149,7 +149,7 @@ describe('Polykey', () => {
         nodePath,
         logger,
         cores: 1,
-        workerManager: null
+        workerManager: null,
       });
       await pk.start({});
       await pk.stop();
@@ -168,7 +168,7 @@ describe('Polykey', () => {
       nodePath,
       logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     await pk.start({});
     expect(await checkAgentRunning(nodePath)).toBeTruthy();

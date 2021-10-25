@@ -39,7 +39,7 @@ describe('CLI secrets', () => {
       nodePath: dataDir,
       logger: logger,
       cores: 1,
-      workerManager: null
+      workerManager: null,
     });
     await polykeyAgent.start({});
   }, global.polykeyStartupTimeout);

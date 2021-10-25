@@ -189,12 +189,14 @@ class VaultInternal {
             gitdir: this.gitDir,
             filepath: file[0],
           });
-          file = (await git.statusMatrix({
-            fs: this.efsRoot,
-            dir: this.baseDir,
-            gitdir: this.gitDir,
-            filepaths: [file[0]],
-          })).pop()!;
+          file = (
+            await git.statusMatrix({
+              fs: this.efsRoot,
+              dir: this.baseDir,
+              gitdir: this.gitDir,
+              filepaths: [file[0]],
+            })
+          ).pop()!;
           if (file[1] === file[2] && file[2] === file[3]) continue;
         }
         if (file[2] !== file[3]) {

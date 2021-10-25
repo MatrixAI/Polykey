@@ -14,7 +14,6 @@ import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import { makeCrypto } from '../utils';
 import { isNodeId, makeNodeId } from '@/nodes/utils';
-import { fromMultibase, toMultibase} from '@/GenericIdTypes';
 
 describe('KeyManager', () => {
   const password = 'password';
@@ -24,15 +23,15 @@ describe('KeyManager', () => {
   let dataDir: string;
   const cores = 1;
   let workerManager: WorkerManager;
-  beforeAll( async () => {
+  beforeAll(async () => {
     workerManager = await WorkerManager.createPolykeyWorkerManager({
       cores,
       logger,
     });
-  })
+  });
   afterAll(async () => {
     await workerManager.destroy();
-  })
+  });
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -145,7 +144,6 @@ describe('KeyManager', () => {
     await keyManager.destroy();
   });
   test('uses WorkerManager for signing and verifying with root key', async () => {
-
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({
       password,
@@ -526,11 +524,9 @@ describe('KeyManager', () => {
       logger,
     });
     const nodeId = keyManager.getNodeId();
-    console.log(nodeId);
-    console.log(isNodeId(nodeId))
-    console.log(makeNodeId(nodeId))
-    console.log(fromMultibase('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0'))
-  })
+    isNodeId(nodeId);
+    makeNodeId(nodeId);
+  });
   test('destroying the KeyManager prevents any further method calls.', async () => {
     const keysPath = `${dataDir}/keys`;
     const keyManager = await KeyManager.createKeyManager({

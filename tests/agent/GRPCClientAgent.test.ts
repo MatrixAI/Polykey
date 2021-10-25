@@ -242,8 +242,12 @@ describe('GRPC agent', () => {
 
     let xToYNodeConnection: TestNodeConnection;
 
-    const nodeIdX = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
-    const nodeIdY = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
+    const nodeIdX = makeNodeId(
+      'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
+    );
+    const nodeIdY = makeNodeId(
+      'vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg',
+    );
 
     beforeEach(async () => {
       yKeysPath = path.join(dataDir, 'keys-y');
@@ -266,20 +270,14 @@ describe('GRPC agent', () => {
         logger: logger,
       });
       // @ts-ignore - force push into the protected connections map
-      nodeManager.connections.set(
-        nodeIdY,
-        {
-          connection: xToYNodeConnection,
-          lock: new Mutex()
-        }
-      );
-      await nodeManager.setNode(
-        nodeIdY,
-        {
-          ip: 'unnecessary' as Host,
-          port: 0 as Port,
-        } as NodeAddress,
-      );
+      nodeManager.connections.set(nodeIdY, {
+        connection: xToYNodeConnection,
+        lock: new Mutex(),
+      });
+      await nodeManager.setNode(nodeIdY, {
+        ip: 'unnecessary' as Host,
+        port: 0 as Port,
+      } as NodeAddress);
     });
 
     afterEach(async () => {

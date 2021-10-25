@@ -39,7 +39,7 @@ describe('Discovery', () => {
         nodePath,
         logger,
         cores: 1,
-        workerManager: null
+        workerManager: null,
       });
       discovery = polykeyAgent.discovery;
     });

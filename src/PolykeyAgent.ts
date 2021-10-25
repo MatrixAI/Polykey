@@ -193,14 +193,14 @@ class Polykey {
     // Writing current version info.
     await fs_.promises.writeFile(versionFilePath, JSON.stringify(config));
 
-    let workers_: WorkerManager | undefined = undefined
+    let workers_: WorkerManager | undefined = undefined;
     if (workerManager !== null) {
       logger_.info('Creating a WorkerManager');
       workers_ =
         workerManager ??
         (await WorkerManager.createPolykeyWorkerManager({
           cores,
-          logger: logger_.getChild('WorkerManager')
+          logger: logger_.getChild('WorkerManager'),
         }));
     }
 

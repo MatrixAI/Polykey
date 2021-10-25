@@ -165,42 +165,46 @@ describe('VaultManager', () => {
   test('is type correct', () => {
     expect(vaultManager).toBeInstanceOf(VaultManager);
   });
-  test('can create many vaults and open a vault', async () => {
-    const vault = await vaultManager.createVault(vaultName);
-    const theVault = await vaultManager.openVault(vault.vaultId);
-    expect(vault).toBe(theVault);
-    await expect(() =>
-      vaultManager.openVault(nonExistantVaultId),
-    ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
-    const vaultNames = [
-      'Vault1',
-      'Vault2',
-      'Vault3',
-      'Vault4',
-      'Vault5',
-      'Vault6',
-      'Vault7',
-      'Vault8',
-      'Vault9',
-      'Vault10',
-      'Vault11',
-      'Vault12',
-      'Vault13',
-      'Vault14',
-      'Vault15',
-      'Vault16',
-      'Vault17',
-      'Vault18',
-      'Vault19',
-      'Vault20',
-    ];
-    for (const vaultName of vaultNames) {
-      await vaultManager.createVault(vaultName as VaultName);
-    }
-    expect((await vaultManager.listVaults()).size).toEqual(
-      vaultNames.length + 1,
-    );
-  }, global.defaultTimeout * 2);
+  test(
+    'can create many vaults and open a vault',
+    async () => {
+      const vault = await vaultManager.createVault(vaultName);
+      const theVault = await vaultManager.openVault(vault.vaultId);
+      expect(vault).toBe(theVault);
+      await expect(() =>
+        vaultManager.openVault(nonExistantVaultId),
+      ).rejects.toThrow(vaultErrors.ErrorVaultUndefined);
+      const vaultNames = [
+        'Vault1',
+        'Vault2',
+        'Vault3',
+        'Vault4',
+        'Vault5',
+        'Vault6',
+        'Vault7',
+        'Vault8',
+        'Vault9',
+        'Vault10',
+        'Vault11',
+        'Vault12',
+        'Vault13',
+        'Vault14',
+        'Vault15',
+        'Vault16',
+        'Vault17',
+        'Vault18',
+        'Vault19',
+        'Vault20',
+      ];
+      for (const vaultName of vaultNames) {
+        await vaultManager.createVault(vaultName as VaultName);
+      }
+      expect((await vaultManager.listVaults()).size).toEqual(
+        vaultNames.length + 1,
+      );
+    },
+    global.defaultTimeout * 2,
+  );
   test('can open the same vault twice and perform mutations', async () => {
     const vault = await vaultManager.createVault(vaultName);
     const vaultCopyOne = await vaultManager.openVault(vault.vaultId);
@@ -252,47 +256,51 @@ describe('VaultManager', () => {
       [firstVault.vaultId.toString(), secondVault.vaultId.toString()].sort(),
     );
   });
-  test('able to read and load existing metadata', async () => {
-    const vaultNames = [
-      'Vault1',
-      'Vault2',
-      'Vault3',
-      'Vault4',
-      'Vault5',
-      'Vault6',
-      'Vault7',
-      'Vault8',
-      'Vault9',
-      'Vault10',
-    ];
-    for (const vaultName of vaultNames) {
-      await vaultManager.createVault(vaultName as VaultName);
-    }
-    const vaults = await vaultManager.listVaults();
-    const vaultId = vaults.get('Vault1' as VaultName) as VaultId;
-    expect(vaultId).not.toBeUndefined();
-    const vault = await vaultManager.openVault(vaultId);
-    expect(vault).toBeTruthy();
-    await vaultManager.destroy();
-    await db.stop();
-    await db.start();
-    vaultManager = await VaultManager.createVaultManager({
-      keyManager: keyManager,
-      vaultsPath,
-      vaultsKey,
-      nodeManager,
-      gestaltGraph,
-      acl,
-      db,
-      logger,
-    });
-    const restartedVaultNames: Array<string> = [];
-    const vaultList = await vaultManager.listVaults();
-    vaultList.forEach((_, vaultName) => {
-      restartedVaultNames.push(vaultName);
-    });
-    expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
-  }, global.defaultTimeout * 2);
+  test(
+    'able to read and load existing metadata',
+    async () => {
+      const vaultNames = [
+        'Vault1',
+        'Vault2',
+        'Vault3',
+        'Vault4',
+        'Vault5',
+        'Vault6',
+        'Vault7',
+        'Vault8',
+        'Vault9',
+        'Vault10',
+      ];
+      for (const vaultName of vaultNames) {
+        await vaultManager.createVault(vaultName as VaultName);
+      }
+      const vaults = await vaultManager.listVaults();
+      const vaultId = vaults.get('Vault1' as VaultName) as VaultId;
+      expect(vaultId).not.toBeUndefined();
+      const vault = await vaultManager.openVault(vaultId);
+      expect(vault).toBeTruthy();
+      await vaultManager.destroy();
+      await db.stop();
+      await db.start();
+      vaultManager = await VaultManager.createVaultManager({
+        keyManager: keyManager,
+        vaultsPath,
+        vaultsKey,
+        nodeManager,
+        gestaltGraph,
+        acl,
+        db,
+        logger,
+      });
+      const restartedVaultNames: Array<string> = [];
+      const vaultList = await vaultManager.listVaults();
+      vaultList.forEach((_, vaultName) => {
+        restartedVaultNames.push(vaultName);
+      });
+      expect(restartedVaultNames.sort()).toEqual(vaultNames.sort());
+    },
+    global.defaultTimeout * 2,
+  );
   test.skip('cannot concurrently create the same vault', async () => {
     const vaults = Promise.all([
       vaultManager.createVault(vaultName),
