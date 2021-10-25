@@ -37,7 +37,7 @@ function calculateDistance(nodeId1: NodeId, nodeId2: NodeId): BigInt {
 function calculateBucketIndex(
   sourceNode: NodeId,
   targetNode: NodeId,
-  nodeIdBits: number,
+  nodeIdBits: number = 256,
 ) {
   const distance = calculateDistance(sourceNode, targetNode);
   // Start at the last bucket: most likely to be here based on relation of
