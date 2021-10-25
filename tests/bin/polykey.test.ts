@@ -1,8 +1,11 @@
-import main from '@/bin/polykey';
+import { pkWithStdio } from './utils';
 
 describe('polykey', () => {
   test('default help display', async () => {
-    expect(await main(['', ''])).toBe(0);
+    const result = await pkWithStdio([]);
+    expect(result.code).toBe(0);
+    console.log(result.stdout)
+    console.log(result.stderr)
   });
 });
 

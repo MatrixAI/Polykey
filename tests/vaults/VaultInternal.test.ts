@@ -41,6 +41,7 @@ describe('VaultInternal', () => {
     keyManager = await KeyManager.createKeyManager({
       keysPath,
       password: 'password',
+      logger: logger,
     });
     vault = await VaultInternal.create({
       vaultId,
