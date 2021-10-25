@@ -1,3 +1,5 @@
-export { default as WorkerManager } from './WorkerManager';
 export { default as polykeyWorker } from './polykeyWorkerModule';
-export * as errors from './errors';
+export * as utils from './utils';
+
+export type { PolykeyWorkerModule } from './polykeyWorkerModule';
+export type { PolykeyWorkerManagerInterface } from './types';

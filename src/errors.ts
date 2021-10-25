@@ -67,6 +67,5 @@ export * from './network/errors';
 export * from './nodes/errors';
 export * from './claims/errors';
 export * from './sigchain/errors';
-export * from './workers/errors';
 export * from './bootstrap/errors';
 export * from './notifications/errors';

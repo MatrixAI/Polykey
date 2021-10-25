@@ -162,7 +162,7 @@ describe('CLI agent', () => {
 
           //Checking that the lockfile was removed.
           await poll(global.polykeyStartupTimeout * 2, async () => {
-            const files = await fs.promises.readdir(foregroundNodePath);
+            const files = await fs.promises.readdir(backgroundNodePath);
             const test = files.includes('agent-lock.json');
             return !test;
           });

@@ -1,4 +1,5 @@
 import type { PublicKey } from '@/keys/types';
+import type { PolykeyWorkerManagerInterface } from '@/workers/types';
 
 import fs from 'fs';
 import os from 'os';
@@ -7,13 +8,13 @@ import { Buffer } from 'buffer';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import KeyManager from '@/keys/KeyManager';
-import WorkerManager from '@/workers/WorkerManager';
 import { DB } from '@matrixai/db';
 import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
 import * as keysErrors from '@/keys/errors';
 import { makeCrypto } from '../utils';
 import { isNodeId, makeNodeId } from '@/nodes/utils';
+import { createWorkerManager } from '@/workers/utils';
 
 describe('KeyManager', () => {
   const password = 'password';
@@ -22,9 +23,9 @@ describe('KeyManager', () => {
   ]);
   let dataDir: string;
   const cores = 1;
-  let workerManager: WorkerManager;
+  let workerManager: PolykeyWorkerManagerInterface;
   beforeAll(async () => {
-    workerManager = await WorkerManager.createPolykeyWorkerManager({
+    workerManager = await createWorkerManager({
       cores,
       logger,
     });

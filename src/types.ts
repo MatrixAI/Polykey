@@ -12,18 +12,23 @@ type POJO = { [key: string]: any };
 type Opaque<K, T> = T & { __TYPE__: K };
 
 /**
- * Any type that can be turned into a string
- */
-interface ToString {
-  toString(): string;
-}
-
-/**
  * Allows extension of constructors that use POJOs
  */
 type AbstractConstructorParameters<T> = ConstructorParameters<
   (new (...args: any) => any) & T
 >;
+
+type Initial<T extends any[]> = T extends [...infer Head, any] ? Head : any[];
+type InitialParameters<T extends (...args: any) => any> = Initial<
+  Parameters<T>
+>;
+
+/**
+ * Any type that can be turned into a string
+ */
+interface ToString {
+  toString(): string;
+}
 
 /**
  * Wrap a type to be reference counted
@@ -69,20 +74,15 @@ type LockConfig = {
   clientPort?: number | undefined;
 } & POJO;
 
-type Initial<T extends any[]> = T extends [...infer Head, any] ? Head : any[];
-type InitialParameters<T extends (...args: any) => any> = Initial<
-  Parameters<T>
->;
-
 export {
   POJO,
   Opaque,
-  ToString,
   AbstractConstructorParameters,
+  Initial,
+  InitialParameters,
+  ToString,
   Ref,
   Timer,
   FileSystem,
   LockConfig,
-  Initial,
-  InitialParameters,
 };
