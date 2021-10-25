@@ -44,27 +44,33 @@ describe('CLI Identities', () => {
   let testProvider: TestProvider;
 
   // Defining constants
+  const nodeId1 = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
+  const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
+  const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
+  const nodeId4 = makeNodeId('vm5guqfrrhlrsa70qpauen8jd0lmb0v6j8r8c94p34n738vlvu7vg');
+  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+
   const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const node1: NodeInfo = {
-    id: makeNodeId('1'.repeat(44)),
+    id: nodeId1,
     chain: {},
   };
   const keynode: NodeInfo = {
-    id: makeNodeId('2'.repeat(44)),
+    id: nodeId2,
     chain: {},
   };
   const node2: NodeInfo = {
-    id: makeNodeId('3'.repeat(44)),
+    id: nodeId3,
     chain: {},
   };
   const node3: NodeInfo = {
-    id: makeNodeId('4'.repeat(44)),
+    id: nodeId4,
     chain: {},
   };
   const invaldNode: NodeInfo = {
-    id: makeNodeId('invalid' + 'A'.repeat(37)),
+    id: dummyNode,
     chain: {},
   };
   const identity1: IdentityInfo = {

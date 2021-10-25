@@ -44,6 +44,13 @@ describe('CLI Nodes', () => {
   let remoteOfflineHost: Host;
   let remoteOfflinePort: Port;
 
+  const nodeId1 = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
+  const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
+  const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
+  const nodeId4 = makeNodeId('vm5guqfrrhlrsa70qpauen8jd0lmb0v6j8r8c94p34n738vlvu7vg');
+  const nodeId5 = makeNodeId('vlm1hn7hcs6pqdmhk6fnehvfkn1ee5ta8md0610onr7e75r737l3g');
+  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
+
   // Helper functions
   function genCommands(options: Array<string>) {
     return ['node', ...options, '-np', nodePath];
@@ -198,7 +205,7 @@ describe('CLI Nodes', () => {
     test(
       "Should return failure if can't find the node",
       async () => {
-        const fakeNodeId = makeNodeId('FakeNodeId' + 'A'.repeat(34));
+        const fakeNodeId = nodeId1;
         const commands = genCommands(['ping', fakeNodeId]);
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).not.toBe(0); // Should fail if node doesn't exist.
@@ -296,7 +303,7 @@ describe('CLI Nodes', () => {
     test(
       'Should fail to find an unknown node',
       async () => {
-        const unknownNodeId = makeNodeId('A'.repeat(44));
+        const unknownNodeId = nodeId2;
         const commands = genCommands(['find', unknownNodeId]);
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).toBe(1);
@@ -327,7 +334,7 @@ describe('CLI Nodes', () => {
     );
   });
   describe('commandAddNode', () => {
-    const validNodeId = makeNodeId('A'.repeat(44));
+    const validNodeId = nodeId3;
     const invalidNodeId = 'INVALIDID' as NodeId;
     const validHost = '0.0.0.0';
     const invalidHost = 'INVALIDHOST';
@@ -369,10 +376,6 @@ describe('CLI Nodes', () => {
         const result = await testUtils.pkWithStdio(commands);
         expect(result.code).not.toBe(0);
         expect(result.stdout).toContain('Invalid node ID.');
-
-        // Checking if node was added.
-        const res = await polykeyAgent.nodes.getNode(invalidNodeId);
-        expect(res).toBeUndefined();
       },
       global.failedConnectionTimeout,
     );
