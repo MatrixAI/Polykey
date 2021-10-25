@@ -15,7 +15,7 @@ import { NodeId } from '@/nodes/types';
 describe('VaultOps', () => {
   const password = 'password';
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
-  // Const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [new StreamHandler()]);
+  const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [new StreamHandler()]);
 
   let dataDir: string;
 
@@ -201,7 +201,8 @@ describe('VaultOps', () => {
     );
     await vaultOps.deleteSecret(vault, path.join('dir-1', 'dir-2'), {
       recursive: true,
-    });
+    }, probeLogger);
+    console.log(await vault.access((efs) => efs.readdir(path.join('dir-1', 'dir-2'))));
     await expect(
       vault.access((efs) => efs.readdir('dir-1')),
     ).resolves.not.toContain('dir-2');
@@ -320,6 +321,9 @@ describe('VaultOps', () => {
     await vaultOps.renameSecret(vault, '.hiddenSecret', '.hidingSecret');
     await vaultOps.renameSecret(vault, '.hiddenDir', '.hidingDir');
     let list = await vaultOps.listSecrets(vault);
+    console.log(await vault.log());
+    console.log(await vault.access((efs) => efs.readdir('.')));
+    console.log(await vault.access((efs) => efs.readdir(path.join('dir-1', 'dir-2'))));
     expect(list.sort()).toStrictEqual(
       ['.hidingSecret', '.hidingDir/.hiddenInSecret'].sort(),
     );
