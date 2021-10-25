@@ -328,15 +328,15 @@ class VaultManager {
         await this.gestaltGraph.setGestaltActionByNode(nodeId, 'scan');
         await this.acl.setVaultAction(vaultId, nodeId, 'pull');
         await this.acl.setVaultAction(vaultId, nodeId, 'clone');
-        // await this.notificationsManager.sendNotification(nodeId, {
-        //   type: 'VaultShare',
-        //   vaultId: idUtils.toString(vaultId),
-        //   vaultName,
-        //   actions: {
-        //     clone: null,
-        //     pull: null,
-        //   },
-        // });
+        await this.notificationsManager.sendNotification(nodeId, {
+          type: 'VaultShare',
+          vaultId: idUtils.toString(vaultId),
+          vaultName,
+          actions: {
+            clone: null,
+            pull: null,
+          },
+        });
       });
     });
   }

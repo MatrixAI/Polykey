@@ -45,21 +45,6 @@ describe('VaultManager', () => {
   let sigchain: Sigchain;
   let notificationsManager: NotificationsManager;
 
-  // FIXME, try not to do this, they can all have the localhost,
-  //  but use the generated port when the server is started.
-  const sourceHost = '127.0.0.1' as Host;
-  const sourcePort = 11112 as Port;
-  const sourceHostIn = '127.0.0.6' as Host;
-  const sourcePortIn = 11117 as Port;
-  const targetHost = '127.0.0.2' as Host;
-  const targetPort = 11113 as Port;
-  const altHost = '127.0.0.3' as Host;
-  const altPort = 11114 as Port;
-  const altHostIn = '127.0.0.4' as Host;
-  const altPortIn = 11115 as Port;
-  const targetHostOut = '127.0.0.5' as Host;
-  const targetPortOut = 11116 as Port;
-
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
 
@@ -156,6 +141,7 @@ describe('VaultManager', () => {
     await db.stop();
     await nodeManager.stop();
     await keyManager.destroy();
+    await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -475,11 +461,7 @@ describe('VaultManager', () => {
         tlsConfig: {
           keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
           certChainPem: await keyManager.getRootCertChainPem(),
-        },
-        egressHost: sourceHost,
-        egressPort: sourcePort,
-        proxyHost: sourceHost,
-        proxyPort: sourcePort,
+        }
       });
       node = {
         id: nodeManager.getNodeId(),
@@ -507,11 +489,7 @@ describe('VaultManager', () => {
         tlsConfig: {
           keyPrivatePem: targetKeyManager.getRootKeyPairPem().privateKey,
           certChainPem: await targetKeyManager.getRootCertChainPem(),
-        },
-        proxyHost: targetHostOut,
-        proxyPort: targetPortOut,
-        egressHost: targetHostOut,
-        egressPort: targetPortOut,
+        }
       });
       targetDb = await DB.createDB({
         dbPath: path.join(targetDataDir, 'db'),
@@ -579,7 +557,6 @@ describe('VaultManager', () => {
       });
       await targetServer.start({
         services: [[AgentService, targetAgentService]],
-        host: targetHost,
       });
 
       altDataDir = await fs.promises.mkdtemp(
@@ -604,9 +581,7 @@ describe('VaultManager', () => {
         tlsConfig: {
           keyPrivatePem: altKeyManager.getRootKeyPairPem().privateKey,
           certChainPem: await altKeyManager.getRootCertChainPem(),
-        },
-        egressHost: altHost,
-        egressPort: altPort,
+        }
       });
       altDb = await DB.createDB({
         dbPath: path.join(altDataDir, 'db'),
@@ -675,7 +650,6 @@ describe('VaultManager', () => {
 
       await altServer.start({
         services: [[AgentService, altAgentService]],
-        host: altHostIn,
       });
 
       agentService = createAgentService({
@@ -693,32 +667,47 @@ describe('VaultManager', () => {
 
       await agentServer.start({
         services: [[AgentService, agentService]],
-        host: sourceHostIn,
       });
 
       await revProxy.start({
-        ingressHost: sourceHostIn,
-        ingressPort: sourcePortIn,
-        serverHost: sourceHostIn,
+        serverHost: agentServer.getHost(),
         serverPort: agentServer.getPort(),
         tlsConfig: revTLSConfig,
       });
 
       await targetRevProxy.start({
-        ingressHost: targetHost,
-        ingressPort: targetPort,
-        serverHost: targetHost,
+        serverHost: targetServer.getHost(),
         serverPort: targetServer.getPort(),
         tlsConfig: targetRevTLSConfig,
       });
 
       await altRevProxy.start({
-        ingressHost: altHostIn,
-        ingressPort: altPortIn,
-        serverHost: altHostIn,
+        serverHost: altServer.getHost(),
         serverPort: altServer.getPort(),
         tlsConfig: altRevTLSConfig,
       });
+
+      await acl.setNodePerm(targetNodeId, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+
+      await acl.setNodePerm(altNodeId, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+
+      await altACL.setNodePerm(targetNodeId, {
+        gestalt: {
+          notify: null,
+        },
+        vaults: {},
+      });
+
     }, global.polykeyStartupTimeout * 2);
 
     afterEach(async () => {
@@ -727,9 +716,6 @@ describe('VaultManager', () => {
       await altRevProxy.stop();
       await agentServer.stop();
       await targetServer.stop();
-      await fwdProxy.stop();
-      await targetFwdProxy.stop();
-      await altFwdProxy.stop();
       await targetVaultManager.destroy();
       await targetGestaltGraph.destroy();
       await targetNotificationsManager.destroy();
@@ -749,16 +735,15 @@ describe('VaultManager', () => {
       await altDb.stop();
       await altNodeManager.stop();
       await altKeyManager.destroy();
+      await targetFwdProxy.stop();
+      await altFwdProxy.stop();
       await fs.promises.rm(altDataDir, {
         force: true,
         recursive: true,
       });
     });
 
-    afterAll(async () => {
-    });
-
-    test.only(
+    test(
       'clone vaults using a vault name',
       async () => {
         const firstVault = await targetVaultManager.createVault(vaultName);
@@ -770,22 +755,17 @@ describe('VaultManager', () => {
           await vaultOps.addSecret(firstVault, name, content);
         }
         await nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
+          ip: targetRevProxy.getIngressHost(),
+          port: targetRevProxy.getIngressPort(),
         } as NodeAddress);
         await targetNodeManager.setNode(nodeManager.getNodeId(), {
-          ip: sourceHostIn,
-          port: sourcePortIn,
+          ip: revProxy.getIngressHost(),
+          port: revProxy.getIngressPort(),
         } as NodeAddress);
-        await nodeManager.getConnectionToNode(targetNodeId);
-        await targetRevProxy.openConnection(sourceHost, sourcePort);
-        await revProxy.openConnection(targetHostOut, targetPortOut);
-        console.log(1);
         await targetVaultManager.shareVault(
           firstVault.vaultId,
           nodeManager.getNodeId(),
         );
-        console.log(2);
         await vaultManager.cloneVault(targetNodeId, vaultName);
         const vaultId = await vaultManager.getVaultId(vaultName);
         const vaultClone = await vaultManager.openVault(vaultId!);
@@ -803,6 +783,14 @@ describe('VaultManager', () => {
       'clone and pull vaults using a vault id',
       async () => {
         const firstVault = await targetVaultManager.createVault(vaultName);
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetRevProxy.getIngressHost(),
+          port: targetRevProxy.getIngressPort(),
+        } as NodeAddress);
+        await targetNodeManager.setNode(nodeManager.getNodeId(), {
+          ip: revProxy.getIngressHost(),
+          port: revProxy.getIngressPort(),
+        } as NodeAddress);
         await targetVaultManager.shareVault(
           firstVault.vaultId,
           nodeManager.getNodeId(),
@@ -814,12 +802,6 @@ describe('VaultManager', () => {
           const content = 'Success?';
           await vaultOps.addSecret(firstVault, name, content);
         }
-        await nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
-        } as NodeAddress);
-        await nodeManager.getConnectionToNode(targetNodeId);
-        await revProxy.openConnection(sourceHost, sourcePort);
         await vaultManager.cloneVault(targetNodeId, firstVault.vaultId);
         const vaultId = await vaultManager.getVaultId(vaultName);
         const vaultClone = await vaultManager.openVault(vaultId!);
@@ -852,13 +834,15 @@ describe('VaultManager', () => {
       'reject cloning and pulling when permissions are not set',
       async () => {
         const vault = await targetVaultManager.createVault(vaultName);
-        await vaultOps.addSecret(vault, 'MyFirstSecret', 'Success?');
         await nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
+          ip: targetRevProxy.getIngressHost(),
+          port: targetRevProxy.getIngressPort(),
         } as NodeAddress);
-        await nodeManager.getConnectionToNode(targetNodeId);
-        await revProxy.openConnection(sourceHost, sourcePort);
+        await targetNodeManager.setNode(nodeManager.getNodeId(), {
+          ip: revProxy.getIngressHost(),
+          port: revProxy.getIngressPort(),
+        } as NodeAddress);
+        await vaultOps.addSecret(vault, 'MyFirstSecret', 'Success?');
         await expect(() =>
           vaultManager.cloneVault(targetNodeId, vault.vaultId),
         ).rejects.toThrow(vaultErrors.ErrorVaultPermissionDenied);
@@ -890,6 +874,14 @@ describe('VaultManager', () => {
       'throw when encountering merge conflicts',
       async () => {
         const vault = await targetVaultManager.createVault(vaultName);
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetRevProxy.getIngressHost(),
+          port: targetRevProxy.getIngressPort(),
+        } as NodeAddress);
+        await targetNodeManager.setNode(nodeManager.getNodeId(), {
+          ip: revProxy.getIngressHost(),
+          port: revProxy.getIngressPort(),
+        } as NodeAddress);
         await targetVaultManager.shareVault(
           vault.vaultId,
           nodeManager.getNodeId()
@@ -902,12 +894,6 @@ describe('VaultManager', () => {
           await vaultOps.addSecret(vault, name, content);
         }
         await vaultOps.mkdir(vault, 'dir', { recursive: true });
-        await nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
-        } as NodeAddress);
-        await nodeManager.getConnectionToNode(targetNodeId);
-        await revProxy.openConnection(sourceHost, sourcePort);
         const cloneVault = await vaultManager.cloneVault(targetNodeId, vault.vaultId);
         await vaultOps.renameSecret(cloneVault, 'secret 4', 'secret 5');
         await vaultOps.renameSecret(vault, 'secret 4', 'causing merge conflict');
@@ -921,6 +907,30 @@ describe('VaultManager', () => {
       'clone and pull from other cloned vaults',
       async () => {
         const vault = await targetVaultManager.createVault(vaultName);
+        await nodeManager.setNode(targetNodeId, {
+          ip: targetRevProxy.getIngressHost(),
+          port: targetRevProxy.getIngressPort(),
+        } as NodeAddress);
+        await targetNodeManager.setNode(nodeManager.getNodeId(), {
+          ip: revProxy.getIngressHost(),
+          port: revProxy.getIngressPort(),
+        } as NodeAddress);
+        await nodeManager.setNode(altNodeId, {
+          ip: altRevProxy.getIngressHost(),
+          port: altRevProxy.getIngressPort(),
+        } as NodeAddress);
+        await altNodeManager.setNode(nodeManager.getNodeId(), {
+          ip: revProxy.getIngressHost(),
+          port: revProxy.getIngressPort(),
+        } as NodeAddress);
+        await altNodeManager.setNode(targetNodeId, {
+          ip: targetRevProxy.getIngressHost(),
+          port: targetRevProxy.getIngressPort(),
+        } as NodeAddress);
+        await targetNodeManager.setNode(altNodeId, {
+          ip: altRevProxy.getIngressHost(),
+          port: altRevProxy.getIngressPort(),
+        } as NodeAddress);
         await targetVaultManager.shareVault(
           vault.vaultId,
           altNodeManager.getNodeId(),
@@ -936,23 +946,11 @@ describe('VaultManager', () => {
           const content = 'Success?';
           await vaultOps.addSecret(vault, name, content);
         }
-        await altNodeManager.setNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
-        } as NodeAddress);
-        await altNodeManager.getConnectionToNode(targetNodeId);
-        await revProxy.openConnection(altHost, altPort);
         const clonedVaultAlt = await altVaultManager.cloneVault(targetNodeId, vault.vaultId);
         await altVaultManager.shareVault(
           clonedVaultAlt.vaultId,
           nodeManager.getNodeId()
         );
-        await nodeManager.setNode(altNodeId, {
-          ip: altHostIn,
-          port: altPortIn,
-        } as NodeAddress);
-        await nodeManager.getConnectionToNode(altNodeId);
-        await altRevProxy.openConnection(sourceHost, sourcePort);
         await vaultManager.cloneVault(altNodeId, clonedVaultAlt.vaultId);
         const vaultIdClone = await vaultManager.getVaultId(vaultName);
         const vaultClone = await vaultManager.openVault(vaultIdClone!);
@@ -965,12 +963,6 @@ describe('VaultManager', () => {
           const content = 'Success?';
           await vaultOps.addSecret(vault, name, content);
         }
-        await nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
-          port: targetPort,
-        } as NodeAddress);
-        await nodeManager.getConnectionToNode(targetNodeId);
-        await revProxy.openConnection(sourceHost, sourcePort);
         await vaultManager.pullVault({ vaultId: vaultClone.vaultId, pullNodeId: targetNodeId, pullVaultNameOrId: vault.vaultId });
         expect((await vaultOps.listSecrets(vaultClone)).sort()).toStrictEqual(
           names.sort(),

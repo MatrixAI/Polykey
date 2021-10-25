@@ -134,6 +134,7 @@ describe('GRPC agent', () => {
       db: db,
       acl: acl,
       gestaltGraph: gestaltGraph,
+      notificationsManager: notificationsManager,
       fs: fs,
       logger: logger,
     });
@@ -151,6 +152,7 @@ describe('GRPC agent', () => {
       nodeManager,
       sigchain,
       notificationsManager,
+      acl,
     });
     client = await testUtils.openTestAgentClient(port);
   }, global.polykeyStartupTimeout);

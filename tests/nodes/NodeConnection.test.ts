@@ -163,17 +163,6 @@ describe('NodeConnection', () => {
       fs: fs,
       logger: logger,
     });
-    serverVaultManager = await VaultManager.createVaultManager({
-      keyManager: serverKeyManager,
-      vaultsPath: serverVaultsPath,
-      nodeManager: serverNodeManager,
-      vaultsKey: serverKeyManager.vaultKey,
-      db: serverDb,
-      acl: serverACL,
-      gestaltGraph: serverGestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
     serverNotificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl: serverACL,
@@ -182,6 +171,18 @@ describe('NodeConnection', () => {
         keyManager: serverKeyManager,
         logger: logger,
       });
+    serverVaultManager = await VaultManager.createVaultManager({
+      keyManager: serverKeyManager,
+      vaultsPath: serverVaultsPath,
+      nodeManager: serverNodeManager,
+      vaultsKey: serverKeyManager.vaultKey,
+      db: serverDb,
+      acl: serverACL,
+      gestaltGraph: serverGestaltGraph,
+      notificationsManager: serverNotificationsManager,
+      fs: fs,
+      logger: logger,
+    });
     await serverDb.start();
     await serverGestaltGraph.setNode(node);
     await serverNodeManager.start();
@@ -191,6 +192,7 @@ describe('NodeConnection', () => {
       nodeManager: serverNodeManager,
       sigchain: serverSigchain,
       notificationsManager: serverNotificationsManager,
+      acl: serverACL,
     });
     server = await GRPCServer.createGRPCServer({
       logger: logger,

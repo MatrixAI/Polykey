@@ -11,6 +11,7 @@ import { NodeManager } from '@/nodes';
 import { promisify } from '@/utils';
 import { Sigchain } from '@/sigchain';
 import { NotificationsManager } from '@/notifications';
+import { ACL } from '@/acl';
 
 async function openTestAgentServer({
   keyManager,
@@ -18,12 +19,14 @@ async function openTestAgentServer({
   nodeManager,
   sigchain,
   notificationsManager,
+  acl,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   sigchain: Sigchain;
   notificationsManager: NotificationsManager;
+  acl: ACL;
 }) {
   const agentService: IAgentServer = createAgentService({
     keyManager,
@@ -31,6 +34,7 @@ async function openTestAgentServer({
     nodeManager,
     sigchain: sigchain,
     notificationsManager: notificationsManager,
+    acl: acl,
   });
 
   const server = new grpc.Server();

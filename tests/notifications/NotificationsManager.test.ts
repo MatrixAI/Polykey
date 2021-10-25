@@ -127,17 +127,6 @@ describe('NotificationsManager', () => {
       fs: fs,
       logger: logger,
     });
-    receiverVaultManager = await VaultManager.createVaultManager({
-      keyManager: receiverKeyManager,
-      vaultsPath: receiverVaultsPath,
-      nodeManager: receiverNodeManager,
-      vaultsKey: receiverKeyManager.vaultKey,
-      db: receiverDb,
-      acl: receiverACL,
-      gestaltGraph: receiverGestaltGraph,
-      fs: fs,
-      logger: logger,
-    });
     receiverNotificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl: receiverACL,
@@ -147,6 +136,18 @@ describe('NotificationsManager', () => {
         messageCap: 5,
         logger: logger,
       });
+    receiverVaultManager = await VaultManager.createVaultManager({
+      keyManager: receiverKeyManager,
+      vaultsPath: receiverVaultsPath,
+      nodeManager: receiverNodeManager,
+      vaultsKey: receiverKeyManager.vaultKey,
+      db: receiverDb,
+      acl: receiverACL,
+      gestaltGraph: receiverGestaltGraph,
+      notificationsManager: receiverNotificationsManager,
+      fs: fs,
+      logger: logger,
+    });
     receiverKeyPairPem = receiverKeyManager.getRootKeyPairPem();
     receiverCertPem = receiverKeyManager.getRootCertPem();
     receiverNodeId = networkUtils.certNodeId(receiverKeyManager.getRootCert());
@@ -164,6 +165,7 @@ describe('NotificationsManager', () => {
       nodeManager: receiverNodeManager,
       sigchain: receiverSigchain,
       notificationsManager: receiverNotificationsManager,
+      acl: receiverACL,
     });
     server = await GRPCServer.createGRPCServer({
       logger: logger,
