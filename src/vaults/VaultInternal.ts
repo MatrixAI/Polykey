@@ -344,7 +344,7 @@ class VaultInternal {
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
-  public async applySchema(vs) {}
+  public async applySchema() {}
 }
 
 export default VaultInternal;

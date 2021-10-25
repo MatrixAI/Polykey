@@ -1,4 +1,4 @@
-import type { NodeAddress, NodeId, NodeInfo } from '@/nodes/types';
+import type { NodeAddress, NodeInfo } from '@/nodes/types';
 import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { VaultName } from '@/vaults/types';

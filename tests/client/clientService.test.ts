@@ -33,7 +33,7 @@ import { ErrorSessionTokenInvalid } from '@/errors';
 import { checkAgentRunning } from '@/agent/utils';
 import { NotificationData } from '@/notifications/types';
 import { makeNodeId } from '@/nodes/utils';
-import { Vault, VaultId, VaultName } from '@/vaults/types';
+import { Vault, VaultName } from '@/vaults/types';
 import { vaultOps } from '@/vaults';
 import { makeVaultId, makeVaultIdPretty } from '@/vaults/utils';
 import { utils as idUtils } from '@matrixai/id';
