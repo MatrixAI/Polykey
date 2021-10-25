@@ -285,6 +285,16 @@ class Polykey {
         fs: fs_,
         logger: logger_.getChild('NodeManager'),
       }));
+    const notifications_ =
+      notificationsManager ??
+      (await NotificationsManager.createNotificationsManager({
+        acl: acl_,
+        db: db_,
+        nodeManager: nodes_,
+        keyManager: keys_,
+        logger: logger_.getChild('NotificationsManager'),
+        fresh,
+      }));
     const vaults_ =
       vaultManager ??
       (await VaultManager.createVaultManager({
@@ -293,6 +303,7 @@ class Polykey {
         vaultsKey: keys_.vaultKey,
         nodeManager: nodes_,
         gestaltGraph: gestalts_,
+        notificationsManager: notifications_,
         acl: acl_,
         db: db_,
         fs: fs_,
@@ -313,16 +324,6 @@ class Polykey {
         identitiesManager: identities_,
         nodeManager: nodes_,
         logger: logger_.getChild('Discovery'),
-      }));
-    const notifications_ =
-      notificationsManager ??
-      (await NotificationsManager.createNotificationsManager({
-        acl: acl_,
-        db: db_,
-        nodeManager: nodes_,
-        keyManager: keys_,
-        logger: logger_.getChild('NotificationsManager'),
-        fresh,
       }));
 
     const sessionManager = await SessionManager.createSessionManager({
@@ -471,6 +472,7 @@ class Polykey {
       nodeManager: this.nodes,
       sigchain: this.sigchain,
       notificationsManager: this.notifications,
+      acl: this.acl,
     });
 
     // Registering providers.

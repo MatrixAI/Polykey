@@ -67,6 +67,7 @@ class VaultManager {
     nodeManager,
     gestaltGraph,
     acl,
+    notificationsManager,
     db,
     fs,
     logger,
@@ -78,6 +79,7 @@ class VaultManager {
     nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     acl: ACL;
+    notificationsManager: NotificationsManager;
     db: DB;
     fs?: FileSystem;
     logger?: Logger;
@@ -110,6 +112,7 @@ class VaultManager {
       nodeManager,
       gestaltGraph,
       acl,
+      notificationsManager,
       db,
       vaultsKey,
       vaultsDbDomain,
@@ -127,6 +130,7 @@ class VaultManager {
     nodeManager,
     gestaltGraph,
     acl,
+    notificationsManager,
     db,
     vaultsKey,
     vaultsDbDomain,
@@ -141,6 +145,7 @@ class VaultManager {
     nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     acl: ACL;
+    notificationsManager: NotificationsManager;
     db: DB;
     vaultsKey: VaultKey;
     vaultsDbDomain: string;
@@ -155,6 +160,7 @@ class VaultManager {
     this.nodeManager = nodeManager;
     this.gestaltGraph = gestaltGraph;
     this.acl = acl;
+    this.notificationsManager = notificationsManager;
     this.db = db;
     this.vaultsDbDomain = vaultsDbDomain;
     this.vaultsNamesDbDomain = vaultsNamesDbDomain;
@@ -319,25 +325,31 @@ class VaultManager {
     if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
     return await this.gestaltGraph._transaction(async () => {
       return await this.acl._transaction(async () => {
-        const gestalt = await this.gestaltGraph.getGestaltByNode(nodeId);
-        if (gestalt == null) {
-          throw new gestaltErrors.ErrorGestaltsGraphNodeIdMissing();
-        }
-        const nodes = gestalt.nodes;
-        for (const node in nodes) {
-          await this.acl.setNodeAction(nodeId, 'scan');
-          await this.acl.setVaultAction(vaultId, nodes[node].id, 'pull');
-          await this.acl.setVaultAction(vaultId, nodes[node].id, 'clone');
-        }
-        await this.notificationsManager.sendNotification(nodeId, {
-          type: 'VaultShare',
-          vaultId: idUtils.toString(vaultId),
-          vaultName,
-          actions: {
-            clone: null,
-            pull: null,
-          },
-        });
+        await this.gestaltGraph.setGestaltActionByNode(nodeId, 'scan');
+        await this.acl.setVaultAction(vaultId, nodeId, 'pull');
+        await this.acl.setVaultAction(vaultId, nodeId, 'clone');
+        // await this.notificationsManager.sendNotification(nodeId, {
+        //   type: 'VaultShare',
+        //   vaultId: idUtils.toString(vaultId),
+        //   vaultName,
+        //   actions: {
+        //     clone: null,
+        //     pull: null,
+        //   },
+        // });
+      });
+    });
+  }
+
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  public async unshareVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
+    const vaultName = await this.getVaultName(vaultId);
+    if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
+    return await this.gestaltGraph._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        await this.gestaltGraph.unsetGestaltActionByNode(nodeId, 'scan');
+        await this.acl.unsetVaultAction(vaultId, nodeId, 'pull');
+        await this.acl.unsetVaultAction(vaultId, nodeId, 'clone');
       });
     });
   }
@@ -348,6 +360,7 @@ class VaultManager {
     vaultNameOrId: VaultId | VaultName,
   ): Promise<Vault> {
     let vaultName, remoteVaultId;
+    const thisNodeId = this.nodeManager.getNodeId();
     const nodeConnection = await this.nodeManager.getConnectionToNode(nodeId);
     const client = nodeConnection.getClient();
     const vaultId = await this.generateVaultId();
@@ -373,12 +386,15 @@ class VaultManager {
           const infoResponse = {
             async *[Symbol.iterator]() {
               const request = new agentPB.InfoRequest();
+              const meta = new grpc.Metadata();
+              meta.set('nodeId', thisNodeId);
+              meta.set('action', 'clone');
               if (typeof vaultNameOrId === 'string') {
                 request.setVaultId(vaultNameOrId);
               } else {
                 request.setVaultId(idUtils.toString(vaultNameOrId));
               }
-              const response = client.vaultsGitInfoGet(request);
+              const response = client.vaultsGitInfoGet(request, meta);
               response.stream.on('metadata', async (meta) => {
                 vaultName = meta.get('vaultName').pop()!.toString();
                 remoteVaultId = makeVaultId(
@@ -494,6 +510,7 @@ class VaultManager {
   }): Promise<Vault> {
     let metaChange = 0;
     let vaultMeta, remoteVaultId;
+    const thisNodeId = this.nodeManager.getNodeId();
     return await this._transaction(async () => {
       if (pullNodeId == null || pullVaultNameOrId == null) {
         vaultMeta = await this.db.get<POJO>(
@@ -539,12 +556,15 @@ class VaultManager {
           const infoResponse = {
             async *[Symbol.iterator]() {
               const request = new agentPB.InfoRequest();
+              const meta = new grpc.Metadata();
+              meta.set('nodeId', thisNodeId);
+              meta.set('action', 'clone');
               if (typeof pullVaultNameOrId === 'string') {
                 request.setVaultId(pullVaultNameOrId);
               } else {
                 request.setVaultId(idUtils.toString(pullVaultNameOrId!));
               }
-              const response = client.vaultsGitInfoGet(request);
+              const response = client.vaultsGitInfoGet(request, meta);
               response.stream.on('metadata', async (meta) => {
                 remoteVaultId = makeVaultId(
                   meta.get('vaultId').pop()!.toString(),

@@ -27,6 +27,8 @@ import { utils as claimsUtils, errors as claimsErrors } from '../claims';
 import { makeVaultId, makeVaultIdPretty } from '../vaults/utils';
 import { makeNodeId } from '../nodes/utils';
 import { utils as idUtils } from '@matrixai/id';
+import { ACL } from '../acl';
+import { NodeId } from '@/nodes/types';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -39,12 +41,15 @@ function createAgentService({
   nodeManager,
   notificationsManager,
   sigchain,
+  acl,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
   sigchain: Sigchain;
   notificationsManager: NotificationsManager;
+  acl: ACL;
+
 }): IAgentServer {
   const agentService: IAgentServer = {
     echo: async (
@@ -61,21 +66,34 @@ function createAgentService({
       const genWritable = grpcUtils.generatorWritable(call);
       const request = call.request;
       const vaultNameOrId = request.getVaultId();
-      let vaultId, vaultName;
+      let vaultName;
+      let vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
+      if (!vaultId) {
+        try {
+          vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
+          vaultName = await vaultManager.getVaultName(vaultId);
+        } catch (err) {
+          throw new vaultsErrors.ErrorVaultUndefined;
+        }
+      } else {
+        vaultName = vaultNameOrId;
+      }
+      await vaultManager.openVault(vaultId);
+      const metaIn = call.metadata;
+      const nodeId = metaIn.get('nodeId').pop()!.toString() as NodeId;
+      const actionType = metaIn.get('action').pop()!.toString();
+      const perms = await acl.getNodePerm(nodeId);
+      if (!perms) {
+        throw new vaultsErrors.ErrorVaultPermissionDenied;
+      }
+      let vaultPerms = perms.vaults[idUtils.toString(vaultId)];
       try {
-        vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
-        await vaultManager.openVault(vaultId);
-        vaultName = await vaultManager.getVaultName(vaultId);
+        vaultPerms[actionType]
       } catch (err) {
-        if (err instanceof vaultsErrors.ErrorVaultUndefined) {
-          vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
-          await vaultManager.openVault(vaultId);
-          vaultName = vaultNameOrId;
-        } else {
-          throw err;
+        if (err instanceof TypeError) {
+          throw new vaultsErrors.ErrorVaultPermissionDenied;
         }
       }
-      // TODO: Check the permissions here
       const meta = new grpc.Metadata();
       meta.set('vaultName', vaultName);
       meta.set('vaultId', makeVaultIdPretty(vaultId));
@@ -107,22 +125,15 @@ function createAgentService({
         const vaultNameOrId = meta.get('vaultNameOrId').pop()!.toString();
         if (vaultNameOrId == null)
           throw new ErrorGRPC('vault-name not in metadata.');
-        let vaultId;
-        try {
-          vaultId = makeVaultId(vaultNameOrId);
-          await vaultManager.openVault(vaultId);
-        } catch (err) {
-          if (
-            err instanceof vaultsErrors.ErrorVaultUndefined ||
-            err instanceof SyntaxError
-          ) {
-            vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
-            await vaultManager.openVault(vaultId);
-          } else {
-            throw err;
+        let vaultId = await vaultManager.getVaultId(vaultNameOrId as VaultName);
+        if (!vaultId) {
+          try {
+            vaultId = makeVaultId(vaultNameOrId);
+          } catch (err) {
+            throw new vaultsErrors.ErrorVaultUndefined;
           }
         }
-        // TODO: Check the permissions here
+        await vaultManager.openVault(vaultId);
         const response = new agentPB.PackChunk();
         const [sideBand, progressStream] = await vaultManager.handlePackRequest(
           vaultId,

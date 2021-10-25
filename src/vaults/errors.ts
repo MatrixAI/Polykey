@@ -40,6 +40,8 @@ class ErrorVaultCommitUndefined extends ErrorVaults {
   exitCode: number = 10;
 }
 
+class ErrorVaultPermissionDenied extends ErrorVaults {}
+
 class ErrorSecretUndefined extends ErrorSecrets {}
 
 class ErrorSecretDefined extends ErrorSecrets {}
@@ -65,6 +67,7 @@ export {
   ErrorInvalidVaultId,
   ErrorVaultMergeConflict,
   ErrorVaultCommitUndefined,
+  ErrorVaultPermissionDenied,
   ErrorSecretUndefined,
   ErrorSecretDefined,
   ErrorReadingSecret,
