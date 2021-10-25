@@ -1,4 +1,5 @@
 import type { FileSystem } from './types';
+import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { Host, Port } from './network/types';
 
 import path from 'path';
@@ -17,7 +18,6 @@ import { Sigchain } from './sigchain';
 import { ACL } from './acl';
 import { DB } from '@matrixai/db';
 import { Discovery } from './discovery';
-import { WorkerManager } from './workers';
 import { SessionManager } from './sessions';
 import { certNodeId } from './network/utils';
 import { IdentitiesManager } from './identities';
@@ -30,6 +30,7 @@ import { GithubProvider } from './identities/providers';
 import config from './config';
 import { ErrorStateVersionMismatch } from './errors';
 import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { createWorkerManager } from './workers/utils';
 
 interface Polykey extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
@@ -46,7 +47,7 @@ class Polykey {
   public readonly gestalts: GestaltGraph;
   public readonly identities: IdentitiesManager;
   public readonly notifications: NotificationsManager;
-  public readonly workers?: WorkerManager;
+  public readonly workers?: PolykeyWorkerManagerInterface;
   public readonly sigchain: Sigchain;
   public readonly acl: ACL;
   public readonly db: DB;
@@ -111,7 +112,7 @@ class Polykey {
     notificationsManager?: NotificationsManager;
     acl?: ACL;
     db?: DB;
-    workerManager?: WorkerManager | null;
+    workerManager?: PolykeyWorkerManagerInterface | null;
     clientGrpcHost?: string;
     agentGrpcHost?: string;
     clientGrpcPort?: number;
@@ -193,12 +194,12 @@ class Polykey {
     // Writing current version info.
     await fs_.promises.writeFile(versionFilePath, JSON.stringify(config));
 
-    let workers_: WorkerManager | undefined = undefined;
+    let workers_: PolykeyWorkerManagerInterface | undefined = undefined;
     if (workerManager !== null) {
       logger_.info('Creating a WorkerManager');
       workers_ =
         workerManager ??
-        (await WorkerManager.createPolykeyWorkerManager({
+        (await createWorkerManager({
           cores,
           logger: logger_.getChild('WorkerManager'),
         }));
@@ -298,7 +299,11 @@ class Polykey {
         fs: fs_,
         logger: logger_.getChild('VaultManager'),
       }));
-    // Vaults_.setWorkerManager(workers_); FIXME, need to be able to set this.
+    // Setting the workerManager for vaults.
+    if (workers_ != null) {
+      logger_.info('Setting workerManager for vaults');
+      vaults_.setWorkerManager(workers_);
+    }
     const identities_ =
       identitiesManager ??
       (await IdentitiesManager.createIdentitiesManager({
@@ -400,7 +405,7 @@ class Polykey {
     notificationsManager: NotificationsManager;
     acl: ACL;
     db: DB;
-    workerManager?: WorkerManager;
+    workerManager?: PolykeyWorkerManagerInterface;
     clientGrpcHost: string;
     agentGrpcHost: string;
     clientGrpcPort: number;
@@ -583,12 +588,14 @@ class Polykey {
     await this.revProxy.stop();
     await this.fwdProxy.stop();
     await this.db.stop();
-    this.keys.unsetWorkerManager();
     this.logger.info('Stopped Polykey');
   }
 
   public async destroy() {
     this.logger.info('Destroying Polykey');
+    this.keys.unsetWorkerManager();
+    this.db.unsetWorkerManager();
+    this.vaults.unsetWorkerManager();
     await this.agentGrpcServer.destroy();
     await this.clientGrpcServer.destroy();
     await this.sessions.destroy();

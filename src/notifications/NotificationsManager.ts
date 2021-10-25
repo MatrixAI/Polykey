@@ -9,7 +9,6 @@ import type { DB, DBLevel } from '@matrixai/db';
 import type { KeyManager } from '../keys';
 import type { NodeManager } from '../nodes';
 import type { NodeId } from '../nodes/types';
-import type { WorkerManager } from '../workers';
 
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
@@ -34,7 +33,6 @@ class NotificationsManager {
   protected db: DB;
   protected keyManager: KeyManager;
   protected nodeManager: NodeManager;
-  protected workerManager?: WorkerManager;
 
   protected messageCap: number;
 

@@ -8,8 +8,8 @@ import type {
   Vault,
 } from './types';
 import type { FileSystem } from '../types';
-import type { WorkerManager } from '../workers';
 import type { NodeId } from '../nodes/types';
+import type { PolykeyWorkerManagerInterface } from '../workers/types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
@@ -50,7 +50,6 @@ class VaultManager {
   protected efs: EncryptedFS;
   protected db: DB;
   protected logger: Logger;
-  protected workerManager?: WorkerManager;
   protected vaultsKey: VaultKey;
   protected vaultsMap: VaultMap;
   protected vaultsDbDomain: string;
@@ -165,6 +164,14 @@ class VaultManager {
     this.fs = fs ?? require('fs');
     this.vaultsKey = vaultsKey;
     this.logger = logger ?? new Logger(this.constructor.name);
+  }
+
+  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
+    this.efs.setWorkerManager(workerManager);
+  }
+
+  public unsetWorkerManager() {
+    this.efs.unsetWorkerManager();
   }
 
   public async transaction<T>(

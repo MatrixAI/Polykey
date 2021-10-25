@@ -6,8 +6,8 @@ import type {
   CertificatePemChain,
 } from './types';
 import type { FileSystem } from '../types';
-import type { WorkerManager } from '../workers';
 import type { NodeId } from '../nodes/types';
+import type { PolykeyWorkerManagerInterface } from '../workers/types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
@@ -38,7 +38,7 @@ class KeyManager {
   protected _dbKey: Buffer;
   protected _vaultKey: Buffer;
   protected rootCert: Certificate;
-  protected workerManager?: WorkerManager;
+  protected workerManager?: PolykeyWorkerManagerInterface;
 
   static async createKeyManager({
     keysPath,
@@ -93,7 +93,7 @@ class KeyManager {
     this.vaultKeyPath = path.join(keysPath, 'vault.key');
   }
 
-  public setWorkerManager(workerManager: WorkerManager) {
+  public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
     this.workerManager = workerManager;
   }
 
