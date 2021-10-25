@@ -1,7 +1,8 @@
-import type { NodeId, NodeData } from './types';
+import type { NodeData, NodeId } from './types';
 
 import { Validator } from 'ip-num';
-import { isIdString, makeIdString } from '../GenericIdTypes';
+import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
+import { ErrorInvalidNodeId } from './errors';
 
 /**
  * Compute the distance between two nodes.
@@ -77,13 +78,12 @@ function isValidHost(host: string): boolean {
 /**
  * Node ID to an array of 8-bit unsigned ints
  */
-function nodeIdToU8(id: string) {
-  const b = Buffer.from(id, 'ascii');
-  return new Uint8Array(
-    b.buffer,
-    b.byteOffset,
-    b.byteLength / Uint8Array.BYTES_PER_ELEMENT,
-  );
+function nodeIdToU8(id: string): Uint8Array {
+  // Converting from the multibase string to a buffer of hopefully 32 bytes.
+  console.log(id);
+  const byteArray = fromMultibase(id);
+  if (byteArray == null) throw new ErrorInvalidNodeId()
+  return byteArray;
 }
 
 /**

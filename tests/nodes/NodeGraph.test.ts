@@ -13,12 +13,18 @@ import { ForwardProxy, ReverseProxy } from '@/network';
 import { DB } from '@matrixai/db';
 import { Sigchain } from '@/sigchain';
 import { makeCrypto } from '../utils';
+import { makeNodeId } from '@/nodes/utils';
 
 // FIXME, some of these tests fail randomly.
 describe('NodeGraph', () => {
   const password = 'password';
   let nodeGraph: NodeGraph;
   let nodeId: NodeId;
+
+  const nodeId1 = makeNodeId('vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0');
+  const nodeId2 = makeNodeId('vrcacp9vsb4ht25hds6s4lpp2abfaso0mptcfnh499n35vfcn2gkg');
+  const nodeId3 = makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug');
+  const dummyNode = makeNodeId('vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0');
 
   const logger = new Logger('NodeGraph Test', LogLevel.WARN, [
     new StreamHandler(),
@@ -30,6 +36,16 @@ describe('NodeGraph', () => {
   let db: DB;
   let nodeManager: NodeManager;
   let sigchain: Sigchain;
+
+  const nodeIdGenerator = (number: number ) => {
+    const idArray = new Uint8Array([
+      223,  24,  34,  40,  46, 217,  4,  71,
+      103,  71,  59, 123, 143, 187,  9,  29,
+      157,  41, 131,  44,  68, 160, 79, 127,
+      137, 154, 221,  86, 157,  23, 77, number
+    ]);
+    return makeNodeId(idArray);
+  }
 
   beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -97,7 +113,7 @@ describe('NodeGraph', () => {
 
   test('finds correct node address', async () => {
     // New node added
-    const newNode2Id = 'NODEID2' as NodeId;
+    const newNode2Id = nodeId1;
     const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
@@ -107,12 +123,12 @@ describe('NodeGraph', () => {
   });
   test('unable to find node address', async () => {
     // New node added
-    const newNode2Id = 'NODEID2' as NodeId;
+    const newNode2Id = nodeId1;
     const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Get node address (of non-existent node)
-    const foundAddress = await nodeGraph.getNode('NONEXISTING' as NodeId);
+    const foundAddress = await nodeGraph.getNode(dummyNode);
     expect(foundAddress).toBeUndefined();
   });
   test('adds a single node into a bucket', async () => {
@@ -173,6 +189,7 @@ describe('NodeGraph', () => {
     const newNode1Address = { ip: '1.1.1.1', port: 1111 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
     // New node for bucket 351 (the highest possible bucket)
+    console.log(nodeId)
     const newNode2Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 351);
     const newNode2Address = { ip: '2.2.2.2', port: 2222 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
@@ -417,7 +434,7 @@ describe('NodeGraph', () => {
     let nodeCount = 0;
     for (const b of newBuckets) {
       for (const n of Object.keys(b)) {
-        const nodeId = n as NodeId;
+        const nodeId = makeNodeId(n);
         // Check that it was a node in the original DB
         expect(initialNodes[nodeId]).toBeDefined();
         // Check it's in the correct bucket
@@ -441,14 +458,14 @@ describe('NodeGraph', () => {
   });
   test('finds a single closest node', async () => {
     // New node added
-    const newNode2Id = 'NODEID2' as NodeId;
+    const newNode2Id = nodeId1;
     const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Find the closest nodes to some node, NODEID3
-    const closest = await nodeGraph.getClosestLocalNodes('NODEID3' as NodeId);
+    const closest = await nodeGraph.getClosestLocalNodes(nodeId3);
     expect(closest).toContainEqual({
-      id: 'NODEID2',
+      id: newNode2Id,
       distance: 1n,
       address: { ip: '227.1.1.1', port: 4567 },
     });
@@ -456,33 +473,33 @@ describe('NodeGraph', () => {
   test('finds 3 closest nodes', async () => {
     // Add 3 nodes
     await nodeGraph.setNode(
-      'NODEID2' as NodeId,
+      nodeId1,
       { ip: '2.2.2.2', port: 2222 } as NodeAddress,
     );
     await nodeGraph.setNode(
-      'NODEID3' as NodeId,
+      nodeId2,
       { ip: '3.3.3.3', port: 3333 } as NodeAddress,
     );
     await nodeGraph.setNode(
-      'NODEID4' as NodeId,
+      nodeId3,
       { ip: '4.4.4.4', port: 4444 } as NodeAddress,
     );
 
     // Find the closest nodes to some node, NODEID4
-    const closest = await nodeGraph.getClosestLocalNodes('NODEID4' as NodeId);
+    const closest = await nodeGraph.getClosestLocalNodes(nodeId3);
     expect(closest.length).toBe(3);
     expect(closest).toContainEqual({
-      id: 'NODEID4',
+      id: nodeId3,
       distance: 0n,
       address: { ip: '4.4.4.4', port: 4444 },
     });
     expect(closest).toContainEqual({
-      id: 'NODEID2',
+      id: nodeId1,
       distance: 6n,
       address: { ip: '2.2.2.2', port: 2222 },
     });
     expect(closest).toContainEqual({
-      id: 'NODEID3',
+      id: nodeId2,
       distance: 7n,
       address: { ip: '3.3.3.3', port: 3333 },
     });
@@ -510,7 +527,7 @@ describe('NodeGraph', () => {
     }
     // Now create and add 10 more nodes that are far away from this node
     for (let i = 1; i <= 10; i++) {
-      const farNodeId = ('NODEID' + i) as NodeId;
+      const farNodeId = nodeIdGenerator(i);
       const nodeAddress = {
         ip: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,

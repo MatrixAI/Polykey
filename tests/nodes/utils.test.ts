@@ -51,7 +51,7 @@ describe('Nodes utils', () => {
   });
   test('testing type guard.', async () => {
     const invalidNodeId = 'invalid!!';
-    const validNodeIdString = 'A'.repeat(44);
+    const validNodeIdString = 'vh3jik6l5ntqj9er9t3n1330e46pmh27btroh3b8hsc5i9qt71di0';
     const validNodeId = validNodeIdString as NodeId;
     expect(isNodeId(validNodeIdString)).toBeTruthy();
     expect(isNodeId(makeNodeId(validNodeIdString))).toBeTruthy();

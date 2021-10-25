@@ -102,6 +102,7 @@
     "threads": "^1.6.5",
     "ts-custom-error": "^3.2.0",
     "utp-native": "^2.5.3",
+    "multiformats": "^9.4.8",
     "uuid": "^8.3.0"
   },
   "devDependencies": {
