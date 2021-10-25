@@ -6,12 +6,12 @@ import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import * as testPB from '@/proto/js/Test_pb';
 import { openTestServer, closeTestServer, GRPCClientTest } from '../grpc/utils';
 
-describe('index', () => {
+describe('network index', () => {
   const logger = new Logger('Network Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   test('integration of forward and reverse proxy', async () => {
-    // client keys
+    // Client keys
     const clientKeyPair = await keysUtils.generateKeyPair(4096);
     const clientKeyPairPem = keysUtils.keyPairToPem(clientKeyPair);
     const clientCert = keysUtils.generateCertificate(
@@ -22,7 +22,7 @@ describe('index', () => {
     );
     const clientCertPem = keysUtils.certToPem(clientCert);
     const clientNodeId = networkUtils.certNodeId(clientCert);
-    // server keys
+    // Server keys
     const serverKeyPair = await keysUtils.generateKeyPair(4096);
     const serverKeyPairPem = keysUtils.keyPairToPem(serverKeyPair);
     const serverCert = keysUtils.generateCertificate(
@@ -34,7 +34,7 @@ describe('index', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const [server, serverPort] = await openTestServer();
-    const revProxy = new ReverseProxy({ logger });
+    const revProxy = await ReverseProxy.createReverseProxy({ logger });
     await revProxy.start({
       ingressHost: '127.0.0.1' as Host,
       ingressPort: 0 as Port,
@@ -45,7 +45,7 @@ describe('index', () => {
         certChainPem: serverCertPem,
       },
     });
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
       logger,
     });
@@ -74,15 +74,15 @@ describe('index', () => {
     const m = new testPB.EchoMessage();
     const challenge = 'Hello!';
     m.setChallenge(challenge);
-    // unary call
+    // Unary call
     const unaryResponse = await client.unary(m);
     expect(unaryResponse.getChallenge()).toBe(m.getChallenge());
-    // server stream
+    // Server stream
     const serverStream = client.serverStream(m);
     for await (const m_ of serverStream) {
       expect(m_.getChallenge()).toBe(m.getChallenge());
     }
-    // client stream
+    // Client stream
     const [clientStream, clientStreamResponseP] = client.clientStream();
     for (let i = 0; i < 5; i++) {
       await clientStream.next(m);
@@ -92,7 +92,7 @@ describe('index', () => {
     expect(clientStreamResponse.getChallenge().length).toBe(
       m.getChallenge().length * 5,
     );
-    // duplex stream
+    // Duplex stream
     const duplexStream = client.duplexStream();
     await duplexStream.write(m);
     await duplexStream.write(null);
@@ -101,7 +101,7 @@ describe('index', () => {
     if (!duplexStreamResponse.done) {
       expect(duplexStreamResponse.value.getChallenge()).toBe(m.getChallenge());
     }
-    // ensure that the connection count is the same
+    // Ensure that the connection count is the same
     expect(fwdProxy.getConnectionCount()).toBe(1);
     expect(revProxy.getConnectionCount()).toBe(1);
     expect(

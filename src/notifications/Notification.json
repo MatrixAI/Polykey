@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "senderId": {
+      "type":"string"
+    },
+    "isRead": {
+      "type": "boolean"
+    },
+    "data": {
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/definitions/General" },
+        { "$ref": "#/definitions/GestaltInvite" },
+        { "$ref": "#/definitions/VaultShare" }
+      ],
+      "required": ["type"]
+    }
+  },
+  "required": [
+    "data",
+    "senderId",
+    "isRead"
+  ],
+  "definitions": {
+    "General": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "General"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type", "message"]
+    },
+    "GestaltInvite": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "GestaltInvite"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "VaultShare": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "VaultShare"
+        },
+        "vaultId": {
+          "type": "string"
+        },
+        "vaultName": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "object",
+          "required": []
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type", "vaultId", "vaultName", "actions"]
+    }
+  }
+}

@@ -4,12 +4,12 @@ import type { NodeId } from '../nodes/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import lockfile from 'proper-lockfile';
-
 import * as utils from '../utils';
-import { ErrorPolykey } from '@/errors';
+import { ErrorPolykey } from '../errors';
+
+const LOCKFILE_NAME = 'agent-lock.json';
 
 class Lockfile {
-  public static readonly LOCKFILE_NAME = 'agent-lock.json';
   public readonly nodePath: string;
   public readonly lockPath: string;
 
@@ -17,6 +17,7 @@ class Lockfile {
   protected fs: FileSystem;
   protected logger: Logger;
 
+  private _started: boolean;
   private release: () => Promise<void>;
 
   constructor({
@@ -26,7 +27,7 @@ class Lockfile {
   }: { nodePath?: string; fs?: FileSystem; logger?: Logger } = {}) {
     this.fs = fs ?? require('fs');
     this.nodePath = nodePath ?? utils.getDefaultNodePath();
-    this.lockPath = path.join(this.nodePath, Lockfile.LOCKFILE_NAME);
+    this.lockPath = path.join(this.nodePath, LOCKFILE_NAME);
     this.logger = logger ?? new Logger('Lockfile');
   }
 
@@ -53,6 +54,7 @@ class Lockfile {
 
     await this.writeLockfile();
     this.release = await lockfile.lock(this.lockPath);
+    this._started = true;
   }
 
   /**
@@ -67,7 +69,13 @@ class Lockfile {
   }
 
   public async stop() {
-    await this.deleteLock();
+    if (this._started) {
+      this.logger.info(
+        `Deleting lockfile from ${path.join(this.nodePath, 'agent-lock.json')}`,
+      );
+      await this.deleteLock();
+    }
+    this._started = false;
   }
 
   /**
@@ -133,4 +141,5 @@ class Lockfile {
   }
 }
 
+export { LOCKFILE_NAME };
 export default Lockfile;

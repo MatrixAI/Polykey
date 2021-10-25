@@ -4,8 +4,7 @@
     "commonjs": true,
     "es6": true,
     "node": true,
-    "jest": true,
-    "jasmine": true
+    "jest": true
   },
   "parser": "@typescript-eslint/parser",
   "extends": [
@@ -19,6 +18,9 @@
     "sourceType": "module",
     "ecmaVersion": 2020
   },
+  "globals": {
+    "fail": "readonly"
+  },
   "rules": {
     "linebreak-style": ["error", "unix"],
     "no-empty": 1,
@@ -26,16 +28,67 @@
     "no-useless-catch": 1,
     "no-prototype-builtins": 1,
     "no-constant-condition": 0,
+    "no-useless-escape" : 0,
+    "no-console": "error",
+    "eqeqeq": ["error", "smart"],
+    "capitalized-comments": [
+      "warn",
+      "always",
+      {
+        "ignoreInlineComments": true,
+        "ignoreConsecutiveComments": true
+      }
+    ],
     "@typescript-eslint/no-namespace": 0,
     "@typescript-eslint/no-explicit-any": 0,
     "@typescript-eslint/explicit-module-boundary-types": 0,
-    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_"
+      }
+    ],
     "@typescript-eslint/no-inferrable-types": 0,
     "@typescript-eslint/no-non-null-assertion": 0,
     "@typescript-eslint/no-this-alias": 0,
     "@typescript-eslint/no-var-requires": 0,
     "@typescript-eslint/ban-ts-comment": 0,
     "@typescript-eslint/no-empty-function": 0,
-    "no-useless-escape" : 0
+    "@typescript-eslint/no-empty-interface": 0,
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "default",
+        "format": ["camelCase"],
+        "leadingUnderscore": "allow",
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "variable",
+        "format": ["camelCase", "UPPER_CASE"],
+        "leadingUnderscore": "allow",
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "parameter",
+        "format": ["camelCase"],
+        "leadingUnderscore": "allow",
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "typeLike",
+        "format": ["PascalCase"],
+        "trailingUnderscore": "allowSingleOrDouble"
+      },
+      {
+        "selector": "objectLiteralProperty",
+        "format": null
+      },
+      {
+        "selector": "typeProperty",
+        "format": null
+      }
+    ]
   }
 }

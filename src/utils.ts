@@ -1,8 +1,9 @@
 import os from 'os';
 import process from 'process';
 import { Buffer } from 'buffer';
-import * as errors from './errors';
 import { FileSystem, Timer } from './types';
+
+import * as errors from './errors';
 
 function getDefaultNodePath(): string {
   const prefix = 'polykey';
@@ -59,7 +60,7 @@ function promisify<T>(f): (...args: any[]) => Promise<T> {
   return function <T>(...args): Promise<T> {
     return new Promise((resolve, reject) => {
       const callback = (error, ...values) => {
-        if (error) {
+        if (error != null) {
           return reject(error);
         }
         return resolve(values.length === 1 ? values[0] : values);
@@ -121,6 +122,19 @@ function pidIsRunning(pid: number) {
   }
 }
 
+function arraySet<T>(items: Array<T>, item: T) {
+  if (items.indexOf(item) === -1) {
+    items.push(item);
+  }
+}
+
+function arrayUnset<T>(items: Array<T>, item: T) {
+  const itemIndex = items.indexOf(item);
+  if (itemIndex !== -1) {
+    items.splice(itemIndex, 1);
+  }
+}
+
 export {
   getDefaultNodePath,
   mkdirExists,
@@ -134,4 +148,6 @@ export {
   timerStop,
   promise,
   pidIsRunning,
+  arraySet,
+  arrayUnset,
 };

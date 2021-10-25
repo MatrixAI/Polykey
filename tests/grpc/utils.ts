@@ -6,6 +6,8 @@ import { GRPCClient, utils as grpcUtils, errors as grpcErrors } from '@/grpc';
 import * as testPB from '@/proto/js/Test_pb';
 import { TestService, ITestServer, TestClient } from '@/proto/js/Test_grpc_pb';
 import { promisify } from '@/utils';
+import { Host, Port, ProxyConfig } from '@/network/types';
+import Logger from '@matrixai/logger';
 
 /**
  * Test GRPC service
@@ -17,7 +19,7 @@ const testService: ITestServer = {
   ): Promise<void> => {
     const challenge = call.request.getChallenge();
     if (challenge === 'error') {
-      // if the challenge was error
+      // If the challenge was error
       // we'll send back an error
       callback(
         grpcUtils.fromError(
@@ -25,7 +27,7 @@ const testService: ITestServer = {
         ),
       );
     } else {
-      // otherwise we will echo the challenge
+      // Otherwise we will echo the challenge
       const message = new testPB.EchoMessage();
       message.setChallenge(challenge);
       callback(null, message);
@@ -43,13 +45,13 @@ const testService: ITestServer = {
         new grpcErrors.ErrorGRPC('test error', { grpc: true }),
       );
     } else {
-      // will send back a number of messsage
+      // Will send back a number of messsage
       // equal to the character length of the challenge string
       for (let i = 0; i < messageFrom.getChallenge().length; i++) {
         messageTo.setChallenge(messageFrom.getChallenge());
         await genWritable.next(messageTo);
       }
-      // finish the writing
+      // Finish the writing
       await genWritable.next(null);
     }
   },
@@ -65,7 +67,7 @@ const testService: ITestServer = {
         data += d;
       }
     } catch (e) {
-      // reflect the error back
+      // Reflect the error back
       callback(e, null);
     }
     const response = new testPB.EchoMessage();
@@ -77,9 +79,9 @@ const testService: ITestServer = {
   ) => {
     const genDuplex = grpcUtils.generatorDuplex(call);
     const readStatus = await genDuplex.read();
-    // if nothing to read, end and destroy
+    // If nothing to read, end and destroy
     if (readStatus.done) {
-      // it is not possible to write once read is done
+      // It is not possible to write once read is done
       // in fact the stream is destroyed
       await genDuplex.next(null);
       return;
@@ -92,16 +94,38 @@ const testService: ITestServer = {
     } else {
       const outgoingMessage = new testPB.EchoMessage();
       outgoingMessage.setChallenge(incomingMessage.getChallenge());
-      // write 2 messages
+      // Write 2 messages
       await genDuplex.write(outgoingMessage);
       await genDuplex.write(outgoingMessage);
-      // end and destroy
+      // End and destroy
       await genDuplex.next(null);
     }
   },
 };
 
 class GRPCClientTest extends GRPCClient<TestClient> {
+  constructor({
+    nodeId,
+    host,
+    port,
+    proxyConfig,
+    logger,
+  }: {
+    nodeId: NodeId;
+    host: Host;
+    port: Port;
+    proxyConfig?: ProxyConfig;
+    logger: Logger;
+  }) {
+    super({
+      nodeId,
+      host,
+      port,
+      proxyConfig,
+      logger,
+    });
+  }
+
   public async start({
     tlsConfig,
     timeout = Infinity,
@@ -193,7 +217,7 @@ async function openTestClientSecure(
   certChainPem,
 ): Promise<TestClient> {
   const clientOptions = {
-    // prevents complaints with having an ip address as the server name
+    // Prevents complaints with having an ip address as the server name
     'grpc.ssl_target_name_override': nodeId,
   };
   const clientCredentials = grpcUtils.clientSecureCredentials(

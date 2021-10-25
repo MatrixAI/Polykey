@@ -2,24 +2,18 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorGestalts extends ErrorPolykey {}
 
-class ErrorGestaltsGraphKeyRead extends ErrorGestalts {}
+class ErrorGestaltsGraphDestroyed extends ErrorGestalts {}
 
-class ErrorGestaltsGraphKeyWrite extends ErrorGestalts {}
+class ErrorGestaltsGraphNodeIdMissing extends ErrorGestalts {}
 
-class ErrorGestaltsGraphKeyParse extends ErrorGestalts {}
+class ErrorGestaltsGraphIdentityIdMissing extends ErrorGestalts {}
 
-class ErrorGestaltsGraphNotStarted extends ErrorGestalts {}
-
-class ErrorGestaltsGraphValueDecrypt extends ErrorGestalts {}
-
-class ErrorGestaltsGraphValueParse extends ErrorGestalts {}
+class ErrorGestaltsInvalidAction extends ErrorGestalts {}
 
 export {
   ErrorGestalts,
-  ErrorGestaltsGraphNotStarted,
-  ErrorGestaltsGraphKeyRead,
-  ErrorGestaltsGraphKeyWrite,
-  ErrorGestaltsGraphKeyParse,
-  ErrorGestaltsGraphValueDecrypt,
-  ErrorGestaltsGraphValueParse,
+  ErrorGestaltsGraphDestroyed,
+  ErrorGestaltsGraphNodeIdMissing,
+  ErrorGestaltsGraphIdentityIdMissing,
+  ErrorGestaltsInvalidAction,
 };

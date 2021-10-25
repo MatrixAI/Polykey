@@ -4,6 +4,8 @@ class ErrorGRPC extends ErrorPolykey {}
 
 class ErrorGRPCClientNotStarted extends ErrorGRPC {}
 
+class ErrorGRPCClientDestroyed extends ErrorGRPC {}
+
 class ErrorGRPCClientNotSecured extends ErrorGRPC {}
 
 /**
@@ -19,6 +21,8 @@ class ErrorGRPCServerShutdown extends ErrorGRPC {}
 
 class ErrorGRPCServerNotStarted extends ErrorGRPC {}
 
+class ErrorGRPCServerDestroyed extends ErrorGRPC {}
+
 class ErrorGRPCServerNotSecured extends ErrorGRPC {}
 
 class ErrorGRPCServerVerification extends ErrorGRPC {}
@@ -28,9 +32,18 @@ class ErrorGRPCServerVerification extends ErrorGRPC {}
  */
 class ErrorGRPCConnection extends ErrorGRPC {}
 
+/**
+ * Generic Message error
+ */
+class ErrorGRPCInvalidMessage extends ErrorGRPC {
+  exitCode: number = 70;
+}
+
 export {
   ErrorGRPC,
   ErrorGRPCClientNotStarted,
+  ErrorGRPCClientDestroyed,
+  ErrorGRPCServerDestroyed,
   ErrorGRPCClientNotSecured,
   ErrorGRPCClientTimeout,
   ErrorGRPCClientVerification,
@@ -40,4 +53,5 @@ export {
   ErrorGRPCServerNotSecured,
   ErrorGRPCServerVerification,
   ErrorGRPCConnection,
+  ErrorGRPCInvalidMessage,
 };

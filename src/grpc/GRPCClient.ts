@@ -12,8 +12,13 @@ import * as grpcErrors from './errors';
 import { utils as keysUtils } from '../keys';
 import { utils as networkUtils, errors as networkErrors } from '../network';
 import { promisify } from '../utils';
+import * as grpc from '@grpc/grpc-js';
+import { Session } from '../sessions';
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
-abstract class GRPCClient<T extends Client> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface GRPCClient<T extends Client> extends CreateDestroyStartStop {}
+class GRPCClient<T extends Client> {
   public readonly nodeId: NodeId;
   public readonly host: Host;
   public readonly port: Port;
@@ -24,7 +29,6 @@ abstract class GRPCClient<T extends Client> {
   protected session: Http2Session;
   protected serverCertChain: Array<Certificate>;
   protected _secured: boolean = false;
-  protected _started: boolean = false;
 
   constructor({
     nodeId,
@@ -37,17 +41,13 @@ abstract class GRPCClient<T extends Client> {
     host: Host;
     port: Port;
     proxyConfig?: ProxyConfig;
-    logger?: Logger;
+    logger: Logger;
   }) {
-    this.logger = logger ?? new Logger('GRPCClient');
+    this.logger = logger;
     this.nodeId = nodeId;
     this.host = host;
     this.port = port;
     this.proxyConfig = proxyConfig;
-  }
-
-  get started(): boolean {
-    return this._started;
   }
 
   get secured(): boolean {
@@ -57,6 +57,8 @@ abstract class GRPCClient<T extends Client> {
   public async start({
     clientConstructor,
     tlsConfig,
+    secure,
+    session,
     timeout = Infinity,
   }: {
     clientConstructor: new (
@@ -65,24 +67,43 @@ abstract class GRPCClient<T extends Client> {
       options?: ClientOptions,
     ) => T;
     tlsConfig?: TLSConfig;
+    secure?: boolean;
+    session?: Session;
     timeout?: number;
   }): Promise<void> {
-    if (this._started) {
-      return;
-    }
     const address = networkUtils.buildAddress(this.host, this.port);
     this.logger.info(`Starting GRPC Client connecting to ${address}`);
     let clientCredentials;
     if (tlsConfig == null) {
-      clientCredentials = grpcUtils.clientInsecureCredentials();
+      clientCredentials = grpc.ChannelCredentials.createInsecure();
+      if (secure) {
+        // Creaing secure SSL credentials.
+        clientCredentials = grpc.ChannelCredentials.createSsl();
+        // @ts-ignore hack for undocumented property
+        const connectionOptions = clientCredentials.connectionOptions;
+        // Disable default certificate path validation logic
+        // polykey has custom certificate path validation logic
+        connectionOptions['rejectUnauthorized'] = false;
+      }
     } else {
       clientCredentials = grpcUtils.clientSecureCredentials(
         tlsConfig.keyPrivatePem,
         tlsConfig.certChainPem,
       );
     }
+    //Add on call credentials
+    if (session != null) {
+      const callCredentials = grpc.credentials.createFromMetadataGenerator(
+        session.sessionMetadataGenerator.bind(session),
+      );
+      clientCredentials = grpc.credentials.combineChannelCredentials(
+        clientCredentials,
+        callCredentials,
+      );
+    }
+
     const clientOptions: ClientOptions = {
-      // prevents complaints with having an ip address as the server name
+      // Prevents complaints with having an ip address as the server name
       'grpc.ssl_target_name_override': this.nodeId,
     };
     let client: T;
@@ -96,9 +117,9 @@ abstract class GRPCClient<T extends Client> {
       // Encode as a URI in order to preserve the '+' characters when retrieving
       // in ForwardProxy from the http_connect_target URL
       const encodedNodeId = encodeURIComponent(this.nodeId);
-      // ignore proxy env variables
+      // Ignore proxy env variables
       clientOptions['grpc.enable_http_proxy'] = 0;
-      // the proxy target target is the true address
+      // The proxy target target is the true address
       clientOptions[
         'grpc.http_connect_target'
       ] = `dns:${address}/?nodeId=${encodedNodeId}`;
@@ -110,7 +131,7 @@ abstract class GRPCClient<T extends Client> {
       );
     }
     const waitForReady = promisify(client.waitForReady).bind(client);
-    // add the current unix time because grpc expects the milliseconds since unix epoch
+    // Add the current unix time because grpc expects the milliseconds since unix epoch
     timeout += Date.now();
     try {
       await waitForReady(timeout);
@@ -148,22 +169,21 @@ abstract class GRPCClient<T extends Client> {
       this._secured = true;
     }
     this.client = client;
-    this._started = true;
     this.logger.info(`Started GRPC Client connected to ${address}`);
   }
 
   public async stop(): Promise<void> {
-    if (!this._started) {
-      return;
-    }
     const address = `${this.host}:${this.port}`;
     this.logger.info(`Stopping GRPC Client connected to ${address}`);
-    // this currently doesn't stop all inflight requests
+    // This currently doesn't stop all inflight requests
     // https://github.com/grpc/grpc-node/issues/1340
     this.client.close();
     this._secured = false;
-    this._started = false;
     this.logger.info(`Stopped GRPC Client connected to ${address}`);
+  }
+
+  public async destroy() {
+    this.logger.info(`Destroyed GPRC CLient`);
   }
 
   public getServerCertificate(): Certificate {

@@ -127,7 +127,7 @@ function terminatingHttpServer(
 
     // Resove Promise.
     server.close((error) => {
-      if (error) {
+      if (error != null) {
         rejectTerminating(error);
       } else {
         resolveTerminating();

@@ -4,14 +4,83 @@ package clientInterface;
 
 service Client {
   rpc Echo(EchoMessage) returns (EchoMessage) {};
-  rpc NodesList(EmptyMessage) returns (stream NodeMessage) {};
-  rpc VaultsList(EmptyMessage) returns (stream VaultMessage) {};
-  rpc VaultsCreate(VaultMessage) returns (StatusMessage) {};
+
+  // Agent
+  rpc AgentStop(EmptyMessage) returns (EmptyMessage) {};
+
+  // Session
+  rpc SessionUnlock (PasswordMessage) returns (SessionTokenMessage) {};
+  rpc SessionRefresh (EmptyMessage) returns (SessionTokenMessage) {};
+  rpc SessionLockAll (EmptyMessage) returns (StatusMessage) {};
+
+  // Nodes
+  rpc NodesAdd(NodeAddressMessage) returns (EmptyMessage) {};
+  rpc NodesPing(NodeMessage) returns (StatusMessage) {};
+  rpc NodesClaim(NodeClaimMessage) returns (StatusMessage) {};
+  rpc NodesFind(NodeMessage) returns (NodeAddressMessage) {};
+
+  // Keys
+  rpc KeysKeyPairRoot (EmptyMessage) returns (KeyPairMessage) {};
+  rpc KeysKeyPairReset (KeyMessage) returns (EmptyMessage) {};
+  rpc KeysKeyPairRenew (KeyMessage) returns (EmptyMessage) {};
+  rpc KeysEncrypt (CryptoMessage) returns (CryptoMessage) {};
+  rpc KeysDecrypt (CryptoMessage) returns (CryptoMessage) {};
+  rpc KeysSign (CryptoMessage) returns (CryptoMessage) {};
+  rpc KeysVerify (CryptoMessage) returns (StatusMessage) {};
+  rpc KeysPasswordChange (PasswordMessage) returns (EmptyMessage) {};
+  rpc KeysCertsGet (EmptyMessage) returns (CertificateMessage) {};
+  rpc KeysCertsChainGet (EmptyMessage) returns (stream CertificateMessage) {};
+
+  // Vaults
+  rpc VaultsList(EmptyMessage) returns (stream VaultListMessage) {};
+  rpc VaultsCreate(VaultMessage) returns (VaultMessage) {};
+  rpc VaultsRename(VaultRenameMessage) returns (VaultMessage) {};
   rpc VaultsDelete(VaultMessage) returns (StatusMessage) {};
-  rpc VaultsListSecrets(VaultMessage) returns (stream SecretMessage) {};
-  rpc VaultsMkdir(VaultSpecificMessage) returns (EmptyMessage) {};
-  rpc CommitSync(stream CommitMessage) returns (CommitMessage) {};
-  rpc GestaltSync(stream GestaltMessage) returns (stream GestaltMessage) {};
+  rpc VaultsPull(VaultPullMessage) returns (StatusMessage) {};
+  rpc VaultsClone(VaultCloneMessage) returns (StatusMessage) {};
+  rpc VaultsScan(NodeMessage) returns (stream VaultListMessage) {};
+  rpc VaultsSecretsList(VaultMessage) returns (stream SecretMessage) {};
+  rpc VaultsSecretsMkdir(VaultMkdirMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsStat(VaultMessage) returns (StatMessage) {};
+  rpc VaultsSecretsDelete(SecretMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsEdit(SecretMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsGet(SecretMessage) returns (SecretMessage) {};
+  rpc VaultsSecretsRename(SecretRenameMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsNew(SecretMessage) returns (StatusMessage) {};
+  rpc VaultsSecretsNewDir(SecretDirectoryMessage) returns (StatusMessage) {};
+  rpc VaultsPermissionsSet(SetVaultPermMessage) returns (StatusMessage) {};
+  rpc VaultsPermissionsUnset(UnsetVaultPermMessage) returns (StatusMessage) {}
+  rpc VaultsPermissions(GetVaultPermMessage) returns (stream PermissionMessage) {};
+  rpc VaultsVersion(VaultsVersionMessage) returns (VaultsVersionResultMessage) {};
+  rpc VaultsLog(VaultsLogMessage) returns (stream VaultsLogEntryMessage) {};
+
+  // Identities
+  rpc IdentitiesAuthenticate(ProviderMessage) returns (stream ProviderMessage) {};
+  rpc IdentitiesTokenPut(TokenSpecificMessage) returns (EmptyMessage) {};
+  rpc IdentitiesTokenGet(ProviderMessage) returns (TokenMessage) {};
+  rpc IdentitiesTokenDelete(ProviderMessage) returns (EmptyMessage) {};
+  rpc IdentitiesProvidersList(EmptyMessage) returns (ProviderMessage) {};
+  rpc IdentitiesInfoGet(ProviderMessage) returns (ProviderMessage) {};
+  rpc IdentitiesInfoGetConnected(ProviderSearchMessage) returns (stream IdentityInfoMessage) {};
+  rpc IdentitiesClaim(ProviderMessage) returns (EmptyMessage) {};
+
+  // Gestalts
+  rpc GestaltsGestaltList(EmptyMessage) returns (stream GestaltMessage) {};
+  rpc GestaltsGestaltGetByNode(NodeMessage) returns (GestaltGraphMessage) {};
+  rpc GestaltsGestaltGetByIdentity(ProviderMessage) returns (GestaltGraphMessage) {};
+  rpc GestaltsDiscoveryByNode(NodeMessage) returns (EmptyMessage) {};
+  rpc GestaltsDiscoveryByIdentity(ProviderMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsGetByNode(NodeMessage) returns (ActionsMessage) {};
+  rpc GestaltsActionsGetByIdentity(ProviderMessage) returns (ActionsMessage) {};
+  rpc GestaltsActionsSetByNode(SetActionsMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsSetByIdentity(SetActionsMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsUnsetByNode(SetActionsMessage) returns (EmptyMessage) {};
+  rpc GestaltsActionsUnsetByIdentity(SetActionsMessage) returns (EmptyMessage) {};
+
+  // Notifications
+  rpc NotificationsSend(NotificationsSendMessage) returns (EmptyMessage) {};
+  rpc NotificationsRead(NotificationsReadMessage) returns (NotificationsListMessage) {};
+  rpc NotificationsClear(EmptyMessage) returns (EmptyMessage) {};
 }
 
 message EmptyMessage {}
@@ -24,28 +93,241 @@ message EchoMessage {
   string challenge = 1;
 }
 
-message VaultMessage {
-  string name = 1;
-  string id = 2;
+// Session
+
+message PasswordMessage {
+  oneof password_or_file{
+    string password = 1;
+    string password_file = 2;
+  }
 }
 
-message VaultSpecificMessage {
+message SessionTokenMessage {
+  string token = 1;
+}
+
+// Vaults
+
+message VaultListMessage {
+  string vault_name = 1;
+  string vault_id = 2;
+}
+
+message VaultMessage {
+  string name_or_Id = 1;
+}
+
+message VaultRenameMessage {
   VaultMessage vault = 1;
-  string name = 2;
+  string new_name = 2;
+}
+
+message VaultMkdirMessage {
+  VaultMessage vault = 1;
+  string dir_name = 2;
+  bool recursive = 3;
+}
+
+message VaultPullMessage {
+  VaultMessage vault = 1;
+  NodeMessage node = 2;
+}
+
+message VaultCloneMessage {
+  VaultMessage vault = 1;
+  NodeMessage node = 2;
+}
+
+message SecretRenameMessage {
+  SecretMessage old_secret = 1;
+  string new_name = 2;
 }
 
 message SecretMessage {
-  string name = 1;
+  VaultMessage vault = 1;
+  string secret_name = 2;
+  bytes secret_content = 3;
 }
+
+message SecretDirectoryMessage {
+  VaultMessage vault = 1;
+  string secret_directory = 2;
+}
+
+message StatMessage {
+  string stats = 1;
+}
+
+message SetVaultPermMessage {
+  VaultMessage vault = 1;
+  NodeMessage node = 2;
+}
+
+message UnsetVaultPermMessage {
+  VaultMessage vault = 1;
+  NodeMessage node = 2;
+}
+
+message GetVaultPermMessage {
+  VaultMessage vault = 1;
+  NodeMessage node = 2;
+}
+
+message PermissionMessage {
+  string node_id = 1;
+  string action = 2;
+}
+
+message VaultsVersionMessage {
+  VaultMessage vault = 1;
+  string version_id = 2;
+}
+
+message VaultsVersionResultMessage {
+  bool is_latest_version = 1;
+}
+
+message VaultsLogMessage {
+  VaultMessage vault = 1;
+  int32 log_depth = 3;
+  string commit_id = 4;
+}
+
+message VaultsLogEntryMessage {
+  string oid = 1;
+  string committer = 2;
+  uint64 time_stamp = 4;
+  string message = 3;
+}
+
+// Nodes
 
 message NodeMessage {
-  string name = 1;
+  string node_id = 1;
 }
 
-message CommitMessage {
-  string name = 1;
+message NodeAddressMessage {
+  string node_id = 1;
+  string host = 2;
+  int32 port = 3;
 }
+
+message NodeClaimMessage {
+  string node_id = 1;
+  bool force_invite = 2;
+}
+
+// Keys
+
+message CryptoMessage {
+  string data = 1;
+  string signature = 2;
+}
+
+message KeyMessage {
+  string name = 1;
+  string key = 2;
+}
+
+message KeyPairMessage {
+  string public = 1;
+  string private = 2;
+}
+
+message CertificateMessage {
+  string cert = 1;
+}
+
+
+// Identities
+
+message ProviderMessage {
+  string provider_id = 1;
+  string message = 2;
+}
+
+message TokenSpecificMessage {
+  ProviderMessage provider = 1;
+  string token = 2;
+}
+
+message TokenMessage {
+  string token = 1;
+}
+
+message ProviderSearchMessage {
+  ProviderMessage provider = 1;
+  repeated string search_term = 2;
+}
+
+message IdentityInfoMessage {
+  ProviderMessage provider = 1;
+  string name = 3;
+  string email = 4;
+  string url = 5;
+}
+
+// Gestalts
 
 message GestaltMessage {
   string name = 1;
+}
+
+message GestaltGraphMessage {
+  string gestalt_graph = 1;
+}
+
+message GestaltTrustMessage {
+  string provider = 1;
+  string name = 2;
+  bool set = 3;
+}
+
+// Permissions
+message ActionsMessage {
+  repeated string action = 1;
+}
+
+message SetActionsMessage {
+  oneof node_or_provider {
+    NodeMessage node = 1;
+    ProviderMessage identity = 2;
+  }
+  string action = 3;
+}
+
+// Notifications
+message NotificationsMessage {
+  oneof data {
+    GeneralTypeMessage general = 1;
+    string gestalt_invite = 2;
+    VaultShareTypeMessage vault_share = 3;
+  };
+  string sender_id = 4;
+  bool is_read = 5;
+}
+
+message NotificationsSendMessage {
+  string receiver_id = 1;
+  GeneralTypeMessage data = 2;
+}
+
+message NotificationsReadMessage {
+  bool unread = 1;
+  string number = 2;
+  string order = 3;
+}
+
+message NotificationsListMessage {
+  repeated NotificationsMessage notification = 1;
+}
+
+message GeneralTypeMessage {
+  string message = 1;
+}
+
+message VaultShareTypeMessage {
+  string vault_id = 1;
+  string vault_name = 2;
+  repeated string actions = 3;
 }

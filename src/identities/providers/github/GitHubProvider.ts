@@ -4,11 +4,8 @@ import type {
   TokenData,
   IdentityData,
 } from '../../types';
-import type {
-  LinkId,
-  LinkClaimIdentity,
-  LinkInfoIdentity,
-} from '../../../links/types';
+import type { Claim } from '../../../claims/types';
+import type { IdentityClaim, IdentityClaimId } from '../../../identities/types';
 
 import { fetch, Request, Headers } from 'cross-fetch';
 import { Searcher } from 'fast-fuzzy';
@@ -64,7 +61,7 @@ class GitHubProvider extends Provider {
     const data = await response.text();
     const authParams = new URLSearchParams(data);
     const deviceCode = authParams.get('device_code');
-    // convert seconds to milliseconds
+    // Convert seconds to milliseconds
     let pollInterval = parseInt(authParams.get('interval') ?? '1') * 1000;
     const userCode = authParams.get('user_code');
     if (!deviceCode || !userCode) {
@@ -72,7 +69,7 @@ class GitHubProvider extends Provider {
         `Provider device code request did not return the device_code or the user_code`,
       );
     }
-    // this code needs to be used by the user to manually enter
+    // This code needs to be used by the user to manually enter
     yield userCode;
     // Promise.race does not cancel unfinished promises
     // the finished condition variable is needed to stop the pollAccessToken process
@@ -127,7 +124,7 @@ class GitHubProvider extends Provider {
             await sleep(pollInterval);
             continue;
           } else if (data.error === 'slow_down') {
-            // convert seconds to milliseconds
+            // Convert seconds to milliseconds
             pollInterval = parseInt(data.get('interval') ?? '1') * 1000;
             await sleep(pollInterval);
             continue;
@@ -148,7 +145,7 @@ class GitHubProvider extends Provider {
     } finally {
       clearTimeout(pollTimer);
     }
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderAuthentication(
         `Provider authentication flow timed out`,
       );
@@ -211,7 +208,7 @@ class GitHubProvider extends Provider {
     identityId: IdentityId,
   ): Promise<IdentityData | undefined> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
@@ -263,7 +260,7 @@ class GitHubProvider extends Provider {
     searchTerms: Array<string> = [],
   ): AsyncGenerator<IdentityData> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
@@ -358,15 +355,15 @@ class GitHubProvider extends Provider {
   }
 
   /**
-   * Publish a link claim.
+   * Publish an identity claim.
    * These are published as gists.
    */
-  public async publishLinkClaim(
+  public async publishClaim(
     authIdentityId: IdentityId,
-    linkClaim: LinkClaimIdentity,
-  ): Promise<LinkInfoIdentity> {
+    identityClaim: Claim, // Give claim we want to publush
+  ): Promise<IdentityClaim> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
@@ -376,7 +373,7 @@ class GitHubProvider extends Provider {
       description: this.gistDescription,
       files: {
         [this.gistFilename]: {
-          content: JSON.stringify(linkClaim),
+          content: JSON.stringify(identityClaim),
         },
       },
       public: true,
@@ -409,30 +406,30 @@ class GitHubProvider extends Provider {
       );
     }
     return {
-      ...linkClaim,
+      ...identityClaim,
       id: data.id,
       url: data.html_url ?? undefined,
     };
   }
 
   /**
-   * Gets the LinkInfo.
-   * GitHub LinkInfos are published as gists.
-   * The link id is the gist id
+   * Gets the identity claim.
+   * GitHub identity claims are published as gists.
+   * The claimId is the gist id
    */
-  public async getLinkInfo(
+  public async getClaim(
     authIdentityId: IdentityId,
-    linkId: LinkId,
-  ): Promise<LinkInfoIdentity | undefined> {
+    claimId: IdentityClaimId,
+  ): Promise<IdentityClaim | undefined> {
     let tokenData = await this.getToken(authIdentityId);
-    if (!tokenData) {
+    if (tokenData == null) {
       throw new identitiesErrors.ErrorProviderUnauthenticated(
         `${authIdentityId} has not been authenticated`,
       );
     }
     tokenData = await this.checkToken(tokenData, authIdentityId);
     const request = this.createRequest(
-      `${this.apiUrl}/gists/${linkId}`,
+      `${this.apiUrl}/gists/${claimId}`,
       {
         method: 'GET',
       },
@@ -464,24 +461,24 @@ class GitHubProvider extends Provider {
     if (linkClaimData == null) {
       return;
     }
-    const linkClaim = this.parseLinkClaim(linkClaimData);
-    if (!linkClaim) {
+    const linkClaim = this.parseClaim(linkClaimData);
+    if (linkClaim == null) {
       return;
     }
     return {
       ...linkClaim,
-      id: linkId,
+      id: claimId,
       url: data.html_url ?? undefined,
     };
   }
 
   /**
-   * Gets LinkInfo from a given identity.
+   * Gets all IdentityClaims from a given identity.
    */
-  public async *getLinkInfos(
+  public async *getClaims(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<LinkInfoIdentity> {
+  ): AsyncGenerator<IdentityClaim> {
     const gistsSearchUrl = 'https://gist.github.com/search';
     let pageNum = 1;
     while (true) {
@@ -489,7 +486,7 @@ class GitHubProvider extends Provider {
       url.searchParams.set('p', pageNum.toString());
       url.searchParams.set(
         'q',
-        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`,
+        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`, //Githubidentityclaim
       );
       const request = new Request(url.toString(), { method: 'GET' });
       const response = await fetch(request);
@@ -499,14 +496,14 @@ class GitHubProvider extends Provider {
         );
       }
       const data = await response.text();
-      const linkIds = await this.extractLinkIds(data);
-      for (const linkId of linkIds) {
-        const linkInfo = await this.getLinkInfo(authIdentityId, linkId);
-        if (linkInfo) {
-          yield linkInfo;
+      const claimIds = await this.extractClaimIds(data);
+      for (const claimId of claimIds) {
+        const claim = await this.getClaim(authIdentityId, claimId);
+        if (claim != null) {
+          yield claim;
         }
       }
-      if (linkIds.length === 0) {
+      if (claimIds.length === 0) {
         break;
       } else {
         pageNum = pageNum + 1;
@@ -520,7 +517,7 @@ class GitHubProvider extends Provider {
     tokenData: TokenData,
   ): Request {
     let headers = options.headers;
-    if (!headers) {
+    if (headers == null) {
       headers = new Headers();
     }
     headers.set('Accept', 'application/vnd.github.v3+json');
@@ -561,22 +558,22 @@ class GitHubProvider extends Provider {
     }
   }
 
-  protected extractLinkIds(html: string): Array<LinkId> {
-    const linkIds: Array<LinkId> = [];
+  protected extractClaimIds(html: string): Array<IdentityClaimId> {
+    const claimIds: Array<IdentityClaimId> = [];
     const $ = cheerio.load(html);
     $('.gist-snippet > .gist-snippet-meta')
       .children('ul')
       .each((_, ele) => {
-        const link = $('li > a', ele).first().attr('href');
-        if (link) {
-          const matches = link.match(/\/.+?\/(.+)/);
-          if (matches) {
-            const linkId = matches[1];
-            linkIds.push(linkId);
+        const claim = $('li > a', ele).first().attr('href');
+        if (claim != null) {
+          const matches = claim.match(/\/.+?\/(.+)/);
+          if (matches != null) {
+            const claimId = matches[1];
+            claimIds.push(claimId as IdentityClaimId);
           }
         }
       });
-    return linkIds;
+    return claimIds;
   }
 }
 

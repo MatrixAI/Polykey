@@ -5,12 +5,38 @@ import type fs from 'fs';
  */
 type POJO = { [key: string]: any };
 
+/**
+ * Opaque types are wrappers of existing types
+ * that require smart constructors
+ */
 type Opaque<K, T> = T & { __TYPE__: K };
 
+/**
+ * Any type that can be turned into a string
+ */
+interface ToString {
+  toString(): string;
+}
+
+/**
+ * Allows extension of constructors that use POJOs
+ */
 type AbstractConstructorParameters<T> = ConstructorParameters<
   (new (...args: any) => any) & T
 >;
 
+/**
+ * Wrap a type to be reference counted
+ * Useful for when we need to garbage collect data
+ */
+type Ref<T> = {
+  count: number;
+  object: T;
+};
+
+/**
+ * Use Timer to control timers
+ */
 type Timer = {
   timer: ReturnType<typeof setTimeout>;
   timedOut: boolean;
@@ -43,11 +69,20 @@ type LockConfig = {
   clientPort?: number | undefined;
 } & POJO;
 
+type Initial<T extends any[]> = T extends [...infer Head, any] ? Head : any[];
+type InitialParameters<T extends (...args: any) => any> = Initial<
+  Parameters<T>
+>;
+
 export {
-  Opaque,
   POJO,
+  Opaque,
+  ToString,
   AbstractConstructorParameters,
+  Ref,
   Timer,
   FileSystem,
   LockConfig,
+  Initial,
+  InitialParameters,
 };

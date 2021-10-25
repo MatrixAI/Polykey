@@ -1,36 +1,49 @@
 import * as grpc from '@grpc/grpc-js';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { ClientService, IClientServer } from '@/proto/js/Client_grpc_pb';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { ClientClient } from '@/proto/js/Client_grpc_pb';
 import { createClientService } from '@/client';
 import PolykeyClient from '@/PolykeyClient';
-import { VaultManager } from '@/vaults';
-import { NodeManager } from '@/nodes';
 import { promisify } from '@/utils';
-import { KeyManager } from '@/keys';
+import { SessionCredentials, SessionToken } from '@/sessions/types';
+import { PolykeyAgent } from '@';
+import * as grpcUtils from '@/grpc/utils';
 
 async function openTestClientServer({
-  keyManager,
-  vaultManager,
-  nodeManager,
+  polykeyAgent,
+  secure,
 }: {
-  keyManager: KeyManager;
-  vaultManager: VaultManager;
-  nodeManager: NodeManager;
+  polykeyAgent: PolykeyAgent;
+  secure?: boolean;
 }) {
+  const _secure = secure ?? true;
   const clientService: IClientServer = createClientService({
-    keyManager,
-    vaultManager,
-    nodeManager,
+    polykeyAgent,
+    keyManager: polykeyAgent.keys,
+    vaultManager: polykeyAgent.vaults,
+    nodeManager: polykeyAgent.nodes,
+    identitiesManager: polykeyAgent.identities,
+    gestaltGraph: polykeyAgent.gestalts,
+    sessionManager: polykeyAgent.sessions,
+    notificationsManager: polykeyAgent.notifications,
+    discovery: polykeyAgent.discovery,
+    fwdProxy: polykeyAgent.fwdProxy,
+    revProxy: polykeyAgent.revProxy,
+    grpcServer: polykeyAgent.clientGrpcServer,
   });
+
+  const callCredentials = _secure
+    ? grpcUtils.serverSecureCredentials(
+        polykeyAgent.keys.getRootKeyPairPem().privateKey,
+        await polykeyAgent.keys.getRootCertChainPem(),
+      )
+    : grpcUtils.serverInsecureCredentials();
 
   const server = new grpc.Server();
   server.addService(ClientService, clientService);
   const bindAsync = promisify(server.bindAsync).bind(server);
-  const port = await bindAsync(
-    `127.0.0.1:0`,
-    grpc.ServerCredentials.createInsecure(),
-  );
+  const port = await bindAsync(`127.0.0.1:0`, callCredentials);
   server.start();
   return [server, port];
 }
@@ -44,16 +57,14 @@ async function openTestClientClient(nodePath) {
   const logger = new Logger('ClientClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const fs = require('fs');
-  // const nodePath = path.resolve(utils.getDefaultNodePath());
+  const fs = require('fs/promises');
 
-  const pkc: PolykeyClient = new PolykeyClient({
+  const pkc: PolykeyClient = await PolykeyClient.createPolykeyClient({
     nodePath,
     fs,
     logger,
   });
   await pkc.start({
-    credentials: grpc.ChannelCredentials.createInsecure(),
     timeout: 30000,
   });
 
@@ -64,9 +75,38 @@ async function closeTestClientClient(client: PolykeyClient) {
   await client.stop();
 }
 
+async function openSimpleClientClient(port: number): Promise<ClientClient> {
+  const client = new ClientClient(
+    `127.0.0.1:${port}`,
+    grpc.ChannelCredentials.createInsecure(),
+  );
+  const waitForReady = promisify(client.waitForReady).bind(client);
+  await waitForReady(Infinity);
+  return client;
+}
+
+function closeSimpleClientClient(client: ClientClient): void {
+  client.close();
+}
+
+function createCallCredentials(token: SessionToken): SessionCredentials {
+  return {
+    credentials: grpc.CallCredentials.createFromMetadataGenerator(
+      (_params, callback) => {
+        const meta = new grpc.Metadata();
+        meta.add('Authorization', `Bearer: ${token}`);
+        callback(null, meta);
+      },
+    ),
+  } as SessionCredentials;
+}
+
 export {
   openTestClientServer,
   closeTestClientServer,
   openTestClientClient,
   closeTestClientClient,
+  openSimpleClientClient,
+  closeSimpleClientClient,
+  createCallCredentials,
 };

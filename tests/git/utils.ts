@@ -1,42 +1,71 @@
-import * as grpc from '@grpc/grpc-js';
+import git, { ReadCommitResult } from 'isomorphic-git';
+import path from 'path';
+import type { EncryptedFS } from 'encryptedfs';
 
-import { promisify } from '../../src/utils';
-import { AgentService } from '../../src/agent';
-import { IAgentServer, AgentClient } from '../../src/proto/js/Agent_grpc_pb';
-
-async function openGrpcServer(
-  service: typeof AgentService,
-  agentService: IAgentServer,
-  port: number = 0,
-): Promise<[grpc.Server, number]> {
-  const server = new grpc.Server();
-  server.addService(service, agentService);
-  const bindAsync = promisify(server.bindAsync).bind(server);
-  const boundPort = await bindAsync(
-    `127.0.0.1:${port}`,
-    grpc.ServerCredentials.createInsecure(),
+async function createGitRepo({
+  efs,
+  packFile,
+  indexFile,
+}: {
+  efs: EncryptedFS;
+  packFile?: boolean;
+  indexFile?: boolean;
+}): Promise<ReadCommitResult[]> {
+  await git.init({
+    fs: efs,
+    dir: '.',
+  });
+  await git.commit({
+    fs: efs,
+    dir: '.',
+    author: {
+      name: 'TestCommitter',
+    },
+    message: 'Initial Commit',
+  });
+  await efs.promises.writeFile(
+    path.join('.git', 'packed-refs'),
+    '# pack-refs with: peeled fully-peeled sorted',
   );
-  server.start();
-  return [server, boundPort];
+  for (let i = 0; i < 10; i++) {
+    const fp = i.toString();
+    await efs.promises.writeFile(fp, 'secret ' + i.toString());
+    await git.commit({
+      fs: efs,
+      dir: '.',
+      author: {
+        name: 'TestCommitter ' + i.toString(),
+      },
+      message: 'Commit ' + i.toString(),
+    });
+  }
+  const log = await git.log({
+    fs: efs,
+    dir: '.',
+  });
+  if (packFile) {
+    const pack = await git.packObjects({
+      fs: efs,
+      dir: '.',
+      oids: [...log.map((item) => item.oid)],
+      write: true,
+    });
+    if (indexFile) {
+      await git.indexPack({
+        fs: efs,
+        dir: '.',
+        filepath: path.join('.git', 'objects', 'pack', pack.filename),
+      });
+    }
+  }
+  return log;
 }
 
-async function closeGrpcServer(server: grpc.Server): Promise<void> {
-  const tryShutdown = promisify(server.tryShutdown).bind(server);
-  await tryShutdown();
+async function getPackID(efs: EncryptedFS): Promise<string> {
+  const pack = (
+    await efs.promises.readdir(path.join('.git', 'objects', 'pack'))
+  )[0];
+  return (pack as string).substring(5, 45);
 }
 
-async function openGrpcClient(port: number): Promise<AgentClient> {
-  const client = new AgentClient(
-    `127.0.0.1:${port}`,
-    grpc.ChannelCredentials.createInsecure(),
-  );
-  const waitForReady = promisify(client.waitForReady).bind(client);
-  await waitForReady(Date.now() + 30000);
-  return client;
-}
-
-function closeGrpcClient(client: AgentClient): void {
-  client.close();
-}
-
-export { openGrpcServer, closeGrpcServer, openGrpcClient, closeGrpcClient };
+export { createGitRepo, getPackID };

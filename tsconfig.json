@@ -6,6 +6,7 @@
     "allowJs": true,
     "strictNullChecks": true,
     "noImplicitAny": false,
+    "experimentalDecorators": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
@@ -13,13 +14,14 @@
     "module": "CommonJS",
     "target": "ES2020",
     "baseUrl": "./src",
-    "skipLibCheck": true,
     "paths": {
       "@": ["index"],
       "@/*": ["*"]
-    }
+    },
+    "noEmit": true
   },
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+    "./tests/**/*"
   ]
 }

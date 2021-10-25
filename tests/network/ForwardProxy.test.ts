@@ -15,42 +15,44 @@ import {
 import * as keysUtils from '@/keys/utils';
 import { promisify, promise, timerStart, timerStop } from '@/utils';
 
-async function connect(
-  host: string,
-  port: number,
-  token: string,
-  path: string,
-): Promise<Socket> {
-  const socket = await new Promise<Socket>((resolve, reject) => {
-    const req = http.request({
-      method: 'CONNECT',
-      path: path,
-      host: host,
-      port: port,
-      headers: {
-        'Proxy-Authorization': `Basic ${token}`,
-      },
-    });
-    req.end();
-    req.once('connect', (res, clientSocket) => {
-      if (res.statusCode === 200) {
-        resolve(clientSocket);
-      } else {
-        reject(new Error(res.statusCode!.toString()));
-      }
-    });
-    req.once('error', (e) => {
-      reject(e);
-    });
-  });
-  return socket;
-}
-
 describe('ForwardProxy', () => {
   const logger = new Logger('ForwardProxy Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let keyPairPem, certPem;
+
+  // Helper functions
+  async function connect(
+    host: string,
+    port: number,
+    token: string,
+    path: string,
+  ): Promise<Socket> {
+    const socket = await new Promise<Socket>((resolve, reject) => {
+      const req = http.request({
+        method: 'CONNECT',
+        path: path,
+        host: host,
+        port: port,
+        headers: {
+          'Proxy-Authorization': `Basic ${token}`,
+        },
+      });
+      req.end();
+      req.once('connect', (res, clientSocket) => {
+        if (res.statusCode === 200) {
+          resolve(clientSocket);
+        } else {
+          reject(new Error(res.statusCode!.toString()));
+        }
+      });
+      req.once('error', (e) => {
+        reject(e);
+      });
+    });
+    return socket;
+  }
+
   beforeAll(async () => {
     const keyPair = await keysUtils.generateKeyPair(4096);
     keyPairPem = keysUtils.keyPairToPem(keyPair);
@@ -63,7 +65,7 @@ describe('ForwardProxy', () => {
     certPem = keysUtils.certToPem(cert);
   });
   test('starting and stopping the forward proxy', async () => {
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken: 'abc',
       logger,
     });
@@ -93,7 +95,7 @@ describe('ForwardProxy', () => {
   });
   test('connect failures to the forward proxy', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -105,8 +107,8 @@ describe('ForwardProxy', () => {
       },
     });
     const authTokenEncoded = Buffer.from(authToken, 'utf-8').toString('base64');
-    // incorrect auth token
-    await expect(
+    // Incorrect auth token
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -114,8 +116,8 @@ describe('ForwardProxy', () => {
         `127.0.0.1:80?nodeId=${encodeURIComponent('SOMENODEID')}`,
       ),
     ).rejects.toThrow('407');
-    // no node id
-    await expect(
+    // No node id
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -123,8 +125,8 @@ describe('ForwardProxy', () => {
         '127.0.0.1:80',
       ),
     ).rejects.toThrow('400');
-    // missing target
-    await expect(
+    // Missing target
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -132,8 +134,8 @@ describe('ForwardProxy', () => {
         `?nodeId=${encodeURIComponent('123')}`,
       ),
     ).rejects.toThrow('400');
-    // targetting an un-used port
-    await expect(
+    // Targetting an un-used port
+    await expect(() =>
       connect(
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
@@ -145,7 +147,7 @@ describe('ForwardProxy', () => {
   });
   test('open connection to port 0 fails', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -155,15 +157,15 @@ describe('ForwardProxy', () => {
         certChainPem: certPem,
       },
     });
-    // cannot open connection to port 0
-    await expect(
+    // Cannot open connection to port 0
+    await expect(() =>
       fwdProxy.openConnection('abc' as NodeId, '127.0.0.1' as Host, 0 as Port),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     await fwdProxy.stop();
   });
   test('open connection timeout due to hanging remote', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -173,7 +175,7 @@ describe('ForwardProxy', () => {
         certChainPem: certPem,
       },
     });
-    // this UTP server will just hang and not respond
+    // This UTP server will just hang and not respond
     let receivedConnection = false;
     const utpSocketHang = UTP.createServer(() => {
       receivedConnection = true;
@@ -184,7 +186,7 @@ describe('ForwardProxy', () => {
     await utpSocketHangListen(0, '127.0.0.1');
     const utpSocketHangPort = utpSocketHang.address().port;
     const timer = timerStart(3000);
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'abc' as NodeId,
         '127.0.0.1' as Host,
@@ -200,7 +202,7 @@ describe('ForwardProxy', () => {
   });
   test('open connection reset due to ending remote', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -210,7 +212,7 @@ describe('ForwardProxy', () => {
         certChainPem: certPem,
       },
     });
-    // this UTP Server will immediately end and destroy
+    // This UTP Server will immediately end and destroy
     // the connection upon receiving a connection
     let receivedConnection = false;
     const utpSocketEnd = UTP.createServer((utpConn) => {
@@ -223,7 +225,7 @@ describe('ForwardProxy', () => {
     );
     await utpSocketEndListen(0, '127.0.0.1');
     const utpSocketEndPort = utpSocketEnd.address().port;
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'abc' as NodeId,
         '127.0.0.1' as Host,
@@ -231,8 +233,8 @@ describe('ForwardProxy', () => {
       ),
     ).rejects.toThrow(networkErrors.ErrorConnectionStart);
     expect(receivedConnection).toBe(true);
-    // the actual error is UTP_ECONNRESET to be precise
-    await expect(
+    // The actual error is UTP_ECONNRESET to be precise
+    await expect(() =>
       fwdProxy.openConnection(
         'abc' as NodeId,
         '127.0.0.1' as Host,
@@ -245,7 +247,7 @@ describe('ForwardProxy', () => {
   });
   test('open connection fails due to missing certificates', async () => {
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -260,7 +262,7 @@ describe('ForwardProxy', () => {
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
-    // this UTP server will hold the connection
+    // This UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
         const tlsSocket = new tls.TLSSocket(utpConn, {
@@ -271,7 +273,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();
@@ -305,8 +307,8 @@ describe('ForwardProxy', () => {
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(fwdProxy.getConnectionCount()).toBe(0);
-    // this is an SSL handshake failure
-    await expect(
+    // This is an SSL handshake failure
+    await expect(() =>
       fwdProxy.openConnection(
         'somerandomnodeid' as NodeId,
         utpSocketHost as Host,
@@ -330,7 +332,7 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -345,7 +347,7 @@ describe('ForwardProxy', () => {
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
-    // this UTP server will hold the connection
+    // This UTP server will hold the connection
     let secured = false;
     const utpSocket = UTP.createServer(
       async (utpConn) => {
@@ -362,7 +364,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();
@@ -396,7 +398,7 @@ describe('ForwardProxy', () => {
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
     expect(fwdProxy.getConnectionCount()).toBe(0);
-    await expect(
+    await expect(() =>
       fwdProxy.openConnection(
         'somerandomnodeid' as NodeId,
         utpSocketHost as Host,
@@ -404,7 +406,7 @@ describe('ForwardProxy', () => {
       ),
     ).rejects.toThrow(networkErrors.ErrorCertChainUnclaimed);
     await expect(remoteReadyP).resolves.toBeUndefined();
-    // the secure event won't be fired
+    // The secure event won't be fired
     // because the connection will be ended before that happens
     expect(secured).toBe(false);
     expect(fwdProxy.getConnectionCount()).toBe(0);
@@ -426,7 +428,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -443,7 +445,7 @@ describe('ForwardProxy', () => {
       promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
-    // this UTP server will hold the connection
+    // This UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
         const tlsSocket = new tls.TLSSocket(utpConn, {
@@ -459,7 +461,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();
@@ -500,7 +502,7 @@ describe('ForwardProxy', () => {
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
-    // opening a duplicate connection is noop
+    // Opening a duplicate connection is noop
     await fwdProxy.openConnection(
       serverNodeId,
       utpSocketHost as Host,
@@ -530,7 +532,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -548,7 +550,7 @@ describe('ForwardProxy', () => {
       promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
-    // this UTP server will hold the connection
+    // This UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
         const tlsSocket = new tls.TLSSocket(utpConn, {
@@ -564,7 +566,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();
@@ -643,7 +645,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -661,7 +663,7 @@ describe('ForwardProxy', () => {
       promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
-    // this UTP server will hold the connection
+    // This UTP server will hold the connection
     const utpSocket = UTP.createServer(
       async (utpConn) => {
         const tlsSocket = new tls.TLSSocket(utpConn, {
@@ -677,7 +679,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();
@@ -751,7 +753,7 @@ describe('ForwardProxy', () => {
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -783,7 +785,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();
@@ -833,7 +835,7 @@ describe('ForwardProxy', () => {
     await expect(remoteClosedP).resolves.toBeUndefined();
   });
   test('open connection to multiple servers', async () => {
-    // first server keys
+    // First server keys
     const serverKeyPair1 = await keysUtils.generateKeyPair(4096);
     const serverKeyPairPem1 = keysUtils.keyPairToPem(serverKeyPair1);
     const serverCert1 = keysUtils.generateCertificate(
@@ -844,7 +846,7 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem1 = keysUtils.certToPem(serverCert1);
     const serverNodeId1 = networkUtils.certNodeId(serverCert1);
-    // second server keys
+    // Second server keys
     const serverKeyPair2 = await keysUtils.generateKeyPair(4096);
     const serverKeyPairPem2 = keysUtils.keyPairToPem(serverKeyPair2);
     const serverCert2 = keysUtils.generateCertificate(
@@ -856,7 +858,7 @@ describe('ForwardProxy', () => {
     const serverCertPem2 = keysUtils.certToPem(serverCert2);
     const serverNodeId2 = networkUtils.certNodeId(serverCert2);
     const authToken = 'sdafjs8';
-    const fwdProxy = new ForwardProxy({
+    const fwdProxy = await ForwardProxy.createForwardProxy({
       authToken,
       logger,
     });
@@ -868,12 +870,12 @@ describe('ForwardProxy', () => {
     });
     const egressHost = fwdProxy.getEgressHost();
     const egressPort = fwdProxy.getEgressPort();
-    // first signals
+    // First signals
     const { p: remoteReadyP1, resolveP: resolveRemoteReadyP1 } =
       promise<void>();
     const { p: remoteClosedP1, resolveP: resolveRemoteClosedP1 } =
       promise<void>();
-    // second signals
+    // Second signals
     const { p: remoteReadyP2, resolveP: resolveRemoteReadyP2 } =
       promise<void>();
     const { p: remoteClosedP2, resolveP: resolveRemoteClosedP2 } =
@@ -890,7 +892,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP1();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();
@@ -935,7 +937,7 @@ describe('ForwardProxy', () => {
         tlsSocket.on('close', () => {
           resolveRemoteClosedP2();
         });
-        // allowHalfOpen is buggy
+        // AllowHalfOpen is buggy
         // this ends the connection in case it doesn't work
         tlsSocket.on('end', () => {
           tlsSocket.end();

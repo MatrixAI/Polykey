@@ -1,116 +1,153 @@
 import type { Buffer } from 'buffer';
-import type { AbstractBatch } from 'abstract-leveldown';
-import type { LevelDB } from 'level';
 import type {
-  GestaltGraphDomain,
-  GestaltGraphKey,
+  GestaltAction,
+  GestaltActions,
   GestaltKey,
-  GestaltGraphValue,
+  GestaltNodeKey,
+  GestaltIdentityKey,
   GestaltKeySet,
-  GestaltGraphOp,
   Gestalt,
 } from './types';
-import type { FileSystem } from '../types';
 import type { NodeId, NodeInfo } from '../nodes/types';
 import type { ProviderId, IdentityId, IdentityInfo } from '../identities/types';
-import type { KeyManager } from '../keys';
+import type { Permission } from '../acl/types';
+import type { DB, DBLevel, DBOp } from '@matrixai/db';
+import type { ACL } from '../acl';
 
-import path from 'path';
-import level from 'level';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
-import { utils as keysUtils, errors as keysErrors } from '../keys';
+import { errors as dbErrors } from '@matrixai/db';
+import { utils as aclUtils, errors as aclErrors } from '../acl';
 import * as utils from '../utils';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 
+interface GestaltGraph extends CreateDestroy {}
+@CreateDestroy()
 class GestaltGraph {
-  public readonly gestaltsPath: string;
-  public readonly graphDbPath: string;
-
   protected logger: Logger;
-  protected fs: FileSystem;
-  protected keyManager: KeyManager;
-  protected graphDb: LevelDB<GestaltGraphKey, Buffer>;
-  protected graphDbKey: Buffer;
-  protected graphDbMutex: Mutex = new Mutex();
-  protected _started: boolean = false;
+  protected db: DB;
+  protected acl: ACL;
+  protected graphDbDomain: string = this.constructor.name;
+  protected graphMatrixDbDomain: Array<string> = [this.graphDbDomain, 'matrix'];
+  protected graphNodesDbDomain: Array<string> = [this.graphDbDomain, 'nodes'];
+  protected graphIdentitiesDbDomain: Array<string> = [
+    this.graphDbDomain,
+    'identities',
+  ];
+  protected graphDb: DBLevel;
+  protected graphMatrixDb: DBLevel;
+  protected graphNodesDb: DBLevel;
+  protected graphIdentitiesDb: DBLevel;
+  protected lock: Mutex = new Mutex();
 
-  constructor({
-    gestaltsPath,
-    keyManager,
-    fs,
+  static async createGestaltGraph({
+    db,
+    acl,
     logger,
-  }: {
-    gestaltsPath: string;
-    keyManager: KeyManager;
-    fs?: FileSystem;
-    logger?: Logger;
-  }) {
-    this.logger = logger ?? new Logger(this.constructor.name);
-    this.fs = fs ?? require('fs');
-    this.gestaltsPath = gestaltsPath;
-    this.keyManager = keyManager;
-    this.graphDbPath = path.join(gestaltsPath, 'graph_db');
-  }
-
-  get started(): boolean {
-    return this._started;
-  }
-
-  async start({
-    bits = 256,
     fresh = false,
   }: {
-    bits?: number;
+    db: DB;
+    acl: ACL;
+    logger?: Logger;
     fresh?: boolean;
-  } = {}) {
+  }): Promise<GestaltGraph> {
+    const logger_ = logger ?? new Logger(this.constructor.name);
+    const gestaltGraph = new GestaltGraph({ acl, db, logger: logger_ });
+    await gestaltGraph.create({ fresh });
+    return gestaltGraph;
+  }
+
+  constructor({ db, acl, logger }: { db: DB; acl: ACL; logger: Logger }) {
+    this.logger = logger;
+    this.db = db;
+    this.acl = acl;
+  }
+
+  get locked(): boolean {
+    return this.lock.isLocked();
+  }
+
+  private async create({ fresh }: { fresh: boolean }) {
     this.logger.info('Starting Gestalt Graph');
-    if (!this.keyManager.started) {
-      throw new keysErrors.ErrorKeyManagerNotStarted();
+    if (!this.db.running) {
+      throw new dbErrors.ErrorDBNotRunning();
     }
-    this.logger.info(`Setting gestalts path to ${this.gestaltsPath}`);
+    if (this.acl.destroyed) {
+      throw new aclErrors.ErrorACLDestroyed();
+    }
+    const graphDb = await this.db.level(this.graphDbDomain);
+    const graphMatrixDb = await this.db.level(
+      this.graphMatrixDbDomain[1],
+      graphDb,
+    );
+    const graphNodesDb = await this.db.level(
+      this.graphNodesDbDomain[1],
+      graphDb,
+    );
+    const graphIdentitiesDb = await this.db.level(
+      this.graphIdentitiesDbDomain[1],
+      graphDb,
+    );
     if (fresh) {
-      await this.fs.promises.rm(this.gestaltsPath, {
-        force: true,
-        recursive: true,
-      });
+      await graphDb.clear();
     }
-    await utils.mkdirExists(this.fs, this.gestaltsPath);
-    const graphDbKey = await this.setupGraphDbKey(bits);
-    const graphDb = await level(this.graphDbPath, { valueEncoding: 'binary' });
     this.graphDb = graphDb;
-    this.graphDbKey = graphDbKey;
-    this._started = true;
+    this.graphMatrixDb = graphMatrixDb;
+    this.graphNodesDb = graphNodesDb;
+    this.graphIdentitiesDb = graphIdentitiesDb;
     this.logger.info('Started Gestalts Graph');
   }
 
-  async stop() {
-    this.logger.info('Stopping Gestalt Graph');
-    if (this._started) {
-      await this.graphDb.close();
-    }
-    this._started = false;
-    this.logger.info('Stopped Gestalt Graph');
+  async destroy() {
+    this.logger.info('Destroyed Gestalt Graph');
   }
 
-  public async getGestalts(): Promise<Array<Gestalt>> {
-    const release = await this.graphDbMutex.acquire();
+  /**
+   * Run several operations within the same lock
+   * This does not ensure atomicity of the underlying database
+   * Database atomicity still depends on the underlying operation
+   */
+  public async transaction<T>(
+    f: (gestaltGraph: GestaltGraph) => Promise<T>,
+  ): Promise<T> {
+    const release = await this.lock.acquire();
     try {
+      return await f(this);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Transaction wrapper that will not lock if the operation was executed
+   * within a transaction context
+   */
+  public async _transaction<T>(f: () => Promise<T>): Promise<T> {
+    if (this.lock.isLocked()) {
+      return await f();
+    } else {
+      return await this.transaction(f);
+    }
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async getGestalts(): Promise<Array<Gestalt>> {
+    return await this._transaction(async () => {
       const unvisited: Map<GestaltKey, GestaltKeySet> = new Map();
-      for await (const o of this.graphDb.createReadStream({
-        gt: 'matrix',
-        lt: 'nodes',
-      })) {
-        const ggK = (o as any).key;
-        const data = (o as any).value;
-        const [, gK] = gestaltsUtils.ungestaltGraphKey(ggK as GestaltGraphKey);
-        const ggV = gestaltsUtils.unserializeGraphValue(this.graphDbKey, data);
-        unvisited.set(gK, ggV);
+      for await (const o of this.graphMatrixDb.createReadStream()) {
+        const gK = (o as any).key.toString() as GestaltKey;
+        const data = (o as any).value as Buffer;
+        const gKs = await this.db.deserializeDecrypt<GestaltKeySet>(
+          data,
+          false,
+        );
+        unvisited.set(gK, gKs);
       }
       const gestalts: Array<Gestalt> = [];
       let gestalt: Gestalt;
-      for (const [gK, ggV] of unvisited) {
+      for (const [gK, gKs] of unvisited) {
         gestalt = {
           matrix: {},
           nodes: {},
@@ -119,18 +156,24 @@ class GestaltGraph {
         const queue = [gK];
         while (true) {
           const vertex = queue.shift();
-          if (!vertex) {
+          if (vertex == null) {
             gestalts.push(gestalt);
             break;
           }
           const gId = gestaltsUtils.ungestaltKey(vertex);
-          const vertexKeys = ggV;
+          const vertexKeys = gKs;
           gestalt.matrix[vertex] = vertexKeys;
           if (gId.type === 'node') {
-            const nodeInfo = await this.getGraphDb('nodes', vertex);
+            const nodeInfo = await this.db.get<NodeInfo>(
+              this.graphNodesDbDomain,
+              vertex as GestaltNodeKey,
+            );
             gestalt.nodes[vertex] = nodeInfo!;
           } else if (gId.type === 'identity') {
-            const identityInfo = await this.getGraphDb('identities', vertex);
+            const identityInfo = await this.db.get<IdentityInfo>(
+              this.graphIdentitiesDbDomain,
+              vertex as GestaltIdentityKey,
+            );
             gestalt.identities[vertex] = identityInfo!;
           }
           unvisited.delete(vertex);
@@ -141,16 +184,16 @@ class GestaltGraph {
         }
       }
       return gestalts;
-    } finally {
-      release();
-    }
+    });
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async getGestaltByNode(nodeId: NodeId): Promise<Gestalt | undefined> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     return this.getGestaltByKey(nodeKey);
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async getGestaltByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -159,192 +202,176 @@ class GestaltGraph {
     return this.getGestaltByKey(identityKey);
   }
 
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
   public async setIdentity(identityInfo: IdentityInfo): Promise<void> {
-    const release = await this.graphDbMutex.acquire();
-    try {
+    return await this._transaction(async () => {
       const ops = await this.setIdentityOps(identityInfo);
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
+      await this.db.batch(ops);
+    });
   }
 
-  public async unsetIdentity(providerId: ProviderId, identityId: IdentityId) {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const ops = await this.unsetIdentityOps(providerId, identityId);
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
-  }
-
-  public async setNode(nodeInfo: NodeInfo): Promise<void> {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const ops = await this.setNodeOps(nodeInfo);
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
-  }
-
-  public async unsetNode(nodeId: NodeId): Promise<void> {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const ops = await this.unsetNodeOps(nodeId);
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
-  }
-
-  public async linkNodeAndIdentity(
-    nodeInfo: NodeInfo,
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async setIdentityOps(
     identityInfo: IdentityInfo,
-  ): Promise<void> {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const ops = await this.linkNodeAndIdentityOps(nodeInfo, identityInfo);
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
-  }
-
-  public async unlinkNodeAndIdentity(
-    nodeId: NodeId,
-    providerId: ProviderId,
-    identityId: IdentityId,
-  ): Promise<void> {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const ops = await this.unlinkNodeAndIdentityOps(
-        nodeId,
-        providerId,
-        identityId,
-      );
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
-  }
-
-  public async linkNodeAndNode(
-    nodeInfo1: NodeInfo,
-    nodeInfo2: NodeInfo,
-  ): Promise<void> {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const ops = await this.linkNodeAndNodeOps(nodeInfo1, nodeInfo2);
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
-  }
-
-  public async unlinkNodeAndNode(
-    nodeId1: NodeId,
-    nodeId2: NodeId,
-  ): Promise<void> {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const ops = await this.unlinkNodeAndNodeOps(nodeId1, nodeId2);
-      await this.batchGraphDb(ops);
-    } finally {
-      release();
-    }
-  }
-
-  protected async setupGraphDbKey(bits: number = 256): Promise<Buffer> {
-    let graphDbKey = await this.keyManager.getKey(this.constructor.name);
-    if (graphDbKey != null) {
-      return graphDbKey;
-    }
-    this.logger.info('Generating graph db key');
-    graphDbKey = await keysUtils.generateKey(bits);
-    await this.keyManager.putKey(this.constructor.name, graphDbKey);
-    return graphDbKey;
-  }
-
-  protected async getGestaltByKey(
-    gK: GestaltKey,
-  ): Promise<Gestalt | undefined> {
-    const release = await this.graphDbMutex.acquire();
-    try {
-      const gestalt: Gestalt = {
-        matrix: {},
-        nodes: {},
-        identities: {},
-      };
-      const queue = [gK];
-      const visited = new Set<GestaltKey>();
-      while (true) {
-        const vertex = queue.shift();
-        if (!vertex) {
-          break;
-        }
-        const gId = gestaltsUtils.ungestaltKey(vertex);
-        const vertexKeys = await this.getGraphDb('matrix', vertex);
-        if (!vertexKeys) {
-          return;
-        }
-        gestalt.matrix[vertex] = vertexKeys;
-        if (gId.type === 'node') {
-          const nodeInfo = await this.getGraphDb('nodes', vertex);
-          gestalt.nodes[vertex] = nodeInfo!;
-        } else if (gId.type === 'identity') {
-          const identityInfo = await this.getGraphDb('identities', vertex);
-          gestalt.identities[vertex] = identityInfo!;
-        }
-        visited.add(vertex);
-        const neighbours: Array<GestaltKey> = Object.keys(vertexKeys).filter(
-          (k: GestaltKey) => !visited.has(k),
-        ) as Array<GestaltKey>;
-        queue.push(...neighbours);
-      }
-      return gestalt;
-    } finally {
-      release();
-    }
-  }
-
-  protected async setNodeOps(
-    nodeInfo: NodeInfo,
-  ): Promise<Array<GestaltGraphOp>> {
-    const nodeKey = gestaltsUtils.keyFromNode(nodeInfo.id);
-    const nodeKeyKeys = (await this.getGraphDb('matrix', nodeKey)) || {};
-    const ops: Array<GestaltGraphOp> = [
+  ): Promise<Array<DBOp>> {
+    const identityKey = gestaltsUtils.keyFromIdentity(
+      identityInfo.providerId,
+      identityInfo.identityId,
+    );
+    const identityKeyKeys =
+      (await this.db.get<GestaltKeySet>(
+        this.graphMatrixDbDomain,
+        identityKey,
+      )) ?? {};
+    const ops: Array<DBOp> = [
       {
         type: 'put',
-        domain: 'matrix',
-        key: nodeKey,
-        value: nodeKeyKeys,
+        domain: this.graphMatrixDbDomain,
+        key: identityKey,
+        value: identityKeyKeys,
       },
       {
         type: 'put',
-        domain: 'nodes',
-        key: nodeKey,
-        value: nodeInfo,
+        domain: this.graphIdentitiesDbDomain,
+        key: identityKey,
+        value: identityInfo,
       },
     ];
     return ops;
   }
 
-  protected async unsetNodeOps(nodeId: NodeId): Promise<Array<GestaltGraphOp>> {
-    const nodeKey = gestaltsUtils.keyFromNode(nodeId);
-    const nodeKeyKeys = await this.getGraphDb('matrix', nodeKey);
-    let ops: Array<GestaltGraphOp> = [];
-    if (!nodeKeyKeys) {
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unsetIdentity(providerId: ProviderId, identityId: IdentityId) {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const ops = await this.unsetIdentityOps(providerId, identityId);
+        await this.db.batch(ops);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unsetIdentityOps(
+    providerId: ProviderId,
+    identityId: IdentityId,
+  ) {
+    const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
+    const identityKeyKeys = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      identityKey,
+    );
+    const ops: Array<DBOp> = [];
+    if (identityKeyKeys == null) {
       return ops;
     }
-    ops = [
+    ops.push({
+      type: 'del',
+      domain: this.graphIdentitiesDbDomain,
+      key: identityKey,
+    });
+    for (const key of Object.keys(identityKeyKeys) as Array<GestaltKey>) {
+      const gId = gestaltsUtils.ungestaltKey(key);
+      if (gId.type === 'node') {
+        ops.push(
+          ...(await this.unlinkNodeAndIdentityOps(
+            gId.nodeId,
+            providerId,
+            identityId,
+          )),
+        );
+      }
+    }
+    // Ensure that an empty key set is still deleted
+    ops.push({
+      type: 'del',
+      domain: this.graphMatrixDbDomain,
+      key: identityKey,
+    });
+    return ops;
+  }
+
+  /**
+   * Sets a node in the graph
+   * Can be used to update an existing node
+   * If this is a new node, it will set a new node pointer
+   * to a new gestalt permission in the acl
+   */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async setNode(nodeInfo: NodeInfo): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const ops = await this.setNodeOps(nodeInfo);
+        await this.db.batch(ops);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async setNodeOps(nodeInfo: NodeInfo): Promise<Array<DBOp>> {
+    const nodeKey = gestaltsUtils.keyFromNode(nodeInfo.id);
+    const ops: Array<DBOp> = [];
+    let nodeKeyKeys = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey,
+    );
+    if (nodeKeyKeys == null) {
+      nodeKeyKeys = {};
+      // Sets the gestalt in the acl
+      ops.push(
+        ...(await this.acl.setNodePermOps(nodeInfo.id, {
+          gestalt: {},
+          vaults: {},
+        })),
+      );
+    }
+    ops.push(
       {
-        type: 'del',
-        domain: 'nodes',
+        type: 'put',
+        domain: this.graphMatrixDbDomain,
         key: nodeKey,
+        value: nodeKeyKeys,
       },
-    ];
+      {
+        type: 'put',
+        domain: this.graphNodesDbDomain,
+        key: nodeKey,
+        value: nodeInfo,
+      },
+    );
+    return ops;
+  }
+
+  /**
+   * Removes a node in the graph
+   * If this node exists, it will remove the node pointer
+   * to the gestalt permission in the acl
+   */
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unsetNode(nodeId: NodeId): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const ops = await this.unsetNodeOps(nodeId);
+        await this.db.batch(ops);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unsetNodeOps(nodeId: NodeId): Promise<Array<DBOp>> {
+    const nodeKey = gestaltsUtils.keyFromNode(nodeId);
+    const nodeKeyKeys = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey,
+    );
+    const ops: Array<DBOp> = [];
+    if (nodeKeyKeys == null) {
+      return ops;
+    }
+    ops.push({
+      type: 'del',
+      domain: this.graphNodesDbDomain,
+      key: nodeKey,
+    });
     for (const key of Object.keys(nodeKeyKeys) as Array<GestaltKey>) {
       const gId = gestaltsUtils.ungestaltKey(key);
       if (gId.type === 'node') {
@@ -359,378 +386,729 @@ class GestaltGraph {
         );
       }
     }
-    // ensure that an empty key set is still deleted
+    // Ensure that an empty key set is still deleted
     ops.push({
       type: 'del',
-      domain: 'matrix',
+      domain: this.graphMatrixDbDomain,
       key: nodeKey,
     });
+    // Unsets the gestalt in the acl
+    // this must be done after all unlinking operations
+    ops.push(...(await this.acl.unsetNodePermOps(nodeId)));
     return ops;
   }
 
-  protected async setIdentityOps(
-    identityInfo: IdentityInfo,
-  ): Promise<Array<GestaltGraphOp>> {
-    const identityKey = gestaltsUtils.keyFromIdentity(
-      identityInfo.providerId,
-      identityInfo.identityId,
-    );
-    const identityKeyKeys =
-      (await this.getGraphDb('matrix', identityKey)) || {};
-    const ops: Array<GestaltGraphOp> = [
-      {
-        type: 'put',
-        domain: 'matrix',
-        key: identityKey,
-        value: identityKeyKeys,
-      },
-      {
-        type: 'put',
-        domain: 'identities',
-        key: identityKey,
-        value: identityInfo,
-      },
-    ];
-    return ops;
-  }
-
-  protected async unsetIdentityOps(
-    providerId: ProviderId,
-    identityId: IdentityId,
-  ) {
-    const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
-    const identityKeyKeys = await this.getGraphDb('matrix', identityKey);
-    let ops: Array<GestaltGraphOp> = [];
-    if (!identityKeyKeys) {
-      return ops;
-    }
-    ops = [
-      {
-        type: 'del',
-        domain: 'identities',
-        key: identityKey,
-      },
-    ];
-    for (const key of Object.keys(identityKeyKeys) as Array<GestaltKey>) {
-      const gId = gestaltsUtils.ungestaltKey(key);
-      if (gId.type === 'node') {
-        ops.push(
-          ...(await this.unlinkNodeAndIdentityOps(
-            gId.nodeId,
-            providerId,
-            identityId,
-          )),
-        );
-      }
-    }
-    // ensure that an empty key set is still deleted
-    ops.push({
-      type: 'del',
-      domain: 'matrix',
-      key: identityKey,
-    });
-    return ops;
-  }
-
-  protected async linkNodeAndIdentityOps(
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async linkNodeAndIdentity(
     nodeInfo: NodeInfo,
     identityInfo: IdentityInfo,
-  ): Promise<Array<GestaltGraphOp>> {
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const ops = await this.linkNodeAndIdentityOps(nodeInfo, identityInfo);
+        await this.db.batch(ops);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async linkNodeAndIdentityOps(
+    nodeInfo: NodeInfo,
+    identityInfo: IdentityInfo,
+  ): Promise<Array<DBOp>> {
+    const ops: Array<DBOp> = [];
     const nodeKey = gestaltsUtils.keyFromNode(nodeInfo.id);
     const identityKey = gestaltsUtils.keyFromIdentity(
       identityInfo.providerId,
       identityInfo.identityId,
     );
-    const nodeKeyKeys = (await this.getGraphDb('matrix', nodeKey)) || {};
-    const identityKeyKeys =
-      (await this.getGraphDb('matrix', identityKey)) || {};
+    let nodeKeyKeys = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey,
+    );
+    let identityKeyKeys = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      identityKey,
+    );
+    // If they are already connected we do nothing
+    if (
+      nodeKeyKeys &&
+      identityKey in nodeKeyKeys &&
+      identityKeyKeys &&
+      nodeKey in identityKeyKeys
+    ) {
+      return ops;
+    }
+    let nodeNew = false;
+    if (nodeKeyKeys == null) {
+      nodeNew = true;
+      nodeKeyKeys = {};
+    }
+    let identityNew = false;
+    if (identityKeyKeys == null) {
+      identityNew = true;
+      identityKeyKeys = {};
+    }
+    // Acl changes depend on the situation:
+    // if both node and identity are new  then
+    //   set a new permission for the node
+    // if both node and identity exists then
+    //   if the identity key set is empty then
+    //     do nothing
+    //   else
+    //     join identity gestalt's permission to the node gestalt
+    //     make sure to do a perm union
+    // if node exists but identity is new then
+    //   do nothing
+    // if node is new but identity exists
+    //   if the identity key set is empty then
+    //     set a new permission for the node
+    //   else
+    //     join node gestalt's permission to the identity gestalt
+    if (nodeNew && identityNew) {
+      ops.push(
+        ...(await this.acl.setNodePermOps(nodeInfo.id, {
+          gestalt: {},
+          vaults: {},
+        })),
+      );
+    } else if (
+      !nodeNew &&
+      !identityNew &&
+      !utils.isEmptyObject(identityKeyKeys)
+    ) {
+      const [, identityNodeKeys] = await this.traverseGestalt(
+        Object.keys(identityKeyKeys) as Array<GestaltKey>,
+        [identityKey],
+      );
+      const identityNodeIds = Array.from(
+        identityNodeKeys,
+        (key) => gestaltsUtils.ungestaltKey(key).nodeId,
+      );
+      // These must exist
+      const nodePerm = (await this.acl.getNodePerm(nodeInfo.id)) as Permission;
+      const identityPerm = (await this.acl.getNodePerm(
+        identityNodeIds[0],
+      )) as Permission;
+      // Union the perms together
+      const permNew = aclUtils.permUnion(nodePerm, identityPerm);
+      // Node perm is updated and identity perm is joined to node perm
+      // this has to be done as 1 call to acl in order to combine ref count update
+      // and the perm record update
+      ops.push(
+        ...(await this.acl.joinNodePermOps(
+          nodeInfo.id,
+          identityNodeIds,
+          permNew,
+        )),
+      );
+    } else if (nodeNew && !identityNew) {
+      if (utils.isEmptyObject(identityKeyKeys)) {
+        ops.push(
+          ...(await this.acl.setNodePermOps(nodeInfo.id, {
+            gestalt: {},
+            vaults: {},
+          })),
+        );
+      } else {
+        let identityNodeKey: GestaltNodeKey;
+        for (const gK in identityKeyKeys) {
+          identityNodeKey = gK as GestaltNodeKey;
+          break;
+        }
+        const identityNodeId = gestaltsUtils.ungestaltKey(
+          identityNodeKey!,
+        ).nodeId;
+        ops.push(
+          ...(await this.acl.joinNodePermOps(identityNodeId, [nodeInfo.id])),
+        );
+      }
+    }
     nodeKeyKeys[identityKey] = null;
     identityKeyKeys[nodeKey] = null;
-    const ops: Array<GestaltGraphOp> = [
+    ops.push(
       {
         type: 'put',
-        domain: 'matrix',
+        domain: this.graphMatrixDbDomain,
         key: nodeKey,
         value: nodeKeyKeys,
       },
       {
         type: 'put',
-        domain: 'matrix',
+        domain: this.graphMatrixDbDomain,
         key: identityKey,
         value: identityKeyKeys,
       },
       {
         type: 'put',
-        domain: 'nodes',
+        domain: this.graphNodesDbDomain,
         key: nodeKey,
         value: nodeInfo,
       },
       {
         type: 'put',
-        domain: 'identities',
+        domain: this.graphIdentitiesDbDomain,
         key: identityKey,
         value: identityInfo,
       },
-    ];
+    );
     return ops;
   }
 
-  protected async unlinkNodeAndIdentityOps(
-    nodeId: NodeId,
-    providerId: ProviderId,
-    identityId: IdentityId,
-  ): Promise<Array<GestaltGraphOp>> {
-    const nodeKey = gestaltsUtils.keyFromNode(nodeId);
-    const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
-    const nodeKeyKeys = await this.getGraphDb('matrix', nodeKey);
-    const identityKeyKeys = await this.getGraphDb('matrix', identityKey);
-    const ops: Array<GestaltGraphOp> = [];
-    if (nodeKeyKeys) {
-      delete nodeKeyKeys[identityKey];
-      if (Object.keys(nodeKeyKeys).length) {
-        ops.push({
-          type: 'put',
-          domain: 'matrix',
-          key: nodeKey,
-          value: nodeKeyKeys,
-        });
-      } else {
-        ops.push(
-          {
-            type: 'del',
-            domain: 'matrix',
-            key: nodeKey,
-          },
-          {
-            type: 'del',
-            domain: 'nodes',
-            key: nodeKey,
-          },
-        );
-      }
-    }
-    if (identityKeyKeys) {
-      delete identityKeyKeys[nodeKey];
-      if (Object.keys(identityKeyKeys).length) {
-        ops.push({
-          type: 'put',
-          domain: 'matrix',
-          key: identityKey,
-          value: identityKeyKeys,
-        });
-      } else {
-        ops.push(
-          {
-            type: 'del',
-            domain: 'matrix',
-            key: identityKey,
-          },
-          {
-            type: 'del',
-            domain: 'identities',
-            key: identityKey,
-          },
-        );
-      }
-    }
-    return ops;
-  }
-
-  protected async linkNodeAndNodeOps(
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async linkNodeAndNode(
     nodeInfo1: NodeInfo,
     nodeInfo2: NodeInfo,
-  ): Promise<Array<GestaltGraphOp>> {
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const ops = await this.linkNodeAndNodeOps(nodeInfo1, nodeInfo2);
+        await this.db.batch(ops);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async linkNodeAndNodeOps(
+    nodeInfo1: NodeInfo,
+    nodeInfo2: NodeInfo,
+  ): Promise<Array<DBOp>> {
+    const ops: Array<DBOp> = [];
     const nodeKey1 = gestaltsUtils.keyFromNode(nodeInfo1.id);
     const nodeKey2 = gestaltsUtils.keyFromNode(nodeInfo2.id);
-    const nodeKeyKeys1 = (await this.getGraphDb('matrix', nodeKey1)) || {};
-    const nodeKeyKeys2 = (await this.getGraphDb('matrix', nodeKey2)) || {};
+    let nodeKeyKeys1 = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey1,
+    );
+    let nodeKeyKeys2 = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey2,
+    );
+    // If they are already connected we do nothing
+    if (
+      nodeKeyKeys1 &&
+      nodeKey2 in nodeKeyKeys1 &&
+      nodeKeyKeys2 &&
+      nodeKey1 in nodeKeyKeys2
+    ) {
+      return ops;
+    }
+    let nodeNew1 = false;
+    if (nodeKeyKeys1 == null) {
+      nodeNew1 = true;
+      nodeKeyKeys1 = {};
+    }
+    let nodeNew2 = false;
+    if (nodeKeyKeys2 == null) {
+      nodeNew2 = true;
+      nodeKeyKeys2 = {};
+    }
+    // Acl changes depend on the situation:
+    // if both node1 and node2 are new  then
+    //   set a new permission for both nodes
+    // if both node1 and node2 exists then
+    //   join node 2 gestalt's permission to the node 1 gestalt
+    //   make sure to do a perm union
+    // if node 1 exists but node 2 is new then
+    //   join node 2 gestalt's permission to the node 1 gestalt
+    // if node 1 is new but node 2 exists
+    //   join node 1 gestalt's permission to the node 2 gestalt
+    if (nodeNew1 && nodeNew2) {
+      ops.push(
+        ...(await this.acl.setNodesPermOps([nodeInfo1.id, nodeInfo2.id], {
+          gestalt: {},
+          vaults: {},
+        })),
+      );
+    } else if (!nodeNew1 && !nodeNew2) {
+      const [, nodeNodeKeys2] = await this.traverseGestalt(
+        Object.keys(nodeKeyKeys2) as Array<GestaltKey>,
+        [nodeKey2],
+      );
+      const nodeNodeIds2 = Array.from(
+        nodeNodeKeys2,
+        (key) => gestaltsUtils.ungestaltKey(key).nodeId,
+      );
+      // These must exist
+      const nodePerm1 = (await this.acl.getNodePerm(
+        nodeInfo1.id,
+      )) as Permission;
+      const nodePerm2 = (await this.acl.getNodePerm(
+        nodeInfo2.id,
+      )) as Permission;
+      // Union the perms together
+      const permNew = aclUtils.permUnion(nodePerm1, nodePerm2);
+      // Node perm 1 is updated and node perm 2 is joined to node perm 2
+      // this has to be done as 1 call to acl in order to combine ref count update
+      // and the perm record update
+      ops.push(
+        ...(await this.acl.joinNodePermOps(
+          nodeInfo1.id,
+          nodeNodeIds2,
+          permNew,
+        )),
+      );
+    } else if (nodeNew1 && !nodeNew2) {
+      ops.push(
+        ...(await this.acl.joinNodePermOps(nodeInfo2.id, [nodeInfo1.id])),
+      );
+    } else if (!nodeNew1 && nodeNew2) {
+      ops.push(
+        ...(await this.acl.joinNodePermOps(nodeInfo1.id, [nodeInfo2.id])),
+      );
+    }
     nodeKeyKeys1[nodeKey2] = null;
     nodeKeyKeys2[nodeKey1] = null;
-    const ops: Array<GestaltGraphOp> = [
+    ops.push(
       {
         type: 'put',
-        domain: 'matrix',
+        domain: this.graphMatrixDbDomain,
         key: nodeKey1,
         value: nodeKeyKeys1,
       },
       {
         type: 'put',
-        domain: 'matrix',
+        domain: this.graphMatrixDbDomain,
         key: nodeKey2,
         value: nodeKeyKeys2,
       },
       {
         type: 'put',
-        domain: 'nodes',
+        domain: this.graphNodesDbDomain,
         key: nodeKey1,
         value: nodeInfo1,
       },
       {
         type: 'put',
-        domain: 'nodes',
+        domain: this.graphNodesDbDomain,
         key: nodeKey2,
         value: nodeInfo2,
       },
-    ];
+    );
     return ops;
   }
 
-  protected async unlinkNodeAndNodeOps(
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unlinkNodeAndIdentity(
+    nodeId: NodeId,
+    providerId: ProviderId,
+    identityId: IdentityId,
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const ops = await this.unlinkNodeAndIdentityOps(
+          nodeId,
+          providerId,
+          identityId,
+        );
+        await this.db.batch(ops);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unlinkNodeAndIdentityOps(
+    nodeId: NodeId,
+    providerId: ProviderId,
+    identityId: IdentityId,
+  ): Promise<Array<DBOp>> {
+    const nodeKey = gestaltsUtils.keyFromNode(nodeId);
+    const identityKey = gestaltsUtils.keyFromIdentity(providerId, identityId);
+    const nodeKeyKeys = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey,
+    );
+    const identityKeyKeys = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      identityKey,
+    );
+    let unlinking = false;
+    const ops: Array<DBOp> = [];
+    if (nodeKeyKeys && identityKey in nodeKeyKeys) {
+      unlinking = true;
+      delete nodeKeyKeys[identityKey];
+      ops.push({
+        type: 'put',
+        domain: this.graphMatrixDbDomain,
+        key: nodeKey,
+        value: nodeKeyKeys,
+      });
+    }
+    if (identityKeyKeys && nodeKey in identityKeyKeys) {
+      unlinking = true;
+      delete identityKeyKeys[nodeKey];
+      ops.push({
+        type: 'put',
+        domain: this.graphMatrixDbDomain,
+        key: identityKey,
+        value: identityKeyKeys,
+      });
+    }
+    if (nodeKeyKeys && identityKeyKeys && unlinking) {
+      // Check if the gestalts have split
+      // if so, the node gestalt will inherit a new copy of the permission
+      const [, gestaltNodeKeys, gestaltIdentityKeys] =
+        await this.traverseGestalt(
+          Object.keys(nodeKeyKeys) as Array<GestaltKey>,
+          [nodeKey],
+        );
+      if (!gestaltIdentityKeys.has(identityKey)) {
+        const nodeIds = Array.from(
+          gestaltNodeKeys,
+          (key) => gestaltsUtils.ungestaltKey(key).nodeId,
+        );
+        // It is assumed that an existing gestalt has a permission
+        const perm = (await this.acl.getNodePerm(nodeId)) as Permission;
+        // This remaps all existing nodes to a new permission
+        ops.push(...(await this.acl.setNodesPermOps(nodeIds, perm)));
+      }
+    }
+    return ops;
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unlinkNodeAndNode(
     nodeId1: NodeId,
     nodeId2: NodeId,
-  ): Promise<Array<GestaltGraphOp>> {
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const ops = await this.unlinkNodeAndNodeOps(nodeId1, nodeId2);
+        await this.db.batch(ops);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unlinkNodeAndNodeOps(
+    nodeId1: NodeId,
+    nodeId2: NodeId,
+  ): Promise<Array<DBOp>> {
     const nodeKey1 = gestaltsUtils.keyFromNode(nodeId1);
     const nodeKey2 = gestaltsUtils.keyFromNode(nodeId2);
-    const nodeKeyKeys1 = await this.getGraphDb('matrix', nodeKey1);
-    const nodeKeyKeys2 = await this.getGraphDb('matrix', nodeKey2);
-    const ops: Array<GestaltGraphOp> = [];
-    if (nodeKeyKeys1) {
+    const nodeKeyKeys1 = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey1,
+    );
+    const nodeKeyKeys2 = await this.db.get<GestaltKeySet>(
+      this.graphMatrixDbDomain,
+      nodeKey2,
+    );
+    let unlinking = false;
+    const ops: Array<DBOp> = [];
+    if (nodeKeyKeys1 && nodeKey2 in nodeKeyKeys1) {
+      unlinking = true;
       delete nodeKeyKeys1[nodeKey2];
-      if (Object.keys(nodeKeyKeys1).length) {
-        ops.push({
-          type: 'put',
-          domain: 'matrix',
-          key: nodeKey1,
-          value: nodeKeyKeys1,
-        });
-      } else {
-        ops.push(
-          {
-            type: 'del',
-            domain: 'matrix',
-            key: nodeKey1,
-          },
-          {
-            type: 'del',
-            domain: 'nodes',
-            key: nodeKey1,
-          },
-        );
-      }
+      ops.push({
+        type: 'put',
+        domain: this.graphMatrixDbDomain,
+        key: nodeKey1,
+        value: nodeKeyKeys1,
+      });
     }
-    if (nodeKeyKeys2) {
+    if (nodeKeyKeys2 && nodeKey1 in nodeKeyKeys2) {
+      unlinking = true;
       delete nodeKeyKeys2[nodeKey1];
-      if (Object.keys(nodeKeyKeys2).length) {
-        ops.push({
-          type: 'put',
-          domain: 'matrix',
-          key: nodeKey2,
-          value: nodeKeyKeys2,
-        });
-      } else {
-        ops.push(
-          {
-            type: 'del',
-            domain: 'matrix',
-            key: nodeKey2,
-          },
-          {
-            type: 'del',
-            domain: 'nodes',
-            key: nodeKey2,
-          },
+      ops.push({
+        type: 'put',
+        domain: this.graphMatrixDbDomain,
+        key: nodeKey2,
+        value: nodeKeyKeys2,
+      });
+    }
+    if (nodeKeyKeys1 && nodeKeyKeys2 && unlinking) {
+      // Check if the gestalts have split
+      // if so, the node gestalt will inherit a new copy of the permission
+      const [, gestaltNodeKeys] = await this.traverseGestalt(
+        Object.keys(nodeKeyKeys1) as Array<GestaltKey>,
+        [nodeKey1],
+      );
+      if (!gestaltNodeKeys.has(nodeKey2)) {
+        const nodeIds = Array.from(
+          gestaltNodeKeys,
+          (key) => gestaltsUtils.ungestaltKey(key).nodeId,
         );
+        // It is assumed that an existing gestalt has a permission
+        const perm = (await this.acl.getNodePerm(nodeId1)) as Permission;
+        // This remaps all existing nodes to a new permission
+        ops.push(...(await this.acl.setNodesPermOps(nodeIds, perm)));
       }
     }
     return ops;
   }
 
-  protected async getGraphDb(
-    d: 'matrix',
-    gK: GestaltKey,
-  ): Promise<GestaltKeySet | undefined>;
-  protected async getGraphDb(
-    d: 'nodes',
-    gK: GestaltKey,
-  ): Promise<NodeInfo | undefined>;
-  protected async getGraphDb(
-    d: 'identities',
-    gK: GestaltKey,
-  ): Promise<IdentityInfo | undefined>;
-  protected async getGraphDb(
-    d: GestaltGraphDomain,
-    gK: GestaltKey,
-  ): Promise<GestaltGraphValue | undefined> {
-    if (!this._started) {
-      throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
-    }
-    const ggK = gestaltsUtils.gestaltGraphKey(d, gK);
-    let data: Buffer;
-    try {
-      data = await this.graphDb.get(ggK);
-    } catch (e) {
-      if (e.notFound) {
-        return undefined;
-      }
-      throw e;
-    }
-    return gestaltsUtils.unserializeGraphValue(this.graphDbKey, data);
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async getGestaltActionsByNode(
+    nodeId: NodeId,
+  ): Promise<GestaltActions | undefined> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const nodeKey = gestaltsUtils.keyFromNode(nodeId);
+        if (
+          (await this.db.get<NodeInfo>(this.graphNodesDbDomain, nodeKey)) ==
+          null
+        ) {
+          return;
+        }
+        const perm = await this.acl.getNodePerm(nodeId);
+        if (perm == null) {
+          return;
+        }
+        return perm.gestalt;
+      });
+    });
   }
 
-  protected async putGraphDb(
-    d: 'matrix',
-    gK: GestaltKey,
-    ggV: GestaltKeySet,
-  ): Promise<void>;
-  protected async putGraphDb(
-    d: 'nodes',
-    gK: GestaltKey,
-    ggV: NodeInfo,
-  ): Promise<void>;
-  protected async putGraphDb(
-    d: 'identities',
-    gK: GestaltKey,
-    ggV: IdentityInfo,
-  ): Promise<void>;
-  protected async putGraphDb(
-    d: GestaltGraphDomain,
-    gK: GestaltKey,
-    ggV: GestaltGraphValue,
-  ): Promise<void> {
-    if (!this._started) {
-      throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
-    }
-    const ggK = gestaltsUtils.gestaltGraphKey(d, gK);
-    const data = gestaltsUtils.serializeGraphValue(this.graphDbKey, ggV);
-    await this.graphDb.put(ggK, data);
-  }
-
-  protected async delGraphDb(d: 'matrix', gK: GestaltKey): Promise<void>;
-  protected async delGraphDb(d: 'nodes', gK: GestaltKey): Promise<void>;
-  protected async delGraphDb(d: 'identities', gK: GestaltKey): Promise<void>;
-  protected async delGraphDb(d: GestaltGraphDomain, gK: GestaltKey) {
-    if (!this._started) {
-      throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
-    }
-    const ggK = gestaltsUtils.gestaltGraphKey(d, gK);
-    await this.graphDb.del(ggK);
-  }
-
-  protected async batchGraphDb(ops: Array<GestaltGraphOp>): Promise<void> {
-    if (!this._started) {
-      throw new gestaltsErrors.ErrorGestaltsGraphNotStarted();
-    }
-    const ops_: Array<AbstractBatch> = [];
-    for (const op of ops) {
-      if (op.type === 'del') {
-        ops_.push({
-          type: op.type,
-          key: gestaltsUtils.gestaltGraphKey(op.domain, op.key),
-        });
-      } else if (op.type === 'put') {
-        const ggK = gestaltsUtils.gestaltGraphKey(op.domain, op.key);
-        const data = gestaltsUtils.serializeGraphValue(
-          this.graphDbKey,
-          op.value,
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async getGestaltActionsByIdentity(
+    providerId: ProviderId,
+    identityId: IdentityId,
+  ): Promise<GestaltActions | undefined> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const identityKey = gestaltsUtils.keyFromIdentity(
+          providerId,
+          identityId,
         );
-        ops_.push({
-          type: op.type,
-          key: ggK,
-          value: data,
-        });
+        if (
+          (await this.db.get<IdentityInfo>(
+            this.graphIdentitiesDbDomain,
+            identityKey,
+          )) == null
+        ) {
+          return;
+        }
+        const gestaltKeySet = (await this.db.get<GestaltKeySet>(
+          this.graphMatrixDbDomain,
+          identityKey,
+        )) as GestaltKeySet;
+        let nodeId: NodeId | undefined;
+        for (const nodeKey in gestaltKeySet) {
+          nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
+          break;
+        }
+        if (nodeId == null) {
+          return;
+        }
+        const perm = await this.acl.getNodePerm(nodeId);
+        if (perm == null) {
+          return;
+        }
+        return perm.gestalt;
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async setGestaltActionByNode(
+    nodeId: NodeId,
+    action: GestaltAction,
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const nodeKey = gestaltsUtils.keyFromNode(nodeId);
+        if (
+          (await this.db.get<NodeInfo>(this.graphNodesDbDomain, nodeKey)) ==
+          null
+        ) {
+          throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
+        }
+        await this.acl.setNodeAction(nodeId, action);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async setGestaltActionByIdentity(
+    providerId: ProviderId,
+    identityId: IdentityId,
+    action: GestaltAction,
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const identityKey = gestaltsUtils.keyFromIdentity(
+          providerId,
+          identityId,
+        );
+        if (
+          (await this.db.get<IdentityInfo>(
+            this.graphIdentitiesDbDomain,
+            identityKey,
+          )) == null
+        ) {
+          throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();
+        }
+        const gestaltKeySet = (await this.db.get(
+          this.graphMatrixDbDomain,
+          identityKey,
+        )) as GestaltKeySet;
+        let nodeId: NodeId | undefined;
+        for (const nodeKey in gestaltKeySet) {
+          nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
+          break;
+        }
+        // If there are no linked nodes, this cannot proceed
+        if (nodeId == null) {
+          throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
+        }
+        await this.acl.setNodeAction(nodeId, action);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unsetGestaltActionByNode(
+    nodeId: NodeId,
+    action: GestaltAction,
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const nodeKey = gestaltsUtils.keyFromNode(nodeId);
+        if (
+          (await this.db.get<NodeInfo>(this.graphNodesDbDomain, nodeKey)) ==
+          null
+        ) {
+          throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
+        }
+        await this.acl.unsetNodeAction(nodeId, action);
+      });
+    });
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async unsetGestaltActionByIdentity(
+    providerId: ProviderId,
+    identityId: IdentityId,
+    action: GestaltAction,
+  ): Promise<void> {
+    return await this._transaction(async () => {
+      return await this.acl._transaction(async () => {
+        const identityKey = gestaltsUtils.keyFromIdentity(
+          providerId,
+          identityId,
+        );
+        if (
+          (await this.db.get<IdentityInfo>(
+            this.graphIdentitiesDbDomain,
+            identityKey,
+          )) == null
+        ) {
+          throw new gestaltsErrors.ErrorGestaltsGraphIdentityIdMissing();
+        }
+        const gestaltKeySet = (await this.db.get(
+          this.graphMatrixDbDomain,
+          identityKey,
+        )) as GestaltKeySet;
+        let nodeId: NodeId | undefined;
+        for (const nodeKey in gestaltKeySet) {
+          nodeId = gestaltsUtils.ungestaltKey(nodeKey as GestaltNodeKey).nodeId;
+          break;
+        }
+        // If there are no linked nodes, this cannot proceed
+        if (nodeId == null) {
+          throw new gestaltsErrors.ErrorGestaltsGraphNodeIdMissing();
+        }
+        await this.acl.unsetNodeAction(nodeId, action);
+      });
+    });
+  }
+
+  protected async getGestaltByKey(
+    gK: GestaltKey,
+  ): Promise<Gestalt | undefined> {
+    return await this._transaction(async () => {
+      const gestalt: Gestalt = {
+        matrix: {},
+        nodes: {},
+        identities: {},
+      };
+      // We are not using traverseGestalt
+      // because this requires keeping track of the vertexKeys
+      const queue = [gK];
+      const visited = new Set<GestaltKey>();
+      while (true) {
+        const vertex = queue.shift();
+        if (vertex == null) {
+          break;
+        }
+        const vertexKeys = await this.db.get<GestaltKeySet>(
+          this.graphMatrixDbDomain,
+          vertex,
+        );
+        if (vertexKeys == null) {
+          return;
+        }
+        const gId = gestaltsUtils.ungestaltKey(vertex);
+        gestalt.matrix[vertex] = vertexKeys;
+        if (gId.type === 'node') {
+          const nodeInfo = await this.db.get<NodeInfo>(
+            this.graphNodesDbDomain,
+            vertex as GestaltNodeKey,
+          );
+          gestalt.nodes[vertex] = nodeInfo!;
+        } else if (gId.type === 'identity') {
+          const identityInfo = await this.db.get<IdentityInfo>(
+            this.graphIdentitiesDbDomain,
+            vertex as GestaltIdentityKey,
+          );
+          gestalt.identities[vertex] = identityInfo!;
+        }
+        visited.add(vertex);
+        const neighbours: Array<GestaltKey> = Object.keys(vertexKeys).filter(
+          (k: GestaltKey) => !visited.has(k),
+        ) as Array<GestaltKey>;
+        queue.push(...neighbours);
+      }
+      return gestalt;
+    });
+  }
+
+  protected async traverseGestalt(
+    queueStart: Array<GestaltKey>,
+    visitedStart: Array<GestaltKey> = [],
+  ): Promise<[Set<GestaltKey>, Set<GestaltNodeKey>, Set<GestaltIdentityKey>]> {
+    const queue = [...queueStart];
+    const visited = new Set<GestaltKey>(visitedStart);
+    const visitedNodes = new Set<GestaltNodeKey>();
+    const visitedIdentities = new Set<GestaltIdentityKey>();
+    for (const gK of visitedStart) {
+      const gId = gestaltsUtils.ungestaltKey(gK);
+      if (gId.type === 'node') {
+        visitedNodes.add(gK as GestaltNodeKey);
+      } else if (gId.type === 'identity') {
+        visitedIdentities.add(gK as GestaltIdentityKey);
       }
     }
-    await this.graphDb.batch(ops_);
+    while (true) {
+      const vertex = queue.shift();
+      if (vertex == null) {
+        break;
+      }
+      const vertexKeys = await this.db.get<GestaltKeySet>(
+        this.graphMatrixDbDomain,
+        vertex,
+      );
+      if (vertexKeys == null) {
+        break;
+      }
+      const gId = gestaltsUtils.ungestaltKey(vertex);
+      if (gId.type === 'node') {
+        visitedNodes.add(vertex as GestaltNodeKey);
+      } else if (gId.type === 'identity') {
+        visitedIdentities.add(vertex as GestaltIdentityKey);
+      }
+      visited.add(vertex);
+      const neighbours: Array<GestaltKey> = Object.keys(vertexKeys).filter(
+        (k: GestaltKey) => !visited.has(k),
+      ) as Array<GestaltKey>;
+      queue.push(...neighbours);
+    }
+    return [visited, visitedNodes, visitedIdentities];
+  }
+
+  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  public async clearDB() {
+    await this.graphDb.clear();
   }
 }
 

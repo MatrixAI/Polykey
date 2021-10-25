@@ -5,28 +5,32 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { createAgentService, GRPCClientAgent, AgentService } from '@/agent';
 import { IAgentServer } from '@/proto/js/Agent_grpc_pb';
+import { KeyManager } from '@/keys';
 import { VaultManager } from '@/vaults';
 import { NodeManager } from '@/nodes';
 import { promisify } from '@/utils';
-import { KeyManager } from '@/keys';
-import { GitBackend } from '@/git';
+import { Sigchain } from '@/sigchain';
+import { NotificationsManager } from '@/notifications';
 
 async function openTestAgentServer({
   keyManager,
   vaultManager,
   nodeManager,
-  gitBackend,
+  sigchain,
+  notificationsManager,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
   nodeManager: NodeManager;
-  gitBackend: GitBackend;
+  sigchain: Sigchain;
+  notificationsManager: NotificationsManager;
 }) {
   const agentService: IAgentServer = createAgentService({
     keyManager,
     vaultManager,
     nodeManager,
-    gitBackend: gitBackend,
+    sigchain: sigchain,
+    notificationsManager: notificationsManager,
   });
 
   const server = new grpc.Server();
@@ -49,7 +53,7 @@ async function openTestAgentClient(port: number): Promise<GRPCClientAgent> {
   const logger = new Logger('AgentClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const agentClient = new GRPCClientAgent({
+  const agentClient = await GRPCClientAgent.createGRPCClientAgent({
     nodeId: 'NODEID' as NodeId,
     host: '127.0.0.1' as Host,
     port: port as Port,

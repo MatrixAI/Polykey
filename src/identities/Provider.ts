@@ -5,14 +5,11 @@ import type {
   ProviderTokens,
   TokenData,
 } from './types';
-import type {
-  LinkId,
-  LinkClaimIdentity,
-  LinkInfoIdentity,
-} from '../links/types';
+import type { Claim } from '../claims/types';
+import type { IdentityClaim, IdentityClaimId } from '../identities/types';
 
 import * as identitiesErrors from './errors';
-import { schema } from '../links';
+import { schema } from '../claims';
 
 type GetTokens = () => Promise<ProviderTokens>;
 type GetToken = (identityId: IdentityId) => Promise<TokenData | undefined>;
@@ -87,20 +84,20 @@ abstract class Provider {
   }
 
   /**
-   * This verifies that the link claim JSON data fits our schema
+   * This verifies that the claim's JSON data fits our schema
    * This does not verify whether the signature is correct
    */
-  public parseLinkClaim(linkClaimData: string): LinkClaimIdentity | undefined {
-    let linkClaim;
+  public parseClaim(identityClaimData: string): Claim | undefined {
+    let claim;
     try {
-      linkClaim = JSON.parse(linkClaimData);
+      claim = JSON.parse(identityClaimData);
     } catch (e) {
       return;
     }
-    if (!schema.linkClaimIdentityValidate(linkClaim)) {
+    if (!schema.claimIdentityValidate(claim)) {
       return;
     }
-    return linkClaim;
+    return claim;
   }
 
   /**
@@ -154,28 +151,30 @@ abstract class Provider {
   ): AsyncGenerator<IdentityData>;
 
   /**
-   * Publishes a link claim on the authenticated identity
+   * Publishes an identity claim on the authenticated identity.
+   * Returns an IdentityClaim, wrapping the Claim itself with extra
+   * metadata from the published claim (e.g. URL, claim ID on provider)
    */
-  public abstract publishLinkClaim(
+  public abstract publishClaim(
     authIdentityId: IdentityId,
-    linkClaim: LinkClaimIdentity,
-  ): Promise<LinkInfoIdentity>;
+    identityClaim: Claim,
+  ): Promise<IdentityClaim>;
 
   /**
-   * Gets the link info given a linkid
+   * Gets the identity claim given the claim's ID on the provider
    */
-  public abstract getLinkInfo(
+  public abstract getClaim(
     authIdentityId: IdentityId,
-    linkId: LinkId,
-  ): Promise<LinkInfoIdentity | undefined>;
+    claimId: IdentityClaimId,
+  ): Promise<IdentityClaim | undefined>;
 
   /**
-   * Stream link infos from an identity
+   * Stream identity claims from an identity
    */
-  public abstract getLinkInfos(
+  public abstract getClaims(
     authIdentityId: IdentityId,
     identityId: IdentityId,
-  ): AsyncGenerator<LinkInfoIdentity>;
+  ): AsyncGenerator<IdentityClaim>;
 }
 
 export default Provider;

@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "payload": {
+      "type": "object",
+      "properties": {
+        "hPrev": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "nullable": true
+        },
+        "seq": {
+          "type": "number"
+        },
+        "iat": {
+          "type": "number"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "identity"
+            },
+            "node": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
+            "identity": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "node",
+            "provider",
+            "identity"
+          ]
+        }
+      },
+      "required": [
+        "hPrev",
+        "seq",
+        "iat",
+        "data"
+      ]
+    },
+    "signatures": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "header": {
+            "type": "object",
+            "properties": {
+              "alg": {
+                "type": "string"
+              },
+              "kid": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "alg",
+              "kid"
+            ]
+          }
+        },
+        "required": [
+          "signature",
+          "header"
+        ]
+      },
+      "required": [],
+      "minProperties": 1,
+      "maxProperties": 1
+    }
+  },
+  "required": [
+    "payload",
+    "signatures"
+  ]
+}

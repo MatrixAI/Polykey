@@ -12,7 +12,16 @@ import * as grpcUtils from './utils';
 import * as grpcErrors from './errors';
 import { utils as networkUtils, errors as networkErrors } from '../network';
 import { promisify } from '../utils';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
+interface GRPCServer extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new grpcErrors.ErrorGRPCServerNotStarted(),
+  new grpcErrors.ErrorGRPCServerDestroyed(),
+)
 class GRPCServer {
   protected services: Services;
   protected logger: Logger;
@@ -21,16 +30,18 @@ class GRPCServer {
   protected server: grpc.Server;
   protected clientCertChains: WeakMap<Http2Session, Array<Certificate>> =
     new WeakMap();
+  protected tlsConfig: TLSConfig;
   protected _secured: boolean = false;
-  protected _started: boolean = false;
 
-  constructor({ services, logger }: { services: Services; logger?: Logger }) {
-    this.logger = logger ?? new Logger('GRPCServer');
-    this.services = services;
+  static async createGRPCServer({ logger }: { logger?: Logger }) {
+    const logger_ = logger ?? new Logger('GRPCServer');
+    return new GRPCServer({ logger: logger_ });
   }
 
-  get started(): boolean {
-    return this._started;
+  constructor({ logger }: { logger: Logger }) {
+    logger.info('Creating GRPC Server');
+    this.logger = logger;
+    logger.info('Created GRPC Server');
   }
 
   get secured(): boolean {
@@ -38,17 +49,17 @@ class GRPCServer {
   }
 
   public async start({
+    services,
     host = '::' as Host,
     port = 0 as Port,
     tlsConfig,
   }: {
+    services: Services;
     host?: Host;
     port?: Port;
     tlsConfig?: TLSConfig;
   }): Promise<void> {
-    if (this._started) {
-      return;
-    }
+    this.services = services;
     let address = networkUtils.buildAddress(host, port);
     this.logger.info(`Starting GRPC Server on ${address}`);
     let serverCredentials: ServerCredentials;
@@ -59,8 +70,9 @@ class GRPCServer {
         tlsConfig.keyPrivatePem,
         tlsConfig.certChainPem,
       );
+      this.tlsConfig = tlsConfig;
     }
-    // grpc servers must be recreated after they are stopped
+    // Grpc servers must be recreated after they are stopped
     const server = new grpc.Server();
     for (const [serviceInterface, serviceImplementation] of this.services) {
       server.addService(serviceInterface, serviceImplementation);
@@ -83,24 +95,29 @@ class GRPCServer {
           );
           this.logger.debug(`Receiving GRPC Client connecting from ${address}`);
           const clientCertChain = networkUtils.getCertificateChain(socket);
-          try {
-            networkUtils.verifyClientCertificateChain(clientCertChain);
+          if (clientCertChain.length === 0) {
+            // Client connected without providing certs.
             this.logger.debug(
-              `Received GRPC Client connecting from ${address}`,
+              `${address} connected without providing certificates`,
             );
-            this.clientCertChains.set(session, clientCertChain);
-          } catch (e) {
-            if (e instanceof networkErrors.ErrorCertChain) {
-              this.logger.debug(
-                `Failed GRPC client certificate verification connecting from ${address}`,
-              );
-              const e_ = new grpcErrors.ErrorGRPCServerVerification(
-                `${e.name}: ${e.message}`,
-                e.data,
-              );
-              session.destroy(e_, http2.constants.NGHTTP2_PROTOCOL_ERROR);
-            } else {
-              throw e;
+          } else {
+            try {
+              networkUtils.verifyClientCertificateChain(clientCertChain);
+              this.logger.debug(`Verified certificate from ${address}`);
+              this.clientCertChains.set(session, clientCertChain);
+            } catch (e) {
+              if (e instanceof networkErrors.ErrorCertChain) {
+                this.logger.debug(
+                  `Failed GRPC client certificate verification connecting from ${address}`,
+                );
+                const e_ = new grpcErrors.ErrorGRPCServerVerification(
+                  `${e.name}: ${e.message}`,
+                  e.data,
+                );
+                session.destroy(e_, http2.constants.NGHTTP2_PROTOCOL_ERROR);
+              } else {
+                throw e;
+              }
             }
           }
         });
@@ -110,7 +127,6 @@ class GRPCServer {
     this.host = host;
     this.port = port;
     this.server = server;
-    this._started = true;
     if (serverCredentials._isSecure()) {
       this._secured = true;
     }
@@ -119,9 +135,6 @@ class GRPCServer {
   }
 
   public async stop(): Promise<void> {
-    if (!this._started) {
-      return;
-    }
     this.logger.info('Stopping GRPC Server');
     const tryShutdown = promisify(this.server.tryShutdown).bind(this.server);
     try {
@@ -130,24 +143,24 @@ class GRPCServer {
       throw new grpcErrors.ErrorGRPCServerShutdown(e.message);
     }
     this._secured = false;
-    this._started = false;
     this.logger.info('Stopped GRPC Server');
   }
 
+  public async destroy() {
+    this.logger.info('Destroyed GRPC server');
+  }
+
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getHost(): Host {
-    if (!this._started) {
-      throw new grpcErrors.ErrorGRPCServerNotStarted();
-    }
     return this.host;
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getPort(): Port {
-    if (!this._started) {
-      throw new grpcErrors.ErrorGRPCServerNotStarted();
-    }
     return this.port;
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getClientCertificate(session: Http2Session): Certificate {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -155,6 +168,7 @@ class GRPCServer {
     return this.clientCertChains.get(session)![0];
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public getClientCertificates(session: Http2Session): Array<Certificate> {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -162,6 +176,7 @@ class GRPCServer {
     return this.clientCertChains.get(session)!;
   }
 
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public setTLSConfig(tlsConfig: TLSConfig): void {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -175,7 +190,13 @@ class GRPCServer {
         cert: Buffer.from(tlsConfig.certChainPem, 'ascii'),
       });
     }
+    this.tlsConfig = tlsConfig;
     return;
+  }
+
+  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
+  public closeServerForce(): void {
+    this.server.forceShutdown();
   }
 }
 
