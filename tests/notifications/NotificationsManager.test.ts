@@ -249,26 +249,18 @@ describe('NotificationsManager', () => {
   }, global.polykeyStartupTimeout * 2);
 
   afterEach(async () => {
+    await senderNodeManager.stop();
+    await senderACL.destroy();
+    await fwdProxy.stop();
+    await senderKeyManager.destroy();
+    await senderDb.stop();
     await fs.promises.rm(senderDataDir, {
       force: true,
       recursive: true,
     });
-
-    await senderNodeManager.stop();
-    await fwdProxy.stop();
-    await senderACL.destroy();
-    await senderDb.stop();
-    await senderKeyManager.destroy();
   });
 
   afterAll(async () => {
-    await fs.promises.rm(receiverDataDir, {
-      force: true,
-      recursive: true,
-    });
-    await revProxy.stop();
-    await receiverKeyManager.destroy();
-    await receiverDb.stop();
     await receiverACL.destroy();
     await receiverSigchain.destroy();
     await receiverGestaltGraph.destroy();
@@ -276,6 +268,13 @@ describe('NotificationsManager', () => {
     await receiverNodeManager.stop();
     await receiverNotificationsManager.destroy();
     await server.stop();
+    await revProxy.stop();
+    await receiverKeyManager.destroy();
+    await receiverDb.stop();
+    await fs.promises.rm(receiverDataDir, {
+      force: true,
+      recursive: true,
+    });
   });
 
   test('can send notifications', async () => {
