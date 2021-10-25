@@ -15,8 +15,8 @@ import { errors as dbErrors } from '@matrixai/db';
  * We maintain a map of buckets. Where each bucket has k number of node infos
  */
 class NodeGraph {
-  // Node ID is a 53 character base32hex string (so 424 bits)
-  public readonly nodeIdBits: number = 424;
+  // Internally, node ID is a 32 byte array
+  public readonly nodeIdBits: number = 256;
   // Max number of nodes in each k-bucket (a.k.a. k)
   public readonly maxNodesPerBucket: number = 20;
   // Max parallel connections (a.k.a. alpha)
