@@ -44,15 +44,6 @@ describe('Polykey', () => {
     },
     global.polykeyStartupTimeout,
   );
-  // Test.skip(
-  //   'construction has no side effects',
-  //   async () => {
-  //     const nodePath = `${dataDir}/polykey`;
-  //     await PolykeyAgent.createPolykey({ password, nodePath, logger });
-  //     await expect(() => fs.promises.stat(nodePath)).rejects.toThrow(/ENOENT/); // Construction has side effects now.
-  //   },
-  //   global.polykeyStartupTimeout,
-  // );
   test(
     'async start constructs node path',
     async () => {
