@@ -1184,7 +1184,7 @@ proto.Notification.Share.prototype.toObject = function(opt_includeInstance) {
  */
 proto.Notification.Share.toObject = function(includeInstance, msg) {
   var f, obj = {
-    vaultId: msg.getVaultId_asB64(),
+    vaultId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     vaultName: jspb.Message.getFieldWithDefault(msg, 2, ""),
     actionsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
   };
@@ -1224,7 +1224,7 @@ proto.Notification.Share.deserializeBinaryFromReader = function(msg, reader) {
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      var value = /** @type {string} */ (reader.readString());
       msg.setVaultId(value);
       break;
     case 2:
@@ -1264,9 +1264,9 @@ proto.Notification.Share.prototype.serializeBinary = function() {
  */
 proto.Notification.Share.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getVaultId_asU8();
+  f = message.getVaultId();
   if (f.length > 0) {
-    writer.writeBytes(
+    writer.writeString(
       1,
       f
     );
@@ -1289,44 +1289,20 @@ proto.Notification.Share.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional bytes vault_id = 1;
- * @return {!(string|Uint8Array)}
- */
-proto.Notification.Share.prototype.getVaultId = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * optional bytes vault_id = 1;
- * This is a type-conversion wrapper around `getVaultId()`
+ * optional string vault_id = 1;
  * @return {string}
  */
-proto.Notification.Share.prototype.getVaultId_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getVaultId()));
+proto.Notification.Share.prototype.getVaultId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /**
- * optional bytes vault_id = 1;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getVaultId()`
- * @return {!Uint8Array}
- */
-proto.Notification.Share.prototype.getVaultId_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getVaultId()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
+ * @param {string} value
  * @return {!proto.Notification.Share} returns this
  */
 proto.Notification.Share.prototype.setVaultId = function(value) {
-  return jspb.Message.setProto3BytesField(this, 1, value);
+  return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 

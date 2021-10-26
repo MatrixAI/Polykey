@@ -12,8 +12,8 @@ import { errors as keyErrors, KeyManager, utils as keyUtils } from '../keys';
 import * as grpc from '@grpc/grpc-js';
 import * as keysUtils from '../keys/utils';
 import * as clientErrors from '../client/errors';
-import { PasswordMessage } from '../proto/js/Client_pb';
-import PasswordOrFileCase = PasswordMessage.PasswordOrFileCase;
+import { messages } from '../client';
+const passwordOrFileCase = messages.sessions.Password.PasswordOrFileCase;
 
 async function generateRandomPayload() {
   const bytes = await keysUtils.getRandomBytes(32);
@@ -64,17 +64,17 @@ async function passwordFromMetadata(
   return password;
 }
 async function passwordFromPasswordMessage(
-  passwordMessage: PasswordMessage,
+  passwordMessage: messages.sessions.Password,
 ): Promise<string | undefined> {
   switch (passwordMessage.getPasswordOrFileCase()) {
     // If password is set explicitly use it
-    case PasswordOrFileCase.PASSWORD: {
+    case passwordOrFileCase.PASSWORD: {
       let password = passwordMessage.getPassword();
       password = password.trim();
       return password;
     }
 
-    case PasswordOrFileCase.PASSWORD_FILE: {
+    case passwordOrFileCase.PASSWORD_FILE: {
       // Read password file to get password
       const passwordFile = passwordMessage.getPasswordFile();
       let password = await fs.promises.readFile(passwordFile, {
@@ -84,7 +84,7 @@ async function passwordFromPasswordMessage(
       return password;
     }
 
-    case PasswordOrFileCase.PASSWORD_OR_FILE_NOT_SET:
+    case passwordOrFileCase.PASSWORD_OR_FILE_NOT_SET:
     default:
       //None set.
       return undefined;

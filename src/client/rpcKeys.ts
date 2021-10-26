@@ -27,10 +27,7 @@ const createKeysRPC = ({
 }) => {
   return {
     keysKeyPairRoot: async (
-      call: grpc.ServerUnaryCall<
-        messages.EmptyMessage,
-        messages.keys.KeyPair
-      >,
+      call: grpc.ServerUnaryCall<messages.EmptyMessage, messages.keys.KeyPair>,
       callback: grpc.sendUnaryData<messages.keys.KeyPair>,
     ): Promise<void> => {
       const response = new messages.keys.KeyPair();
@@ -105,10 +102,7 @@ const createKeysRPC = ({
       callback(null, response);
     },
     keysEncrypt: async (
-      call: grpc.ServerUnaryCall<
-        messages.keys.Crypto,
-        messages.keys.Crypto
-      >,
+      call: grpc.ServerUnaryCall<messages.keys.Crypto, messages.keys.Crypto>,
       callback: grpc.sendUnaryData<messages.keys.Crypto>,
     ): Promise<void> => {
       const response = new messages.keys.Crypto();
@@ -128,10 +122,7 @@ const createKeysRPC = ({
       callback(null, response);
     },
     keysDecrypt: async (
-      call: grpc.ServerUnaryCall<
-        messages.keys.Crypto,
-        messages.keys.Crypto
-      >,
+      call: grpc.ServerUnaryCall<messages.keys.Crypto, messages.keys.Crypto>,
       callback: grpc.sendUnaryData<messages.keys.Crypto>,
     ): Promise<void> => {
       const response = new messages.keys.Crypto();
@@ -151,10 +142,7 @@ const createKeysRPC = ({
       callback(null, response);
     },
     keysSign: async (
-      call: grpc.ServerUnaryCall<
-        messages.keys.Crypto,
-        messages.keys.Crypto
-      >,
+      call: grpc.ServerUnaryCall<messages.keys.Crypto, messages.keys.Crypto>,
       callback: grpc.sendUnaryData<messages.keys.Crypto>,
     ): Promise<void> => {
       const response = new messages.keys.Crypto();
@@ -174,10 +162,7 @@ const createKeysRPC = ({
       callback(null, response);
     },
     keysVerify: async (
-      call: grpc.ServerUnaryCall<
-        messages.keys.Crypto,
-        messages.StatusMessage
-      >,
+      call: grpc.ServerUnaryCall<messages.keys.Crypto, messages.StatusMessage>,
       callback: grpc.sendUnaryData<messages.StatusMessage>,
     ): Promise<void> => {
       const response = new messages.StatusMessage();

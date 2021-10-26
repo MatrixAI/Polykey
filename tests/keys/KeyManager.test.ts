@@ -538,5 +538,4 @@ describe('KeyManager', () => {
     await keyManager.destroy();
     await expect(keyManager.renewRootKeyPair('NewPassword')).rejects.toThrow();
   });
-
 });

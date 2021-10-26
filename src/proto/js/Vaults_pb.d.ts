@@ -10,10 +10,8 @@ import * as Nodes_pb from "./Nodes_pb";
 export class List extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): List;
-    getVaultId(): Uint8Array | string;
-    getVaultId_asU8(): Uint8Array;
-    getVaultId_asB64(): string;
-    setVaultId(value: Uint8Array | string): List;
+    getVaultId(): string;
+    setVaultId(value: string): List;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): List.AsObject;
@@ -28,7 +26,7 @@ export class List extends jspb.Message {
 export namespace List {
     export type AsObject = {
         vaultName: string,
-        vaultId: Uint8Array | string,
+        vaultId: string,
     }
 }
 

@@ -5,13 +5,13 @@ import type { SessionToken } from '../sessions/types';
 
 import * as grpc from '@grpc/grpc-js';
 import * as clientErrors from '../client/errors';
-import { VaultMessage } from '../proto/js/Client_pb';
 import { ErrorVaultUndefined } from '../vaults/errors';
 import { makeVaultId } from '../vaults/utils';
 import { ErrorInvalidId } from '../errors';
+import { messages } from '../client';
 
 async function parseVaultInput(
-  vaultMessage: VaultMessage,
+  vaultMessage: messages.vaults.Vault,
   vaultManager: VaultManager,
 ): Promise<VaultId> {
   const vaultNameOrid = vaultMessage.getNameOrId();

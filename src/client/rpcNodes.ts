@@ -28,10 +28,7 @@ const createNodesRPC = ({
      * of the passed ID or host/port.
      */
     nodesAdd: async (
-      call: grpc.ServerUnaryCall<
-        messages.nodes.Address,
-        messages.EmptyMessage
-      >,
+      call: grpc.ServerUnaryCall<messages.nodes.Address, messages.EmptyMessage>,
       callback: grpc.sendUnaryData<messages.EmptyMessage>,
     ): Promise<void> => {
       const response = new messages.EmptyMessage();
@@ -88,10 +85,7 @@ const createNodesRPC = ({
      * other node and host node.
      */
     nodesClaim: async (
-      call: grpc.ServerUnaryCall<
-        messages.nodes.Claim,
-        messages.StatusMessage
-      >,
+      call: grpc.ServerUnaryCall<messages.nodes.Claim, messages.StatusMessage>,
       callback: grpc.sendUnaryData<messages.StatusMessage>,
     ): Promise<void> => {
       const response = new messages.StatusMessage();
@@ -130,10 +124,7 @@ const createNodesRPC = ({
      * @throws ErrorNodeGraphNodeNotFound if node address cannot be found
      */
     nodesFind: async (
-      call: grpc.ServerUnaryCall<
-        messages.nodes.Node,
-        messages.nodes.Address
-      >,
+      call: grpc.ServerUnaryCall<messages.nodes.Node, messages.nodes.Address>,
       callback: grpc.sendUnaryData<messages.nodes.Address>,
     ): Promise<void> => {
       const response = new messages.nodes.Address();

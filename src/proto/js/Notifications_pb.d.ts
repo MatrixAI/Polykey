@@ -152,10 +152,8 @@ export namespace General {
 }
 
 export class Share extends jspb.Message { 
-    getVaultId(): Uint8Array | string;
-    getVaultId_asU8(): Uint8Array;
-    getVaultId_asB64(): string;
-    setVaultId(value: Uint8Array | string): Share;
+    getVaultId(): string;
+    setVaultId(value: string): Share;
     getVaultName(): string;
     setVaultName(value: string): Share;
     clearActionsList(): void;
@@ -175,7 +173,7 @@ export class Share extends jspb.Message {
 
 export namespace Share {
     export type AsObject = {
-        vaultId: Uint8Array | string,
+        vaultId: string,
         vaultName: string,
         actionsList: Array<string>,
     }

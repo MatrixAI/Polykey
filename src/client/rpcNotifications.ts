@@ -75,7 +75,8 @@ const createNotificationsRPC = ({
 
         const notifMessages: Array<messages.notifications.Notification> = [];
         for (const notif of notifications) {
-          const notificationsMessage = new messages.notifications.Notification();
+          const notificationsMessage =
+            new messages.notifications.Notification();
           switch (notif.data.type) {
             case 'General': {
               const generalMessage = new messages.notifications.General();

@@ -1,4 +1,4 @@
-import { clientPB } from '../../client';
+import { messages } from '../../client';
 import { createCommand, outputFormatter } from '../utils';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyClient from '../../PolykeyClient';
@@ -40,8 +40,8 @@ version.action(async (vault, versionId, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const vaultMessage = new clientPB.VaultMessage();
-    const vaultsVersionMessage = new clientPB.VaultsVersionMessage();
+    const vaultMessage = new messages.vaults.Vault();
+    const vaultsVersionMessage = new messages.vaults.Version();
 
     vaultMessage.setNameOrId(vault);
     vaultsVersionMessage.setVault(vaultMessage);

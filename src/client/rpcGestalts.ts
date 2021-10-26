@@ -25,10 +25,7 @@ const createGestaltsRPC = ({
 }) => {
   return {
     gestaltsGestaltGetByNode: async (
-      call: grpc.ServerUnaryCall<
-        messages.nodes.Node,
-        messages.gestalts.Graph
-      >,
+      call: grpc.ServerUnaryCall<messages.nodes.Node, messages.gestalts.Graph>,
       callback: grpc.sendUnaryData<messages.gestalts.Graph>,
     ): Promise<void> => {
       const response = new messages.gestalts.Graph();
@@ -153,7 +150,10 @@ const createGestaltsRPC = ({
       callback(null, emptyMessage);
     },
     gestaltsActionsGetByNode: async (
-      call: grpc.ServerUnaryCall<messages.nodes.Node, messages.permissions.Actions>,
+      call: grpc.ServerUnaryCall<
+        messages.nodes.Node,
+        messages.permissions.Actions
+      >,
       callback: grpc.sendUnaryData<messages.permissions.Actions>,
     ): Promise<void> => {
       const info = call.request;

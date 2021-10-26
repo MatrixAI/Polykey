@@ -32,7 +32,7 @@ message General {
 }
 
 message Share {
-  bytes vault_id = 1;
+  string vault_id = 1;
   string vault_name = 2;
   repeated string actions = 3;
 }

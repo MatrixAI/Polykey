@@ -379,7 +379,7 @@ proto.Vault.List.prototype.toObject = function(opt_includeInstance) {
 proto.Vault.List.toObject = function(includeInstance, msg) {
   var f, obj = {
     vaultName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    vaultId: msg.getVaultId_asB64()
+    vaultId: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -421,7 +421,7 @@ proto.Vault.List.deserializeBinaryFromReader = function(msg, reader) {
       msg.setVaultName(value);
       break;
     case 2:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      var value = /** @type {string} */ (reader.readString());
       msg.setVaultId(value);
       break;
     default:
@@ -460,9 +460,9 @@ proto.Vault.List.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getVaultId_asU8();
+  f = message.getVaultId();
   if (f.length > 0) {
-    writer.writeBytes(
+    writer.writeString(
       2,
       f
     );
@@ -489,44 +489,20 @@ proto.Vault.List.prototype.setVaultName = function(value) {
 
 
 /**
- * optional bytes vault_id = 2;
- * @return {!(string|Uint8Array)}
- */
-proto.Vault.List.prototype.getVaultId = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * optional bytes vault_id = 2;
- * This is a type-conversion wrapper around `getVaultId()`
+ * optional string vault_id = 2;
  * @return {string}
  */
-proto.Vault.List.prototype.getVaultId_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getVaultId()));
+proto.Vault.List.prototype.getVaultId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
- * optional bytes vault_id = 2;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getVaultId()`
- * @return {!Uint8Array}
- */
-proto.Vault.List.prototype.getVaultId_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getVaultId()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
+ * @param {string} value
  * @return {!proto.Vault.List} returns this
  */
 proto.Vault.List.prototype.setVaultId = function(value) {
-  return jspb.Message.setProto3BytesField(this, 2, value);
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
