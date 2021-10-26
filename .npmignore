@@ -4,10 +4,12 @@
 /default.nix
 /shell.nix
 /release.nix
-/babel.config.js
-/jest.config.js
 /tsconfig.json
 /tsconfig.build.json
+/babel.config.js
+/jest.config.js
 /src
 /tests
 /tmp
+/docs
+/benches
