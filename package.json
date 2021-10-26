@@ -63,7 +63,7 @@
     "test": "jest",
     "lint": "eslint '{src,tests}/**/*.{js,ts}'",
     "lintfix": "eslint '{src,tests}/**/*.{js,ts}' --fix",
-    "docs": "typedoc --out ./docs src && touch ./docs/.nojekyll",
+    "docs": "typedoc --tsconfig ./tsconfig.build.json --out ./docs src && touch ./docs/.nojekyll",
     "proto-generate": "scripts/proto-generate.sh",
     "polykey": "ts-node -r tsconfig-paths/register src/bin/polykey.ts"
   },
