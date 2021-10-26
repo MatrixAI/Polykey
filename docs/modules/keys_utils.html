@@ -1,0 +1,1427 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>keys/utils | @matrixai/polykey</title>
+	<meta name="description" content="Documentation for @matrixai/polykey">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="../assets/css/main.css">
+	<script async src="../assets/js/search.js" id="search-script"></script>
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="../assets/js/search.json" data-base="..">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="../index.html" class="title">@matrixai/polykey</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+							<input type="checkbox" id="tsd-filter-externals" checked />
+							<label class="tsd-widget" for="tsd-filter-externals">Externals</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<ul class="tsd-breadcrumb">
+				<li>
+					<a href="../modules.html">@matrixai/polykey</a>
+				</li>
+				<li>
+					<a href="keys_utils.html">keys/utils</a>
+				</li>
+			</ul>
+			<h1>Module keys/utils</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<section class="tsd-panel-group tsd-index-group">
+				<h2>Index</h2>
+				<section class="tsd-panel tsd-index-panel">
+					<div class="tsd-index-content">
+						<section class="tsd-index-section ">
+							<h3>Variables</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-variable tsd-parent-kind-module"><a href="keys_utils.html#oids" class="tsd-kind-icon">oids</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Functions</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certCopy" class="tsd-kind-icon">cert<wbr>Copy</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certFromAsn1" class="tsd-kind-icon">cert<wbr>From<wbr>Asn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certFromDer" class="tsd-kind-icon">cert<wbr>From<wbr>Der</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certFromPem" class="tsd-kind-icon">cert<wbr>From<wbr>Pem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certIssued" class="tsd-kind-icon">cert<wbr>Issued</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certToAsn1" class="tsd-kind-icon">cert<wbr>ToAsn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certToDer" class="tsd-kind-icon">cert<wbr>ToDer</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certToPem" class="tsd-kind-icon">cert<wbr>ToPem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certVerified" class="tsd-kind-icon">cert<wbr>Verified</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#certVerifiedNode" class="tsd-kind-icon">cert<wbr>Verified<wbr>Node</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#decryptPrivateKey" class="tsd-kind-icon">decrypt<wbr>Private<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#decryptWithKey" class="tsd-kind-icon">decrypt<wbr>With<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#decryptWithPrivateKey" class="tsd-kind-icon">decrypt<wbr>With<wbr>Private<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#encryptPrivateKey" class="tsd-kind-icon">encrypt<wbr>Private<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#encryptWithKey" class="tsd-kind-icon">encrypt<wbr>With<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#encryptWithPublicKey" class="tsd-kind-icon">encrypt<wbr>With<wbr>Public<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#generateCertificate" class="tsd-kind-icon">generate<wbr>Certificate</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#generateDeterministicKeyPair" class="tsd-kind-icon">generate<wbr>Deterministic<wbr>Key<wbr>Pair</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#generateKey" class="tsd-kind-icon">generate<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#generateKeyPair" class="tsd-kind-icon">generate<wbr>Key<wbr>Pair</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#getRandomBytes" class="tsd-kind-icon">get<wbr>Random<wbr>Bytes</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#getRandomBytesSync" class="tsd-kind-icon">get<wbr>Random<wbr>Bytes<wbr>Sync</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#keyPairCopy" class="tsd-kind-icon">key<wbr>Pair<wbr>Copy</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#keyPairFromAsn1" class="tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Asn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#keyPairFromPem" class="tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Pem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#keyPairFromPemEncrypted" class="tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Pem<wbr>Encrypted</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#keyPairToAsn1" class="tsd-kind-icon">key<wbr>Pair<wbr>ToAsn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#keyPairToPem" class="tsd-kind-icon">key<wbr>Pair<wbr>ToPem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#keyPairToPemEncrypted" class="tsd-kind-icon">key<wbr>Pair<wbr>ToPem<wbr>Encrypted</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#maxEncryptSize" class="tsd-kind-icon">max<wbr>Encrypt<wbr>Size</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#privateKeyFromAsn1" class="tsd-kind-icon">private<wbr>Key<wbr>From<wbr>Asn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#privateKeyFromPem" class="tsd-kind-icon">private<wbr>Key<wbr>From<wbr>Pem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#privateKeyToAsn1" class="tsd-kind-icon">private<wbr>Key<wbr>ToAsn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#privateKeyToPem" class="tsd-kind-icon">private<wbr>Key<wbr>ToPem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyBitSize" class="tsd-kind-icon">public<wbr>Key<wbr>Bit<wbr>Size</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyFromAsn1" class="tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Asn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyFromPem" class="tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Pem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyFromPrivateKey" class="tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Private<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyToAsn1" class="tsd-kind-icon">public<wbr>Key<wbr>ToAsn1</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyToFingerprint" class="tsd-kind-icon">public<wbr>Key<wbr>ToFingerprint</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyToFingerprintBytes" class="tsd-kind-icon">public<wbr>Key<wbr>ToFingerprint<wbr>Bytes</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#publicKeyToPem" class="tsd-kind-icon">public<wbr>Key<wbr>ToPem</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#signWithPrivateKey" class="tsd-kind-icon">sign<wbr>With<wbr>Private<wbr>Key</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="keys_utils.html#verifyWithPublicKey" class="tsd-kind-icon">verify<wbr>With<wbr>Public<wbr>Key</a></li>
+							</ul>
+						</section>
+					</div>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Variables</h2>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module">
+					<a name="oids" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> oids</h3>
+					<div class="tsd-signature tsd-kind-icon">oids<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{ </span>extensions<span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">{ </span>nodeSignature<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span>polykeyVersion<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> }</span><span class="tsd-signature-symbol"> }</span><span class="tsd-signature-symbol"> = ...</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L42">src/keys/utils.ts:42</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Polykey OIDs start at 1.3.6.1.4.1.57167.2</p>
+						</div>
+					</div>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter">
+								<h5>extensions<span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">{ </span>nodeSignature<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span>polykeyVersion<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> }</span></h5>
+								<ul class="tsd-parameters">
+									<li class="tsd-parameter">
+										<h5>node<wbr>Signature<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5>
+									</li>
+									<li class="tsd-parameter">
+										<h5>polykey<wbr>Version<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Functions</h2>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certCopy" class="tsd-anchor"></a>
+					<h3>cert<wbr>Copy</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>Copy<span class="tsd-signature-symbol">(</span>cert<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L360">src/keys/utils.ts:360</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cert: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certFromAsn1" class="tsd-anchor"></a>
+					<h3>cert<wbr>From<wbr>Asn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>From<wbr>Asn1<span class="tsd-signature-symbol">(</span>certAsn1<span class="tsd-signature-symbol">: </span><a href="keys_types.html#CertificateAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">CertificateAsn1</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L344">src/keys/utils.ts:344</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>certAsn1: <a href="keys_types.html#CertificateAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">CertificateAsn1</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certFromDer" class="tsd-anchor"></a>
+					<h3>cert<wbr>From<wbr>Der</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>From<wbr>Der<span class="tsd-signature-symbol">(</span>certDer<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L355">src/keys/utils.ts:355</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>certDer: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certFromPem" class="tsd-anchor"></a>
+					<h3>cert<wbr>From<wbr>Pem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>From<wbr>Pem<span class="tsd-signature-symbol">(</span>certPem<span class="tsd-signature-symbol">: </span><a href="keys_types.html#CertificatePem" class="tsd-signature-type" data-tsd-kind="Type alias">CertificatePem</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L334">src/keys/utils.ts:334</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>certPem: <a href="keys_types.html#CertificatePem" class="tsd-signature-type" data-tsd-kind="Type alias">CertificatePem</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certIssued" class="tsd-anchor"></a>
+					<h3>cert<wbr>Issued</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>Issued<span class="tsd-signature-symbol">(</span>cert1<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a>, cert2<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L368">src/keys/utils.ts:368</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cert1: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+								<li>
+									<h5>cert2: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certToAsn1" class="tsd-anchor"></a>
+					<h3>cert<wbr>ToAsn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>ToAsn1<span class="tsd-signature-symbol">(</span>cert<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#CertificateAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">CertificateAsn1</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L340">src/keys/utils.ts:340</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cert: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#CertificateAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">CertificateAsn1</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certToDer" class="tsd-anchor"></a>
+					<h3>cert<wbr>ToDer</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>ToDer<span class="tsd-signature-symbol">(</span>cert<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L350">src/keys/utils.ts:350</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cert: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certToPem" class="tsd-anchor"></a>
+					<h3>cert<wbr>ToPem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>ToPem<span class="tsd-signature-symbol">(</span>cert<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#CertificatePem" class="tsd-signature-type" data-tsd-kind="Type alias">CertificatePem</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L330">src/keys/utils.ts:330</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cert: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#CertificatePem" class="tsd-signature-type" data-tsd-kind="Type alias">CertificatePem</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certVerified" class="tsd-anchor"></a>
+					<h3>cert<wbr>Verified</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>Verified<span class="tsd-signature-symbol">(</span>cert1<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a>, cert2<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L372">src/keys/utils.ts:372</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cert1: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+								<li>
+									<h5>cert2: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="certVerifiedNode" class="tsd-anchor"></a>
+					<h3>cert<wbr>Verified<wbr>Node</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">cert<wbr>Verified<wbr>Node<span class="tsd-signature-symbol">(</span>cert<span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L380">src/keys/utils.ts:380</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cert: <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="decryptPrivateKey" class="tsd-anchor"></a>
+					<h3>decrypt<wbr>Private<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">decrypt<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>privateKeyEncryptedPem<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a>, password<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L182">src/keys/utils.ts:182</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Decrypting the private key</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKeyEncryptedPem: <a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a></h5>
+								</li>
+								<li>
+									<h5>password: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="decryptWithKey" class="tsd-anchor"></a>
+					<h3>decrypt<wbr>With<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">decrypt<wbr>With<wbr>Key<span class="tsd-signature-symbol">(</span>key<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">ArrayBuffer</span>, cipherText<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">ArrayBuffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">ArrayBuffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L524">src/keys/utils.ts:524</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>key: <span class="tsd-signature-type">ArrayBuffer</span></h5>
+								</li>
+								<li>
+									<h5>cipherText: <span class="tsd-signature-type">ArrayBuffer</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">ArrayBuffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="decryptWithPrivateKey" class="tsd-anchor"></a>
+					<h3>decrypt<wbr>With<wbr>Private<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">decrypt<wbr>With<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a>, cipherText<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L441">src/keys/utils.ts:441</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+								<li>
+									<h5>cipherText: <span class="tsd-signature-type">Buffer</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Buffer</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="encryptPrivateKey" class="tsd-anchor"></a>
+					<h3>encrypt<wbr>Private<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">encrypt<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a>, password<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L168">src/keys/utils.ts:168</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+								<li>
+									<h5>password: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="encryptWithKey" class="tsd-anchor"></a>
+					<h3>encrypt<wbr>With<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">encrypt<wbr>With<wbr>Key<span class="tsd-signature-symbol">(</span>key<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">ArrayBuffer</span>, plainText<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">ArrayBuffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">ArrayBuffer</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L509">src/keys/utils.ts:509</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>key: <span class="tsd-signature-type">ArrayBuffer</span></h5>
+								</li>
+								<li>
+									<h5>plainText: <span class="tsd-signature-type">ArrayBuffer</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">ArrayBuffer</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="encryptWithPublicKey" class="tsd-anchor"></a>
+					<h3>encrypt<wbr>With<wbr>Public<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">encrypt<wbr>With<wbr>Public<wbr>Key<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a>, plainText<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L422">src/keys/utils.ts:422</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+								<li>
+									<h5>plainText: <span class="tsd-signature-type">Buffer</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Buffer</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="generateCertificate" class="tsd-anchor"></a>
+					<h3>generate<wbr>Certificate</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">generate<wbr>Certificate<span class="tsd-signature-symbol">(</span>subjectPublicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a>, subjectPrivateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a>, issuerPrivateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a>, duration<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span>, subjectAttrsExtra<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span>value<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> }</span><span class="tsd-signature-symbol">[]</span>, issuerAttrsExtra<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-symbol">{ </span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span>value<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> }</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L203">src/keys/utils.ts:203</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>subjectPublicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+								<li>
+									<h5>subjectPrivateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+								<li>
+									<h5>issuerPrivateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+								<li>
+									<h5>duration: <span class="tsd-signature-type">number</span></h5>
+								</li>
+								<li>
+									<h5>subjectAttrsExtra: <span class="tsd-signature-symbol">{ </span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span>value<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> }</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = []</span></h5>
+								</li>
+								<li>
+									<h5>issuerAttrsExtra: <span class="tsd-signature-symbol">{ </span>name<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">; </span>value<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> }</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = []</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#Certificate" class="tsd-signature-type" data-tsd-kind="Type alias">Certificate</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="generateDeterministicKeyPair" class="tsd-anchor"></a>
+					<h3>generate<wbr>Deterministic<wbr>Key<wbr>Pair</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">generate<wbr>Deterministic<wbr>Key<wbr>Pair<span class="tsd-signature-symbol">(</span>bits<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span>, seed<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L55">src/keys/utils.ts:55</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>bits: <span class="tsd-signature-type">number</span></h5>
+								</li>
+								<li>
+									<h5>seed: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="generateKey" class="tsd-anchor"></a>
+					<h3>generate<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">generate<wbr>Key<span class="tsd-signature-symbol">(</span>bits<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L503">src/keys/utils.ts:503</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>bits: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = 256</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="generateKeyPair" class="tsd-anchor"></a>
+					<h3>generate<wbr>Key<wbr>Pair</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">generate<wbr>Key<wbr>Pair<span class="tsd-signature-symbol">(</span>bits<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L50">src/keys/utils.ts:50</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>bits: <span class="tsd-signature-type">number</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="getRandomBytes" class="tsd-anchor"></a>
+					<h3>get<wbr>Random<wbr>Bytes</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Random<wbr>Bytes<span class="tsd-signature-symbol">(</span>size<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L495">src/keys/utils.ts:495</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>size: <span class="tsd-signature-type">number</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="getRandomBytesSync" class="tsd-anchor"></a>
+					<h3>get<wbr>Random<wbr>Bytes<wbr>Sync</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">get<wbr>Random<wbr>Bytes<wbr>Sync<span class="tsd-signature-symbol">(</span>size<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L499">src/keys/utils.ts:499</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>size: <span class="tsd-signature-type">number</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Buffer</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="keyPairCopy" class="tsd-anchor"></a>
+					<h3>key<wbr>Pair<wbr>Copy</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">key<wbr>Pair<wbr>Copy<span class="tsd-signature-symbol">(</span>keyPair<span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L146">src/keys/utils.ts:146</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyPair: <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="keyPairFromAsn1" class="tsd-anchor"></a>
+					<h3>key<wbr>Pair<wbr>From<wbr>Asn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Asn1<span class="tsd-signature-symbol">(</span>keyPair<span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPairAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairAsn1</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L101">src/keys/utils.ts:101</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyPair: <a href="keys_types.html#KeyPairAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairAsn1</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="keyPairFromPem" class="tsd-anchor"></a>
+					<h3>key<wbr>Pair<wbr>From<wbr>Pem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Pem<span class="tsd-signature-symbol">(</span>keyPair<span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L122">src/keys/utils.ts:122</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyPair: <a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="keyPairFromPemEncrypted" class="tsd-anchor"></a>
+					<h3>key<wbr>Pair<wbr>From<wbr>Pem<wbr>Encrypted</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Pem<wbr>Encrypted<span class="tsd-signature-symbol">(</span>keyPair<span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a>, password<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L136">src/keys/utils.ts:136</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyPair: <a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a></h5>
+								</li>
+								<li>
+									<h5>password: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="keyPairToAsn1" class="tsd-anchor"></a>
+					<h3>key<wbr>Pair<wbr>ToAsn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">key<wbr>Pair<wbr>ToAsn1<span class="tsd-signature-symbol">(</span>keyPair<span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPairAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairAsn1</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L108">src/keys/utils.ts:108</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyPair: <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#KeyPairAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairAsn1</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="keyPairToPem" class="tsd-anchor"></a>
+					<h3>key<wbr>Pair<wbr>ToPem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">key<wbr>Pair<wbr>ToPem<span class="tsd-signature-symbol">(</span>keyPair<span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L115">src/keys/utils.ts:115</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyPair: <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="keyPairToPemEncrypted" class="tsd-anchor"></a>
+					<h3>key<wbr>Pair<wbr>ToPem<wbr>Encrypted</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">key<wbr>Pair<wbr>ToPem<wbr>Encrypted<span class="tsd-signature-symbol">(</span>keyPair<span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a>, password<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L129">src/keys/utils.ts:129</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyPair: <a href="keys_types.html#KeyPair" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPair</a></h5>
+								</li>
+								<li>
+									<h5>password: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#KeyPairPem" class="tsd-signature-type" data-tsd-kind="Type alias">KeyPairPem</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="maxEncryptSize" class="tsd-anchor"></a>
+					<h3>max<wbr>Encrypt<wbr>Size</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">max<wbr>Encrypt<wbr>Size<span class="tsd-signature-symbol">(</span>keyByteSize<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span>, hashByteSize<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L486">src/keys/utils.ts:486</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keyByteSize: <span class="tsd-signature-type">number</span></h5>
+								</li>
+								<li>
+									<h5>hashByteSize: <span class="tsd-signature-type">number</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="privateKeyFromAsn1" class="tsd-anchor"></a>
+					<h3>private<wbr>Key<wbr>From<wbr>Asn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">private<wbr>Key<wbr>From<wbr>Asn1<span class="tsd-signature-symbol">(</span>privateKeyAsn1<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyAsn1</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L97">src/keys/utils.ts:97</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKeyAsn1: <a href="keys_types.html#PrivateKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyAsn1</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="privateKeyFromPem" class="tsd-anchor"></a>
+					<h3>private<wbr>Key<wbr>From<wbr>Pem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">private<wbr>Key<wbr>From<wbr>Pem<span class="tsd-signature-symbol">(</span>privateKeyPem<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L89">src/keys/utils.ts:89</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKeyPem: <a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="privateKeyToAsn1" class="tsd-anchor"></a>
+					<h3>private<wbr>Key<wbr>ToAsn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">private<wbr>Key<wbr>ToAsn1<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyAsn1</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L93">src/keys/utils.ts:93</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PrivateKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyAsn1</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="privateKeyToPem" class="tsd-anchor"></a>
+					<h3>private<wbr>Key<wbr>ToPem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">private<wbr>Key<wbr>ToPem<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L85">src/keys/utils.ts:85</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PrivateKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKeyPem</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyBitSize" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>Bit<wbr>Size</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>Bit<wbr>Size<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L491">src/keys/utils.ts:491</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyFromAsn1" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>From<wbr>Asn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Asn1<span class="tsd-signature-symbol">(</span>publicKeyAsn1<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyAsn1</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L81">src/keys/utils.ts:81</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKeyAsn1: <a href="keys_types.html#PublicKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyAsn1</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyFromPem" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>From<wbr>Pem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Pem<span class="tsd-signature-symbol">(</span>publicKeyPem<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyPem</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L73">src/keys/utils.ts:73</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKeyPem: <a href="keys_types.html#PublicKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyPem</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyFromPrivateKey" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>From<wbr>Private<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L199">src/keys/utils.ts:199</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyToAsn1" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>ToAsn1</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>ToAsn1<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyAsn1</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L77">src/keys/utils.ts:77</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PublicKeyAsn1" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyAsn1</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyToFingerprint" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>ToFingerprint</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>ToFingerprint<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKeyFingerprint" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyFingerprint</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L161">src/keys/utils.ts:161</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PublicKeyFingerprint" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyFingerprint</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyToFingerprintBytes" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>ToFingerprint<wbr>Bytes</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>ToFingerprint<wbr>Bytes<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKeyFingerprintBytes" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyFingerprintBytes</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L150">src/keys/utils.ts:150</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PublicKeyFingerprintBytes" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyFingerprintBytes</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="publicKeyToPem" class="tsd-anchor"></a>
+					<h3>public<wbr>Key<wbr>ToPem</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">public<wbr>Key<wbr>ToPem<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyPem</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L69">src/keys/utils.ts:69</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="keys_types.html#PublicKeyPem" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKeyPem</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="signWithPrivateKey" class="tsd-anchor"></a>
+					<h3>sign<wbr>With<wbr>Private<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">sign<wbr>With<wbr>Private<wbr>Key<span class="tsd-signature-symbol">(</span>privateKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a>, data<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L456">src/keys/utils.ts:456</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>privateKey: <a href="keys_types.html#PrivateKey" class="tsd-signature-type" data-tsd-kind="Type alias">PrivateKey</a></h5>
+								</li>
+								<li>
+									<h5>data: <span class="tsd-signature-type">Buffer</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Buffer</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="verifyWithPublicKey" class="tsd-anchor"></a>
+					<h3>verify<wbr>With<wbr>Public<wbr>Key</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">verify<wbr>With<wbr>Public<wbr>Key<span class="tsd-signature-symbol">(</span>publicKey<span class="tsd-signature-symbol">: </span><a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a>, data<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span>, signature<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/MatrixAI/js-polykey/blob/5633724/src/keys/utils.ts#L467">src/keys/utils.ts:467</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>publicKey: <a href="keys_types.html#PublicKey" class="tsd-signature-type" data-tsd-kind="Type alias">PublicKey</a></h5>
+								</li>
+								<li>
+									<h5>data: <span class="tsd-signature-type">Buffer</span></h5>
+								</li>
+								<li>
+									<h5>signature: <span class="tsd-signature-type">Buffer</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+						</li>
+					</ul>
+				</section>
+			</section>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class=" ">
+						<a href="../modules.html">Modules</a>
+					</li>
+					<li class="current tsd-kind-module">
+						<a href="keys_utils.html">keys/utils</a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="keys_utils.html#oids" class="tsd-kind-icon">oids</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certCopy" class="tsd-kind-icon">cert<wbr>Copy</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certFromAsn1" class="tsd-kind-icon">cert<wbr>From<wbr>Asn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certFromDer" class="tsd-kind-icon">cert<wbr>From<wbr>Der</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certFromPem" class="tsd-kind-icon">cert<wbr>From<wbr>Pem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certIssued" class="tsd-kind-icon">cert<wbr>Issued</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certToAsn1" class="tsd-kind-icon">cert<wbr>ToAsn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certToDer" class="tsd-kind-icon">cert<wbr>ToDer</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certToPem" class="tsd-kind-icon">cert<wbr>ToPem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certVerified" class="tsd-kind-icon">cert<wbr>Verified</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#certVerifiedNode" class="tsd-kind-icon">cert<wbr>Verified<wbr>Node</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#decryptPrivateKey" class="tsd-kind-icon">decrypt<wbr>Private<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#decryptWithKey" class="tsd-kind-icon">decrypt<wbr>With<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#decryptWithPrivateKey" class="tsd-kind-icon">decrypt<wbr>With<wbr>Private<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#encryptPrivateKey" class="tsd-kind-icon">encrypt<wbr>Private<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#encryptWithKey" class="tsd-kind-icon">encrypt<wbr>With<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#encryptWithPublicKey" class="tsd-kind-icon">encrypt<wbr>With<wbr>Public<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#generateCertificate" class="tsd-kind-icon">generate<wbr>Certificate</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#generateDeterministicKeyPair" class="tsd-kind-icon">generate<wbr>Deterministic<wbr>Key<wbr>Pair</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#generateKey" class="tsd-kind-icon">generate<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#generateKeyPair" class="tsd-kind-icon">generate<wbr>Key<wbr>Pair</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#getRandomBytes" class="tsd-kind-icon">get<wbr>Random<wbr>Bytes</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#getRandomBytesSync" class="tsd-kind-icon">get<wbr>Random<wbr>Bytes<wbr>Sync</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#keyPairCopy" class="tsd-kind-icon">key<wbr>Pair<wbr>Copy</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#keyPairFromAsn1" class="tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Asn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#keyPairFromPem" class="tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Pem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#keyPairFromPemEncrypted" class="tsd-kind-icon">key<wbr>Pair<wbr>From<wbr>Pem<wbr>Encrypted</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#keyPairToAsn1" class="tsd-kind-icon">key<wbr>Pair<wbr>ToAsn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#keyPairToPem" class="tsd-kind-icon">key<wbr>Pair<wbr>ToPem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#keyPairToPemEncrypted" class="tsd-kind-icon">key<wbr>Pair<wbr>ToPem<wbr>Encrypted</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#maxEncryptSize" class="tsd-kind-icon">max<wbr>Encrypt<wbr>Size</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#privateKeyFromAsn1" class="tsd-kind-icon">private<wbr>Key<wbr>From<wbr>Asn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#privateKeyFromPem" class="tsd-kind-icon">private<wbr>Key<wbr>From<wbr>Pem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#privateKeyToAsn1" class="tsd-kind-icon">private<wbr>Key<wbr>ToAsn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#privateKeyToPem" class="tsd-kind-icon">private<wbr>Key<wbr>ToPem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyBitSize" class="tsd-kind-icon">public<wbr>Key<wbr>Bit<wbr>Size</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyFromAsn1" class="tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Asn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyFromPem" class="tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Pem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyFromPrivateKey" class="tsd-kind-icon">public<wbr>Key<wbr>From<wbr>Private<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyToAsn1" class="tsd-kind-icon">public<wbr>Key<wbr>ToAsn1</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyToFingerprint" class="tsd-kind-icon">public<wbr>Key<wbr>ToFingerprint</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyToFingerprintBytes" class="tsd-kind-icon">public<wbr>Key<wbr>ToFingerprint<wbr>Bytes</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#publicKeyToPem" class="tsd-kind-icon">public<wbr>Key<wbr>ToPem</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#signWithPrivateKey" class="tsd-kind-icon">sign<wbr>With<wbr>Private<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="keys_utils.html#verifyWithPublicKey" class="tsd-kind-icon">verify<wbr>With<wbr>Public<wbr>Key</a>
+					</li>
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-namespace"><span class="tsd-kind-icon">Namespace</span></li>
+				<li class="tsd-kind-variable"><span class="tsd-kind-icon">Variable</span></li>
+				<li class="tsd-kind-function"><span class="tsd-kind-icon">Function</span></li>
+				<li class="tsd-kind-function tsd-has-type-parameter"><span class="tsd-kind-icon">Function with type parameter</span></li>
+				<li class="tsd-kind-type-alias"><span class="tsd-kind-icon">Type alias</span></li>
+				<li class="tsd-kind-type-alias tsd-has-type-parameter"><span class="tsd-kind-icon">Type alias with type parameter</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-interface"><span class="tsd-kind-icon">Interface</span></li>
+				<li class="tsd-kind-interface tsd-has-type-parameter"><span class="tsd-kind-icon">Interface with type parameter</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-class"><span class="tsd-kind-icon">Class</span></li>
+				<li class="tsd-kind-class tsd-has-type-parameter"><span class="tsd-kind-icon">Class with type parameter</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>
