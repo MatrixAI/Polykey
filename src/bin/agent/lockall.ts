@@ -29,7 +29,7 @@ lockall.action(async (options) => {
   clientConfig['nodePath'] = nodePath;
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const m = new messages.EmptyMessage();
+  const m = new messages.common.EmptyMessage();
 
   try {
     await client.start({});

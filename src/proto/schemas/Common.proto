@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package common;
+
+message EmptyMessage {};
+
+message StatusMessage {
+  bool success = 1;
+}
+
+message EchoMessage {
+  string challenge = 1;
+}
+

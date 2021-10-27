@@ -16,7 +16,7 @@ import { NotificationsManager } from '../notifications';
 import { ErrorGRPC } from '../grpc/errors';
 import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
 
-import * as agentPB from '../proto/js/Agent_pb';
+import { messages } from '.';
 import * as grpcUtils from '../grpc/utils';
 import {
   utils as notificationsUtils,
@@ -48,19 +48,25 @@ function createAgentService({
 }): IAgentServer {
   const agentService: IAgentServer = {
     echo: async (
-      call: grpc.ServerUnaryCall<agentPB.EchoMessage, agentPB.EchoMessage>,
-      callback: grpc.sendUnaryData<agentPB.EchoMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.common.EchoMessage,
+        messages.common.EchoMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.EchoMessage>,
     ): Promise<void> => {
-      const response = new agentPB.EchoMessage();
+      const response = new messages.common.EchoMessage();
       response.setChallenge(call.request.getChallenge());
       callback(null, response);
     },
     vaultsGitInfoGet: async (
-      call: grpc.ServerWritableStream<agentPB.InfoRequest, agentPB.PackChunk>,
+      call: grpc.ServerWritableStream<
+        messages.vaults.Vault,
+        messages.vaults.PackChunk
+      >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       const request = call.request;
-      const vaultNameOrId = request.getVaultId();
+      const vaultNameOrId = request.getNameOrId();
       let vaultId, vaultName;
       try {
         vaultId = makeVaultId(idUtils.fromString(vaultNameOrId));
@@ -80,7 +86,7 @@ function createAgentService({
       meta.set('vaultName', vaultName);
       meta.set('vaultId', makeVaultIdPretty(vaultId));
       genWritable.stream.sendMetadata(meta);
-      const response = new agentPB.PackChunk();
+      const response = new messages.vaults.PackChunk();
       const responseGen = vaultManager.handleInfoRequest(vaultId);
       for await (const byte of responseGen) {
         if (byte !== null) {
@@ -93,7 +99,10 @@ function createAgentService({
       await genWritable.next(null);
     },
     vaultsGitPackGet: async (
-      call: grpc.ServerDuplexStream<agentPB.PackChunk, agentPB.PackChunk>,
+      call: grpc.ServerDuplexStream<
+        messages.vaults.PackChunk,
+        messages.vaults.PackChunk
+      >,
     ) => {
       const write = promisify(call.write).bind(call);
       const clientBodyBuffers: Buffer[] = [];
@@ -123,7 +132,7 @@ function createAgentService({
           }
         }
         // TODO: Check the permissions here
-        const response = new agentPB.PackChunk();
+        const response = new messages.vaults.PackChunk();
         const [sideBand, progressStream] = await vaultManager.handlePackRequest(
           vaultId,
           Buffer.from(body),
@@ -151,12 +160,12 @@ function createAgentService({
     },
     vaultsScan: async (
       call: grpc.ServerWritableStream<
-        agentPB.NodeIdMessage,
-        agentPB.VaultListMessage
+        messages.nodes.Node,
+        messages.vaults.Vault
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      const response = new agentPB.VaultListMessage();
+      const response = new messages.vaults.Vault();
       const id = makeNodeId(call.request.getNodeId());
       try {
         throw Error('Not implemented');
@@ -165,7 +174,7 @@ function createAgentService({
         let listResponse;
         for await (const vault of listResponse) {
           if (vault !== null) {
-            response.setVault(vault);
+            response.setNameOrId(vault);
             await genWritable.next(response);
           } else {
             await genWritable.next(null);
@@ -183,13 +192,10 @@ function createAgentService({
      * @param callback
      */
     nodesClosestLocalNodesGet: async (
-      call: grpc.ServerUnaryCall<
-        agentPB.NodeIdMessage,
-        agentPB.NodeTableMessage
-      >,
-      callback: grpc.sendUnaryData<agentPB.NodeTableMessage>,
+      call: grpc.ServerUnaryCall<messages.nodes.Node, messages.nodes.NodeTable>,
+      callback: grpc.sendUnaryData<messages.nodes.NodeTable>,
     ): Promise<void> => {
-      const response = new agentPB.NodeTableMessage();
+      const response = new messages.nodes.NodeTable();
       try {
         const targetNodeId = makeNodeId(call.request.getNodeId());
         // Get all local nodes that are closest to the target node from the request
@@ -197,8 +203,8 @@ function createAgentService({
           targetNodeId,
         );
         for (const node of closestNodes) {
-          const addressMessage = new agentPB.NodeAddressMessage();
-          addressMessage.setIp(node.address.ip);
+          const addressMessage = new messages.nodes.Address();
+          addressMessage.setHost(node.address.ip);
           addressMessage.setPort(node.address.port);
           // Add the node to the response's map (mapping of node ID -> node address)
           response.getNodeTableMap().set(node.id, addressMessage);
@@ -215,12 +221,12 @@ function createAgentService({
      */
     nodesClaimsGet: async (
       call: grpc.ServerUnaryCall<
-        agentPB.ClaimTypeMessage,
-        agentPB.ClaimsMessage
+        messages.nodes.ClaimType,
+        messages.nodes.Claims
       >,
-      callback: grpc.sendUnaryData<agentPB.ClaimsMessage>,
+      callback: grpc.sendUnaryData<messages.nodes.Claims>,
     ): Promise<void> => {
-      const response = new agentPB.ClaimsMessage();
+      const response = new messages.nodes.Claims();
       // Response.setClaimsList(
       //   await sigchain.getClaims(call.request.getClaimtype() as ClaimType)
       // );
@@ -231,24 +237,24 @@ function createAgentService({
      */
     nodesChainDataGet: async (
       call: grpc.ServerUnaryCall<
-        agentPB.EmptyMessage,
-        agentPB.ChainDataMessage
+        messages.common.EmptyMessage,
+        messages.nodes.ChainData
       >,
-      callback: grpc.sendUnaryData<agentPB.ChainDataMessage>,
+      callback: grpc.sendUnaryData<messages.nodes.ChainData>,
     ): Promise<void> => {
-      const response = new agentPB.ChainDataMessage();
+      const response = new messages.nodes.ChainData();
       try {
         const chainData = await nodeManager.getChainData();
         // Iterate through each claim in the chain, and serialize for transport
         for (const c in chainData) {
           const claimId = c as ClaimIdString;
           const claim = chainData[claimId];
-          const claimMessage = new agentPB.ClaimMessage();
+          const claimMessage = new messages.nodes.AgentClaim();
           // Will always have a payload (never undefined) so cast as string
           claimMessage.setPayload(claim.payload as string);
           // Add the signatures
           for (const signatureData of claim.signatures) {
-            const signature = new agentPB.SignatureMessage();
+            const signature = new messages.nodes.Signature();
             // Will always have a protected header (never undefined) so cast as string
             signature.setProtected(signatureData.protected as string);
             signature.setSignature(signatureData.signature);
@@ -263,10 +269,13 @@ function createAgentService({
       callback(null, response);
     },
     nodesHolePunchMessageSend: async (
-      call: grpc.ServerUnaryCall<agentPB.RelayMessage, agentPB.EmptyMessage>,
-      callback: grpc.sendUnaryData<agentPB.EmptyMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.nodes.Relay,
+        messages.common.EmptyMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
-      const response = new agentPB.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         // Firstly, check if this node is the desired node
         // If so, then we want to make this node start sending hole punching packets
@@ -292,12 +301,12 @@ function createAgentService({
     },
     notificationsSend: async (
       call: grpc.ServerUnaryCall<
-        agentPB.NotificationMessage,
-        agentPB.EmptyMessage
+        messages.notifications.AgentNotification,
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<agentPB.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
-      const response = new agentPB.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         const jwt = call.request.getContent();
         const notification = await notificationsUtils.verifyAndDecodeNotif(jwt);
@@ -313,12 +322,12 @@ function createAgentService({
     },
     vaultsPermisssionsCheck: async (
       call: grpc.ServerUnaryCall<
-        agentPB.VaultPermMessage,
-        agentPB.PermissionMessage
+        messages.vaults.NodePermission,
+        messages.vaults.NodePermissionAllowed
       >,
-      callback: grpc.sendUnaryData<agentPB.PermissionMessage>,
+      callback: grpc.sendUnaryData<messages.vaults.NodePermissionAllowed>,
     ): Promise<void> => {
-      const response = new agentPB.PermissionMessage();
+      const response = new messages.vaults.NodePermissionAllowed();
       try {
         const nodeId = makeNodeId(call.request.getNodeId());
         const vaultId = makeVaultId(call.request.getVaultId());
@@ -340,8 +349,8 @@ function createAgentService({
     },
     nodesCrossSignClaim: async (
       call: grpc.ServerDuplexStream<
-        agentPB.CrossSignMessage,
-        agentPB.CrossSignMessage
+        messages.nodes.CrossSign,
+        messages.nodes.CrossSign
       >,
     ) => {
       // TODO: Move all "await genClaims.throw" to a final catch(). Wrap this

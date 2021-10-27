@@ -102,7 +102,7 @@ function createClientService({
     }),
     nodesList: async (
       call: grpc.ServerWritableStream<
-        messages.EmptyMessage,
+        messages.common.EmptyMessage,
         messages.nodes.Node
       >,
     ): Promise<void> => {
@@ -114,12 +114,15 @@ function createClientService({
       call.end();
     },
     agentStop: async (
-      call: grpc.ServerUnaryCall<messages.EmptyMessage, messages.EmptyMessage>,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.common.EmptyMessage,
+        messages.common.EmptyMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const response = new messages.EmptyMessage();
+        const response = new messages.common.EmptyMessage();
         setTimeout(async () => {
           await polykeyAgent.stop();
           await polykeyAgent.destroy();

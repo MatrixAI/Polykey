@@ -32,14 +32,15 @@ add.action(async (node, host, port, options) => {
   }
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const nodeAddressMessage = new messages.nodes.Address();
+  const nodeAddressMessage = new messages.nodes.NodeAddress();
 
   try {
     await client.start({});
     const grpcClient = client.grpcClient;
     nodeAddressMessage.setNodeId(node);
-    nodeAddressMessage.setHost(host);
-    nodeAddressMessage.setPort(port);
+    nodeAddressMessage.setAddress(
+      new messages.nodes.Address().setHost(host).setPort(port),
+    );
 
     const pCall = grpcClient.nodesAdd(nodeAddressMessage);
     const { p, resolveP } = utils.promise();

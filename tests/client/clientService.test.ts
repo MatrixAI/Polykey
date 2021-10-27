@@ -188,13 +188,13 @@ describe('Client service', () => {
   });
 
   test('can echo', async () => {
-    const echo = grpcUtils.promisifyUnaryCall<messages.EchoMessage>(
+    const echo = grpcUtils.promisifyUnaryCall<messages.common.EchoMessage>(
       client,
       client.echo,
     );
-    const m = new messages.EchoMessage();
+    const m = new messages.common.EchoMessage();
     m.setChallenge('Hello');
-    const res: messages.EchoMessage = await echo(m, callCredentials);
+    const res: messages.common.EchoMessage = await echo(m, callCredentials);
     expect(res.getChallenge()).toBe('Hello');
 
     // Hard Coded error
@@ -237,7 +237,7 @@ describe('Client service', () => {
           client.sessionRefresh,
         );
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
 
       const res2 = await sessionRefresh(emptyMessage, callCredentialsRefresh);
       expect(typeof res2.getToken()).toBe('string');
@@ -250,24 +250,25 @@ describe('Client service', () => {
     test('session can lock all', async () => {
       //Starts off unlocked.
 
-      const echo = grpcUtils.promisifyUnaryCall<messages.EchoMessage>(
+      const echo = grpcUtils.promisifyUnaryCall<messages.common.EchoMessage>(
         client,
         client.echo,
       );
 
       // Checking that session is working.
-      const echoMessage = new messages.EchoMessage();
+      const echoMessage = new messages.common.EchoMessage();
       echoMessage.setChallenge('Hello');
       const res = await echo(echoMessage, callCredentials);
       expect(res.getChallenge()).toBe('Hello');
 
       //Locking the session.
-      const sessionLockAll = grpcUtils.promisifyUnaryCall<messages.EchoMessage>(
-        client,
-        client.sessionLockAll,
-      );
+      const sessionLockAll =
+        grpcUtils.promisifyUnaryCall<messages.common.EchoMessage>(
+          client,
+          client.sessionLockAll,
+        );
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       await sessionLockAll(emptyMessage, callCredentials);
 
       //Should reject the session token.
@@ -300,7 +301,7 @@ describe('Client service', () => {
         await newClient.start({});
         await newClient.session.start({ token });
 
-        const emptyMessage = new messages.EmptyMessage();
+        const emptyMessage = new messages.common.EmptyMessage();
         await newClient.grpcClient.agentStop(emptyMessage);
         await sleep(10000);
 
@@ -331,7 +332,7 @@ describe('Client service', () => {
         await vaultManager.createVault(vaultName as VaultName);
       }
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       const res = await listVaults(emptyMessage, callCredentials);
       const names: Array<string> = [];
       for await (const val of res) {
@@ -359,10 +360,11 @@ describe('Client service', () => {
       );
     });
     test('should delete vaults', async () => {
-      const deleteVault = grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
-        client,
-        client.vaultsDelete,
-      );
+      const deleteVault =
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
+          client,
+          client.vaultsDelete,
+        );
 
       const vaultList = ['Vault1', 'Vault2', 'Vault3', 'Vault4', 'Vault5'];
       const vaultList2 = ['Vault2', 'Vault3', 'Vault4', 'Vault5'];
@@ -446,10 +448,11 @@ describe('Client service', () => {
     test('should make a directory in a vault', async () => {
       const vaultName = 'MySecondVault' as VaultName;
 
-      const mkdirVault = grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
-        client,
-        client.vaultsSecretsMkdir,
-      );
+      const mkdirVault =
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
+          client,
+          client.vaultsSecretsMkdir,
+        );
 
       const vault = await vaultManager.createVault(vaultName);
       const dirPath = 'dir/dir1/dir2';
@@ -506,7 +509,7 @@ describe('Client service', () => {
     test('should delete secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const deleteSecretVault =
-        grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
           client,
           client.vaultsSecretsDelete,
         );
@@ -545,7 +548,7 @@ describe('Client service', () => {
     test('should edit secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const editSecretVault =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.vaultsSecretsEdit,
         );
@@ -622,7 +625,7 @@ describe('Client service', () => {
       const vaultName = 'MyFirstVault' as VaultName;
 
       const renameSecretVault =
-        grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
           client,
           client.vaultsSecretsRename,
         );
@@ -675,7 +678,7 @@ describe('Client service', () => {
       const vaultName = 'MyFirstVault' as VaultName;
 
       const newSecretVault =
-        grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
           client,
           client.vaultsSecretsNew,
         );
@@ -706,7 +709,7 @@ describe('Client service', () => {
     test('should add a directory of secrets in a vault', async () => {
       const vaultName = 'MyFirstVault' as VaultName;
       const newDirSecretVault =
-        grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
           client,
           client.vaultsSecretsNewDir,
         );
@@ -746,7 +749,7 @@ describe('Client service', () => {
       fail('Functionality not fully implemented');
       const vaultName = 'vault1' as VaultName;
       const vaultsSetPerms =
-        grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
           client,
           client.vaultsPermissionsSet,
         );
@@ -775,7 +778,7 @@ describe('Client service', () => {
     test.skip('should remove permissions to a vault', async () => {
       const vaultName = 'vault1' as VaultName;
       const vaultsUnsetPerms =
-        grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
           client,
           client.vaultsPermissionsUnset,
         );
@@ -1216,7 +1219,7 @@ describe('Client service', () => {
 
       const keyPair = keyManager.getRootKeyPairPem();
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
 
       const key = await getRootKeyPair(emptyMessage, callCredentials);
 
@@ -1230,10 +1233,11 @@ describe('Client service', () => {
           client.keysKeyPairRoot,
         );
 
-      const resetKeyPair = grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
-        client,
-        client.keysKeyPairReset,
-      );
+      const resetKeyPair =
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
+          client,
+          client.keysKeyPairReset,
+        );
 
       const keyPair = keyManager.getRootKeyPairPem();
       const nodeId1 = nodeManager.getNodeId();
@@ -1256,7 +1260,7 @@ describe('Client service', () => {
 
       await resetKeyPair(keyMessage, callCredentials);
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
 
       await fs.promises.writeFile(passwordFile, 'somepassphrase');
 
@@ -1287,10 +1291,11 @@ describe('Client service', () => {
       };
     });
     test('should renew root keypair', async () => {
-      const renewKeyPair = grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
-        client,
-        client.keysKeyPairRenew,
-      );
+      const renewKeyPair =
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
+          client,
+          client.keysKeyPairRenew,
+        );
 
       const rootKeyPair1 = keyManager.getRootKeyPairPem();
       const nodeId1 = nodeManager.getNodeId();
@@ -1377,7 +1382,7 @@ describe('Client service', () => {
         );
 
       const verifyWithKeyPair =
-        grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
           client,
           client.keysVerify,
         );
@@ -1397,7 +1402,7 @@ describe('Client service', () => {
     test.skip('should change password', async () => {
       // FIXME: this and any change password, reset keys needs to be changed to use the new process.
       const changePasswordKeys =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.keysPasswordChange,
         );
@@ -1439,7 +1444,7 @@ describe('Client service', () => {
           client.keysCertsChainGet,
         );
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
 
       const res = getChainCerts(emptyMessage, callCredentials);
       const certs: Array<string> = [];
@@ -1485,20 +1490,22 @@ describe('Client service', () => {
       expect((await gen.next()).done).toBeTruthy();
     });
     test('should manipulate tokens for providers', async () => {
-      const putToken = grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
-        client,
-        client.identitiesTokenPut,
-      );
+      const putToken =
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
+          client,
+          client.identitiesTokenPut,
+        );
 
       const getTokens = grpcUtils.promisifyUnaryCall<messages.identities.Token>(
         client,
         client.identitiesTokenGet,
       );
 
-      const delToken = grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
-        client,
-        client.identitiesTokenDelete,
-      );
+      const delToken =
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
+          client,
+          client.identitiesTokenDelete,
+        );
       const providerId = 'test-provider' as ProviderId;
       const identityId = 'test-user' as IdentityId;
       const tokenData = {
@@ -1531,7 +1538,7 @@ describe('Client service', () => {
           client.identitiesProvidersList,
         );
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       const test = await providersGet(emptyMessage, callCredentials);
       // Expect(test.getId()).toContain('github.com');
       expect(test.getProviderId()).toContain('test-provider');
@@ -1594,7 +1601,7 @@ describe('Client service', () => {
     });
     test('should augment a keynode.', async () => {
       const identitiesAugmentKeynode =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.identitiesClaim,
         );
@@ -1628,7 +1635,7 @@ describe('Client service', () => {
       await gestaltGraph.setNode(node2);
       await gestaltGraph.setIdentity(identity1);
 
-      const m = new messages.EmptyMessage();
+      const m = new messages.common.EmptyMessage();
 
       const res = listGestalts(m, callCredentials);
 
@@ -1716,7 +1723,7 @@ describe('Client service', () => {
     });
     test('should discover gestalt via Node.', async () => {
       const gestaltsDiscoverNode =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.gestaltsDiscoveryByNode,
         );
@@ -1730,7 +1737,7 @@ describe('Client service', () => {
     });
     test('should discover gestalt via Identity.', async () => {
       const gestaltsDiscoverIdentity =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.gestaltsDiscoveryByIdentity,
         );
@@ -1747,7 +1754,7 @@ describe('Client service', () => {
       //Technically contains a node, but no other thing, will succeed with no results.
       expect(
         await gestaltsDiscoverIdentity(providerMessage, callCredentials),
-      ).toBeInstanceOf(messages.EmptyMessage);
+      ).toBeInstanceOf(messages.common.EmptyMessage);
     });
     test('should get gestalt permissions by node.', async () => {
       const gestaltsGetActionsByNode =
@@ -1824,7 +1831,7 @@ describe('Client service', () => {
     });
     test('should set gestalt permissions by node.', async () => {
       const gestaltsSetActionByNode =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.gestaltsActionsSetByNode,
         );
@@ -1849,7 +1856,7 @@ describe('Client service', () => {
     });
     test('should set gestalt permissions by Identity.', async () => {
       const gestaltsSetActionByIdentity =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.gestaltsActionsSetByIdentity,
         );
@@ -1976,17 +1983,21 @@ describe('Client service', () => {
       await testKeynodeUtils.cleanupRemoteKeynode(server2);
     });
     test('should add a node', async () => {
-      const nodesAdd = grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
-        client,
-        client.nodesAdd,
-      );
+      const nodesAdd =
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
+          client,
+          client.nodesAdd,
+        );
       const nodeId = nodeId2;
       const host = '127.0.0.1';
       const port = 11111;
-      const nodeAddressMessage = new messages.nodes.Address();
+      const nodeAddressMessage = new messages.nodes.NodeAddress();
       nodeAddressMessage.setNodeId(nodeId);
-      nodeAddressMessage.setHost(host);
-      nodeAddressMessage.setPort(port);
+      const addressMessage = new messages.nodes.Address();
+      addressMessage.setHost(host);
+      addressMessage.setPort(port);
+      nodeAddressMessage.setAddress(addressMessage);
+
       await nodesAdd(nodeAddressMessage, callCredentials);
       const nodeAddress = await nodeManager.getNode(nodeId);
       if (!nodeAddress) {
@@ -2002,10 +2013,11 @@ describe('Client service', () => {
         await server2.stop();
 
         // Case 1: cannot establish new connection, so offline
-        const nodesPing = grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
-          client,
-          client.nodesPing,
-        );
+        const nodesPing =
+          grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
+            client,
+            client.nodesPing,
+          );
         const nodeMessage = new messages.nodes.Node();
         nodeMessage.setNodeId(serverNodeId);
         const res1 = await nodesPing(nodeMessage, callCredentials);
@@ -2027,10 +2039,11 @@ describe('Client service', () => {
       global.failedConnectionTimeout * 2,
     ); // Ping needs to timeout, so longer test timeout required
     test('should find a node (local)', async () => {
-      const nodesFind = grpcUtils.promisifyUnaryCall<messages.nodes.Address>(
-        client,
-        client.nodesFind,
-      );
+      const nodesFind =
+        grpcUtils.promisifyUnaryCall<messages.nodes.NodeAddress>(
+          client,
+          client.nodesFind,
+        );
       // Case 1: node already exists in the local node graph (no contact required)
       const nodeId = nodeId3;
       const nodeAddress: NodeAddress = {
@@ -2043,8 +2056,8 @@ describe('Client service', () => {
       nodeMessage.setNodeId(nodeId);
       const res = await nodesFind(nodeMessage, callCredentials);
       expect(res.getNodeId()).toEqual(nodeId);
-      expect(res.getHost()).toEqual(nodeAddress.ip);
-      expect(res.getPort()).toEqual(nodeAddress.port);
+      expect(res.getAddress()?.getHost()).toEqual(nodeAddress.ip);
+      expect(res.getAddress()?.getPort()).toEqual(nodeAddress.port);
     });
     // FIXME: this operation seems to be pretty slow.
     test.skip(
@@ -2059,16 +2072,17 @@ describe('Client service', () => {
         };
         // Setting the information on a remote node.
         await server.nodes.setNode(nodeId, nodeAddress);
-        const nodesFind = grpcUtils.promisifyUnaryCall<messages.nodes.Address>(
-          client,
-          client.nodesFind,
-        );
+        const nodesFind =
+          grpcUtils.promisifyUnaryCall<messages.nodes.NodeAddress>(
+            client,
+            client.nodesFind,
+          );
         const nodeMessage = new messages.nodes.Node();
         nodeMessage.setNodeId(nodeId);
         const res = await nodesFind(nodeMessage, callCredentials);
         expect(res.getNodeId()).toEqual(nodeId);
-        expect(res.getHost()).toEqual(nodeAddress.ip);
-        expect(res.getPort()).toEqual(nodeAddress.port);
+        expect(res.getAddress()?.getHost()).toEqual(nodeAddress.ip);
+        expect(res.getAddress()?.getPort()).toEqual(nodeAddress.port);
       },
       global.failedConnectionTimeout * 2,
     );
@@ -2141,10 +2155,11 @@ describe('Client service', () => {
     });
     test('should send a gestalt invite (no existing invitation)', async () => {
       // Node Claim Case 1: No invitations have been received
-      const nodesClaim = grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
-        client,
-        client.nodesClaim,
-      );
+      const nodesClaim =
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
+          client,
+          client.nodesClaim,
+        );
       const nodeClaimMessage = new messages.nodes.Claim();
       nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
       nodeClaimMessage.setForceInvite(false);
@@ -2160,10 +2175,11 @@ describe('Client service', () => {
           type: 'GestaltInvite',
         },
       );
-      const nodesClaim = grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
-        client,
-        client.nodesClaim,
-      );
+      const nodesClaim =
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
+          client,
+          client.nodesClaim,
+        );
       const nodeClaimMessage = new messages.nodes.Claim();
       nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
       nodeClaimMessage.setForceInvite(true);
@@ -2179,10 +2195,11 @@ describe('Client service', () => {
           type: 'GestaltInvite',
         },
       );
-      const nodesClaim = grpcUtils.promisifyUnaryCall<messages.StatusMessage>(
-        client,
-        client.nodesClaim,
-      );
+      const nodesClaim =
+        grpcUtils.promisifyUnaryCall<messages.common.StatusMessage>(
+          client,
+          client.nodesClaim,
+        );
       const nodeClaimMessage = new messages.nodes.Claim();
       nodeClaimMessage.setNodeId(remoteGestalt.nodes.getNodeId());
       nodeClaimMessage.setForceInvite(false);
@@ -2229,7 +2246,7 @@ describe('Client service', () => {
       await testKeynodeUtils.addRemoteDetails(polykeyAgent, receiver);
 
       const notificationsSend =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.notificationsSend,
         );
@@ -2351,12 +2368,12 @@ describe('Client service', () => {
       await sender.notifications.sendNotification(node1.id, msgData2);
 
       const notificationsClear =
-        grpcUtils.promisifyUnaryCall<messages.EmptyMessage>(
+        grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
           client,
           client.notificationsClear,
         );
 
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       await notificationsClear(emptyMessage, callCredentials);
 
       // Call read notifications to check there are none

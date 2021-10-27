@@ -17,7 +17,7 @@ import { createPublicKey, createPrivateKey } from 'crypto';
 import { md } from 'node-forge';
 import { DefinedError } from 'ajv';
 import canonicalize from 'canonicalize';
-import { agentPB } from '../agent';
+import { messages } from '../agent';
 
 import {
   claimIdentityValidate,
@@ -397,17 +397,17 @@ function createCrossSignMessage({
 }: {
   singlySignedClaim?: ClaimIntermediary;
   doublySignedClaim?: ClaimEncoded;
-}): agentPB.CrossSignMessage {
-  const crossSignMessage = new agentPB.CrossSignMessage();
+}): messages.nodes.CrossSign {
+  const crossSignMessage = new messages.nodes.CrossSign();
   // Construct the singly signed claim message
   if (singlySignedClaim != null) {
     // Should never be reached, but for type safety
     if (singlySignedClaim.payload == null) {
       throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
     }
-    const singlyMessage = new agentPB.ClaimIntermediaryMessage();
+    const singlyMessage = new messages.nodes.ClaimIntermediary();
     singlyMessage.setPayload(singlySignedClaim.payload);
-    const singlySignatureMessage = new agentPB.SignatureMessage();
+    const singlySignatureMessage = new messages.nodes.Signature();
     singlySignatureMessage.setProtected(singlySignedClaim.signature.protected!);
     singlySignatureMessage.setSignature(singlySignedClaim.signature.signature);
     singlyMessage.setSignature(singlySignatureMessage);
@@ -419,10 +419,10 @@ function createCrossSignMessage({
     if (doublySignedClaim.payload == null) {
       throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
     }
-    const doublyMessage = new agentPB.ClaimMessage();
+    const doublyMessage = new messages.nodes.AgentClaim();
     doublyMessage.setPayload(doublySignedClaim.payload);
     for (const s of doublySignedClaim.signatures) {
-      const signatureMessage = new agentPB.SignatureMessage();
+      const signatureMessage = new messages.nodes.Signature();
       signatureMessage.setProtected(s.protected!);
       signatureMessage.setSignature(s.signature);
       doublyMessage.getSignaturesList().push(signatureMessage);
@@ -437,7 +437,7 @@ function createCrossSignMessage({
  * after GRPC transport).
  */
 function reconstructClaimIntermediary(
-  intermediaryMsg: agentPB.ClaimIntermediaryMessage,
+  intermediaryMsg: messages.nodes.ClaimIntermediary,
 ): ClaimIntermediary {
   const signatureMsg = intermediaryMsg.getSignature();
   if (signatureMsg == null) {
@@ -457,7 +457,9 @@ function reconstructClaimIntermediary(
  * Reconstructs a ClaimEncoded object from a ClaimMessage (i.e. after GRPC
  * transport).
  */
-function reconstructClaimEncoded(claimMsg: agentPB.ClaimMessage): ClaimEncoded {
+function reconstructClaimEncoded(
+  claimMsg: messages.nodes.AgentClaim,
+): ClaimEncoded {
   const claim: ClaimEncoded = {
     payload: claimMsg.getPayload(),
     signatures: claimMsg.getSignaturesList().map((signatureMsg) => {

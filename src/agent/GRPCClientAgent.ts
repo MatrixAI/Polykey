@@ -1,7 +1,7 @@
 import type { TLSConfig } from '../network/types';
 
 import { GRPCClient, utils as grpcUtils } from '../grpc';
-import * as agentPB from '../proto/js/Agent_pb';
+import { messages } from '.';
 import { AgentClient } from '../proto/js/Agent_grpc_pb';
 import { NodeId } from '../nodes/types';
 import { Host, Port, ProxyConfig } from '../network/types';
@@ -63,7 +63,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public echo(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.EchoMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.common.EchoMessage>(
       this.client,
       this.client.echo,
     )(...args);
@@ -71,7 +71,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsGitInfoGet(...args) {
-    return grpcUtils.promisifyReadableStreamCall<agentPB.PackChunk>(
+    return grpcUtils.promisifyReadableStreamCall<messages.vaults.PackChunk>(
       this.client,
       this.client.vaultsGitInfoGet,
     )(...args);
@@ -84,7 +84,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsScan(...args) {
-    return grpcUtils.promisifyReadableStreamCall<agentPB.VaultListMessage>(
+    return grpcUtils.promisifyReadableStreamCall<messages.vaults.Vault>(
       this.client,
       this.client.vaultsScan,
     )(...args);
@@ -92,7 +92,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesClosestLocalNodesGet(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.NodeTableMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.nodes.NodeTable>(
       this.client,
       this.client.nodesClosestLocalNodesGet,
     )(...args);
@@ -100,7 +100,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesClaimsGet(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.ClaimsMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.nodes.Claims>(
       this.client,
       this.client.nodesClaimsGet,
     )(...args);
@@ -108,7 +108,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesChainDataGet(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.ChainDataMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.nodes.ChainData>(
       this.client,
       this.client.nodesChainDataGet,
     )(...args);
@@ -116,7 +116,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesHolePunchMessageSend(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.EmptyMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.common.EmptyMessage>(
       this.client,
       this.client.nodesHolePunchMessageSend,
     )(...args);
@@ -124,7 +124,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public notificationsSend(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.NotificationMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.notifications.AgentNotification>(
       this.client,
       this.client.notificationsSend,
     )(...args);
@@ -132,7 +132,7 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
 
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public vaultsPermisssionsCheck(...args) {
-    return grpcUtils.promisifyUnaryCall<agentPB.PermissionMessage>(
+    return grpcUtils.promisifyUnaryCall<messages.vaults.NodePermissionAllowed>(
       this.client,
       this.client.vaultsPermisssionsCheck,
     )(...args);
@@ -141,8 +141,8 @@ class GRPCClientAgent extends GRPCClient<AgentClient> {
   @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public nodesCrossSignClaim(...args) {
     return grpcUtils.promisifyDuplexStreamCall<
-      agentPB.CrossSignMessage,
-      agentPB.CrossSignMessage
+      messages.nodes.CrossSign,
+      messages.nodes.CrossSign
     >(
       this.client,
       this.client.nodesCrossSignClaim,

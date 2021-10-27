@@ -28,7 +28,7 @@ list.action(async (options) => {
     : utils.getDefaultNodePath();
 
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-  const emptyMessage = new messages.EmptyMessage();
+  const emptyMessage = new messages.common.EmptyMessage();
   let output: any;
   const gestalts: any = [];
   try {

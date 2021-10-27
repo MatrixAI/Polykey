@@ -19,9 +19,9 @@ const createNotificationsRPC = ({
     notificationsSend: async (
       call: grpc.ServerUnaryCall<
         messages.notifications.Send,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -40,7 +40,7 @@ const createNotificationsRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       callback(null, emptyMessage);
     },
     notificationsRead: async (
@@ -108,8 +108,11 @@ const createNotificationsRPC = ({
       callback(null, response);
     },
     notificationsClear: async (
-      call: grpc.ServerUnaryCall<messages.EmptyMessage, messages.EmptyMessage>,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.common.EmptyMessage,
+        messages.common.EmptyMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -121,7 +124,7 @@ const createNotificationsRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       callback(null, emptyMessage);
     },
   };

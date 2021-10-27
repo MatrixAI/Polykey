@@ -282,7 +282,6 @@ function generatorReadable(stream: any) {
         }
       }
     } catch (e) {
-      console.error(e);
       stream.destroy();
       throw toError(e);
     }

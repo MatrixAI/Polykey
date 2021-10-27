@@ -7,6 +7,26 @@
 import * as jspb from "google-protobuf";
 import * as Nodes_pb from "./Nodes_pb";
 
+export class Vault extends jspb.Message { 
+    getNameOrId(): string;
+    setNameOrId(value: string): Vault;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Vault.AsObject;
+    static toObject(includeInstance: boolean, msg: Vault): Vault.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Vault, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Vault;
+    static deserializeBinaryFromReader(message: Vault, reader: jspb.BinaryReader): Vault;
+}
+
+export namespace Vault {
+    export type AsObject = {
+        nameOrId: string,
+    }
+}
+
 export class List extends jspb.Message { 
     getVaultName(): string;
     setVaultName(value: string): List;
@@ -27,26 +47,6 @@ export namespace List {
     export type AsObject = {
         vaultName: string,
         vaultId: string,
-    }
-}
-
-export class Vault extends jspb.Message { 
-    getNameOrId(): string;
-    setNameOrId(value: string): Vault;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): Vault.AsObject;
-    static toObject(includeInstance: boolean, msg: Vault): Vault.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: Vault, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): Vault;
-    static deserializeBinaryFromReader(message: Vault, reader: jspb.BinaryReader): Vault;
-}
-
-export namespace Vault {
-    export type AsObject = {
-        nameOrId: string,
     }
 }
 
@@ -394,5 +394,95 @@ export namespace LogEntry {
         committer: string,
         timeStamp: number,
         message: string,
+    }
+}
+
+export class PackChunk extends jspb.Message { 
+    getChunk(): Uint8Array | string;
+    getChunk_asU8(): Uint8Array;
+    getChunk_asB64(): string;
+    setChunk(value: Uint8Array | string): PackChunk;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackChunk.AsObject;
+    static toObject(includeInstance: boolean, msg: PackChunk): PackChunk.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackChunk, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackChunk;
+    static deserializeBinaryFromReader(message: PackChunk, reader: jspb.BinaryReader): PackChunk;
+}
+
+export namespace PackChunk {
+    export type AsObject = {
+        chunk: Uint8Array | string,
+    }
+}
+
+export class PackRequest extends jspb.Message { 
+    getId(): string;
+    setId(value: string): PackRequest;
+    getBody(): Uint8Array | string;
+    getBody_asU8(): Uint8Array;
+    getBody_asB64(): string;
+    setBody(value: Uint8Array | string): PackRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PackRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: PackRequest): PackRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PackRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PackRequest;
+    static deserializeBinaryFromReader(message: PackRequest, reader: jspb.BinaryReader): PackRequest;
+}
+
+export namespace PackRequest {
+    export type AsObject = {
+        id: string,
+        body: Uint8Array | string,
+    }
+}
+
+export class NodePermission extends jspb.Message { 
+    getNodeId(): string;
+    setNodeId(value: string): NodePermission;
+    getVaultId(): string;
+    setVaultId(value: string): NodePermission;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodePermission.AsObject;
+    static toObject(includeInstance: boolean, msg: NodePermission): NodePermission.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodePermission, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodePermission;
+    static deserializeBinaryFromReader(message: NodePermission, reader: jspb.BinaryReader): NodePermission;
+}
+
+export namespace NodePermission {
+    export type AsObject = {
+        nodeId: string,
+        vaultId: string,
+    }
+}
+
+export class NodePermissionAllowed extends jspb.Message { 
+    getPermission(): boolean;
+    setPermission(value: boolean): NodePermissionAllowed;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): NodePermissionAllowed.AsObject;
+    static toObject(includeInstance: boolean, msg: NodePermissionAllowed): NodePermissionAllowed.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: NodePermissionAllowed, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): NodePermissionAllowed;
+    static deserializeBinaryFromReader(message: NodePermissionAllowed, reader: jspb.BinaryReader): NodePermissionAllowed;
+}
+
+export namespace NodePermissionAllowed {
+    export type AsObject = {
+        permission: boolean,
     }
 }

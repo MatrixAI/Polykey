@@ -4,15 +4,18 @@ import "Nodes.proto";
 
 package vault;
 
-message List {
-  string vault_name = 1;
-  string vault_id = 2;
-}
+// Shared.
 
 //FIXME: I'm thinking this should be a vault info that includes vault_name and vault_id
 // and only use vault_name when we are specifying a vaultNameOrId.
 message Vault {
   string name_or_Id = 1;
+}
+
+// client specific.
+message List {
+  string vault_name = 1;
+  string vault_id = 2;
 }
 
 message Rename {
@@ -81,3 +84,24 @@ message LogEntry {
   uint64 time_stamp = 4;
   string message = 3;
 }
+
+// Agent specific.
+
+message PackChunk {
+  bytes chunk = 1;
+}
+
+message PackRequest {
+  string id = 1;
+  bytes body = 2;
+}
+
+message NodePermission {
+  string node_id = 1;
+  string vault_id = 2;
+}
+
+message NodePermissionAllowed {
+  bool permission = 1;
+}
+

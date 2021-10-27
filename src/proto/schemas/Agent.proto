@@ -1,130 +1,30 @@
 syntax = "proto3";
 
+import "Common.proto";
+import "Nodes.proto";
+import "Vaults.proto";
+import "Notifications.proto";
+
 package agentInterface;
 
 service Agent {
 
   // Echo
-  rpc Echo(EchoMessage) returns (EchoMessage) {};
+  rpc Echo(common.EchoMessage) returns (common.EchoMessage);
 
   // Vaults
-  rpc VaultsGitInfoGet (InfoRequest) returns (stream PackChunk) {};
-  rpc VaultsGitPackGet(stream PackChunk) returns (stream PackChunk) {};
-  rpc VaultsScan (NodeIdMessage) returns (stream VaultListMessage) {};
-  rpc VaultsPermisssionsCheck (VaultPermMessage) returns (PermissionMessage) {}
+  rpc VaultsGitInfoGet (vault.Vault) returns (stream vault.PackChunk);
+  rpc VaultsGitPackGet(stream vault.PackChunk) returns (stream vault.PackChunk);
+  rpc VaultsScan (node.Node) returns (stream vault.Vault);
+  rpc VaultsPermisssionsCheck (vault.NodePermission) returns (vault.NodePermissionAllowed);
 
   // Nodes
-  rpc NodesClosestLocalNodesGet (NodeIdMessage) returns (NodeTableMessage) {}
-  rpc NodesClaimsGet (ClaimTypeMessage) returns (ClaimsMessage) {}
-  rpc NodesChainDataGet (EmptyMessage) returns (ChainDataMessage) {}
-  rpc NodesHolePunchMessageSend (RelayMessage) returns (EmptyMessage) {}
-  rpc NodesCrossSignClaim (stream CrossSignMessage) returns (stream CrossSignMessage) {}
+  rpc NodesClosestLocalNodesGet (node.Node) returns (node.NodeTable);
+  rpc NodesClaimsGet (node.ClaimType) returns (node.Claims);
+  rpc NodesChainDataGet (common.EmptyMessage) returns (node.ChainData);
+  rpc NodesHolePunchMessageSend (node.Relay) returns (common.EmptyMessage);
+  rpc NodesCrossSignClaim (stream node.CrossSign) returns (stream node.CrossSign);
 
   // Notifications
-  rpc NotificationsSend (NotificationMessage) returns (EmptyMessage) {}
-}
-
-message EmptyMessage {}
-
-// Echo messages
-message EchoMessage {
-  string challenge = 1;
-}
-
-// Vaults messages
-message InfoRequest {
-  string vault_id = 1;
-}
-
-message PackChunk {
-  bytes chunk = 1;
-}
-
-message PackRequest {
-  string id = 1;
-  bytes body = 2;
-}
-
-message VaultListMessage {
-  bytes vault = 1;
-}
-
-message VaultPermMessage {
-  string node_id = 1;
-  string vault_id = 2;
-}
-
-message PermissionMessage {
-  bool permission = 1;
-}
-
-//Shared messages
-message NodeIdMessage {
-  string node_id = 1;
-}
-
-//Nodes messages
-message ConnectionMessage {
-  string a_id = 1;
-  string b_id = 2;
-  string a_ip = 3;
-  string b_ip = 4;
-}
-
-message RelayMessage {
-  string src_id = 1;
-  string target_id = 2;
-  string egress_address = 3;
-  string signature = 4;
-}
-
-message NodeAddressMessage {
-  string ip = 1;
-  int32 port = 2;
-}
-
-message NodeTableMessage {
-  map<string, NodeAddressMessage> node_table = 1;
-}
-
-// The specific ClaimType of Claims to get
-message ClaimTypeMessage {
-  string claim_type = 1;
-}
-
-// A list of base64url encoded claims
-message ClaimsMessage {
-  repeated ClaimMessage claims = 1;
-}
-
-// A map of ClaimId -> ClaimEncoded
-message ChainDataMessage {
-  map<string, ClaimMessage> chain_data = 1;
-}
-
-// The components of a ClaimEncoded type (i.e. a GeneralJWS) for GRPC transport
-message ClaimMessage {
-  string payload = 1;  // base64 encoded
-  repeated SignatureMessage signatures = 2;
-}
-
-message SignatureMessage {
-  string signature = 1; // base64 encoded
-  string protected = 2; // base64 encoded ('protected' header field in GeneralJWS)
-}
-
-// Notification messages
-message NotificationMessage {
-  string content = 1;
-}
-
-// Claims messages
-message ClaimIntermediaryMessage {
-  string payload = 1;
-  SignatureMessage signature = 2;
-}
-
-message CrossSignMessage {
-  ClaimIntermediaryMessage singly_signed_claim = 1;
-  ClaimMessage doubly_signed_claim = 2;
+  rpc NotificationsSend (notification.AgentNotification) returns (common.EmptyMessage);
 }

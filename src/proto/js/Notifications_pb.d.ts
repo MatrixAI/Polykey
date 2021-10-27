@@ -178,3 +178,23 @@ export namespace Share {
         actionsList: Array<string>,
     }
 }
+
+export class AgentNotification extends jspb.Message { 
+    getContent(): string;
+    setContent(value: string): AgentNotification;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AgentNotification.AsObject;
+    static toObject(includeInstance: boolean, msg: AgentNotification): AgentNotification.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AgentNotification, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AgentNotification;
+    static deserializeBinaryFromReader(message: AgentNotification, reader: jspb.BinaryReader): AgentNotification;
+}
+
+export namespace AgentNotification {
+    export type AsObject = {
+        content: string,
+    }
+}

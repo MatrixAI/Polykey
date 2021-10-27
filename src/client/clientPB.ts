@@ -1,4 +1,4 @@
-export * from '../proto/js/Client_pb';
+export * as common from '../proto/js/Common_pb';
 export * as gestalts from '../proto/js/Gestalts_pb';
 export * as identities from '../proto/js/Identities_pb';
 export * as keys from '../proto/js/Keys_pb';

@@ -36,3 +36,9 @@ message Share {
   string vault_name = 2;
   repeated string actions = 3;
 }
+
+// Agent specific
+
+message AgentNotification {
+  string content = 1;
+}

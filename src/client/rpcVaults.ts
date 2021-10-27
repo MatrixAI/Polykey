@@ -22,11 +22,11 @@ const createVaultRPC = ({
   return {
     vaultsList: async (
       call: grpc.ServerWritableStream<
-        messages.EmptyMessage,
+        messages.common.EmptyMessage,
         messages.vaults.List
       >,
     ): Promise<void> => {
-      // call.on('error', (e) => console.error(e));
+      // Call.on('error', (e) => console.error(e));
       // call.on('close', () => console.log('Got close'));
       // call.on('finish', () => console.log('Got finish'));
       const genWritable = grpcUtils.generatorWritable(call);
@@ -41,16 +41,18 @@ const createVaultRPC = ({
           const vaultListMessage = new messages.vaults.List();
           vaultListMessage.setVaultName(vaultName);
           vaultListMessage.setVaultId(makeVaultIdPretty(vaultId));
-          await genWritable.next((_ => vaultListMessage)());
+          await genWritable.next(((_) => vaultListMessage)());
         }
         await genWritable.next(null);
       } catch (err) {
-        console.error(err);
         await genWritable.throw(err);
       }
     },
     vaultsCreate: async (
-      call: grpc.ServerUnaryCall<messages.vaults.Vault, messages.StatusMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.vaults.Vault,
+        messages.common.StatusMessage
+      >,
       callback: grpc.sendUnaryData<messages.vaults.Vault>,
     ): Promise<void> => {
       const response = new messages.vaults.Vault();
@@ -96,11 +98,14 @@ const createVaultRPC = ({
       }
     },
     vaultsDelete: async (
-      call: grpc.ServerUnaryCall<messages.vaults.Vault, messages.StatusMessage>,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.vaults.Vault,
+        messages.common.StatusMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
       const vaultMessage = call.request;
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -116,10 +121,13 @@ const createVaultRPC = ({
       }
     },
     vaultsClone: async (
-      call: grpc.ServerUnaryCall<messages.vaults.Clone, messages.StatusMessage>,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.vaults.Clone,
+        messages.common.StatusMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -151,10 +159,13 @@ const createVaultRPC = ({
       }
     },
     vaultsPull: async (
-      call: grpc.ServerUnaryCall<messages.vaults.Pull, messages.StatusMessage>,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.vaults.Pull,
+        messages.common.StatusMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -240,10 +251,13 @@ const createVaultRPC = ({
       }
     },
     vaultsSecretsMkdir: async (
-      call: grpc.ServerUnaryCall<messages.vaults.Mkdir, messages.EmptyMessage>,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.vaults.Mkdir,
+        messages.common.EmptyMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -294,11 +308,11 @@ const createVaultRPC = ({
     vaultsSecretsDelete: async (
       call: grpc.ServerUnaryCall<
         messages.secrets.Secret,
-        messages.StatusMessage
+        messages.common.StatusMessage
       >,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -323,11 +337,11 @@ const createVaultRPC = ({
     vaultsSecretsEdit: async (
       call: grpc.ServerUnaryCall<
         messages.secrets.Secret,
-        messages.StatusMessage
+        messages.common.StatusMessage
       >,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -358,7 +372,7 @@ const createVaultRPC = ({
     vaultsSecretsGet: async (
       call: grpc.ServerUnaryCall<
         messages.secrets.Secret,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
       callback: grpc.sendUnaryData<messages.secrets.Secret>,
     ): Promise<void> => {
@@ -388,11 +402,11 @@ const createVaultRPC = ({
     vaultsSecretsRename: async (
       call: grpc.ServerUnaryCall<
         messages.secrets.Rename,
-        messages.StatusMessage
+        messages.common.StatusMessage
       >,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -423,11 +437,11 @@ const createVaultRPC = ({
     vaultsSecretsNew: async (
       call: grpc.ServerUnaryCall<
         messages.secrets.Secret,
-        messages.StatusMessage
+        messages.common.StatusMessage
       >,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -453,11 +467,11 @@ const createVaultRPC = ({
     vaultsSecretsNewDir: async (
       call: grpc.ServerUnaryCall<
         messages.secrets.Directory,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -482,9 +496,9 @@ const createVaultRPC = ({
     vaultsPermissionsSet: async (
       call: grpc.ServerUnaryCall<
         messages.vaults.PermSet,
-        messages.StatusMessage
+        messages.common.StatusMessage
       >,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -506,7 +520,7 @@ const createVaultRPC = ({
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         throw Error('Not Implemented');
         // Await vaultManager.setVaultPermissions(node, id); // FIXME
-        const response = new messages.StatusMessage();
+        const response = new messages.common.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -516,9 +530,9 @@ const createVaultRPC = ({
     vaultsPermissionsUnset: async (
       call: grpc.ServerUnaryCall<
         messages.vaults.PermUnset,
-        messages.StatusMessage
+        messages.common.StatusMessage
       >,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -540,7 +554,7 @@ const createVaultRPC = ({
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         throw Error('Not implemented');
         // Await vaultManager.unsetVaultPermissions(node, id); // FIXME
-        const response = new messages.StatusMessage();
+        const response = new messages.common.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {
@@ -666,7 +680,7 @@ const createVaultRPC = ({
         // Getting the log
         const depth = vaultsLogMessage.getLogDepth();
         let commitId: string | undefined = vaultsLogMessage.getCommitId();
-        commitId = !!commitId ? commitId : undefined;
+        commitId = commitId ? commitId : undefined;
         const log = await vault.log(depth, commitId);
 
         const vaultsLogEntryMessage = new messages.vaults.LogEntry();
@@ -679,7 +693,6 @@ const createVaultRPC = ({
         }
         await genWritable.next(null);
       } catch (err) {
-        console.error(err);
         await genWritable.throw(err);
       }
     },

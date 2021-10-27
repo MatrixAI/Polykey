@@ -1,105 +1,96 @@
 syntax = "proto3";
 
-import public "Gestalts.proto";
-import public "Identities.proto";
-import public "Keys.proto";
-import public "Nodes.proto";
-import public "Notifications.proto";
-import public "Permissions.proto";
-import public "Secrets.proto";
-import public "Sessions.proto";
-import public "Vaults.proto";
+import "Gestalts.proto";
+import "Identities.proto";
+import "Keys.proto";
+import "Nodes.proto";
+import "Notifications.proto";
+import "Permissions.proto";
+import "Secrets.proto";
+import "Sessions.proto";
+import "Vaults.proto";
+import "Common.proto";
 
 
 package clientInterface;
 
 service Client {
-  rpc Echo(EchoMessage) returns (EchoMessage);
+  rpc Echo(common.EchoMessage) returns (common.EchoMessage);
 
   // Agent
-  rpc AgentStop(EmptyMessage) returns (EmptyMessage);
+  rpc AgentStop(common.EmptyMessage) returns (common.EmptyMessage);
 
   // Session
   rpc SessionUnlock (session.Password) returns (session.Token);
-  rpc SessionRefresh (EmptyMessage) returns (session.Token);
-  rpc SessionLockAll (EmptyMessage) returns (StatusMessage);
+  rpc SessionRefresh (common.EmptyMessage) returns (session.Token);
+  rpc SessionLockAll (common.EmptyMessage) returns (common.StatusMessage);
 
   // Nodes
-  rpc NodesAdd(node.Address) returns (EmptyMessage);
-  rpc NodesPing(node.Node) returns (StatusMessage);
-  rpc NodesClaim(node.Claim) returns (StatusMessage);
-  rpc NodesFind(node.Node) returns (node.Address);
+  rpc NodesAdd(node.NodeAddress) returns (common.EmptyMessage);
+  rpc NodesPing(node.Node) returns (common.StatusMessage);
+  rpc NodesClaim(node.Claim) returns (common.StatusMessage);
+  rpc NodesFind(node.Node) returns (node.NodeAddress);
 
   // Keys
-  rpc KeysKeyPairRoot (EmptyMessage) returns (key.KeyPair);
-  rpc KeysKeyPairReset (key.Key) returns (EmptyMessage);
-  rpc KeysKeyPairRenew (key.Key) returns (EmptyMessage);
+  rpc KeysKeyPairRoot (common.EmptyMessage) returns (key.KeyPair);
+  rpc KeysKeyPairReset (key.Key) returns (common.EmptyMessage);
+  rpc KeysKeyPairRenew (key.Key) returns (common.EmptyMessage);
   rpc KeysEncrypt (key.Crypto) returns (key.Crypto);
   rpc KeysDecrypt (key.Crypto) returns (key.Crypto);
   rpc KeysSign (key.Crypto) returns (key.Crypto);
-  rpc KeysVerify (key.Crypto) returns (StatusMessage);
-  rpc KeysPasswordChange (session.Password) returns (EmptyMessage); // FIXME: passwordMessage is shared.
-  rpc KeysCertsGet (EmptyMessage) returns (key.Certificate);
-  rpc KeysCertsChainGet (EmptyMessage) returns (stream key.Certificate);
+  rpc KeysVerify (key.Crypto) returns (common.StatusMessage);
+  rpc KeysPasswordChange (session.Password) returns (common.EmptyMessage); // FIXME: passwordMessage is shared.
+  rpc KeysCertsGet (common.EmptyMessage) returns (key.Certificate);
+  rpc KeysCertsChainGet (common.EmptyMessage) returns (stream key.Certificate);
 
   // Vaults
-  rpc VaultsList(EmptyMessage) returns (stream vault.List);
+  rpc VaultsList(common.EmptyMessage) returns (stream vault.List);
   rpc VaultsCreate(vault.Vault) returns (vault.Vault);
   rpc VaultsRename(vault.Rename) returns (vault.Vault);
-  rpc VaultsDelete(vault.Vault) returns (StatusMessage);
-  rpc VaultsPull(vault.Pull) returns (StatusMessage);
-  rpc VaultsClone(vault.Clone) returns (StatusMessage);
+  rpc VaultsDelete(vault.Vault) returns (common.StatusMessage);
+  rpc VaultsPull(vault.Pull) returns (common.StatusMessage);
+  rpc VaultsClone(vault.Clone) returns (common.StatusMessage);
   rpc VaultsScan(node.Node) returns (stream vault.List);
   rpc VaultsSecretsList(vault.Vault) returns (stream secret.Secret);
-  rpc VaultsSecretsMkdir(vault.Mkdir) returns (StatusMessage);
+  rpc VaultsSecretsMkdir(vault.Mkdir) returns (common.StatusMessage);
   rpc VaultsSecretsStat(vault.Vault) returns (vault.Stat);
-  rpc VaultsSecretsDelete(secret.Secret) returns (StatusMessage);
-  rpc VaultsSecretsEdit(secret.Secret) returns (StatusMessage);
+  rpc VaultsSecretsDelete(secret.Secret) returns (common.StatusMessage);
+  rpc VaultsSecretsEdit(secret.Secret) returns (common.StatusMessage);
   rpc VaultsSecretsGet(secret.Secret) returns (secret.Secret);
-  rpc VaultsSecretsRename(secret.Rename) returns (StatusMessage);
-  rpc VaultsSecretsNew(secret.Secret) returns (StatusMessage);
-  rpc VaultsSecretsNewDir(secret.Directory) returns (StatusMessage);
-  rpc VaultsPermissionsSet(vault.PermSet) returns (StatusMessage);
-  rpc VaultsPermissionsUnset(vault.PermUnset) returns (StatusMessage);
+  rpc VaultsSecretsRename(secret.Rename) returns (common.StatusMessage);
+  rpc VaultsSecretsNew(secret.Secret) returns (common.StatusMessage);
+  rpc VaultsSecretsNewDir(secret.Directory) returns (common.StatusMessage);
+  rpc VaultsPermissionsSet(vault.PermSet) returns (common.StatusMessage);
+  rpc VaultsPermissionsUnset(vault.PermUnset) returns (common.StatusMessage);
   rpc VaultsPermissions(vault.PermGet) returns (stream vault.Permission);
   rpc VaultsVersion(vault.Version) returns (vault.VersionResult);
   rpc VaultsLog(vault.Log) returns (stream vault.LogEntry);
 
   // Identities
   rpc IdentitiesAuthenticate(identity.Provider) returns (stream identity.Provider);
-  rpc IdentitiesTokenPut(identity.TokenSpecific) returns (EmptyMessage);
+  rpc IdentitiesTokenPut(identity.TokenSpecific) returns (common.EmptyMessage);
   rpc IdentitiesTokenGet(identity.Provider) returns (identity.Token);
-  rpc IdentitiesTokenDelete(identity.Provider) returns (EmptyMessage);
-  rpc IdentitiesProvidersList(EmptyMessage) returns (identity.Provider);
+  rpc IdentitiesTokenDelete(identity.Provider) returns (common.EmptyMessage);
+  rpc IdentitiesProvidersList(common.EmptyMessage) returns (identity.Provider);
   rpc IdentitiesInfoGet(identity.Provider) returns (identity.Provider);
   rpc IdentitiesInfoGetConnected(identity.ProviderSearch) returns (stream identity.Info);
-  rpc IdentitiesClaim(identity.Provider) returns (EmptyMessage);
+  rpc IdentitiesClaim(identity.Provider) returns (common.EmptyMessage);
 
   // Gestalts
-  rpc GestaltsGestaltList(EmptyMessage) returns (stream gestalt.Gestalt);
+  rpc GestaltsGestaltList(common.EmptyMessage) returns (stream gestalt.Gestalt);
   rpc GestaltsGestaltGetByNode(node.Node) returns (gestalt.Graph);
   rpc GestaltsGestaltGetByIdentity(identity.Provider) returns (gestalt.Graph);
-  rpc GestaltsDiscoveryByNode(node.Node) returns (EmptyMessage);
-  rpc GestaltsDiscoveryByIdentity(identity.Provider) returns (EmptyMessage);
+  rpc GestaltsDiscoveryByNode(node.Node) returns (common.EmptyMessage);
+  rpc GestaltsDiscoveryByIdentity(identity.Provider) returns (common.EmptyMessage);
   rpc GestaltsActionsGetByNode(node.Node) returns (permission.Actions);
   rpc GestaltsActionsGetByIdentity(identity.Provider) returns (permission.Actions);
-  rpc GestaltsActionsSetByNode(permission.ActionSet) returns (EmptyMessage);
-  rpc GestaltsActionsSetByIdentity(permission.ActionSet) returns (EmptyMessage);
-  rpc GestaltsActionsUnsetByNode(permission.ActionSet) returns (EmptyMessage);
-  rpc GestaltsActionsUnsetByIdentity(permission.ActionSet) returns (EmptyMessage);
+  rpc GestaltsActionsSetByNode(permission.ActionSet) returns (common.EmptyMessage);
+  rpc GestaltsActionsSetByIdentity(permission.ActionSet) returns (common.EmptyMessage);
+  rpc GestaltsActionsUnsetByNode(permission.ActionSet) returns (common.EmptyMessage);
+  rpc GestaltsActionsUnsetByIdentity(permission.ActionSet) returns (common.EmptyMessage);
 
   // Notifications
-  rpc NotificationsSend(notification.Send) returns (EmptyMessage);
+  rpc NotificationsSend(notification.Send) returns (common.EmptyMessage);
   rpc NotificationsRead(notification.Read) returns (notification.List);
-  rpc NotificationsClear(EmptyMessage) returns (EmptyMessage);
-}
-
-message EmptyMessage {};
-
-message StatusMessage {
-  bool success = 1;
-}
-
-message EchoMessage {
-  string challenge = 1;
+  rpc NotificationsClear(common.EmptyMessage) returns (common.EmptyMessage);
 }

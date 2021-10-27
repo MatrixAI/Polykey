@@ -63,8 +63,8 @@ find.action(async (node, options) => {
 
       result.success = true;
       result.id = res.getNodeId();
-      result.host = res.getHost();
-      result.port = res.getPort();
+      result.host = res.getAddress()!.getHost();
+      result.port = res.getAddress()!.getPort();
       result.message = `Found node at ${buildAddress(
         result.host as Host,
         result.port as Port,

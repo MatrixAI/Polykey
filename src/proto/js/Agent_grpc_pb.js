@@ -2,171 +2,163 @@
 
 'use strict';
 var grpc = require('@grpc/grpc-js');
-var Agent_pb = require('./Agent_pb.js');
+var Common_pb = require('./Common_pb.js');
+var Nodes_pb = require('./Nodes_pb.js');
+var Vaults_pb = require('./Vaults_pb.js');
+var Notifications_pb = require('./Notifications_pb.js');
 
-function serialize_agentInterface_ChainDataMessage(arg) {
-  if (!(arg instanceof Agent_pb.ChainDataMessage)) {
-    throw new Error('Expected argument of type agentInterface.ChainDataMessage');
+function serialize_common_EchoMessage(arg) {
+  if (!(arg instanceof Common_pb.EchoMessage)) {
+    throw new Error('Expected argument of type common.EchoMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_ChainDataMessage(buffer_arg) {
-  return Agent_pb.ChainDataMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_common_EchoMessage(buffer_arg) {
+  return Common_pb.EchoMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_ClaimTypeMessage(arg) {
-  if (!(arg instanceof Agent_pb.ClaimTypeMessage)) {
-    throw new Error('Expected argument of type agentInterface.ClaimTypeMessage');
+function serialize_common_EmptyMessage(arg) {
+  if (!(arg instanceof Common_pb.EmptyMessage)) {
+    throw new Error('Expected argument of type common.EmptyMessage');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_ClaimTypeMessage(buffer_arg) {
-  return Agent_pb.ClaimTypeMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_common_EmptyMessage(buffer_arg) {
+  return Common_pb.EmptyMessage.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_ClaimsMessage(arg) {
-  if (!(arg instanceof Agent_pb.ClaimsMessage)) {
-    throw new Error('Expected argument of type agentInterface.ClaimsMessage');
+function serialize_node_ChainData(arg) {
+  if (!(arg instanceof Nodes_pb.ChainData)) {
+    throw new Error('Expected argument of type node.ChainData');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_ClaimsMessage(buffer_arg) {
-  return Agent_pb.ClaimsMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_node_ChainData(buffer_arg) {
+  return Nodes_pb.ChainData.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_CrossSignMessage(arg) {
-  if (!(arg instanceof Agent_pb.CrossSignMessage)) {
-    throw new Error('Expected argument of type agentInterface.CrossSignMessage');
+function serialize_node_ClaimType(arg) {
+  if (!(arg instanceof Nodes_pb.ClaimType)) {
+    throw new Error('Expected argument of type node.ClaimType');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_CrossSignMessage(buffer_arg) {
-  return Agent_pb.CrossSignMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_node_ClaimType(buffer_arg) {
+  return Nodes_pb.ClaimType.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_EchoMessage(arg) {
-  if (!(arg instanceof Agent_pb.EchoMessage)) {
-    throw new Error('Expected argument of type agentInterface.EchoMessage');
+function serialize_node_Claims(arg) {
+  if (!(arg instanceof Nodes_pb.Claims)) {
+    throw new Error('Expected argument of type node.Claims');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_EchoMessage(buffer_arg) {
-  return Agent_pb.EchoMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_node_Claims(buffer_arg) {
+  return Nodes_pb.Claims.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_EmptyMessage(arg) {
-  if (!(arg instanceof Agent_pb.EmptyMessage)) {
-    throw new Error('Expected argument of type agentInterface.EmptyMessage');
+function serialize_node_CrossSign(arg) {
+  if (!(arg instanceof Nodes_pb.CrossSign)) {
+    throw new Error('Expected argument of type node.CrossSign');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_EmptyMessage(buffer_arg) {
-  return Agent_pb.EmptyMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_node_CrossSign(buffer_arg) {
+  return Nodes_pb.CrossSign.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_InfoRequest(arg) {
-  if (!(arg instanceof Agent_pb.InfoRequest)) {
-    throw new Error('Expected argument of type agentInterface.InfoRequest');
+function serialize_node_Node(arg) {
+  if (!(arg instanceof Nodes_pb.Node)) {
+    throw new Error('Expected argument of type node.Node');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_InfoRequest(buffer_arg) {
-  return Agent_pb.InfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_node_Node(buffer_arg) {
+  return Nodes_pb.Node.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_NodeIdMessage(arg) {
-  if (!(arg instanceof Agent_pb.NodeIdMessage)) {
-    throw new Error('Expected argument of type agentInterface.NodeIdMessage');
+function serialize_node_NodeTable(arg) {
+  if (!(arg instanceof Nodes_pb.NodeTable)) {
+    throw new Error('Expected argument of type node.NodeTable');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_NodeIdMessage(buffer_arg) {
-  return Agent_pb.NodeIdMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_node_NodeTable(buffer_arg) {
+  return Nodes_pb.NodeTable.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_NodeTableMessage(arg) {
-  if (!(arg instanceof Agent_pb.NodeTableMessage)) {
-    throw new Error('Expected argument of type agentInterface.NodeTableMessage');
+function serialize_node_Relay(arg) {
+  if (!(arg instanceof Nodes_pb.Relay)) {
+    throw new Error('Expected argument of type node.Relay');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_NodeTableMessage(buffer_arg) {
-  return Agent_pb.NodeTableMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_node_Relay(buffer_arg) {
+  return Nodes_pb.Relay.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_NotificationMessage(arg) {
-  if (!(arg instanceof Agent_pb.NotificationMessage)) {
-    throw new Error('Expected argument of type agentInterface.NotificationMessage');
+function serialize_notification_AgentNotification(arg) {
+  if (!(arg instanceof Notifications_pb.AgentNotification)) {
+    throw new Error('Expected argument of type notification.AgentNotification');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_NotificationMessage(buffer_arg) {
-  return Agent_pb.NotificationMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_notification_AgentNotification(buffer_arg) {
+  return Notifications_pb.AgentNotification.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_PackChunk(arg) {
-  if (!(arg instanceof Agent_pb.PackChunk)) {
-    throw new Error('Expected argument of type agentInterface.PackChunk');
+function serialize_vault_NodePermission(arg) {
+  if (!(arg instanceof Vaults_pb.NodePermission)) {
+    throw new Error('Expected argument of type vault.NodePermission');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_PackChunk(buffer_arg) {
-  return Agent_pb.PackChunk.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_vault_NodePermission(buffer_arg) {
+  return Vaults_pb.NodePermission.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_PermissionMessage(arg) {
-  if (!(arg instanceof Agent_pb.PermissionMessage)) {
-    throw new Error('Expected argument of type agentInterface.PermissionMessage');
+function serialize_vault_NodePermissionAllowed(arg) {
+  if (!(arg instanceof Vaults_pb.NodePermissionAllowed)) {
+    throw new Error('Expected argument of type vault.NodePermissionAllowed');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_PermissionMessage(buffer_arg) {
-  return Agent_pb.PermissionMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_vault_NodePermissionAllowed(buffer_arg) {
+  return Vaults_pb.NodePermissionAllowed.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_RelayMessage(arg) {
-  if (!(arg instanceof Agent_pb.RelayMessage)) {
-    throw new Error('Expected argument of type agentInterface.RelayMessage');
+function serialize_vault_PackChunk(arg) {
+  if (!(arg instanceof Vaults_pb.PackChunk)) {
+    throw new Error('Expected argument of type vault.PackChunk');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_RelayMessage(buffer_arg) {
-  return Agent_pb.RelayMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_vault_PackChunk(buffer_arg) {
+  return Vaults_pb.PackChunk.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_agentInterface_VaultListMessage(arg) {
-  if (!(arg instanceof Agent_pb.VaultListMessage)) {
-    throw new Error('Expected argument of type agentInterface.VaultListMessage');
+function serialize_vault_Vault(arg) {
+  if (!(arg instanceof Vaults_pb.Vault)) {
+    throw new Error('Expected argument of type vault.Vault');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_agentInterface_VaultListMessage(buffer_arg) {
-  return Agent_pb.VaultListMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_agentInterface_VaultPermMessage(arg) {
-  if (!(arg instanceof Agent_pb.VaultPermMessage)) {
-    throw new Error('Expected argument of type agentInterface.VaultPermMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_agentInterface_VaultPermMessage(buffer_arg) {
-  return Agent_pb.VaultPermMessage.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_vault_Vault(buffer_arg) {
+  return Vaults_pb.Vault.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -176,125 +168,125 @@ echo: {
     path: '/agentInterface.Agent/Echo',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.EchoMessage,
-    responseType: Agent_pb.EchoMessage,
-    requestSerialize: serialize_agentInterface_EchoMessage,
-    requestDeserialize: deserialize_agentInterface_EchoMessage,
-    responseSerialize: serialize_agentInterface_EchoMessage,
-    responseDeserialize: deserialize_agentInterface_EchoMessage,
+    requestType: Common_pb.EchoMessage,
+    responseType: Common_pb.EchoMessage,
+    requestSerialize: serialize_common_EchoMessage,
+    requestDeserialize: deserialize_common_EchoMessage,
+    responseSerialize: serialize_common_EchoMessage,
+    responseDeserialize: deserialize_common_EchoMessage,
   },
   // Vaults
 vaultsGitInfoGet: {
     path: '/agentInterface.Agent/VaultsGitInfoGet',
     requestStream: false,
     responseStream: true,
-    requestType: Agent_pb.InfoRequest,
-    responseType: Agent_pb.PackChunk,
-    requestSerialize: serialize_agentInterface_InfoRequest,
-    requestDeserialize: deserialize_agentInterface_InfoRequest,
-    responseSerialize: serialize_agentInterface_PackChunk,
-    responseDeserialize: deserialize_agentInterface_PackChunk,
+    requestType: Vaults_pb.Vault,
+    responseType: Vaults_pb.PackChunk,
+    requestSerialize: serialize_vault_Vault,
+    requestDeserialize: deserialize_vault_Vault,
+    responseSerialize: serialize_vault_PackChunk,
+    responseDeserialize: deserialize_vault_PackChunk,
   },
   vaultsGitPackGet: {
     path: '/agentInterface.Agent/VaultsGitPackGet',
     requestStream: true,
     responseStream: true,
-    requestType: Agent_pb.PackChunk,
-    responseType: Agent_pb.PackChunk,
-    requestSerialize: serialize_agentInterface_PackChunk,
-    requestDeserialize: deserialize_agentInterface_PackChunk,
-    responseSerialize: serialize_agentInterface_PackChunk,
-    responseDeserialize: deserialize_agentInterface_PackChunk,
+    requestType: Vaults_pb.PackChunk,
+    responseType: Vaults_pb.PackChunk,
+    requestSerialize: serialize_vault_PackChunk,
+    requestDeserialize: deserialize_vault_PackChunk,
+    responseSerialize: serialize_vault_PackChunk,
+    responseDeserialize: deserialize_vault_PackChunk,
   },
   vaultsScan: {
     path: '/agentInterface.Agent/VaultsScan',
     requestStream: false,
     responseStream: true,
-    requestType: Agent_pb.NodeIdMessage,
-    responseType: Agent_pb.VaultListMessage,
-    requestSerialize: serialize_agentInterface_NodeIdMessage,
-    requestDeserialize: deserialize_agentInterface_NodeIdMessage,
-    responseSerialize: serialize_agentInterface_VaultListMessage,
-    responseDeserialize: deserialize_agentInterface_VaultListMessage,
+    requestType: Nodes_pb.Node,
+    responseType: Vaults_pb.Vault,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
+    responseSerialize: serialize_vault_Vault,
+    responseDeserialize: deserialize_vault_Vault,
   },
   vaultsPermisssionsCheck: {
     path: '/agentInterface.Agent/VaultsPermisssionsCheck',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.VaultPermMessage,
-    responseType: Agent_pb.PermissionMessage,
-    requestSerialize: serialize_agentInterface_VaultPermMessage,
-    requestDeserialize: deserialize_agentInterface_VaultPermMessage,
-    responseSerialize: serialize_agentInterface_PermissionMessage,
-    responseDeserialize: deserialize_agentInterface_PermissionMessage,
+    requestType: Vaults_pb.NodePermission,
+    responseType: Vaults_pb.NodePermissionAllowed,
+    requestSerialize: serialize_vault_NodePermission,
+    requestDeserialize: deserialize_vault_NodePermission,
+    responseSerialize: serialize_vault_NodePermissionAllowed,
+    responseDeserialize: deserialize_vault_NodePermissionAllowed,
   },
   // Nodes
 nodesClosestLocalNodesGet: {
     path: '/agentInterface.Agent/NodesClosestLocalNodesGet',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.NodeIdMessage,
-    responseType: Agent_pb.NodeTableMessage,
-    requestSerialize: serialize_agentInterface_NodeIdMessage,
-    requestDeserialize: deserialize_agentInterface_NodeIdMessage,
-    responseSerialize: serialize_agentInterface_NodeTableMessage,
-    responseDeserialize: deserialize_agentInterface_NodeTableMessage,
+    requestType: Nodes_pb.Node,
+    responseType: Nodes_pb.NodeTable,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
+    responseSerialize: serialize_node_NodeTable,
+    responseDeserialize: deserialize_node_NodeTable,
   },
   nodesClaimsGet: {
     path: '/agentInterface.Agent/NodesClaimsGet',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.ClaimTypeMessage,
-    responseType: Agent_pb.ClaimsMessage,
-    requestSerialize: serialize_agentInterface_ClaimTypeMessage,
-    requestDeserialize: deserialize_agentInterface_ClaimTypeMessage,
-    responseSerialize: serialize_agentInterface_ClaimsMessage,
-    responseDeserialize: deserialize_agentInterface_ClaimsMessage,
+    requestType: Nodes_pb.ClaimType,
+    responseType: Nodes_pb.Claims,
+    requestSerialize: serialize_node_ClaimType,
+    requestDeserialize: deserialize_node_ClaimType,
+    responseSerialize: serialize_node_Claims,
+    responseDeserialize: deserialize_node_Claims,
   },
   nodesChainDataGet: {
     path: '/agentInterface.Agent/NodesChainDataGet',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.EmptyMessage,
-    responseType: Agent_pb.ChainDataMessage,
-    requestSerialize: serialize_agentInterface_EmptyMessage,
-    requestDeserialize: deserialize_agentInterface_EmptyMessage,
-    responseSerialize: serialize_agentInterface_ChainDataMessage,
-    responseDeserialize: deserialize_agentInterface_ChainDataMessage,
+    requestType: Common_pb.EmptyMessage,
+    responseType: Nodes_pb.ChainData,
+    requestSerialize: serialize_common_EmptyMessage,
+    requestDeserialize: deserialize_common_EmptyMessage,
+    responseSerialize: serialize_node_ChainData,
+    responseDeserialize: deserialize_node_ChainData,
   },
   nodesHolePunchMessageSend: {
     path: '/agentInterface.Agent/NodesHolePunchMessageSend',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.RelayMessage,
-    responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_RelayMessage,
-    requestDeserialize: deserialize_agentInterface_RelayMessage,
-    responseSerialize: serialize_agentInterface_EmptyMessage,
-    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+    requestType: Nodes_pb.Relay,
+    responseType: Common_pb.EmptyMessage,
+    requestSerialize: serialize_node_Relay,
+    requestDeserialize: deserialize_node_Relay,
+    responseSerialize: serialize_common_EmptyMessage,
+    responseDeserialize: deserialize_common_EmptyMessage,
   },
   nodesCrossSignClaim: {
     path: '/agentInterface.Agent/NodesCrossSignClaim',
     requestStream: true,
     responseStream: true,
-    requestType: Agent_pb.CrossSignMessage,
-    responseType: Agent_pb.CrossSignMessage,
-    requestSerialize: serialize_agentInterface_CrossSignMessage,
-    requestDeserialize: deserialize_agentInterface_CrossSignMessage,
-    responseSerialize: serialize_agentInterface_CrossSignMessage,
-    responseDeserialize: deserialize_agentInterface_CrossSignMessage,
+    requestType: Nodes_pb.CrossSign,
+    responseType: Nodes_pb.CrossSign,
+    requestSerialize: serialize_node_CrossSign,
+    requestDeserialize: deserialize_node_CrossSign,
+    responseSerialize: serialize_node_CrossSign,
+    responseDeserialize: deserialize_node_CrossSign,
   },
   // Notifications
 notificationsSend: {
     path: '/agentInterface.Agent/NotificationsSend',
     requestStream: false,
     responseStream: false,
-    requestType: Agent_pb.NotificationMessage,
-    responseType: Agent_pb.EmptyMessage,
-    requestSerialize: serialize_agentInterface_NotificationMessage,
-    requestDeserialize: deserialize_agentInterface_NotificationMessage,
-    responseSerialize: serialize_agentInterface_EmptyMessage,
-    responseDeserialize: deserialize_agentInterface_EmptyMessage,
+    requestType: Notifications_pb.AgentNotification,
+    responseType: Common_pb.EmptyMessage,
+    requestSerialize: serialize_notification_AgentNotification,
+    requestDeserialize: deserialize_notification_AgentNotification,
+    responseSerialize: serialize_common_EmptyMessage,
+    responseDeserialize: deserialize_common_EmptyMessage,
   },
 };
 

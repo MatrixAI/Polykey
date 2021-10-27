@@ -40,7 +40,7 @@ const createSessionRPC = ({
     },
     sessionRefresh: async (
       call: grpc.ServerUnaryCall<
-        messages.EmptyMessage,
+        messages.common.EmptyMessage,
         messages.sessions.Token
       >,
       callback: grpc.sendUnaryData<messages.sessions.Token>,
@@ -55,10 +55,13 @@ const createSessionRPC = ({
       callback(null, response);
     },
     sessionLockAll: async (
-      call: grpc.ServerUnaryCall<messages.EmptyMessage, messages.StatusMessage>,
-      callback: grpc.sendUnaryData<messages.StatusMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.common.EmptyMessage,
+        messages.common.StatusMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.StatusMessage>,
     ): Promise<void> => {
-      const response = new messages.StatusMessage();
+      const response = new messages.common.StatusMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         await sessionManager.refreshKey();

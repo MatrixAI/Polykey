@@ -16,7 +16,7 @@ import { VaultManager } from '@/vaults';
 import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
-import { agentPB, GRPCClientAgent } from '@/agent';
+import { messages, GRPCClientAgent } from '@/agent';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { DB } from '@matrixai/db';
 import { NotificationsManager } from '@/notifications';
@@ -174,7 +174,7 @@ describe('GRPC agent', () => {
     });
   });
   test('echo', async () => {
-    const echoMessage = new agentPB.EchoMessage();
+    const echoMessage = new messages.common.EchoMessage();
     echoMessage.setChallenge('yes');
     await client.echo(echoMessage);
     const response = await client.echo(echoMessage);
@@ -186,7 +186,7 @@ describe('GRPC agent', () => {
     await gestaltGraph.setNode(node1);
     // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     // await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
-    const vaultPermMessage = new agentPB.VaultPermMessage();
+    const vaultPermMessage = new messages.vaults.NodePermission();
     vaultPermMessage.setNodeId(node1.id);
     // VaultPermMessage.setVaultId(vault.vaultId);
     const response = await client.vaultsPermisssionsCheck(vaultPermMessage);
@@ -200,12 +200,12 @@ describe('GRPC agent', () => {
     //FIXME, permissions not implemented on vaults
     const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
     await gestaltGraph.setNode(node1);
-    const nodeIdMessage = new agentPB.NodeIdMessage();
+    const nodeIdMessage = new messages.nodes.Node();
     nodeIdMessage.setNodeId(node1.id);
     const response = client.vaultsScan(nodeIdMessage);
     const data: string[] = [];
     for await (const resp of response) {
-      const chunk = resp.getVault_asU8();
+      const chunk = resp.getNameOrId();
       data.push(Buffer.from(chunk).toString());
     }
     expect(data).toStrictEqual([]);
@@ -214,14 +214,14 @@ describe('GRPC agent', () => {
     const response2 = client.vaultsScan(nodeIdMessage);
     const data2: string[] = [];
     for await (const resp of response2) {
-      const chunk = resp.getVault_asU8();
+      const chunk = resp.getNameOrId();
       // Data2.push(Buffer.from(chunk).toString());
     }
     // Expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
     // await vaultManager.deleteVault(vault.vaultId);
   });
   test('Can connect over insecure connection.', async () => {
-    const echoMessage = new agentPB.EchoMessage();
+    const echoMessage = new messages.common.EchoMessage();
     echoMessage.setChallenge('yes');
     await client.echo(echoMessage);
     const response = await client.echo(echoMessage);
@@ -317,8 +317,8 @@ describe('GRPC agent', () => {
       // Check X's sigchain is locked at start
       expect(sigchain.locked).toBe(true);
       expect(response.done).toBe(false);
-      expect(response.value).toBeInstanceOf(agentPB.CrossSignMessage);
-      const receivedMessage = response.value as agentPB.CrossSignMessage;
+      expect(response.value).toBeInstanceOf(messages.nodes.CrossSign);
+      const receivedMessage = response.value as messages.nodes.CrossSign;
       expect(receivedMessage.getSinglySignedClaim()).toBeDefined();
       expect(receivedMessage.getDoublySignedClaim()).toBeDefined();
       const constructedIntermediary = claimsUtils.reconstructClaimIntermediary(
@@ -379,7 +379,7 @@ describe('GRPC agent', () => {
       const genClaims = client.nodesCrossSignClaim();
       expect(genClaims.stream.destroyed).toBe(false);
       // 2. X <- sends its intermediary signed claim <- Y
-      const crossSignMessageUndefinedSingly = new agentPB.CrossSignMessage();
+      const crossSignMessageUndefinedSingly = new messages.nodes.CrossSign();
       await genClaims.write(crossSignMessageUndefinedSingly);
       await expect(() => genClaims.read()).rejects.toThrow(
         claimsErrors.ErrorUndefinedSinglySignedClaim,
@@ -393,8 +393,8 @@ describe('GRPC agent', () => {
       expect(genClaims.stream.destroyed).toBe(false);
       // 2. X <- sends its intermediary signed claim <- Y
       const crossSignMessageUndefinedSinglySignature =
-        new agentPB.CrossSignMessage();
-      const intermediaryNoSignature = new agentPB.ClaimIntermediaryMessage();
+        new messages.nodes.CrossSign();
+      const intermediaryNoSignature = new messages.nodes.ClaimIntermediary();
       crossSignMessageUndefinedSinglySignature.setSinglySignedClaim(
         intermediaryNoSignature,
       );

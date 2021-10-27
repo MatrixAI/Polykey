@@ -13,7 +13,6 @@ import * as grpc from '@grpc/grpc-js';
 import * as keysUtils from '../keys/utils';
 import * as clientErrors from '../client/errors';
 import { messages } from '../client';
-const passwordOrFileCase = messages.sessions.Password.PasswordOrFileCase;
 
 async function generateRandomPayload() {
   const bytes = await keysUtils.getRandomBytes(32);
@@ -66,6 +65,7 @@ async function passwordFromMetadata(
 async function passwordFromPasswordMessage(
   passwordMessage: messages.sessions.Password,
 ): Promise<string | undefined> {
+  const passwordOrFileCase = messages.sessions.Password.PasswordOrFileCase;
   switch (passwordMessage.getPasswordOrFileCase()) {
     // If password is set explicitly use it
     case passwordOrFileCase.PASSWORD: {

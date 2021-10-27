@@ -74,7 +74,7 @@ const createGestaltsRPC = ({
     },
     gestaltsGestaltList: async (
       call: grpc.ServerWritableStream<
-        messages.EmptyMessage,
+        messages.common.EmptyMessage,
         messages.gestalts.Gestalt
       >,
     ): Promise<void> => {
@@ -98,11 +98,14 @@ const createGestaltsRPC = ({
       }
     },
     gestaltsDiscoveryByNode: async (
-      call: grpc.ServerUnaryCall<messages.nodes.Node, messages.EmptyMessage>,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      call: grpc.ServerUnaryCall<
+        messages.nodes.Node,
+        messages.common.EmptyMessage
+      >,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -124,12 +127,12 @@ const createGestaltsRPC = ({
     gestaltsDiscoveryByIdentity: async (
       call: grpc.ServerUnaryCall<
         messages.identities.Provider,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -217,12 +220,12 @@ const createGestaltsRPC = ({
     gestaltsActionsSetByNode: async (
       call: grpc.ServerUnaryCall<
         messages.permissions.ActionSet,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new messages.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -254,12 +257,12 @@ const createGestaltsRPC = ({
     gestaltsActionsSetByIdentity: async (
       call: grpc.ServerUnaryCall<
         messages.permissions.ActionSet,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new messages.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -296,12 +299,12 @@ const createGestaltsRPC = ({
     gestaltsActionsUnsetByNode: async (
       call: grpc.ServerUnaryCall<
         messages.permissions.ActionSet,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new messages.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -333,12 +336,12 @@ const createGestaltsRPC = ({
     gestaltsActionsUnsetByIdentity: async (
       call: grpc.ServerUnaryCall<
         messages.permissions.ActionSet,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       const info = call.request;
-      const response = new messages.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(

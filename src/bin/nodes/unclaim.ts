@@ -34,7 +34,7 @@ unclaim.action(async (node, options) => {
     await client.start({});
     const grpcClient = client.grpcClient;
 
-    const echoMessage = new messages.EchoMessage();
+    const echoMessage = new messages.common.EchoMessage();
     echoMessage.setChallenge('Hello world!');
     grpcClient.echo(echoMessage);
 

@@ -71,11 +71,11 @@ const createIdentitiesRPC = ({
     identitiesTokenPut: async (
       call: grpc.ServerUnaryCall<
         messages.identities.TokenSpecific,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
-      const response = new messages.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -120,11 +120,11 @@ const createIdentitiesRPC = ({
     identitiesTokenDelete: async (
       call: grpc.ServerUnaryCall<
         messages.identities.Provider,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
-      const response = new messages.EmptyMessage();
+      const response = new messages.common.EmptyMessage();
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
         const responseMeta = utils.createMetaTokenResponse(
@@ -142,7 +142,7 @@ const createIdentitiesRPC = ({
     },
     identitiesProvidersList: async (
       call: grpc.ServerUnaryCall<
-        messages.EmptyMessage,
+        messages.common.EmptyMessage,
         messages.identities.Provider
       >,
       callback: grpc.sendUnaryData<messages.identities.Provider>,
@@ -244,9 +244,9 @@ const createIdentitiesRPC = ({
     identitiesClaim: async (
       call: grpc.ServerUnaryCall<
         messages.identities.Provider,
-        messages.EmptyMessage
+        messages.common.EmptyMessage
       >,
-      callback: grpc.sendUnaryData<messages.EmptyMessage>,
+      callback: grpc.sendUnaryData<messages.common.EmptyMessage>,
     ): Promise<void> => {
       // To augment a keynode we need a provider, generate an oauthkey and then
       const info = call.request;
@@ -274,7 +274,7 @@ const createIdentitiesRPC = ({
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
-      const emptyMessage = new messages.EmptyMessage();
+      const emptyMessage = new messages.common.EmptyMessage();
       callback(null, emptyMessage);
     },
   };
