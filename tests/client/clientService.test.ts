@@ -1156,15 +1156,11 @@ describe('Client service', () => {
         vaultMessage.setNameOrId(vaultName);
         vaultsLogMessage.setVault(vaultMessage);
 
-        console.log('a');
-        console.log(vaultsLogMessage);
         const responseGen = await vaultLog(vaultsLogMessage, callCredentials);
-        console.log('a');
         const logMessages: messages.vaults.LogEntry[] = [];
         for await (const entry of responseGen) {
           logMessages.push(entry);
         }
-        console.log('a');
 
         // Checking commits exist in order.
         expect(logMessages[2].getOid()).toEqual(commit1Oid);

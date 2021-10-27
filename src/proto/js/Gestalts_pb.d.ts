@@ -1,4 +1,4 @@
-// package: Gestalt
+// package: gestalt
 // file: Gestalts.proto
 
 /* tslint:disable */

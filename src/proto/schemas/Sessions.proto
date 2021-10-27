@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package Session;
+package session;
 
 message Password {
   oneof password_or_file{

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package Notification;
+package notification;
 
 message Notification {
   oneof data {

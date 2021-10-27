@@ -3,7 +3,7 @@ syntax = "proto3";
 import "Nodes.proto";
 import "Identities.proto";
 
-package Permission;
+package permission;
 
 message Actions {
   repeated string action = 1;
@@ -11,8 +11,8 @@ message Actions {
 
 message ActionSet {
   oneof node_or_provider {
-    Node.Node node = 1;
-    Identitiy.Provider identity = 2;
+    node.Node node = 1;
+    identity.Provider identity = 2;
   }
   string action = 3;
 }

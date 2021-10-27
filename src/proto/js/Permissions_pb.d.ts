@@ -1,4 +1,4 @@
-// package: Permission
+// package: permission
 // file: Permissions.proto
 
 /* tslint:disable */

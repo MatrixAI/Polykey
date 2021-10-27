@@ -1,4 +1,4 @@
-// package: Session
+// package: session
 // file: Sessions.proto
 
 /* tslint:disable */

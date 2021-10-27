@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package Key;
+package key;
 
 message Crypto {
   string data = 1;

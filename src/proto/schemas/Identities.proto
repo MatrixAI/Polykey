@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package Identitiy;
+package identity;
 
 message Provider {
   string provider_id = 1;

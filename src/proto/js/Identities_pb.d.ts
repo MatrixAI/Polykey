@@ -1,4 +1,4 @@
-// package: Identitiy
+// package: identity
 // file: Identities.proto
 
 /* tslint:disable */

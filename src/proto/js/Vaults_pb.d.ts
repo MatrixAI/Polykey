@@ -1,4 +1,4 @@
-// package: Vault
+// package: vault
 // file: Vaults.proto
 
 /* tslint:disable */

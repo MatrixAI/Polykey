@@ -1,4 +1,4 @@
-// package: Key
+// package: key
 // file: Keys.proto
 
 /* tslint:disable */

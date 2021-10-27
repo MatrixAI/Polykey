@@ -1,4 +1,4 @@
-// package: Notification
+// package: notification
 // file: Notifications.proto
 
 /* tslint:disable */

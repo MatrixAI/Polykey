@@ -1,4 +1,4 @@
-// package: Node
+// package: node
 // file: Nodes.proto
 
 /* tslint:disable */

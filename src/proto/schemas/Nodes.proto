@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package Node;
+package node;
 
 message Node {
   string node_id = 1;

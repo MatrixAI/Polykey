@@ -13,402 +13,6 @@ var Secrets_pb = require('./Secrets_pb.js');
 var Sessions_pb = require('./Sessions_pb.js');
 var Vaults_pb = require('./Vaults_pb.js');
 
-function serialize_Gestalt_Gestalt(arg) {
-  if (!(arg instanceof Gestalts_pb.Gestalt)) {
-    throw new Error('Expected argument of type Gestalt.Gestalt');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Gestalt_Gestalt(buffer_arg) {
-  return Gestalts_pb.Gestalt.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Gestalt_Graph(arg) {
-  if (!(arg instanceof Gestalts_pb.Graph)) {
-    throw new Error('Expected argument of type Gestalt.Graph');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Gestalt_Graph(buffer_arg) {
-  return Gestalts_pb.Graph.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Identitiy_Info(arg) {
-  if (!(arg instanceof Identities_pb.Info)) {
-    throw new Error('Expected argument of type Identitiy.Info');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Identitiy_Info(buffer_arg) {
-  return Identities_pb.Info.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Identitiy_Provider(arg) {
-  if (!(arg instanceof Identities_pb.Provider)) {
-    throw new Error('Expected argument of type Identitiy.Provider');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Identitiy_Provider(buffer_arg) {
-  return Identities_pb.Provider.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Identitiy_ProviderSearch(arg) {
-  if (!(arg instanceof Identities_pb.ProviderSearch)) {
-    throw new Error('Expected argument of type Identitiy.ProviderSearch');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Identitiy_ProviderSearch(buffer_arg) {
-  return Identities_pb.ProviderSearch.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Identitiy_Token(arg) {
-  if (!(arg instanceof Identities_pb.Token)) {
-    throw new Error('Expected argument of type Identitiy.Token');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Identitiy_Token(buffer_arg) {
-  return Identities_pb.Token.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Identitiy_TokenSpecific(arg) {
-  if (!(arg instanceof Identities_pb.TokenSpecific)) {
-    throw new Error('Expected argument of type Identitiy.TokenSpecific');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Identitiy_TokenSpecific(buffer_arg) {
-  return Identities_pb.TokenSpecific.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Key_Certificate(arg) {
-  if (!(arg instanceof Keys_pb.Certificate)) {
-    throw new Error('Expected argument of type Key.Certificate');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Key_Certificate(buffer_arg) {
-  return Keys_pb.Certificate.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Key_Crypto(arg) {
-  if (!(arg instanceof Keys_pb.Crypto)) {
-    throw new Error('Expected argument of type Key.Crypto');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Key_Crypto(buffer_arg) {
-  return Keys_pb.Crypto.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Key_Key(arg) {
-  if (!(arg instanceof Keys_pb.Key)) {
-    throw new Error('Expected argument of type Key.Key');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Key_Key(buffer_arg) {
-  return Keys_pb.Key.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Key_KeyPair(arg) {
-  if (!(arg instanceof Keys_pb.KeyPair)) {
-    throw new Error('Expected argument of type Key.KeyPair');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Key_KeyPair(buffer_arg) {
-  return Keys_pb.KeyPair.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Node_Address(arg) {
-  if (!(arg instanceof Nodes_pb.Address)) {
-    throw new Error('Expected argument of type Node.Address');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Node_Address(buffer_arg) {
-  return Nodes_pb.Address.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Node_Claim(arg) {
-  if (!(arg instanceof Nodes_pb.Claim)) {
-    throw new Error('Expected argument of type Node.Claim');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Node_Claim(buffer_arg) {
-  return Nodes_pb.Claim.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Node_Node(arg) {
-  if (!(arg instanceof Nodes_pb.Node)) {
-    throw new Error('Expected argument of type Node.Node');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Node_Node(buffer_arg) {
-  return Nodes_pb.Node.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Notification_List(arg) {
-  if (!(arg instanceof Notifications_pb.List)) {
-    throw new Error('Expected argument of type Notification.List');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Notification_List(buffer_arg) {
-  return Notifications_pb.List.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Notification_Read(arg) {
-  if (!(arg instanceof Notifications_pb.Read)) {
-    throw new Error('Expected argument of type Notification.Read');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Notification_Read(buffer_arg) {
-  return Notifications_pb.Read.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Notification_Send(arg) {
-  if (!(arg instanceof Notifications_pb.Send)) {
-    throw new Error('Expected argument of type Notification.Send');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Notification_Send(buffer_arg) {
-  return Notifications_pb.Send.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Permission_ActionSet(arg) {
-  if (!(arg instanceof Permissions_pb.ActionSet)) {
-    throw new Error('Expected argument of type Permission.ActionSet');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Permission_ActionSet(buffer_arg) {
-  return Permissions_pb.ActionSet.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Permission_Actions(arg) {
-  if (!(arg instanceof Permissions_pb.Actions)) {
-    throw new Error('Expected argument of type Permission.Actions');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Permission_Actions(buffer_arg) {
-  return Permissions_pb.Actions.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Session_Password(arg) {
-  if (!(arg instanceof Sessions_pb.Password)) {
-    throw new Error('Expected argument of type Session.Password');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Session_Password(buffer_arg) {
-  return Sessions_pb.Password.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Session_Token(arg) {
-  if (!(arg instanceof Sessions_pb.Token)) {
-    throw new Error('Expected argument of type Session.Token');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Session_Token(buffer_arg) {
-  return Sessions_pb.Token.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Clone(arg) {
-  if (!(arg instanceof Vaults_pb.Clone)) {
-    throw new Error('Expected argument of type Vault.Clone');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Clone(buffer_arg) {
-  return Vaults_pb.Clone.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_List(arg) {
-  if (!(arg instanceof Vaults_pb.List)) {
-    throw new Error('Expected argument of type Vault.List');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_List(buffer_arg) {
-  return Vaults_pb.List.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Log(arg) {
-  if (!(arg instanceof Vaults_pb.Log)) {
-    throw new Error('Expected argument of type Vault.Log');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Log(buffer_arg) {
-  return Vaults_pb.Log.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_LogEntry(arg) {
-  if (!(arg instanceof Vaults_pb.LogEntry)) {
-    throw new Error('Expected argument of type Vault.LogEntry');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_LogEntry(buffer_arg) {
-  return Vaults_pb.LogEntry.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Mkdir(arg) {
-  if (!(arg instanceof Vaults_pb.Mkdir)) {
-    throw new Error('Expected argument of type Vault.Mkdir');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Mkdir(buffer_arg) {
-  return Vaults_pb.Mkdir.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_PermGet(arg) {
-  if (!(arg instanceof Vaults_pb.PermGet)) {
-    throw new Error('Expected argument of type Vault.PermGet');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_PermGet(buffer_arg) {
-  return Vaults_pb.PermGet.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_PermSet(arg) {
-  if (!(arg instanceof Vaults_pb.PermSet)) {
-    throw new Error('Expected argument of type Vault.PermSet');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_PermSet(buffer_arg) {
-  return Vaults_pb.PermSet.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_PermUnset(arg) {
-  if (!(arg instanceof Vaults_pb.PermUnset)) {
-    throw new Error('Expected argument of type Vault.PermUnset');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_PermUnset(buffer_arg) {
-  return Vaults_pb.PermUnset.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Permission(arg) {
-  if (!(arg instanceof Vaults_pb.Permission)) {
-    throw new Error('Expected argument of type Vault.Permission');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Permission(buffer_arg) {
-  return Vaults_pb.Permission.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Pull(arg) {
-  if (!(arg instanceof Vaults_pb.Pull)) {
-    throw new Error('Expected argument of type Vault.Pull');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Pull(buffer_arg) {
-  return Vaults_pb.Pull.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Rename(arg) {
-  if (!(arg instanceof Vaults_pb.Rename)) {
-    throw new Error('Expected argument of type Vault.Rename');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Rename(buffer_arg) {
-  return Vaults_pb.Rename.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Stat(arg) {
-  if (!(arg instanceof Vaults_pb.Stat)) {
-    throw new Error('Expected argument of type Vault.Stat');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Stat(buffer_arg) {
-  return Vaults_pb.Stat.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Vault(arg) {
-  if (!(arg instanceof Vaults_pb.Vault)) {
-    throw new Error('Expected argument of type Vault.Vault');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Vault(buffer_arg) {
-  return Vaults_pb.Vault.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_Version(arg) {
-  if (!(arg instanceof Vaults_pb.Version)) {
-    throw new Error('Expected argument of type Vault.Version');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_Version(buffer_arg) {
-  return Vaults_pb.Version.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_Vault_VersionResult(arg) {
-  if (!(arg instanceof Vaults_pb.VersionResult)) {
-    throw new Error('Expected argument of type Vault.VersionResult');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_Vault_VersionResult(buffer_arg) {
-  return Vaults_pb.VersionResult.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_clientInterface_EchoMessage(arg) {
   if (!(arg instanceof Client_pb.EchoMessage)) {
     throw new Error('Expected argument of type clientInterface.EchoMessage');
@@ -440,6 +44,215 @@ function serialize_clientInterface_StatusMessage(arg) {
 
 function deserialize_clientInterface_StatusMessage(buffer_arg) {
   return Client_pb.StatusMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_gestalt_Gestalt(arg) {
+  if (!(arg instanceof Gestalts_pb.Gestalt)) {
+    throw new Error('Expected argument of type gestalt.Gestalt');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_gestalt_Gestalt(buffer_arg) {
+  return Gestalts_pb.Gestalt.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_gestalt_Graph(arg) {
+  if (!(arg instanceof Gestalts_pb.Graph)) {
+    throw new Error('Expected argument of type gestalt.Graph');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_gestalt_Graph(buffer_arg) {
+  return Gestalts_pb.Graph.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_identity_Info(arg) {
+  if (!(arg instanceof Identities_pb.Info)) {
+    throw new Error('Expected argument of type identity.Info');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_identity_Info(buffer_arg) {
+  return Identities_pb.Info.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_identity_Provider(arg) {
+  if (!(arg instanceof Identities_pb.Provider)) {
+    throw new Error('Expected argument of type identity.Provider');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_identity_Provider(buffer_arg) {
+  return Identities_pb.Provider.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_identity_ProviderSearch(arg) {
+  if (!(arg instanceof Identities_pb.ProviderSearch)) {
+    throw new Error('Expected argument of type identity.ProviderSearch');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_identity_ProviderSearch(buffer_arg) {
+  return Identities_pb.ProviderSearch.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_identity_Token(arg) {
+  if (!(arg instanceof Identities_pb.Token)) {
+    throw new Error('Expected argument of type identity.Token');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_identity_Token(buffer_arg) {
+  return Identities_pb.Token.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_identity_TokenSpecific(arg) {
+  if (!(arg instanceof Identities_pb.TokenSpecific)) {
+    throw new Error('Expected argument of type identity.TokenSpecific');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_identity_TokenSpecific(buffer_arg) {
+  return Identities_pb.TokenSpecific.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_key_Certificate(arg) {
+  if (!(arg instanceof Keys_pb.Certificate)) {
+    throw new Error('Expected argument of type key.Certificate');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_key_Certificate(buffer_arg) {
+  return Keys_pb.Certificate.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_key_Crypto(arg) {
+  if (!(arg instanceof Keys_pb.Crypto)) {
+    throw new Error('Expected argument of type key.Crypto');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_key_Crypto(buffer_arg) {
+  return Keys_pb.Crypto.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_key_Key(arg) {
+  if (!(arg instanceof Keys_pb.Key)) {
+    throw new Error('Expected argument of type key.Key');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_key_Key(buffer_arg) {
+  return Keys_pb.Key.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_key_KeyPair(arg) {
+  if (!(arg instanceof Keys_pb.KeyPair)) {
+    throw new Error('Expected argument of type key.KeyPair');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_key_KeyPair(buffer_arg) {
+  return Keys_pb.KeyPair.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_node_Address(arg) {
+  if (!(arg instanceof Nodes_pb.Address)) {
+    throw new Error('Expected argument of type node.Address');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_node_Address(buffer_arg) {
+  return Nodes_pb.Address.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_node_Claim(arg) {
+  if (!(arg instanceof Nodes_pb.Claim)) {
+    throw new Error('Expected argument of type node.Claim');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_node_Claim(buffer_arg) {
+  return Nodes_pb.Claim.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_node_Node(arg) {
+  if (!(arg instanceof Nodes_pb.Node)) {
+    throw new Error('Expected argument of type node.Node');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_node_Node(buffer_arg) {
+  return Nodes_pb.Node.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_notification_List(arg) {
+  if (!(arg instanceof Notifications_pb.List)) {
+    throw new Error('Expected argument of type notification.List');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_notification_List(buffer_arg) {
+  return Notifications_pb.List.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_notification_Read(arg) {
+  if (!(arg instanceof Notifications_pb.Read)) {
+    throw new Error('Expected argument of type notification.Read');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_notification_Read(buffer_arg) {
+  return Notifications_pb.Read.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_notification_Send(arg) {
+  if (!(arg instanceof Notifications_pb.Send)) {
+    throw new Error('Expected argument of type notification.Send');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_notification_Send(buffer_arg) {
+  return Notifications_pb.Send.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_permission_ActionSet(arg) {
+  if (!(arg instanceof Permissions_pb.ActionSet)) {
+    throw new Error('Expected argument of type permission.ActionSet');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_permission_ActionSet(buffer_arg) {
+  return Permissions_pb.ActionSet.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_permission_Actions(arg) {
+  if (!(arg instanceof Permissions_pb.Actions)) {
+    throw new Error('Expected argument of type permission.Actions');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_permission_Actions(buffer_arg) {
+  return Permissions_pb.Actions.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_secret_Directory(arg) {
@@ -475,6 +288,193 @@ function deserialize_secret_Secret(buffer_arg) {
   return Secrets_pb.Secret.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_session_Password(arg) {
+  if (!(arg instanceof Sessions_pb.Password)) {
+    throw new Error('Expected argument of type session.Password');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_session_Password(buffer_arg) {
+  return Sessions_pb.Password.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_session_Token(arg) {
+  if (!(arg instanceof Sessions_pb.Token)) {
+    throw new Error('Expected argument of type session.Token');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_session_Token(buffer_arg) {
+  return Sessions_pb.Token.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Clone(arg) {
+  if (!(arg instanceof Vaults_pb.Clone)) {
+    throw new Error('Expected argument of type vault.Clone');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Clone(buffer_arg) {
+  return Vaults_pb.Clone.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_List(arg) {
+  if (!(arg instanceof Vaults_pb.List)) {
+    throw new Error('Expected argument of type vault.List');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_List(buffer_arg) {
+  return Vaults_pb.List.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Log(arg) {
+  if (!(arg instanceof Vaults_pb.Log)) {
+    throw new Error('Expected argument of type vault.Log');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Log(buffer_arg) {
+  return Vaults_pb.Log.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_LogEntry(arg) {
+  if (!(arg instanceof Vaults_pb.LogEntry)) {
+    throw new Error('Expected argument of type vault.LogEntry');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_LogEntry(buffer_arg) {
+  return Vaults_pb.LogEntry.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Mkdir(arg) {
+  if (!(arg instanceof Vaults_pb.Mkdir)) {
+    throw new Error('Expected argument of type vault.Mkdir');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Mkdir(buffer_arg) {
+  return Vaults_pb.Mkdir.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_PermGet(arg) {
+  if (!(arg instanceof Vaults_pb.PermGet)) {
+    throw new Error('Expected argument of type vault.PermGet');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_PermGet(buffer_arg) {
+  return Vaults_pb.PermGet.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_PermSet(arg) {
+  if (!(arg instanceof Vaults_pb.PermSet)) {
+    throw new Error('Expected argument of type vault.PermSet');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_PermSet(buffer_arg) {
+  return Vaults_pb.PermSet.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_PermUnset(arg) {
+  if (!(arg instanceof Vaults_pb.PermUnset)) {
+    throw new Error('Expected argument of type vault.PermUnset');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_PermUnset(buffer_arg) {
+  return Vaults_pb.PermUnset.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Permission(arg) {
+  if (!(arg instanceof Vaults_pb.Permission)) {
+    throw new Error('Expected argument of type vault.Permission');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Permission(buffer_arg) {
+  return Vaults_pb.Permission.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Pull(arg) {
+  if (!(arg instanceof Vaults_pb.Pull)) {
+    throw new Error('Expected argument of type vault.Pull');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Pull(buffer_arg) {
+  return Vaults_pb.Pull.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Rename(arg) {
+  if (!(arg instanceof Vaults_pb.Rename)) {
+    throw new Error('Expected argument of type vault.Rename');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Rename(buffer_arg) {
+  return Vaults_pb.Rename.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Stat(arg) {
+  if (!(arg instanceof Vaults_pb.Stat)) {
+    throw new Error('Expected argument of type vault.Stat');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Stat(buffer_arg) {
+  return Vaults_pb.Stat.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Vault(arg) {
+  if (!(arg instanceof Vaults_pb.Vault)) {
+    throw new Error('Expected argument of type vault.Vault');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Vault(buffer_arg) {
+  return Vaults_pb.Vault.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_Version(arg) {
+  if (!(arg instanceof Vaults_pb.Version)) {
+    throw new Error('Expected argument of type vault.Version');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_Version(buffer_arg) {
+  return Vaults_pb.Version.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_vault_VersionResult(arg) {
+  if (!(arg instanceof Vaults_pb.VersionResult)) {
+    throw new Error('Expected argument of type vault.VersionResult');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_vault_VersionResult(buffer_arg) {
+  return Vaults_pb.VersionResult.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 var ClientService = exports.ClientService = {
   echo: {
@@ -507,10 +507,10 @@ sessionUnlock: {
     responseStream: false,
     requestType: Sessions_pb.Password,
     responseType: Sessions_pb.Token,
-    requestSerialize: serialize_Session_Password,
-    requestDeserialize: deserialize_Session_Password,
-    responseSerialize: serialize_Session_Token,
-    responseDeserialize: deserialize_Session_Token,
+    requestSerialize: serialize_session_Password,
+    requestDeserialize: deserialize_session_Password,
+    responseSerialize: serialize_session_Token,
+    responseDeserialize: deserialize_session_Token,
   },
   sessionRefresh: {
     path: '/clientInterface.Client/SessionRefresh',
@@ -520,8 +520,8 @@ sessionUnlock: {
     responseType: Sessions_pb.Token,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_Session_Token,
-    responseDeserialize: deserialize_Session_Token,
+    responseSerialize: serialize_session_Token,
+    responseDeserialize: deserialize_session_Token,
   },
   sessionLockAll: {
     path: '/clientInterface.Client/SessionLockAll',
@@ -541,8 +541,8 @@ nodesAdd: {
     responseStream: false,
     requestType: Nodes_pb.Address,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Node_Address,
-    requestDeserialize: deserialize_Node_Address,
+    requestSerialize: serialize_node_Address,
+    requestDeserialize: deserialize_node_Address,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -552,8 +552,8 @@ nodesAdd: {
     responseStream: false,
     requestType: Nodes_pb.Node,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Node_Node,
-    requestDeserialize: deserialize_Node_Node,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -563,8 +563,8 @@ nodesAdd: {
     responseStream: false,
     requestType: Nodes_pb.Claim,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Node_Claim,
-    requestDeserialize: deserialize_Node_Claim,
+    requestSerialize: serialize_node_Claim,
+    requestDeserialize: deserialize_node_Claim,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -574,10 +574,10 @@ nodesAdd: {
     responseStream: false,
     requestType: Nodes_pb.Node,
     responseType: Nodes_pb.Address,
-    requestSerialize: serialize_Node_Node,
-    requestDeserialize: deserialize_Node_Node,
-    responseSerialize: serialize_Node_Address,
-    responseDeserialize: deserialize_Node_Address,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
+    responseSerialize: serialize_node_Address,
+    responseDeserialize: deserialize_node_Address,
   },
   // Keys
 keysKeyPairRoot: {
@@ -588,8 +588,8 @@ keysKeyPairRoot: {
     responseType: Keys_pb.KeyPair,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_Key_KeyPair,
-    responseDeserialize: deserialize_Key_KeyPair,
+    responseSerialize: serialize_key_KeyPair,
+    responseDeserialize: deserialize_key_KeyPair,
   },
   keysKeyPairReset: {
     path: '/clientInterface.Client/KeysKeyPairReset',
@@ -597,8 +597,8 @@ keysKeyPairRoot: {
     responseStream: false,
     requestType: Keys_pb.Key,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Key_Key,
-    requestDeserialize: deserialize_Key_Key,
+    requestSerialize: serialize_key_Key,
+    requestDeserialize: deserialize_key_Key,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -608,8 +608,8 @@ keysKeyPairRoot: {
     responseStream: false,
     requestType: Keys_pb.Key,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Key_Key,
-    requestDeserialize: deserialize_Key_Key,
+    requestSerialize: serialize_key_Key,
+    requestDeserialize: deserialize_key_Key,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -619,10 +619,10 @@ keysKeyPairRoot: {
     responseStream: false,
     requestType: Keys_pb.Crypto,
     responseType: Keys_pb.Crypto,
-    requestSerialize: serialize_Key_Crypto,
-    requestDeserialize: deserialize_Key_Crypto,
-    responseSerialize: serialize_Key_Crypto,
-    responseDeserialize: deserialize_Key_Crypto,
+    requestSerialize: serialize_key_Crypto,
+    requestDeserialize: deserialize_key_Crypto,
+    responseSerialize: serialize_key_Crypto,
+    responseDeserialize: deserialize_key_Crypto,
   },
   keysDecrypt: {
     path: '/clientInterface.Client/KeysDecrypt',
@@ -630,10 +630,10 @@ keysKeyPairRoot: {
     responseStream: false,
     requestType: Keys_pb.Crypto,
     responseType: Keys_pb.Crypto,
-    requestSerialize: serialize_Key_Crypto,
-    requestDeserialize: deserialize_Key_Crypto,
-    responseSerialize: serialize_Key_Crypto,
-    responseDeserialize: deserialize_Key_Crypto,
+    requestSerialize: serialize_key_Crypto,
+    requestDeserialize: deserialize_key_Crypto,
+    responseSerialize: serialize_key_Crypto,
+    responseDeserialize: deserialize_key_Crypto,
   },
   keysSign: {
     path: '/clientInterface.Client/KeysSign',
@@ -641,10 +641,10 @@ keysKeyPairRoot: {
     responseStream: false,
     requestType: Keys_pb.Crypto,
     responseType: Keys_pb.Crypto,
-    requestSerialize: serialize_Key_Crypto,
-    requestDeserialize: deserialize_Key_Crypto,
-    responseSerialize: serialize_Key_Crypto,
-    responseDeserialize: deserialize_Key_Crypto,
+    requestSerialize: serialize_key_Crypto,
+    requestDeserialize: deserialize_key_Crypto,
+    responseSerialize: serialize_key_Crypto,
+    responseDeserialize: deserialize_key_Crypto,
   },
   keysVerify: {
     path: '/clientInterface.Client/KeysVerify',
@@ -652,8 +652,8 @@ keysKeyPairRoot: {
     responseStream: false,
     requestType: Keys_pb.Crypto,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Key_Crypto,
-    requestDeserialize: deserialize_Key_Crypto,
+    requestSerialize: serialize_key_Crypto,
+    requestDeserialize: deserialize_key_Crypto,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -663,8 +663,8 @@ keysKeyPairRoot: {
     responseStream: false,
     requestType: Sessions_pb.Password,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Session_Password,
-    requestDeserialize: deserialize_Session_Password,
+    requestSerialize: serialize_session_Password,
+    requestDeserialize: deserialize_session_Password,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -677,8 +677,8 @@ keysCertsGet: {
     responseType: Keys_pb.Certificate,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_Key_Certificate,
-    responseDeserialize: deserialize_Key_Certificate,
+    responseSerialize: serialize_key_Certificate,
+    responseDeserialize: deserialize_key_Certificate,
   },
   keysCertsChainGet: {
     path: '/clientInterface.Client/KeysCertsChainGet',
@@ -688,8 +688,8 @@ keysCertsGet: {
     responseType: Keys_pb.Certificate,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_Key_Certificate,
-    responseDeserialize: deserialize_Key_Certificate,
+    responseSerialize: serialize_key_Certificate,
+    responseDeserialize: deserialize_key_Certificate,
   },
   // Vaults
 vaultsList: {
@@ -700,8 +700,8 @@ vaultsList: {
     responseType: Vaults_pb.List,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_Vault_List,
-    responseDeserialize: deserialize_Vault_List,
+    responseSerialize: serialize_vault_List,
+    responseDeserialize: deserialize_vault_List,
   },
   vaultsCreate: {
     path: '/clientInterface.Client/VaultsCreate',
@@ -709,10 +709,10 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Vault,
     responseType: Vaults_pb.Vault,
-    requestSerialize: serialize_Vault_Vault,
-    requestDeserialize: deserialize_Vault_Vault,
-    responseSerialize: serialize_Vault_Vault,
-    responseDeserialize: deserialize_Vault_Vault,
+    requestSerialize: serialize_vault_Vault,
+    requestDeserialize: deserialize_vault_Vault,
+    responseSerialize: serialize_vault_Vault,
+    responseDeserialize: deserialize_vault_Vault,
   },
   vaultsRename: {
     path: '/clientInterface.Client/VaultsRename',
@@ -720,10 +720,10 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Rename,
     responseType: Vaults_pb.Vault,
-    requestSerialize: serialize_Vault_Rename,
-    requestDeserialize: deserialize_Vault_Rename,
-    responseSerialize: serialize_Vault_Vault,
-    responseDeserialize: deserialize_Vault_Vault,
+    requestSerialize: serialize_vault_Rename,
+    requestDeserialize: deserialize_vault_Rename,
+    responseSerialize: serialize_vault_Vault,
+    responseDeserialize: deserialize_vault_Vault,
   },
   vaultsDelete: {
     path: '/clientInterface.Client/VaultsDelete',
@@ -731,8 +731,8 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Vault,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Vault_Vault,
-    requestDeserialize: deserialize_Vault_Vault,
+    requestSerialize: serialize_vault_Vault,
+    requestDeserialize: deserialize_vault_Vault,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -742,8 +742,8 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Pull,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Vault_Pull,
-    requestDeserialize: deserialize_Vault_Pull,
+    requestSerialize: serialize_vault_Pull,
+    requestDeserialize: deserialize_vault_Pull,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -753,8 +753,8 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Clone,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Vault_Clone,
-    requestDeserialize: deserialize_Vault_Clone,
+    requestSerialize: serialize_vault_Clone,
+    requestDeserialize: deserialize_vault_Clone,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -764,10 +764,10 @@ vaultsList: {
     responseStream: true,
     requestType: Nodes_pb.Node,
     responseType: Vaults_pb.List,
-    requestSerialize: serialize_Node_Node,
-    requestDeserialize: deserialize_Node_Node,
-    responseSerialize: serialize_Vault_List,
-    responseDeserialize: deserialize_Vault_List,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
+    responseSerialize: serialize_vault_List,
+    responseDeserialize: deserialize_vault_List,
   },
   vaultsSecretsList: {
     path: '/clientInterface.Client/VaultsSecretsList',
@@ -775,8 +775,8 @@ vaultsList: {
     responseStream: true,
     requestType: Vaults_pb.Vault,
     responseType: Secrets_pb.Secret,
-    requestSerialize: serialize_Vault_Vault,
-    requestDeserialize: deserialize_Vault_Vault,
+    requestSerialize: serialize_vault_Vault,
+    requestDeserialize: deserialize_vault_Vault,
     responseSerialize: serialize_secret_Secret,
     responseDeserialize: deserialize_secret_Secret,
   },
@@ -786,8 +786,8 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Mkdir,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Vault_Mkdir,
-    requestDeserialize: deserialize_Vault_Mkdir,
+    requestSerialize: serialize_vault_Mkdir,
+    requestDeserialize: deserialize_vault_Mkdir,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -797,10 +797,10 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Vault,
     responseType: Vaults_pb.Stat,
-    requestSerialize: serialize_Vault_Vault,
-    requestDeserialize: deserialize_Vault_Vault,
-    responseSerialize: serialize_Vault_Stat,
-    responseDeserialize: deserialize_Vault_Stat,
+    requestSerialize: serialize_vault_Vault,
+    requestDeserialize: deserialize_vault_Vault,
+    responseSerialize: serialize_vault_Stat,
+    responseDeserialize: deserialize_vault_Stat,
   },
   vaultsSecretsDelete: {
     path: '/clientInterface.Client/VaultsSecretsDelete',
@@ -874,8 +874,8 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.PermSet,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Vault_PermSet,
-    requestDeserialize: deserialize_Vault_PermSet,
+    requestSerialize: serialize_vault_PermSet,
+    requestDeserialize: deserialize_vault_PermSet,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -885,8 +885,8 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.PermUnset,
     responseType: Client_pb.StatusMessage,
-    requestSerialize: serialize_Vault_PermUnset,
-    requestDeserialize: deserialize_Vault_PermUnset,
+    requestSerialize: serialize_vault_PermUnset,
+    requestDeserialize: deserialize_vault_PermUnset,
     responseSerialize: serialize_clientInterface_StatusMessage,
     responseDeserialize: deserialize_clientInterface_StatusMessage,
   },
@@ -896,10 +896,10 @@ vaultsList: {
     responseStream: true,
     requestType: Vaults_pb.PermGet,
     responseType: Vaults_pb.Permission,
-    requestSerialize: serialize_Vault_PermGet,
-    requestDeserialize: deserialize_Vault_PermGet,
-    responseSerialize: serialize_Vault_Permission,
-    responseDeserialize: deserialize_Vault_Permission,
+    requestSerialize: serialize_vault_PermGet,
+    requestDeserialize: deserialize_vault_PermGet,
+    responseSerialize: serialize_vault_Permission,
+    responseDeserialize: deserialize_vault_Permission,
   },
   vaultsVersion: {
     path: '/clientInterface.Client/VaultsVersion',
@@ -907,10 +907,10 @@ vaultsList: {
     responseStream: false,
     requestType: Vaults_pb.Version,
     responseType: Vaults_pb.VersionResult,
-    requestSerialize: serialize_Vault_Version,
-    requestDeserialize: deserialize_Vault_Version,
-    responseSerialize: serialize_Vault_VersionResult,
-    responseDeserialize: deserialize_Vault_VersionResult,
+    requestSerialize: serialize_vault_Version,
+    requestDeserialize: deserialize_vault_Version,
+    responseSerialize: serialize_vault_VersionResult,
+    responseDeserialize: deserialize_vault_VersionResult,
   },
   vaultsLog: {
     path: '/clientInterface.Client/VaultsLog',
@@ -918,10 +918,10 @@ vaultsList: {
     responseStream: true,
     requestType: Vaults_pb.Log,
     responseType: Vaults_pb.LogEntry,
-    requestSerialize: serialize_Vault_Log,
-    requestDeserialize: deserialize_Vault_Log,
-    responseSerialize: serialize_Vault_LogEntry,
-    responseDeserialize: deserialize_Vault_LogEntry,
+    requestSerialize: serialize_vault_Log,
+    requestDeserialize: deserialize_vault_Log,
+    responseSerialize: serialize_vault_LogEntry,
+    responseDeserialize: deserialize_vault_LogEntry,
   },
   // Identities
 identitiesAuthenticate: {
@@ -930,10 +930,10 @@ identitiesAuthenticate: {
     responseStream: true,
     requestType: Identities_pb.Provider,
     responseType: Identities_pb.Provider,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
-    responseSerialize: serialize_Identitiy_Provider,
-    responseDeserialize: deserialize_Identitiy_Provider,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
+    responseSerialize: serialize_identity_Provider,
+    responseDeserialize: deserialize_identity_Provider,
   },
   identitiesTokenPut: {
     path: '/clientInterface.Client/IdentitiesTokenPut',
@@ -941,8 +941,8 @@ identitiesAuthenticate: {
     responseStream: false,
     requestType: Identities_pb.TokenSpecific,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Identitiy_TokenSpecific,
-    requestDeserialize: deserialize_Identitiy_TokenSpecific,
+    requestSerialize: serialize_identity_TokenSpecific,
+    requestDeserialize: deserialize_identity_TokenSpecific,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -952,10 +952,10 @@ identitiesAuthenticate: {
     responseStream: false,
     requestType: Identities_pb.Provider,
     responseType: Identities_pb.Token,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
-    responseSerialize: serialize_Identitiy_Token,
-    responseDeserialize: deserialize_Identitiy_Token,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
+    responseSerialize: serialize_identity_Token,
+    responseDeserialize: deserialize_identity_Token,
   },
   identitiesTokenDelete: {
     path: '/clientInterface.Client/IdentitiesTokenDelete',
@@ -963,8 +963,8 @@ identitiesAuthenticate: {
     responseStream: false,
     requestType: Identities_pb.Provider,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -976,8 +976,8 @@ identitiesAuthenticate: {
     responseType: Identities_pb.Provider,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_Identitiy_Provider,
-    responseDeserialize: deserialize_Identitiy_Provider,
+    responseSerialize: serialize_identity_Provider,
+    responseDeserialize: deserialize_identity_Provider,
   },
   identitiesInfoGet: {
     path: '/clientInterface.Client/IdentitiesInfoGet',
@@ -985,10 +985,10 @@ identitiesAuthenticate: {
     responseStream: false,
     requestType: Identities_pb.Provider,
     responseType: Identities_pb.Provider,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
-    responseSerialize: serialize_Identitiy_Provider,
-    responseDeserialize: deserialize_Identitiy_Provider,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
+    responseSerialize: serialize_identity_Provider,
+    responseDeserialize: deserialize_identity_Provider,
   },
   identitiesInfoGetConnected: {
     path: '/clientInterface.Client/IdentitiesInfoGetConnected',
@@ -996,10 +996,10 @@ identitiesAuthenticate: {
     responseStream: true,
     requestType: Identities_pb.ProviderSearch,
     responseType: Identities_pb.Info,
-    requestSerialize: serialize_Identitiy_ProviderSearch,
-    requestDeserialize: deserialize_Identitiy_ProviderSearch,
-    responseSerialize: serialize_Identitiy_Info,
-    responseDeserialize: deserialize_Identitiy_Info,
+    requestSerialize: serialize_identity_ProviderSearch,
+    requestDeserialize: deserialize_identity_ProviderSearch,
+    responseSerialize: serialize_identity_Info,
+    responseDeserialize: deserialize_identity_Info,
   },
   identitiesClaim: {
     path: '/clientInterface.Client/IdentitiesClaim',
@@ -1007,8 +1007,8 @@ identitiesAuthenticate: {
     responseStream: false,
     requestType: Identities_pb.Provider,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1021,8 +1021,8 @@ gestaltsGestaltList: {
     responseType: Gestalts_pb.Gestalt,
     requestSerialize: serialize_clientInterface_EmptyMessage,
     requestDeserialize: deserialize_clientInterface_EmptyMessage,
-    responseSerialize: serialize_Gestalt_Gestalt,
-    responseDeserialize: deserialize_Gestalt_Gestalt,
+    responseSerialize: serialize_gestalt_Gestalt,
+    responseDeserialize: deserialize_gestalt_Gestalt,
   },
   gestaltsGestaltGetByNode: {
     path: '/clientInterface.Client/GestaltsGestaltGetByNode',
@@ -1030,10 +1030,10 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Nodes_pb.Node,
     responseType: Gestalts_pb.Graph,
-    requestSerialize: serialize_Node_Node,
-    requestDeserialize: deserialize_Node_Node,
-    responseSerialize: serialize_Gestalt_Graph,
-    responseDeserialize: deserialize_Gestalt_Graph,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
+    responseSerialize: serialize_gestalt_Graph,
+    responseDeserialize: deserialize_gestalt_Graph,
   },
   gestaltsGestaltGetByIdentity: {
     path: '/clientInterface.Client/GestaltsGestaltGetByIdentity',
@@ -1041,10 +1041,10 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Identities_pb.Provider,
     responseType: Gestalts_pb.Graph,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
-    responseSerialize: serialize_Gestalt_Graph,
-    responseDeserialize: deserialize_Gestalt_Graph,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
+    responseSerialize: serialize_gestalt_Graph,
+    responseDeserialize: deserialize_gestalt_Graph,
   },
   gestaltsDiscoveryByNode: {
     path: '/clientInterface.Client/GestaltsDiscoveryByNode',
@@ -1052,8 +1052,8 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Nodes_pb.Node,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Node_Node,
-    requestDeserialize: deserialize_Node_Node,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1063,8 +1063,8 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Identities_pb.Provider,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1074,10 +1074,10 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Nodes_pb.Node,
     responseType: Permissions_pb.Actions,
-    requestSerialize: serialize_Node_Node,
-    requestDeserialize: deserialize_Node_Node,
-    responseSerialize: serialize_Permission_Actions,
-    responseDeserialize: deserialize_Permission_Actions,
+    requestSerialize: serialize_node_Node,
+    requestDeserialize: deserialize_node_Node,
+    responseSerialize: serialize_permission_Actions,
+    responseDeserialize: deserialize_permission_Actions,
   },
   gestaltsActionsGetByIdentity: {
     path: '/clientInterface.Client/GestaltsActionsGetByIdentity',
@@ -1085,10 +1085,10 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Identities_pb.Provider,
     responseType: Permissions_pb.Actions,
-    requestSerialize: serialize_Identitiy_Provider,
-    requestDeserialize: deserialize_Identitiy_Provider,
-    responseSerialize: serialize_Permission_Actions,
-    responseDeserialize: deserialize_Permission_Actions,
+    requestSerialize: serialize_identity_Provider,
+    requestDeserialize: deserialize_identity_Provider,
+    responseSerialize: serialize_permission_Actions,
+    responseDeserialize: deserialize_permission_Actions,
   },
   gestaltsActionsSetByNode: {
     path: '/clientInterface.Client/GestaltsActionsSetByNode',
@@ -1096,8 +1096,8 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Permissions_pb.ActionSet,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Permission_ActionSet,
-    requestDeserialize: deserialize_Permission_ActionSet,
+    requestSerialize: serialize_permission_ActionSet,
+    requestDeserialize: deserialize_permission_ActionSet,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1107,8 +1107,8 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Permissions_pb.ActionSet,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Permission_ActionSet,
-    requestDeserialize: deserialize_Permission_ActionSet,
+    requestSerialize: serialize_permission_ActionSet,
+    requestDeserialize: deserialize_permission_ActionSet,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1118,8 +1118,8 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Permissions_pb.ActionSet,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Permission_ActionSet,
-    requestDeserialize: deserialize_Permission_ActionSet,
+    requestSerialize: serialize_permission_ActionSet,
+    requestDeserialize: deserialize_permission_ActionSet,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1129,8 +1129,8 @@ gestaltsGestaltList: {
     responseStream: false,
     requestType: Permissions_pb.ActionSet,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Permission_ActionSet,
-    requestDeserialize: deserialize_Permission_ActionSet,
+    requestSerialize: serialize_permission_ActionSet,
+    requestDeserialize: deserialize_permission_ActionSet,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1141,8 +1141,8 @@ notificationsSend: {
     responseStream: false,
     requestType: Notifications_pb.Send,
     responseType: Client_pb.EmptyMessage,
-    requestSerialize: serialize_Notification_Send,
-    requestDeserialize: deserialize_Notification_Send,
+    requestSerialize: serialize_notification_Send,
+    requestDeserialize: deserialize_notification_Send,
     responseSerialize: serialize_clientInterface_EmptyMessage,
     responseDeserialize: deserialize_clientInterface_EmptyMessage,
   },
@@ -1152,10 +1152,10 @@ notificationsSend: {
     responseStream: false,
     requestType: Notifications_pb.Read,
     responseType: Notifications_pb.List,
-    requestSerialize: serialize_Notification_Read,
-    requestDeserialize: deserialize_Notification_Read,
-    responseSerialize: serialize_Notification_List,
-    responseDeserialize: deserialize_Notification_List,
+    requestSerialize: serialize_notification_Read,
+    requestDeserialize: deserialize_notification_Read,
+    responseSerialize: serialize_notification_List,
+    responseDeserialize: deserialize_notification_List,
   },
   notificationsClear: {
     path: '/clientInterface.Client/NotificationsClear',

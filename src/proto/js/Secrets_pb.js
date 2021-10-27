@@ -402,17 +402,17 @@ proto.secret.Secret.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional Vault.Vault vault = 1;
- * @return {?proto.Vault.Vault}
+ * optional vault.Vault vault = 1;
+ * @return {?proto.vault.Vault}
  */
 proto.secret.Secret.prototype.getVault = function() {
-  return /** @type{?proto.Vault.Vault} */ (
+  return /** @type{?proto.vault.Vault} */ (
     jspb.Message.getWrapperField(this, Vaults_pb.Vault, 1));
 };
 
 
 /**
- * @param {?proto.Vault.Vault|undefined} value
+ * @param {?proto.vault.Vault|undefined} value
  * @return {!proto.secret.Secret} returns this
 */
 proto.secret.Secret.prototype.setVault = function(value) {
@@ -625,17 +625,17 @@ proto.secret.Directory.serializeBinaryToWriter = function(message, writer) {
 
 
 /**
- * optional Vault.Vault vault = 1;
- * @return {?proto.Vault.Vault}
+ * optional vault.Vault vault = 1;
+ * @return {?proto.vault.Vault}
  */
 proto.secret.Directory.prototype.getVault = function() {
-  return /** @type{?proto.Vault.Vault} */ (
+  return /** @type{?proto.vault.Vault} */ (
     jspb.Message.getWrapperField(this, Vaults_pb.Vault, 1));
 };
 
 
 /**
- * @param {?proto.Vault.Vault|undefined} value
+ * @param {?proto.vault.Vault|undefined} value
  * @return {!proto.secret.Directory} returns this
 */
 proto.secret.Directory.prototype.setVault = function(value) {

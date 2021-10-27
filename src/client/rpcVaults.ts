@@ -26,6 +26,9 @@ const createVaultRPC = ({
         messages.vaults.List
       >,
     ): Promise<void> => {
+      // call.on('error', (e) => console.error(e));
+      // call.on('close', () => console.log('Got close'));
+      // call.on('finish', () => console.log('Got finish'));
       const genWritable = grpcUtils.generatorWritable(call);
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -34,14 +37,15 @@ const createVaultRPC = ({
         );
         call.sendMetadata(responseMeta);
         const vaults = await vaultManager.listVaults();
-        const vaultListMessage = new messages.vaults.List();
         for await (const [vaultName, vaultId] of vaults) {
+          const vaultListMessage = new messages.vaults.List();
           vaultListMessage.setVaultName(vaultName);
           vaultListMessage.setVaultId(makeVaultIdPretty(vaultId));
-          await genWritable.next(vaultListMessage);
+          await genWritable.next((_ => vaultListMessage)());
         }
         await genWritable.next(null);
       } catch (err) {
+        console.error(err);
         await genWritable.throw(err);
       }
     },
@@ -642,7 +646,6 @@ const createVaultRPC = ({
         messages.vaults.LogEntry
       >,
     ): Promise<void> => {
-      console.log("asdasdasd");
       const genWritable = grpcUtils.generatorWritable(call);
       try {
         await sessionManager.verifyToken(utils.getToken(call.metadata));
@@ -650,7 +653,6 @@ const createVaultRPC = ({
           await sessionManager.generateToken(),
         );
         call.sendMetadata(responseMeta);
-        console.log("asdasdasd");
         //Getting the vault.
         const vaultsLogMessage = call.request;
         const vaultMessage = vaultsLogMessage.getVault();
@@ -664,17 +666,15 @@ const createVaultRPC = ({
         // Getting the log
         const depth = vaultsLogMessage.getLogDepth();
         let commitId: string | undefined = vaultsLogMessage.getCommitId();
-        commitId = commitId ? commitId : undefined;
+        commitId = !!commitId ? commitId : undefined;
         const log = await vault.log(depth, commitId);
 
         const vaultsLogEntryMessage = new messages.vaults.LogEntry();
-        console.log(vaultsLogEntryMessage);
         for (const entry of log) {
-          // vaultsLogEntryMessage.setOid(entry.oid);
-          // vaultsLogEntryMessage.setCommitter(entry.committer);
-          // vaultsLogEntryMessage.setTimeStamp(entry.timeStamp);
-          // vaultsLogEntryMessage.setMessage(entry.message);
-          console.log(vaultsLogEntryMessage);
+          vaultsLogEntryMessage.setOid(entry.oid);
+          vaultsLogEntryMessage.setCommitter(entry.committer);
+          vaultsLogEntryMessage.setTimeStamp(entry.timeStamp);
+          vaultsLogEntryMessage.setMessage(entry.message);
           await genWritable.next(vaultsLogEntryMessage);
         }
         await genWritable.next(null);
