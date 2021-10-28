@@ -37,6 +37,9 @@ import { Vault, VaultName } from '@/vaults/types';
 import { vaultOps } from '@/vaults';
 import { makeVaultId, makeVaultIdPretty } from '@/vaults/utils';
 import { utils as idUtils } from '@matrixai/id';
+import { Any } from 'google-protobuf/google/protobuf/any_pb';
+import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb';
+import { Struct } from 'google-protobuf/google/protobuf/struct_pb';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -2380,5 +2383,42 @@ describe('Client service', () => {
       const notifs = await polykeyAgent.notifications.readNotifications();
       expect(notifs).toEqual([]);
     });
+  });
+});
+
+describe('google/protobuf message examples', () => {
+  test('testing Any message type', async () => {
+    const anyMessage = new Any();
+    const echoMessage = new messages.common.EchoMessage();
+    anyMessage.pack(echoMessage.serializeBinary(), 'common.EchoMessage');
+    const test2 = anyMessage.unpack(
+      messages.common.EchoMessage.deserializeBinary,
+      'common.EchoMessage',
+    );
+    expect(test2).toBeInstanceOf(messages.common.EchoMessage); // Is a EchoMessage
+    const test3 = anyMessage.unpack(
+      messages.common.StatusMessage.deserializeBinary,
+      'common.StatusMessage',
+    );
+    expect(test3).toBe(null); // Is null
+  });
+  test('testing TimeStamp message', async () => {
+    const timeStampMessage = new Timestamp();
+    const date = new Date(1000000);
+    timeStampMessage.fromDate(date);
+
+    expect(timeStampMessage.getNanos()).toEqual(0);
+    expect(timeStampMessage.getSeconds()).toEqual(date.getTime() / 1000);
+    expect(timeStampMessage.toDate()).toEqual(date);
+  });
+  test('testing structs usage', async () => {
+    const testObject = {
+      1: 1,
+      two: 2,
+      three: 'Three',
+    };
+    const structMessage = Struct.fromJavaScript(testObject);
+
+    expect(structMessage.toJavaScript()).toStrictEqual(testObject);
   });
 });

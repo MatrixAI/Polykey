@@ -8,3 +8,4 @@ export * as permissions from '../proto/js/Permissions_pb';
 export * as secrets from '../proto/js/Secrets_pb';
 export * as sessions from '../proto/js/Sessions_pb';
 export * as vaults from '../proto/js/Vaults_pb';
+export * from '../proto/js/Client_pb';
