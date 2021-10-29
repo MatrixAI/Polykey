@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+import "Common.proto";
+import "Nodes.proto";
+import "Vaults.proto";
+import "Notifications.proto";
+
+package agentInterface.v2;
+
+service Agent {
+
+  // Echo
+  rpc EchoNew(common.EchoMessage) returns (common.EchoMessage);
+
+  // Vaults
+  rpc VaultsGitInfoGet (vault.Vault) returns (stream vault.PackChunk);
+  rpc VaultsGitPackGet(stream vault.PackChunk) returns (stream vault.PackChunk);
+  rpc VaultsScan (node.Node) returns (stream vault.Vault);
+  rpc VaultsPermisssionsCheck (vault.NodePermission) returns (vault.NodePermissionAllowed);
+
+  // Nodes
+  rpc NodesClosestLocalNodesGet (node.Node) returns (node.NodeTable);
+  rpc NodesClaimsGet (node.ClaimType) returns (node.Claims);
+  rpc NodesChainDataGet (common.EmptyMessage) returns (node.ChainData);
+  rpc NodesHolePunchMessageSend (node.Relay) returns (common.EmptyMessage);
+  rpc NodesCrossSignClaim (stream node.CrossSign) returns (stream node.CrossSign);
+
+  // Notifications
+  rpc NotificationsSend (notification.AgentNotification) returns (common.EmptyMessage);
+}

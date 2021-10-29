@@ -407,4 +407,11 @@ describe('GRPC agent', () => {
       expect(sigchain.locked).toBe(false);
     });
   });
+  test('trying to call a service that is not supported.', async () => {
+    const echoMessage = new messages.common.EchoMessage();
+    echoMessage.setChallenge('yes');
+    await client.echo(echoMessage);
+    const response = await client.echo(echoMessage);
+    expect(response.getChallenge()).toBe('yes');
+  })
 });

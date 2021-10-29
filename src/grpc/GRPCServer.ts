@@ -194,7 +194,6 @@ class GRPCServer {
     return;
   }
 
-  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
   public closeServerForce(): void {
     this.server.forceShutdown();
   }

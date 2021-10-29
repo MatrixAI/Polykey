@@ -14,7 +14,7 @@ import { Sigchain } from '../sigchain';
 import { KeyManager } from '../keys';
 import { NotificationsManager } from '../notifications';
 import { ErrorGRPC } from '../grpc/errors';
-import { AgentService, IAgentServer } from '../proto/js/Agent_grpc_pb';
+import { AgentService, IAgentServer } from '../proto/js/Agent.v2_grpc_pb';
 
 import { messages } from '.';
 import * as grpcUtils from '../grpc/utils';
@@ -47,7 +47,7 @@ function createAgentService({
   notificationsManager: NotificationsManager;
 }): IAgentServer {
   const agentService: IAgentServer = {
-    echo: async (
+    echoNew: async (
       call: grpc.ServerUnaryCall<
         messages.common.EchoMessage,
         messages.common.EchoMessage

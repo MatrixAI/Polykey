@@ -216,6 +216,12 @@ class VaultManager {
     this.logger.info('Destroyed Vault Manager');
   }
 
+  /**
+   * Gets the name of the vault with vaultId
+   * @param vaultId - Id of the vault.
+   * @returns {VaultName} - Name of the vault.
+   * @throws ErrorVaultUndefined if no vault matches the provided VaultId
+   */
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async getVaultName(vaultId: VaultId): Promise<VaultName | undefined> {
     const vaultMeta = await this.db.get<POJO>(
@@ -226,6 +232,11 @@ class VaultManager {
     return vaultMeta.name;
   }
 
+  /**
+   * Creates a vault with the vaultName.
+   * @param vaultName
+   * @returns {*}
+   */
   @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async createVault(vaultName: VaultName): Promise<Vault> {
     const vaultId = await this.generateVaultId();

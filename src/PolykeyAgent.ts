@@ -22,7 +22,7 @@ import { SessionManager } from './sessions';
 import { certNodeId } from './network/utils';
 import { IdentitiesManager } from './identities';
 import { ForwardProxy, ReverseProxy } from './network';
-import { IAgentServer } from './proto/js/Agent_grpc_pb';
+import { IAgentServer } from './proto/js/Agent.v2_grpc_pb';
 import { IClientServer } from './proto/js/Client_grpc_pb';
 import { createAgentService, AgentService } from './agent';
 import { createClientService, ClientService } from './client';
