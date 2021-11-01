@@ -1,7 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { IdentitiesManager } from '@/identities';
-import type { GestaltGraph } from '@/gestalts';
-import type { NodeManager } from '@/nodes';
 import type { IdentityId, ProviderId } from '@/identities/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import os from 'os';
@@ -48,12 +46,11 @@ describe('Identities Client service', () => {
   let dataDir: string;
   let polykeyAgent: PolykeyAgent;
   let keyManager: KeyManager;
-  let nodeManager: NodeManager;
-  let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
   let passwordFile: string;
   let callCredentials: grpc.Metadata;
 
+  let testProvider: TestProvider;
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,
@@ -90,12 +87,10 @@ describe('Identities Client service', () => {
       keyManager,
     });
 
-    nodeManager = polykeyAgent.nodeManager;
-    gestaltGraph = polykeyAgent.gestaltGraph;
     identitiesManager = polykeyAgent.identitiesManager;
 
     // Adding provider.
-    const testProvider = new TestProvider();
+    testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
 
     [server, port] = await testUtils.openTestClientServer({
@@ -125,30 +120,49 @@ describe('Identities Client service', () => {
 
   test('should authenticate an identity', async () => {
     const identitiesAuthenticate =
-      grpcUtils.promisifyReadableStreamCall<identitiesPB.Provider>(
+      grpcUtils.promisifyReadableStreamCall<identitiesPB.AuthenticationProcess>(
         client,
         client.identitiesAuthenticate,
       );
 
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(testToken.providerId);
-    providerMessage.setMessage(testToken.identityId);
+    providerMessage.setIdentityId(testToken.identityId);
 
-    const gen = identitiesAuthenticate(providerMessage, callCredentials);
-
-    const firstMessage = await gen.next();
-    expect(firstMessage.done).toBeFalsy();
-    expect(firstMessage.value).toBeTruthy();
-    if (!firstMessage.value) fail('Failed to return a message');
-    expect(firstMessage.value.getMessage()).toContain('randomtestcode');
-
-    const secondMessage = await gen.next();
-    expect(secondMessage.done).toBeFalsy();
-    expect(secondMessage.value).toBeTruthy();
-    if (!secondMessage.value) fail('Failed to return a message');
-    expect(secondMessage.value.getMessage()).toContain('test_user');
-
-    expect((await gen.next()).done).toBeTruthy();
+    const genReadable = identitiesAuthenticate(
+      providerMessage,
+      callCredentials,
+    );
+    let step = 0;
+    for await (const message of genReadable) {
+      if (step === 0) {
+        expect(message.getStepCase()).toBe(
+          identitiesPB.AuthenticationProcess.StepCase.REQUEST,
+        );
+        const authRequest = message.getRequest()!;
+        expect(authRequest.getUrl()).toBe('test.com');
+        expect(authRequest.getDataMap().get('userCode')).toBe('randomtestcode');
+      }
+      if (step === 1) {
+        expect(message.getStepCase()).toBe(
+          identitiesPB.AuthenticationProcess.StepCase.RESPONSE,
+        );
+        const authResponse = message.getResponse()!;
+        expect(authResponse.getIdentityId()).toBe(testToken.identityId);
+      }
+      step++;
+    }
+    expect(
+      await polykeyAgent.identitiesManager.getToken(
+        testToken.providerId,
+        testToken.identityId,
+      ),
+    ).toEqual(testToken.tokenData);
+    expect(genReadable.stream.destroyed).toBeTruthy();
+    await polykeyAgent.identitiesManager.delToken(
+      testToken.providerId,
+      testToken.identityId,
+    );
   });
   test('should manipulate tokens for providers', async () => {
     const putToken = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
@@ -175,7 +189,7 @@ describe('Identities Client service', () => {
     const m = new identitiesPB.TokenSpecific();
 
     mp.setProviderId(providerId);
-    mp.setMessage(identityId);
+    mp.setIdentityId(identityId);
 
     m.setProvider(mp);
     m.setToken('abc');
@@ -217,7 +231,7 @@ describe('Identities Client service', () => {
     const providerSearchMessage = new identitiesPB.ProviderSearch();
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(testToken.providerId);
-    providerMessage.setMessage(testToken.identityId);
+    providerMessage.setIdentityId(testToken.identityId);
     providerSearchMessage.setProvider(providerMessage);
     providerSearchMessage.setSearchTermList([]);
 
@@ -252,14 +266,13 @@ describe('Identities Client service', () => {
       callCredentials,
     );
     expect(providerMessage.getProviderId()).toBe(testToken.providerId);
-    expect(providerMessage.getMessage()).toBe(testToken.identityId);
+    expect(providerMessage.getIdentityId()).toBe(testToken.identityId);
   });
-  test('should augment a keynode.', async () => {
-    const identitiesAugmentKeynode =
-      grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
-        client,
-        client.identitiesClaim,
-      );
+  test('should claim an identity.', async () => {
+    const identitiesClaim = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+      client,
+      client.identitiesClaim,
+    );
     // Need an authenticated identity
     await identitiesManager.putToken(
       testToken.providerId,
@@ -269,11 +282,24 @@ describe('Identities Client service', () => {
 
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(testToken.providerId);
-    providerMessage.setMessage(testToken.identityId);
-    await identitiesAugmentKeynode(providerMessage, callCredentials);
-    const res = await gestaltGraph.getGestaltByNode(nodeManager.getNodeId());
-    const resString = JSON.stringify(res);
-    expect(resString).toContain(testToken.providerId);
-    expect(resString).toContain(testToken.identityId);
+    providerMessage.setIdentityId(testToken.identityId);
+    await identitiesClaim(providerMessage, callCredentials);
+
+    const claim = await (
+      await testProvider
+        .getClaims(testToken.identityId, testToken.identityId)
+        .next()
+    ).value;
+    expect(claim.payload.data.type).toBe('identity');
+    expect(claim.payload.data.provider).toBe(testToken.providerId);
+    expect(claim.payload.data.identity).toBe(testToken.identityId);
+    expect(claim.payload.data.node).toBe(polykeyAgent.nodeManager.getNodeId());
+
+    await polykeyAgent.identitiesManager.delToken(
+      testToken.providerId,
+      testToken.identityId,
+    );
+    testProvider.links = {};
+    testProvider.linkIdCounter = 0;
   });
 });

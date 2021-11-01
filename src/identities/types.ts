@@ -1,4 +1,4 @@
-import type { Opaque } from '../types';
+import type { Opaque, POJO } from '../types';
 import type { Claim } from '../claims/types';
 
 /**
@@ -55,13 +55,18 @@ type IdentityInfo = IdentityData & {
   claims: IdentityClaims;
 };
 
-type ProviderTokens = Record<IdentityId, TokenData>;
-
 type TokenData = {
   accessToken: string;
   refreshToken?: string;
   accessTokenExpiresIn?: number;
   refreshTokenExpiresIn?: number;
+};
+
+type ProviderTokens = Record<IdentityId, TokenData>;
+
+type ProviderAuthenticateRequest = {
+  url: string;
+  data: POJO;
 };
 
 export type {
@@ -74,4 +79,5 @@ export type {
   IdentityInfo,
   TokenData,
   ProviderTokens,
+  ProviderAuthenticateRequest,
 };

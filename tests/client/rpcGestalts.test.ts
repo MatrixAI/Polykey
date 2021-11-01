@@ -245,7 +245,7 @@ describe('Client service', () => {
     // Testing the call
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(identity1.providerId);
-    providerMessage.setMessage(identity1.identityId);
+    providerMessage.setIdentityId(identity1.identityId);
     const res = await gestaltsGetIdentity(providerMessage, callCredentials);
     const jsonString = res.getGestaltGraph();
 
@@ -282,7 +282,7 @@ describe('Client service', () => {
 
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(testToken.providerId);
-    providerMessage.setMessage(testToken.identityId);
+    providerMessage.setIdentityId(testToken.identityId);
     // Technically contains a node, but no other thing, will succeed with no results
     expect(
       await gestaltsDiscoverIdentity(providerMessage, callCredentials),
@@ -336,7 +336,7 @@ describe('Client service', () => {
 
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(identity1.providerId);
-    providerMessage.setMessage(identity1.identityId);
+    providerMessage.setIdentityId(identity1.identityId);
     // Should have permissions scan and notify as above
     const test1 = await gestaltsGetActionsByIdentity(
       providerMessage,
@@ -347,7 +347,7 @@ describe('Client service', () => {
     expect(test1.getActionList().includes('notify')).toBeTruthy();
 
     providerMessage.setProviderId(identity1.providerId);
-    providerMessage.setMessage('Not a real identity');
+    providerMessage.setIdentityId('Not a real identity');
     // Should have no permissions
     const test2 = await gestaltsGetActionsByIdentity(
       providerMessage,
@@ -393,7 +393,7 @@ describe('Client service', () => {
 
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(identity1.providerId);
-    providerMessage.setMessage(identity1.identityId);
+    providerMessage.setIdentityId(identity1.identityId);
 
     const setActionsMessage = new permissionsPB.ActionSet();
     setActionsMessage.setIdentity(providerMessage);
@@ -470,7 +470,7 @@ describe('Client service', () => {
 
     const providerMessage = new identitiesPB.Provider();
     providerMessage.setProviderId(identity1.providerId);
-    providerMessage.setMessage(identity1.identityId);
+    providerMessage.setIdentityId(identity1.identityId);
 
     const setActionsMessage = new permissionsPB.ActionSet();
     setActionsMessage.setIdentity(providerMessage);

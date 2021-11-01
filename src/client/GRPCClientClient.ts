@@ -520,7 +520,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesAuthenticate(...args) {
-    return grpcUtils.promisifyReadableStreamCall<identitiesPB.Provider>(
+    return grpcUtils.promisifyReadableStreamCall<identitiesPB.AuthenticationProcess>(
       this.client,
       this.client.identitiesAuthenticate,
     )(...args);

@@ -1,5 +1,5 @@
 import type { ClaimLinkIdentity, ClaimLinkNode } from '@/claims/types';
-import type { IdentityId } from '@/identities/types';
+import type { IdentityId, ProviderId } from '@/identities/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -7,6 +7,7 @@ import Logger, { LogLevel } from '@matrixai/logger';
 import { Discovery } from '@/discovery';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as discoveryErrors from '@/discovery/errors';
+import * as claimsUtils from '@/claims/utils';
 import TestProvider from '../identities/TestProvider';
 import {
   addRemoteDetails,
@@ -25,6 +26,13 @@ describe('Discovery', () => {
   // Constants.
   const password = 'password';
   const logger = new Logger('Discovery Tests', LogLevel.WARN);
+  const testToken = {
+    providerId: 'test-provider' as ProviderId,
+    identityId: 'test_user' as IdentityId,
+    tokenData: {
+      accessToken: 'abc123',
+    },
+  };
 
   describe('Basic manager tests.', () => {
     // Managers
@@ -115,7 +123,7 @@ describe('Discovery', () => {
       nodeA.identitiesManager.registerProvider(testProvider);
 
       // Setting up identtiy.
-      const gen = await testProvider.authenticate();
+      const gen = testProvider.authenticate();
       await gen.next();
       identityId = (await gen.next()).value as IdentityId;
 
@@ -125,12 +133,16 @@ describe('Discovery', () => {
         provider: testProvider.id,
         identity: identityId,
       };
-      await nodeB.sigchain.addClaim(claimIdentToB);
+      const claimEncoded = await nodeB.sigchain.addClaim(claimIdentToB);
+      const claim = await claimsUtils.decodeClaim(claimEncoded);
+      await testProvider.publishClaim(identityId, claim);
     }, global.polykeyStartupTimeout * 3);
     afterAll(async () => {
       await cleanupRemoteKeynode(nodeA);
       await cleanupRemoteKeynode(nodeB);
       await cleanupRemoteKeynode(nodeC);
+      testProvider.links = {};
+      testProvider.linkIdCounter = 0;
     });
     beforeEach(async () => {
       await nodeA.gestaltGraph.clearDB();
@@ -155,10 +167,6 @@ describe('Discovery', () => {
       expect(gestaltString).toContain(identityId);
     });
     test('discoverGestaltByNode by IdentityId', async () => {
-      await testProvider.overrideLinks(
-        nodeB.nodeManager.getNodeId(),
-        nodeB.keyManager.getRootKeyPairPem().privateKey,
-      );
       // Time to do the test.
       const discoverProcess = nodeA.discovery.discoverGestaltByIdentity(
         testProvider.id,
@@ -227,22 +235,6 @@ describe('Discovery', () => {
       const gen2 = testProvider.authenticate();
       await gen2.next();
       identityIdB = (await gen2.next()).value as IdentityId;
-
-      const claimIdentToB: ClaimLinkIdentity = {
-        type: 'identity',
-        node: nodeB.nodeManager.getNodeId(),
-        provider: testProvider.id,
-        identity: identityIdA,
-      };
-      await nodeB.sigchain.addClaim(claimIdentToB);
-
-      const claimIdentToD: ClaimLinkIdentity = {
-        type: 'identity',
-        node: nodeD.nodeManager.getNodeId(),
-        provider: testProvider.id,
-        identity: identityIdB,
-      };
-      await nodeD.sigchain.addClaim(claimIdentToD);
     }, global.polykeyStartupTimeout * 4);
     afterAll(async () => {
       await cleanupRemoteKeynode(nodeA);
@@ -250,17 +242,31 @@ describe('Discovery', () => {
       await cleanupRemoteKeynode(nodeC);
       await cleanupRemoteKeynode(nodeD);
     });
-    beforeEach(async () => {
+    afterEach(async () => {
       await nodeA.gestaltGraph.clearDB();
       await nodeB.gestaltGraph.clearDB();
       await nodeC.gestaltGraph.clearDB();
       await nodeD.gestaltGraph.clearDB();
+      testProvider.links = {};
+      testProvider.linkIdCounter = 0;
     });
     test('Gestalt1 discovers Gestalt2', async () => {
-      await testProvider.overrideLinks(
-        nodeD.nodeManager.getNodeId(),
-        nodeD.keyManager.getRootKeyPairPem().privateKey,
+      await nodeA.identitiesManager.putToken(
+        testToken.providerId,
+        identityIdA,
+        testToken.tokenData,
       );
+
+      const claimIdentToD: ClaimLinkIdentity = {
+        type: 'identity',
+        node: nodeD.nodeManager.getNodeId(),
+        provider: testProvider.id,
+        identity: identityIdB,
+      };
+      const claimBEncoded = await nodeD.sigchain.addClaim(claimIdentToD);
+      const claimB = claimsUtils.decodeClaim(claimBEncoded);
+      await testProvider.publishClaim(identityIdB, claimB);
+
       // Time to do the test.
       const discoverProcess = nodeA.discovery.discoverGestaltByIdentity(
         testProvider.id,
@@ -277,12 +283,25 @@ describe('Discovery', () => {
       expect(gestaltString).toContain(nodeC.nodeManager.getNodeId());
       expect(gestaltString).toContain(nodeD.nodeManager.getNodeId());
       expect(gestaltString).toContain(identityIdB);
+      await nodeA.identitiesManager.delToken(testToken.providerId, identityIdA);
     });
     test('Gestalt2 discovers Gestalt1', async () => {
-      await testProvider.overrideLinks(
-        nodeB.nodeManager.getNodeId(),
-        nodeB.keyManager.getRootKeyPairPem().privateKey,
+      await nodeC.identitiesManager.putToken(
+        testToken.providerId,
+        identityIdB,
+        testToken.tokenData,
       );
+
+      const claimIdentToB: ClaimLinkIdentity = {
+        type: 'identity',
+        node: nodeB.nodeManager.getNodeId(),
+        provider: testProvider.id,
+        identity: identityIdA,
+      };
+      const claimAEncoded = await nodeB.sigchain.addClaim(claimIdentToB);
+      const claimA = claimsUtils.decodeClaim(claimAEncoded);
+      await testProvider.publishClaim(identityIdA, claimA);
+
       // Time to do the test.
       const discoverProcess = nodeC.discovery.discoverGestaltByIdentity(
         testProvider.id,
@@ -299,6 +318,7 @@ describe('Discovery', () => {
       expect(gestaltString).toContain(nodeA.nodeManager.getNodeId());
       expect(gestaltString).toContain(nodeB.nodeManager.getNodeId());
       expect(gestaltString).toContain(identityIdA);
+      await nodeC.identitiesManager.delToken(testToken.providerId, identityIdB);
     });
   });
 });

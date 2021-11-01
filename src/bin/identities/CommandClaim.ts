@@ -45,7 +45,7 @@ class CommandClaim extends CommandPolykey {
         });
         const providerMessage = new identitiesPB.Provider();
         providerMessage.setProviderId(providerId);
-        providerMessage.setMessage(identityId);
+        providerMessage.setIdentityId(identityId);
         await binUtils.retryAuthentication(
           (auth) => pkClient.grpcClient.identitiesClaim(providerMessage, auth),
           meta,

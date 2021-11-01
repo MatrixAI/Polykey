@@ -4,7 +4,7 @@ package polykey.v1.identities;
 
 message Provider {
   string provider_id = 1;
-  string message = 2;
+  string identity_id = 2;
 }
 
 message TokenSpecific {
@@ -14,6 +14,22 @@ message TokenSpecific {
 
 message Token {
   string token = 1;
+}
+
+message AuthenticationProcess {
+  oneof step {
+    AuthenticationRequest request = 1;
+    AuthenticationResponse response = 2;
+  }
+}
+
+message AuthenticationRequest {
+  string url = 1;
+  map<string, string> data = 2;
+}
+
+message AuthenticationResponse {
+  string identity_id = 1;
 }
 
 message ProviderSearch {

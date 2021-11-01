@@ -47,6 +47,17 @@ function deserialize_polykey_v1_gestalts_Graph(buffer_arg) {
   return polykey_v1_gestalts_gestalts_pb.Graph.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_polykey_v1_identities_AuthenticationProcess(arg) {
+  if (!(arg instanceof polykey_v1_identities_identities_pb.AuthenticationProcess)) {
+    throw new Error('Expected argument of type polykey.v1.identities.AuthenticationProcess');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_identities_AuthenticationProcess(buffer_arg) {
+  return polykey_v1_identities_identities_pb.AuthenticationProcess.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_polykey_v1_identities_Info(arg) {
   if (!(arg instanceof polykey_v1_identities_identities_pb.Info)) {
     throw new Error('Expected argument of type polykey.v1.identities.Info');
@@ -907,11 +918,11 @@ identitiesAuthenticate: {
     requestStream: false,
     responseStream: true,
     requestType: polykey_v1_identities_identities_pb.Provider,
-    responseType: polykey_v1_identities_identities_pb.Provider,
+    responseType: polykey_v1_identities_identities_pb.AuthenticationProcess,
     requestSerialize: serialize_polykey_v1_identities_Provider,
     requestDeserialize: deserialize_polykey_v1_identities_Provider,
-    responseSerialize: serialize_polykey_v1_identities_Provider,
-    responseDeserialize: deserialize_polykey_v1_identities_Provider,
+    responseSerialize: serialize_polykey_v1_identities_AuthenticationProcess,
+    responseDeserialize: deserialize_polykey_v1_identities_AuthenticationProcess,
   },
   identitiesTokenPut: {
     path: '/polykey.v1.ClientService/IdentitiesTokenPut',

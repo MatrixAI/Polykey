@@ -181,7 +181,7 @@ describe('IdentitiesManager', () => {
     const result1 = await authProcess.next();
     // The test provider will provider a dummy authcode
     expect(result1.value).toBeDefined();
-    expect(typeof result1.value).toBe('string');
+    expect(typeof result1.value).toBe('object');
     expect(result1.done).toBe(false);
     // This is when we have completed it
     const result2 = await authProcess.next();

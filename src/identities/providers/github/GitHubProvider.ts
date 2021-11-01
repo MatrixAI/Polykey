@@ -3,6 +3,7 @@ import type {
   ProviderId,
   TokenData,
   IdentityData,
+  ProviderAuthenticateRequest,
 } from '../../types';
 import type { Claim } from '../../../claims/types';
 import type { IdentityClaim, IdentityClaimId } from '../../../identities/types';
@@ -12,7 +13,6 @@ import { Searcher } from 'fast-fuzzy';
 import cheerio from 'cheerio';
 import Logger from '@matrixai/logger';
 import { sleep } from '../../../utils';
-import { browser } from '../../utils';
 import Provider from '../../Provider';
 import * as identitiesErrors from '../../errors';
 
@@ -41,7 +41,7 @@ class GitHubProvider extends Provider {
 
   public async *authenticate(
     timeout: number = 120000,
-  ): AsyncGenerator<string | undefined, IdentityId> {
+  ): AsyncGenerator<ProviderAuthenticateRequest, IdentityId> {
     const params = new URLSearchParams();
     params.set('client_id', this.clientId);
     params.set('scope', this.scope);
@@ -51,7 +51,7 @@ class GitHubProvider extends Provider {
         method: 'POST',
       },
     );
-    this.logger.info('Sending authentication request to Github');
+    this.logger.info('Sending authentication request to GitHub');
     const response = await fetch(request);
     if (!response.ok) {
       throw new identitiesErrors.ErrorProviderAuthentication(
@@ -69,8 +69,13 @@ class GitHubProvider extends Provider {
         `Provider device code request did not return the device_code or the user_code`,
       );
     }
-    // This code needs to be used by the user to manually enter
-    yield userCode;
+    yield {
+      url: 'https://github.com/login/device',
+      data: {
+        // This code needs to be used by the user to manually enter
+        userCode,
+      },
+    };
     // Promise.race does not cancel unfinished promises
     // the finished condition variable is needed to stop the pollAccessToken process
     // the pollTimer is needed to stop the pollTimerP
@@ -84,7 +89,6 @@ class GitHubProvider extends Provider {
     });
     const that = this;
     const pollAccessToken = async () => {
-      browser('https://github.com/login/device');
       const payload = new URLSearchParams();
       payload.set('grant_type', 'urn:ietf:params:oauth:grant-type:device_code');
       payload.set('client_id', that.clientId);
@@ -152,6 +156,7 @@ class GitHubProvider extends Provider {
     }
     const identityId = await this.getIdentityId(tokenData);
     await this.putToken(identityId, tokenData);
+    this.logger.info('Completed authentication with GitHub');
     return identityId;
   }
 

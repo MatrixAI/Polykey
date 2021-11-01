@@ -2,8 +2,9 @@ import type {
   ProviderId,
   IdentityId,
   IdentityData,
-  ProviderTokens,
   TokenData,
+  ProviderTokens,
+  ProviderAuthenticateRequest,
 } from './types';
 import type { Claim } from '../claims/types';
 import type { IdentityClaim, IdentityClaimId } from '../identities/types';
@@ -105,11 +106,11 @@ abstract class Provider {
    * This token must be stored on the token database.
    * This is a generator that only has 1 step.
    * This is because we require the caller to perform an authorisation action.
-   * The return value is the token value.
+   * The final return value is the identity ID.
    */
   public abstract authenticate(
     timeout?: number,
-  ): AsyncGenerator<string | undefined, IdentityId>;
+  ): AsyncGenerator<ProviderAuthenticateRequest, IdentityId>;
 
   /**
    * Refreshes the token

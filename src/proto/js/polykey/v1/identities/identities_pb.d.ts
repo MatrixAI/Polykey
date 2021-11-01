@@ -9,8 +9,8 @@ import * as jspb from "google-protobuf";
 export class Provider extends jspb.Message { 
     getProviderId(): string;
     setProviderId(value: string): Provider;
-    getMessage(): string;
-    setMessage(value: string): Provider;
+    getIdentityId(): string;
+    setIdentityId(value: string): Provider;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Provider.AsObject;
@@ -25,7 +25,7 @@ export class Provider extends jspb.Message {
 export namespace Provider {
     export type AsObject = {
         providerId: string,
-        message: string,
+        identityId: string,
     }
 }
 
@@ -72,6 +72,89 @@ export class Token extends jspb.Message {
 export namespace Token {
     export type AsObject = {
         token: string,
+    }
+}
+
+export class AuthenticationProcess extends jspb.Message { 
+
+    hasRequest(): boolean;
+    clearRequest(): void;
+    getRequest(): AuthenticationRequest | undefined;
+    setRequest(value?: AuthenticationRequest): AuthenticationProcess;
+
+    hasResponse(): boolean;
+    clearResponse(): void;
+    getResponse(): AuthenticationResponse | undefined;
+    setResponse(value?: AuthenticationResponse): AuthenticationProcess;
+
+    getStepCase(): AuthenticationProcess.StepCase;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AuthenticationProcess.AsObject;
+    static toObject(includeInstance: boolean, msg: AuthenticationProcess): AuthenticationProcess.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AuthenticationProcess, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AuthenticationProcess;
+    static deserializeBinaryFromReader(message: AuthenticationProcess, reader: jspb.BinaryReader): AuthenticationProcess;
+}
+
+export namespace AuthenticationProcess {
+    export type AsObject = {
+        request?: AuthenticationRequest.AsObject,
+        response?: AuthenticationResponse.AsObject,
+    }
+
+    export enum StepCase {
+        STEP_NOT_SET = 0,
+        REQUEST = 1,
+        RESPONSE = 2,
+    }
+
+}
+
+export class AuthenticationRequest extends jspb.Message { 
+    getUrl(): string;
+    setUrl(value: string): AuthenticationRequest;
+
+    getDataMap(): jspb.Map<string, string>;
+    clearDataMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AuthenticationRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: AuthenticationRequest): AuthenticationRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AuthenticationRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AuthenticationRequest;
+    static deserializeBinaryFromReader(message: AuthenticationRequest, reader: jspb.BinaryReader): AuthenticationRequest;
+}
+
+export namespace AuthenticationRequest {
+    export type AsObject = {
+        url: string,
+
+        dataMap: Array<[string, string]>,
+    }
+}
+
+export class AuthenticationResponse extends jspb.Message { 
+    getIdentityId(): string;
+    setIdentityId(value: string): AuthenticationResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AuthenticationResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: AuthenticationResponse): AuthenticationResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AuthenticationResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AuthenticationResponse;
+    static deserializeBinaryFromReader(message: AuthenticationResponse, reader: jspb.BinaryReader): AuthenticationResponse;
+}
+
+export namespace AuthenticationResponse {
+    export type AsObject = {
+        identityId: string,
     }
 }
 

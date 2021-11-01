@@ -4,20 +4,19 @@ import type {
   IdentityId,
   TokenData,
   IdentityData,
+  ProviderAuthenticateRequest,
 } from '@/identities/types';
 import type { Claim } from '@/claims/types';
 import type { IdentityClaim, IdentityClaimId } from '@/identities/types';
-import type { NodeId } from '@/nodes/types';
 
 import { Provider, errors as identitiesErrors } from '@/identities';
-import { createClaim, decodeClaim } from '@/claims/utils';
 
 class TestProvider extends Provider {
   public readonly id = 'test-provider' as ProviderId;
 
-  protected linkIdCounter: number = 0;
+  public linkIdCounter: number = 0;
   protected users: Record<IdentityId | string, POJO>; // FIXME: the string union on VaultId is to prevent some false errors.
-  protected links: Record<IdentityClaimId | string, string>; // FIXME: the string union on VaultId is to prevent some false errors.
+  public links: Record<IdentityClaimId | string, string>; // FIXME: the string union on VaultId is to prevent some false errors.
   protected userLinks: Record<
     IdentityId | string,
     Array<IdentityClaimId | string>
@@ -34,57 +33,25 @@ class TestProvider extends Provider {
         email: 'test_user2@test.com',
       },
     };
-    this.links = {
-      test_link: JSON.stringify({
-        payload: {
-          hPrev: null,
-          seq: 1,
-          data: {
-            type: 'identity',
-            node: 'nodeId' as NodeId,
-            provider: this.id,
-            identity: 'test_user' as IdentityId,
-          },
-          iat: 1618203162,
-        },
-        signatures: {
-          nodeId: 'nodeidSignature',
-          test_user: 'test_userSignature',
-        },
-      }),
-    };
-    this.userLinks = {
-      test_user: ['test_link'],
-    };
     this.userTokens = {
       abc123: 'test_user' as IdentityId,
     };
-  }
-
-  public async overrideLinks(nodeId: NodeId, privateKey: string) {
-    const claim = await createClaim({
-      data: {
-        type: 'identity',
-        node: nodeId,
-        provider: this.id,
-        identity: 'test_user' as IdentityId,
-      },
-      hPrev: null,
-      kid: nodeId,
-      privateKey,
-      seq: 1,
-    });
-
-    const claimJson = decodeClaim(claim);
-
-    this.links = {
-      test_link: JSON.stringify(claimJson),
+    this.links = {};
+    this.userLinks = {
+      test_user: ['test_link'],
     };
   }
 
-  public async *authenticate(): AsyncGenerator<string | undefined, IdentityId> {
-    const code = 'randomtestcode';
-    yield code;
+  public async *authenticate(): AsyncGenerator<
+    ProviderAuthenticateRequest,
+    IdentityId
+  > {
+    yield {
+      url: 'test.com',
+      data: {
+        userCode: 'randomtestcode',
+      },
+    };
     // Always gives back the abc123 token
     const tokenData = { accessToken: 'abc123' };
     const identityId = await this.getIdentityId(tokenData);

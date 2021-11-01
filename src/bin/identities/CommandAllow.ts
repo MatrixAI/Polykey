@@ -72,7 +72,7 @@ class CommandAllow extends CommandPolykey {
           // Setting By Identity
           const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setMessage(gestaltId.identityId);
+          providerMessage.setIdentityId(gestaltId.identityId);
           setActionMessage.setIdentity(providerMessage);
           await binUtils.retryAuthentication(
             (auth) =>

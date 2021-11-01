@@ -3,6 +3,7 @@ import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
+import * as identitiesUtils from '../../identities/utils';
 
 class CommandAuthenticate extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -32,7 +33,11 @@ class CommandAuthenticate extends CommandPolykey {
         this.fs,
       );
       let pkClient: PolykeyClient;
+      let genReadable: ReturnType<
+        typeof pkClient.grpcClient.identitiesAuthenticate
+      >;
       this.exitHandlers.handlers.push(async () => {
+        if (genReadable != null) genReadable.stream.cancel();
         if (pkClient != null) await pkClient.stop();
       });
       try {
@@ -45,32 +50,50 @@ class CommandAuthenticate extends CommandPolykey {
         });
         const providerMessage = new identitiesPB.Provider();
         providerMessage.setProviderId(providerId);
-        providerMessage.setMessage(identityId);
-        const successMessage = await binUtils.retryAuthentication(
-          async (auth) => {
-            const stream = pkClient.grpcClient.identitiesAuthenticate(
-              providerMessage,
-              auth,
-            );
-            const codeMessage = (await stream.next()).value;
-            process.stdout.write(
-              binUtils.outputFormatter({
-                type: options.format === 'json' ? 'json' : 'list',
-                data: [`Your device code is: ${codeMessage!.getMessage()}`],
-              }),
-            );
-            return (await stream.next()).value;
-          },
-          meta,
-        );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Successfully authenticated user: ${successMessage!.getMessage()}`,
-            ],
-          }),
-        );
+        providerMessage.setIdentityId(identityId);
+        await binUtils.retryAuthentication(async (auth) => {
+          genReadable = pkClient.grpcClient.identitiesAuthenticate(
+            providerMessage,
+            auth,
+          );
+          for await (const message of genReadable) {
+            switch (message.getStepCase()) {
+              case identitiesPB.AuthenticationProcess.StepCase.REQUEST: {
+                const authRequest = message.getRequest()!;
+                this.logger.info(
+                  `Navigate to the URL in order to authenticate`,
+                );
+                this.logger.info(
+                  'Use any additional additional properties to complete authentication',
+                );
+                identitiesUtils.browser(authRequest.getUrl());
+                process.stdout.write(
+                  binUtils.outputFormatter({
+                    type: options.format === 'json' ? 'json' : 'dict',
+                    data: {
+                      url: authRequest.getUrl(),
+                      ...Object.fromEntries(authRequest.getDataMap().entries()),
+                    },
+                  }),
+                );
+                break;
+              }
+              case identitiesPB.AuthenticationProcess.StepCase.RESPONSE: {
+                const authResponse = message.getResponse()!;
+                this.logger.info(
+                  `Authenticated digital identity provider ${providerId} with identity ${identityId}`,
+                );
+                process.stdout.write(
+                  binUtils.outputFormatter({
+                    type: options.format === 'json' ? 'json' : 'list',
+                    data: [authResponse.getIdentityId()],
+                  }),
+                );
+                break;
+              }
+            }
+          }
+        }, meta);
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }
