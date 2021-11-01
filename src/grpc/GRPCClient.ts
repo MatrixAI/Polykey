@@ -59,7 +59,7 @@ class GRPCClient<T extends Client> {
     tlsConfig,
     secure,
     session,
-    timeout = Infinity,
+    timeout = 25000,
   }: {
     clientConstructor: new (
       address: string,
