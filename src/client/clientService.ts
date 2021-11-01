@@ -1,3 +1,4 @@
+import type * as grpc from '@grpc/grpc-js';
 import type PolykeyAgent from '../PolykeyAgent';
 import type { KeyManager } from '../keys';
 import type { VaultManager } from '../vaults';
@@ -11,8 +12,6 @@ import type { Sigchain } from '../sigchain';
 import type { GRPCServer } from '../grpc';
 import type { ForwardProxy, ReverseProxy } from '../network';
 import type { FileSystem } from '../types';
-
-import type * as grpc from '@grpc/grpc-js';
 import type { IClientServiceServer } from '../proto/js/polykey/v1/client_service_grpc_pb';
 import createStatusRPC from './rpcStatus';
 import createSessionsRPC from './rpcSessions';

@@ -5,6 +5,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as bootstrapUtils from '@/bootstrap/utils';
 import { Status } from '@/status';
+import config from '@/config';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -64,7 +65,7 @@ describe('Bootstrap', () => {
           nodePath,
           logger,
         });
-        const statusPath = path.join(nodePath, 'status.json');
+        const statusPath = path.join(nodePath, config.defaults.statusBase);
         const status = new Status({
           statusPath,
           fs,

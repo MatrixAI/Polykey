@@ -1,14 +1,17 @@
+default:
+  interruptible: true
+
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 stages:
   - check
   - build
+  - quality
   - release
 
-image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
-
-lint:
+.lint:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: check
   interruptible: true
   script:
@@ -18,19 +21,185 @@ lint:
         npm run lint;
         '
 
-test:
+.test 1/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: check
   interruptible: true
   script:
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
         npm install;
-        npm run test;
+        npm run test -- tests/client;
         '
 
-nix-dry:
+.test 2/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: check
   interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/agent;
+      '
+
+.test 3/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/bin;
+      '
+
+.test 4/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/bootstrap;
+      '
+
+.test 5/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/network;
+      '
+
+.test 6/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/vaults;
+      '
+
+.test 7/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/workers;
+      '
+
+.test 8/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/grpc;
+      '
+
+.test 9/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/http;
+      '
+
+.test 10/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/GenericIdTypes.test.ts tests/index.test.ts tests/PolykeyAgent.test.ts tests/utils.test.ts;
+      '
+
+.test 11/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/claims;
+      '
+
+.test 12/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/gestalts;
+      '
+
+.test 13/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/nodes;
+      '
+
+.test 14/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/git;
+      '
+
+.test 15/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/keys;
+      '
+
+.test 16/16:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: check
+  interruptible: true
+  script:
+    - >
+      nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+      npm install;
+      npm run test -- tests/acl tests/discovery tests/lockfile tests/notifications tests/session tests/sigchain tests/identities;
+      '
+
+.nix-dry:
+  stage: check
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   script:
     - nix-build -v -v --dry-run ./release.nix --attr application
     - nix-build -v -v --dry-run ./release.nix --attr docker
@@ -40,31 +209,127 @@ nix-dry:
 
 nix:
   stage: build
-  interruptible: true
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  script:
+    - mkdir -p ./builds
+    # nix-specific application target
+    - >
+        build_application="$(nix-build \
+          --max-jobs "$(nproc)" --cores "$(nproc)" \
+          ./release.nix  \
+          --attr application \
+        )"
+    - >
+        nix-store --export $( \
+          nix-store --query --requisites "$build_application" \
+        ) | gzip > ./builds/js-polykey.closure.gz
+    # non-nix targets
+    - >
+        builds="$(nix-build \
+          --max-jobs "$(nproc)" --cores "$(nproc)" \
+          ./release.nix \
+          --attr docker \
+          --attr package.linux.x64.elf \
+          --attr package.windows.x64.exe \
+          --attr package.macos.x64.macho)"
+    - cp -r $builds ./builds/
+  only:
+    - qa-testing
+    - master
+  artifacts:
+    paths:
+      - ./builds/
+
+application run:
+  stage: quality
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  dependencies:
+    - nix
   script:
     - >
-        nix-build ./release.nix
-        --max-jobs $(nproc)
-        --attr application
-        --attr docker
+        build_application="$( \
+          gunzip -c ./builds/js-polykey.closure.gz | \
+          nix-store --import | \
+          tail -1 \
+        )"
+    - echo password > testPassword
+    - $build_application/bin/polykey
   only:
     - master
+    - qa-testing
 
-packages:
+docker run:
+  stage: quality
+  image: docker:20.10.11
+  dependencies:
+    - nix
+  services:
+    - docker:20.10.11-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker info
+  script:
+    - image="$(docker load --input ./builds/*docker* | cut -d' ' -f3)"
+    - docker run "$image"
+  only:
+    - qa-testing
+    - master
+
+linux run:
+  stage: quality
+  image: ubuntu:latest
+  dependencies:
+    - nix
+  script:
+    - echo password > testPassword
+    - for f in ./builds/*-linux-*; do "$f"; done
+  only:
+    - qa-testing
+    - master
+
+windows run:
+  stage: quality
+  dependencies:
+    - nix
+  script:
+    - echo password > testPassword
+    - Get-ChildItem -File ./builds/*-win32-* | ForEach {& $_.FullName}
+  tags:
+    - windows
+  only:
+    - qa-testing
+    - master
+
+macos run:
+   stage: quality
+   image: macos-11-xcode-12
+   dependencies:
+     - nix
+   script:
+      - echo password > testPassword
+      - for f in ./builds/*-macos-*; do "$f"; done
+   only:
+     - qa-testing
+     - master
+   tags:
+     - shared-macos-amd64
+
+.packages:
   stage: release
-  interruptible: true
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  dependencies:
+    - nix
   script:
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages git gitAndTools.gh --run '
-        builds="$(nix-build \
-          --max-jobs $(nproc) --cores $(nproc) \
-          ./release.nix \
-          --attr package.linux.x64.elf \
-          --attr package.windows.x64.exe \
-          --attr package.macos.x64.macho)";
         commit="$(git rev-parse --short HEAD)";
         gh release \
-          create "$commit" $builds \
+          create "$commit" \
+          builds/*.closure.gz \
+          builds/*-linux-* \
+          builds/*-win32-* \
+          builds/*-macos-* \
           --title "Build-$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
           --prerelease \
           --notes "" \

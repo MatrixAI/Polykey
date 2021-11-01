@@ -62,8 +62,8 @@ class PolykeyClient {
       grpcClient ??
       (await GRPCClientClient.createGRPCClientClient({
         nodeId,
-        host: host,
-        port: port,
+        host,
+        port,
         tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
         session,
         timeout,

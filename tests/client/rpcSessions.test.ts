@@ -12,7 +12,6 @@ import * as grpcUtils from '@/grpc/utils';
 import * as clientUtils from '@/client/utils';
 import * as testUtils from './utils';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:
