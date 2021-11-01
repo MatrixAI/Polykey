@@ -6,13 +6,21 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 
 import { GRPCServer, utils as grpcUtils } from '@/grpc';
-import { KeyManager, utils as keysUtils } from '@/keys';
+import { KeyManager } from '@/keys';
 import { utils as networkUtils } from '@/network';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as grpcErrors from '@/grpc/errors';
 import { SessionManager } from '@/sessions';
 import * as clientUtils from '@/client/utils';
+import * as keysUtils from '@/keys/utils';
 import * as utils from './utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('GRPCServer', () => {
   const password = 'password';

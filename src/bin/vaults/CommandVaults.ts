@@ -18,19 +18,19 @@ class CommandVaults extends CommandPolykey {
     super(...args);
     this.name('vaults');
     this.description('Vaults Operations');
-    this.addCommand(new CommandClone());
-    this.addCommand(new CommandCreate());
-    this.addCommand(new CommandDelete());
-    this.addCommand(new CommandList());
-    this.addCommand(new CommandLog());
-    // This.addCommand(new CommandPermissions);
-    this.addCommand(new CommandPull());
-    this.addCommand(new CommandRename());
-    // This.addCommand(new CommandScan);
-    this.addCommand(new CommandShare());
-    // This.addCommand(new CommandStat);
-    this.addCommand(new CommandUnshare());
-    this.addCommand(new CommandVersion());
+    this.addCommand(new CommandClone(...args));
+    this.addCommand(new CommandCreate(...args));
+    this.addCommand(new CommandDelete(...args));
+    this.addCommand(new CommandList(...args));
+    this.addCommand(new CommandLog(...args));
+    // This.addCommand(new CommandPermissions(...args));
+    this.addCommand(new CommandPull(...args));
+    this.addCommand(new CommandRename(...args));
+    // This.addCommand(new CommandScan(...args));
+    this.addCommand(new CommandShare(...args));
+    // This.addCommand(new CommandStat(...args));
+    this.addCommand(new CommandUnshare(...args));
+    this.addCommand(new CommandVersion(...args));
   }
 }
 

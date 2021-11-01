@@ -24,6 +24,13 @@ import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from './utils';
 import TestProvider from '../identities/TestProvider';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
  * Setting up the PolykeyAgent has been done in a beforeAll block.

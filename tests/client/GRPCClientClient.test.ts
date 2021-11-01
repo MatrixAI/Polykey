@@ -9,10 +9,17 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GRPCClientClient } from '@/client';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
-import * as parsers from '@/bin/parsers';
+import * as binProcessors from '@/bin/utils/processors';
 import { Session } from '@/sessions';
 import { errors as clientErrors } from '@/client';
 import * as testUtils from './utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('GRPCClientClient', () => {
   const password = 'password';
@@ -81,10 +88,10 @@ describe('GRPCClientClient', () => {
   });
   test('can get status', async () => {
     await fs.promises.writeFile(path.join(dataDir, 'password'), password);
-    const meta = await parsers.parseAuth({
-      passwordFile: path.join(dataDir, 'password'),
-      fs: fs,
-    });
+    const meta = await binProcessors.processAuthentication(
+      path.join(dataDir, 'password'),
+      fs,
+    );
     const emptyMessage = new utilsPB.EmptyMessage();
     const response = await client.agentStatus(emptyMessage, meta);
     expect(response.getAddress()).toBeTruthy();

@@ -1,9 +1,12 @@
 import type { Metadata } from '@grpc/grpc-js';
 
+import type PolykeyClient from '../../PolykeyClient';
+import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
-import * as binOptions from '../options';
-import * as parsers from '../parsers';
+import * as binOptions from '../utils/options';
+import * as parsers from '../utils/parsers';
+import * as binProcessors from '../utils/processors';
 
 class CommandCreate extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -31,28 +34,54 @@ class CommandCreate extends CommandPolykey {
         '../../proto/js/polykey/v1/secrets/secrets_pb'
       );
 
-      const client = await PolykeyClient.createPolykeyClient({
-        nodePath: options.nodePath,
-        logger: this.logger.getChild(PolykeyClient.name),
-      });
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
 
-      const meta = await parsers.parseAuth({
-        passwordFile: options.passwordFile,
-        fs: this.fs,
+      let pkClient: PolykeyClient | undefined;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
       });
-
       try {
-        const grpcClient = client.grpcClient;
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodePath: options.nodePath,
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
+
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
+
+        const grpcClient = pkClient.grpcClient;
         const secretMessage = new secretsPB.Secret();
         const vaultMessage = new vaultsPB.Vault();
         secretMessage.setVault(vaultMessage);
         vaultMessage.setNameOrId(secretPath[0]);
         secretMessage.setSecretName(secretPath[1]);
 
-        const content = await this.fs.promises.readFile(directoryPath);
+        let content: Buffer;
+        try {
+          content = await this.fs.promises.readFile(directoryPath);
+        } catch (e) {
+          throw new binErrors.ErrorCLIFileRead(e.message, {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          });
+        }
         secretMessage.setSecretContent(content);
 
-        await binUtils.retryAuth(
+        await binUtils.retryAuthentication(
           (auth?: Metadata) => grpcClient.vaultsSecretsNew(secretMessage, auth),
           meta,
         );
@@ -66,7 +95,7 @@ class CommandCreate extends CommandPolykey {
           }),
         );
       } finally {
-        await client.stop();
+        if (pkClient != null) await pkClient.stop();
       }
     });
   }

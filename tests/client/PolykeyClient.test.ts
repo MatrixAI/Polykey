@@ -4,14 +4,20 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
-import * as parsers from '@/bin/parsers';
+import * as binProcessors from '@/bin/utils/processors';
 
 import { PolykeyClient } from '@';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
 
 import * as testUtils from './utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('PolykeyClient', () => {
   const password = 'password';
@@ -26,6 +32,8 @@ describe('PolykeyClient', () => {
   let meta: grpc.Metadata;
 
   let dataDir: string;
+  let nodePath: string;
+  let clientPath: string;
 
   let polykeyAgent: PolykeyAgent;
 
@@ -33,13 +41,15 @@ describe('PolykeyClient', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
+    nodePath = path.join(dataDir, 'node');
+    clientPath = path.join(dataDir, 'client');
     passwordFile = path.join(dataDir, 'password');
     await fs.promises.writeFile(passwordFile, password);
-    meta = await parsers.parseAuth({ passwordFile: passwordFile, fs: fs });
+    meta = await binProcessors.processAuthentication(passwordFile, fs);
 
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
-      nodePath: dataDir,
+      nodePath,
       logger: logger,
     });
 
@@ -49,7 +59,10 @@ describe('PolykeyClient', () => {
     });
 
     pkClient = await PolykeyClient.createPolykeyClient({
-      nodePath: dataDir,
+      nodeId: polykeyAgent.keyManager.getNodeId(),
+      host: polykeyAgent.grpcServerClient.host,
+      port: polykeyAgent.grpcServerClient.port,
+      nodePath: clientPath,
       fs: fs,
       logger: logger,
     });
@@ -84,8 +97,9 @@ describe('PolykeyClient', () => {
       new StreamHandler(),
     ]);
     let dataDir: string;
-    let nodePath: string;
-    let polykeyAgent: PolykeyAgent;
+    let nodePath2: string;
+    let clientPath2: string;
+    let polykeyAgent2: PolykeyAgent;
     let sessionToken;
 
     beforeAll(async () => {
@@ -93,33 +107,34 @@ describe('PolykeyClient', () => {
       dataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
-      nodePath = path.join(dataDir, 'keynode');
+      nodePath2 = path.join(dataDir, 'keynode');
+      clientPath2 = path.join(dataDir, 'client2');
 
       // Starting an agent.
-      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+      polykeyAgent2 = await PolykeyAgent.createPolykeyAgent({
         password,
-        nodePath,
+        nodePath: nodePath2,
         logger: logger.getChild(PolykeyAgent.name),
       });
 
-      sessionToken = await polykeyAgent.sessionManager.createToken();
+      sessionToken = await polykeyAgent2.sessionManager.createToken();
     }, global.defaultTimeout * 3);
     afterAll(async () => {
-      await polykeyAgent.stop();
-      await polykeyAgent.destroy();
+      await polykeyAgent2.stop();
+      await polykeyAgent2.destroy();
     });
     test('can get status over TLS', async () => {
       // Starting client.
       const pkClient = await PolykeyClient.createPolykeyClient({
-        nodePath,
+        nodeId: polykeyAgent2.keyManager.getNodeId(),
+        host: polykeyAgent2.grpcServerClient.host,
+        port: polykeyAgent2.grpcServerClient.port,
+        nodePath: clientPath2,
         fs: fs,
         logger: logger.getChild(PolykeyClient.name),
       });
       await pkClient.session.start({ sessionToken });
-      const meta = await parsers.parseAuth({
-        passwordFile: passwordFile,
-        fs: fs,
-      });
+      const meta = await binProcessors.processAuthentication(passwordFile, fs);
 
       const emptyMessage = new utilsPB.EmptyMessage();
       const response = await pkClient.grpcClient.agentStatus(

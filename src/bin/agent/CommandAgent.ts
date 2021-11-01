@@ -11,12 +11,12 @@ class CommandAgent extends CommandPolykey {
     super(...args);
     this.name('agent');
     this.description('Agent Operations');
-    this.addCommand(new CommandLock());
-    this.addCommand(new CommandLockAll());
-    this.addCommand(new CommandStart());
-    this.addCommand(new CommandStatus());
-    this.addCommand(new CommandStop());
-    this.addCommand(new CommandUnlock());
+    this.addCommand(new CommandLock(...args));
+    this.addCommand(new CommandLockAll(...args));
+    this.addCommand(new CommandStart(...args));
+    this.addCommand(new CommandStatus(...args));
+    this.addCommand(new CommandStop(...args));
+    this.addCommand(new CommandUnlock(...args));
   }
 }
 

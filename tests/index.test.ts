@@ -4,6 +4,13 @@ import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 describe('index', () => {
   const logger = new Logger('index test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir;

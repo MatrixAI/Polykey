@@ -40,6 +40,16 @@ const polykeyWorker = {
     const keyPair = await keysUtils.generateKeyPair(bits);
     return keysUtils.keyPairToAsn1(keyPair);
   },
+  async generateDeterministicKeyPairAsn1(
+    bits: number,
+    recoveryCode: string,
+  ): Promise<KeyPairAsn1> {
+    const keyPair = await keysUtils.generateDeterministicKeyPair(
+      bits,
+      recoveryCode,
+    );
+    return keysUtils.keyPairToAsn1(keyPair);
+  },
   encryptWithPublicKeyAsn1(
     publicKeyAsn1: PublicKeyAsn1,
     plainText: string,

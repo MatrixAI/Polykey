@@ -9,7 +9,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 import { DB } from '@matrixai/db';
-import { KeyManager, utils as keysUtils } from '@/keys';
+import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { Sigchain } from '@/sigchain';
@@ -17,8 +17,16 @@ import { sleep } from '@/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as claimsUtils from '@/claims/utils';
 import { makeNodeId } from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils';
 import { makeCrypto } from '../utils';
 import * as testUtils from '../utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('NodeManager', () => {
   const password = 'password';
@@ -87,7 +95,11 @@ describe('NodeManager', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: makeCrypto(keyManager.dbKey),
+    });
     sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
 
     nodeManager = await NodeManager.createNodeManager({

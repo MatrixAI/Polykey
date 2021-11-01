@@ -15,16 +15,16 @@ class CommandSecrets extends CommandPolykey {
     super(...args);
     this.name('secrets');
     this.description('Secrets Operations');
-    this.addCommand(new CommandCreate());
-    this.addCommand(new CommandDelete());
-    this.addCommand(new CommandDir());
-    this.addCommand(new CommandEdit());
-    // This.addCommand(new CommandEnv);
-    this.addCommand(new CommandGet());
-    this.addCommand(new CommandList());
-    this.addCommand(new CommandMkdir());
-    this.addCommand(new CommandRename());
-    this.addCommand(new CommandUpdate());
+    this.addCommand(new CommandCreate(...args));
+    this.addCommand(new CommandDelete(...args));
+    this.addCommand(new CommandDir(...args));
+    this.addCommand(new CommandEdit(...args));
+    // This.addCommand(new CommandEnv(...args));
+    this.addCommand(new CommandGet(...args));
+    this.addCommand(new CommandList(...args));
+    this.addCommand(new CommandMkdir(...args));
+    this.addCommand(new CommandRename(...args));
+    this.addCommand(new CommandUpdate(...args));
   }
 }
 

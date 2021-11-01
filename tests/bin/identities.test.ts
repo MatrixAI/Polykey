@@ -20,6 +20,12 @@ import {
 } from '../utils';
 import TestProvider from '../identities/TestProvider';
 
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 function identityString(
   providerId: ProviderId,
   identityId: IdentityId,
@@ -137,7 +143,7 @@ describe('CLI Identities', () => {
       {},
       dataDir,
     );
-  }, global.polykeyStartupTimeout);
+  }, global.polykeyStartupTimeout * 2);
   afterAll(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();

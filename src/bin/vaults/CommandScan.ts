@@ -7,7 +7,7 @@
 // import * as grpcErrors from '../../grpc/errors';
 
 // import CommandPolykey from '../CommandPolykey';
-// import * as binOptions from '../options';
+// import * as binOptions from '../utils/options';
 
 // class CommandScan extends CommandPolykey {
 //   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {

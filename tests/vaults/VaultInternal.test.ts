@@ -11,6 +11,13 @@ import * as vaultsErrors from '@/vaults/errors';
 import { sleep } from '@/utils';
 import { KeyManager } from '@/keys';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 describe('VaultInternal', () => {
   let dataDir: string;
   let dbPath: string;

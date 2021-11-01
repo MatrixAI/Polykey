@@ -4,6 +4,7 @@ import type {
   KeyPairPem,
   CertificatePem,
   CertificatePemChain,
+  RecoveryCode,
 } from './types';
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
@@ -11,6 +12,7 @@ import type { PolykeyWorkerManagerInterface } from '../workers/types';
 
 import type { VaultKey } from '../vaults/types';
 import path from 'path';
+import { Buffer } from 'buffer';
 import Logger from '@matrixai/logger';
 import {
   CreateDestroyStartStop,
@@ -41,6 +43,7 @@ class KeyManager {
   protected fs: FileSystem;
   protected logger: Logger;
   protected rootKeyPair: KeyPair;
+  protected recoveryCode: RecoveryCode | undefined;
   protected _dbKey: Buffer;
   protected _vaultKey: Buffer;
   protected rootCert: Certificate;
@@ -53,36 +56,40 @@ class KeyManager {
   static async createKeyManager({
     keysPath,
     password,
-    fs = require('fs'),
-    logger = new Logger(this.name),
     rootKeyPairBits = 4096,
     rootCertDuration = 31536000,
     dbKeyBits = 256,
     vaultKeyBits = 256,
+    fs = require('fs'),
+    logger = new Logger(this.name),
+    recoveryCode,
     fresh = false,
   }: {
     keysPath: string;
     password: string;
-    fs?: FileSystem;
-    logger?: Logger;
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     dbKeyBits?: number;
     vaultKeyBits?: number;
+    fs?: FileSystem;
+    logger?: Logger;
+    recoveryCode?: RecoveryCode;
     fresh?: boolean;
   }): Promise<KeyManager> {
     logger.info(`Creating ${this.name}`);
+    logger.info(`Setting keys path to ${keysPath}`);
     const keyManager = new KeyManager({
-      dbKeyBits,
+      keysPath,
       rootCertDuration,
       rootKeyPairBits,
+      dbKeyBits,
       vaultKeyBits,
       fs,
       logger,
-      keysPath,
     });
     await keyManager.start({
       password,
+      recoveryCode,
       fresh,
     });
     logger.info(`Created ${this.name}`);
@@ -91,24 +98,23 @@ class KeyManager {
 
   constructor({
     keysPath,
-    fs,
-    logger,
     rootKeyPairBits,
     rootCertDuration,
     dbKeyBits,
     vaultKeyBits,
+    fs,
+    logger,
   }: {
     keysPath: string;
-    fs: FileSystem;
-    logger: Logger;
     rootKeyPairBits: number;
     rootCertDuration: number;
     dbKeyBits: number;
     vaultKeyBits: number;
+    fs: FileSystem;
+    logger: Logger;
   }) {
     this.logger = logger;
     this.keysPath = keysPath;
-    this.fs = fs;
     this.rootPubPath = path.join(keysPath, 'root.pub');
     this.rootKeyPath = path.join(keysPath, 'root.key');
     this.rootCertPath = path.join(keysPath, 'root.crt');
@@ -119,6 +125,7 @@ class KeyManager {
     this.rootCertDuration = rootCertDuration;
     this.dbKeyBits = dbKeyBits;
     this.vaultKeyBits = vaultKeyBits;
+    this.fs = fs;
   }
 
   public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
@@ -131,13 +138,20 @@ class KeyManager {
 
   public async start({
     password,
+    recoveryCode,
     fresh = false,
   }: {
     password: string;
+    recoveryCode?: RecoveryCode;
     fresh?: boolean;
-  }) {
+  }): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    this.logger.info(`Setting keys path to ${this.keysPath}`);
+    if (password.length < 1) {
+      throw new keysErrors.ErrorKeysPasswordInvalid('Password cannot be empty');
+    }
+    if (recoveryCode != null && !keysUtils.validateRecoveryCode(recoveryCode)) {
+      throw new keysErrors.ErrorKeysRecoveryCodeInvalid();
+    }
     if (fresh) {
       await this.fs.promises.rm(this.keysPath, {
         force: true,
@@ -146,15 +160,18 @@ class KeyManager {
     }
     await utils.mkdirExists(this.fs, this.keysPath);
     await utils.mkdirExists(this.fs, this.rootCertsPath);
-    const rootKeyPair = await this.setupRootKeyPair(
+    let rootKeyPair;
+    [rootKeyPair, recoveryCode] = await this.setupRootKeyPair(
       password,
       this.rootKeyPairBits,
+      recoveryCode,
     );
     const rootCert = await this.setupRootCert(
       rootKeyPair,
       this.rootCertDuration,
     );
     this.rootKeyPair = rootKeyPair;
+    this.recoveryCode = recoveryCode;
     this.rootCert = rootCert;
     this._dbKey = await this.setupKey(this.dbKeyPath, this.dbKeyBits);
     this._vaultKey = await this.setupKey(this.vaultKeyPath, this.vaultKeyBits);
@@ -176,6 +193,16 @@ class KeyManager {
   }
 
   @ready(new keysErrors.ErrorKeyManagerNotRunning())
+  get dbKey(): Buffer {
+    return this._dbKey;
+  }
+
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
+  get vaultKey(): VaultKey {
+    return this._vaultKey as VaultKey;
+  }
+
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getRootKeyPair(): KeyPair {
     return keysUtils.keyPairCopy(this.rootKeyPair);
   }
@@ -193,6 +220,14 @@ class KeyManager {
   @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getRootCertPem(): CertificatePem {
     return keysUtils.certToPem(this.rootCert);
+  }
+
+  /**
+   * Gets the recovery code if it has been generated
+   */
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
+  public getRecoveryCode(): RecoveryCode | undefined {
+    return this.recoveryCode;
   }
 
   /**
@@ -257,6 +292,12 @@ class KeyManager {
       return false;
     }
     return true;
+  }
+
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
+  public async changePassword(password: string): Promise<void> {
+    this.logger.info('Changing root key pair password');
+    await this.writeRootKeyPair(this.rootKeyPair, password);
   }
 
   @ready(new keysErrors.ErrorKeyManagerNotRunning())
@@ -344,12 +385,6 @@ class KeyManager {
     return signed;
   }
 
-  @ready(new keysErrors.ErrorKeyManagerNotRunning())
-  public async changeRootKeyPassword(password: string): Promise<void> {
-    this.logger.info('Changing root key pair password');
-    await this.writeRootKeyPair(this.rootKeyPair, password);
-  }
-
   /**
    * Generates a new root key pair
    * Forces a generation of a leaf certificate as the new root certificate
@@ -368,7 +403,8 @@ class KeyManager {
     this.logger.info('Renewing root key pair');
     const keysDbKeyPlain = await this.readKey(this.dbKeyPath);
     const keysVaultKeyPlain = await this.readKey(this.vaultKeyPath);
-    const rootKeyPair = await this.generateKeyPair(bits);
+    const recoveryCodeNew = keysUtils.generateRecoveryCode();
+    const rootKeyPair = await this.generateKeyPair(bits, recoveryCodeNew);
     const now = new Date();
     const rootCert = keysUtils.generateCertificate(
       rootKeyPair.publicKey,
@@ -404,6 +440,7 @@ class KeyManager {
       this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
+    this.recoveryCode = recoveryCodeNew;
     this.rootCert = rootCert;
   }
 
@@ -423,7 +460,8 @@ class KeyManager {
     this.logger.info('Resetting root key pair');
     const keysDbKeyPlain = await this.readKey(this.dbKeyPath);
     const keysVaultKeyPlain = await this.readKey(this.vaultKeyPath);
-    const rootKeyPair = await this.generateKeyPair(bits);
+    const recoveryCodeNew = keysUtils.generateRecoveryCode();
+    const rootKeyPair = await this.generateKeyPair(bits, recoveryCodeNew);
     const rootCert = keysUtils.generateCertificate(
       rootKeyPair.publicKey,
       rootKeyPair.privateKey,
@@ -441,6 +479,7 @@ class KeyManager {
       this.writeKey(keysVaultKeyPlain, this.vaultKeyPath, rootKeyPair),
     ]);
     this.rootKeyPair = rootKeyPair;
+    this.recoveryCode = recoveryCodeNew;
     this.rootCert = rootCert;
   }
 
@@ -499,19 +538,81 @@ class KeyManager {
     }
   }
 
+  /**
+   * Generates a key pair
+   * If recovery code is passed in, it is used as a deterministic seed
+   * Uses the worker manager if available
+   */
+  protected async generateKeyPair(
+    bits: number,
+    recoveryCode?: RecoveryCode,
+  ): Promise<KeyPair> {
+    let keyPair;
+    if (this.workerManager) {
+      keyPair = await this.workerManager.call(async (w) => {
+        let keyPair;
+        if (recoveryCode != null) {
+          keyPair = await w.generateDeterministicKeyPairAsn1(
+            bits,
+            recoveryCode,
+          );
+        } else {
+          keyPair = await w.generateKeyPairAsn1(bits);
+        }
+        return keysUtils.keyPairFromAsn1(keyPair);
+      });
+    } else {
+      if (recoveryCode != null) {
+        keyPair = await keysUtils.generateDeterministicKeyPair(
+          bits,
+          recoveryCode,
+        );
+      } else {
+        keyPair = await keysUtils.generateKeyPair(bits);
+      }
+    }
+    return keyPair;
+  }
+
   protected async setupRootKeyPair(
     password: string,
     bits: number = 4096,
-  ): Promise<KeyPair> {
-    let rootKeyPair;
+    recoveryCode: RecoveryCode | undefined,
+  ): Promise<[KeyPair, RecoveryCode | undefined]> {
+    let rootKeyPair: KeyPair;
+    let recoveryCodeNew: RecoveryCode | undefined;
     if (await this.existsRootKeyPair()) {
-      rootKeyPair = await this.readRootKeyPair(password);
+      if (recoveryCode != null) {
+        // Recover the key pair with the recovery code
+        // Check if the generated key pair matches
+        const rootKeyPairCheck = await this.generateKeyPair(bits, recoveryCode);
+        if (!(await this.matchRootKeyPair(rootKeyPairCheck))) {
+          throw new keysErrors.ErrorKeysRecoveryCodeIncorrect();
+        }
+        // Recovered key pair, write the key pair with the new password
+        rootKeyPair = rootKeyPairCheck;
+        await this.writeRootKeyPair(rootKeyPairCheck, password);
+      } else {
+        // Load key pair by decrypting with password
+        rootKeyPair = await this.readRootKeyPair(password);
+      }
+      return [rootKeyPair, undefined];
     } else {
       this.logger.info('Generating root key pair');
-      rootKeyPair = await this.generateKeyPair(bits);
-      await this.writeRootKeyPair(rootKeyPair, password);
+      if (recoveryCode != null) {
+        // Deterministic key pair generation from recovery code
+        // Recovery code is new by virtue of generating key pair
+        recoveryCodeNew = recoveryCode;
+        rootKeyPair = await this.generateKeyPair(bits, recoveryCode);
+        await this.writeRootKeyPair(rootKeyPair, password);
+      } else {
+        // Randomly generated recovery code
+        recoveryCodeNew = keysUtils.generateRecoveryCode();
+        rootKeyPair = await this.generateKeyPair(bits, recoveryCodeNew);
+        await this.writeRootKeyPair(rootKeyPair, password);
+      }
+      return [rootKeyPair, recoveryCodeNew];
     }
-    return rootKeyPair;
   }
 
   protected async existsRootKeyPair(): Promise<boolean> {
@@ -597,6 +698,27 @@ class KeyManager {
     }
   }
 
+  protected async matchRootKeyPair(keyPair: KeyPair): Promise<boolean> {
+    let publicKeyPem: string;
+    try {
+      publicKeyPem = await this.fs.promises.readFile(this.rootPubPath, {
+        encoding: 'utf8',
+      });
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        return false;
+      }
+      throw new keysErrors.ErrorRootKeysRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    const publicKeyPemCheck = keysUtils.publicKeyToPem(keyPair.publicKey);
+    return publicKeyPemCheck === publicKeyPem;
+  }
+
   protected async setupKey(
     keyPath: string,
     bits: number = 256,
@@ -677,33 +799,6 @@ class KeyManager {
         path: e.path,
       });
     }
-  }
-
-  @ready(new keysErrors.ErrorKeyManagerNotRunning())
-  get dbKey(): Buffer {
-    return this._dbKey;
-  }
-
-  @ready(new keysErrors.ErrorKeyManagerNotRunning())
-  get vaultKey(): VaultKey {
-    return this._vaultKey as VaultKey;
-  }
-
-  /**
-   * Generates a key pair
-   * Uses the worker manager if available
-   */
-  protected async generateKeyPair(bits: number): Promise<KeyPair> {
-    let keyPair;
-    if (this.workerManager) {
-      keyPair = await this.workerManager.call(async (w) => {
-        const keyPair = await w.generateKeyPairAsn1(bits);
-        return keysUtils.keyPairFromAsn1(keyPair);
-      });
-    } else {
-      keyPair = await keysUtils.generateKeyPair(bits);
-    }
-    return keyPair;
   }
 
   protected async setupRootCert(

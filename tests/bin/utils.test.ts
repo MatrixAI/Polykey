@@ -1,10 +1,11 @@
 import os from 'os';
+import * as utils from '@/utils';
 import * as binUtils from '@/bin/utils';
 
 describe('utils', () => {
   test('getting default node path', () => {
     const homeDir = os.homedir();
-    const p = binUtils.getDefaultNodePath();
+    const p = utils.getDefaultNodePath();
     if (process.platform === 'linux') {
       expect(p).toBe(`${homeDir}/.local/share/polykey`);
     } else if (process.platform === 'darwin') {

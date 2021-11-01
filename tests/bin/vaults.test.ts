@@ -4,10 +4,16 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { PolykeyAgent } from '@';
+import PolykeyAgent from '@/PolykeyAgent';
 import { makeNodeId } from '@/nodes/utils';
 import { makeVaultIdPretty } from '@/vaults/utils';
 import * as utils from './utils';
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -105,7 +111,7 @@ describe('CLI vaults', () => {
       await polykeyAgent.vaultManager.createVault('Vault1' as VaultName);
       await polykeyAgent.vaultManager.createVault('Vault2' as VaultName);
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await utils.pkStdio([...command]);
       expect(result.exitCode).toBe(0);
     });
   });

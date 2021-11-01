@@ -6,12 +6,16 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as idUtils } from '@matrixai/id';
-
-import { PolykeyAgent } from '@';
+import PolykeyAgent from '@/PolykeyAgent';
 import { makeVaultId } from '@/vaults/utils';
 import * as utils from './utils';
 import * as testUtils from './utils';
-// Import { makeVaultId } from "@/vaults/utils";
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -35,7 +39,8 @@ describe('CLI Notifications', () => {
   let senderNodePath: string, receiverNodePath: string;
   let senderPasswordFile: string, receiverPasswordFile: string;
   let senderPolykeyAgent: PolykeyAgent, receiverPolykeyAgent: PolykeyAgent;
-  let senderNodeId: NodeId, receiverNodeId: NodeId;
+  let senderNodeId: NodeId;
+  let receiverNodeId: NodeId;
 
   // Helper functions
   function genCommandsSender(options: Array<string>) {

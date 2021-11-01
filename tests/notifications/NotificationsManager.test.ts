@@ -24,6 +24,13 @@ import * as networkUtils from '@/network/utils';
 import { generateVaultId } from '@/vaults/utils';
 import { makeCrypto } from '../utils';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 describe('NotificationsManager', () => {
   const password = 'password';
   const node: NodeInfo = {
@@ -123,7 +130,7 @@ describe('NotificationsManager', () => {
       dbPath: receiverDbPath,
       fs: fs,
       logger: logger,
-      crypto: makeCrypto(receiverKeyManager),
+      crypto: makeCrypto(receiverKeyManager.dbKey),
     });
     receiverACL = await ACL.createACL({
       db: receiverDb,
@@ -215,7 +222,7 @@ describe('NotificationsManager', () => {
       dbPath: senderDbPath,
       fs,
       logger,
-      crypto: makeCrypto(senderKeyManager),
+      crypto: makeCrypto(senderKeyManager.dbKey),
     });
     senderACL = await ACL.createACL({ db: senderDb, logger });
     senderSigchain = await Sigchain.createSigchain({

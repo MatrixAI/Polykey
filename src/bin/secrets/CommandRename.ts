@@ -1,9 +1,11 @@
 import type { Metadata } from '@grpc/grpc-js';
 
+import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
-import * as binOptions from '../options';
-import * as parsers from '../parsers';
+import * as binOptions from '../utils/options';
+import * as parsers from '../utils/parsers';
+import * as binProcessors from '../utils/processors';
 
 class CommandRename extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -28,18 +30,33 @@ class CommandRename extends CommandPolykey {
         '../../proto/js/polykey/v1/secrets/secrets_pb'
       );
 
-      const client = await PolykeyClient.createPolykeyClient({
-        nodePath: options.nodePath,
-        logger: this.logger.getChild(PolykeyClient.name),
-      });
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
 
-      const meta = await parsers.parseAuth({
-        passwordFile: options.passwordFile,
-        fs: this.fs,
+      let pkClient: PolykeyClient | undefined;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
       });
-
       try {
-        const grpcClient = client.grpcClient;
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodePath: options.nodePath,
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
+
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
+        const grpcClient = pkClient.grpcClient;
         const vaultMessage = new vaultsPB.Vault();
         const secretMessage = new secretsPB.Secret();
         const secretRenameMessage = new secretsPB.Rename();
@@ -49,7 +66,7 @@ class CommandRename extends CommandPolykey {
         secretMessage.setSecretName(secretPath[1]);
         secretRenameMessage.setNewName(newSecretName);
 
-        await binUtils.retryAuth(
+        await binUtils.retryAuthentication(
           (auth?: Metadata) =>
             grpcClient.vaultsSecretsRename(secretRenameMessage, auth),
           meta,
@@ -64,7 +81,7 @@ class CommandRename extends CommandPolykey {
           }),
         );
       } finally {
-        await client.stop();
+        if (pkClient != null) await pkClient.stop();
       }
     });
   }

@@ -3,10 +3,17 @@ import os from 'os';
 import path from 'path';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { KeyManager, utils as keysUtils } from '@/keys';
+import { KeyManager } from '@/keys';
 import SessionManager from '@/sessions/SessionManager';
 import * as sessionsErrors from '@/sessions/errors';
 import { sleep } from '@/utils';
+import * as keysUtils from '@/keys/utils';
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('SessionManager', () => {
   const password = 'password';

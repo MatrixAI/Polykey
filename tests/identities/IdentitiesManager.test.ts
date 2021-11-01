@@ -13,42 +13,32 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 
-import { KeyManager } from '@/keys';
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
+import * as keysUtils from '@/keys/utils';
 import TestProvider from './TestProvider';
 import { makeCrypto } from '../utils';
 
 describe('IdentitiesManager', () => {
-  const password = 'password';
   const logger = new Logger('IdentitiesManager Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
-  let keyManager: KeyManager;
   let db: DB;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath,
-      logger,
-    });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager),
+      crypto: makeCrypto(await keysUtils.generateKey()),
     });
   });
   afterEach(async () => {
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

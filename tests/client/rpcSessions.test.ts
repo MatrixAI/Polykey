@@ -15,6 +15,13 @@ import { sleep } from '@/utils';
 import * as errors from '@/errors';
 import * as testUtils from './utils';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
  * Setting up the PolykeyAgent has been done in a beforeAll block.

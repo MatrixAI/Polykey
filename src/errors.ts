@@ -1,18 +1,9 @@
 import ErrorPolykey from './ErrorPolykey';
-
-/**
- * This is a special error that is only used for absurd situations
- * Intended to placate typescript so that unreachable code type checks
- * If this is thrown, this means there is a bug in the code
- */
-class ErrorPolykeyUndefinedBehaviour extends ErrorPolykey {
-  description = 'You should never see this error';
-  exitCode = 70;
-}
+import sysexits from './utils/sysexits';
 
 class ErrorPolykeyUnimplemented extends ErrorPolykey {
   description = 'This is an unimplemented functionality';
-  exitCode = 69;
+  exitCode = sysexits.UNAVAILABLE;
 }
 
 class ErrorPolykeyAgentRunning extends ErrorPolykey {}
@@ -30,8 +21,8 @@ class ErrorPolykeyClientDestroyed extends ErrorPolykey {}
 class ErrorInvalidId extends ErrorPolykey {}
 
 export {
+  sysexits,
   ErrorPolykey,
-  ErrorPolykeyUndefinedBehaviour,
   ErrorPolykeyUnimplemented,
   ErrorPolykeyAgentRunning,
   ErrorPolykeyAgentNotRunning,
@@ -64,3 +55,5 @@ export * from './claims/errors';
 export * from './sigchain/errors';
 export * from './bootstrap/errors';
 export * from './notifications/errors';
+export * from './status/errors';
+export * from './utils/errors';

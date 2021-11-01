@@ -3,7 +3,7 @@ import type { FileSystem } from '../types';
 import commander from 'commander';
 import Logger, { StreamHandler } from '@matrixai/logger';
 import * as binUtils from './utils';
-import * as binOptions from './options';
+import * as binOptions from './utils/options';
 import * as binErrors from './errors';
 
 /**
@@ -15,18 +15,20 @@ const logger = new Logger('polykey', undefined, [new StreamHandler()]);
  * Base class for all commands
  */
 class CommandPolykey extends commander.Command {
-  logger: Logger = logger;
-  fs: FileSystem;
+  protected logger: Logger = logger;
+  protected fs: FileSystem;
+  protected exitHandlers: binUtils.ExitHandlers;
 
   public constructor({
-    args = [],
+    exitHandlers,
     fs = require('fs'),
   }: {
-    args?: ConstructorParameters<typeof commander.Command>;
+    exitHandlers: binUtils.ExitHandlers;
     fs?: FileSystem;
-  } = {}) {
-    super(...args);
+  }) {
+    super();
     this.fs = fs;
+    this.exitHandlers = exitHandlers;
     // All commands must not exit upon error
     this.exitOverride();
     // On usage error, show the help info

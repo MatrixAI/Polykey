@@ -1,9 +1,8 @@
-import type { Metadata } from '@grpc/grpc-js';
-
+import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
-import * as binOptions from '../options';
 import * as binUtils from '../utils';
-import * as parsers from '../parsers';
+import * as binOptions from '../utils/options';
+import * as binProcessors from '../utils/processors';
 
 class CommandLockAll extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -16,27 +15,38 @@ class CommandLockAll extends CommandPolykey {
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
-
-      const client = await PolykeyClient.createPolykeyClient({
-        logger: this.logger.getChild(PolykeyClient.name),
-        nodePath: options.nodePath,
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
+      let pkClient: PolykeyClient | undefined;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
       });
-
-      const meta = await parsers.parseAuth({
-        passwordFile: options.passwordFile,
-        fs: this.fs,
-      });
-
       try {
-        const grpcClient = client.grpcClient;
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          nodePath: options.nodePath,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
+        const grpcClient = pkClient.grpcClient;
         const emptyMessage = new utilsPB.EmptyMessage();
-        await binUtils.retryAuth(
-          (auth?: Metadata) => grpcClient.sessionsLockAll(emptyMessage, auth),
+        await binUtils.retryAuthentication(
+          (auth) => grpcClient.sessionsLockAll(emptyMessage, auth),
           meta,
         );
-        process.stdout.write('Locked all clients');
       } finally {
-        await client.stop();
+        if (pkClient != null) await pkClient.stop();
       }
     });
   }

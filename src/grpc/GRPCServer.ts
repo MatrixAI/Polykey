@@ -28,10 +28,7 @@ class GRPCServer {
   protected _secured: boolean = false;
 
   constructor({ logger }: { logger?: Logger }) {
-    logger = logger ?? new Logger('GRPCServer');
-    logger.info('Creating GRPC Server');
-    this.logger = logger;
-    logger.info('Created GRPC Server');
+    this.logger = logger ?? new Logger(this.constructor.name);
   }
 
   get secured(): boolean {
@@ -53,7 +50,7 @@ class GRPCServer {
     this.tlsConfig = tlsConfig;
     this.services = services;
     let address = networkUtils.buildAddress(this._host, port);
-    this.logger.info(`Starting GRPC Server on ${address}`);
+    this.logger.info(`Starting ${this.constructor.name} on ${address}`);
     let serverCredentials: ServerCredentials;
     if (this.tlsConfig == null) {
       serverCredentials = grpcUtils.serverInsecureCredentials();
@@ -120,7 +117,7 @@ class GRPCServer {
       this._secured = true;
     }
     address = networkUtils.buildAddress(this._host, this._port);
-    this.logger.info(`Started GRPC Server on ${address}`);
+    this.logger.info(`Started ${this.constructor.name} on ${address}`);
   }
 
   /**
@@ -133,7 +130,7 @@ class GRPCServer {
   }: {
     timeout?: number;
   } = {}): Promise<void> {
-    this.logger.info('Stopping GRPC Server');
+    this.logger.info(`Stopping ${this.constructor.name}`);
     const tryShutdown = promisify(this.server.tryShutdown).bind(this.server);
     const timer = timeout != null ? timerStart(timeout) : undefined;
     try {
@@ -147,11 +144,13 @@ class GRPCServer {
       if (timer != null) timerStop(timer);
     }
     if (timer?.timedOut) {
-      this.logger.info('Timed out stopping GRPC Server, forcing shutdown');
+      this.logger.info(
+        `Timed out stopping ${this.constructor.name}, forcing shutdown`,
+      );
       this.server.forceShutdown();
     }
     this._secured = false;
-    this.logger.info('Stopped GRPC Server');
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   @ready(new grpcErrors.ErrorGRPCServerNotRunning())
@@ -185,7 +184,7 @@ class GRPCServer {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
     }
-    this.logger.info('Updating GRPC Server TLS Config');
+    this.logger.info(`Updating ${this.constructor.name} TLS Config`);
     // @ts-ignore hack for private property
     const http2Servers = this.server.http2ServerList;
     for (const http2Server of http2Servers as Array<Http2SecureServer>) {

@@ -1,9 +1,10 @@
 import type { Metadata } from '@grpc/grpc-js';
 
+import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
-import * as binUtils from '../utils';
-import * as binOptions from '../options';
-import * as parsers from '../parsers';
+import * as binUtils from '../utils/utils';
+import * as binProcessors from '../utils/processors';
+import * as binOptions from '../utils/options';
 
 class CommandAdd extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -20,25 +21,40 @@ class CommandAdd extends CommandPolykey {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
 
-      const client = await PolykeyClient.createPolykeyClient({
-        nodePath: options.nodePath,
-        logger: this.logger.getChild(PolykeyClient.name),
-      });
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
 
-      const meta = await parsers.parseAuth({
-        passwordFile: options.passwordFile,
-        fs: this.fs,
+      let pkClient: PolykeyClient | undefined;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
       });
-
       try {
-        const grpcClient = client.grpcClient;
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodePath: options.nodePath,
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
+
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
+        const grpcClient = pkClient.grpcClient;
         const nodeAddressMessage = new nodesPB.NodeAddress();
         nodeAddressMessage.setNodeId(nodeId);
         nodeAddressMessage.setAddress(
           new nodesPB.Address().setHost(host).setPort(port),
         );
 
-        await binUtils.retryAuth(
+        await binUtils.retryAuthentication(
           (auth?: Metadata) => grpcClient.nodesAdd(nodeAddressMessage, auth),
           meta,
         );
@@ -50,7 +66,7 @@ class CommandAdd extends CommandPolykey {
           }),
         );
       } finally {
-        await client.stop();
+        if (pkClient != null) await pkClient.stop();
       }
     });
   }

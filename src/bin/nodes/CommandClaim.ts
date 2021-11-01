@@ -1,9 +1,10 @@
 import type { Metadata } from '@grpc/grpc-js';
 
+import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
-import * as binOptions from '../options';
-import * as parsers from '../parsers';
+import * as binOptions from '../utils/options';
+import * as binProcessors from '../utils/processors';
 
 class CommandClaim extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -22,18 +23,33 @@ class CommandClaim extends CommandPolykey {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
 
-      const client = await PolykeyClient.createPolykeyClient({
-        nodePath: options.nodePath,
-        logger: this.logger.getChild(PolykeyClient.name),
-      });
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
 
-      const meta = await parsers.parseAuth({
-        passwordFile: options.passwordFile,
-        fs: this.fs,
+      let pkClient: PolykeyClient | undefined;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
       });
-
       try {
-        const grpcClient = client.grpcClient;
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodePath: options.nodePath,
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
+
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
+        const grpcClient = pkClient.grpcClient;
         const nodeClaimMessage = new nodesPB.Claim();
         nodeClaimMessage.setNodeId(nodeId);
         if (options.forceInvite) {
@@ -42,7 +58,7 @@ class CommandClaim extends CommandPolykey {
           nodeClaimMessage.setForceInvite(false);
         }
 
-        const response = await binUtils.retryAuth(
+        const response = await binUtils.retryAuthentication(
           (auth?: Metadata) => grpcClient.nodesClaim(nodeClaimMessage, auth),
           meta,
         );
@@ -68,7 +84,7 @@ class CommandClaim extends CommandPolykey {
           );
         }
       } finally {
-        await client.stop();
+        if (pkClient != null) await pkClient.stop();
       }
     });
   }

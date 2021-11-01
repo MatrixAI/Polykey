@@ -10,7 +10,6 @@ import { ForwardProxy, ReverseProxy } from '@/network';
 import { NodeConnection, NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
 import { KeyManager } from '@/keys';
-import { utils as networkUtils } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
 import { AgentServiceService, createAgentService } from '@/agent';
 import { ACL } from '@/acl';
@@ -18,7 +17,6 @@ import { GestaltGraph } from '@/gestalts';
 import { Sigchain } from '@/sigchain';
 import { NotificationsManager } from '@/notifications';
 
-import * as grpcErrors from '@/grpc/errors';
 import * as nodesUtils from '@/nodes/utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as networkErrors from '@/network/errors';
@@ -26,7 +24,13 @@ import { makeNodeId } from '@/nodes/utils';
 import { poll } from '@/utils';
 import * as nodesTestUtils from './utils';
 import { makeCrypto } from '../utils';
-// Import { poll } from '../utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('NodeConnection', () => {
   const password = 'password';
@@ -130,7 +134,7 @@ describe('NodeConnection', () => {
       dbPath: serverDbPath,
       fs: fs,
       logger: logger,
-      crypto: makeCrypto(serverKeyManager),
+      crypto: makeCrypto(serverKeyManager.dbKey),
     });
     serverACL = await ACL.createACL({
       db: serverDb,
@@ -382,47 +386,6 @@ describe('NodeConnection', () => {
     closest.sort(nodesUtils.sortByDistance);
     expect(closest.length).toBe(20);
     expect(closest).toEqual(addedClosestNodes);
-
-    await conn.stop();
-    await serverRevProxy.closeConnection(
-      clientFwdProxy.egressHost,
-      clientFwdProxy.egressPort,
-    );
-    await conn.destroy();
-  });
-  test('sends hole punch message to connected target (expected to be broker, to relay further)', async () => {
-    const conn = await NodeConnection.createNodeConnection({
-      targetNodeId: targetNodeId,
-      targetHost: targetHost,
-      targetPort: targetPort,
-      forwardProxy: clientFwdProxy,
-      keyManager: clientKeyManager,
-      logger: logger,
-    });
-    await serverRevProxy.openConnection(sourceHost, sourcePort);
-
-    const egressAddress = networkUtils.buildAddress(
-      clientFwdProxy.egressHost as Host,
-      clientFwdProxy.egressPort as Port,
-    );
-    const signature = await clientKeyManager.signWithRootKeyPair(
-      Buffer.from(egressAddress),
-    );
-
-    // The targetNodeId ('NODEID') differs from the node ID of the connected target,
-    // indicating that this relay message is intended for another node.
-    // Expected to throw an error, as the connection to 1.1.1.1:11111 would not
-    // exist on the server's side. A broker is expected to have this pre-existing
-    // connection.
-    await expect(
-      async () =>
-        await conn.sendHolePunchMessage(
-          sourceNodeId,
-          'NODEID' as NodeId,
-          egressAddress,
-          signature,
-        ),
-    ).rejects.toThrow(grpcErrors.ErrorGRPCClientCall);
 
     await conn.stop();
     await serverRevProxy.closeConnection(

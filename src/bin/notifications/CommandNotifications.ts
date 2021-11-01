@@ -8,9 +8,9 @@ class CommandNotifications extends CommandPolykey {
     super(...args);
     this.name('notifications');
     this.description('Notifications Operations');
-    this.addCommand(new CommandClear());
-    this.addCommand(new CommandRead());
-    this.addCommand(new CommandSend());
+    this.addCommand(new CommandClear(...args));
+    this.addCommand(new CommandRead(...args));
+    this.addCommand(new CommandSend(...args));
   }
 }
 

@@ -26,6 +26,13 @@ import { utils as vaultUtils } from '@/vaults';
 import { makeVaultId } from '@/vaults/utils';
 import { makeCrypto } from '../utils';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 describe('VaultManager', () => {
   const password = 'password';
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
@@ -100,7 +107,7 @@ describe('VaultManager', () => {
     db = await DB.createDB({
       dbPath: dbPath,
       logger: logger,
-      crypto: makeCrypto(keyManager),
+      crypto: makeCrypto(keyManager.dbKey),
     });
 
     sigchain = await Sigchain.createSigchain({
@@ -583,7 +590,7 @@ describe('VaultManager', () => {
       targetDb = await DB.createDB({
         dbPath: path.join(targetDataDir, 'db'),
         logger: logger,
-        crypto: makeCrypto(keyManager),
+        crypto: makeCrypto(keyManager.dbKey),
       });
       targetSigchain = await Sigchain.createSigchain({
         keyManager: targetKeyManager,
@@ -674,7 +681,7 @@ describe('VaultManager', () => {
       altDb = await DB.createDB({
         dbPath: path.join(altDataDir, 'db'),
         logger: logger,
-        crypto: makeCrypto(keyManager),
+        crypto: makeCrypto(keyManager.dbKey),
       });
       altSigchain = await Sigchain.createSigchain({
         keyManager: altKeyManager,

@@ -12,6 +12,13 @@ import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
 import { makeCrypto } from '../utils';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 describe('Sigchain', () => {
   const password = 'password';
   const logger = new Logger('Sigchain Test', LogLevel.WARN, [
@@ -33,7 +40,11 @@ describe('Sigchain', () => {
       logger,
     });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: makeCrypto(keyManager.dbKey),
+    });
   });
   afterEach(async () => {
     await db.stop();

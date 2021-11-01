@@ -1,41 +1,12 @@
-import type { POJO } from '../types';
+import type { POJO } from '../../types';
 
-import os from 'os';
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
-import prompts from 'prompts';
 import * as grpc from '@grpc/grpc-js';
-import * as clientUtils from '../client/utils';
-import * as clientErrors from '../client/errors';
-
-function getDefaultNodePath(): string | undefined {
-  const prefix = 'polykey';
-  const platform = os.platform();
-  let p: string;
-  if (platform === 'linux') {
-    const homeDir = os.homedir();
-    const dataDir = process.env.XDG_DATA_HOME;
-    if (dataDir != null) {
-      p = `${dataDir}/${prefix}`;
-    } else {
-      p = `${homeDir}/.local/share/${prefix}`;
-    }
-  } else if (platform === 'darwin') {
-    const homeDir = os.homedir();
-    p = `${homeDir}/Library/Application Support/${prefix}`;
-  } else if (platform === 'win32') {
-    const homeDir = os.homedir();
-    const appDataDir = process.env.LOCALAPPDATA;
-    if (appDataDir != null) {
-      p = `${appDataDir}/${prefix}`;
-    } else {
-      p = `${homeDir}/AppData/Local/${prefix}`;
-    }
-  } else {
-    return;
-  }
-  return p;
-}
+import * as binProcessors from './processors';
+import * as binErrors from '../errors';
+import * as clientUtils from '../../client/utils';
+import * as clientErrors from '../../client/errors';
 
 /**
  * Convert verbosity to LogLevel
@@ -107,21 +78,12 @@ function outputFormatter(msg: OutputObject): string {
   return output;
 }
 
-async function requestPassword(): Promise<string> {
-  const response = await prompts({
-    type: 'text',
-    name: 'password',
-    message: 'Please enter your password',
-  });
-  return response.password;
-}
-
 /**
  * CLI Authentication Retry Loop
  * Retries unary calls on attended authentication errors
  * Known as "privilege elevation"
  */
-async function retryAuth<T>(
+async function retryAuthentication<T>(
   f: (meta: grpc.Metadata) => Promise<T>,
   meta: grpc.Metadata = new grpc.Metadata(),
 ): Promise<T> {
@@ -142,7 +104,10 @@ async function retryAuth<T>(
   // Now enter the retry loop
   while (true) {
     // Prompt the user for password
-    const password = await requestPassword();
+    const password = await binProcessors.promptPassword();
+    if (password == null) {
+      throw new binErrors.ErrorCLIPasswordMissing();
+    }
     // Augment existing metadata
     clientUtils.encodeAuthFromPassword(password, meta);
     try {
@@ -155,11 +120,6 @@ async function retryAuth<T>(
   }
 }
 
-export {
-  getDefaultNodePath,
-  verboseToLogLevel,
-  OutputObject,
-  outputFormatter,
-  requestPassword,
-  retryAuth,
-};
+export { verboseToLogLevel, outputFormatter, retryAuthentication };
+
+export type { OutputObject };

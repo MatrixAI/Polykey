@@ -13,6 +13,7 @@ import type {
   PublicKeyAsn1,
   PrivateKeyAsn1,
   PublicKeyPem,
+  RecoveryCode,
 } from './types';
 
 import { Buffer } from 'buffer';
@@ -27,32 +28,58 @@ import {
   pkcs5,
   util as forgeUtil,
 } from 'node-forge';
+import * as bip39 from 'bip39';
 import * as keysErrors from './errors';
 import config from '../config';
 import * as utils from '../utils';
-import { promisify } from '../utils';
+import { never } from '../utils'; // Using never as utils.never seems to cause a build error. function thinks it could return undefined.
 import { makeNodeId } from '../nodes/utils';
+
+bip39.setDefaultWordlist('english');
 
 const ivSize = 16;
 const authTagSize = 16;
 
 async function generateKeyPair(bits: number): Promise<KeyPair> {
-  const generateKeyPair = promisify(pki.rsa.generateKeyPair).bind(pki.rsa);
+  const generateKeyPair = utils
+    .promisify(pki.rsa.generateKeyPair)
+    .bind(pki.rsa);
   return await generateKeyPair({ bits });
 }
 
 async function generateDeterministicKeyPair(
   bits: number,
-  seed: string,
+  recoveryCode: string,
 ): Promise<KeyPair> {
   const prng = random.createInstance();
   prng.seedFileSync = (needed: number) => {
     // Using bip39 seed generation parameters
     // no passphrase is considered here
-    return pkcs5.pbkdf2(seed, 'mnemonic', 2048, needed, md.sha512.create());
+    return pkcs5.pbkdf2(
+      recoveryCode,
+      'mnemonic',
+      2048,
+      needed,
+      md.sha512.create(),
+    );
   };
-  const generateKeyPair = promisify(pki.rsa.generateKeyPair).bind(pki.rsa);
+  const generateKeyPair = utils
+    .promisify(pki.rsa.generateKeyPair)
+    .bind(pki.rsa);
   return await generateKeyPair({ bits, prng });
+}
+
+function generateRecoveryCode(size: 12 | 24 = 24): RecoveryCode {
+  if (size === 12) {
+    return bip39.generateMnemonic(128, getRandomBytesSync) as RecoveryCode;
+  } else if (size === 24) {
+    return bip39.generateMnemonic(256, getRandomBytesSync) as RecoveryCode;
+  }
+  never();
+}
+
+function validateRecoveryCode(recoveryCode: string): boolean {
+  return bip39.validateMnemonic(recoveryCode);
 }
 
 function publicKeyToPem(publicKey: PublicKey): PublicKeyPem {
@@ -549,6 +576,8 @@ export {
   privateKeyFromAsn1,
   generateKeyPair,
   generateDeterministicKeyPair,
+  generateRecoveryCode,
+  validateRecoveryCode,
   keyPairToAsn1,
   keyPairFromAsn1,
   keyPairToPem,

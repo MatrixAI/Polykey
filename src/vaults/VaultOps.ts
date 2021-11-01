@@ -9,8 +9,8 @@ import type {
   SecretName,
   Vault,
 } from './types';
+import type { FileSystem } from '../types';
 import path from 'path';
-import * as fs from 'fs';
 import * as vaultsErrors from './errors';
 import * as vaultsUtils from './utils';
 
@@ -185,6 +185,7 @@ async function mkdir(
 async function addSecretDirectory(
   vault: Vault,
   secretDirectory: SecretName,
+  fs: FileSystem,
   logger?: Logger,
 ): Promise<void> {
   const absoluteDirPath = path.resolve(secretDirectory);

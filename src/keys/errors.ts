@@ -1,4 +1,4 @@
-import { ErrorPolykey } from '../errors';
+import { ErrorPolykey, sysexits } from '../errors';
 
 class ErrorKeys extends ErrorPolykey {}
 
@@ -7,6 +7,22 @@ class ErrorKeyManagerRunning extends ErrorKeys {}
 class ErrorKeyManagerNotRunning extends ErrorKeys {}
 
 class ErrorKeyManagerDestroyed extends ErrorKeys {}
+
+class ErrorKeysPasswordInvalid extends ErrorKeys {
+  description = 'Password has invalid format';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeysRecoveryCodeInvalid extends ErrorKeys {
+  description = 'Recovery code has invalid format';
+  exitCode = sysexits.USAGE;
+}
+
+class ErrorKeysRecoveryCodeIncorrect extends ErrorKeys {
+  description =
+    "Recovered key pair's public key does not match the root public key";
+  exitCode = sysexits.USAGE;
+}
 
 class ErrorRootKeysRead extends ErrorKeys {}
 
@@ -35,6 +51,9 @@ export {
   ErrorKeyManagerRunning,
   ErrorKeyManagerNotRunning,
   ErrorKeyManagerDestroyed,
+  ErrorKeysPasswordInvalid,
+  ErrorKeysRecoveryCodeInvalid,
+  ErrorKeysRecoveryCodeIncorrect,
   ErrorRootKeysRead,
   ErrorRootKeysParse,
   ErrorRootKeysWrite,

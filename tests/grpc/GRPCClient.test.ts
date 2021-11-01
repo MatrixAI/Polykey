@@ -4,12 +4,13 @@ import type { SessionToken } from '@/sessions/types';
 import type { NodeId } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
 import type { KeyPair, Certificate } from '@/keys/types';
+import type { KeyManager } from '@/keys';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { KeyManager, utils as keysUtils } from '@/keys';
+import { utils as keysUtils } from '@/keys';
 import { Session, SessionManager } from '@/sessions';
 import { utils as networkUtils } from '@/network';
 import { errors as grpcErrors } from '@/grpc';
@@ -18,7 +19,6 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
 
 describe('GRPCClient', () => {
-  const password = 'password';
   const logger = new Logger('GRPCClient Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -32,7 +32,6 @@ describe('GRPCClient', () => {
   let clientKeyPair: KeyPair;
   let clientCert: Certificate;
 
-  let keyManager: KeyManager;
   let db: DB;
   let sessionManager: SessionManager;
 
@@ -48,24 +47,19 @@ describe('GRPCClient', () => {
       31536000,
     );
     nodeIdServer = networkUtils.certNodeId(serverCert);
-    const keysPath = path.join(dataDir, 'keys');
-    keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath,
-      logger,
-    });
     const dbPath = path.join(dataDir, 'db');
     db = await DB.createDB({
       dbPath,
       logger,
       crypto: {
-        key: keyManager.dbKey,
+        key: await keysUtils.generateKey(),
         ops: {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
         },
       },
     });
+    const keyManager = { getNodeId: () => 'nodeID' as NodeId } as KeyManager; // Cheeky mocking.
     sessionManager = await SessionManager.createSessionManager({
       db,
       keyManager,
@@ -98,7 +92,6 @@ describe('GRPCClient', () => {
     await utils.closeTestServerSecure(server);
     await sessionManager.stop();
     await db.stop();
-    await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

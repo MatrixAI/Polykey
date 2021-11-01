@@ -9,10 +9,10 @@ class CommandNodes extends CommandPolykey {
     super(...args);
     this.name('nodes');
     this.description('Nodes Operations');
-    this.addCommand(new CommandAdd());
-    this.addCommand(new CommandClaim());
-    this.addCommand(new CommandFind());
-    this.addCommand(new CommandPing());
+    this.addCommand(new CommandAdd(...args));
+    this.addCommand(new CommandClaim(...args));
+    this.addCommand(new CommandFind(...args));
+    this.addCommand(new CommandPing(...args));
   }
 }
 

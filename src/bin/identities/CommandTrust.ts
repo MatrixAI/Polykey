@@ -1,9 +1,11 @@
 import type { Metadata } from '@grpc/grpc-js';
 
+import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
-import * as binOptions from '../options';
+import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
-import * as parsers from '../parsers';
+import * as parsers from '../utils/parsers';
+import * as binProcessors from '../utils/processors';
 
 class CommandTrust extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -28,18 +30,33 @@ class CommandTrust extends CommandPolykey {
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
 
-      const client = await PolykeyClient.createPolykeyClient({
-        logger: this.logger.getChild(PolykeyClient.name),
-        nodePath: options.nodePath,
-      });
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
 
-      const meta = await parsers.parseAuth({
-        passwordFile: options.passwordFile,
-        fs: this.fs,
+      let pkClient: PolykeyClient | undefined;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
       });
-
       try {
-        const grpcClient = client.grpcClient;
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodePath: options.nodePath,
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
+
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
+        const grpcClient = pkClient.grpcClient;
         const action = 'notify';
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(action);
@@ -51,7 +68,7 @@ class CommandTrust extends CommandPolykey {
           nodeMessage.setNodeId(gestaltId.nodeId);
           setActionMessage.setNode(nodeMessage);
           name = `${gestaltId.nodeId}`;
-          await binUtils.retryAuth(
+          await binUtils.retryAuthentication(
             (auth?: Metadata) =>
               grpcClient.gestaltsActionsSetByNode(setActionMessage, auth),
             meta,
@@ -66,7 +83,7 @@ class CommandTrust extends CommandPolykey {
             gestaltId.providerId,
             gestaltId.identityId,
           )}`;
-          await binUtils.retryAuth(
+          await binUtils.retryAuthentication(
             (auth?: Metadata) =>
               grpcClient.gestaltsActionsSetByIdentity(setActionMessage, auth),
             meta,
@@ -80,7 +97,7 @@ class CommandTrust extends CommandPolykey {
           }),
         );
       } finally {
-        await client.stop();
+        if (pkClient != null) await pkClient.stop();
       }
     });
   }

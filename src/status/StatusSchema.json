@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["status", "data"],
+  "oneOf": [
+    {
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "STARTING"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "pid": { "type": "number" }
+          },
+          "required": ["pid"]
+        }
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "LIVE"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "pid": { "type": "number" },
+            "nodeId": { "type": "string" },
+            "clientHost": { "type": "string" },
+            "clientPort": { "type": "number" }
+          },
+          "required": ["pid", "nodeId", "clientHost", "clientPort"]
+        }
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "STOPPING"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "pid": { "type": "number" }
+          },
+          "required": ["pid"]
+        }
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "type": "string",
+          "const": "DEAD"
+        },
+        "data": {
+          "type": "object",
+          "required": []
+        }
+      }
+    }
+  ]
+}

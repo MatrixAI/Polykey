@@ -14,6 +14,13 @@ import {
   setupRemoteKeynode,
 } from '../utils';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 describe('Discovery', () => {
   // Constants.
   const password = 'password';

@@ -16,11 +16,17 @@ import { ForwardProxy } from '@/network';
 
 import * as grpcUtils from '@/grpc/utils';
 import * as nodesErrors from '@/nodes/errors';
-import { sleep } from '@/utils';
-import { checkAgentRunning } from '@/agent/utils';
 import { makeNodeId } from '@/nodes/utils';
+import { Status } from '@/status';
 import * as testUtils from './utils';
 import * as testKeynodeUtils from '../utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -174,6 +180,13 @@ describe('Client service', () => {
       const serverNodeId = polykeyServer.nodeManager.getNodeId();
       await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
       await polykeyServer.stop();
+      const statusPath = path.join(polykeyServer.nodePath, 'status');
+      const status = new Status({
+        statusPath,
+        fs,
+        logger,
+      });
+      await status.waitFor('DEAD', 10000);
 
       // Case 1: cannot establish new connection, so offline
       const nodesPing = grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
@@ -187,24 +200,14 @@ describe('Client service', () => {
 
       // Case 2: can establish new connection, so online
       await polykeyServer.start({ password: 'password' });
+      await status.waitFor('LIVE', 10000);
       // Update the details (changed because we started again)
       await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
       const res2 = await nodesPing(nodeMessage, callCredentials);
       expect(res2.getSuccess()).toEqual(true);
       // Case 3: pre-existing connection no longer active, so offline
       await polykeyServer.stop();
-      await sleep(30000);
-      // TODO: Fix the polling to work. Currently the agent is not running,
-      // but the ping still returns true. Potentially lower-level connection
-      // hasn't timed out.
-      // const running = await poll<boolean>(
-      //   async () => checkAgentRunning(polykeyServer.nodePath),
-      //   (e, result) => {
-      //     if (result) return false;
-      //     return true;
-      //   }
-      // );
-      expect(await checkAgentRunning(polykeyServer.nodePath)).toBeFalsy();
+      await status.waitFor('DEAD', 10000);
       const res3 = await nodesPing(nodeMessage, callCredentials);
       expect(res3.getSuccess()).toEqual(false);
     },

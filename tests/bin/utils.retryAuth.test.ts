@@ -10,17 +10,19 @@ import * as binUtils from '@/bin/utils';
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts);
 
-describe('utils retryAuth', () => {
+describe('utils retryAuthentication', () => {
   test('no retry on success', async () => {
     const mockCallSuccess = jest.fn().mockResolvedValue('hello world');
-    const result = await binUtils.retryAuth(mockCallSuccess);
+    const result = await binUtils.retryAuthentication(mockCallSuccess);
     expect(mockCallSuccess.mock.calls.length).toBe(1);
     expect(result).toBe('hello world');
   });
   test('no retry on generic error', async () => {
     const error = new Error('oh no');
     const mockCallFail = jest.fn().mockRejectedValue(error);
-    await expect(binUtils.retryAuth(mockCallFail)).rejects.toThrow(/oh no/);
+    await expect(binUtils.retryAuthentication(mockCallFail)).rejects.toThrow(
+      /oh no/,
+    );
     expect(mockCallFail.mock.calls.length).toBe(1);
   });
   test('no retry on unattended call with PK_TOKEN and PK_PASSWORD', async () => {
@@ -31,7 +33,7 @@ describe('utils retryAuth', () => {
       PK_TOKEN: 'hello',
       PK_PASSWORD: 'world',
     });
-    await expect(binUtils.retryAuth(mockCallFail)).rejects.toThrow(
+    await expect(binUtils.retryAuthentication(mockCallFail)).rejects.toThrow(
       clientErrors.ErrorClientAuthMissing,
     );
     envRestore();
@@ -45,7 +47,7 @@ describe('utils retryAuth', () => {
       PK_TOKEN: 'hello',
       PK_PASSWORD: undefined,
     });
-    await expect(binUtils.retryAuth(mockCallFail)).rejects.toThrow(
+    await expect(binUtils.retryAuthentication(mockCallFail)).rejects.toThrow(
       clientErrors.ErrorClientAuthMissing,
     );
     envRestore();
@@ -59,7 +61,7 @@ describe('utils retryAuth', () => {
       PK_TOKEN: undefined,
       PK_PASSWORD: 'world',
     });
-    await expect(binUtils.retryAuth(mockCallFail)).rejects.toThrow(
+    await expect(binUtils.retryAuthentication(mockCallFail)).rejects.toThrow(
       clientErrors.ErrorClientAuthMissing,
     );
     envRestore();
@@ -82,7 +84,7 @@ describe('utils retryAuth', () => {
       PK_TOKEN: undefined,
       PK_PASSWORD: undefined,
     });
-    const result = await binUtils.retryAuth(mockCall);
+    const result = await binUtils.retryAuthentication(mockCall);
     envRestore();
     // Result is successful
     expect(result).toBe('hello world');
@@ -116,7 +118,7 @@ describe('utils retryAuth', () => {
       PK_TOKEN: undefined,
       PK_PASSWORD: undefined,
     });
-    const result = await binUtils.retryAuth(mockCall);
+    const result = await binUtils.retryAuthentication(mockCall);
     envRestore();
     // Result is successful
     expect(result).toBe('hello world');
@@ -153,7 +155,9 @@ describe('utils retryAuth', () => {
       PK_TOKEN: undefined,
       PK_PASSWORD: undefined,
     });
-    await expect(binUtils.retryAuth(mockCall)).rejects.toThrow(/oh no/);
+    await expect(binUtils.retryAuthentication(mockCall)).rejects.toThrow(
+      /oh no/,
+    );
     envRestore();
     expect(mockCall.mock.calls.length).toBe(5);
     expect(mockedPrompts.mock.calls.length).toBe(4);

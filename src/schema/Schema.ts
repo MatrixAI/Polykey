@@ -159,7 +159,7 @@ class Schema {
       }
       const stateVersion = parseInt(stateVersionData.trim());
       if (isNaN(stateVersion)) {
-        throw schemaErrors.ErrorSchemaVersionParse;
+        throw new schemaErrors.ErrorSchemaVersionParse();
       }
       return stateVersion as StateVersion;
     });

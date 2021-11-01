@@ -9,6 +9,7 @@ import type { NotificationsManager } from '../notifications';
 import type { Discovery } from '../discovery';
 import type { ForwardProxy, ReverseProxy } from '../network';
 import type { GRPCServer } from '../grpc';
+import type { FileSystem } from '../types';
 
 import type * as grpc from '@grpc/grpc-js';
 import type { IClientServiceServer } from '../proto/js/polykey/v1/client_service_grpc_pb';
@@ -45,6 +46,7 @@ function createClientService({
   fwdProxy,
   revProxy,
   clientGrpcServer,
+  fs,
 }: {
   polykeyAgent: PolykeyAgent;
   keyManager: KeyManager;
@@ -58,6 +60,7 @@ function createClientService({
   fwdProxy: ForwardProxy;
   revProxy: ReverseProxy;
   clientGrpcServer: GRPCServer;
+  fs: FileSystem;
 }) {
   const authenticate = clientUtils.authenticator(sessionManager, keyManager);
   const clientService: IClientServiceServer = {
@@ -73,6 +76,7 @@ function createClientService({
     ...createVaultRPC({
       vaultManager,
       authenticate,
+      fs,
     }),
     ...createKeysRPC({
       keyManager,

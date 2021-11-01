@@ -32,7 +32,7 @@ import { Buffer } from 'buffer';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from './errors';
 import * as errors from '../errors';
-import { promisify, promise } from '../utils';
+import { promisify, promise, never } from '../utils';
 
 /**
  * GRPC insecure credentials for the client
@@ -191,7 +191,7 @@ function toError(e: ServiceError): errors.ErrorPolykey {
       }
     }
   }
-  throw new errors.ErrorPolykeyUndefinedBehaviour();
+  never();
 }
 
 /**

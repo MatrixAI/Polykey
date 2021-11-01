@@ -1,9 +1,11 @@
 import type { Metadata } from '@grpc/grpc-js';
 
+import type PolykeyClient from '../../PolykeyClient';
+import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
-import * as binOptions from '../options';
-import * as parsers from '../parsers';
+import * as binOptions from '../utils/options';
+import * as binProcessors from '../utils/processors';
 
 class CommandSign extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -21,24 +23,51 @@ class CommandSign extends CommandPolykey {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
 
-      const client = await PolykeyClient.createPolykeyClient({
-        logger: this.logger.getChild(PolykeyClient.name),
-        nodePath: options.nodePath,
-      });
+      const clientOptions = await binProcessors.processClientOptions(
+        options.nodePath,
+        options.nodeId,
+        options.clientHost,
+        options.clientPort,
+        this.fs,
+        this.logger.getChild(binProcessors.processClientOptions.name),
+      );
 
-      const meta = await parsers.parseAuth({
-        passwordFile: options.passwordFile,
-        fs: this.fs,
+      let pkClient: PolykeyClient | undefined;
+      this.exitHandlers.handlers.push(async () => {
+        if (pkClient != null) await pkClient.stop();
       });
-
       try {
-        const grpcClient = client.grpcClient;
+        pkClient = await PolykeyClient.createPolykeyClient({
+          nodePath: options.nodePath,
+          nodeId: clientOptions.nodeId,
+          host: clientOptions.clientHost,
+          port: clientOptions.clientPort,
+          logger: this.logger.getChild(PolykeyClient.name),
+        });
+
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
+        const grpcClient = pkClient.grpcClient;
         const cryptoMessage = new keysPB.Crypto();
 
-        const data = await parsers.parseFilePath({ filePath, fs: this.fs });
+        let data: string;
+        try {
+          data = await this.fs.promises.readFile(filePath, {
+            encoding: 'binary',
+          });
+        } catch (e) {
+          throw new binErrors.ErrorCLIFileRead(e.message, {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          });
+        }
         cryptoMessage.setData(data);
 
-        const response = await binUtils.retryAuth(
+        const response = await binUtils.retryAuthentication(
           (auth?: Metadata) => grpcClient.keysSign(cryptoMessage, auth),
           meta,
         );
@@ -50,7 +79,7 @@ class CommandSign extends CommandPolykey {
           }),
         );
       } finally {
-        await client.stop();
+        if (pkClient != null) await pkClient.stop();
       }
     });
   }

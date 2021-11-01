@@ -16,17 +16,17 @@ class CommandIdentities extends CommandPolykey {
     super(...args);
     this.name('identities');
     this.description('Identities Operations');
-    this.addCommand(new CommandAllow());
-    this.addCommand(new CommandAuthenticate());
-    this.addCommand(new CommandClaim());
-    this.addCommand(new CommandDisallow());
-    this.addCommand(new CommandDiscover());
-    this.addCommand(new CommandGet());
-    this.addCommand(new CommandList());
-    this.addCommand(new CommandPermissions());
-    this.addCommand(new CommandSearch());
-    this.addCommand(new CommandTrust());
-    this.addCommand(new CommandUntrust());
+    this.addCommand(new CommandAllow(...args));
+    this.addCommand(new CommandAuthenticate(...args));
+    this.addCommand(new CommandClaim(...args));
+    this.addCommand(new CommandDisallow(...args));
+    this.addCommand(new CommandDiscover(...args));
+    this.addCommand(new CommandGet(...args));
+    this.addCommand(new CommandList(...args));
+    this.addCommand(new CommandPermissions(...args));
+    this.addCommand(new CommandSearch(...args));
+    this.addCommand(new CommandTrust(...args));
+    this.addCommand(new CommandUntrust(...args));
   }
 }
 

@@ -1,11 +1,11 @@
 import type { POJO } from './types';
-
 import { CustomError } from 'ts-custom-error';
+import sysexits from './utils/sysexits';
 
 class ErrorPolykey extends CustomError {
   data: POJO;
   description: string = 'Polykey error';
-  exitCode: number = 1;
+  exitCode: number = sysexits.GENERAL;
   constructor(message: string = '', data: POJO = {}) {
     super(message);
     this.data = data;

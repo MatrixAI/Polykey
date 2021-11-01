@@ -21,16 +21,14 @@ import {
   errors as gestaltErrors,
 } from '@/gestalts';
 import { ACL } from '@/acl';
-import { KeyManager } from '@/keys';
+import * as keysUtils from '@/keys/utils';
 import { makeCrypto } from '../utils';
 
 describe('GestaltGraph', () => {
-  const pass = 'password';
   const logger = new Logger('GestaltGraph Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
-  let keyManager: KeyManager;
   let db: DB;
   let acl: ACL;
 
@@ -47,17 +45,11 @@ describe('GestaltGraph', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
-      password: pass,
-      keysPath,
-      logger,
-    });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager),
+      crypto: makeCrypto(await keysUtils.generateKey()),
     });
     acl = await ACL.createACL({ db, logger });
 
@@ -131,8 +123,6 @@ describe('GestaltGraph', () => {
     await acl.destroy();
     await db.stop();
     await db.destroy();
-    await keyManager.stop();
-    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

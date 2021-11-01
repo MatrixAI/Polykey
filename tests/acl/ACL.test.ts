@@ -8,19 +8,16 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { utils as idUtils } from '@matrixai/id';
-
 import { ACL, errors as aclErrors } from '@/acl';
-import { KeyManager } from '@/keys';
 import { makeVaultId } from '@/vaults/utils';
+import * as keysUtils from '@/keys/utils';
 import { makeCrypto } from '../utils';
 
 describe('ACL', () => {
-  const password = 'password';
   const logger = new Logger(`${ACL.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
-  let keyManager: KeyManager;
   let db: DB;
   let vaultId1: VaultId;
   let vaultId2: VaultId;
@@ -31,17 +28,12 @@ describe('ACL', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    const keysPath = `${dataDir}/keys`;
-    keyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath,
-      logger,
-    });
+    const dbKey = await keysUtils.generateKey();
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager),
+      crypto: makeCrypto(dbKey),
     });
     vaultId1 = makeVaultId(idUtils.fromString('vault1xxxxxxxxxx'));
     vaultId2 = makeVaultId(idUtils.fromString('vault2xxxxxxxxxx'));
@@ -50,7 +42,6 @@ describe('ACL', () => {
   });
   afterEach(async () => {
     await db.stop();
-    await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
