@@ -6,12 +6,7 @@ import type {
 import type { KeyManager } from '../keys';
 import type { Session, SessionManager } from '../sessions';
 import type { SessionToken } from '../sessions/types';
-import type { Path } from 'globrex';
 
-import fs from 'fs';
-import path from 'path';
-import globrex from 'globrex';
-import globalyzer from 'globalyzer';
 import * as grpc from '@grpc/grpc-js';
 import * as base64 from 'multiformats/bases/base64';
 import * as clientErrors from './errors';

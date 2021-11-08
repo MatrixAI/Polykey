@@ -676,7 +676,16 @@ class VaultManager {
     return vaultId;
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  public async glob(
+    vaultId: VaultId,
+    pattern: string,
+  ): Promise<string[]> {
+    const vault = await this.getVault(vaultId);
+    return await vault.glob(pattern);
+  }
+
+  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
   public async *handleInfoRequest(
     vaultId: VaultId,
   ): AsyncGenerator<Buffer | null> {

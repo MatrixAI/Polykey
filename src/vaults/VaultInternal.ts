@@ -350,6 +350,13 @@ class VaultInternal {
   }
 
   @ready(new vaultsErrors.ErrorVaultDestroyed())
+  public async glob(
+    pattern: string,
+  ): Promise<string[]> {
+    return await vaultsUtils.glob(this.efsVault, pattern, {});
+  }
+
+  @ready(new vaultsErrors.ErrorVaultDestroyed())
   public async applySchema() {}
 }
 

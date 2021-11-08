@@ -641,21 +641,30 @@ const createVaultRPC = ({
     },
     secretsEnv: async (
       call: grpc.ServerWritableStream<
-        clientPB.VaultMessage,
-        clientPB.DirectoryMessage
+        secretsPB.Directory,
+        secretsPB.Directory
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       try {
-        await utils.checkPassword(call.metadata, sessionManager);
-        const name = call.request.getName();
-        const pattern = call.request.getId();
-        const id = utils.parseVaultInput(name, vaultManager);
-        const vault = vaultManager.getVault(id);
-        const res = await utils.glob(vault.EncryptedFS, pattern);
-        const dirMessage = new clientPB.DirectoryMessage();
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+        //Getting the vault.
+        const directoryMessage = call.request;
+        const vaultMessage = directoryMessage.getVault();
+        if (vaultMessage == null) {
+          await genWritable.throw({ code: grpc.status.NOT_FOUND });
+          return;
+        }
+        const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
+        const pattern = directoryMessage.getSecretDirectory();
+        const res = await vaultManager.glob(vaultId, pattern);
+        const dirMessage = new secretsPB.Directory();
         for (const file in res) {
-          dirMessage.setDir(file);
+          dirMessage.setSecretDirectory(file);
           await genWritable.next(dirMessage);
         }
         await genWritable.next(null);
