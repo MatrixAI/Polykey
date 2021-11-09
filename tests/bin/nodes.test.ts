@@ -203,7 +203,7 @@ describe('CLI Nodes', () => {
         expect(result2.code).toBe(1); // Should fail with no response. for automation purposes.
         expect(result2.stdout).toContain('No response received');
       },
-      global.failedConnectionTimeout,
+      global.failedConnectionTimeout * 2,
     );
     test(
       "Should return failure if can't find the node",
@@ -223,7 +223,7 @@ describe('CLI Nodes', () => {
         expect(result2.stdout).toContain('message');
         expect(result2.stdout).toContain('Failed to resolve node ID');
       },
-      global.failedConnectionTimeout,
+      global.failedConnectionTimeout * 2,
     );
     test('Should return success when pinging a live node', async () => {
       const commands = genCommands(['ping', remoteOnlineNodeId]);
@@ -333,7 +333,7 @@ describe('CLI Nodes', () => {
         expect(result2.stdout).toContain('success');
         expect(result2.stdout).toContain('false');
       },
-      global.failedConnectionTimeout,
+      global.failedConnectionTimeout * 2,
     );
   });
   describe('commandAddNode', () => {

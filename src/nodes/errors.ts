@@ -23,6 +23,10 @@ class ErrorNodeConnectionNotStarted extends ErrorNodes {}
 
 class ErrorNodeConnectionDestroyed extends ErrorNodes {}
 
+class ErrorNodeConnectionTimeout extends ErrorNodes {
+  description: 'A node connection could not be established (timed out)';
+}
+
 class ErrorNodeConnectionNotExist extends ErrorNodes {}
 
 class ErrorNodeConnectionInfoNotExist extends ErrorNodes {}
@@ -51,6 +55,7 @@ export {
   ErrorNodeGraphInvalidBucketIndex,
   ErrorNodeConnectionNotStarted,
   ErrorNodeConnectionDestroyed,
+  ErrorNodeConnectionTimeout,
   ErrorNodeConnectionNotExist,
   ErrorNodeConnectionInfoNotExist,
   ErrorNodeConnectionPublicKeyNotFound,

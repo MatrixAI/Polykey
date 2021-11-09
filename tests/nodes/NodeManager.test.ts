@@ -205,6 +205,37 @@ describe('NodeManager', () => {
       expect(finalConnLock).toBeDefined();
       expect(finalConnLock?.lock.isLocked()).toBeFalsy();
     });
+    test(
+      'unable to create new connection to offline node',
+      async () => {
+        // Add the dummy node
+        await nodeManager.setNode(dummyNode, {
+          ip: '125.0.0.1' as Host,
+          port: 55555 as Port,
+        });
+        // @ts-ignore accessing protected NodeConnectionMap
+        expect(nodeManager.connections.size).toBe(0);
+
+        await expect(() =>
+          nodeManager.getConnectionToNode(dummyNode),
+        ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
+        // @ts-ignore accessing protected NodeConnectionMap
+        expect(nodeManager.connections.size).toBe(1);
+        // @ts-ignore accessing protected NodeConnectionMap
+        const connLock = nodeManager.connections.get(dummyNode);
+        // There should still be an entry in the connection map, but it should
+        // only contain a lock - no connection.
+        expect(connLock).toBeDefined();
+        expect(connLock?.lock).toBeDefined();
+        expect(connLock?.connection).toBeUndefined();
+
+        // Undo the initial dummy node add
+        // @ts-ignore - get the NodeGraph reference
+        const nodeGraph = nodeManager.nodeGraph;
+        await nodeGraph.unsetNode(dummyNode);
+      },
+      global.failedConnectionTimeout * 2,
+    );
   });
 
   test(
@@ -312,7 +343,7 @@ describe('NodeManager', () => {
 
       await testUtils.cleanupRemoteKeynode(server);
     },
-    global.failedConnectionTimeout,
+    global.failedConnectionTimeout * 2,
   );
   test('knows node (true and false case)', async () => {
     // Known node

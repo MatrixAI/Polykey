@@ -17,6 +17,7 @@ import * as claimsUtils from '../claims/utils';
 import * as claimsErrors from '../claims/errors';
 import * as keysUtils from '../keys/utils';
 import * as vaultsUtils from '../vaults/utils';
+import * as grpcErrors from '../grpc/errors';
 import { GRPCClientAgent } from '../agent';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
@@ -148,16 +149,14 @@ class NodeConnection {
       Buffer.from(egressAddress),
     );
     // 2. Ask fwdProxy for connection to target (the revProxy of other node)
+    // 2. Start sending hole-punching packets to the target (via the client start -
+    // this establishes a HTTP CONNECT request with the forward proxy)
     // 3. Relay the egress port to the broker/s (such that they can inform the other node)
     // 4. Start sending hole-punching packets to other node (done in openConnection())
     // Done in parallel
     try {
       await Promise.all([
-        this.fwdProxy.openConnection(
-          this.targetNodeId,
-          this.ingressHost,
-          this.ingressPort,
-        ),
+        this.client.start(),
         Array.from(brokerConnections, ([_, conn]) =>
           conn.sendHolePunchMessage(
             this.keyManager.getNodeId(),
@@ -169,12 +168,14 @@ class NodeConnection {
       ]);
     } catch (e) {
       await this.stop();
-      // If we catch an error, re-throw it to handle it.
+      // If the connection times out, re-throw this with a higher level nodes exception
+      if (e instanceof grpcErrors.ErrorGRPCClientTimeout) {
+        throw new nodesErrors.ErrorNodeConnectionTimeout();
+      }
       throw e;
     }
     // 5. When finished, you have a connection to other node
-    // Then you can create/start the GRPCClient, and perform the request
-    await this.client.start({});
+    // The GRPCClient is ready to be used for requests
     this.logger.info(
       `Started NodeConnection from ${this.keyManager.getNodeId()} to ${
         this.targetNodeId
@@ -183,8 +184,14 @@ class NodeConnection {
   }
 
   public async stop() {
+    this.logger.info('Stopping NodeConnection');
     await this.client.stop();
-    await this.fwdProxy.closeConnection(this.ingressHost, this.ingressPort);
+    // Await this.fwdProxy.closeConnection(this.ingressHost, this.ingressPort);
+    this.logger.info(
+      `Stopped NodeConnection from ${this.keyManager.getNodeId()} to ${
+        this.targetNodeId
+      }`,
+    );
   }
 
   public async destroy() {

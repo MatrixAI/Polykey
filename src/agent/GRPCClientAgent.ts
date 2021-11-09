@@ -51,7 +51,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
 
   public async start({
     tlsConfig,
-    timeout = Infinity,
+    timeout = 25000,
   }: {
     tlsConfig?: TLSConfig;
     timeout?: number;
