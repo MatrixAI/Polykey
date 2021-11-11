@@ -135,7 +135,7 @@ let CACHE = {};
 
 async function walk(filesystem: FileSystemGlob, output: string[], prefix: string, lexer, opts, dirname='', level=0) {
   const rgx = lexer.segments[level];
-  const dir = path.resolve(opts.cwd, prefix, dirname);
+  const dir = path.join(prefix, dirname);
   const files = await filesystem.promises.readdir(dir, { encoding: 'utf8' }) as string[];
   const { dot, filesOnly } = opts;
 
@@ -171,21 +171,18 @@ interface FileSystemGlob {
   };
 }
 
-async function glob(filesystem: FileSystemGlob, str: string, { cwd = '.', absolute = true, filesOnly = false, flush = true, dot = true }) {
+async function glob(filesystem: FileSystemGlob, str: string, { cwd = '.', filesOnly = true, flush = true, dot = true }) {
   if (!str) return [];
 
   let glob = globalyzer(str);
 
   if (!glob.isGlob) {
     try {
-      let resolved = path.resolve(cwd, str);
-      let dirent = await filesystem.promises.stat(resolved);
+      let dirent = await filesystem.promises.stat(str);
       if (filesOnly && !dirent.isFile()) return [];
-
-      return absolute ? [resolved] : [str];
+      return [str];
     } catch (err) {
       if (err.code != 'ENOENT') throw err;
-
       return [];
     }
   }
@@ -196,8 +193,8 @@ async function glob(filesystem: FileSystemGlob, str: string, { cwd = '.', absolu
   const res = globrex(glob.glob, { filepath:true, globstar:true, extended:true });
   const globPath = res.path;
 
-  await walk(filesystem, matches, glob.base, globPath, { cwd, absolute, filesOnly, flush, dot }, '.', 0);
-  return absolute ? matches.map(x => path.resolve(cwd, x)) : matches;
+  await walk(filesystem, matches, glob.base, globPath, { cwd, filesOnly, flush, dot }, '.', 0);
+  return matches;
 }
 
 const CHARS = { '{': '}', '(': ')', '[': ']'};

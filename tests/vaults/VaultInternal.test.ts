@@ -199,6 +199,67 @@ describe('VaultInternal', () => {
       await vault.readWorkingDirectory();
     }).rejects.toThrow(vaultsErrors.ErrorVaultDestroyed);
   });
+  test('globbing files and directories', async () => {
+    await vault.commit(async (efs) => {
+      await efs.writeFile('secret1', 'secret-content');
+      await efs.writeFile('secret2', 'secret-content');
+      await efs.writeFile('secret3', 'secret-content');
+      await efs.writeFile('secret4', 'secret-content');
+      await efs.writeFile('secret5', 'secret-content');
+      await efs.mkdir('dir1/dir2', { recursive: true });
+      await efs.writeFile('dir1/secret6', 'secret-content');
+      await efs.writeFile('dir1/secret7', 'secret-content');
+      await efs.writeFile('dir1/dir2/secret8', 'secret-content');
+      await efs.writeFile('dir1/dir2/secret9', 'secret-content');
+      await efs.writeFile('dir1/dir2/secret10', 'secret-content');
+      await efs.writeFile('dir1/dir2/secret11', 'secret-content');
+    });
+    let list = await vault.glob('*');
+    expect(list.sort()).toEqual([
+      'secret1',
+      'secret2',
+      'secret3',
+      'secret4',
+      'secret5'
+    ].sort());
+    list = await vault.glob('dir1/*');
+    expect(list.sort()).toEqual([
+      'dir1/secret6',
+      'dir1/secret7'
+    ].sort());
+    list = await vault.glob('dir1/dir2/*');
+    expect(list.sort()).toEqual([
+      'dir1/dir2/secret8',
+      'dir1/dir2/secret9',
+      'dir1/dir2/secret10',
+      'dir1/dir2/secret11'
+    ].sort());
+    list = await vault.glob('**/*');
+    expect(list.sort()).toEqual([
+      'dir1/dir2/secret10',
+      'dir1/dir2/secret11',
+      'dir1/dir2/secret8',
+      'dir1/dir2/secret9',
+      'dir1/secret6',
+      'dir1/secret7',
+      'secret1',
+      'secret2',
+      'secret3',
+      'secret4',
+      'secret5'
+    ].sort());
+    list = await vault.glob('dir1/**/*');
+    expect(list.sort()).toEqual([
+      'dir1/dir2',
+      'dir1/dir2/secret10',
+      'dir1/dir2/secret11',
+      'dir1/dir2/secret8',
+      'dir1/dir2/secret9',
+      'dir1/secret6',
+      'dir1/secret7',
+    ].sort());
+  });
+
   test('creating state on disk', async () => {
     expect(await fs.promises.readdir(dataDir)).toContain('db');
   });

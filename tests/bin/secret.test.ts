@@ -55,46 +55,47 @@ describe('CLI secrets', () => {
     });
   });
 
-  test('should export globbed secrets', async () => {
-    const stdoutSpy = jest.spyOn(process.stdout, 'write');
+  describe('commandSecretEnv', () => {
+    test('should export globbed secrets', async () => {
+      const vaultName = 'Vault0' as VaultName;
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
 
-    const vault = await polykeyAgent.vaults.createVault('Vault1');
-    await vault.initializeVault();
+      await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST VAR 1', 'test-1');
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
+      await vaultOps.addSecret(vault, 'TEST_VAR_3', 'test-3');
+      await vaultOps.addSecret(vault, 'dir1/dir2/dir3/TEST_VAR_4', 'test-4');
 
-    await vault.mkdir('dir1/dir2/dir3', { recursive: true });
-    await vault.addSecret('dir1/dir2/TEST VAR 1', Buffer.from('test-1'));
-    await vault.addSecret('dir1/dir2/TEST_VAR_2', Buffer.from('test-2'));
-    await vault.addSecret('TEST_VAR_3', Buffer.from('test-3'));
-    await vault.addSecret('dir1/dir2/dir3/TEST_VAR_4', Buffer.from('test-4'));
+      let message = 'export TEST VAR 1=test-1\nexport TEST_VAR_2=test-2\n';
 
-    const message = 'export TEST VAR 1=test-1\nexport TEST_VAR_2=test-2\n';
-    const message2 = 'export TEST_VAR_3=test-3\nexport TEST VAR 1=test-1\nexport TEST_VAR_2=test-2\nexport TEST_VAR_4=test-4\n';
+      command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '-e',
+        'Vault0:dir1/dir2/*',
+      ];
 
-    const result = await utils.pk([
-      'secrets',
-      'env',
-      '-np',
-      dataDir,
-      '--password-file',
-      passwordFile,
-      '-e',
-      'Vault1:dir1/dir2/*',
-    ]);
-    expect(result).toBe(0);
-    expect(stdoutSpy).toHaveBeenLastCalledWith(message);
+      let result = await utils.pkWithStdio(command);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain(message);
 
-    const result2 = await utils.pk([
-      'secrets',
-      'env',
-      '-np',
-      dataDir,
-      '--password-file',
-      passwordFile,
-      '-e',
-      'Vault1:**',
-    ]);
-    expect(result2).toBe(0);
-    expect(stdoutSpy).toHaveBeenLastCalledWith(message2);
+      command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '-e',
+        'Vault0:**/*',
+      ];
+
+      message = 'export TEST_VAR_3=test-3\nexport TEST VAR 1=test-1\nexport TEST_VAR_2=test-2\nexport TEST_VAR_4=test-4\n';
+
+      result = await utils.pkWithStdio(command);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain(message);
+    });
   });
 
   describe('commandCreateSecret', () => {

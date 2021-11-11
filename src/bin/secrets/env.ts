@@ -15,13 +15,17 @@ const env = binUtils.createCommand('env', {
   verbose: true,
   format: true,
 });
+// env.option(
+//   '--command <command>',
+//   'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
+// );
+// env.option(
+//   '--run <run>',
+//   'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
+// );
 env.option(
-  '--command <command>',
-  'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
-);
-env.option(
-  '--run <run>',
-  'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
+  '-e, --export',
+  'Export all variables',
 );
 env.arguments(
   "Secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]', you can also control what the environment variable will be called using '[<variableName>]' (defaults to upper, snake case of the original secret name)",
@@ -40,13 +44,14 @@ env.action(async (options, command) => {
 
   let shellCommand;
   const client = await PolykeyClient.createPolykeyClient(clientConfig);
+  const directoryMessage = new secretsPB.Directory();
   const vaultMessage = new vaultsPB.Vault();
-  const secretMessage = new secretsPB.Secret();
-  secretMessage.setVault(vaultMessage);
+  directoryMessage.setVault(vaultMessage);
   const secretPathList: string[] = Array.from<string>(command.args.values());
   if(!binUtils.pathRegex.test(secretPathList[secretPathList.length - 1])) {
     shellCommand = secretPathList.pop();
   }
+  const data: string[] = [];
 
   try {
     const secretPathList: string[] = Array.from<string>(command.args.values());
@@ -65,53 +70,38 @@ env.action(async (options, command) => {
     const grpcClient = client.grpcClient;
 
     let output = '';
-    let secrets: string[] = [];
 
-    for (const secPath of secretPathList) {
-      if (secPath.includes(':')) {
+    for (const secretPath of secretPathList) {
+      if (secretPath.includes(':')) {
         if (options.export) {
           output = 'export ';
         }
 
-        const [, vaultName, secretName, glob, variableName] = secPath.match(
+        const [, vaultName, secretExpression, variableName] = secretPath.match(
           binUtils.pathRegex,
         )!;
 
-        if (glob) {
-          vaultMessage.setName(vaultName);
+        vaultMessage.setNameOrId(vaultName);
+        directoryMessage.setSecretDirectory(secretExpression)
 
-          const secretListGenerator = grpcClient.vaultsListSecrets(
-            vaultMessage,
-            meta,
-          );
+        const secretGenerator = grpcClient.vaultsSecretsEnv(directoryMessage);
+        const { p, resolveP } = utils.promise();
+        secretGenerator.stream.on('metadata', async (meta) => {
+          await clientUtils.refreshSession(meta, client.session);
+          resolveP(null);
+        });
 
-          for await (const secret of secretListGenerator) {
-            const sec = secret.getName();
-            if (glob === '**' && sec.includes(secretName)) {
-              secrets.push(sec);
-            } else if (glob === '*' && path.relative(path.dirname(sec), secretName) === '') {
-              secrets.push(sec);
-            }
-          }
-        } else {
-          secrets.push(secretName);
-        }
 
-        for (const secName of secrets) {
-          vaultMessage.setName(vaultName);
-          vaultSpecificMessage.setVault(vaultMessage);
-          vaultSpecificMessage.setName(secName);
-          const res = await grpcClient.vaultsGetSecret(vaultSpecificMessage, meta);
-          const secret = res.getName();
-          const varName = variableName ?? path.basename(secName.toUpperCase().replace('-', '_'));
-          secretEnv[varName] = secret;
-
-          data.push(output + `${varName}=${secret}`);
+        for await (const secret of secretGenerator) {
+          const secretName = secret.getSecretName();
+          const secretContent = Buffer.from(secret.getSecretContent());
+          const secretVariableName = variableName !== '' ? variableName: path.basename(secretName.toUpperCase().replace('-', '_'));
+          secretEnv[secretVariableName] = secretContent.toString();
+          data.push(output + `${secretVariableName}=${secretContent.toString()}`);
         }
         output = '';
-        secrets = [];
-      } else if (secPath === '-e' || secPath === '--export') {
-        output += 'export ';
+      } else if (secretPath === '-e' || secretPath === '--export') {
+        output = 'export ';
       } else {
         throw new CLIErrors.ErrorSecretPathFormat();
       }
