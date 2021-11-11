@@ -6,7 +6,10 @@ import type {
 } from '../keys/types';
 import type { Opaque } from '../types';
 
+// Host is always an IP address
 type Host = Opaque<'Host', string>;
+// Specifically for hostname domain names (i.e. to be resolved to an IP address)
+type Hostname = Opaque<'Hostname', string>;
 type Port = Opaque<'Port', number>;
 type Address = Opaque<'Address', string>;
 
@@ -42,6 +45,7 @@ type NetworkMessage = PingMessage | PongMessage;
 
 export type {
   Host,
+  Hostname,
   Port,
   Address,
   TLSConfig,

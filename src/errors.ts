@@ -20,6 +20,8 @@ class ErrorPolykeyClientDestroyed extends ErrorPolykey {}
 
 class ErrorInvalidId extends ErrorPolykey {}
 
+class ErrorInvalidConfigEnvironment extends ErrorPolykey {}
+
 export {
   sysexits,
   ErrorPolykey,
@@ -31,6 +33,7 @@ export {
   ErrorPolykeyClientNotRunning,
   ErrorPolykeyClientDestroyed,
   ErrorInvalidId,
+  ErrorInvalidConfigEnvironment,
 };
 
 /**

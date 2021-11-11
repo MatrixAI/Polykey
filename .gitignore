@@ -123,3 +123,4 @@ dist
 
 # editor
 .vscode/
+.idea/

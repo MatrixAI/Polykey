@@ -1,6 +1,7 @@
 import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { Host, Port } from './network/types';
+import type { NodeMapping } from './nodes/types';
 
 import path from 'path';
 import process from 'process';
@@ -58,6 +59,7 @@ class PolykeyAgent {
     networkConfig = {},
     forwardProxyConfig = {},
     reverseProxyConfig = {},
+    seedNodes = {},
     // Optional dependencies
     status,
     schema,
@@ -99,6 +101,7 @@ class PolykeyAgent {
       connTimeoutTime?: number;
     };
     networkConfig?: NetworkConfig;
+    seedNodes?: NodeMapping;
     status?: Status;
     schema?: Schema;
     keyManager?: KeyManager;
@@ -241,6 +244,7 @@ class PolykeyAgent {
       nodeManager ??
       (await NodeManager.createNodeManager({
         db,
+        seedNodes,
         sigchain,
         keyManager,
         fwdProxy,
@@ -503,6 +507,8 @@ class PolykeyAgent {
     });
 
     await this.nodeManager.start({ fresh });
+    await this.nodeManager.getConnectionsToSeedNodes();
+    await this.nodeManager.syncNodeGraph();
     await this.vaultManager.start({ fresh });
     await this.notificationsManager.start({ fresh });
     await this.sessionManager.start({ fresh });

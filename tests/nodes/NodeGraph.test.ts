@@ -200,17 +200,17 @@ describe('NodeGraph', () => {
   test('finds correct node address', async () => {
     // New node added
     const newNode2Id = nodeId1;
-    const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
+    const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Get node address
     const foundAddress = await nodeGraph.getNode(newNode2Id);
-    expect(foundAddress).toEqual({ ip: '227.1.1.1', port: 4567 });
+    expect(foundAddress).toEqual({ host: '227.1.1.1', port: 4567 });
   });
   test('unable to find node address', async () => {
     // New node added
     const newNode2Id = nodeId1;
-    const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
+    const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Get node address (of non-existent node)
@@ -220,7 +220,7 @@ describe('NodeGraph', () => {
   test('adds a single node into a bucket', async () => {
     // New node added
     const newNode2Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 1);
-    const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
+    const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Check new node is in retrieved bucket from database
@@ -228,36 +228,36 @@ describe('NodeGraph', () => {
     const bucket = await nodeGraph.getBucket(1);
     expect(bucket).toBeDefined();
     expect(bucket![newNode2Id]).toEqual({
-      address: { ip: '227.1.1.1', port: 4567 },
+      address: { host: '227.1.1.1', port: 4567 },
       lastUpdated: expect.any(Date),
     });
   });
   test('adds multiple nodes into the same bucket', async () => {
     // Add 3 new nodes into bucket 4
     const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4);
-    const newNode1Address = { ip: '4.4.4.4', port: 4444 } as NodeAddress;
+    const newNode1Address = { host: '4.4.4.4', port: 4444 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
 
     const newNode2Id = nodesTestUtils.incrementNodeId(newNode1Id);
-    const newNode2Address = { ip: '5.5.5.5', port: 5555 } as NodeAddress;
+    const newNode2Address = { host: '5.5.5.5', port: 5555 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     const newNode3Id = nodesTestUtils.incrementNodeId(newNode2Id);
-    const newNode3Address = { ip: '6.6.6.6', port: 6666 } as NodeAddress;
+    const newNode3Address = { host: '6.6.6.6', port: 6666 } as NodeAddress;
     await nodeGraph.setNode(newNode3Id, newNode3Address);
     // Based on XOR values, all 3 nodes should appear in bucket 4.
     const bucket = await nodeGraph.getBucket(4);
     if (bucket) {
       expect(bucket[newNode1Id]).toEqual({
-        address: { ip: '4.4.4.4', port: 4444 },
+        address: { host: '4.4.4.4', port: 4444 },
         lastUpdated: expect.any(Date),
       });
       expect(bucket[newNode2Id]).toEqual({
-        address: { ip: '5.5.5.5', port: 5555 },
+        address: { host: '5.5.5.5', port: 5555 },
         lastUpdated: expect.any(Date),
       });
       expect(bucket[newNode3Id]).toEqual({
-        address: { ip: '6.6.6.6', port: 6666 },
+        address: { host: '6.6.6.6', port: 6666 },
         lastUpdated: expect.any(Date),
       });
     } else {
@@ -268,22 +268,22 @@ describe('NodeGraph', () => {
   test('adds a single node into different buckets', async () => {
     // New node for bucket 3
     const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 3);
-    const newNode1Address = { ip: '1.1.1.1', port: 1111 } as NodeAddress;
+    const newNode1Address = { host: '1.1.1.1', port: 1111 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
     // New node for bucket 255 (the highest possible bucket)
     const newNode2Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 255);
-    const newNode2Address = { ip: '2.2.2.2', port: 2222 } as NodeAddress;
+    const newNode2Address = { host: '2.2.2.2', port: 2222 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     const bucket3 = await nodeGraph.getBucket(3);
     const bucket351 = await nodeGraph.getBucket(255);
     if (bucket3 && bucket351) {
       expect(bucket3[newNode1Id]).toEqual({
-        address: { ip: '1.1.1.1', port: 1111 },
+        address: { host: '1.1.1.1', port: 1111 },
         lastUpdated: expect.any(Date),
       });
       expect(bucket351[newNode2Id]).toEqual({
-        address: { ip: '2.2.2.2', port: 2222 },
+        address: { host: '2.2.2.2', port: 2222 },
         lastUpdated: expect.any(Date),
       });
     } else {
@@ -294,14 +294,14 @@ describe('NodeGraph', () => {
   test('deletes a single node (and removes bucket)', async () => {
     // New node for bucket 2
     const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 2);
-    const newNode1Address = { ip: '4.4.4.4', port: 4444 } as NodeAddress;
+    const newNode1Address = { host: '4.4.4.4', port: 4444 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
 
     // Check the bucket is there first.
     const bucket = await nodeGraph.getBucket(2);
     if (bucket) {
       expect(bucket[newNode1Id]).toEqual({
-        address: { ip: '4.4.4.4', port: 4444 },
+        address: { host: '4.4.4.4', port: 4444 },
         lastUpdated: expect.any(Date),
       });
     } else {
@@ -318,29 +318,29 @@ describe('NodeGraph', () => {
   test('deletes a single node (and retains remainder of bucket)', async () => {
     // Add 3 new nodes into bucket 4
     const newNode1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4);
-    const newNode1Address = { ip: '4.4.4.4', port: 4444 } as NodeAddress;
+    const newNode1Address = { host: '4.4.4.4', port: 4444 } as NodeAddress;
     await nodeGraph.setNode(newNode1Id, newNode1Address);
 
     const newNode2Id = nodesTestUtils.incrementNodeId(newNode1Id);
-    const newNode2Address = { ip: '5.5.5.5', port: 5555 } as NodeAddress;
+    const newNode2Address = { host: '5.5.5.5', port: 5555 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     const newNode3Id = nodesTestUtils.incrementNodeId(newNode2Id);
-    const newNode3Address = { ip: '6.6.6.6', port: 6666 } as NodeAddress;
+    const newNode3Address = { host: '6.6.6.6', port: 6666 } as NodeAddress;
     await nodeGraph.setNode(newNode3Id, newNode3Address);
     // Based on XOR values, all 3 nodes should appear in bucket 4.
     const bucket = await nodeGraph.getBucket(4);
     if (bucket) {
       expect(bucket[newNode1Id]).toEqual({
-        address: { ip: '4.4.4.4', port: 4444 },
+        address: { host: '4.4.4.4', port: 4444 },
         lastUpdated: expect.any(Date),
       });
       expect(bucket[newNode2Id]).toEqual({
-        address: { ip: '5.5.5.5', port: 5555 },
+        address: { host: '5.5.5.5', port: 5555 },
         lastUpdated: expect.any(Date),
       });
       expect(bucket[newNode3Id]).toEqual({
-        address: { ip: '6.6.6.6', port: 6666 },
+        address: { host: '6.6.6.6', port: 6666 },
         lastUpdated: expect.any(Date),
       });
     } else {
@@ -355,11 +355,11 @@ describe('NodeGraph', () => {
     if (newBucket) {
       expect(newBucket[newNode1Id]).toBeUndefined();
       expect(bucket[newNode2Id]).toEqual({
-        address: { ip: '5.5.5.5', port: 5555 },
+        address: { host: '5.5.5.5', port: 5555 },
         lastUpdated: expect.any(Date),
       });
       expect(bucket[newNode3Id]).toEqual({
-        address: { ip: '6.6.6.6', port: 6666 },
+        address: { host: '6.6.6.6', port: 6666 },
         lastUpdated: expect.any(Date),
       });
     } else {
@@ -375,7 +375,7 @@ describe('NodeGraph', () => {
     for (let i = 1; i <= nodeGraph.maxNodesPerBucket; i++) {
       // Add the current node ID
       const nodeAddress = {
-        ip: (i + '.' + i + '.' + i + '.' + i) as Host,
+        host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
       };
       await nodeGraph.setNode(currNodeId, nodeAddress);
@@ -397,7 +397,7 @@ describe('NodeGraph', () => {
     // Attempt to add a new node into this full bucket (increment the last node
     // ID that was added)
     const newNodeId = nodesTestUtils.incrementNodeId(currNodeId);
-    const newNodeAddress = { ip: '0.0.0.1' as Host, port: 1234 as Port };
+    const newNodeAddress = { host: '0.0.0.1' as Host, port: 1234 as Port };
     await nodeGraph.setNode(newNodeId, newNodeAddress);
 
     const finalBucket = await nodeGraph.getBucket(59);
@@ -420,29 +420,89 @@ describe('NodeGraph', () => {
       fail('Bucket undefined');
     }
   });
+  test('enforces k-bucket size, retaining all nodes if adding a pre-existing node', async () => {
+    // Add k nodes to the database (importantly, they all go into the same bucket)
+    let currNodeId = nodesTestUtils.generateNodeIdForBucket(nodeId, 59);
+    // Keep a record of the first node ID that we added
+    // const firstNodeId = currNodeId;
+    for (let i = 1; i <= nodeGraph.maxNodesPerBucket; i++) {
+      // Add the current node ID
+      const nodeAddress = {
+        host: (i + '.' + i + '.' + i + '.' + i) as Host,
+        port: i as Port,
+      };
+      await nodeGraph.setNode(currNodeId, nodeAddress);
+      // Increment the current node ID - skip for the last one to keep currNodeId
+      // as the last added node ID
+      if (i !== nodeGraph.maxNodesPerBucket) {
+        const incrementedNodeId = nodesTestUtils.incrementNodeId(currNodeId);
+        currNodeId = incrementedNodeId;
+      }
+    }
+    // All of these nodes are in bucket 59
+    const originalBucket = await nodeGraph.getBucket(59);
+    if (originalBucket) {
+      expect(Object.keys(originalBucket).length).toBe(
+        nodeGraph.maxNodesPerBucket,
+      );
+    } else {
+      // Should be unreachable
+      fail('Bucket undefined');
+    }
+
+    // If we tried to re-add the first node, it would simply remove the original
+    // first node, as this is the "least active".
+    // We instead want to check that we don't mistakenly delete a node if we're
+    // updating an existing one.
+    // So, re-add the last node
+    const newLastAddress: NodeAddress = {
+      host: '30.30.30.30' as Host,
+      port: 30 as Port,
+    };
+    await nodeGraph.setNode(currNodeId, newLastAddress);
+
+    const finalBucket = await nodeGraph.getBucket(59);
+    if (finalBucket) {
+      // We should still have a full bucket
+      expect(Object.keys(finalBucket).length).toEqual(
+        nodeGraph.maxNodesPerBucket,
+      );
+      // Ensure that this new node is in the bucket
+      expect(finalBucket[currNodeId]).toEqual({
+        address: newLastAddress,
+        lastUpdated: expect.any(Date),
+      });
+    } else {
+      // Should be unreachable
+      fail('Bucket undefined');
+    }
+  });
   test('retrieves all buckets (in expected lexicographic order)', async () => {
     // Bucket 0 is expected to never have any nodes (as nodeId XOR 0 = nodeId)
     // Bucket 1 (minimum):
     const node1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 1);
-    const node1Address = { ip: '1.1.1.1', port: 1111 } as NodeAddress;
+    const node1Address = { host: '1.1.1.1', port: 1111 } as NodeAddress;
     await nodeGraph.setNode(node1Id, node1Address);
 
     // Bucket 4 (multiple nodes in 1 bucket):
     const node41Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 4);
-    const node41Address = { ip: '41.41.41.41', port: 4141 } as NodeAddress;
+    const node41Address = { host: '41.41.41.41', port: 4141 } as NodeAddress;
     await nodeGraph.setNode(node41Id, node41Address);
     const node42Id = nodesTestUtils.incrementNodeId(node41Id);
-    const node42Address = { ip: '42.42.42.42', port: 4242 } as NodeAddress;
+    const node42Address = { host: '42.42.42.42', port: 4242 } as NodeAddress;
     await nodeGraph.setNode(node42Id, node42Address);
 
     // Bucket 10 (lexicographic ordering - should appear after 2):
     const node10Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 10);
-    const node10Address = { ip: '10.10.10.10', port: 1010 } as NodeAddress;
+    const node10Address = { host: '10.10.10.10', port: 1010 } as NodeAddress;
     await nodeGraph.setNode(node10Id, node10Address);
 
     // Bucket 255 (maximum):
     const node255Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 255);
-    const node255Address = { ip: '255.255.255.255', port: 255 } as NodeAddress;
+    const node255Address = {
+      host: '255.255.255.255',
+      port: 255,
+    } as NodeAddress;
     await nodeGraph.setNode(node255Id, node255Address);
 
     const buckets = await nodeGraph.getAllBuckets();
@@ -452,29 +512,29 @@ describe('NodeGraph', () => {
     expect(buckets).toEqual([
       {
         [node1Id]: {
-          address: { ip: '1.1.1.1', port: 1111 },
+          address: { host: '1.1.1.1', port: 1111 },
           lastUpdated: expect.any(String),
         },
       },
       {
         [node41Id]: {
-          address: { ip: '41.41.41.41', port: 4141 },
+          address: { host: '41.41.41.41', port: 4141 },
           lastUpdated: expect.any(String),
         },
         [node42Id]: {
-          address: { ip: '42.42.42.42', port: 4242 },
+          address: { host: '42.42.42.42', port: 4242 },
           lastUpdated: expect.any(String),
         },
       },
       {
         [node10Id]: {
-          address: { ip: '10.10.10.10', port: 1010 },
+          address: { host: '10.10.10.10', port: 1010 },
           lastUpdated: expect.any(String),
         },
       },
       {
         [node255Id]: {
-          address: { ip: '255.255.255.255', port: 255 },
+          address: { host: '255.255.255.255', port: 255 },
           lastUpdated: expect.any(String),
         },
       },
@@ -491,7 +551,7 @@ describe('NodeGraph', () => {
           i,
         );
         const nodeAddress = {
-          ip: (i + '.' + i + '.' + i + '.' + i) as Host,
+          host: (i + '.' + i + '.' + i + '.' + i) as Host,
           port: i as Port,
         };
         await nodeGraph.setNode(newNodeId, nodeAddress);
@@ -544,7 +604,7 @@ describe('NodeGraph', () => {
   test('finds a single closest node', async () => {
     // New node added
     const newNode2Id = nodeId1;
-    const newNode2Address = { ip: '227.1.1.1', port: 4567 } as NodeAddress;
+    const newNode2Address = { host: '227.1.1.1', port: 4567 } as NodeAddress;
     await nodeGraph.setNode(newNode2Id, newNode2Address);
 
     // Find the closest nodes to some node, NODEID3
@@ -552,21 +612,21 @@ describe('NodeGraph', () => {
     expect(closest).toContainEqual({
       id: newNode2Id,
       distance: 121n,
-      address: { ip: '227.1.1.1', port: 4567 },
+      address: { host: '227.1.1.1', port: 4567 },
     });
   });
   test('finds 3 closest nodes', async () => {
     // Add 3 nodes
     await nodeGraph.setNode(nodeId1, {
-      ip: '2.2.2.2',
+      host: '2.2.2.2',
       port: 2222,
     } as NodeAddress);
     await nodeGraph.setNode(nodeId2, {
-      ip: '3.3.3.3',
+      host: '3.3.3.3',
       port: 3333,
     } as NodeAddress);
     await nodeGraph.setNode(nodeId3, {
-      ip: '4.4.4.4',
+      host: '4.4.4.4',
       port: 4444,
     } as NodeAddress);
 
@@ -576,17 +636,17 @@ describe('NodeGraph', () => {
     expect(closest).toContainEqual({
       id: nodeId3,
       distance: 0n,
-      address: { ip: '4.4.4.4', port: 4444 },
+      address: { host: '4.4.4.4', port: 4444 },
     });
     expect(closest).toContainEqual({
       id: nodeId2,
       distance: 116n,
-      address: { ip: '3.3.3.3', port: 3333 },
+      address: { host: '3.3.3.3', port: 3333 },
     });
     expect(closest).toContainEqual({
       id: nodeId1,
       distance: 121n,
-      address: { ip: '2.2.2.2', port: 2222 },
+      address: { host: '2.2.2.2', port: 2222 },
     });
   });
   test('finds the 20 closest nodes', async () => {
@@ -600,7 +660,7 @@ describe('NodeGraph', () => {
         i,
       );
       const nodeAddress = {
-        ip: (i + '.' + i + '.' + i + '.' + i) as Host,
+        host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
       };
       await nodeGraph.setNode(closeNodeId, nodeAddress);
@@ -614,7 +674,7 @@ describe('NodeGraph', () => {
     for (let i = 1; i <= 10; i++) {
       const farNodeId = nodeIdGenerator(i);
       const nodeAddress = {
-        ip: (i + '.' + i + '.' + i + '.' + i) as Host,
+        host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
       };
       await nodeGraph.setNode(farNodeId, nodeAddress);
@@ -630,7 +690,7 @@ describe('NodeGraph', () => {
   test('updates node', async () => {
     // New node added
     const node1Id = nodesTestUtils.generateNodeIdForBucket(nodeId, 2);
-    const node1Address = { ip: '1.1.1.1', port: 1 } as NodeAddress;
+    const node1Address = { host: '1.1.1.1', port: 1 } as NodeAddress;
     await nodeGraph.setNode(node1Id, node1Address);
 
     // Check new node is in retrieved bucket from database
@@ -638,7 +698,7 @@ describe('NodeGraph', () => {
     const time1 = bucket![node1Id].lastUpdated;
 
     // Update node and check that time is later
-    const newNode1Address = { ip: '2.2.2.2', port: 2 } as NodeAddress;
+    const newNode1Address = { host: '2.2.2.2', port: 2 } as NodeAddress;
     await nodeGraph.updateNode(node1Id, newNode1Address);
 
     const bucket2 = await nodeGraph.getBucket(2);

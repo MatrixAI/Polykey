@@ -1,5 +1,5 @@
 import type { NodeId, NodeAddress, NodeBucket, NodeData } from './types';
-import type { Host, Port } from '../network/types';
+import type { Host, Hostname, Port } from '../network/types';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeConnection } from '../nodes';
 
@@ -42,7 +42,6 @@ class NodeGraph {
   protected nodeGraphDb: DBLevel;
   protected nodeGraphBucketsDb: DBLevel;
   protected lock: Mutex = new Mutex();
-  protected _started: boolean = false;
 
   public static async createNodeGraph({
     db,
@@ -101,17 +100,6 @@ class NodeGraph {
     }
     this.nodeGraphDb = nodeGraphDb;
     this.nodeGraphBucketsDb = nodeGraphBucketsDb;
-    // TODO: change these to seed nodes
-    // populate this node's bucket database
-    // gets the k closest nodes from each broker
-    // and adds each of them to the database
-    for (const [, conn] of this.nodeManager.getBrokerNodeConnections()) {
-      const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
-      for (const n of nodes) {
-        await this.setNode(n.id, n.address);
-        await this.nodeManager.getConnectionToNode(n.id);
-      }
-    }
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -155,6 +143,36 @@ class NodeGraph {
     }
   }
 
+  /**
+   * Perform an initial database synchronisation: get the k closest nodes
+   * from each seed node and add them to this database
+   * For now, we also attempt to establish a connection to each of them.
+   * If these nodes are offline, this will impose a performance penalty,
+   * so we should investigate performing this in the background if possible.
+   * Alternatively, we can also just add the nodes to our database without
+   * establishing connection.
+   * This has been removed from start() as there's a chicken-egg scenario
+   * where we require the NodeGraph instance to be created in order to get
+   * connections.
+   */
+  public async syncNodeGraph() {
+    for (const [, conn] of await this.nodeManager.getConnectionsToSeedNodes()) {
+      const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
+      for (const n of nodes) {
+        await this.setNode(n.id, n.address);
+        try {
+          await this.nodeManager.getConnectionToNode(n.id);
+        } catch (e) {
+          if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) {
+            continue;
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
+  }
+
   @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public getNodeId(): NodeId {
     return this.nodeManager.getNodeId();
@@ -184,7 +202,9 @@ class NodeGraph {
       );
       // Cast the non-primitive types correctly (ensures type safety when using them)
       for (const nodeId in bucket) {
-        bucket[nodeId].address.ip = bucket[nodeId].address.ip as Host;
+        bucket[nodeId].address.host = bucket[nodeId].address.host as
+          | Host
+          | Hostname;
         bucket[nodeId].address.port = bucket[nodeId].address.port as Port;
         bucket[nodeId].lastUpdated = new Date(bucket[nodeId].lastUpdated);
       }
@@ -219,17 +239,26 @@ class NodeGraph {
     if (bucket == null) {
       bucket = {};
     }
-    const bucketEntries = Object.entries(bucket);
-    if (bucketEntries.length === this.maxNodesPerBucket) {
-      const leastActive = bucketEntries.reduce((prev, curr) => {
-        return prev[1].lastUpdated < curr[1].lastUpdated ? prev : curr;
-      });
-      delete bucket[leastActive[0]];
-    }
     bucket[nodeId] = {
       address: nodeAddress,
       lastUpdated: new Date(),
     };
+    // Perform the check on size after we add/update the node. If it's an update,
+    // then we don't need to perform the deletion.
+    let bucketEntries = Object.entries(bucket);
+    if (bucketEntries.length > this.maxNodesPerBucket) {
+      const leastActive = bucketEntries.reduce((prev, curr) => {
+        return new Date(prev[1].lastUpdated) < new Date(curr[1].lastUpdated)
+          ? prev
+          : curr;
+      });
+      delete bucket[leastActive[0]];
+      bucketEntries = Object.entries(bucket);
+      // For safety, make sure that the bucket is actually at maxNodesPerBucket
+      if (bucketEntries.length !== this.maxNodesPerBucket) {
+        throw new nodesErrors.ErrorNodeGraphOversizedBucket();
+      }
+    }
     return [
       {
         type: 'put',

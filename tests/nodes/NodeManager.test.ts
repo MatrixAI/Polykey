@@ -158,7 +158,7 @@ describe('NodeManager', () => {
       await target.start({ password: 'password' });
       targetNodeId = target.keyManager.getNodeId();
       targetNodeAddress = {
-        ip: target.revProxy.ingressHost,
+        host: target.revProxy.ingressHost,
         port: target.revProxy.ingressPort,
       };
       await nodeManager.setNode(targetNodeId, targetNodeAddress);
@@ -224,7 +224,7 @@ describe('NodeManager', () => {
       async () => {
         // Add the dummy node
         await nodeManager.setNode(dummyNode, {
-          ip: '125.0.0.1' as Host,
+          host: '125.0.0.1' as Host,
           port: 55555 as Port,
         });
         // @ts-ignore accessing protected NodeConnectionMap
@@ -259,7 +259,7 @@ describe('NodeManager', () => {
       });
       const serverNodeId = server.nodeManager.getNodeId();
       let serverNodeAddress: NodeAddress = {
-        ip: server.revProxy.ingressHost,
+        host: server.revProxy.ingressHost,
         port: server.revProxy.ingressPort,
       };
       await nodeManager.setNode(serverNodeId, serverNodeAddress);
@@ -274,7 +274,7 @@ describe('NodeManager', () => {
       await server.start({ password: 'password' });
       // Update the node address (only changes because we start and stop)
       serverNodeAddress = {
-        ip: server.revProxy.ingressHost,
+        host: server.revProxy.ingressHost,
         port: server.revProxy.ingressPort,
       };
       await nodeManager.setNode(serverNodeId, serverNodeAddress);
@@ -301,7 +301,7 @@ describe('NodeManager', () => {
     // Case 1: node already exists in the local node graph (no contact required)
     const nodeId = nodeId1;
     const nodeAddress: NodeAddress = {
-      ip: '127.0.0.1' as Host,
+      host: '127.0.0.1' as Host,
       port: 11111 as Port,
     };
     await nodeManager.setNode(nodeId, nodeAddress);
@@ -316,12 +316,12 @@ describe('NodeManager', () => {
       // Case 2: node can be found on the remote node
       const nodeId = nodeId1;
       const nodeAddress: NodeAddress = {
-        ip: '127.0.0.1' as Host,
+        host: '127.0.0.1' as Host,
         port: 11111 as Port,
       };
       const server = await testUtils.setupRemoteKeynode({ logger: logger });
       await nodeManager.setNode(server.nodeManager.getNodeId(), {
-        ip: server.revProxy.ingressHost,
+        host: server.revProxy.ingressHost,
         port: server.revProxy.ingressPort,
       } as NodeAddress);
       await server.nodeManager.setNode(nodeId, nodeAddress);
@@ -339,14 +339,14 @@ describe('NodeManager', () => {
       const nodeId = nodeId1;
       const server = await testUtils.setupRemoteKeynode({ logger: logger });
       await nodeManager.setNode(server.nodeManager.getNodeId(), {
-        ip: server.revProxy.ingressHost,
+        host: server.revProxy.ingressHost,
         port: server.revProxy.ingressPort,
       } as NodeAddress);
       // Add a dummy node to the server node graph database
       // Server will not be able to connect to this node (the only node in its
       // database), and will therefore not be able to locate the node.
       await server.nodeManager.setNode(dummyNode, {
-        ip: '127.0.0.2' as Host,
+        host: '127.0.0.2' as Host,
         port: 22222 as Port,
       } as NodeAddress);
       // So unfindableNode cannot be found
@@ -361,7 +361,7 @@ describe('NodeManager', () => {
   test('knows node (true and false case)', async () => {
     // Known node
     const nodeAddress1: NodeAddress = {
-      ip: '127.0.0.1' as Host,
+      host: '127.0.0.1' as Host,
       port: 11111 as Port,
     };
     await nodeManager.setNode(nodeId1, nodeAddress1);
@@ -396,7 +396,7 @@ describe('NodeManager', () => {
       });
       xNodeId = x.nodeManager.getNodeId();
       xNodeAddress = {
-        ip: x.revProxy.ingressHost,
+        host: x.revProxy.ingressHost,
         port: x.revProxy.ingressPort,
       };
       xPublicKey = x.keyManager.getRootKeyPairPem().publicKey;
@@ -406,7 +406,7 @@ describe('NodeManager', () => {
       });
       yNodeId = y.nodeManager.getNodeId();
       yNodeAddress = {
-        ip: y.revProxy.ingressHost,
+        host: y.revProxy.ingressHost,
         port: y.revProxy.ingressPort,
       };
       yPublicKey = y.keyManager.getRootKeyPairPem().publicKey;

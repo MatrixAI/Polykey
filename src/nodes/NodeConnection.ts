@@ -1,5 +1,5 @@
 import type { NodeId, NodeData } from './types';
-import type { Host, Port, ProxyConfig } from '../network/types';
+import type { Host, Hostname, Port, ProxyConfig } from '../network/types';
 import type { KeyManager } from '../keys';
 import type { SignedNotification } from '../notifications/types';
 import type { ChainDataEncoded } from '../sigchain/types';
@@ -42,8 +42,11 @@ class NodeConnection {
   protected keyManager: KeyManager;
 
   // Node ID, host, and port of the target node at the end of this connection
+  // Hostname defined if the target's host was resolved from this hostname.
+  // Undefined if an IP address was initially provided
   protected targetNodeId: NodeId;
   protected ingressHost: Host;
+  protected ingressHostname: Hostname | undefined;
   protected ingressPort: Port;
 
   // Host and port of the initiating node (client) where the connection begins
@@ -57,36 +60,41 @@ class NodeConnection {
   static async createNodeConnection({
     targetNodeId,
     targetHost,
+    targetHostname = undefined,
     targetPort,
+    connTimeout = 20000,
     forwardProxy,
     keyManager,
     logger = new Logger(this.name),
-    brokerConnections = new Map<NodeId, NodeConnection>(),
+    seedConnections = new Map<NodeId, NodeConnection>(),
   }: {
     targetNodeId: NodeId;
     targetHost: Host;
+    targetHostname?: Hostname;
     targetPort: Port;
+    connTimeout?: number;
     forwardProxy: ForwardProxy;
     keyManager: KeyManager;
     logger?: Logger;
-    brokerConnections?: Map<NodeId, NodeConnection>;
+    seedConnections?: Map<NodeId, NodeConnection>;
   }): Promise<NodeConnection> {
     logger.info(`Creating ${this.name}`);
-    const proxyConfig = {
+    const proxyConfig: ProxyConfig = {
       host: forwardProxy.proxyHost,
       port: forwardProxy.proxyPort,
       authToken: forwardProxy.authToken,
-    } as ProxyConfig;
+    };
     const nodeConnection = new NodeConnection({
+      targetNodeId,
+      targetHost,
+      targetHostname,
+      targetPort,
       forwardProxy,
       keyManager,
       logger,
-      targetHost,
-      targetNodeId,
-      targetPort,
       proxyConfig,
     });
-    await nodeConnection.start({ brokerConnections });
+    await nodeConnection.start({ seedConnections, connTimeout });
     logger.info(`Created ${this.name}`);
     return nodeConnection;
   }
@@ -94,6 +102,7 @@ class NodeConnection {
   constructor({
     targetNodeId,
     targetHost,
+    targetHostname = undefined,
     targetPort,
     forwardProxy,
     keyManager,
@@ -102,6 +111,7 @@ class NodeConnection {
   }: {
     targetNodeId: NodeId;
     targetHost: Host;
+    targetHostname?: Hostname;
     targetPort: Port;
     forwardProxy: ForwardProxy;
     keyManager: KeyManager;
@@ -111,6 +121,7 @@ class NodeConnection {
     this.logger = logger;
     this.targetNodeId = targetNodeId;
     this.ingressHost = targetHost;
+    this.ingressHostname = targetHostname;
     this.ingressPort = targetPort;
     this.fwdProxy = forwardProxy;
     this.keyManager = keyManager;
@@ -120,17 +131,19 @@ class NodeConnection {
   /**
    * Initialises and starts the connection (via the fwdProxy).
    *
-   * @param brokerConnections map of all established broker connections
+   * @param seedConnections map of all established seed node connections
    * If not provided, it's assumed a direct connection can be made to the target
-   * (i.e. without hole punching), as the broker nodes relay the hole punch message.
+   * (i.e. without hole punching, and therefore not being a NAT), as the seed
+   * nodes relay the hole punch message.
    */
   public async start({
-    brokerConnections = new Map<NodeId, NodeConnection>(),
+    seedConnections = new Map<NodeId, NodeConnection>(),
+    connTimeout,
   }: {
-    brokerConnections?: Map<NodeId, NodeConnection>;
+    seedConnections?: Map<NodeId, NodeConnection>;
+    connTimeout?: number;
   } = {}) {
     this.logger.info(`Starting ${this.constructor.name}`);
-
     // 1. Get the egress port of the fwdProxy (used for hole punching)
     const egressAddress = networkUtils.buildAddress(
       this.fwdProxy.egressHost,
@@ -154,9 +167,9 @@ class NodeConnection {
           port: this.ingressPort,
           proxyConfig: this.proxyConfig,
           logger: this.logger.getChild(GRPCClientAgent.name),
-          timeout: 20000,
+          timeout: connTimeout,
         }),
-        Array.from(brokerConnections, ([_, conn]) =>
+        Array.from(seedConnections, ([_, conn]) =>
           conn.sendHolePunchMessage(
             this.keyManager.getNodeId(),
             this.targetNodeId,
@@ -262,7 +275,7 @@ class NodeConnection {
       nodes.push({
         id: nodeId as NodeId,
         address: {
-          ip: address.getHost() as Host,
+          host: address.getHost() as Host | Hostname,
           port: address.getPort() as Port,
         },
         distance: nodesUtils.calculateDistance(targetNodeId, nodeId as NodeId),

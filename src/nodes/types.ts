@@ -1,7 +1,7 @@
 import type NodeConnection from './NodeConnection';
 import type { MutexInterface } from 'async-mutex';
 import type { Opaque } from '../types';
-import type { Host, Port } from '../network/types';
+import type { Host, Hostname, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
 import type { IdString } from '../GenericIdTypes';
@@ -9,8 +9,12 @@ import type { IdString } from '../GenericIdTypes';
 type NodeId = Opaque<'NodeId', IdString>;
 
 type NodeAddress = {
-  ip: Host;
+  host: Host | Hostname;
   port: Port;
+};
+
+type NodeMapping = {
+  [key: string]: NodeAddress;
 };
 
 type NodeData = {
@@ -83,6 +87,7 @@ type NodeGraphOp =
 export type {
   NodeId,
   NodeAddress,
+  NodeMapping,
   NodeData,
   NodeClaim,
   NodeInfo,

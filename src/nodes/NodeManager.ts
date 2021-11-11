@@ -6,12 +6,13 @@ import type { ClaimIdString } from '../claims/types';
 import type {
   NodeId,
   NodeAddress,
+  NodeMapping,
   NodeData,
   NodeBucket,
   NodeConnectionMap,
 } from '../nodes/types';
 import type { SignedNotification } from '../notifications/types';
-import type { Host, Port } from '../network/types';
+import type { Host, Hostname, Port } from '../network/types';
 import type { Timer } from '../types';
 import type { DB } from '@matrixai/db';
 
@@ -28,7 +29,7 @@ import {
 import NodeGraph from './NodeGraph';
 import NodeConnection from './NodeConnection';
 import * as nodesErrors from './errors';
-import * as networkErrors from '../network/errors';
+import { utils as networkUtils, errors as networkErrors } from '../network';
 import * as sigchainUtils from '../sigchain/utils';
 import * as claimsUtils from '../claims/utils';
 
@@ -38,9 +39,6 @@ interface NodeManager extends CreateDestroyStartStop {}
   new nodesErrors.ErrorNodeManagerDestroyed(),
 )
 class NodeManager {
-  // LevelDB directory to store all the information for managing nodes
-  // public readonly nodesPath: string;
-
   protected db: DB;
   protected logger: Logger;
   protected lock: Mutex = new Mutex();
@@ -52,40 +50,38 @@ class NodeManager {
   protected revProxy: ReverseProxy;
 
   // Active connections to other nodes
-  // protected connections: Map<NodeId, NodeConnection> = new Map();
   protected connections: NodeConnectionMap = new Map();
-  // Node ID -> node address mappings for the bootstrap/broker nodes
-  protected brokerNodes: NodeBucket = {};
-  protected brokerNodeConnections: Map<NodeId, NodeConnection> = new Map();
+  // Node ID -> node address mappings for the seed nodes
+  protected seedNodes: NodeMapping = {};
 
   static async createNodeManager({
     db,
+    seedNodes = {},
     keyManager,
     sigchain,
     fwdProxy,
     revProxy,
     logger = new Logger(this.name),
-    brokerNodes = {},
     fresh = false,
   }: {
     db: DB;
+    seedNodes?: NodeMapping;
     keyManager: KeyManager;
     sigchain: Sigchain;
     fwdProxy: ForwardProxy;
     revProxy: ReverseProxy;
     logger?: Logger;
-    brokerNodes?: NodeBucket;
     fresh?: boolean;
   }): Promise<NodeManager> {
     logger.info(`Creating ${this.name}`);
     const nodeManager = new NodeManager({
       db,
+      seedNodes,
       keyManager,
       sigchain,
       fwdProxy,
       revProxy,
       logger,
-      brokerNodes,
     });
     await nodeManager.start({
       fresh,
@@ -96,28 +92,28 @@ class NodeManager {
 
   constructor({
     db,
+    seedNodes,
     keyManager,
     sigchain,
     fwdProxy,
     revProxy,
     logger,
-    brokerNodes,
   }: {
     db: DB;
+    seedNodes: NodeMapping;
     keyManager: KeyManager;
     sigchain: Sigchain;
     fwdProxy: ForwardProxy;
     revProxy: ReverseProxy;
     logger: Logger;
-    brokerNodes: NodeBucket;
   }) {
-    this.logger = logger;
     this.db = db;
+    this.seedNodes = seedNodes;
     this.keyManager = keyManager;
     this.sigchain = sigchain;
     this.fwdProxy = fwdProxy;
     this.revProxy = revProxy;
-    this.brokerNodes = brokerNodes;
+    this.logger = logger;
   }
 
   get locked(): boolean {
@@ -130,21 +126,18 @@ class NodeManager {
     fresh?: boolean;
   } = {}) {
     this.logger.info(`Starting ${this.constructor.name}`);
-    // Establish and start connections to the brokers
-    for (const brokerId in this.brokerNodes) {
-      await this.createConnectionToBroker(
-        brokerId as NodeId,
-        this.brokerNodes[brokerId].address,
-      );
-    }
-
     // Instantiate the node graph (containing Kademlia implementation)
     this.nodeGraph = await NodeGraph.createNodeGraph({
       db: this.db,
       nodeManager: this,
       logger: this.logger,
+      fresh,
     });
-    await this.nodeGraph.start({ fresh });
+    // Add the seed nodes to the NodeGraph
+    for (const id in this.seedNodes) {
+      const seedNodeId = id as NodeId;
+      await this.nodeGraph.setNode(seedNodeId, this.seedNodes[seedNodeId]);
+    }
     this.logger.info(`Started ${this.constructor.name}`);
   }
 
@@ -158,9 +151,6 @@ class NodeManager {
       // This assumes that after stopping the proxies, their connections are
       // also still valid on restart though.
       this.connections.delete(targetNodeId);
-    }
-    for (const [, conn] of this.brokerNodeConnections) {
-      await conn.stop();
     }
     await this.nodeGraph.stop();
     this.logger.info(`Stopped ${this.constructor.name}`);
@@ -229,7 +219,7 @@ class NodeManager {
       // i.e. no NodeConnection object created (no need for GRPCClient)
       await this.fwdProxy.openConnection(
         targetNodeId,
-        targetAddress.ip,
+        await networkUtils.resolveHost(targetAddress.host),
         targetAddress.port,
       );
     } catch (e) {
@@ -470,13 +460,19 @@ class NodeManager {
     lock: MutexInterface,
   ): Promise<NodeConnection> {
     const targetAddress = await this.findNode(targetNodeId);
+    // If the stored host is not a valid host (IP address), then we assume it to
+    // be a hostname
+    const targetHostname = !(await networkUtils.isValidHost(targetAddress.host))
+      ? (targetAddress.host as Hostname)
+      : undefined;
     const connection = await NodeConnection.createNodeConnection({
       targetNodeId: targetNodeId,
-      targetHost: targetAddress.ip,
+      targetHost: await networkUtils.resolveHost(targetAddress.host),
+      targetHostname: targetHostname,
       targetPort: targetAddress.port,
       forwardProxy: this.fwdProxy,
       keyManager: this.keyManager,
-      brokerConnections: this.brokerNodeConnections,
+      seedConnections: await this.getConnectionsToSeedNodes(),
       logger: this.logger,
     });
     // Add it to the map of active connections
@@ -485,46 +481,51 @@ class NodeManager {
   }
 
   /**
-   * Create and start a connection to a broker node. Assumes that a direct
-   * connection to the broker can be established (i.e. no hole punching required).
-   *
-   * @param brokerNodeId ID of the broker node to connect to
-   * @param brokerNodeAddress host and port of the broker node to connect to
-   * @returns
+   * Acquires a map of connections to the seed nodes.
+   * These connections are expected to have already been established in start(),
+   * so this should simply be a constant-time retrieval from the NodeConnectionMap.
    */
   @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  public async createConnectionToBroker(
-    brokerNodeId: NodeId,
-    brokerNodeAddress: NodeAddress,
-  ): Promise<NodeConnection> {
-    return await this._transaction(async () => {
-      // Throw error if trying to connect to self
-      if (brokerNodeId === this.getNodeId()) {
-        throw new nodesErrors.ErrorNodeGraphSelfConnect();
+  public async getConnectionsToSeedNodes(): Promise<
+    Map<NodeId, NodeConnection>
+  > {
+    const connections: Map<NodeId, NodeConnection> = new Map();
+    // GetConnectionToNode internally calls this function if the connection to
+    // some node does not already exist (i.e. there's no existing entry in the
+    // NodeConnectionMap). Therefore, we have the potential for a deadlock if a
+    // connection to a seed node has been lost or doesn't already exist and
+    // this function is called: there would be 2 nested calls to
+    // getConnectionToNode on the seed node, causing a deadlock. To prevent this,
+    // we do a fail-safe here, where we temporarily clear this.seedNodes, such
+    // that we don't attempt to use the seed nodes to connect to another seed node.
+    const seedNodesCopy = this.seedNodes;
+    this.seedNodes = {};
+    try {
+      for (const id in this.seedNodes) {
+        const seedNodeId = id as NodeId;
+        try {
+          connections.set(
+            seedNodeId,
+            await this.getConnectionToNode(seedNodeId),
+          );
+        } catch (e) {
+          // If we can't connect to a seed node, simply skip it
+          if (e instanceof nodesErrors.ErrorNodeConnectionTimeout) {
+            continue;
+          }
+          throw e;
+        }
       }
-      // Attempt to get an existing connection
-      const existingConnection = this.brokerNodeConnections.get(brokerNodeId);
-      if (existingConnection != null) {
-        return existingConnection;
-      }
-      const brokerConnection = await NodeConnection.createNodeConnection({
-        targetNodeId: brokerNodeId,
-        targetHost: brokerNodeAddress.ip,
-        targetPort: brokerNodeAddress.port,
-        forwardProxy: this.fwdProxy,
-        keyManager: this.keyManager,
-        logger: this.logger,
-      });
-      // TODO: may need to change this start() to some kind of special 'direct
-      // connection' mechanism (currently just does the same openConnection() call
-      // as any other node, but without hole punching).
-      this.brokerNodeConnections.set(brokerNodeId, brokerConnection);
-      return brokerConnection;
-    });
+    } finally {
+      // Even if an exception is thrown, ensure the seed node mappings are reinstated
+      this.seedNodes = seedNodesCopy;
+    }
+    return connections;
   }
 
-  public getBrokerNodeConnections(): Map<NodeId, NodeConnection> {
-    return this.brokerNodeConnections;
+  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  public async syncNodeGraph() {
+    await this.nodeGraph.syncNodeGraph();
   }
 
   /**

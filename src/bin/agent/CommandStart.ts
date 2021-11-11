@@ -23,6 +23,9 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.addOption(binOptions.ingressHost);
     this.addOption(binOptions.ingressPort);
+    this.addOption(binOptions.connTimeoutTime);
+    this.addOption(binOptions.seedNodes);
+    this.addOption(binOptions.network);
     this.addOption(binOptions.background);
     this.addOption(binOptions.backgroundOutFile);
     this.addOption(binOptions.backgroundErrFile);
@@ -66,6 +69,8 @@ class CommandStart extends CommandPolykey {
         options.recoveryCodeFile,
         this.fs,
       );
+      const [seedNodes, defaults] = options.seedNodes;
+      if (defaults) Object.assign(seedNodes, options.network);
       const agentConfig = {
         password,
         nodePath: options.nodePath,
@@ -73,12 +78,19 @@ class CommandStart extends CommandPolykey {
           rootKeyPairBits: options.rootKeyPairBits,
           recoveryCode: recoveryCodeIn,
         },
+        forwardProxyConfig: {
+          connTimeoutTime: options.connTimeoutTime,
+        },
+        reverseProxyConfig: {
+          connTimeoutTime: options.connTimeoutTime,
+        },
         networkConfig: {
           clientHost: options.clientHost,
           clientPort: options.clientPort,
           ingressHost: options.ingressHost,
           ingressPort: options.ingressPort,
         },
+        seedNodes,
         fresh: options.fresh,
       };
       let recoveryCodeOut: RecoveryCode | undefined;

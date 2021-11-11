@@ -340,6 +340,19 @@ describe('NodeConnection', () => {
     await conn.stop();
     await conn.destroy();
   });
+  test('fails to connect to target (times out)', async () => {
+    await expect(
+      NodeConnection.createNodeConnection({
+        targetNodeId: targetNodeId,
+        targetHost: '128.0.0.1' as Host,
+        targetPort: 12345 as Port,
+        connTimeout: 300,
+        forwardProxy: clientFwdProxy,
+        keyManager: clientKeyManager,
+        logger: logger,
+      }),
+    ).rejects.toThrow(nodesErrors.ErrorNodeConnectionTimeout);
+  });
   test('receives 20 closest local nodes from connected target', async () => {
     const conn = await NodeConnection.createNodeConnection({
       targetNodeId: targetNodeId,
@@ -359,7 +372,7 @@ describe('NodeConnection', () => {
         i,
       );
       const nodeAddress = {
-        ip: (i + '.' + i + '.' + i + '.' + i) as Host,
+        host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
       };
       await serverNodeManager.setNode(closeNodeId, nodeAddress);
@@ -373,7 +386,7 @@ describe('NodeConnection', () => {
     for (let i = 1; i <= 10; i++) {
       const farNodeId = nodeIdGenerator(i);
       const nodeAddress = {
-        ip: (i + '.' + i + '.' + i + '.' + i) as Host,
+        host: (i + '.' + i + '.' + i + '.' + i) as Host,
         port: i as Port,
       };
       await serverNodeManager.setNode(farNodeId, nodeAddress);

@@ -1,5 +1,5 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { NodeInfo, NodeAddress } from '@/nodes/types';
+import type { NodeInfo } from '@/nodes/types';
 import type { NodeManager } from '@/nodes';
 import type { NotificationData } from '@/notifications/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
@@ -123,9 +123,9 @@ describe('Notifications client service', () => {
       sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
 
       await sender.nodeManager.setNode(node1.id, {
-        ip: polykeyAgent.revProxy.ingressHost,
+        host: polykeyAgent.revProxy.ingressHost,
         port: polykeyAgent.revProxy.ingressPort,
-      } as NodeAddress);
+      });
       await receiver.acl.setNodePerm(node1.id, {
         gestalt: {
           notify: null,

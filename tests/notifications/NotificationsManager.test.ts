@@ -249,7 +249,7 @@ describe('NotificationsManager', () => {
     });
     await senderNodeManager.start();
     await senderNodeManager.setNode(receiverNodeId, {
-      ip: receiverHost,
+      host: receiverHost,
       port: receiverIngressPort,
     } as NodeAddress);
 
