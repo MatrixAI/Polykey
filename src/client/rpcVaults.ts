@@ -692,9 +692,7 @@ const createVaultRPC = ({
         const pattern = directoryMessage.getSecretDirectory();
         const id = await utils.parseVaultInput(vaultMessage, vaultManager);
         const vault = await vaultManager.openVault(id);
-        console.log(pattern);
         const secretList = await vaultManager.glob(id, pattern);
-        console.log(secretList);
         let secretMessage: secretsPB.Secret;
         for (const secretName of secretList) {
           const secretContent = await vaultOps.getSecret(vault, secretName);
@@ -705,7 +703,6 @@ const createVaultRPC = ({
         }
         await genWritable.next(null);
       } catch (err) {
-        console.log(err);
         await genWritable.throw(err);
       }
     },
