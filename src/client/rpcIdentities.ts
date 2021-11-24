@@ -1,7 +1,6 @@
 import type { NodeManager } from '../nodes';
 import type { NodeInfo } from '../nodes/types';
 import type { GestaltGraph } from '../gestalts';
-import type { SessionManager } from '../sessions';
 import type { IdentitiesManager } from '../identities';
 import type {
   IdentityId,
@@ -10,9 +9,9 @@ import type {
   IdentityInfo,
 } from '../identities/types';
 
-import * as utils from './utils';
+import type * as grpc from '@grpc/grpc-js';
+import type * as utils from './utils';
 import * as errors from '../errors';
-import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from '../grpc/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
@@ -21,12 +20,12 @@ const createIdentitiesRPC = ({
   identitiesManager,
   nodeManager,
   gestaltGraph,
-  sessionManager,
+  authenticate,
 }: {
   identitiesManager: IdentitiesManager;
   nodeManager: NodeManager;
   gestaltGraph: GestaltGraph;
-  sessionManager: SessionManager;
+  authenticate: utils.Authenticate;
 }) => {
   return {
     identitiesAuthenticate: async (
@@ -38,11 +37,9 @@ const createIdentitiesRPC = ({
       const genWritable = grpcUtils.generatorWritable(call);
       const response = new identitiesPB.Provider();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const provider = identitiesManager.getProvider(
           call.request.getProviderId() as ProviderId,
         );
@@ -56,7 +53,7 @@ const createIdentitiesRPC = ({
         response.setMessage(userCode);
         await genWritable.next(response);
 
-        //Wait to finish.
+        // Wait to finish.
         const userName = (await authFlow?.next())?.value;
         if (userName == null)
           throw new errors.ErrorProviderAuthentication(
@@ -78,11 +75,9 @@ const createIdentitiesRPC = ({
     ): Promise<void> => {
       const response = new utilsPB.EmptyMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const provider = call.request.getProvider();
         await identitiesManager.putToken(
           provider?.getProviderId() as ProviderId,
@@ -100,11 +95,9 @@ const createIdentitiesRPC = ({
     ): Promise<void> => {
       const response = new identitiesPB.Token();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const tokens = await identitiesManager.getToken(
           call.request.getProviderId() as ProviderId,
           call.request.getMessage() as IdentityId,
@@ -121,11 +114,9 @@ const createIdentitiesRPC = ({
     ): Promise<void> => {
       const response = new utilsPB.EmptyMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         await identitiesManager.delToken(
           call.request.getProviderId() as ProviderId,
           call.request.getMessage() as IdentityId,
@@ -141,11 +132,9 @@ const createIdentitiesRPC = ({
     ): Promise<void> => {
       const response = new identitiesPB.Provider();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const providers = identitiesManager.getProviders();
         response.setProviderId(JSON.stringify(Object.keys(providers)));
       } catch (err) {
@@ -161,11 +150,9 @@ const createIdentitiesRPC = ({
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const providerId = call.request
           .getProvider()
           ?.getProviderId() as ProviderId;
@@ -207,11 +194,8 @@ const createIdentitiesRPC = ({
       callback: grpc.sendUnaryData<identitiesPB.Provider>,
     ): Promise<void> => {
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
         // Get's an identity out of all identities.
         const providerMessage = new identitiesPB.Provider();
         const providerId = call.request.getProviderId() as ProviderId;
@@ -237,14 +221,12 @@ const createIdentitiesRPC = ({
       // To augment a keynode we need a provider, generate an oauthkey and then
       const info = call.request;
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
-        const nodeId = nodeManager.getNodeId(); //Getting the local node ID.
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
 
-        //Do the deed...
+        const nodeId = nodeManager.getNodeId(); // Getting the local node ID.
+
+        // Do the deed...
         const nodeInfo: NodeInfo = {
           id: nodeId,
           chain: {},
@@ -254,7 +236,7 @@ const createIdentitiesRPC = ({
           identityId: info.getMessage() as IdentityId,
           claims: {},
         };
-        await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo); //Need to call this
+        await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo); // Need to call this
         // it takes NodeInfo and IdentityInfo.
         // Getting and creating NodeInfo is blocked by
       } catch (err) {

@@ -2,35 +2,35 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorClient extends ErrorPolykey {}
 
-class ErrorClientClientNotStarted extends ErrorClient {
-  description: string =
-    'Polykey Lockfile not found. Is the PolykeyAgent started?';
-  exitCode: number = 64;
-}
-
 class ErrorClientClientDestroyed extends ErrorClient {
-  description: string = 'GRPCClientClient has been destroyed';
-  exitCode: number = 64;
+  description = 'GRPCClientClient has been destroyed';
+  exitCode = 64;
 }
 
-class ErrorClientPasswordNotProvided extends ErrorClient {
-  description: string =
-    'Invalid Password, please use --password-file <file> or the prompt to input the correct password';
-  exitCode: number = 64;
+class ErrorClientAuthMissing extends ErrorClient {
+  description = 'Authorisation metadata is required but missing';
+  exitCode = 77;
 }
 
-class ErrorClientJWTTokenNotProvided extends ErrorClient {
-  description: string = 'JWT Token not provided in metadata';
-  exitCode: number = 77;
+class ErrorClientAuthFormat extends ErrorClient {
+  description = 'Authorisation metadata has invalid format';
+  exitCode = 64;
 }
 
-class ErrorPassword extends ErrorClient {}
+class ErrorClientAuthDenied extends ErrorClient {
+  description = 'Authorisation metadata is incorrect or expired';
+  exitCode = 77;
+}
+
+class ErrorClientInvalidNode extends ErrorClient {
+  exitCode: number = 70;
+}
 
 export {
   ErrorClient,
-  ErrorClientClientNotStarted,
   ErrorClientClientDestroyed,
-  ErrorClientPasswordNotProvided,
-  ErrorClientJWTTokenNotProvided,
-  ErrorPassword,
+  ErrorClientAuthMissing,
+  ErrorClientAuthFormat,
+  ErrorClientAuthDenied,
+  ErrorClientInvalidNode,
 };

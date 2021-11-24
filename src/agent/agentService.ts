@@ -5,23 +5,22 @@ import type {
 } from '../claims/types';
 import type { VaultName } from '../vaults/types';
 
+import type { NodeManager } from '../nodes';
+import type { VaultManager } from '../vaults';
+import type { Sigchain } from '../sigchain';
+import type { KeyManager } from '../keys';
+import type { NotificationsManager } from '../notifications';
+import type { IAgentServiceServer } from '../proto/js/polykey/v1/agent_service_grpc_pb';
+import type * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as grpc from '@grpc/grpc-js';
+import { utils as idUtils } from '@matrixai/id';
 import { promisify } from '../utils';
 import * as networkUtils from '../network/utils';
-import { NodeManager } from '../nodes';
-import { VaultManager } from '../vaults';
-import { Sigchain } from '../sigchain';
-import { KeyManager } from '../keys';
-import { NotificationsManager } from '../notifications';
 import { ErrorGRPC } from '../grpc/errors';
-import {
-  AgentServiceService,
-  IAgentServiceServer,
-} from '../proto/js/polykey/v1/agent_service_grpc_pb';
+import { AgentServiceService } from '../proto/js/polykey/v1/agent_service_grpc_pb';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as grpcUtils from '../grpc/utils';
 import {
   utils as notificationsUtils,
@@ -31,7 +30,6 @@ import { errors as vaultsErrors } from '../vaults';
 import { utils as claimsUtils, errors as claimsErrors } from '../claims';
 import { makeVaultId, makeVaultIdPretty } from '../vaults/utils';
 import { makeNodeId } from '../nodes/utils';
-import { utils as idUtils } from '@matrixai/id';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -158,22 +156,22 @@ function createAgentService({
       call: grpc.ServerWritableStream<nodesPB.Node, vaultsPB.Vault>,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      const response = new vaultsPB.Vault();
-      const id = makeNodeId(call.request.getNodeId());
+      // Const response = new vaultsPB.Vault();
+      // const id = makeNodeId(call.request.getNodeId());
       try {
         throw Error('Not implemented');
         // FIXME: handleVaultNamesRequest doesn't exist.
         // const listResponse = vaultManager.handleVaultNamesRequest(id);
-        let listResponse;
-        for await (const vault of listResponse) {
-          if (vault !== null) {
-            response.setNameOrId(vault);
-            await genWritable.next(response);
-          } else {
-            await genWritable.next(null);
-          }
-        }
-        await genWritable.next(null);
+        // let listResponse;
+        // for await (const vault of listResponse) {
+        //   if (vault !== null) {
+        //     response.setNameOrId(vault);
+        //     await genWritable.next(response);
+        //   } else {
+        //     await genWritable.next(null);
+        //   }
+        // }
+        // await genWritable.next(null);
       } catch (err) {
         await genWritable.throw(err);
       }
@@ -276,7 +274,7 @@ function createAgentService({
         } else if (
           await nodeManager.knowsNode(makeNodeId(call.request.getSrcId()))
         ) {
-          nodeManager.relayHolePunchMessage(call.request); // FIXME: don't we want to await this?
+          await nodeManager.relayHolePunchMessage(call.request);
         }
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
@@ -311,22 +309,22 @@ function createAgentService({
       >,
       callback: grpc.sendUnaryData<vaultsPB.NodePermissionAllowed>,
     ): Promise<void> => {
-      const response = new vaultsPB.NodePermissionAllowed();
+      // Const response = new vaultsPB.NodePermissionAllowed();
       try {
-        const nodeId = makeNodeId(call.request.getNodeId());
-        const vaultId = makeVaultId(call.request.getVaultId());
+        // Const nodeId = makeNodeId(call.request.getNodeId());
+        // const vaultId = makeVaultId(call.request.getVaultId());
         throw Error('Not Implemented');
         // FIXME: getVaultPermissions not implemented.
         // const result = await vaultManager.getVaultPermissions(vaultId, nodeId);
-        let result;
-        if (result[nodeId] === undefined) {
-          response.setPermission(false);
-        } else if (result[nodeId]['pull'] === undefined) {
-          response.setPermission(false);
-        } else {
-          response.setPermission(true);
-        }
-        callback(null, response);
+        // let result;
+        // if (result[nodeId] === undefined) {
+        //   response.setPermission(false);
+        // } else if (result[nodeId]['pull'] === undefined) {
+        //   response.setPermission(false);
+        // } else {
+        //   response.setPermission(true);
+        // }
+        // callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
@@ -384,7 +382,7 @@ function createAgentService({
           const senderPublicKey = await nodeManager.getPublicKey(
             payloadData.node1,
           );
-          const verified = claimsUtils.verifyClaimSignature(
+          const verified = await claimsUtils.verifyClaimSignature(
             constructedEncodedClaim,
             senderPublicKey,
           );

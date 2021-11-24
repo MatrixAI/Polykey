@@ -1,174 +1,112 @@
+import type { DB, DBLevel } from '@matrixai/db';
 import type { SessionToken } from './types';
-
-import * as grpc from '@grpc/grpc-js';
-import * as sessionErrors from './errors';
-import * as clientErrors from '../client/errors';
+import type { KeyManager } from '../keys';
 
 import Logger from '@matrixai/logger';
-
-import { DB } from '@matrixai/db';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import { Mutex } from 'async-mutex';
-import { utils as keyUtils } from '../keys';
-import { ErrorKeyManagerDestroyed } from '../errors';
-import { createPrivateKey, createPublicKey } from 'crypto';
+import * as sessionsUtils from './utils';
+import * as sessionsErrors from './errors';
+import * as keysUtils from '../keys/utils';
 
-import * as sessionUtils from './utils';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-
-/**
- * This class is created in the PolykeyAgent, and is responsible for the verification
- * of session tokens
- */
-interface SessionManager extends CreateDestroy {}
-@CreateDestroy()
+interface SessionManager extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new sessionsErrors.ErrorSessionManagerRunning(),
+  new sessionsErrors.ErrorSessionManagerDestroyed(),
+)
 class SessionManager {
-  private _db: DB;
-  private _bits: number;
-  private logger: Logger;
-
-  protected lock: Mutex = new Mutex();
-
   static async createSessionManager({
     db,
-    bits,
-    logger,
+    keyManager,
+    expiry,
+    keyBits = 256,
+    logger = new Logger(this.name),
+    fresh = false,
   }: {
     db: DB;
-    bits: number;
+    keyManager: KeyManager;
+    expiry?: number;
+    keyBits?: 128 | 192 | 256;
     logger?: Logger;
+    fresh?: boolean;
   }): Promise<SessionManager> {
-    const logger_ = logger ?? new Logger('SessionManager');
-
-    const sessionManager = new SessionManager({ db, logger: logger_ });
-    await sessionManager.create({ bits });
+    logger.info(`Creating ${this.name}`);
+    const sessionManager = new SessionManager({
+      db,
+      keyManager,
+      expiry,
+      keyBits,
+      logger,
+    });
+    await sessionManager.start({ fresh });
+    logger.info(`Created ${this.name}`);
     return sessionManager;
   }
 
-  /**
-   * Construct a SessionManager object
-   * @param logger Logger
-   */
-  constructor({ db, logger }: { db: DB; logger?: Logger }) {
-    this._db = db;
-    this.logger = logger ?? new Logger('SessionManager');
+  public readonly expiry?: number;
+  public readonly keyBits: 128 | 192 | 256;
+
+  protected logger: Logger;
+  protected db: DB;
+  protected keyManager: KeyManager;
+  protected sessionsDbDomain: string = this.constructor.name;
+  protected sessionsDb: DBLevel;
+  protected lock: Mutex = new Mutex();
+  protected key: Uint8Array;
+
+  public constructor({
+    db,
+    keyManager,
+    expiry,
+    keyBits,
+    logger,
+  }: {
+    db: DB;
+    keyManager: KeyManager;
+    expiry?: number;
+    keyBits: 128 | 192 | 256;
+    logger: Logger;
+  }) {
+    this.logger = logger;
+    this.db = db;
+    this.keyManager = keyManager;
+    this.expiry = expiry;
+    this.keyBits = keyBits;
   }
 
-  /**
-   * Start the SessionManager object, stores a keyPair in the DB if one
-   * is not already stored there.
-   */
-  private async create({ bits }: { bits: number }) {
-    this.logger.info('Starting SessionManager');
-    this._bits = bits;
-    // If db does not contain private key, create one and store it.
-    if (!(await this._db.get<string>([this.constructor.name], 'privateKey'))) {
-      const keyPair = await keyUtils.generateKeyPair(bits);
-      this.logger.info('Putting keypair into DB');
-      await this._db.put(
-        [this.constructor.name],
-        'privateKey',
-        keyUtils.privateKeyToPem(keyPair.privateKey),
-      );
-    }
-    this.logger.info('Started SessionManager');
-  }
-
-  /**
-   * Destroys the SessionManager object
-   */
-  public async destroy() {
-    this.logger.info('Destroyed SessionManager');
-  }
-
-  /**
-   * Creates a new keypair and stores it in the db
-   */
-  @ready(new ErrorKeyManagerDestroyed())
-  public async refreshKey() {
-    await this._transaction(async () => {
-      const keyPair = await keyUtils.generateKeyPair(this._bits);
-      this.logger.info('Putting new keypair into DB');
-      await this._db.put(
-        [this.constructor.name],
-        'privateKey',
-        keyUtils.privateKeyToPem(keyPair.privateKey),
-      );
-    });
-  }
-
-  /**
-   * Generates a JWT token based on the private key in the db
-   * @param expiry refer to https://github.com/panva/jose/blob/cdce59a340b87b681a003ca28a9116c1f11d3f12/docs/classes/jwt_sign.signjwt.md#setexpirationtime
-   * @returns
-   */
-  @ready(new ErrorKeyManagerDestroyed())
-  public async generateToken(expiry: string | number = '1h') {
-    return await this._transaction(async () => {
-      const payload = {
-        token: await sessionUtils.generateRandomPayload(),
-      };
-      const privateKeyPem = await this._db.get<string>(
-        [this.constructor.name],
-        'privateKey',
-      );
-      if (privateKeyPem == null) {
-        throw new sessionErrors.ErrorReadingPrivateKey();
-      }
-      return await sessionUtils.createSessionToken(
-        payload,
-        expiry,
-        createPrivateKey(privateKeyPem),
-      );
-    });
-  }
-
-  /**
-   * Verifies token stored in a grpc.Metadata object, stored under the
-   * 'Authorization' tag, in the form "Bearer: <token>"
-   * @param meta Metadata from grpc call
-   */
-  @ready(new ErrorKeyManagerDestroyed())
-  public async verifyMetadataToken(meta: grpc.Metadata) {
-    const auth = meta.get('Authorization').pop();
-    if (auth == null) {
-      throw new clientErrors.ErrorClientJWTTokenNotProvided();
-    }
-    const token = auth.toString().split(' ')[1];
-    await this.verifyToken(token as SessionToken);
-  }
-
-  /**
-   * Verifies a Token based on the public key derived from the private key
-   * in the db
-   * @throws ErrorSessionTokenInvalid
-   * @throws ErrorSessionManaagerNotStarted
-   * @param claim
-   * @returns
-   */
-  @ready(new ErrorKeyManagerDestroyed())
-  public async verifyToken(claim: SessionToken) {
-    return await this._transaction(async () => {
-      const privateKeyPem = await this._db.get<string>(
-        [this.constructor.name],
-        'privateKey',
-      );
-      if (privateKeyPem == null) {
-        throw new sessionErrors.ErrorReadingPrivateKey();
-      }
-      const privateKey = keyUtils.privateKeyFromPem(privateKeyPem);
-      const publicKey = keyUtils.publicKeyFromPrivateKey(privateKey);
-
-      const jwtPublicKey = createPublicKey(keyUtils.publicKeyToPem(publicKey));
-      try {
-        return await sessionUtils.verifySessionToken(claim, jwtPublicKey);
-      } catch (err) {
-        throw new sessionErrors.ErrorSessionTokenInvalid();
-      }
-    });
-  }
-
-  public get locked(): boolean {
+  get locked(): boolean {
     return this.lock.isLocked();
+  }
+
+  public async start({
+    fresh = false,
+  }: {
+    fresh?: boolean;
+  } = {}): Promise<void> {
+    this.logger.info(`Starting ${this.constructor.name}`);
+    const sessionsDb = await this.db.level(this.sessionsDbDomain);
+    if (fresh) {
+      await sessionsDb.clear();
+    }
+    const key = await this.setupKey(this.keyBits);
+    this.sessionsDb = sessionsDb;
+    this.key = key;
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  public async stop(): Promise<void> {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
+  }
+
+  public async destroy() {
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    const sessionsDb = await this.db.level(this.sessionsDbDomain);
+    await sessionsDb.clear();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   /**
@@ -176,9 +114,7 @@ class SessionManager {
    * This does not ensure atomicity of the underlying database
    * Database atomicity still depends on the underlying operation
    */
-  protected async transaction<T>(
-    f: (SessionManager: SessionManager) => Promise<T>,
-  ): Promise<T> {
+  public async transaction<T>(f: (that: this) => Promise<T>): Promise<T> {
     const release = await this.lock.acquire();
     try {
       return await f(this);
@@ -192,11 +128,63 @@ class SessionManager {
    * within a transaction context
    */
   protected async _transaction<T>(f: () => Promise<T>): Promise<T> {
-    if (this.lock.isLocked()) {
+    if (this.locked) {
       return await f();
     } else {
       return await this.transaction(f);
     }
+  }
+
+  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
+  public async resetKey(): Promise<void> {
+    await this._transaction(async () => {
+      const key = await this.generateKey(this.keyBits);
+      await this.db.put([this.sessionsDbDomain], 'key', key, true);
+      this.key = key;
+    });
+  }
+
+  /**
+   * Creates session token
+   * This is not blocked by key reset
+   * @param expiry Seconds from now or default
+   */
+  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
+  public async createToken(
+    expiry: number | undefined = this.expiry,
+  ): Promise<SessionToken> {
+    const payload = {
+      iss: this.keyManager.getNodeId(),
+      sub: this.keyManager.getNodeId(),
+    };
+    const token = await sessionsUtils.createSessionToken(
+      payload,
+      this.key,
+      expiry,
+    );
+    return token;
+  }
+
+  @ready(new sessionsErrors.ErrorSessionManagerNotRunning())
+  public async verifyToken(token: SessionToken): Promise<boolean> {
+    const result = await sessionsUtils.verifySessionToken(token, this.key);
+    return result !== undefined;
+  }
+
+  protected async setupKey(bits: 128 | 192 | 256): Promise<Buffer> {
+    let key: Buffer | undefined;
+    key = await this.db.get([this.sessionsDbDomain], 'key', true);
+    if (key != null) {
+      return key;
+    }
+    this.logger.info('Generating sessions key');
+    key = await this.generateKey(bits);
+    await this.db.put([this.sessionsDbDomain], 'key', key, true);
+    return key;
+  }
+
+  protected async generateKey(bits: 128 | 192 | 256): Promise<Buffer> {
+    return await keysUtils.generateKey(bits);
   }
 }
 

@@ -1,8 +1,7 @@
-import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 
-import * as grpc from '@grpc/grpc-js';
-import * as utils from './utils';
+import type * as grpc from '@grpc/grpc-js';
+import type * as utils from './utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import * as grpcUtils from '../grpc/utils';
@@ -11,10 +10,10 @@ import { makeNodeId } from '../nodes/utils';
 
 const createNotificationsRPC = ({
   notificationsManager,
-  sessionManager,
+  authenticate,
 }: {
   notificationsManager: NotificationsManager;
-  sessionManager: SessionManager;
+  authenticate: utils.Authenticate;
 }) => {
   return {
     notificationsSend: async (
@@ -22,11 +21,9 @@ const createNotificationsRPC = ({
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const receivingId = makeNodeId(call.request.getReceiverId());
         const data = {
           type: 'General',
@@ -47,11 +44,9 @@ const createNotificationsRPC = ({
     ): Promise<void> => {
       const response = new notificationsPB.List();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const unread = call.request.getUnread();
         const order = call.request.getOrder() as 'newest' | 'oldest';
         const numberField = call.request.getNumber();
@@ -106,11 +101,9 @@ const createNotificationsRPC = ({
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         await notificationsManager.clearNotifications();
       } catch (err) {
         callback(grpcUtils.fromError(err), null);

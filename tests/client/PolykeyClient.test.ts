@@ -1,18 +1,19 @@
+import type * as grpc from '@grpc/grpc-js';
+import type { GRPCClientClient } from '@/client';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import * as grpc from '@grpc/grpc-js';
+import * as parsers from '@/bin/parsers';
 
 import { PolykeyClient } from '@';
-import { GRPCClientClient } from '@/client';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
 
 import * as testUtils from './utils';
 
-describe('GRPCClientClient', () => {
+describe('PolykeyClient', () => {
   const password = 'password';
   const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
     new StreamHandler(),
@@ -21,6 +22,8 @@ describe('GRPCClientClient', () => {
   let pkClient: PolykeyClient;
   let server: grpc.Server;
   let _port: number;
+  let passwordFile: string;
+  let meta: grpc.Metadata;
 
   let dataDir: string;
 
@@ -30,19 +33,19 @@ describe('GRPCClientClient', () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
+    passwordFile = path.join(dataDir, 'password');
+    await fs.promises.writeFile(passwordFile, password);
+    meta = await parsers.parseAuth({ passwordFile: passwordFile, fs: fs });
 
-    polykeyAgent = await PolykeyAgent.createPolykey({
+    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
       logger: logger,
-      cores: 1,
-      workerManager: null,
     });
-
-    await polykeyAgent.start({});
 
     [server, _port] = await testUtils.openTestClientServer({
       polykeyAgent,
+      secure: false,
     });
 
     pkClient = await PolykeyClient.createPolykeyClient({
@@ -50,17 +53,13 @@ describe('GRPCClientClient', () => {
       fs: fs,
       logger: logger,
     });
-
-    await pkClient.start({});
-
     client = pkClient.grpcClient;
-    await client.start({});
 
-    const token = await polykeyAgent.sessions.generateToken();
-    await pkClient.session.start({ token });
+    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    await pkClient.session.start({ sessionToken });
   });
   afterEach(async () => {
-    await client.stop();
+    await client.destroy();
     await pkClient.stop();
     await testUtils.closeTestClientServer(server);
 
@@ -72,64 +71,65 @@ describe('GRPCClientClient', () => {
       recursive: true,
     });
   });
-  test('echo', async () => {
-    const echoMessage = new utilsPB.EchoMessage();
-    echoMessage.setChallenge('yes');
-    const response = await client.echo(echoMessage);
-    expect(response.getChallenge()).toBe('yes');
+  test('can get status', async () => {
+    const emptyMessage = new utilsPB.EmptyMessage();
+    const response = await client.agentStatus(emptyMessage, meta);
+    expect(response.getNodeId()).toBeTruthy();
+    expect(response.getAddress()).toBeTruthy();
+    expect(response.getCert()).toBeTruthy();
   });
-});
+  describe('TLS tests', () => {
+    const password = 'password';
+    const logger = new Logger('PolykeyAgent TLS', LogLevel.WARN, [
+      new StreamHandler(),
+    ]);
+    let dataDir: string;
+    let nodePath: string;
+    let polykeyAgent: PolykeyAgent;
+    let sessionToken;
 
-describe('TLS tests', () => {
-  const password = 'password';
-  const logger = new Logger('PolykeyAgent TLS', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
-  let dataDir: string;
-  let nodePath: string;
-  let polykeyAgent: PolykeyAgent;
-  let token;
+    beforeAll(async () => {
+      // Setting up paths and dirs.
+      dataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      nodePath = path.join(dataDir, 'keynode');
 
-  beforeAll(async () => {
-    //Setting up paths and dirs.
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    nodePath = path.join(dataDir, 'keynode');
+      // Starting an agent.
+      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath,
+        logger: logger.getChild(PolykeyAgent.name),
+      });
 
-    //Starting an agent.
-    polykeyAgent = await PolykeyAgent.createPolykey({
-      password,
-      nodePath,
-      logger: logger.getChild('agent'),
-      clientGrpcPort: 55555,
-      cores: 1,
-      workerManager: null,
+      sessionToken = await polykeyAgent.sessionManager.createToken();
+    }, global.defaultTimeout * 3);
+    afterAll(async () => {
+      await polykeyAgent.stop();
+      await polykeyAgent.destroy();
     });
+    test('can get status over TLS', async () => {
+      // Starting client.
+      const pkClient = await PolykeyClient.createPolykeyClient({
+        nodePath,
+        fs: fs,
+        logger: logger.getChild(PolykeyClient.name),
+      });
+      await pkClient.session.start({ sessionToken });
+      const meta = await parsers.parseAuth({
+        passwordFile: passwordFile,
+        fs: fs,
+      });
 
-    await polykeyAgent.start({});
-    token = await polykeyAgent.sessions.generateToken();
-  }, global.defaultTimeout * 3);
-  afterAll(async () => {
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
-  });
-  test('Can connect and echo over TLS', async () => {
-    //Starting client.
-    const pkClient = await PolykeyClient.createPolykeyClient({
-      nodePath,
-      fs: fs,
-      logger: logger.getChild('client'),
+      const emptyMessage = new utilsPB.EmptyMessage();
+      const response = await pkClient.grpcClient.agentStatus(
+        emptyMessage,
+        meta,
+      );
+      expect(response.getNodeId()).toBeTruthy();
+      expect(response.getAddress()).toBeTruthy();
+      expect(response.getCert()).toBeTruthy();
+      expect(pkClient.grpcClient.secured).toBeTruthy();
     });
-
-    await pkClient.start({});
-    const client = pkClient.grpcClient;
-    await pkClient.session.start({ token });
-
-    const echoMessage = new utilsPB.EchoMessage();
-    echoMessage.setChallenge('yes');
-    const response = await client.echo(echoMessage);
-    expect(response.getChallenge()).toBe('yes');
-    expect(pkClient.grpcClient.secured).toBeTruthy();
   });
 });

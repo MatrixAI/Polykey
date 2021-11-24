@@ -1,3 +1,4 @@
+import type PolykeyAgent from '../PolykeyAgent';
 import type { KeyManager } from '../keys';
 import type { VaultManager } from '../vaults';
 import type { NodeManager } from '../nodes';
@@ -9,32 +10,22 @@ import type { Discovery } from '../discovery';
 import type { ForwardProxy, ReverseProxy } from '../network';
 import type { GRPCServer } from '../grpc';
 
+import type * as grpc from '@grpc/grpc-js';
+import type { IClientServiceServer } from '../proto/js/polykey/v1/client_service_grpc_pb';
 import { promisify } from 'util';
-import * as grpc from '@grpc/grpc-js';
-import {
-  ClientServiceService,
-  IClientServiceServer,
-} from '../proto/js/polykey/v1/client_service_grpc_pb';
-import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
-import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
-import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
-import * as sessionsPB from '../proto/js/polykey/v1/sessions/sessions_pb';
-import * as gestaltsPB from '../proto/js/polykey/v1/gestalts/gestalts_pb';
-import * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
-import * as keysPB from '../proto/js/polykey/v1/keys/keys_pb';
-import * as permissionsPB from '../proto/js/polykey/v1/permissions/permissions_pb';
-import createEchoRPC from './rpcEcho';
-import createSessionRPC from './rpcSession';
+import createStatusRPC from './rpcStatus';
+import createSessionsRPC from './rpcSessions';
 import createVaultRPC from './rpcVaults';
 import createKeysRPC from './rpcKeys';
 import createNodesRPC from './rpcNodes';
 import createGestaltRPC from './rpcGestalts';
 import createIdentitiesRPC from './rpcIdentities';
-import { PolykeyAgent } from '../';
-import * as grpcUtils from '../grpc/utils';
 import createNotificationsRPC from './rpcNotifications';
-import * as utils from './utils';
+import * as clientUtils from './utils';
+import * as grpcUtils from '../grpc/utils';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import { ClientServiceService } from '../proto/js/polykey/v1/client_service_grpc_pb';
 
 /**
  * Creates the client service for use with a GRPCServer
@@ -53,7 +44,7 @@ function createClientService({
   discovery,
   fwdProxy,
   revProxy,
-  grpcServer,
+  clientGrpcServer,
 }: {
   polykeyAgent: PolykeyAgent;
   keyManager: KeyManager;
@@ -66,47 +57,50 @@ function createClientService({
   discovery: Discovery;
   fwdProxy: ForwardProxy;
   revProxy: ReverseProxy;
-  grpcServer: GRPCServer;
+  clientGrpcServer: GRPCServer;
 }) {
+  const authenticate = clientUtils.authenticator(sessionManager, keyManager);
   const clientService: IClientServiceServer = {
-    ...createEchoRPC({
-      sessionManager,
+    ...createStatusRPC({
+      authenticate,
+      keyManager,
     }),
-    ...createSessionRPC({
+    ...createSessionsRPC({
+      authenticate,
       sessionManager,
       keyManager,
     }),
     ...createVaultRPC({
       vaultManager,
-      sessionManager,
+      authenticate,
     }),
     ...createKeysRPC({
       keyManager,
       nodeManager,
-      sessionManager,
+      authenticate,
       fwdProxy,
       revProxy,
-      grpcServer,
+      clientGrpcServer,
     }),
     ...createIdentitiesRPC({
       identitiesManager,
       gestaltGraph,
       nodeManager,
-      sessionManager,
+      authenticate,
     }),
     ...createGestaltRPC({
       gestaltGraph,
-      sessionManager,
+      authenticate,
       discovery,
     }),
     ...createNodesRPC({
       nodeManager,
       notificationsManager,
-      sessionManager,
+      authenticate,
     }),
     ...createNotificationsRPC({
       notificationsManager,
-      sessionManager,
+      authenticate,
     }),
     nodesList: async (
       call: grpc.ServerWritableStream<utilsPB.EmptyMessage, nodesPB.Node>,
@@ -123,7 +117,8 @@ function createClientService({
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
         const response = new utilsPB.EmptyMessage();
         setTimeout(async () => {
           await polykeyAgent.stop();

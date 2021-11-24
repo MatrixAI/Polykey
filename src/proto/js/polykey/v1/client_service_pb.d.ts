@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
+import * as polykey_v1_agent_agent_pb from "../../polykey/v1/agent/agent_pb";
 import * as polykey_v1_gestalts_gestalts_pb from "../../polykey/v1/gestalts/gestalts_pb";
 import * as polykey_v1_identities_identities_pb from "../../polykey/v1/identities/identities_pb";
 import * as polykey_v1_keys_keys_pb from "../../polykey/v1/keys/keys_pb";

@@ -1,36 +1,32 @@
+import type { SpawnOptions } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'cross-spawn';
-import { SpawnOptions } from 'child_process';
-
-import { Lockfile } from '../lockfile';
-
-import * as agentUtils from '../utils';
+import { Status } from '../status';
 import * as agentErrors from '../errors';
 
 async function checkAgentRunning(nodePath: string): Promise<boolean> {
-  if (
-    (await Lockfile.checkLock(fs, path.join(nodePath, 'agent-lock.json'))) !==
-    'DOESNOTEXIST'
-  ) {
-    // Interrogate Lock File
-    const lock = await Lockfile.parseLock(
-      fs,
-      path.join(nodePath, 'agent-lock.json'),
-    );
+  const status = await Status.createStatus({
+    nodePath,
+    fs,
+  });
 
-    if (agentUtils.pidIsRunning(lock.pid)) {
+  switch (await status.checkStatus()) {
+    case 'RUNNING':
       return true;
-    }
+    case 'STARTING':
+    case 'STOPPING':
+    case 'UNLOCKED':
+    default:
+      return false;
   }
-  return false;
 }
 
 async function spawnBackgroundAgent( // FIXME, this is broken.
   nodePath: string,
   password: string,
 ): Promise<number> {
-  //Checking agent running.
+  // Checking agent running.
   if (await checkAgentRunning(nodePath)) {
     throw new agentErrors.ErrorAgentRunning(
       `Unable to spawn Agent, already running at: ${nodePath}`,
@@ -79,7 +75,7 @@ async function spawnBackgroundAgent( // FIXME, this is broken.
     spawnPath = DAEMON_SCRIPT_PATH.includes('.js') ? 'node' : 'ts-node';
   }
 
-  //Spawning the process.
+  // Spawning the process.
   const agentProcess = spawn(spawnPath, [DAEMON_SCRIPT_PATH], options);
 
   const startOptions = {

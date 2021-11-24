@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "polykey/v1/agent/agent.proto";
 import "polykey/v1/gestalts/gestalts.proto";
 import "polykey/v1/identities/identities.proto";
 import "polykey/v1/keys/keys.proto";
@@ -14,15 +15,14 @@ import "polykey/v1/utils/utils.proto";
 package polykey.v1;
 
 service ClientService {
-  rpc Echo(polykey.v1.utils.EchoMessage) returns (polykey.v1.utils.EchoMessage);
-
   // Agent
+  rpc AgentStatus(polykey.v1.utils.EmptyMessage) returns (polykey.v1.agent.InfoMessage);
   rpc AgentStop(polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.EmptyMessage);
 
   // Session
-  rpc SessionUnlock (polykey.v1.sessions.Password) returns (polykey.v1.sessions.Token);
-  rpc SessionRefresh (polykey.v1.utils.EmptyMessage) returns (polykey.v1.sessions.Token);
-  rpc SessionLockAll (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.StatusMessage);
+  rpc SessionsUnlock (polykey.v1.sessions.Password) returns (polykey.v1.sessions.Token);
+  rpc SessionsRefresh (polykey.v1.utils.EmptyMessage) returns (polykey.v1.sessions.Token);
+  rpc SessionsLockAll (polykey.v1.utils.EmptyMessage) returns (polykey.v1.utils.StatusMessage);
 
   // Nodes
   rpc NodesAdd(polykey.v1.nodes.NodeAddress) returns (polykey.v1.utils.EmptyMessage);

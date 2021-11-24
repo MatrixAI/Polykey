@@ -3,10 +3,7 @@ syntax = "proto3";
 package polykey.v1.sessions;
 
 message Password {
-  oneof password_or_file{
-    string password = 1;
-    string password_file = 2;
-  }
+  string password = 1;
 }
 
 message Token {

@@ -1,62 +1,62 @@
-import type { KeyManager } from '../keys';
 import type { SessionManager } from '../sessions';
+import type { KeyManager } from '../keys';
 
-import * as utils from './utils';
-import * as grpc from '@grpc/grpc-js';
-import * as clientErrors from './errors';
+import type * as grpc from '@grpc/grpc-js';
+import type * as utils from './utils';
+import * as clientUtils from '../client/utils';
 import * as grpcUtils from '../grpc/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as sessionsPB from '../proto/js/polykey/v1/sessions/sessions_pb';
-import * as sessionUtils from '../sessions/utils';
 
-const createSessionRPC = ({
+const createSessionsRPC = ({
+  authenticate,
   sessionManager,
   keyManager,
 }: {
+  authenticate: utils.Authenticate;
   sessionManager: SessionManager;
   keyManager: KeyManager;
 }) => {
   return {
-    sessionUnlock: async (
+    sessionsUnlock: async (
       call: grpc.ServerUnaryCall<sessionsPB.Password, sessionsPB.Token>,
       callback: grpc.sendUnaryData<sessionsPB.Token>,
     ): Promise<void> => {
       const response = new sessionsPB.Token();
       try {
-        const password = await sessionUtils.passwordFromPasswordMessage(
-          call.request,
-        );
-        if (password == null) {
-          throw new clientErrors.ErrorClientPasswordNotProvided();
-        }
-        await sessionUtils.checkPassword(password, keyManager);
-        response.setToken(await sessionManager.generateToken());
+        const password = call.request.getPassword();
+        await keyManager.checkPassword(password);
+        const token = await sessionManager.createToken();
+        response.setToken(token);
+        call.sendMetadata(clientUtils.encodeAuthFromSession(token));
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
       callback(null, response);
     },
-    sessionRefresh: async (
+    sessionsRefresh: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, sessionsPB.Token>,
       callback: grpc.sendUnaryData<sessionsPB.Token>,
     ): Promise<void> => {
       const response = new sessionsPB.Token();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        response.setToken(await sessionManager.generateToken());
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+        response.setToken(await sessionManager.createToken());
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
       callback(null, response);
     },
-    sessionLockAll: async (
+    sessionsLockAll: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.StatusMessage>,
       callback: grpc.sendUnaryData<utilsPB.StatusMessage>,
     ): Promise<void> => {
       const response = new utilsPB.StatusMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        await sessionManager.refreshKey();
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+        await sessionManager.resetKey();
         response.setSuccess(true);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
@@ -66,4 +66,4 @@ const createSessionRPC = ({
   };
 };
 
-export default createSessionRPC;
+export default createSessionsRPC;
