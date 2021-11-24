@@ -1,14 +1,13 @@
-import type { Claim } from '@/claims/types';
-import type { NodeId } from '@/nodes/types';
-import type { IdentityId, ProviderId } from '@/identities/types';
+import type { GeneralJWSInput } from 'jose';
 import type { PrivateKeyPem, PublicKeyPem } from '@/keys/types';
-
+import type { IdentityId, ProviderId } from '@/identities/types';
+import type { NodeId } from '@/nodes/types';
+import type { Claim } from '@/claims/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { generalVerify, GeneralJWSInput } from 'jose/jws/general/verify';
-import { GeneralSign } from 'jose/jws/general/sign';
 import { createPublicKey, createPrivateKey } from 'crypto';
+import { generalVerify, GeneralSign } from 'jose';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import canonicalize from 'canonicalize';
 import { KeyManager } from '@/keys';
@@ -42,6 +41,7 @@ describe('Claims utils', () => {
     privateKey = keyManager.getRootKeyPairPem().privateKey;
   });
   afterEach(async () => {
+    await keyManager.stop();
     await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,

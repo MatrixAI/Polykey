@@ -1,8 +1,8 @@
 import type { Opaque } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
-import type { GeneralJWS, FlattenedJWSInput } from 'jose/types';
-import { Id, IdString } from '../GenericIdTypes';
+import type { GeneralJWS, FlattenedJWSInput } from 'jose';
+import type { Id, IdString } from '../GenericIdTypes';
 
 /**
  * A JSON-ified, decoded version of the ClaimEncoded type.
