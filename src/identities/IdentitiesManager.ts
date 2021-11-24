@@ -9,11 +9,17 @@ import type Provider from './Provider';
 
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as identitiesErrors from './errors';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 
-interface IdentitiesManager extends CreateDestroy {}
-@CreateDestroy()
+interface IdentitiesManager extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new identitiesErrors.ErrorIdentitiesManagerRunning(),
+  new identitiesErrors.ErrorIdentitiesManagerDestroyed(),
+)
 class IdentitiesManager {
   protected logger: Logger;
   protected db: DB;
@@ -29,16 +35,17 @@ class IdentitiesManager {
 
   static async createIdentitiesManager({
     db,
-    logger,
+    logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
     logger: Logger;
     fresh?: boolean;
   }): Promise<IdentitiesManager> {
-    const logger_ = logger ?? new Logger(this.constructor.name);
-    const identitiesManager = new IdentitiesManager({ db, logger: logger_ });
-    await identitiesManager.create({ fresh });
+    logger.info(`Creating ${this.name}`);
+    const identitiesManager = new IdentitiesManager({ db, logger });
+    await identitiesManager.start({ fresh });
+    logger.info(`Created ${this.name}`);
     return identitiesManager;
   }
 
@@ -51,8 +58,8 @@ class IdentitiesManager {
     return this.lock.isLocked();
   }
 
-  private async create({ fresh }: { fresh: boolean }) {
-    this.logger.info('Starting Identities Manager');
+  public async start({ fresh = false }: { fresh?: boolean } = {}) {
+    this.logger.info(`Starting ${this.constructor.name}`);
     const identitiesDb = await this.db.level(this.identitiesDbDomain);
     // Tokens stores ProviderId -> ProviderTokens
     const identitiesTokensDb = await this.db.level(
@@ -65,11 +72,20 @@ class IdentitiesManager {
     }
     this.identitiesDb = identitiesDb;
     this.identitiesTokensDb = identitiesTokensDb;
-    this.logger.info('Started Identities Manager');
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  async stop() {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   async destroy() {
-    this.logger.info('Destroyed Identities Manager');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    const identitiesDb = await this.db.level(this.identitiesDbDomain);
+    await identitiesDb.clear();
+    this.providers = new Map();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   /**
@@ -100,17 +116,17 @@ class IdentitiesManager {
     }
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public getProviders(): Record<ProviderId, Provider> {
     return Object.fromEntries(this.providers);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public getProvider(pId: ProviderId): Provider | undefined {
     return this.providers.get(pId);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public registerProvider(p: Provider): void {
     if (this.providers.has(p.id)) {
       throw new identitiesErrors.ErrorProviderDuplicate();
@@ -124,12 +140,12 @@ class IdentitiesManager {
     this.providers.set(p.id, p);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public unregisterProvider(pId: ProviderId): void {
     this.providers.delete(pId);
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public async getTokens(providerId: ProviderId): Promise<ProviderTokens> {
     return await this._transaction(async () => {
       const providerTokens = await this.db.get<ProviderTokens>(
@@ -143,7 +159,7 @@ class IdentitiesManager {
     });
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public async getToken(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -160,7 +176,7 @@ class IdentitiesManager {
     });
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public async putToken(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -177,7 +193,7 @@ class IdentitiesManager {
     });
   }
 
-  @ready(new identitiesErrors.ErrorIdentitiesManagerDestroyed())
+  @ready(new identitiesErrors.ErrorIdentitiesManagerNotRunning())
   public async delToken(
     providerId: ProviderId,
     identityId: IdentityId,
