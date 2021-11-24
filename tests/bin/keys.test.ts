@@ -3,9 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import * as utils from './utils';
-
 import { PolykeyAgent } from '@';
+import * as utils from './utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -24,12 +23,8 @@ describe('CLI keys', () => {
   const logger = new Logger('CLI Test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   let polykeyAgent: PolykeyAgent;
-  let newPolykeyAgent1: PolykeyAgent;
-  let newPolykeyAgent2: PolykeyAgent;
   let passwordFile: string;
   let nodePath: string;
-  let newNodePath1: string;
-  let newNodePath2: string;
   let command: Array<string>;
 
   // Constants
@@ -41,59 +36,17 @@ describe('CLI keys', () => {
     );
     passwordFile = path.join(dataDir, 'passwordFile');
     nodePath = path.join(dataDir, 'node');
-    newNodePath1 = path.join(dataDir, 'newNode1');
-    newNodePath2 = path.join(dataDir, 'newNode2');
 
     await fs.promises.writeFile(passwordFile, password);
-    polykeyAgent = await PolykeyAgent.createPolykey({
+    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: nodePath,
       logger: logger,
-      cores: 1,
-      workerManager: null,
     });
-    newPolykeyAgent1 = await PolykeyAgent.createPolykey({
-      password,
-      nodePath: newNodePath1,
-      logger: logger,
-      cores: 1,
-      workerManager: null,
-    });
-    newPolykeyAgent2 = await PolykeyAgent.createPolykey({
-      password,
-      nodePath: newNodePath2,
-      logger: logger,
-      cores: 1,
-      workerManager: null,
-    });
-    await polykeyAgent.start({});
-    await newPolykeyAgent1.start({});
-    await newPolykeyAgent2.start({});
-
-    await utils.pkWithStdio([
-      'agent',
-      'unlock',
-      '-np',
-      newNodePath1,
-      '--password-file',
-      passwordFile,
-    ]);
-    await utils.pkWithStdio([
-      'agent',
-      'unlock',
-      '-np',
-      newNodePath2,
-      '--password-file',
-      passwordFile,
-    ]);
   }, global.polykeyStartupTimeout * 2);
   afterAll(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
-    await newPolykeyAgent1.stop();
-    await newPolykeyAgent1.destroy();
-    await newPolykeyAgent2.stop();
-    await newPolykeyAgent2.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
@@ -101,38 +54,35 @@ describe('CLI keys', () => {
   });
   beforeEach(async () => {
     // Authorize session
-    await utils.pkWithStdio([
-      'agent',
-      'unlock',
-      '-np',
-      nodePath,
-      '--password-file',
-      passwordFile,
-    ]);
+    await utils.pkStdio(
+      ['agent', 'unlock', '-np', nodePath, '--password-file', passwordFile],
+      {},
+      dataDir,
+    );
   });
 
   describe('commandCertChain', () => {
     test('should get the certificate chain', async () => {
       command = ['keys', 'certchain', '-np', nodePath];
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
     });
   });
   describe('commandGetCert', () => {
     test('should get the certificate', async () => {
       command = ['keys', 'cert', '-np', nodePath];
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
     });
   });
   describe('commandGetRootKeypair', () => {
     test('should get the root keypair', async () => {
       command = ['keys', 'root', '-np', nodePath];
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
 
-      const result2 = await utils.pkWithStdio([...command, '-pk']);
-      expect(result2.code).toBe(0);
+      const result2 = await utils.pkStdio([...command, '-pk'], {}, dataDir);
+      expect(result2.exitCode).toBe(0);
     });
   });
   describe('commandEncryptKeys', () => {
@@ -141,20 +91,22 @@ describe('CLI keys', () => {
       await fs.promises.writeFile(dataPath, 'encrypt-me', {
         encoding: 'binary',
       });
-      command = ['keys', 'encrypt', '-np', nodePath, '-fp', dataPath];
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      command = ['keys', 'encrypt', '-np', nodePath, dataPath];
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
     });
   });
   describe('commandDecryptKeys', () => {
     test('should decrypt data', async () => {
       const dataPath = path.join(nodePath, 'data');
       const secret = Buffer.from('this is the secret', 'binary');
-      const encrypted = await polykeyAgent.keys.encryptWithRootKeyPair(secret);
+      const encrypted = await polykeyAgent.keyManager.encryptWithRootKeyPair(
+        secret,
+      );
       await fs.promises.writeFile(dataPath, encrypted, { encoding: 'binary' });
-      command = ['keys', 'decrypt', '-np', nodePath, '-fp', dataPath];
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      command = ['keys', 'decrypt', '-np', nodePath, dataPath];
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
     });
   });
   describe('commandSignKeys', () => {
@@ -162,17 +114,17 @@ describe('CLI keys', () => {
       const dataPath = path.join(nodePath, 'data');
       await fs.promises.writeFile(dataPath, 'sign-me', { encoding: 'binary' });
 
-      command = ['keys', 'sign', '-np', nodePath, '-fp', dataPath];
+      command = ['keys', 'sign', '-np', nodePath, dataPath];
 
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
     });
   });
   describe('commandVerifyKeys', () => {
     test('should verify a file', async () => {
       const dataPath = path.join(nodePath, 'data');
       await fs.promises.writeFile(dataPath, 'sign-me', { encoding: 'binary' });
-      const signed = await polykeyAgent.keys.signWithRootKeyPair(
+      const signed = await polykeyAgent.keyManager.signWithRootKeyPair(
         Buffer.from('sign-me', 'binary'),
       );
       const signatureTrue = path.join(nodePath, 'data2');
@@ -180,82 +132,63 @@ describe('CLI keys', () => {
         encoding: 'binary',
       });
 
-      command = [
-        'keys',
-        'verify',
-        '-np',
-        nodePath,
-        '-fp',
-        dataPath,
-        '-sp',
-        signatureTrue,
-      ];
+      command = ['keys', 'verify', '-np', nodePath, dataPath, signatureTrue];
 
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
     });
   });
 
   describe('commandRenewKeypair', () => {
     test('should renew the keypair', async () => {
-      //Starting new node.
+      // Starting new node.
 
-      const rootKeypairOld = polykeyAgent.keys.getRootKeyPair();
+      const rootKeypairOld = polykeyAgent.keyManager.getRootKeyPair();
       const passPath = path.join(dataDir, 'passwordNew');
       await fs.promises.writeFile(passPath, 'password-new');
 
-      command = ['keys', 'renew', '-np', nodePath, '-pp', passPath];
+      command = ['keys', 'renew', '-np', nodePath, passPath];
 
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
 
-      const rootKeypairNew = polykeyAgent.keys.getRootKeyPair();
+      const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
       expect(rootKeypairNew.privateKey).not.toBe(rootKeypairOld.privateKey);
       expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
 
       await polykeyAgent.stop();
-      await polykeyAgent.destroy();
 
-      polykeyAgent = await PolykeyAgent.createPolykey({
+      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password: 'password-new',
         nodePath: nodePath,
         logger: logger,
-        cores: 1,
-        workerManager: null,
       });
-      await polykeyAgent.start({});
-      await polykeyAgent.stop();
-      await polykeyAgent.destroy();
+      await polykeyAgent.keyManager.changeRootKeyPassword(password);
     });
   });
   describe('commandResetKeyPair', () => {
     test('should reset the keypair', async () => {
-      const rootKeypairOld = newPolykeyAgent1.keys.getRootKeyPair();
+      const rootKeypairOld = polykeyAgent.keyManager.getRootKeyPair();
       const passPath = path.join(dataDir, 'passwordNewNew');
       await fs.promises.writeFile(passPath, 'password-new-new');
 
-      command = ['keys', 'reset', '-np', newNodePath1, '-pp', passPath];
+      command = ['keys', 'reset', '-np', nodePath, passPath];
 
-      const result = await utils.pkWithStdio([...command]);
-      expect(result.code).toBe(0);
+      const result = await utils.pkStdio([...command], {}, dataDir);
+      expect(result.exitCode).toBe(0);
 
-      const rootKeypairNew = newPolykeyAgent1.keys.getRootKeyPair();
+      const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
       expect(rootKeypairNew.privateKey).not.toBe(rootKeypairOld.privateKey);
       expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
 
-      await newPolykeyAgent1.stop();
-      await newPolykeyAgent1.destroy();
+      await polykeyAgent.stop();
 
-      newPolykeyAgent1 = await PolykeyAgent.createPolykey({
+      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password: 'password-new-new',
-        nodePath: newNodePath1,
+        nodePath: nodePath,
         logger: logger,
-        cores: 1,
-        workerManager: null,
       });
-      await newPolykeyAgent1.start({});
-
-      await utils.pkWithStdio(['agent', 'lock', '-np', newNodePath1]);
+      await polykeyAgent.keyManager.changeRootKeyPassword(password);
     });
   });
   describe('commandChangePassword', () => {
@@ -265,35 +198,19 @@ describe('CLI keys', () => {
         const passPath = path.join(dataDir, 'passwordChange');
         await fs.promises.writeFile(passPath, 'password-change');
 
-        await newPolykeyAgent2.stop();
-        await newPolykeyAgent2.destroy();
+        command = ['keys', 'password', '-np', nodePath, passPath];
 
-        newPolykeyAgent2 = await PolykeyAgent.createPolykey({
-          password,
-          nodePath: newNodePath2,
-          logger: logger,
-          cores: 1,
-          workerManager: null,
-        });
-        await newPolykeyAgent2.start({});
+        const result2 = await utils.pkStdio([...command], {}, dataDir);
+        expect(result2.exitCode).toBe(0);
 
-        command = ['keys', 'password', '-np', newNodePath2, '-pp', passPath];
+        await polykeyAgent.stop();
 
-        const result2 = await utils.pkWithStdio([...command]);
-        expect(result2.code).toBe(0);
-
-        await newPolykeyAgent2.stop();
-        await newPolykeyAgent2.destroy();
-        newPolykeyAgent2 = await PolykeyAgent.createPolykey({
+        polykeyAgent = await PolykeyAgent.createPolykeyAgent({
           password: 'password-change',
-          nodePath: newNodePath2,
+          nodePath: nodePath,
           logger: logger,
-          cores: 1,
-          workerManager: null,
         });
-        await newPolykeyAgent2.start({});
-
-        await utils.pkWithStdio(['agent', 'lock', '-np', newNodePath2]);
+        await polykeyAgent.keyManager.changeRootKeyPassword(password);
       },
       global.defaultTimeout * 2,
     );

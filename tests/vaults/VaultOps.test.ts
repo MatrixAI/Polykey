@@ -1,23 +1,23 @@
+import type { Vault, VaultId } from '@/vaults/types';
+import type { NodeId } from '@/nodes/types';
 import fs from 'fs';
 import path from 'path';
-import * as errors from '@/vaults/errors';
-import { Vault, VaultId } from '@/vaults/types';
 import os from 'os';
 import { EncryptedFS } from 'encryptedfs';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { utils as idUtils } from '@matrixai/id';
+import * as errors from '@/vaults/errors';
 import { VaultInternal, vaultOps } from '@/vaults';
 import { KeyManager } from '@/keys';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { generateVaultId } from '@/vaults/utils';
 import { getRandomBytes } from '@/keys/utils';
-import { utils as idUtils } from '@matrixai/id';
-import { NodeId } from '@/nodes/types';
 
 describe('VaultOps', () => {
   const password = 'password';
   const logger = new Logger('VaultOps', LogLevel.WARN, [new StreamHandler()]);
-  const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [
-    new StreamHandler(),
-  ]);
+  // Const probeLogger = new Logger('vaultOpsProbe', LogLevel.INFO, [
+  //   new StreamHandler(),
+  // ]);
 
   let dataDir: string;
 
@@ -46,6 +46,7 @@ describe('VaultOps', () => {
       logger,
     });
     await baseEfs.start();
+    await keyManager.stop();
     await keyManager.destroy();
   });
 
@@ -171,16 +172,20 @@ describe('VaultOps', () => {
       ).toString(),
     ).toStrictEqual('secret-content-change');
   });
-  test('updating a secret 10 times', async () => {
-    await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
-    for (let i = 0; i < 10; i++) {
-      const content = 'secret-content';
-      await vaultOps.updateSecret(vault, 'secret-1', content);
-      expect(
-        (await vaultOps.getSecret(vault, 'secret-1')).toString(),
-      ).toStrictEqual(content);
-    }
-  });
+  test(
+    'updating a secret 10 times',
+    async () => {
+      await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
+      for (let i = 0; i < 10; i++) {
+        const content = 'secret-content';
+        await vaultOps.updateSecret(vault, 'secret-1', content);
+        expect(
+          (await vaultOps.getSecret(vault, 'secret-1')).toString(),
+        ).toStrictEqual(content);
+      }
+    },
+    global.defaultTimeout * 2,
+  );
   test('deleting a secret', async () => {
     await vaultOps.addSecret(vault, 'secret-1', 'secret-content');
     await vaultOps.mkdir(vault, 'dir-1');
@@ -215,7 +220,7 @@ describe('VaultOps', () => {
       {
         recursive: true,
       },
-      probeLogger,
+      logger,
     );
     await expect(
       vault.access((efs) => efs.readdir('dir-1')),

@@ -56,6 +56,7 @@ type Timer = {
 interface FileSystem {
   promises: {
     rm: typeof fs.promises.rm;
+    rmdir: typeof fs.promises.rmdir;
     stat: typeof fs.promises.stat;
     readFile: typeof fs.promises.readFile;
     writeFile: typeof fs.promises.writeFile;
@@ -65,11 +66,13 @@ interface FileSystem {
     rename: typeof fs.promises.rename;
     open: typeof fs.promises.open;
   };
+  constants: typeof fs.constants;
 }
-
+type LockStatus = 'STARTING' | 'RUNNING' | 'STOPPING' | 'UNLOCKED';
 type LockConfig = {
+  status: LockStatus;
   pid: number;
-  nodeId: string;
+  nodeId?: string;
   clientHost?: string;
   clientPort?: number | undefined;
 } & POJO;
@@ -84,5 +87,6 @@ export {
   Ref,
   Timer,
   FileSystem,
+  LockStatus,
   LockConfig,
 };

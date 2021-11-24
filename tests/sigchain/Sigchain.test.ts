@@ -1,13 +1,12 @@
-import type { Claim, ClaimData } from '@/claims/types';
-import type { NodeId } from '@/nodes/types';
 import type { ProviderId, IdentityId } from '@/identities/types';
-
+import type { NodeId } from '@/nodes/types';
+import type { Claim, ClaimData } from '@/claims/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { KeyManager } from '@/keys';
 import { DB } from '@matrixai/db';
+import { KeyManager } from '@/keys';
 import { Sigchain } from '@/sigchain';
 import * as claimsUtils from '@/claims/utils';
 import * as sigchainErrors from '@/sigchain/errors';
@@ -35,10 +34,11 @@ describe('Sigchain', () => {
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
-    await db.start();
   });
   afterEach(async () => {
     await db.stop();
+    await db.destroy();
+    await keyManager.stop();
     await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -46,11 +46,30 @@ describe('Sigchain', () => {
     });
   });
 
+  test('session readiness', async () => {
+    const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
+    await expect(async () => {
+      await sigchain.destroy();
+    }).rejects.toThrow(sigchainErrors.ErrorSigchainRunning);
+    // Should be a noop
+    await sigchain.start();
+    await sigchain.stop();
+    await sigchain.destroy();
+    await expect(async () => {
+      await sigchain.start();
+    }).rejects.toThrow(sigchainErrors.ErrorSigchainDestroyed);
+    await expect(async () => {
+      await sigchain.getSequenceNumber();
+    }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
+    await expect(async () => {
+      await sigchain.getLatestClaimId();
+    }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
+  });
   test('async start initialises the sequence number', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
     const sequenceNumber = await sigchain.getSequenceNumber();
     expect(sequenceNumber).toBe(0);
-    await sigchain.destroy();
+    await sigchain.stop();
   });
   test('adds and retrieves a cryptolink, verifies signature', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
@@ -95,7 +114,7 @@ describe('Sigchain', () => {
     );
     expect(verified).toBe(true);
 
-    await sigchain.destroy();
+    await sigchain.stop();
   });
   test('adds and retrieves 2 cryptolinks, verifies signatures and hash', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
@@ -182,7 +201,7 @@ describe('Sigchain', () => {
     );
     expect(verifiedHash).toBe(true);
 
-    await sigchain.destroy();
+    await sigchain.stop();
   });
   test('adds an existing claim', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
@@ -432,6 +451,6 @@ describe('Sigchain', () => {
       i++;
     }
 
-    await sigchain.destroy();
+    await sigchain.stop();
   });
 });

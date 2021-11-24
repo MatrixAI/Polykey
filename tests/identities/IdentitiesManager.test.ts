@@ -7,13 +7,13 @@ import type {
 import type { NodeId } from '@/nodes/types';
 import type { Claim, ClaimData, SignatureData } from '@/claims/types';
 import type { IdentityClaim } from '@/identities/types';
-
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { KeyManager } from '@/keys';
 import { DB } from '@matrixai/db';
+
+import { KeyManager } from '@/keys';
 import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import TestProvider from './TestProvider';
@@ -43,16 +43,39 @@ describe('IdentitiesManager', () => {
       logger,
       crypto: makeCrypto(keyManager),
     });
-    await db.start();
   });
   afterEach(async () => {
     await db.stop();
     await db.destroy();
+    await keyManager.stop();
     await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
+  });
+
+  test('IdentitiesManager readiness', async () => {
+    const identitiesManager = await IdentitiesManager.createIdentitiesManager({
+      db,
+      logger,
+    });
+    await expect(async () => {
+      await identitiesManager.destroy();
+    }).rejects.toThrow(identitiesErrors.ErrorIdentitiesManagerRunning);
+    // Should be a noop
+    await identitiesManager.start();
+    await identitiesManager.stop();
+    await identitiesManager.destroy();
+    await expect(async () => {
+      await identitiesManager.start();
+    }).rejects.toThrow(identitiesErrors.ErrorIdentitiesManagerDestroyed);
+    expect(() => {
+      identitiesManager.getProviders();
+    }).toThrow(identitiesErrors.ErrorIdentitiesManagerNotRunning);
+    await expect(async () => {
+      await identitiesManager.getTokens('abc' as ProviderId);
+    }).rejects.toThrow(identitiesErrors.ErrorIdentitiesManagerNotRunning);
   });
   test('get, set and unset tokens', async () => {
     const identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -74,10 +97,10 @@ describe('IdentitiesManager', () => {
       identityId,
     );
     expect(tokenData__).toBeUndefined();
-    await identitiesManager.destroy();
+    await identitiesManager.stop();
   });
   test('start and stop preserves state', async () => {
-    //FIXME, save some actual state to check.
+    // FIXME, save some actual state to check.
     let identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
       logger,
@@ -90,7 +113,7 @@ describe('IdentitiesManager', () => {
     await identitiesManager.putToken(providerId, identityId, tokenData);
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
-    await identitiesManager.destroy();
+    await identitiesManager.stop();
 
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -102,7 +125,7 @@ describe('IdentitiesManager', () => {
     expect(identitiesManager.getProviders()).toStrictEqual({
       [testProvider.id]: testProvider,
     });
-    await identitiesManager.destroy();
+    await identitiesManager.stop();
   });
   test('fresh start deletes all state', async () => {
     let identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -117,7 +140,7 @@ describe('IdentitiesManager', () => {
     await identitiesManager.putToken(providerId, identityId, tokenData);
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
-    await identitiesManager.destroy();
+    await identitiesManager.stop();
 
     identitiesManager = await IdentitiesManager.createIdentitiesManager({
       db,
@@ -127,7 +150,7 @@ describe('IdentitiesManager', () => {
     const tokenData_ = await identitiesManager.getToken(providerId, identityId);
     expect(tokenData_).toBeUndefined();
     expect(identitiesManager.getProviders()).toStrictEqual({});
-    await identitiesManager.destroy();
+    await identitiesManager.stop();
   });
   test('register and unregister providers', async () => {
     const identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -154,7 +177,7 @@ describe('IdentitiesManager', () => {
     identitiesManager.unregisterProvider(githubProvider.id);
     ps = identitiesManager.getProviders();
     expect(ps).toStrictEqual({});
-    await identitiesManager.destroy();
+    await identitiesManager.stop();
   });
   test('using TestProvider', async () => {
     const identitiesManager = await IdentitiesManager.createIdentitiesManager({
@@ -236,6 +259,6 @@ describe('IdentitiesManager', () => {
       publishedClaims.push(claim);
     }
     expect(publishedClaims).toContainEqual(publishedClaim);
-    await identitiesManager.destroy();
+    await identitiesManager.stop();
   });
 });

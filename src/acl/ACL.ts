@@ -8,16 +8,37 @@ import type { Ref } from '../types';
 
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
+import { utils as idUtils } from '@matrixai/id';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as aclUtils from './utils';
 import * as aclErrors from './errors';
-import { errors as dbErrors } from '@matrixai/db';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import { makePermissionId } from './utils';
-import { utils as idUtils } from '@matrixai/id';
 
-interface ACL extends CreateDestroy {}
-@CreateDestroy()
+interface ACL extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new aclErrors.ErrorACLRunning(),
+  new aclErrors.ErrorACLDestroyed(),
+)
 class ACL {
+  static async createACL({
+    db,
+    logger = new Logger(this.name),
+    fresh = false,
+  }: {
+    db: DB;
+    logger?: Logger;
+    fresh?: boolean;
+  }): Promise<ACL> {
+    logger.info(`Creating ${this.name}`);
+    const acl = new ACL({ db, logger });
+    await acl.start({ fresh });
+    logger.info(`Created ${this.name}`);
+    return acl;
+  }
+
   protected logger: Logger;
   protected db: DB;
   protected aclDbDomain: string = this.constructor.name;
@@ -30,24 +51,6 @@ class ACL {
   protected aclVaultsDb: DBLevel;
   protected lock: Mutex = new Mutex();
 
-  static async createACL({
-    db,
-    logger,
-    fresh = false,
-  }: {
-    db: DB;
-    logger?: Logger;
-    fresh?: boolean;
-  }): Promise<ACL> {
-    const logger_ = logger ?? new Logger(this.constructor.name);
-    const acl = new ACL({ db, logger: logger_ });
-
-    // Setting up ACL
-    await acl.create({ fresh });
-
-    return acl;
-  }
-
   constructor({ db, logger }: { db: DB; logger: Logger }) {
     this.logger = logger;
     this.db = db;
@@ -57,15 +60,12 @@ class ACL {
     return this.lock.isLocked();
   }
 
-  private async create({
+  public async start({
     fresh = false,
   }: {
     fresh?: boolean;
   } = {}): Promise<void> {
-    this.logger.info('Starting ACL');
-    if (!this.db.running) {
-      throw new dbErrors.ErrorDBNotRunning();
-    }
+    this.logger.info(`Starting ${this.constructor.name}`);
     const aclDb = await this.db.level(this.aclDbDomain);
     // Perms stores PermissionId -> Ref<Permission>
     const aclPermsDb = await this.db.level(this.aclPermsDbDomain[1], aclDb);
@@ -82,11 +82,19 @@ class ACL {
     this.aclPermsDb = aclPermsDb;
     this.aclNodesDb = aclNodesDb;
     this.aclVaultsDb = aclVaultsDb;
-    this.logger.info('Started ACL');
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  public async stop(): Promise<void> {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   public async destroy() {
-    this.logger.info('Destroyed ACL');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    const aclDb = await this.db.level(this.aclDbDomain);
+    await aclDb.clear();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   /**
@@ -94,7 +102,7 @@ class ACL {
    * This does not ensure atomicity of the underlying database
    * Database atomicity still depends on the underlying operation
    */
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async transaction<T>(f: (acl: ACL) => Promise<T>): Promise<T> {
     const release = await this.lock.acquire();
     try {
@@ -108,7 +116,7 @@ class ACL {
    * Transaction wrapper that will not lock if the operation was executed
    * within a transaction context
    */
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async _transaction<T>(f: () => Promise<T>): Promise<T> {
     if (this.lock.isLocked()) {
       return await f();
@@ -117,7 +125,7 @@ class ACL {
     }
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async sameNodePerm(
     nodeId1: NodeId,
     nodeId2: NodeId,
@@ -132,7 +140,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async getNodePerms(): Promise<Array<Record<NodeId, Permission>>> {
     return await this._transaction(async () => {
       const permIds: Record<
@@ -173,7 +181,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async getVaultPerms(): Promise<
     Record<VaultId, Record<NodeId, Permission>>
   > {
@@ -234,7 +242,7 @@ class ACL {
    * Gets the permission record for a given node id
    * Any node id is acceptable
    */
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async getNodePerm(nodeId: NodeId): Promise<Permission | undefined> {
     return await this._transaction(async () => {
       const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
@@ -254,7 +262,7 @@ class ACL {
    * The node ids in the record each represent a unique gestalt
    * If there are no permissions, then an empty record is returned
    */
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async getVaultPerm(
     vaultId: VaultId,
   ): Promise<Record<NodeId, Permission>> {
@@ -305,7 +313,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async setNodeAction(
     nodeId: NodeId,
     action: GestaltAction,
@@ -356,7 +364,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async unsetNodeAction(
     nodeId: NodeId,
     action: GestaltAction,
@@ -375,7 +383,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async setVaultAction(
     vaultId: VaultId,
     nodeId: NodeId,
@@ -427,7 +435,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async unsetVaultAction(
     vaultId: VaultId,
     nodeId: NodeId,
@@ -463,7 +471,7 @@ class ACL {
    * This is intended for completely new gestalts
    * Or for gestalt splitting.
    */
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async setNodesPerm(
     nodeIds: Array<NodeId>,
     perm: Permission,
@@ -474,7 +482,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async setNodesPermOps(
     nodeIds: Array<NodeId>,
     perm: Permission,
@@ -538,7 +546,7 @@ class ACL {
     return ops;
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async setNodePerm(nodeId: NodeId, perm: Permission): Promise<void> {
     await this._transaction(async () => {
       const ops = await this.setNodePermOps(nodeId, perm);
@@ -546,7 +554,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async setNodePermOps(
     nodeId: NodeId,
     perm: Permission,
@@ -591,7 +599,7 @@ class ACL {
     return ops;
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async unsetNodePerm(nodeId: NodeId): Promise<void> {
     await this._transaction(async () => {
       const ops = await this.unsetNodePermOps(nodeId);
@@ -599,7 +607,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async unsetNodePermOps(nodeId: NodeId): Promise<Array<DBOp>> {
     const permId = await this.db.get(this.aclNodesDbDomain, nodeId, true);
     if (permId == null) {
@@ -635,7 +643,7 @@ class ACL {
     return ops;
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async unsetVaultPerms(vaultId: VaultId): Promise<void> {
     await this._transaction(async () => {
       const nodeIds = await this.db.get<Record<NodeId, null>>(
@@ -678,7 +686,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async joinNodePerm(
     nodeId: NodeId,
     nodeIdsJoin: Array<NodeId>,
@@ -690,7 +698,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async joinNodePermOps(
     nodeId: NodeId,
     nodeIdsJoin: Array<NodeId>,
@@ -757,7 +765,7 @@ class ACL {
     return ops;
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   public async joinVaultPerms(
     vaultId: VaultId,
     vaultIdsJoin: Array<VaultId>,
@@ -768,7 +776,7 @@ class ACL {
     });
   }
 
-  @ready(new aclErrors.ErrorACLDestroyed())
+  @ready(new aclErrors.ErrorACLNotRunning())
   private async joinVaultPermsOps(
     vaultId: VaultId,
     vaultIdsJoin: Array<VaultId>,

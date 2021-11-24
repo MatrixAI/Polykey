@@ -1,12 +1,13 @@
-import * as testUtils from './utils';
+import type { VaultName } from '@/vaults/types';
+import type { SessionToken } from '@/sessions/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import lock from 'fd-lock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
-import * as utils from '@/utils';
-import { SessionToken } from '@/sessions/types';
+import { sleep } from '@/utils';
+import * as testUtils from './utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -22,15 +23,8 @@ import { SessionToken } from '@/sessions/types';
  * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
  */
 
-// Promises to keep tests and checks in the right order due to the use of
-// consurrent tests
-const finishedSerialTests = utils.promise();
-const finishedParallelSetup = utils.promise();
-const finishedParallelTest1 = utils.promise();
-const finishedParallelTest2 = utils.promise();
-
 describe('Session Token Refreshing', () => {
-  const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
+  const logger = new Logger('pkStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
@@ -41,35 +35,26 @@ describe('Session Token Refreshing', () => {
 
   let tokenBuffer: Buffer;
   let token: SessionToken;
+  let command: string[];
+  const vaultName = 'TestVault' as VaultName;
 
   beforeAll(async () => {
-    //This handles the expensive setting up of the polykey agent.
+    // This handles the expensive setting up of the polykey agent.
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'keynode');
+    command = ['vaults', 'list', '-np', nodePath];
     passwordFile = path.join(dataDir, 'passwordFile');
     sessionFile = path.join(nodePath, 'client', 'token');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = await PolykeyAgent.createPolykey({
+    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
       nodePath: nodePath,
       logger: logger,
-      cores: 1,
-      workerManager: null,
     });
-    await polykeyAgent.start({});
-
-    // Authorize session
-    await testUtils.pkWithStdio([
-      'agent',
-      'unlock',
-      '-np',
-      nodePath,
-      '--password-file',
-      passwordFile,
-    ]);
-  }, global.polykeyStartupTimeout);
+    await polykeyAgent.vaultManager.createVault(vaultName);
+  });
 
   afterAll(async () => {
     await polykeyAgent.stop();
@@ -77,156 +62,137 @@ describe('Session Token Refreshing', () => {
     await fs.promises.rmdir(dataDir, { recursive: true });
   });
 
-  // Currently automatic retry upon session unlocking is not yet implemented
-  // so this test won't work
-  test.todo('Process should store session token in session file');
-
-  test('Process should refresh the session token', async () => {
-    tokenBuffer = await fs.promises.readFile(sessionFile);
-    token = tokenBuffer.toString() as SessionToken;
-    const prevToken = token;
-
-    const message = 'HelloWorld!';
-    const result = await testUtils.pkWithStdio([
-      'echoes',
-      'echo',
-      message,
-      '-np',
-      nodePath,
-    ]);
-    expect(result.code).toBe(0);
-    expect(result.stdout).toContain(message);
+  test('Process should store session token in session file', async () => {
+    // Agent has not been unlocked yet
+    const result = await testUtils.pkStdio(
+      command,
+      { PK_PASSWORD: 'password' },
+      dataDir,
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(vaultName);
 
     const buff = await fs.promises.readFile(sessionFile);
     const newToken = buff.toString() as SessionToken;
     expect(
-      async () => await polykeyAgent.sessions.verifyToken(newToken),
+      async () => await polykeyAgent.sessionManager.verifyToken(newToken),
     ).not.toThrow();
-
-    // Make sure the first and second tokens are not the same
-    expect(newToken).not.toEqual(prevToken);
   });
 
-  test('Serial processes should refresh the session token', async () => {
-    const message1 = 'First message';
-    const result1 = await testUtils.pkWithStdio([
-      'echoes',
-      'echo',
-      message1,
-      '-np',
-      nodePath,
-    ]);
-    expect(result1.code).toBe(0);
-    expect(result1.stdout).toContain(message1);
+  describe('After session has been unlocked', () => {
+    beforeAll(async () => {
+      // Authorize session
+      await testUtils.pkStdio(
+        ['agent', 'unlock', '-np', nodePath, '--password-file', passwordFile],
+        {},
+        dataDir,
+      );
+    }, global.polykeyStartupTimeout);
 
-    tokenBuffer = await fs.promises.readFile(sessionFile);
-    const token1 = tokenBuffer.toString() as SessionToken;
-    expect(
-      async () => await polykeyAgent.sessions.verifyToken(token1),
-    ).not.toThrow();
-
-    const message2 = 'Second message';
-    const result2 = await testUtils.pkWithStdio([
-      'echoes',
-      'echo',
-      message2,
-      '-np',
-      nodePath,
-    ]);
-    expect(result2.code).toBe(0);
-    expect(result2.stdout).toContain(message2);
-
-    tokenBuffer = await fs.promises.readFile(sessionFile);
-    const token2 = tokenBuffer.toString() as SessionToken;
-    expect(
-      async () => await polykeyAgent.sessions.verifyToken(token2),
-    ).not.toThrow();
-
-    // Make sure the first and second tokens are not the same
-    expect(token1).not.toEqual(token2);
-  });
-
-  test(
-    'Failing processes should unlock the session file',
-    async () => {
-      const message = 'ThrowAnError';
-      const result = await testUtils.pkWithStdio([
-        'echoes',
-        'echo',
-        message,
-        '-np',
-        nodePath,
-      ]);
-      expect(result.code).not.toBe(0);
-
+    test('Process should refresh the session token', async () => {
       tokenBuffer = await fs.promises.readFile(sessionFile);
       token = tokenBuffer.toString() as SessionToken;
+      const prevToken = token;
+
+      // At least 1 second of delay
+      // Expiry time resolution is in seconds
+      await sleep(1100);
+      const result = await testUtils.pkStdio(command, {}, dataDir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain(vaultName);
+
+      const buff = await fs.promises.readFile(sessionFile);
+      const newToken = buff.toString() as SessionToken;
       expect(
-        async () => await polykeyAgent.sessions.verifyToken(token),
+        async () => await polykeyAgent.sessionManager.verifyToken(newToken),
       ).not.toThrow();
-
-      // Try to lock the session file to ensure it's unlocked
-      const fd = fs.openSync(sessionFile, 'r');
-      expect(lock(fd)).toBeTruthy();
-      lock.unlock(fd);
-      fs.closeSync(fd);
-
-      // Allow parallel tests to start now (so they don't interfere with
-      // serial tests)
-      finishedSerialTests.resolveP(null);
-    },
-    global.failedConnectionTimeout,
-  );
-
-  describe.skip('Parallel processes should not refresh the session token', () => {
-    let prevTokenParallel: SessionToken;
-    let tokenP1 = 'token1' as SessionToken;
-    let tokenP2 = 'token2' as SessionToken;
-
-    beforeAll(async () => {
-      await finishedSerialTests.p;
-      tokenBuffer = await fs.promises.readFile(sessionFile);
-      prevTokenParallel = tokenBuffer.toString() as SessionToken;
-
-      // Allow parallel tests to start now that setup is complete
-      finishedParallelSetup.resolveP(null);
+      // Make sure the first and second tokens are not the same
+      expect(newToken).not.toEqual(prevToken);
     });
 
-    test.concurrent('Do process 1', async () => {
-      await finishedParallelSetup.p;
-      const messageP1 = 'Process 1';
-      await testUtils.pk(['echoes', 'echo', messageP1, '-np', nodePath]);
+    test('Serial processes should refresh the session token', async () => {
+      let result = await testUtils.pkStdio(command, {}, dataDir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain(vaultName);
 
       tokenBuffer = await fs.promises.readFile(sessionFile);
-      tokenP1 = tokenBuffer.toString() as SessionToken;
-
+      const token1 = tokenBuffer.toString() as SessionToken;
       expect(
-        async () => await polykeyAgent.sessions.verifyToken(tokenP1),
+        async () => await polykeyAgent.sessionManager.verifyToken(token1),
       ).not.toThrow();
 
-      finishedParallelTest1.resolveP(null);
-    });
-
-    test.concurrent('Do process 2', async () => {
-      await finishedParallelSetup.p;
-      const messageP2 = 'Process 2';
-      await testUtils.pk(['echoes', 'echo', messageP2, '-np', nodePath]);
+      // At least 1 second of delay
+      // Expiry time resolution is in seconds
+      await sleep(1100);
+      result = await testUtils.pkStdio(command, {}, dataDir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain(vaultName);
 
       tokenBuffer = await fs.promises.readFile(sessionFile);
-      tokenP2 = tokenBuffer.toString() as SessionToken;
-
+      const token2 = tokenBuffer.toString() as SessionToken;
       expect(
-        async () => await polykeyAgent.sessions.verifyToken(tokenP2),
+        async () => await polykeyAgent.sessionManager.verifyToken(token2),
       ).not.toThrow();
 
-      finishedParallelTest2.resolveP(null);
+      // Make sure the first and second tokens are not the same
+      expect(token1).not.toEqual(token2);
     });
 
-    test('Check parallel token refreshing', async () => {
-      await finishedParallelTest1.p;
-      await finishedParallelTest2.p;
+    test(
+      'Failing processes should unlock the session file',
+      async () => {
+        const result = await testUtils.pkStdio(
+          ['vaults', 'delete', 'NotAVault', '-np', nodePath],
+          {},
+          dataDir,
+        );
+        expect(result.exitCode).not.toBe(0);
 
-      // Check that the concurrent tests have both run
+        tokenBuffer = await fs.promises.readFile(sessionFile);
+        token = tokenBuffer.toString() as SessionToken;
+        expect(
+          async () => await polykeyAgent.sessionManager.verifyToken(token),
+        ).not.toThrow();
+
+        // Try to lock the session file to ensure it's unlocked
+        const fd = fs.openSync(sessionFile, 'r');
+        expect(lock(fd)).toBeTruthy();
+        lock.unlock(fd);
+        fs.closeSync(fd);
+      },
+      global.failedConnectionTimeout,
+    );
+
+    test('Parallel processes should not refresh the session token', async () => {
+      let tokenP1 = 'token1' as SessionToken;
+      let tokenP2 = 'token2' as SessionToken;
+
+      tokenBuffer = await fs.promises.readFile(sessionFile);
+      const prevTokenParallel = tokenBuffer.toString() as SessionToken;
+
+      async function runListCommand(): Promise<SessionToken> {
+        // At least 1 second of delay
+        // Expiry time resolution is in seconds
+        await sleep(1000);
+        await testUtils.pkStdio(command, {}, dataDir);
+        const buffer = await fs.promises.readFile(sessionFile);
+        return buffer.toString() as SessionToken;
+      }
+
+      [tokenP1, tokenP2] = await Promise.all([
+        runListCommand(),
+        runListCommand(),
+      ]);
+
+      // Verify both tokens
+      expect(
+        async () => await polykeyAgent.sessionManager.verifyToken(tokenP1),
+      ).not.toThrow();
+      expect(
+        async () => await polykeyAgent.sessionManager.verifyToken(tokenP2),
+      ).not.toThrow();
+
+      // Check that both commands were completed
       expect(tokenP1).not.toEqual('token1');
       expect(tokenP2).not.toEqual('token2');
 

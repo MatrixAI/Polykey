@@ -1,13 +1,12 @@
 import type { NodeManager } from '../nodes';
 import type { NodeAddress } from '../nodes/types';
 import type { NotificationData } from '../notifications/types';
-import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
+import type * as utils from '../client/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as utils from '../client/utils';
 import * as nodesUtils from '../nodes/utils';
 import * as grpcUtils from '../grpc/utils';
 import * as nodesErrors from '../nodes/errors';
@@ -15,11 +14,11 @@ import { makeNodeId } from '../nodes/utils';
 
 const createNodesRPC = ({
   nodeManager,
-  sessionManager,
+  authenticate,
   notificationsManager,
 }: {
   nodeManager: NodeManager;
-  sessionManager: SessionManager;
+  authenticate: utils.Authenticate;
   notificationsManager: NotificationsManager;
 }) => {
   return {
@@ -34,11 +33,8 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new utilsPB.EmptyMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
         // Validate the passed node ID and host
         const validNodeId = nodesUtils.isNodeId(call.request.getNodeId());
         if (!validNodeId) {
@@ -68,11 +64,9 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new utilsPB.StatusMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const status = await nodeManager.pingNode(
           makeNodeId(call.request.getNodeId()),
         );
@@ -93,11 +87,9 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new utilsPB.StatusMessage();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const remoteNodeId = makeNodeId(call.request.getNodeId());
         const gestaltInvite = await notificationsManager.findGestaltInvite(
           remoteNodeId,
@@ -132,11 +124,9 @@ const createNodesRPC = ({
     ): Promise<void> => {
       const response = new nodesPB.NodeAddress();
       try {
-        await sessionManager.verifyToken(utils.getToken(call.metadata));
-        const responseMeta = utils.createMetaTokenResponse(
-          await sessionManager.generateToken(),
-        );
-        call.sendMetadata(responseMeta);
+        const metadata = await authenticate(call.metadata);
+        call.sendMetadata(metadata);
+
         const nodeId = makeNodeId(call.request.getNodeId());
         const address = await nodeManager.findNode(nodeId);
         response

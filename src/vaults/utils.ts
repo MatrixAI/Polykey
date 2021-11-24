@@ -10,21 +10,16 @@ import type {
 import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 
-import fs from 'fs';
+import type { GRPCClientAgent } from '../agent';
 import path from 'path';
 import { IdRandom } from '@matrixai/id';
-
-import { GitRequest } from '../git';
 import * as grpc from '@grpc/grpc-js';
-
+import * as vaultsErrors from './errors';
+import { GitRequest } from '../git';
 import { promisify } from '../utils';
-
-import { GRPCClientAgent } from '../agent';
 import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-
 import * as keysUtils from '../keys/utils';
-import { errors as vaultErrors } from './';
 import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
 
 async function generateVaultKey(bits: number = 256): Promise<VaultKey> {
@@ -39,7 +34,7 @@ function isVaultId(arg: any) {
  * This will return arg as a valid VaultId or throw an error if it can't be converted.
  * This will take a multibase string of the ID or the raw Buffer of the ID.
  * @param arg - The variable we wish to convert
- * @throws vaultErrors.ErrorInvalidVaultId  if the arg can't be converted into a VaultId
+ * @throws vaultsErrors.ErrorInvalidVaultId  if the arg can't be converted into a VaultId
  * @returns VaultId
  */
 function makeVaultId(arg: any): VaultId {
@@ -62,7 +57,7 @@ function generateVaultId(): VaultId {
 async function fileExists(fs: FileSystem, path: string): Promise<boolean> {
   try {
     const fh = await fs.promises.open(path, 'r');
-    fh.close();
+    await fh.close();
   } catch (err) {
     if (err.code === 'ENOENT') {
       return false;
@@ -71,12 +66,12 @@ async function fileExists(fs: FileSystem, path: string): Promise<boolean> {
   return true;
 }
 
-async function* readdirRecursively(dir: string) {
+async function* readdirRecursively(fs, dir: string) {
   const dirents = await fs.promises.readdir(dir, { withFileTypes: true });
   for (const dirent of dirents) {
     const res = path.resolve(dir, dirent.name);
     if (dirent.isDirectory()) {
-      yield* readdirRecursively(res);
+      yield* readdirRecursively(fs, res);
     } else if (dirent.isFile()) {
       yield res;
     }
@@ -147,7 +142,7 @@ function searchVaultName(vaultList: VaultList, vaultId: VaultId): VaultName {
     }
   }
   if (vaultName == null) {
-    throw new vaultErrors.ErrorRemoteVaultUndefined(
+    throw new vaultsErrors.ErrorRemoteVaultUndefined(
       `${vaultId} does not exist on connected node`,
     );
   }

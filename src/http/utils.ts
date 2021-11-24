@@ -1,7 +1,7 @@
+import type tls from 'tls';
+import type https from 'https';
 import net from 'net';
-import tls from 'tls';
 import http from 'http';
-import https from 'https';
 import * as utils from '../utils';
 
 function terminatingHttpServer(

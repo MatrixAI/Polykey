@@ -1,8 +1,8 @@
 import type { NodeData, NodeId } from './types';
 
 import { Validator } from 'ip-num';
-import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
 import { ErrorInvalidNodeId } from './errors';
+import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
 
 /**
  * Compute the distance between two nodes.

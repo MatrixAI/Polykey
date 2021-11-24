@@ -1,20 +1,20 @@
 import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
-import * as grpc from '@grpc/grpc-js';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
+import type { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
+import type { KeyManager } from '@/keys';
+import type { VaultManager } from '@/vaults';
+import type { NodeManager } from '@/nodes';
+import type { Sigchain } from '@/sigchain';
+import type { NotificationsManager } from '@/notifications';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
+import { promisify } from '@/utils';
 import {
   createAgentService,
   GRPCClientAgent,
   AgentServiceService,
 } from '@/agent';
-import { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
-import { KeyManager } from '@/keys';
-import { VaultManager } from '@/vaults';
-import { NodeManager } from '@/nodes';
-import { promisify } from '@/utils';
-import { Sigchain } from '@/sigchain';
-import { NotificationsManager } from '@/notifications';
 
 async function openTestAgentServer({
   keyManager,
@@ -62,17 +62,13 @@ async function openTestAgentClient(port: number): Promise<GRPCClientAgent> {
     host: '127.0.0.1' as Host,
     port: port as Port,
     logger: logger,
-  });
-
-  await agentClient.start({
     timeout: 30000,
   });
-
   return agentClient;
 }
 
 async function closeTestAgentClient(client: GRPCClientAgent) {
-  await client.stop();
+  await client.destroy();
 }
 
 export {

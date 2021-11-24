@@ -1,14 +1,13 @@
-import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
-
+import type { NodeId, NodeAddress } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
+import { makeNodeId } from '@/nodes/utils';
 import * as testUtils from './utils';
 import * as testKeynodeUtils from '../utils';
-import { makeNodeId } from '@/nodes/utils';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -25,7 +24,7 @@ import { makeNodeId } from '@/nodes/utils';
  */
 describe('CLI Nodes', () => {
   const password = 'password';
-  const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
+  const logger = new Logger('pkStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
@@ -56,7 +55,7 @@ describe('CLI Nodes', () => {
 
   // Helper functions
   function genCommands(options: Array<string>) {
-    return ['node', ...options, '-np', nodePath];
+    return ['nodes', ...options, '-np', nodePath];
   }
 
   beforeAll(async () => {
@@ -66,44 +65,38 @@ describe('CLI Nodes', () => {
     nodePath = path.join(dataDir, 'keynode');
     passwordFile = path.join(dataDir, 'passwordFile');
     await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = await PolykeyAgent.createPolykey({
+    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: nodePath,
       logger: logger,
-      cores: 1,
-      workerManager: null,
     });
-    await polykeyAgent.start({});
-    keynodeId = polykeyAgent.nodes.getNodeId();
+    keynodeId = polykeyAgent.nodeManager.getNodeId();
 
     // Setting up a remote keynode
     remoteOnline = await testKeynodeUtils.setupRemoteKeynode({
       logger,
     });
-    remoteOnlineNodeId = remoteOnline.nodes.getNodeId();
-    remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
-    remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
+    remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
+    remoteOnlineHost = remoteOnline.revProxy.ingressHost;
+    remoteOnlinePort = remoteOnline.revProxy.ingressPort;
     await testKeynodeUtils.addRemoteDetails(polykeyAgent, remoteOnline);
 
     // Setting up an offline remote keynode
     remoteOffline = await testKeynodeUtils.setupRemoteKeynode({
       logger,
     });
-    remoteOfflineNodeId = remoteOffline.nodes.getNodeId();
-    remoteOfflineHost = remoteOffline.revProxy.getIngressHost();
-    remoteOfflinePort = remoteOffline.revProxy.getIngressPort();
+    remoteOfflineNodeId = remoteOffline.nodeManager.getNodeId();
+    remoteOfflineHost = remoteOffline.revProxy.ingressHost;
+    remoteOfflinePort = remoteOffline.revProxy.ingressPort;
     await testKeynodeUtils.addRemoteDetails(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
 
     // Authorize session
-    await testUtils.pk([
-      'agent',
-      'unlock',
-      '-np',
+    await testUtils.pkStdio(
+      ['agent', 'unlock', '-np', nodePath, '--password-file', passwordFile],
+      {},
       nodePath,
-      '--password-file',
-      passwordFile,
-    ]);
+    );
   }, global.polykeyStartupTimeout * 3);
   afterAll(async () => {
     await polykeyAgent.stop();
@@ -117,9 +110,9 @@ describe('CLI Nodes', () => {
   });
   describe('commandClaimNode', () => {
     beforeAll(async () => {
-      await remoteOnline.nodes.setNode(keynodeId, {
-        ip: polykeyAgent.revProxy.getIngressHost(),
-        port: polykeyAgent.revProxy.getIngressPort(),
+      await remoteOnline.nodeManager.setNode(keynodeId, {
+        ip: polykeyAgent.revProxy.ingressHost,
+        port: polykeyAgent.revProxy.ingressPort,
       } as NodeAddress);
       await polykeyAgent.acl.setNodePerm(remoteOnlineNodeId, {
         gestalt: {
@@ -135,8 +128,8 @@ describe('CLI Nodes', () => {
       });
     });
     afterEach(async () => {
-      await polykeyAgent.notifications.clearNotifications();
-      await remoteOnline.notifications.clearNotifications();
+      await polykeyAgent.notificationsManager.clearNotifications();
+      await remoteOnline.notificationsManager.clearNotifications();
       await polykeyAgent.sigchain.clearDB();
       await remoteOnline.sigchain.clearDB();
     });
@@ -149,17 +142,17 @@ describe('CLI Nodes', () => {
         gestalt: {},
         vaults: {},
       });
-      await remoteOnline.nodes.clearDB();
+      await remoteOnline.nodeManager.clearDB();
     });
     test('Should send a gestalt invite', async () => {
       const commands = genCommands(['claim', remoteOnlineNodeId]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0); //Succeeds.
+      const result = await testUtils.pkStdio(commands, {}, dataDir);
+      expect(result.exitCode).toBe(0); // Succeeds.
       expect(result.stdout).toContain('Gestalt Invite');
       expect(result.stdout).toContain(remoteOnlineNodeId);
     });
     test('Should send a gestalt invite (force invite)', async () => {
-      await remoteOnline.notifications.sendNotification(keynodeId, {
+      await remoteOnline.notificationsManager.sendNotification(keynodeId, {
         type: 'GestaltInvite',
       });
       const commands = genCommands([
@@ -167,18 +160,18 @@ describe('CLI Nodes', () => {
         remoteOnlineNodeId,
         '--force-invite',
       ]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0); //Succeeds.
+      const result = await testUtils.pkStdio(commands, {}, dataDir);
+      expect(result.exitCode).toBe(0); // Succeeds.
       expect(result.stdout).toContain('Gestalt Invite');
       expect(result.stdout).toContain(remoteOnlineNodeId);
     });
     test('Should claim remote node', async () => {
-      await remoteOnline.notifications.sendNotification(keynodeId, {
+      await remoteOnline.notificationsManager.sendNotification(keynodeId, {
         type: 'GestaltInvite',
       });
       const commands = genCommands(['claim', remoteOnlineNodeId]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0); //Succeeds.
+      const result = await testUtils.pkStdio(commands, {}, dataDir);
+      expect(result.exitCode).toBe(0); // Succeeds.
       expect(result.stdout).toContain('cryptolink claim');
       expect(result.stdout).toContain(remoteOnlineNodeId);
     });
@@ -188,19 +181,19 @@ describe('CLI Nodes', () => {
       'Should return failure when pinging an offline node',
       async () => {
         const commands = genCommands(['ping', remoteOfflineNodeId]);
-        const result = await testUtils.pkWithStdio(commands);
-        expect(result.code).toBe(1); // Should fail with no response. for automation purposes.
+        const result = await testUtils.pkStdio(commands, {}, dataDir);
+        expect(result.exitCode).toBe(1); // Should fail with no response. for automation purposes.
         expect(result.stdout).toContain('No response received');
 
-        //Checking for json output
+        // Checking for json output
         const commands2 = genCommands([
           'ping',
           remoteOfflineNodeId,
           '--format',
           'json',
         ]);
-        const result2 = await testUtils.pkWithStdio(commands2);
-        expect(result2.code).toBe(1); // Should fail with no response. for automation purposes.
+        const result2 = await testUtils.pkStdio(commands2, {}, dataDir);
+        expect(result2.exitCode).toBe(1); // Should fail with no response. for automation purposes.
         expect(result2.stdout).toContain('No response received');
       },
       global.failedConnectionTimeout * 2,
@@ -210,14 +203,14 @@ describe('CLI Nodes', () => {
       async () => {
         const fakeNodeId = nodeId1;
         const commands = genCommands(['ping', fakeNodeId]);
-        const result = await testUtils.pkWithStdio(commands);
-        expect(result.code).not.toBe(0); // Should fail if node doesn't exist.
+        const result = await testUtils.pkStdio(commands, {}, dataDir);
+        expect(result.exitCode).not.toBe(0); // Should fail if node doesn't exist.
         expect(result.stdout).toContain('Failed to resolve node ID');
 
-        //Json format.
+        // Json format.
         const commands2 = genCommands(['ping', fakeNodeId, '--format', 'json']);
-        const result2 = await testUtils.pkWithStdio(commands2);
-        expect(result2.code).not.toBe(0); // Should fail if node doesn't exist.
+        const result2 = await testUtils.pkStdio(commands2, {}, dataDir);
+        expect(result2.exitCode).not.toBe(0); // Should fail if node doesn't exist.
         expect(result2.stdout).toContain('success');
         expect(result2.stdout).toContain('false');
         expect(result2.stdout).toContain('message');
@@ -227,19 +220,19 @@ describe('CLI Nodes', () => {
     );
     test('Should return success when pinging a live node', async () => {
       const commands = genCommands(['ping', remoteOnlineNodeId]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0);
+      const result = await testUtils.pkStdio(commands, {}, dataDir);
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Node is Active.');
 
-      //Checking for Json output.
+      // Checking for Json output.
       const commands2 = genCommands([
         'ping',
         remoteOnlineNodeId,
         '--format',
         'json',
       ]);
-      const result2 = await testUtils.pkWithStdio(commands2);
-      expect(result2.code).toBe(0);
+      const result2 = await testUtils.pkStdio(commands2, {}, dataDir);
+      expect(result2.exitCode).toBe(0);
       expect(result2.stdout).toContain('success');
       expect(result2.stdout).toContain('true');
       expect(result2.stdout).toContain('message');
@@ -249,8 +242,8 @@ describe('CLI Nodes', () => {
   describe('commandFindNode', () => {
     test('Should find an online node', async () => {
       const commands = genCommands(['find', remoteOnlineNodeId]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0);
+      const result = await testUtils.pkStdio(commands, {}, dataDir);
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Found node at');
       expect(result.stdout).toContain(remoteOnlineHost);
       expect(result.stdout).toContain(remoteOnlinePort);
@@ -262,8 +255,8 @@ describe('CLI Nodes', () => {
         '--format',
         'json',
       ]);
-      const result2 = await testUtils.pkWithStdio(commands2);
-      expect(result2.code).toBe(0);
+      const result2 = await testUtils.pkStdio(commands2, {}, dataDir);
+      expect(result2.exitCode).toBe(0);
       expect(result2.stdout).toContain('success');
       expect(result2.stdout).toContain('true');
       expect(result2.stdout).toContain('message');
@@ -277,8 +270,8 @@ describe('CLI Nodes', () => {
     });
     test('Should find an offline node', async () => {
       const commands = genCommands(['find', remoteOfflineNodeId]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0);
+      const result = await testUtils.pkStdio(commands, {}, dataDir);
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Found node at');
       expect(result.stdout).toContain(remoteOfflineHost);
       expect(result.stdout).toContain(remoteOfflinePort);
@@ -290,8 +283,8 @@ describe('CLI Nodes', () => {
         '--format',
         'json',
       ]);
-      const result2 = await testUtils.pkWithStdio(commands2);
-      expect(result2.code).toBe(0);
+      const result2 = await testUtils.pkStdio(commands2, {}, dataDir);
+      expect(result2.exitCode).toBe(0);
       expect(result2.stdout).toContain('success');
       expect(result2.stdout).toContain('true');
       expect(result2.stdout).toContain('message');
@@ -308,19 +301,19 @@ describe('CLI Nodes', () => {
       async () => {
         const unknownNodeId = nodeId2;
         const commands = genCommands(['find', unknownNodeId]);
-        const result = await testUtils.pkWithStdio(commands);
-        expect(result.code).toBe(1);
+        const result = await testUtils.pkStdio(commands, {}, dataDir);
+        expect(result.exitCode).toBe(1);
         expect(result.stdout).toContain(`Failed to find node ${unknownNodeId}`);
 
-        //Checking json format.
+        // Checking json format.
         const commands2 = genCommands([
           'find',
           unknownNodeId,
           '--format',
           'json',
         ]);
-        const result2 = await testUtils.pkWithStdio(commands2);
-        expect(result2.code).toBe(1);
+        const result2 = await testUtils.pkStdio(commands2, {}, dataDir);
+        expect(result2.exitCode).toBe(1);
         expect(result2.stdout).toContain(`message`);
         expect(result2.stdout).toContain(
           `Failed to find node ${unknownNodeId}`,
@@ -343,7 +336,7 @@ describe('CLI Nodes', () => {
     const invalidHost = 'INVALIDHOST';
     const port = 55555;
     afterEach(async () => {
-      await polykeyAgent.nodes.clearDB();
+      await polykeyAgent.nodeManager.clearDB();
     });
     afterAll(async () => {
       // Restore removed nodes
@@ -357,12 +350,12 @@ describe('CLI Nodes', () => {
         validHost,
         port.toString(),
       ]);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0);
-      expect(result.stdout).toContain('Added node.');
+      const result = await testUtils.pkStdio(commands, {}, dataDir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain('Added node');
 
-      //Checking if node was added.
-      const res = await polykeyAgent.nodes.getNode(validNodeId);
+      // Checking if node was added.
+      const res = await polykeyAgent.nodeManager.getNode(validNodeId);
       expect(res).toBeTruthy();
       expect(res!.ip).toEqual(validHost);
       expect(res!.port).toEqual(port);
@@ -376,9 +369,9 @@ describe('CLI Nodes', () => {
           validHost,
           port.toString(),
         ]);
-        const result = await testUtils.pkWithStdio(commands);
-        expect(result.code).not.toBe(0);
-        expect(result.stdout).toContain('Invalid node ID.');
+        const result = await testUtils.pkStdio(commands, {}, dataDir);
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stderr).toContain('Invalid node ID.');
       },
       global.failedConnectionTimeout,
     );
@@ -391,12 +384,12 @@ describe('CLI Nodes', () => {
           invalidHost,
           port.toString(),
         ]);
-        const result = await testUtils.pkWithStdio(commands);
-        expect(result.code).not.toBe(0);
-        expect(result.stdout).toContain('Invalid IP address.');
+        const result = await testUtils.pkStdio(commands, {}, dataDir);
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stderr).toContain('Invalid IP address.');
 
-        //Checking if node was added.
-        const res = await polykeyAgent.nodes.getNode(validNodeId);
+        // Checking if node was added.
+        const res = await polykeyAgent.nodeManager.getNode(validNodeId);
         expect(res).toBeUndefined();
       },
       global.failedConnectionTimeout,

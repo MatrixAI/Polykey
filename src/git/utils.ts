@@ -2,7 +2,6 @@ import type {
   Refs,
   SymRefs,
   Ack,
-  BufferEncoding,
   Identity,
   Pack,
   PackIndex,
@@ -16,17 +15,14 @@ import type {
   TreeEntry,
   TreeObject,
 } from 'isomorphic-git';
-// Import type { EncryptedFS } from '../types';
 
+import type { EncryptedFS } from 'encryptedfs';
 import path from 'path';
 import pako from 'pako';
 import Hash from 'sha.js/sha1';
 import { PassThrough } from 'readable-stream';
 import createHash from 'sha.js';
-
-// Import * as vaultUtils from '../vaults/utils';
-import { errors as gitErrors } from './';
-import type { EncryptedFS } from 'encryptedfs';
+import * as gitErrors from './errors';
 
 const refpaths = (ref: string) => [
   `${ref}`,
@@ -199,21 +195,21 @@ async function listRefs(
 }
 
 async function* readdirRecursively(
-  fs: EncryptedFS,
+  efs: EncryptedFS,
   dir: string,
   dirs?: boolean,
 ) {
-  const dirents = await fs.readdir(dir);
+  const dirents = await efs.readdir(dir);
   let secretPath: string;
   for (const dirent of dirents) {
     const res = dirent.toString(); // Makes string | buffer a string.
     secretPath = path.join(dir, res);
-    if ((await fs.stat(secretPath)).isDirectory() && dirent !== '.git') {
+    if ((await efs.stat(secretPath)).isDirectory() && dirent !== '.git') {
       if (dirs === true) {
         yield secretPath;
       }
-      yield* readdirRecursively(fs, secretPath, dirs);
-    } else if ((await fs.stat(secretPath)).isFile()) {
+      yield* readdirRecursively(efs, secretPath, dirs);
+    } else if ((await efs.stat(secretPath)).isFile()) {
       yield secretPath;
     }
   }
@@ -258,7 +254,7 @@ async function resolve(
         throw new gitErrors.ErrorGitUndefinedRefs(`Ref ${ref} cannot be found`);
     }
     if (sha != null) {
-      return resolve(fs, gitdir, sha.trim(), depth); //FIXME: sha is string or config?
+      return resolve(fs, gitdir, sha.trim(), depth); // FIXME: sha is string or config?
     }
   }
   throw new gitErrors.ErrorGitUndefinedRefs(`ref ${ref} corrupted`);
@@ -339,7 +335,7 @@ async function packObjects({
   }
   const objects = await listObjects({ fs, gitdir, oids: Array.from(oids) });
   const packstream = new PassThrough();
-  pack({ fs, gitdir, oids: [...objects], outputStream: packstream });
+  await pack({ fs, gitdir, oids: [...objects], outputStream: packstream });
   return { packstream, shallows, unshallows, acks };
 }
 

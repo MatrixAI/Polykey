@@ -2,6 +2,10 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorKeys extends ErrorPolykey {}
 
+class ErrorKeyManagerRunning extends ErrorKeys {}
+
+class ErrorKeyManagerNotRunning extends ErrorKeys {}
+
 class ErrorKeyManagerDestroyed extends ErrorKeys {}
 
 class ErrorRootKeysRead extends ErrorKeys {}
@@ -28,6 +32,8 @@ class ErrorDBKeyParse extends ErrorKeys {}
 
 export {
   ErrorKeys,
+  ErrorKeyManagerRunning,
+  ErrorKeyManagerNotRunning,
   ErrorKeyManagerDestroyed,
   ErrorRootKeysRead,
   ErrorRootKeysParse,

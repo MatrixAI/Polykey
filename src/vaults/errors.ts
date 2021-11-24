@@ -4,6 +4,10 @@ class ErrorVaults extends ErrorPolykey {}
 
 class ErrorSecrets extends ErrorPolykey {}
 
+class ErrorVaultManagerRunning extends ErrorVaults {}
+
+class ErrorVaultManagerNotRunning extends ErrorVaults {}
+
 class ErrorVaultManagerDestroyed extends ErrorVaults {}
 
 class ErrorVaultUndefined extends ErrorVaults {
@@ -48,8 +52,12 @@ class ErrorReadingSecret extends ErrorSecrets {}
 
 class ErrorGitFile extends ErrorSecrets {}
 
+class ErrorVaultsInvalidVaultId extends ErrorVaults {}
+
 export {
   ErrorVaults,
+  ErrorVaultManagerRunning,
+  ErrorVaultManagerNotRunning,
   ErrorVaultManagerDestroyed,
   ErrorVaultUndefined,
   ErrorVaultDefined,
@@ -69,4 +77,5 @@ export {
   ErrorSecretDefined,
   ErrorReadingSecret,
   ErrorGitFile,
+  ErrorVaultsInvalidVaultId,
 };

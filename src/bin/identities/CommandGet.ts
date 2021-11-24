@@ -1,0 +1,101 @@
+import type { Metadata } from '@grpc/grpc-js';
+import type gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
+
+import CommandPolykey from '../CommandPolykey';
+import * as binOptions from '../options';
+import * as binUtils from '../utils';
+import * as parsers from '../parsers';
+
+class CommandGet extends CommandPolykey {
+  constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
+    super(...args);
+    this.name('get');
+    this.description(
+      'Gets a Gestalt with a Node or Identity ID from the Gestalt Graph',
+    );
+    this.argument(
+      '<gestaltId>',
+      'Node ID or `Provider Id:Identity Id`',
+      parsers.parseGestaltId,
+    );
+    this.addOption(binOptions.nodeId);
+    this.addOption(binOptions.clientHost);
+    this.addOption(binOptions.clientPort);
+    this.action(async (gestaltId, options) => {
+      const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const identitiesPB = await import(
+        '../../proto/js/polykey/v1/identities/identities_pb'
+      );
+      const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
+
+      const client = await PolykeyClient.createPolykeyClient({
+        logger: this.logger.getChild(PolykeyClient.name),
+        nodePath: options.nodePath,
+      });
+
+      const meta = await parsers.parseAuth({
+        passwordFile: options.passwordFile,
+        fs: this.fs,
+      });
+
+      try {
+        const grpcClient = client.grpcClient;
+        let res: gestaltsPB.Graph;
+
+        if (gestaltId.nodeId) {
+          // Getting from node.
+          const nodeMessage = new nodesPB.Node();
+          nodeMessage.setNodeId(gestaltId.nodeId);
+          res = await binUtils.retryAuth(
+            (auth?: Metadata) =>
+              grpcClient.gestaltsGestaltGetByNode(nodeMessage, auth),
+            meta,
+          );
+        } else {
+          // Getting from identity.
+          const providerMessage = new identitiesPB.Provider();
+          providerMessage.setProviderId(gestaltId.providerId);
+          providerMessage.setMessage(gestaltId.identityId);
+          res = await binUtils.retryAuth(
+            (auth?: Metadata) =>
+              grpcClient.gestaltsGestaltGetByIdentity(providerMessage, auth),
+            meta,
+          );
+        }
+        const gestalt = JSON.parse(res.getGestaltGraph());
+        let output: any = gestalt;
+
+        if (options.format !== 'json') {
+          // Creating a list.
+          output = [];
+          // Listing nodes.
+          for (const nodeKey of Object.keys(gestalt.nodes)) {
+            const node = gestalt.nodes[nodeKey];
+            output.push(`${node.id}`);
+          }
+          // Listing identities
+          for (const identityKey of Object.keys(gestalt.identities)) {
+            const identity = gestalt.identities[identityKey];
+            output.push(
+              parsers.formatIdentityString(
+                identity.providerId,
+                identity.identityId,
+              ),
+            );
+          }
+        }
+
+        process.stdout.write(
+          binUtils.outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: output,
+          }),
+        );
+      } finally {
+        await client.stop();
+      }
+    });
+  }
+}
+
+export default CommandGet;

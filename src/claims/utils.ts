@@ -9,15 +9,12 @@ import type { NodeId } from '../nodes/types';
 import type { PublicKeyPem, PrivateKeyPem } from '../keys/types';
 import type { POJO } from '../types';
 
-import { GeneralSign } from 'jose/jws/general/sign';
-import { generalVerify, GeneralJWSInput } from 'jose/jws/general/verify';
-import { generateKeyPair } from 'jose/util/generate_key_pair';
-import { decode } from 'jose/util/base64url';
+import type { GeneralJWSInput } from 'jose';
+import type { DefinedError } from 'ajv';
 import { createPublicKey, createPrivateKey } from 'crypto';
+import { GeneralSign, generalVerify, generateKeyPair, base64url } from 'jose';
 import { md } from 'node-forge';
-import { DefinedError } from 'ajv';
 import canonicalize from 'canonicalize';
-import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 
 import {
   claimIdentityValidate,
@@ -25,6 +22,7 @@ import {
   claimNodeDoublySignedValidate,
 } from './schema';
 import * as claimsErrors from './errors';
+import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
  * Helper function to generate a JWS containing the contents of the claim to be
@@ -171,7 +169,7 @@ function decodeClaim(claim: ClaimEncoded): Claim {
       throw new claimsErrors.ErrorClaimsUndefinedSignatureHeader();
     }
     const decodedHeader = JSON.parse(
-      textDecoder.decode(decode(data.protected)),
+      textDecoder.decode(base64url.decode(data.protected)),
     );
     signatures[decodedHeader.kid] = {
       signature: data.signature,
@@ -187,7 +185,9 @@ function decodeClaim(claim: ClaimEncoded): Claim {
   if (!claim.payload) {
     throw new claimsErrors.ErrorClaimsUndefinedClaimPayload();
   }
-  const payload = JSON.parse(textDecoder.decode(decode(claim.payload)));
+  const payload = JSON.parse(
+    textDecoder.decode(base64url.decode(claim.payload)),
+  );
 
   const decoded: Claim = {
     payload: {
@@ -225,7 +225,9 @@ function decodeClaim(claim: ClaimEncoded): Claim {
  */
 function decodeClaimHeader(header: string): { alg: string; kid: NodeId } {
   const textDecoder = new TextDecoder();
-  const decodedHeader = JSON.parse(textDecoder.decode(decode(header)));
+  const decodedHeader = JSON.parse(
+    textDecoder.decode(base64url.decode(header)),
+  );
   return { alg: decodedHeader.alg, kid: decodedHeader.kid as NodeId };
 }
 
@@ -271,7 +273,7 @@ async function encodeClaim(claim: Claim): Promise<ClaimEncoded> {
     }
     // Decode 'protected' header
     const decodedHeader = JSON.parse(
-      textDecoder.decode(decode(data.protected)),
+      textDecoder.decode(base64url.decode(data.protected)),
     );
     const nodeId = decodedHeader.kid as NodeId;
     // Get the correct signature from the original passed Claim

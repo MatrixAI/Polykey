@@ -1,90 +1,99 @@
-import type { TLSConfig } from '../network/types';
+import type { Interceptor } from '@grpc/grpc-js';
+import type { Session } from '../sessions';
+import type { NodeId } from '../nodes/types';
+import type { Host, Port, TLSConfig, ProxyConfig } from '../network/types';
 
-import * as clientErrors from './errors';
-import { GRPCClient, utils as grpcUtils } from '../grpc';
-import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
-import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
-import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
-import * as sessionsPB from '../proto/js/polykey/v1/sessions/sessions_pb';
-import * as gestaltsPB from '../proto/js/polykey/v1/gestalts/gestalts_pb';
-import * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
-import * as keysPB from '../proto/js/polykey/v1/keys/keys_pb';
-import * as permissionsPB from '../proto/js/polykey/v1/permissions/permissions_pb';
-import * as secretsPB from '../proto/js/polykey/v1/secrets/secrets_pb';
-import { ClientServiceClient } from '../proto/js/polykey/v1/client_service_grpc_pb';
-import { Session } from '../sessions';
-import { NodeId } from '../nodes/types';
-import { Host, Port, ProxyConfig } from '../network/types';
+import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import type * as agentPB from '../proto/js/polykey/v1/agent/agent_pb';
+import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import type * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
+import type * as sessionsPB from '../proto/js/polykey/v1/sessions/sessions_pb';
+import type * as gestaltsPB from '../proto/js/polykey/v1/gestalts/gestalts_pb';
+import type * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
+import type * as keysPB from '../proto/js/polykey/v1/keys/keys_pb';
+import type * as permissionsPB from '../proto/js/polykey/v1/permissions/permissions_pb';
+import type * as secretsPB from '../proto/js/polykey/v1/secrets/secrets_pb';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { errors as grpcErrors } from '../grpc';
+import * as clientErrors from './errors';
+import * as clientUtils from './utils';
+import { ClientServiceClient } from '../proto/js/polykey/v1/client_service_grpc_pb';
+import { GRPCClient, utils as grpcUtils } from '../grpc';
 
-@CreateDestroyStartStop(
-  new grpcErrors.ErrorGRPCClientNotStarted(),
-  new grpcErrors.ErrorGRPCClientDestroyed(),
-)
+interface GRPCClientClient extends CreateDestroy {}
+@CreateDestroy()
 class GRPCClientClient extends GRPCClient<ClientServiceClient> {
-  static async createGRPCCLientClient({
+  /**
+   * Creates GRPCClientClient
+   * This connects to the client service
+   * This connection should be encrypted with TLS with or without
+   * client authentication
+   */
+  static async createGRPCClientClient({
     nodeId,
     host,
     port,
+    tlsConfig,
     proxyConfig,
-    logger,
+    session,
+    timeout = Infinity,
+    logger = new Logger(this.name),
   }: {
     nodeId: NodeId;
     host: Host;
     port: Port;
+    tlsConfig?: Partial<TLSConfig>;
     proxyConfig?: ProxyConfig;
+    session?: Session;
+    timeout?: number;
     logger?: Logger;
   }): Promise<GRPCClientClient> {
-    const logger_ = logger ?? new Logger('GRPCClientClient');
-    logger_.info('Creating GRPCClientClient');
-    const grpcClientClient = new GRPCClientClient({
-      host,
-      logger: logger_,
+    logger.info(`Creating ${this.name}`);
+    const interceptors: Array<Interceptor> = [];
+    if (session != null) {
+      interceptors.push(clientUtils.sessionInterceptor(session));
+    }
+    const { client, serverCertChain } = await super.createClient({
+      clientConstructor: ClientServiceClient,
       nodeId,
+      host,
       port,
+      tlsConfig,
       proxyConfig,
+      timeout,
+      interceptors,
+      logger,
     });
-    logger_.info('Created GRPCClientAgent');
+    const grpcClientClient = new GRPCClientClient({
+      client,
+      nodeId,
+      host,
+      port,
+      tlsConfig,
+      proxyConfig,
+      serverCertChain,
+      logger,
+    });
+    logger.info(`Created ${this.name}`);
     return grpcClientClient;
   }
 
-  public async start({
-    tlsConfig,
-    session,
-    timeout = Infinity,
-  }: {
-    tlsConfig?: TLSConfig;
-    session?: Session;
-    timeout?: number;
-  } = {}): Promise<void> {
-    await super.start({
-      clientConstructor: ClientServiceClient,
-      tlsConfig,
-      timeout,
-      secure: true,
-      session,
-    });
-  }
-
   public async destroy() {
-    this.logger.info('Destroyed GRPCClientClient');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    await super.destroy();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
-  public echo(...args) {
-    return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public agentStatus(...args) {
+    return grpcUtils.promisifyUnaryCall<agentPB.InfoMessage>(
       this.client,
-      this.client.echo,
+      this.client.agentStatus,
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public agentStop(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -92,31 +101,31 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
-  public sessionUnlock(...args) {
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public sessionsUnlock(...args) {
     return grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
       this.client,
-      this.client.sessionUnlock,
+      this.client.sessionsUnlock,
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
-  public sessionRefresh(...args) {
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public sessionsRefresh(...args) {
     return grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
       this.client,
-      this.client.sessionRefresh,
+      this.client.sessionsRefresh,
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
-  public sessionLockAll(...args) {
+  @ready(new clientErrors.ErrorClientClientDestroyed())
+  public sessionsLockAll(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
-      this.client.sessionLockAll,
+      this.client.sessionsLockAll,
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsList(...args) {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
@@ -124,7 +133,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsCreate(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.Vault>(
       this.client,
@@ -132,16 +141,15 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsRename(...args) {
-    if (!this.client) throw new clientErrors.ErrorClientClientNotStarted();
     return grpcUtils.promisifyUnaryCall<vaultsPB.Vault>(
       this.client,
       this.client.vaultsRename,
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsDelete(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -149,7 +157,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsClone(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -157,7 +165,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsPull(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -165,7 +173,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsScan(...args) {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.List>(
       this.client,
@@ -173,7 +181,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsPermissionsSet(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -181,7 +189,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsPermissionsUnset(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -189,7 +197,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultPermissions(...args) {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.Permission>(
       this.client,
@@ -197,7 +205,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsList(...args) {
     return grpcUtils.promisifyReadableStreamCall<secretsPB.Secret>(
       this.client,
@@ -205,7 +213,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsMkdir(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -213,7 +221,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsStat(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.Stat>(
       this.client,
@@ -221,7 +229,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsDelete(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -229,7 +237,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsEdit(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -237,7 +245,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsGet(...args) {
     return grpcUtils.promisifyUnaryCall<secretsPB.Secret>(
       this.client,
@@ -245,7 +253,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsRename(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -253,7 +261,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsNew(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -261,7 +269,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsSecretsNewDir(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -269,7 +277,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsVersion(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.VersionResult>(
       this.client,
@@ -277,7 +285,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public vaultsLog(...args) {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.LogEntry>(
       this.client,
@@ -285,7 +293,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysKeyPairRoot(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
       this.client,
@@ -293,7 +301,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysKeyPairReset(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -301,7 +309,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysKeyPairRenew(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -309,7 +317,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysEncrypt(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
       this.client,
@@ -317,7 +325,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysDecrypt(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
       this.client,
@@ -325,7 +333,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysSign(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
       this.client,
@@ -333,7 +341,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysVerify(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -341,7 +349,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysPasswordChange(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -349,7 +357,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysCertsGet(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.Certificate>(
       this.client,
@@ -357,7 +365,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public keysCertsChainGet(...args) {
     return grpcUtils.promisifyReadableStreamCall<keysPB.Certificate>(
       this.client,
@@ -365,7 +373,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsGestaltList(...args) {
     return grpcUtils.promisifyReadableStreamCall<gestaltsPB.Gestalt>(
       this.client,
@@ -373,7 +381,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsGestaltGetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Graph>(
       this.client,
@@ -381,7 +389,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsGestaltGetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Graph>(
       this.client,
@@ -389,7 +397,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsDiscoveryByNode(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Gestalt>(
       this.client,
@@ -397,7 +405,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsDiscoveryByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<gestaltsPB.Gestalt>(
       this.client,
@@ -405,7 +413,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsActionsGetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
       this.client,
@@ -413,7 +421,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsActionsGetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<permissionsPB.Actions>(
       this.client,
@@ -421,7 +429,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsActionsSetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -429,7 +437,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsActionsSetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -437,7 +445,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsActionsUnsetByNode(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -445,7 +453,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public gestaltsActionsUnsetByIdentity(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -453,7 +461,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesTokenPut(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -461,7 +469,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesGetToken(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Token>(
       this.client,
@@ -469,7 +477,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesTokenDelete(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -477,7 +485,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesProvidersList(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Provider>(
       this.client,
@@ -485,7 +493,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public nodesAdd(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -493,7 +501,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public nodesPing(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -501,7 +509,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public nodesClaim(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
       this.client,
@@ -509,7 +517,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public nodesFind(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.NodeAddress>(
       this.client,
@@ -517,7 +525,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesAuthenticate(...args) {
     return grpcUtils.promisifyReadableStreamCall<identitiesPB.Provider>(
       this.client,
@@ -525,7 +533,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesInfoGetConnected(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.ProviderSearch>(
       this.client,
@@ -533,7 +541,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesInfoGet(...args) {
     return grpcUtils.promisifyUnaryCall<identitiesPB.Provider>(
       this.client,
@@ -541,7 +549,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public identitiesClaim(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -549,7 +557,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public notificationsSend(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -557,7 +565,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public notificationsRead(...args) {
     return grpcUtils.promisifyUnaryCall<notificationsPB.List>(
       this.client,
@@ -565,7 +573,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new clientErrors.ErrorClientClientDestroyed())
   public notificationsClear(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,

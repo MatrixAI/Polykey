@@ -4,9 +4,9 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
+import * as bootstrapErrors from './errors';
 import PolykeyAgent from '../PolykeyAgent';
 
-import * as bootstrapErrors from './errors';
 import * as errors from '../errors';
 import * as utils from '../utils';
 import * as agentUtils from '../agent/utils';
@@ -27,7 +27,7 @@ async function bootstrapPolykeyState(
 
   // Checking keynode state.
   switch (await checkKeynodeState(nodePath)) {
-    default: //Shouldn't be possible.
+    default: // Shouldn't be possible.
     case 'MALFORMED_KEYNODE':
       throw new bootstrapErrors.ErrorMalformedKeynode();
     case 'KEYNODE_EXISTS':
@@ -40,11 +40,11 @@ async function bootstrapPolykeyState(
       );
     case 'EMPTY_DIRECTORY':
     case 'NO_DIRECTORY':
-      //This is fine.
+      // This is fine.
       break;
   }
 
-  const polykeyAgent = await PolykeyAgent.createPolykey({
+  const polykeyAgent = await PolykeyAgent.createPolykeyAgent({
     password,
     nodePath: nodePath,
     logger: logger,
@@ -56,10 +56,10 @@ async function bootstrapPolykeyState(
   await utils.mkdirExists(fs, nodePath, { recursive: true });
 
   // Starting and creating state (this will need to be changed with the new db stuff)
-  await polykeyAgent.nodes.start();
+  await polykeyAgent.nodeManager.start();
 
   // Stopping
-  await polykeyAgent.nodes.stop();
+  await polykeyAgent.nodeManager.stop();
   await polykeyAgent.db.stop();
 
   await polykeyAgent.destroy();
@@ -68,7 +68,7 @@ async function bootstrapPolykeyState(
 async function checkKeynodeState(nodePath: string): Promise<KeynodeState> {
   try {
     const files = await fs.promises.readdir(nodePath);
-    //Checking if directory structure matches keynode structure. Possibly check the private and public key and the level db for keys)
+    // Checking if directory structure matches keynode structure. Possibly check the private and public key and the level db for keys)
     if (
       files.includes('keys') &&
       files.includes('db') &&

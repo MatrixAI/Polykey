@@ -12,21 +12,25 @@ import type { NodeId } from '../nodes/types';
 
 import Logger from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
-
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { utils as idUtils } from '@matrixai/id';
 import * as notificationsUtils from './utils';
 import * as notificationsErrors from './errors';
-import { errors as dbErrors } from '@matrixai/db';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import { createNotificationIdGenerator } from './utils';
-import { utils as idUtils } from '@matrixai/id';
 
 const MESSAGE_COUNT_KEY = 'numMessages';
 
 /**
  * Manage Node Notifications between Gestalts
  */
-interface NotificationsManager extends CreateDestroy {}
-@CreateDestroy()
+interface NotificationsManager extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new notificationsErrors.ErrorNotificationsRunning(),
+  new notificationsErrors.ErrorNotificationsDestroyed(),
+)
 class NotificationsManager {
   protected logger: Logger;
   protected acl: ACL;
@@ -53,8 +57,8 @@ class NotificationsManager {
     db,
     nodeManager,
     keyManager,
-    messageCap,
-    logger,
+    messageCap = 10000,
+    logger = new Logger(this.name),
     fresh = false,
   }: {
     acl: ACL;
@@ -65,19 +69,18 @@ class NotificationsManager {
     logger?: Logger;
     fresh?: boolean;
   }): Promise<NotificationsManager> {
-    const logger_ = logger ?? new Logger(this.constructor.name);
-    const messageCap_ = messageCap ?? 10000;
-
+    logger.info(`Creating ${this.name}`);
     const notificationsManager = new NotificationsManager({
       acl,
       db,
       keyManager,
-      logger: logger_,
-      messageCap: messageCap_,
+      logger,
+      messageCap,
       nodeManager,
     });
 
-    await notificationsManager.create({ fresh });
+    await notificationsManager.start({ fresh });
+    logger.info(`Created ${this.name}`);
     return notificationsManager;
   }
 
@@ -108,11 +111,8 @@ class NotificationsManager {
     return this.lock.isLocked();
   }
 
-  private async create({ fresh }: { fresh: boolean }): Promise<void> {
-    this.logger.info('Starting Notifications Manager');
-    if (!this.db.running) {
-      throw new dbErrors.ErrorDBNotRunning();
-    }
+  async start({ fresh }: { fresh: boolean }): Promise<void> {
+    this.logger.info(`Starting ${this.constructor.name}`);
     // Sub-level stores MESSAGE_COUNT_KEY -> number (of messages)
     const notificationsDb = await this.db.level(this.notificationsDomain);
     // Sub-sub-level stores NotificationId -> string (message)
@@ -136,11 +136,19 @@ class NotificationsManager {
       latestId = o as any as NotificationId;
     }
     this.notificationIdGenerator = createNotificationIdGenerator(latestId);
-    this.logger.info('Started Notifications Manager');
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  async stop() {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   async destroy() {
-    this.logger.info('Destroyed Notifications Manager');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    const notificationsDb = await this.db.level(this.notificationsDomain);
+    await notificationsDb.clear();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   /**
@@ -148,7 +156,7 @@ class NotificationsManager {
    * This does not ensure atomicity of the underlying database
    * Database atomicity still depends on the underlying operation
    */
-  @ready(new notificationsErrors.ErrorNotificationsDestroyed())
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async transaction<T>(
     f: (notificationsManager: NotificationsManager) => Promise<T>,
   ): Promise<T> {
@@ -164,7 +172,7 @@ class NotificationsManager {
    * Transaction wrapper that will not lock if the operation was executed
    * within a transaction context
    */
-  @ready(new notificationsErrors.ErrorNotificationsDestroyed())
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async _transaction<T>(f: () => Promise<T>): Promise<T> {
     if (this.lock.isLocked()) {
       return await f();
@@ -177,7 +185,7 @@ class NotificationsManager {
    * Send a notification to another node
    * The `data` parameter must match one of the NotificationData types outlined in ./types
    */
-  @ready(new notificationsErrors.ErrorNotificationsDestroyed())
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async sendNotification(nodeId: NodeId, data: NotificationData) {
     const notification = {
       data: data,
@@ -194,7 +202,7 @@ class NotificationsManager {
   /**
    * Receive a notification
    */
-  @ready(new notificationsErrors.ErrorNotificationsDestroyed())
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async receiveNotification(notification: Notification) {
     await this._transaction(async () => {
       const nodePerms = await this.acl.getNodePerm(notification.senderId);
@@ -238,7 +246,7 @@ class NotificationsManager {
   /**
    * Read a notification
    */
-  @ready(new notificationsErrors.ErrorNotificationsDestroyed())
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async readNotifications({
     unread = false,
     number = 'all',
@@ -266,8 +274,8 @@ class NotificationsManager {
 
     const notifications: Array<Notification> = [];
     for (const id of notificationIds) {
-      const notif = await this.readNotificationById(id);
-      notifications.push(notif!);
+      const notification = await this.readNotificationById(id);
+      notifications.push(notification!);
     }
 
     return notifications;
@@ -277,14 +285,17 @@ class NotificationsManager {
    * Linearly searches for a GestaltInvite notification from the supplied NodeId.
    * Returns the notification if found.
    */
-  @ready(new notificationsErrors.ErrorNotificationsDestroyed())
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async findGestaltInvite(
     fromNode: NodeId,
   ): Promise<Notification | undefined> {
     const notifications = await this.getNotifications('all');
-    for (const notif of notifications) {
-      if (notif.data.type === 'GestaltInvite' && notif.senderId === fromNode) {
-        return notif;
+    for (const notification of notifications) {
+      if (
+        notification.data.type === 'GestaltInvite' &&
+        notification.senderId === fromNode
+      ) {
+        return notification;
       }
     }
   }
@@ -292,7 +303,7 @@ class NotificationsManager {
   /**
    * Removes all notifications
    */
-  @ready(new notificationsErrors.ErrorNotificationsDestroyed())
+  @ready(new notificationsErrors.ErrorNotificationsNotRunning())
   public async clearNotifications() {
     await this._transaction(async () => {
       const notificationIds = await this.getNotificationIds('all');
@@ -335,17 +346,17 @@ class NotificationsManager {
     return await this._transaction(async () => {
       const notificationIds: Array<NotificationId> = [];
       for await (const o of this.notificationsMessagesDb.createReadStream()) {
-        const notifId = (o as any).key as NotificationId;
+        const notificationId = (o as any).key as NotificationId;
         const data = (o as any).value as Buffer;
-        const notif = await this.db.deserializeDecrypt<Notification>(
+        const notification = await this.db.deserializeDecrypt<Notification>(
           data,
           false,
         );
         if (type === 'all') {
-          notificationIds.push(notifId);
+          notificationIds.push(notificationId);
         } else if (type === 'unread') {
-          if (notif.isRead === false) {
-            notificationIds.push(notifId);
+          if (notification.isRead === false) {
+            notificationIds.push(notificationId);
           }
         }
       }

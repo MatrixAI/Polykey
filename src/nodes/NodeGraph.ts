@@ -3,17 +3,26 @@ import type { Host, Port } from '../network/types';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeConnection } from '../nodes';
 
+import type NodeManager from './NodeManager';
 import { Mutex } from 'async-mutex';
 import lexi from 'lexicographic-integer';
 import Logger from '@matrixai/logger';
-import NodeManager from './NodeManager';
-import { utils as nodesUtils, errors as nodesErrors } from './';
-import { errors as dbErrors } from '@matrixai/db';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import * as nodesUtils from './utils';
+import * as nodesErrors from './errors';
 
 /**
  * NodeGraph is an implementation of Kademlia for maintaining peer to peer information
  * We maintain a map of buckets. Where each bucket has k number of node infos
  */
+interface NodeGraph extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new nodesErrors.ErrorNodeGraphRunning(),
+  new nodesErrors.ErrorNodeGraphDestroyed(),
+)
 class NodeGraph {
   // Internally, node ID is a 32 byte array
   public readonly nodeIdBits: number = 256;
@@ -35,6 +44,28 @@ class NodeGraph {
   protected lock: Mutex = new Mutex();
   protected _started: boolean = false;
 
+  public static async createNodeGraph({
+    db,
+    nodeManager,
+    logger = new Logger(this.name),
+    fresh = false,
+  }: {
+    db: DB;
+    nodeManager: NodeManager;
+    logger?: Logger;
+    fresh?: boolean;
+  }): Promise<NodeGraph> {
+    logger.info(`Creating ${this.name}`);
+    const nodeGraph = new NodeGraph({
+      db,
+      nodeManager,
+      logger,
+    });
+    await nodeGraph.start({ fresh });
+    logger.info(`Created ${this.name}`);
+    return nodeGraph;
+  }
+
   constructor({
     db,
     nodeManager,
@@ -42,15 +73,11 @@ class NodeGraph {
   }: {
     db: DB;
     nodeManager: NodeManager;
-    logger?: Logger;
+    logger: Logger;
   }) {
-    this.logger = logger ?? new Logger('NodeGraph');
+    this.logger = logger;
     this.db = db;
     this.nodeManager = nodeManager;
-  }
-
-  get started(): boolean {
-    return this._started;
   }
 
   get locked(): boolean {
@@ -62,51 +89,42 @@ class NodeGraph {
   }: {
     fresh?: boolean;
   } = {}) {
-    try {
-      this.logger.info('Starting Node Graph');
-      this._started = true;
-      if (!this.db.running) {
-        throw new dbErrors.ErrorDBNotRunning();
-      }
-      if (!this.nodeManager.running) {
-        throw new nodesErrors.ErrorNodeManagerNotStarted();
-      }
-      const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);
-      // Buckets stores NodeBucketIndex -> NodeBucket
-      const nodeGraphBucketsDb = await this.db.level(
-        this.nodeGraphBucketsDbDomain[1],
-        nodeGraphDb,
-      );
-      if (fresh) {
-        await nodeGraphDb.clear();
-      }
-      this.nodeGraphDb = nodeGraphDb;
-      this.nodeGraphBucketsDb = nodeGraphBucketsDb;
-      // TODO: change these to seed nodes
-      // populate this node's bucket database
-      // gets the k closest nodes from each broker
-      // and adds each of them to the database
-      for (const [, conn] of this.nodeManager.getBrokerNodeConnections()) {
-        const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
-        for (const n of nodes) {
-          await this.setNode(n.id, n.address);
-          await this.nodeManager.getConnectionToNode(n.id);
-        }
-      }
-      this.logger.info('Started Node Graph');
-    } catch (e) {
-      this._started = false;
-      throw e;
+    this.logger.info(`Starting ${this.constructor.name}`);
+    const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);
+    // Buckets stores NodeBucketIndex -> NodeBucket
+    const nodeGraphBucketsDb = await this.db.level(
+      this.nodeGraphBucketsDbDomain[1],
+      nodeGraphDb,
+    );
+    if (fresh) {
+      await nodeGraphDb.clear();
     }
+    this.nodeGraphDb = nodeGraphDb;
+    this.nodeGraphBucketsDb = nodeGraphBucketsDb;
+    // TODO: change these to seed nodes
+    // populate this node's bucket database
+    // gets the k closest nodes from each broker
+    // and adds each of them to the database
+    for (const [, conn] of this.nodeManager.getBrokerNodeConnections()) {
+      const nodes = await conn.getClosestNodes(this.nodeManager.getNodeId());
+      for (const n of nodes) {
+        await this.setNode(n.id, n.address);
+        await this.nodeManager.getConnectionToNode(n.id);
+      }
+    }
+    this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
-    if (!this._started) {
-      return;
-    }
-    this.logger.info('Stopping Node Graph');
-    this._started = false;
-    this.logger.info('Stopped Node Graph');
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
+  }
+
+  public async destroy() {
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    const nodeGraphDb = await this.db.level(this.nodeGraphDbDomain);
+    await nodeGraphDb.clear();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   /**
@@ -137,17 +155,13 @@ class NodeGraph {
     }
   }
 
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public getNodeId(): NodeId {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return this.nodeManager.getNodeId();
   }
 
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getNode(nodeId: NodeId): Promise<NodeAddress | undefined> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return await this._transaction(async () => {
       const bucketIndex = this.getBucketIndex(nodeId);
       const bucket = await this.db.get<NodeBucket>(
@@ -161,10 +175,8 @@ class NodeGraph {
     });
   }
 
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getBucket(bucketIndex: number): Promise<NodeBucket | undefined> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return await this._transaction(async () => {
       const bucket = await this.db.get<NodeBucket>(
         this.nodeGraphBucketsDbDomain,
@@ -184,13 +196,11 @@ class NodeGraph {
    * Sets a node to the bucket database
    * This may delete an existing node if the bucket is filled up
    */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async setNode(
     nodeId: NodeId,
     nodeAddress: NodeAddress,
   ): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return await this._transaction(async () => {
       const ops = await this.setNodeOps(nodeId, nodeAddress);
       await this.db.batch(ops);
@@ -235,13 +245,11 @@ class NodeGraph {
    * It will update the lastUpdated time
    * Optionally it can replace the NodeAddress
    */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async updateNode(
     nodeId: NodeId,
     nodeAddress?: NodeAddress,
   ): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return await this._transaction(async () => {
       const ops = await this.updateNodeOps(nodeId, nodeAddress);
       await this.db.batch(ops);
@@ -275,10 +283,8 @@ class NodeGraph {
     return ops;
   }
 
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async unsetNode(nodeId: NodeId): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return await this._transaction(async () => {
       const ops = await this.unsetNodeOps(nodeId);
       await this.db.batch(ops);
@@ -331,13 +337,10 @@ class NodeGraph {
 
   // this might be better to stream this directly to where it is being used
   // cause the subsequent functions are using this
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getAllBuckets(): Promise<Array<NodeBucket>> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return await this._transaction(async () => {
       const buckets: Array<NodeBucket> = [];
-      const vals: Array<string | Buffer> = [];
       for await (const o of this.nodeGraphBucketsDb.createReadStream()) {
         const data = (o as any).value as Buffer;
         const bucket = await this.db.deserializeDecrypt<NodeBucket>(
@@ -345,7 +348,6 @@ class NodeGraph {
           false,
         );
         buckets.push(bucket);
-        vals.push(o);
       }
       return buckets;
     });
@@ -358,10 +360,8 @@ class NodeGraph {
    * to a newly full bucket, the least active nodes in the newly full bucket
    * will be removed.
    */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async refreshBuckets(): Promise<void> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     return await this._transaction(async () => {
       const ops: Array<DBOp> = [];
       // Get a local copy of all the buckets
@@ -384,7 +384,7 @@ class NodeGraph {
           const nodeId = n as NodeId;
           const newIndex = this.getBucketIndex(nodeId);
           let expectedBucket = tempBuckets[newIndex];
-          // The following is moreorless copied from setNodeOps
+          // The following is more or less copied from setNodeOps
           if (expectedBucket == null) {
             expectedBucket = {};
           }
@@ -433,13 +433,11 @@ class NodeGraph {
    * current node has less than k nodes in all of its buckets, in which case it
    * returns all nodes it has knowledge of)
    */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getClosestLocalNodes(
     targetNodeId: NodeId,
     numClosest: number = this.maxNodesPerBucket,
   ): Promise<Array<NodeData>> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     // Retrieve all nodes from buckets in database
     const buckets = await this.getAllBuckets();
     // Iterate over all of the nodes in each bucket
@@ -474,12 +472,10 @@ class NodeGraph {
    * to find its IP address and port)
    * @returns whether the target node was located in the process
    */
+  @ready(new nodesErrors.ErrorNodeGraphNotRunning())
   public async getClosestGlobalNodes(
     targetNodeId: NodeId,
   ): Promise<NodeAddress | undefined> {
-    if (!this._started) {
-      throw new nodesErrors.ErrorNodeGraphNotStarted();
-    }
     // Let foundTarget: boolean = false;
     let foundAddress: NodeAddress | undefined = undefined;
     // Get the closest alpha nodes to the target node (set as shortlist)
@@ -494,7 +490,7 @@ class NodeGraph {
     }
     // Need to keep track of the nodes that have been contacted.
     // Not sufficient to simply check if there's already a pre-existing connection
-    // in nodeConnections - what if there's been more than 1 invokation of
+    // in nodeConnections - what if there's been more than 1 invocation of
     // getClosestGlobalNodes()?
     const contacted: { [nodeId: string]: boolean } = {};
     // Iterate until we've found found and contacted k nodes

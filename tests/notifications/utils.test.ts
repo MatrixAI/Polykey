@@ -1,11 +1,9 @@
 import type { NodeId } from '@/nodes/types';
 import type { Notification, NotificationData } from '@/notifications/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
-
-import jwtVerify from 'jose/jwt/verify';
 import { createPublicKey } from 'crypto';
-import EmbeddedJWK from 'jose/jwk/embedded';
-import fromKeyLike from 'jose/jwk/from_key_like';
+import { EmbeddedJWK, jwtVerify, exportJWK } from 'jose';
+import { utils as idUtils } from '@matrixai/id';
 
 import * as keysUtils from '@/keys/utils';
 import * as notificationsUtils from '@/notifications/utils';
@@ -13,7 +11,6 @@ import * as notificationsErrors from '@/notifications/errors';
 import { createNotificationIdGenerator } from '@/notifications/utils';
 import { sleep } from '@/utils';
 import { makeVaultId } from '@/vaults/utils';
-import { utils as idUtils } from '@matrixai/id';
 
 describe('Notifications utils', () => {
   const nodeId = 'SomeRandomNodeId' as NodeId;
@@ -78,9 +75,7 @@ describe('Notifications utils', () => {
 
     const keyPair = await keysUtils.generateKeyPair(4096);
     const keyPairPem = keysUtils.keyPairToPem(keyPair);
-    const jwkPublicKey = await fromKeyLike(
-      createPublicKey(keyPairPem.publicKey),
-    );
+    const jwkPublicKey = await exportJWK(createPublicKey(keyPairPem.publicKey));
 
     const signedGeneralNotification = await notificationsUtils.signNotification(
       generalNotification,

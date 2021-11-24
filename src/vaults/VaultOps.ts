@@ -1,20 +1,20 @@
 /**
  * Adds a secret to the vault
  */
-import {
+import type Logger from '@matrixai/logger';
+import type {
   FileOptions,
   SecretContent,
   SecretList,
   SecretName,
   Vault,
 } from './types';
-import * as vaultsErrors from '../vaults/errors';
 import path from 'path';
-import * as vaultsUtils from '../vaults/utils';
-import Logger from '@matrixai/logger';
 import * as fs from 'fs';
+import * as vaultsErrors from './errors';
+import * as vaultsUtils from './utils';
 
-//TODO: tests
+// TODO: tests
 // - add succeded
 // - secret exists
 // - secret with directory
@@ -51,7 +51,7 @@ async function addSecret(
 /**
  * Changes the contents of a secret
  */
-//TODO: tests
+// TODO: tests
 // - updates
 // - invalid name
 async function updateSecret(
@@ -78,7 +78,7 @@ async function updateSecret(
 /**
  * Changes the name of a secret in a vault
  */
-//Todo: tests
+// Todo: tests
 // - Valid name
 // - invalid name
 async function renameSecret(
@@ -98,7 +98,7 @@ async function renameSecret(
 /**
  * Returns the contents of a secret
  */
-//TODO: tests
+// TODO: tests
 // - read existing file
 // - try to read non-existent file
 // - read directory?
@@ -123,7 +123,7 @@ async function getSecret(
 /**
  * Removes a secret from a vault
  */
-//TODO: tests
+// TODO: tests
 // - delete a secret
 // - Secret doesn't exist
 // - delete a full and empty directory with and without recursive.
@@ -178,7 +178,7 @@ async function mkdir(
 /**
  * Adds a secret directory to the vault
  */
-//TODO: tests
+// TODO: tests
 // - adding existing directory
 // - adding non-existent directory
 // - adding a file.
@@ -191,6 +191,7 @@ async function addSecretDirectory(
 
   await vault.commit(async (efs) => {
     for await (const secretPath of vaultsUtils.readdirRecursively(
+      fs,
       absoluteDirPath,
     )) {
       // Determine the path to the secret
@@ -232,7 +233,7 @@ async function addSecretDirectory(
 /**
  * Retrieves a list of the secrets in a vault
  */
-//TODO: tests
+// TODO: tests
 // - read secrets.
 // - no secrets
 async function listSecrets(vault: Vault): Promise<SecretList> {

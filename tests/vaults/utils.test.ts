@@ -3,12 +3,11 @@ import os from 'os';
 import path from 'path';
 import { EncryptedFS } from 'encryptedfs';
 
+import Logger, { LogLevel } from '@matrixai/logger';
+import { IdRandom } from '@matrixai/id';
 import * as utils from '@/utils';
 import * as vaultsUtils from '@/vaults/utils';
-import Logger, { LogLevel } from '@matrixai/logger';
 import { isVaultId } from '@/vaults/utils';
-
-import { IdRandom } from '@matrixai/id';
 
 describe('Vaults utils', () => {
   const logger = new Logger('Vaults utils tests', LogLevel.WARN);

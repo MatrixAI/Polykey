@@ -2,6 +2,7 @@
 
 'use strict';
 var grpc = require('@grpc/grpc-js');
+var polykey_v1_agent_agent_pb = require('../../polykey/v1/agent/agent_pb.js');
 var polykey_v1_gestalts_gestalts_pb = require('../../polykey/v1/gestalts/gestalts_pb.js');
 var polykey_v1_identities_identities_pb = require('../../polykey/v1/identities/identities_pb.js');
 var polykey_v1_keys_keys_pb = require('../../polykey/v1/keys/keys_pb.js');
@@ -12,6 +13,17 @@ var polykey_v1_secrets_secrets_pb = require('../../polykey/v1/secrets/secrets_pb
 var polykey_v1_sessions_sessions_pb = require('../../polykey/v1/sessions/sessions_pb.js');
 var polykey_v1_vaults_vaults_pb = require('../../polykey/v1/vaults/vaults_pb.js');
 var polykey_v1_utils_utils_pb = require('../../polykey/v1/utils/utils_pb.js');
+
+function serialize_polykey_v1_agent_InfoMessage(arg) {
+  if (!(arg instanceof polykey_v1_agent_agent_pb.InfoMessage)) {
+    throw new Error('Expected argument of type polykey.v1.agent.InfoMessage');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_polykey_v1_agent_InfoMessage(buffer_arg) {
+  return polykey_v1_agent_agent_pb.InfoMessage.deserializeBinary(new Uint8Array(buffer_arg));
+}
 
 function serialize_polykey_v1_gestalts_Gestalt(arg) {
   if (!(arg instanceof polykey_v1_gestalts_gestalts_pb.Gestalt)) {
@@ -277,17 +289,6 @@ function deserialize_polykey_v1_sessions_Token(buffer_arg) {
   return polykey_v1_sessions_sessions_pb.Token.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_polykey_v1_utils_EchoMessage(arg) {
-  if (!(arg instanceof polykey_v1_utils_utils_pb.EchoMessage)) {
-    throw new Error('Expected argument of type polykey.v1.utils.EchoMessage');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_polykey_v1_utils_EchoMessage(buffer_arg) {
-  return polykey_v1_utils_utils_pb.EchoMessage.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_polykey_v1_utils_EmptyMessage(arg) {
   if (!(arg instanceof polykey_v1_utils_utils_pb.EmptyMessage)) {
     throw new Error('Expected argument of type polykey.v1.utils.EmptyMessage');
@@ -477,19 +478,19 @@ function deserialize_polykey_v1_vaults_VersionResult(buffer_arg) {
 
 
 var ClientServiceService = exports.ClientServiceService = {
-  echo: {
-    path: '/polykey.v1.ClientService/Echo',
+  // Agent
+agentStatus: {
+    path: '/polykey.v1.ClientService/AgentStatus',
     requestStream: false,
     responseStream: false,
-    requestType: polykey_v1_utils_utils_pb.EchoMessage,
-    responseType: polykey_v1_utils_utils_pb.EchoMessage,
-    requestSerialize: serialize_polykey_v1_utils_EchoMessage,
-    requestDeserialize: deserialize_polykey_v1_utils_EchoMessage,
-    responseSerialize: serialize_polykey_v1_utils_EchoMessage,
-    responseDeserialize: deserialize_polykey_v1_utils_EchoMessage,
+    requestType: polykey_v1_utils_utils_pb.EmptyMessage,
+    responseType: polykey_v1_agent_agent_pb.InfoMessage,
+    requestSerialize: serialize_polykey_v1_utils_EmptyMessage,
+    requestDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
+    responseSerialize: serialize_polykey_v1_agent_InfoMessage,
+    responseDeserialize: deserialize_polykey_v1_agent_InfoMessage,
   },
-  // Agent
-agentStop: {
+  agentStop: {
     path: '/polykey.v1.ClientService/AgentStop',
     requestStream: false,
     responseStream: false,
@@ -501,8 +502,8 @@ agentStop: {
     responseDeserialize: deserialize_polykey_v1_utils_EmptyMessage,
   },
   // Session
-sessionUnlock: {
-    path: '/polykey.v1.ClientService/SessionUnlock',
+sessionsUnlock: {
+    path: '/polykey.v1.ClientService/SessionsUnlock',
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_sessions_sessions_pb.Password,
@@ -512,8 +513,8 @@ sessionUnlock: {
     responseSerialize: serialize_polykey_v1_sessions_Token,
     responseDeserialize: deserialize_polykey_v1_sessions_Token,
   },
-  sessionRefresh: {
-    path: '/polykey.v1.ClientService/SessionRefresh',
+  sessionsRefresh: {
+    path: '/polykey.v1.ClientService/SessionsRefresh',
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_utils_utils_pb.EmptyMessage,
@@ -523,8 +524,8 @@ sessionUnlock: {
     responseSerialize: serialize_polykey_v1_sessions_Token,
     responseDeserialize: deserialize_polykey_v1_sessions_Token,
   },
-  sessionLockAll: {
-    path: '/polykey.v1.ClientService/SessionLockAll',
+  sessionsLockAll: {
+    path: '/polykey.v1.ClientService/SessionsLockAll',
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_utils_utils_pb.EmptyMessage,

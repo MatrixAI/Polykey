@@ -7,38 +7,28 @@ import type { Host, Port, TLSConfig } from '../network/types';
 
 import http2 from 'http2';
 import Logger from '@matrixai/logger';
+import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from './utils';
 import * as grpcErrors from './errors';
 import { utils as networkUtils, errors as networkErrors } from '../network';
-import { promisify } from '../utils';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { promisify, timerStart, timerStop } from '../utils';
 
-interface GRPCServer extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
-  new grpcErrors.ErrorGRPCServerNotStarted(),
-  new grpcErrors.ErrorGRPCServerDestroyed(),
-)
+interface GRPCServer extends StartStop {}
+@StartStop()
 class GRPCServer {
   protected services: Services;
   protected logger: Logger;
-  protected host: Host;
-  protected port: Port;
+  protected _host: Host;
+  protected _port: Port;
   protected server: grpc.Server;
   protected clientCertChains: WeakMap<Http2Session, Array<Certificate>> =
     new WeakMap();
-  protected tlsConfig: TLSConfig;
+  protected tlsConfig?: TLSConfig;
   protected _secured: boolean = false;
 
-  static async createGRPCServer({ logger }: { logger?: Logger }) {
-    const logger_ = logger ?? new Logger('GRPCServer');
-    return new GRPCServer({ logger: logger_ });
-  }
-
-  constructor({ logger }: { logger: Logger }) {
+  constructor({ logger }: { logger?: Logger }) {
+    logger = logger ?? new Logger('GRPCServer');
     logger.info('Creating GRPC Server');
     this.logger = logger;
     logger.info('Created GRPC Server');
@@ -50,7 +40,7 @@ class GRPCServer {
 
   public async start({
     services,
-    host = '::' as Host,
+    host = '127.0.0.1' as Host,
     port = 0 as Port,
     tlsConfig,
   }: {
@@ -59,18 +49,19 @@ class GRPCServer {
     port?: Port;
     tlsConfig?: TLSConfig;
   }): Promise<void> {
+    this._host = host;
+    this.tlsConfig = tlsConfig;
     this.services = services;
-    let address = networkUtils.buildAddress(host, port);
+    let address = networkUtils.buildAddress(this._host, port);
     this.logger.info(`Starting GRPC Server on ${address}`);
     let serverCredentials: ServerCredentials;
-    if (tlsConfig == null) {
+    if (this.tlsConfig == null) {
       serverCredentials = grpcUtils.serverInsecureCredentials();
     } else {
       serverCredentials = grpcUtils.serverSecureCredentials(
-        tlsConfig.keyPrivatePem,
-        tlsConfig.certChainPem,
+        this.tlsConfig.keyPrivatePem,
+        this.tlsConfig.certChainPem,
       );
-      this.tlsConfig = tlsConfig;
     }
     // Grpc servers must be recreated after they are stopped
     const server = new grpc.Server();
@@ -79,7 +70,7 @@ class GRPCServer {
     }
     const bindAsync = promisify(server.bindAsync).bind(server);
     try {
-      port = await bindAsync(address, serverCredentials);
+      this._port = await bindAsync(address, serverCredentials);
     } catch (e) {
       throw new grpcErrors.ErrorGRPCServerBind(e.message);
     }
@@ -124,43 +115,56 @@ class GRPCServer {
       }
     }
     server.start();
-    this.host = host;
-    this.port = port;
     this.server = server;
     if (serverCredentials._isSecure()) {
       this._secured = true;
     }
-    address = networkUtils.buildAddress(host, port);
+    address = networkUtils.buildAddress(this._host, this._port);
     this.logger.info(`Started GRPC Server on ${address}`);
   }
 
-  public async stop(): Promise<void> {
+  /**
+   * Stop the GRPC Server
+   * Graceful shutdown can be flaky
+   * Use a timeout to eventually force shutdown
+   */
+  public async stop({
+    timeout,
+  }: {
+    timeout?: number;
+  } = {}): Promise<void> {
     this.logger.info('Stopping GRPC Server');
     const tryShutdown = promisify(this.server.tryShutdown).bind(this.server);
+    const timer = timeout != null ? timerStart(timeout) : undefined;
     try {
-      await tryShutdown();
+      await Promise.race([
+        tryShutdown(),
+        ...(timer != null ? [timer.timerP] : []),
+      ]);
     } catch (e) {
       throw new grpcErrors.ErrorGRPCServerShutdown(e.message);
+    } finally {
+      if (timer != null) timerStop(timer);
+    }
+    if (timer?.timedOut) {
+      this.logger.info('Timed out stopping GRPC Server, forcing shutdown');
+      this.server.forceShutdown();
     }
     this._secured = false;
     this.logger.info('Stopped GRPC Server');
   }
 
-  public async destroy() {
-    this.logger.info('Destroyed GRPC server');
+  @ready(new grpcErrors.ErrorGRPCServerNotRunning())
+  get host(): Host {
+    return this._host;
   }
 
-  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
-  public getHost(): Host {
-    return this.host;
+  @ready(new grpcErrors.ErrorGRPCServerNotRunning())
+  get port(): Port {
+    return this._port;
   }
 
-  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
-  public getPort(): Port {
-    return this.port;
-  }
-
-  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
+  @ready(new grpcErrors.ErrorGRPCServerNotRunning())
   public getClientCertificate(session: Http2Session): Certificate {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -168,7 +172,7 @@ class GRPCServer {
     return this.clientCertChains.get(session)![0];
   }
 
-  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
+  @ready(new grpcErrors.ErrorGRPCServerNotRunning())
   public getClientCertificates(session: Http2Session): Array<Certificate> {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -176,7 +180,7 @@ class GRPCServer {
     return this.clientCertChains.get(session)!;
   }
 
-  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
+  @ready(new grpcErrors.ErrorGRPCServerNotRunning())
   public setTLSConfig(tlsConfig: TLSConfig): void {
     if (!this._secured) {
       throw new grpcErrors.ErrorGRPCServerNotSecured();
@@ -194,7 +198,7 @@ class GRPCServer {
     return;
   }
 
-  @ready(new grpcErrors.ErrorGRPCServerNotStarted())
+  @ready(new grpcErrors.ErrorGRPCServerNotRunning())
   public closeServerForce(): void {
     this.server.forceShutdown();
   }

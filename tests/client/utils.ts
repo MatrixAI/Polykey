@@ -1,16 +1,16 @@
+import type { IClientServiceServer } from '@/proto/js/polykey/v1/client_service_grpc_pb';
+import type { SessionToken } from '@/sessions/types';
+import type { PolykeyAgent } from '@';
 import * as grpc from '@grpc/grpc-js';
 
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import {
   ClientServiceService,
-  IClientServiceServer,
   ClientServiceClient,
 } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import { createClientService } from '@/client';
 import PolykeyClient from '@/PolykeyClient';
 import { promisify } from '@/utils';
-import { SessionCredentials, SessionToken } from '@/sessions/types';
-import { PolykeyAgent } from '@';
 import * as grpcUtils from '@/grpc/utils';
 
 async function openTestClientServer({
@@ -23,23 +23,23 @@ async function openTestClientServer({
   const _secure = secure ?? true;
   const clientService: IClientServiceServer = createClientService({
     polykeyAgent,
-    keyManager: polykeyAgent.keys,
-    vaultManager: polykeyAgent.vaults,
-    nodeManager: polykeyAgent.nodes,
-    identitiesManager: polykeyAgent.identities,
-    gestaltGraph: polykeyAgent.gestalts,
-    sessionManager: polykeyAgent.sessions,
-    notificationsManager: polykeyAgent.notifications,
+    keyManager: polykeyAgent.keyManager,
+    vaultManager: polykeyAgent.vaultManager,
+    nodeManager: polykeyAgent.nodeManager,
+    identitiesManager: polykeyAgent.identitiesManager,
+    gestaltGraph: polykeyAgent.gestaltGraph,
+    sessionManager: polykeyAgent.sessionManager,
+    notificationsManager: polykeyAgent.notificationsManager,
     discovery: polykeyAgent.discovery,
     fwdProxy: polykeyAgent.fwdProxy,
     revProxy: polykeyAgent.revProxy,
-    grpcServer: polykeyAgent.clientGrpcServer,
+    clientGrpcServer: polykeyAgent.grpcServerClient,
   });
 
   const callCredentials = _secure
     ? grpcUtils.serverSecureCredentials(
-        polykeyAgent.keys.getRootKeyPairPem().privateKey,
-        await polykeyAgent.keys.getRootCertChainPem(),
+        polykeyAgent.keyManager.getRootKeyPairPem().privateKey,
+        await polykeyAgent.keyManager.getRootCertChainPem(),
       )
     : grpcUtils.serverInsecureCredentials();
 
@@ -94,16 +94,10 @@ function closeSimpleClientClient(client: ClientServiceClient): void {
   client.close();
 }
 
-function createCallCredentials(token: SessionToken): SessionCredentials {
-  return {
-    credentials: grpc.CallCredentials.createFromMetadataGenerator(
-      (_params, callback) => {
-        const meta = new grpc.Metadata();
-        meta.add('Authorization', `Bearer: ${token}`);
-        callback(null, meta);
-      },
-    ),
-  } as SessionCredentials;
+function createCallCredentials(token: SessionToken): grpc.Metadata {
+  const meta = new grpc.Metadata();
+  meta.set('Authorization', `Bearer ${token}`);
+  return meta;
 }
 
 export {

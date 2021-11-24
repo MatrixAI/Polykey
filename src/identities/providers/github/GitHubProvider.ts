@@ -486,7 +486,7 @@ class GitHubProvider extends Provider {
       url.searchParams.set('p', pageNum.toString());
       url.searchParams.set(
         'q',
-        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`, //Githubidentityclaim
+        `user:${identityId} filename:${this.gistFilename} ${this.gistDescription}`, // Githubidentityclaim
       );
       const request = new Request(url.toString(), { method: 'GET' });
       const response = await fetch(request);

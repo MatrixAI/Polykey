@@ -1,6 +1,7 @@
-import git, { ReadCommitResult } from 'isomorphic-git';
-import path from 'path';
 import type { EncryptedFS } from 'encryptedfs';
+import type { ReadCommitResult } from 'isomorphic-git';
+import path from 'path';
+import git from 'isomorphic-git';
 
 async function createGitRepo({
   efs,

@@ -14,6 +14,8 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
+var polykey_v1_agent_agent_pb = require('../../polykey/v1/agent/agent_pb.js');
+goog.object.extend(proto, polykey_v1_agent_agent_pb);
 var polykey_v1_gestalts_gestalts_pb = require('../../polykey/v1/gestalts/gestalts_pb.js');
 goog.object.extend(proto, polykey_v1_gestalts_gestalts_pb);
 var polykey_v1_identities_identities_pb = require('../../polykey/v1/identities/identities_pb.js');

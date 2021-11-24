@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package polykey.v1.agent;
+
+import "polykey/v1/nodes/nodes.proto";
+import "polykey/v1/keys/keys.proto";
+
+message InfoMessage {
+  polykey.v1.nodes.Node node_id = 1;
+  polykey.v1.nodes.Address address = 2;
+  polykey.v1.keys.Certificate cert = 3;
+}

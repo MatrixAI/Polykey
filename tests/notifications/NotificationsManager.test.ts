@@ -3,13 +3,12 @@ import type { Host, Port, TLSConfig } from '@/network/types';
 import type { KeyPairPem, CertificatePem } from '@/keys/types';
 import type { VaultActions, VaultName } from '@/vaults/types';
 import type { NotificationData } from '@/notifications/types';
-
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
 import { DB } from '@matrixai/db';
+
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
 import { GRPCServer } from '@/grpc';
@@ -22,8 +21,8 @@ import { ForwardProxy, ReverseProxy } from '@/network';
 import { AgentServiceService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
-import { makeCrypto } from '../utils';
 import { generateVaultId } from '@/vaults/utils';
+import { makeCrypto } from '../utils';
 
 describe('NotificationsManager', () => {
   const password = 'password';
@@ -37,7 +36,9 @@ describe('NotificationsManager', () => {
   const authToken = 'AUTH';
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
+  let fwdTLSConfig: TLSConfig;
 
+  let keysDataDir: string;
   let receiverDataDir: string;
   let receiverKeyManager: KeyManager;
   let receiverVaultManager: VaultManager;
@@ -58,10 +59,9 @@ describe('NotificationsManager', () => {
   let senderNodeId: NodeId, receiverNodeId: NodeId;
   let senderKeyPairPem: KeyPairPem, receiverKeyPairPem: KeyPairPem;
   let senderCertPem: CertificatePem, receiverCertPem: CertificatePem;
-  let fwdTLSConfig: TLSConfig, revTLSConfig: TLSConfig;
 
   let agentService;
-  let server: GRPCServer;
+  let agentServer: GRPCServer;
 
   // Keep IPs unique. ideally we'd use the generated IP and port. but this is good for now.
   // If this fails again we shouldn't specify the port and IP.
@@ -70,29 +70,55 @@ describe('NotificationsManager', () => {
   let receiverIngressPort: Port;
 
   beforeAll(async () => {
+    keysDataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-server'),
+    );
+
     receiverDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-server'),
     );
 
-    fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken: authToken,
-      logger: logger,
+    const senderKeysPath = path.join(keysDataDir, 'senderKeys');
+    senderKeyManager = await KeyManager.createKeyManager({
+      password,
+      keysPath: senderKeysPath,
+      fs,
+      logger,
     });
-    revProxy = await ReverseProxy.createReverseProxy({
-      logger: logger,
-    });
+    senderKeyPairPem = senderKeyManager.getRootKeyPairPem();
+    senderCertPem = senderKeyManager.getRootCertPem();
+    senderNodeId = networkUtils.certNodeId(senderKeyManager.getRootCert());
+    fwdTLSConfig = {
+      keyPrivatePem: senderKeyPairPem.privateKey,
+      certChainPem: senderCertPem,
+    };
 
-    // Server setup
-    const receiverKeysPath = path.join(receiverDataDir, 'receiverKeys');
-    const receiverVaultsPath = path.join(receiverDataDir, 'receiverVaults');
-    const receiverDbPath = path.join(receiverDataDir, 'receiverDb');
-
+    const receiverKeysPath = path.join(keysDataDir, 'receiverKeys');
     receiverKeyManager = await KeyManager.createKeyManager({
       password,
       keysPath: receiverKeysPath,
       fs: fs,
       logger: logger,
     });
+    receiverKeyPairPem = receiverKeyManager.getRootKeyPairPem();
+    receiverCertPem = receiverKeyManager.getRootCertPem();
+    const revTLSConfig = {
+      keyPrivatePem: receiverKeyPairPem.privateKey,
+      certChainPem: receiverCertPem,
+    };
+
+    fwdProxy = new ForwardProxy({
+      authToken: authToken,
+      logger: logger,
+    });
+    revProxy = new ReverseProxy({
+      logger: logger,
+    });
+
+    // Server setup
+    const receiverVaultsPath = path.join(receiverDataDir, 'receiverVaults');
+    const receiverDbPath = path.join(receiverDataDir, 'receiverDb');
+
     receiverDb = await DB.createDB({
       dbPath: receiverDbPath,
       fs: fs,
@@ -114,7 +140,7 @@ describe('NotificationsManager', () => {
       logger: logger,
     });
     // Won't be used so don't need to start
-    const receiverFwdProxy = await ForwardProxy.createForwardProxy({
+    const receiverFwdProxy = new ForwardProxy({
       authToken: '',
       logger: logger,
     });
@@ -124,7 +150,6 @@ describe('NotificationsManager', () => {
       keyManager: receiverKeyManager,
       fwdProxy: receiverFwdProxy,
       revProxy: revProxy,
-      fs: fs,
       logger: logger,
     });
     receiverVaultManager = await VaultManager.createVaultManager({
@@ -147,14 +172,7 @@ describe('NotificationsManager', () => {
         messageCap: 5,
         logger: logger,
       });
-    receiverKeyPairPem = receiverKeyManager.getRootKeyPairPem();
-    receiverCertPem = receiverKeyManager.getRootCertPem();
     receiverNodeId = networkUtils.certNodeId(receiverKeyManager.getRootCert());
-    revTLSConfig = {
-      keyPrivatePem: receiverKeyPairPem.privateKey,
-      certChainPem: receiverCertPem,
-    };
-    await receiverDb.start();
     await receiverGestaltGraph.setNode(node);
     await receiverNodeManager.start();
 
@@ -165,40 +183,33 @@ describe('NotificationsManager', () => {
       sigchain: receiverSigchain,
       notificationsManager: receiverNotificationsManager,
     });
-    server = await GRPCServer.createGRPCServer({
+    agentServer = new GRPCServer({
       logger: logger,
     });
-    await server.start({
+    await agentServer.start({
       services: [[AgentServiceService, agentService]],
       host: receiverHost,
     });
 
     await revProxy.start({
-      ingressHost: receiverHost,
       serverHost: receiverHost,
-      serverPort: server.getPort(),
+      serverPort: agentServer.port,
+      ingressHost: receiverHost,
       tlsConfig: revTLSConfig,
     });
-    receiverIngressPort = revProxy.getIngressPort();
+    receiverIngressPort = revProxy.ingressPort;
   }, global.polykeyStartupTimeout * 2);
 
   beforeEach(async () => {
     senderDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-sender'),
     );
-    const senderKeysPath = path.join(senderDataDir, 'senderKeys');
     const senderDbPath = await fs.promises.mkdtemp(
       path.join(senderDataDir, 'senderDb'),
     );
     // Won't be used so don't need to start
-    const senderRevProxy = await ReverseProxy.createReverseProxy({
+    const senderRevProxy = new ReverseProxy({
       logger: logger,
-    });
-    senderKeyManager = await KeyManager.createKeyManager({
-      password,
-      keysPath: senderKeysPath,
-      fs,
-      logger,
     });
     senderDb = await DB.createDB({
       dbPath: senderDbPath,
@@ -218,19 +229,10 @@ describe('NotificationsManager', () => {
       keyManager: senderKeyManager,
       fwdProxy,
       revProxy: senderRevProxy,
-      fs,
       logger,
     });
 
-    senderKeyPairPem = senderKeyManager.getRootKeyPairPem();
-    senderCertPem = senderKeyManager.getRootCertPem();
-    senderNodeId = networkUtils.certNodeId(senderKeyManager.getRootCert());
-    fwdTLSConfig = {
-      keyPrivatePem: senderKeyPairPem.privateKey,
-      certChainPem: senderCertPem,
-    };
-    await senderDb.start();
-    await senderACL.destroy();
+    await senderACL.stop();
     await fwdProxy.start({
       tlsConfig: fwdTLSConfig,
       proxyHost: senderHost,
@@ -250,9 +252,8 @@ describe('NotificationsManager', () => {
 
   afterEach(async () => {
     await senderNodeManager.stop();
-    await senderACL.destroy();
+    await senderACL.stop();
     await fwdProxy.stop();
-    await senderKeyManager.destroy();
     await senderDb.stop();
     await fs.promises.rm(senderDataDir, {
       force: true,
@@ -261,15 +262,16 @@ describe('NotificationsManager', () => {
   });
 
   afterAll(async () => {
-    await receiverACL.destroy();
-    await receiverSigchain.destroy();
-    await receiverGestaltGraph.destroy();
-    await receiverVaultManager.destroy();
+    await senderKeyManager.stop();
+    await receiverACL.stop();
+    await receiverSigchain.stop();
+    await receiverGestaltGraph.stop();
+    await receiverVaultManager.stop();
     await receiverNodeManager.stop();
-    await receiverNotificationsManager.destroy();
-    await server.stop();
+    await receiverNotificationsManager.stop();
+    await agentServer.stop();
     await revProxy.stop();
-    await receiverKeyManager.destroy();
+    await receiverKeyManager.stop();
     await receiverDb.stop();
     await fs.promises.rm(receiverDataDir, {
       force: true,
@@ -310,7 +312,7 @@ describe('NotificationsManager', () => {
       receiverNodeId,
       notificationData,
     );
-    await senderNotificationsManager.destroy();
+    await senderNotificationsManager.stop();
   });
 
   test('can receive and read sent notifications', async () => {
@@ -342,7 +344,7 @@ describe('NotificationsManager', () => {
     expect(notifs[0].senderId).toEqual(senderNodeId);
     expect(notifs[0].isRead).toBeTruthy();
 
-    await senderNotificationsManager.destroy();
+    await senderNotificationsManager.stop();
   });
 
   test('cannot receive notifications without notify permission', async () => {
@@ -371,7 +373,7 @@ describe('NotificationsManager', () => {
     const notifs = await receiverNotificationsManager.readNotifications();
     expect(notifs).toEqual([]);
 
-    await senderNotificationsManager.destroy();
+    await senderNotificationsManager.stop();
   });
 
   test('notifications are read in order they were sent', async () => {
@@ -420,7 +422,7 @@ describe('NotificationsManager', () => {
     expect(notifs[1].data).toEqual(notificationData2);
     expect(notifs[2].data).toEqual(notificationData1);
 
-    await senderNotificationsManager.destroy();
+    await senderNotificationsManager.stop();
   });
 
   test('notifications can be capped', async () => {
@@ -471,7 +473,7 @@ describe('NotificationsManager', () => {
       message: '1',
     });
 
-    await senderNotificationsManager.destroy();
+    await senderNotificationsManager.stop();
   });
 
   test('can send and receive Gestalt Invite notifications', async () => {
@@ -502,7 +504,7 @@ describe('NotificationsManager', () => {
     expect(notifs[0].senderId).toEqual(senderNodeId);
     expect(notifs[0].isRead).toBeTruthy();
 
-    await senderNotificationsManager.destroy();
+    await senderNotificationsManager.stop();
   });
 
   test('can send and receive Vault Share notifications', async () => {
@@ -541,6 +543,6 @@ describe('NotificationsManager', () => {
     expect(notifs[0].senderId).toEqual(senderNodeId);
     expect(notifs[0].isRead).toBeTruthy();
 
-    await senderNotificationsManager.destroy();
+    await senderNotificationsManager.stop();
   });
 });

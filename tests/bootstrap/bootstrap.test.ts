@@ -9,7 +9,7 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as bootstrapErrors from '@/bootstrap/errors';
 import * as agentUtils from '@/agent/utils';
 
-describe('Bootstrap', () => {
+describe.skip('Bootstrap', () => {
   const password = 'password';
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
@@ -64,14 +64,11 @@ describe('Bootstrap', () => {
     test(
       'keynode with contents in directory',
       async () => {
-        const pk = await PolykeyAgent.createPolykey({
+        const pk = await PolykeyAgent.createPolykeyAgent({
           password,
           nodePath: nodePath,
           logger: logger,
-          cores: 1,
-          workerManager: null,
         });
-        await pk.start({});
         await pk.stop();
         await pk.destroy();
         expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
@@ -84,7 +81,7 @@ describe('Bootstrap', () => {
     test('should create state if no directory', async () => {
       // Await fs.promises.rmdir(nodePath);
       await bootstrapPolykeyState(nodePath, password);
-      //Should have keynode state;
+      // Should have keynode state;
       expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
     });
 
@@ -109,14 +106,11 @@ describe('Bootstrap', () => {
 
     test('should be able to start agent on created state.', async () => {
       await bootstrapPolykeyState(nodePath, password);
-      const polykeyAgent = await PolykeyAgent.createPolykey({
+      const polykeyAgent = await PolykeyAgent.createPolykeyAgent({
         password,
         nodePath: nodePath,
         logger: logger,
-        cores: 1,
-        workerManager: null,
       });
-      await polykeyAgent.start({});
       expect(await agentUtils.checkAgentRunning(nodePath)).toBeTruthy();
       await polykeyAgent.stop();
       await polykeyAgent.destroy();

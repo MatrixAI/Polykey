@@ -1,13 +1,13 @@
-import { utils as idUtils } from '@matrixai/id';
-import { ErrorInvalidId } from './errors';
-import { Id as InternalId } from '@matrixai/id/dist/Id';
 import type { Codec } from 'multiformats/bases/base';
+import type { Id as InternalId } from '@matrixai/id/dist/Id';
+import { utils as idUtils } from '@matrixai/id';
 import { bases } from 'multiformats/basics';
+import { ErrorInvalidId } from './errors';
 
 type MultibaseFormats = keyof typeof bases;
-/// This is the internal form of the Id.
+// / This is the internal form of the Id.
 export type Id = InternalId;
-/// This is the user readable string form of the Id.
+// / This is the user readable string form of the Id.
 export type IdString = string;
 // This is the number of bytes a valid Id has
 const idValidByteLength = 16;

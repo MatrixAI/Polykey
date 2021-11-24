@@ -9,15 +9,19 @@ import type {
 } from '@/identities/types';
 import type { Claim, SignatureData } from '@/claims/types';
 import type { ChainData } from '@/sigchain/types';
-
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { GestaltGraph, utils as gestaltsUtils } from '@/gestalts';
+import { DB } from '@matrixai/db';
+
+import {
+  GestaltGraph,
+  utils as gestaltsUtils,
+  errors as gestaltErrors,
+} from '@/gestalts';
 import { ACL } from '@/acl';
 import { KeyManager } from '@/keys';
-import { DB } from '@matrixai/db';
 import { makeCrypto } from '../utils';
 
 describe('GestaltGraph', () => {
@@ -55,8 +59,6 @@ describe('GestaltGraph', () => {
       logger,
       crypto: makeCrypto(keyManager),
     });
-    await db.start();
-
     acl = await ACL.createACL({ db, logger });
 
     // Initialise some dummy claims:
@@ -83,7 +85,7 @@ describe('GestaltGraph', () => {
         seq: 1,
         data: {
           type: 'node',
-          node1: 'dee' as NodeId, //TODO: use type guards for all `as NodeID` usages here.
+          node1: 'dee' as NodeId, // TODO: use type guards for all `as NodeID` usages here.
           node2: 'abc' as NodeId,
         },
         iat: 1618203162,
@@ -125,14 +127,37 @@ describe('GestaltGraph', () => {
     };
   });
   afterEach(async () => {
+    await acl.stop();
     await acl.destroy();
     await db.stop();
     await db.destroy();
+    await keyManager.stop();
     await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
+  });
+
+  test('gestaltGraph readiness', async () => {
+    const gestaltGraph = await GestaltGraph.createGestaltGraph({
+      db,
+      acl,
+      logger,
+    });
+    await expect(gestaltGraph.destroy()).rejects.toThrow(
+      gestaltErrors.ErrorGestaltsGraphRunning,
+    );
+    // Should be a noop
+    await gestaltGraph.start();
+    await gestaltGraph.stop();
+    await gestaltGraph.destroy();
+    await expect(gestaltGraph.start()).rejects.toThrow(
+      gestaltErrors.ErrorGestaltsGraphDestroyed,
+    );
+    await expect(gestaltGraph.getGestalts()).rejects.toThrow(
+      gestaltErrors.ErrorGestaltsGraphNotRunning,
+    );
   });
   test('get, set and unset node', async () => {
     const gestaltGraph = await GestaltGraph.createGestaltGraph({
@@ -157,6 +182,7 @@ describe('GestaltGraph', () => {
     await expect(
       gestaltGraph.getGestaltByNode(nodeInfo.id),
     ).resolves.toBeUndefined();
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('get, set and unset identity', async () => {
@@ -198,6 +224,7 @@ describe('GestaltGraph', () => {
         identityInfo.identityId,
       ),
     ).resolves.toBeUndefined();
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('setting independent node and identity gestalts', async () => {
@@ -237,6 +264,7 @@ describe('GestaltGraph', () => {
       nodes: {},
       identities: { [gkIdentity]: identityInfo },
     });
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('start and stop preserves state', async () => {
@@ -256,7 +284,7 @@ describe('GestaltGraph', () => {
     };
     await gestaltGraph.setNode(nodeInfo);
     await gestaltGraph.setIdentity(identityInfo);
-    await gestaltGraph.destroy();
+    await gestaltGraph.stop();
 
     gestaltGraph = await GestaltGraph.createGestaltGraph({
       db,
@@ -283,6 +311,7 @@ describe('GestaltGraph', () => {
       nodes: {},
       identities: { [gkIdentity]: identityInfo },
     });
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('link node to node', async () => {
@@ -330,6 +359,7 @@ describe('GestaltGraph', () => {
       },
       identities: {},
     });
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('link node to identity', async () => {
@@ -384,6 +414,7 @@ describe('GestaltGraph', () => {
         [gkIdentity]: identityInfo,
       },
     });
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('link node to node and identity', async () => {
@@ -460,6 +491,7 @@ describe('GestaltGraph', () => {
         [gkIdentity]: identityInfo,
       },
     });
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('getting all gestalts', async () => {
@@ -498,6 +530,7 @@ describe('GestaltGraph', () => {
     expect(gestalts2String).toContain(identityInfo.providerId);
     expect(gestalts2String).toContain(identityInfo.identityId);
 
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('new node gestalts creates a new acl record', async () => {
@@ -521,6 +554,7 @@ describe('GestaltGraph', () => {
     const actions = await gestaltGraph.getGestaltActionsByNode(nodeInfo.id);
     expect(actions).toBeDefined();
     expect(actions).toMatchObject({});
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('new identity gestalts does not create a new acl record', async () => {
@@ -540,6 +574,7 @@ describe('GestaltGraph', () => {
       identityInfo.identityId,
     );
     expect(actions).toBeUndefined();
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('set and unset gestalt actions', async () => {
@@ -568,6 +603,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.unsetGestaltActionByNode(nodeInfo.id, 'notify');
     actions = await gestaltGraph.getGestaltActionsByNode(nodeInfo.id);
     expect(actions).not.toHaveProperty('notify');
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('linking 2 new nodes results in a merged permission', async () => {
@@ -605,6 +641,7 @@ describe('GestaltGraph', () => {
     actions2 = await gestaltGraph.getGestaltActionsByNode(nodeInfo2.id);
     expect(actions1).toEqual({ notify: null });
     expect(actions1).toEqual(actions2);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('linking 2 existing nodes results in a merged permission', async () => {
@@ -653,6 +690,7 @@ describe('GestaltGraph', () => {
     expect(actions2).not.toBeUndefined();
     expect(actions1).toEqual({ notify: null, scan: null });
     expect(actions1).toEqual(actions2);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('link existing node to new node', async () => {
@@ -729,6 +767,7 @@ describe('GestaltGraph', () => {
     expect(actions3).not.toBeUndefined();
     expect(actions3).toEqual({ notify: null });
     expect(actions3).toEqual(actions2);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('linking new node and new identity results in a merged permission', async () => {
@@ -777,6 +816,7 @@ describe('GestaltGraph', () => {
     );
     expect(actions1).toEqual({ notify: null });
     expect(actions1).toEqual(actions2);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('linking existing node and existing identity results in merged permission', async () => {
@@ -911,6 +951,7 @@ describe('GestaltGraph', () => {
     expect(actions2).toEqual({ notify: null, scan: null });
     expect(actions1).toEqual(actions2);
     expect(actions2).toEqual(actions3);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('link existing node to new identity', async () => {
@@ -974,6 +1015,7 @@ describe('GestaltGraph', () => {
       scan: null,
       notify: null,
     });
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('link new node to existing identity', async () => {
@@ -1030,6 +1072,7 @@ describe('GestaltGraph', () => {
       scan: null,
       notify: null,
     });
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('splitting node and node results in split inherited permissions', async () => {
@@ -1081,6 +1124,7 @@ describe('GestaltGraph', () => {
     expect(perm1).not.toEqual(perm2);
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(2);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('splitting node and identity results in split inherited permissions unless the identity is a loner', async () => {
@@ -1135,6 +1179,7 @@ describe('GestaltGraph', () => {
     expect(actions2).toBeUndefined();
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(1);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
   test('removing a gestalt removes the permission', async () => {
@@ -1175,6 +1220,7 @@ describe('GestaltGraph', () => {
     await gestaltGraph.unsetNode(nodeInfo2.id);
     nodePerms = await acl.getNodePerms();
     expect(Object.keys(nodePerms)).toHaveLength(0);
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
   });
 });

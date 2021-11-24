@@ -1,72 +1,148 @@
-import type { VaultId, VaultName } from '../vaults/types';
-import type { Session } from '../sessions';
-import type { VaultManager } from '../vaults';
+import type {
+  NextCall,
+  Interceptor,
+  InterceptorOptions,
+} from '@grpc/grpc-js/build/src/client-interceptors';
+import type { KeyManager } from '../keys';
+import type { Session, SessionManager } from '../sessions';
 import type { SessionToken } from '../sessions/types';
 
 import * as grpc from '@grpc/grpc-js';
-import * as clientErrors from '../client/errors';
-import { ErrorVaultUndefined } from '../vaults/errors';
-import { makeVaultId } from '../vaults/utils';
-import { ErrorInvalidId } from '../errors';
-import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import * as base64 from 'multiformats/bases/base64';
+import * as clientErrors from './errors';
 
-async function parseVaultInput(
-  vaultMessage: vaultsPB.Vault,
-  vaultManager: VaultManager,
-): Promise<VaultId> {
-  const vaultNameOrid = vaultMessage.getNameOrId();
-  // Check if it is an existing vault name.
-  const possibleVaultId = await vaultManager.getVaultId(
-    vaultNameOrid as VaultName,
+/**
+ * Session interceptor middleware for authenticatio
+ * Session token is read at the beginning of every call
+ * Session token is written if the server returns a new token
+ */
+function sessionInterceptor(session: Session): Interceptor {
+  const interceptor: Interceptor = (
+    options: InterceptorOptions,
+    nextCall: NextCall,
+  ) => {
+    const requester = {
+      start: async (metadata: grpc.Metadata, _, next) => {
+        // Outbound interception
+        // This executes before the call is started
+        // Set the session token only if the caller hasn't set a Basic token
+        if (metadata.get('Authorization').length === 0) {
+          const token = await session.readToken();
+          if (token != null) {
+            encodeAuthFromSession(token, metadata);
+          }
+        }
+        next(metadata, {
+          // Inbound interception
+          onReceiveMetadata: async (metadata: grpc.Metadata, next) => {
+            // This executes when the metadata is received from the server
+            const token = decodeAuthToSession(metadata);
+            if (token != null) {
+              await session.writeToken(token);
+            }
+            next(metadata);
+          },
+        });
+      },
+    };
+    return new grpc.InterceptingCall(nextCall(options), requester);
+  };
+  return interceptor;
+}
+
+type Authenticate = (
+  metadataClient: grpc.Metadata,
+  metadataServer?: grpc.Metadata,
+) => Promise<grpc.Metadata>;
+
+function authenticator(
+  sessionManager: SessionManager,
+  keyManager: KeyManager,
+): Authenticate {
+  return async (
+    metadataClient: grpc.Metadata,
+    metadataServer: grpc.Metadata = new grpc.Metadata(),
+  ) => {
+    const auth = metadataClient.get('Authorization')[0] as string | undefined;
+    if (auth == null) {
+      throw new clientErrors.ErrorClientAuthMissing();
+    }
+    if (auth.startsWith('Bearer ')) {
+      const token = auth.substring(7) as SessionToken;
+      if (!(await sessionManager.verifyToken(token))) {
+        throw new clientErrors.ErrorClientAuthDenied();
+      }
+    } else if (auth.startsWith('Basic ')) {
+      const encoded = auth.substring(6);
+      const decoded = base64.base64pad.baseDecode(encoded);
+      const decodedString = String.fromCharCode(...decoded);
+      const match = decodedString.match(/:(.+)/);
+      if (match == null) {
+        throw new clientErrors.ErrorClientAuthFormat();
+      }
+      const password = match[1];
+      if (!(await keyManager.checkPassword(password))) {
+        throw new clientErrors.ErrorClientAuthDenied();
+      }
+    } else {
+      throw new clientErrors.ErrorClientAuthMissing();
+    }
+    const token = await sessionManager.createToken();
+    encodeAuthFromSession(token, metadataServer);
+    return metadataServer;
+  };
+}
+
+/**
+ * Encodes an Authorization header from session token
+ * Assumes token is already encoded
+ * Will mutate metadata if it is passed in
+ */
+function encodeAuthFromSession(
+  token: SessionToken,
+  metadata: grpc.Metadata = new grpc.Metadata(),
+): grpc.Metadata {
+  metadata.set('Authorization', `Bearer ${token}`);
+  return metadata;
+}
+
+/**
+ * Encodes an Authorization header from password
+ * Uses base64 standard format with padding
+ * Only use this on small data
+ * Will mutate metadata if it is passed in
+ */
+function encodeAuthFromPassword(
+  password: string,
+  metadata: grpc.Metadata = new grpc.Metadata(),
+): grpc.Metadata {
+  const encoded = base64.base64pad.baseEncode(
+    Uint8Array.from([...`:${password}`].map((c) => c.charCodeAt(0))),
   );
-  if (possibleVaultId != null) return possibleVaultId;
-
-  // Check if it is an existing vault Id.
-  try {
-    const tempVaultId = makeVaultId(vaultNameOrid);
-    const possibleVaultName = await vaultManager.getVaultName(tempVaultId);
-    if (possibleVaultName != null) return tempVaultId;
-  } catch (err) {
-    if (!(err instanceof ErrorInvalidId)) throw err;
-    // Else do nothing.
-  }
-  // It does not exist, throwing error.
-  throw new ErrorVaultUndefined('Vault was not found.');
+  metadata.set('Authorization', `Basic ${encoded}`);
+  return metadata;
 }
 
 /**
- * Gets Session token from metadata
- * @param meta
- * @returns
+ * Decodes an Authorization header to session token
+ * The server is expected to only provide bearer tokens
  */
-function getToken(meta: grpc.Metadata): SessionToken {
-  const auth = meta.get('Authorization').pop();
-  if (auth == null) {
-    throw new clientErrors.ErrorClientJWTTokenNotProvided();
-  }
-  const token = auth.toString().split(' ')[1];
-  return token as SessionToken;
-}
-
-/**
- * Refresh the client session.
- */
-async function refreshSession(
-  meta: grpc.Metadata,
-  session: Session,
-): Promise<void> {
-  const auth = meta.get('Authorization').pop();
-  if (auth == null) {
+function decodeAuthToSession(
+  metadata: grpc.Metadata,
+): SessionToken | undefined {
+  const auth = metadata.get('Authorization')[0] as string | undefined;
+  if (auth == null || !auth.startsWith('Bearer ')) {
     return;
   }
-  const token = auth.toString().split('Bearer: ')[1];
-  await session.refresh(token as SessionToken);
+  return auth.substr(7) as SessionToken;
 }
 
-function createMetaTokenResponse(token: SessionToken): grpc.Metadata {
-  const meta = new grpc.Metadata();
-  meta.set('Authorization', `Bearer: ${token}`);
-  return meta;
-}
+export {
+  sessionInterceptor,
+  authenticator,
+  encodeAuthFromPassword,
+  encodeAuthFromSession,
+  decodeAuthToSession,
+};
 
-export { parseVaultInput, getToken, refreshSession, createMetaTokenResponse };
+export type { Authenticate };

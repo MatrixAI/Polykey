@@ -72,24 +72,11 @@ type DeflatedObject = {
   source?: string | undefined;
 };
 
-type BufferEncoding =
-  | 'utf8'
-  | 'hex'
-  | 'ascii'
-  | 'utf-8'
-  | 'utf16le'
-  | 'ucs2'
-  | 'ucs-2'
-  | 'base64'
-  | 'latin1'
-  | 'binary';
-
 export type {
   Refs,
   SymRefs,
   Ack,
   Packfile,
-  BufferEncoding,
   Identity,
   Pack,
   PackIndex,

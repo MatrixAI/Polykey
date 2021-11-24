@@ -14,29 +14,70 @@
     "prettier",
     "prettier/@typescript-eslint"
   ],
+  "plugins": [
+    "import"
+  ],
   "parserOptions": {
+    "project": "tsconfig.json",
     "sourceType": "module",
     "ecmaVersion": 2020
-  },
-  "globals": {
-    "fail": "readonly"
   },
   "rules": {
     "linebreak-style": ["error", "unix"],
     "no-empty": 1,
-    "no-undef": 1,
+    "no-undef": 0,
     "no-useless-catch": 1,
     "no-prototype-builtins": 1,
     "no-constant-condition": 0,
     "no-useless-escape" : 0,
     "no-console": "error",
     "eqeqeq": ["error", "smart"],
+    "spaced-comment": [
+      "warn",
+      "always",
+      {
+        "line": {
+          "exceptions": ["-"]
+        },
+        "block": {
+          "exceptions": ["*"]
+        }
+      }
+    ],
     "capitalized-comments": [
       "warn",
       "always",
       {
         "ignoreInlineComments": true,
         "ignoreConsecutiveComments": true
+      }
+    ],
+    "import/order": [
+      "error",
+      {
+        "groups": [
+          "type",
+          "builtin",
+          "external",
+          "internal",
+          "index",
+          "sibling",
+          "parent",
+          "object"
+        ],
+        "pathGroups": [
+          {
+            "pattern": "@",
+            "group": "internal"
+          },
+          {
+            "pattern": "@/**",
+            "group": "internal"
+          }
+        ],
+        "pathGroupsExcludedImportTypes": [
+          "type"
+        ]
       }
     ],
     "@typescript-eslint/no-namespace": 0,
@@ -56,6 +97,16 @@
     "@typescript-eslint/ban-ts-comment": 0,
     "@typescript-eslint/no-empty-function": 0,
     "@typescript-eslint/no-empty-interface": 0,
+    "@typescript-eslint/consistent-type-imports": ["error"],
+    "no-throw-literal": "off",
+    "@typescript-eslint/no-throw-literal": ["error"],
+    "@typescript-eslint/no-floating-promises": ["error", {
+      "ignoreVoid": true,
+      "ignoreIIFE": true
+    }],
+    "@typescript-eslint/no-misused-promises": ["error", {
+      "checksVoidReturn": false
+    }],
     "@typescript-eslint/naming-convention": [
       "error",
       {
@@ -66,7 +117,7 @@
       },
       {
         "selector": "variable",
-        "format": ["camelCase", "UPPER_CASE"],
+        "format": ["camelCase", "UPPER_CASE", "PascalCase"],
         "leadingUnderscore": "allow",
         "trailingUnderscore": "allowSingleOrDouble"
       },

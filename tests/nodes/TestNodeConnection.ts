@@ -1,13 +1,12 @@
 import type { PublicKeyPem } from '@/keys/types';
 import type { AbstractConstructorParameters } from '@/types';
 
-import { NodeConnection } from '@/nodes';
-import { NodeId } from '@/nodes/types';
-import { Host, Port, ProxyConfig } from '@/network/types';
-import { ForwardProxy } from '@/network';
-import { KeyManager } from '@/keys';
+import type { NodeId } from '@/nodes/types';
+import type { Host, Port, ProxyConfig } from '@/network/types';
+import type { ForwardProxy } from '@/network';
+import type { KeyManager } from '@/keys';
 import Logger from '@matrixai/logger';
-import { GRPCClientAgent } from '@/agent';
+import { NodeConnection } from '@/nodes';
 
 /**
  * A dummy NodeConnection object. Currently used for when a connection isn't
@@ -36,17 +35,10 @@ class TestNodeConnection extends NodeConnection {
   }): Promise<TestNodeConnection> {
     const logger_ = logger ?? new Logger('NodeConnection');
     const proxyConfig_ = {
-      host: forwardProxy.getProxyHost(),
-      port: forwardProxy.getProxyPort(),
+      host: forwardProxy.proxyHost,
+      port: forwardProxy.proxyPort,
       authToken: forwardProxy.authToken,
     } as ProxyConfig;
-    const client_ = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: targetNodeId,
-      host: targetHost,
-      port: targetPort,
-      proxyConfig: proxyConfig_,
-      logger: logger ?? new Logger('NodeConnectionClient'),
-    });
     return new TestNodeConnection({
       publicKey,
       forwardProxy,
@@ -56,7 +48,6 @@ class TestNodeConnection extends NodeConnection {
       targetNodeId,
       targetPort,
       proxyConfig: proxyConfig_,
-      client: client_,
     });
   }
 

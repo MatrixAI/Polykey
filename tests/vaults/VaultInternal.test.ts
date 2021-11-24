@@ -1,13 +1,12 @@
 import type { Vault, VaultId, VaultKey } from '@/vaults/types';
-
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { VaultInternal } from '@/vaults';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { EncryptedFS } from 'encryptedfs';
+import { VaultInternal } from '@/vaults';
 
 import { generateVaultId, generateVaultKey } from '@/vaults/utils';
-import { EncryptedFS } from 'encryptedfs';
 import * as vaultsErrors from '@/vaults/errors';
 import { sleep } from '@/utils';
 import { KeyManager } from '@/keys';
@@ -55,6 +54,8 @@ describe('VaultInternal', () => {
   afterEach(async () => {
     await vault.destroy();
     await efs.stop();
+    await efs.destroy();
+    await keyManager.stop();
     await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -189,6 +190,15 @@ describe('VaultInternal', () => {
     });
   });
 
+  test('VaultInternal readiness', async () => {
+    await vault.destroy();
+    await expect(async () => {
+      await vault.log();
+    }).rejects.toThrow(vaultsErrors.ErrorVaultDestroyed);
+    await expect(async () => {
+      await vault.readWorkingDirectory();
+    }).rejects.toThrow(vaultsErrors.ErrorVaultDestroyed);
+  });
   test('creating state on disk', async () => {
     expect(await fs.promises.readdir(dataDir)).toContain('db');
   });
@@ -294,7 +304,7 @@ describe('VaultInternal', () => {
       let log = await vault.log();
       expect(log[0].message).toContain(`${secret1.name} added`);
       expect(log[0].message).toContain(`${secret2.name} added`);
-      //Checking contents
+      // Checking contents
       await vault.access(async (efs) => {
         expect((await efs.readFile(secret1.name)).toString()).toEqual(
           secret1.content,
@@ -376,7 +386,7 @@ describe('VaultInternal', () => {
       let firstCommitResolved = false;
       let firstCommitResolveTime;
 
-      //@ts-ignore
+      // @ts-ignore
       expect(vault.lock.isLocked()).toBeFalsy();
 
       const commit1 = vault.commit(async (efs) => {
@@ -387,7 +397,7 @@ describe('VaultInternal', () => {
       });
 
       // Now that we are holding the lock hostage,
-      //@ts-ignore
+      // @ts-ignore
       expect(vault.lock.isLocked()).toBeTruthy();
       // We want to check if any action resolves before the lock is released.
 
@@ -417,7 +427,7 @@ describe('VaultInternal', () => {
       expect(firstCommitResolved).toBeTruthy();
       expect(secondCommitResolved).toBeTruthy();
       expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
-      //@ts-ignore
+      // @ts-ignore
       expect(vault.lock.isLocked()).toBeFalsy();
 
       // Commit order should be commit2 -> commit1 -> init
@@ -511,7 +521,7 @@ describe('VaultInternal', () => {
       let firstCommitResolved = false;
       let firstCommitResolveTime;
 
-      //@ts-ignore
+      // @ts-ignore
       expect(vault.lock.isLocked()).toBeFalsy();
 
       const commit1 = vault.access(async (efs) => {
@@ -523,7 +533,7 @@ describe('VaultInternal', () => {
 
       // Now that we are holding the lock hostage,
       // we want to check if any action resolves before the lock is released.
-      //@ts-ignore
+      // @ts-ignore
       expect(vault.lock.isLocked()).toBeTruthy();
 
       let secondCommitResolved = false;
@@ -552,7 +562,7 @@ describe('VaultInternal', () => {
       expect(firstCommitResolved).toBeTruthy();
       expect(secondCommitResolved).toBeTruthy();
       expect(secondCommitResolveTime).toBeGreaterThan(firstCommitResolveTime);
-      //@ts-ignore
+      // @ts-ignore
       expect(vault.lock.isLocked()).toBeFalsy();
     });
   });

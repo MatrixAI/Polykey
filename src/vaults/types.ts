@@ -4,8 +4,8 @@ import type { NodeId } from '../nodes/types';
 import type { MutexInterface } from 'async-mutex';
 import type { Callback, Path } from 'encryptedfs/dist/types';
 import type { FdIndex } from 'encryptedfs/dist/fd/types';
-import { EncryptedFS } from 'encryptedfs';
-import { Id, IdString } from '../GenericIdTypes';
+import type { EncryptedFS } from 'encryptedfs';
+import type { Id, IdString } from '../GenericIdTypes';
 
 /**
  * Randomly generated vault ID for each new vault
@@ -27,6 +27,9 @@ type VaultList = Map<VaultName, VaultId>;
 
 type VaultMetadata = {
   name: VaultName;
+  id: VaultId;
+  remoteNode: NodeId;
+  remoteVault: VaultId;
 };
 
 type SecretName = string;
@@ -43,43 +46,9 @@ type VaultMap = Map<
   }
 >;
 
-type VaultPermissions = Record<NodeId, VaultAction>;
-
-type FileChange = {
-  fileName: string;
-  action: 'added' | 'modified' | 'removed';
-};
-
-type FileChanges = Array<FileChange>;
-
 type FileOptions = {
   recursive?: boolean;
 };
-
-type VaultMapOp_ =
-  | {
-      domain: 'vaults';
-      key: VaultId;
-      value: Buffer;
-    }
-  | {
-      domain: 'names';
-      key: string;
-      value: VaultId;
-    }
-  | {
-      domain: 'links';
-      key: VaultId;
-      value: string;
-    };
-
-type VaultMapOp =
-  | ({
-      type: 'put';
-    } & VaultMapOp_)
-  | ({
-      type: 'del';
-    } & Omit<VaultMapOp_, 'value'>);
 
 type VaultActions = Partial<Record<VaultAction, null>>;
 
@@ -188,10 +157,6 @@ export type {
   VaultList,
   VaultMap,
   VaultMetadata,
-  VaultPermissions,
-  FileChange,
-  FileChanges,
-  VaultMapOp,
   VaultActions,
   SecretName,
   SecretList,

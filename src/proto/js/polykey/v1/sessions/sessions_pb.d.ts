@@ -7,18 +7,8 @@
 import * as jspb from "google-protobuf";
 
 export class Password extends jspb.Message { 
-
-    hasPassword(): boolean;
-    clearPassword(): void;
     getPassword(): string;
     setPassword(value: string): Password;
-
-    hasPasswordFile(): boolean;
-    clearPasswordFile(): void;
-    getPasswordFile(): string;
-    setPasswordFile(value: string): Password;
-
-    getPasswordOrFileCase(): Password.PasswordOrFileCase;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Password.AsObject;
@@ -33,15 +23,7 @@ export class Password extends jspb.Message {
 export namespace Password {
     export type AsObject = {
         password: string,
-        passwordFile: string,
     }
-
-    export enum PasswordOrFileCase {
-        PASSWORD_OR_FILE_NOT_SET = 0,
-        PASSWORD = 1,
-        PASSWORD_FILE = 2,
-    }
-
 }
 
 export class Token extends jspb.Message { 

@@ -1,170 +1,158 @@
+import type { SessionToken } from './types';
 import type { FileSystem } from '../types';
-import type { SessionToken, SessionCredentials } from './types';
 
-import path from 'path';
 import Logger from '@matrixai/logger';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import lock from 'fd-lock';
-import { openSync, closeSync } from 'fs';
-
+import * as sessionErrors from './errors';
 import * as utils from '../utils';
-import * as grpc from '@grpc/grpc-js';
 
-/**
- * Represents a client's session
- */
+interface Session extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new sessionErrors.ErrorSessionRunning(),
+  new sessionErrors.ErrorSessionDestroyed(),
+)
 class Session {
-  private fs: FileSystem;
-  private logger: Logger;
-  private _token: SessionToken;
+  static async createSession({
+    sessionTokenPath,
+    fs = require('fs'),
+    logger = new Logger(this.name),
+    sessionToken,
+    fresh = false,
+  }: {
+    sessionTokenPath: string;
+    fs?: FileSystem;
+    logger?: Logger;
+    sessionToken?: SessionToken;
+    fresh?: boolean;
+  }): Promise<Session> {
+    logger.info(`Creating ${this.name}`);
+    logger.info(`Setting session token path to ${sessionTokenPath}`);
+    const session = new Session({
+      sessionTokenPath,
+      fs,
+      logger,
+    });
+    await session.start({
+      sessionToken,
+      fresh,
+    });
+    logger.info(`Created ${this.name}`);
+    return session;
+  }
 
-  public readonly clientPath: string;
-  public readonly sessionFile: string;
+  public readonly sessionTokenPath: string;
+  protected fs: FileSystem;
+  protected logger: Logger;
 
-  /**
-   * Construct a Session
-   * @param clientPath: the client path
-   */
-  constructor({
-    clientPath,
+  public constructor({
+    sessionTokenPath,
     fs,
     logger,
   }: {
-    clientPath: string;
-    fs?: FileSystem;
-    logger?: Logger;
+    sessionTokenPath: string;
+    fs: FileSystem;
+    logger: Logger;
   }) {
-    this.fs = fs ?? require('fs');
-    this.logger = logger ?? new Logger(this.constructor.name);
-
-    this.clientPath = clientPath;
-    this.sessionFile = path.join(this.clientPath, 'token');
+    this.logger = logger;
+    this.sessionTokenPath = sessionTokenPath;
+    this.fs = fs;
   }
 
-  /**
-   * Starts the session, given a Claim/token.
-   */
-  public async start({ token }: { token?: SessionToken } = {}) {
-    if (token == null) {
-      token = await this.readToken();
+  public async start({
+    sessionToken,
+    fresh = false,
+  }: {
+    sessionToken?: SessionToken;
+    fresh?: boolean;
+  } = {}): Promise<void> {
+    this.logger.info(`Starting ${this.constructor.name}`);
+    if (fresh) {
+      await this.fs.promises.rm(this.sessionTokenPath, {
+        force: true,
+      });
     }
-    if (token != null) {
-      this.logger.debug('DEBUG');
-      this.logger.info('Starting Session');
-      this._token = token;
-      await this.writeToken();
-      this.logger.info('Started Session');
+    if (sessionToken != null) {
+      await this.writeToken(sessionToken);
     }
+    this.logger.info(`Started ${this.constructor.name}`);
   }
 
-  public async stop() {
-    if (!this.token || this.token === '') {
-      return;
-    }
-    this.logger.info('Stopping Session');
-    this._token = '' as SessionToken;
-    this.logger.info('Stopped Session');
+  public async stop(): Promise<void> {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
-  public get token(): SessionToken {
-    return this._token;
+  public async destroy(): Promise<void> {
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    await this.fs.promises.rm(this.sessionTokenPath, {
+      force: true,
+    });
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  public sessionMetadataGenerator(_params, callback, _metadata?) {
-    const metadata = _metadata ?? new grpc.Metadata();
-    if (this.token) {
-      // Provides token if token exists.
-      metadata.add('Authorization', `Bearer: ${this.token}`);
-    }
-    callback(null, metadata);
-  }
-
-  /**
-   * Generates a grpc.CallOption using the token in this session.
-   * @throws ErrorSessionNotStarted when the session has not started.
-   * @returns Promise of a grpc.CallOption with the credentials field.
-   */
-  // public async createCallCredentials(): Promise<Partial<grpc.CallOptions>> {
-  public async createCallCredentials(): Promise<SessionCredentials> {
-    if (!this.token || this.token === '') {
-      return {} as SessionCredentials;
-    }
-    return {
-      credentials: grpc.CallCredentials.createFromMetadataGenerator(
-        this.sessionMetadataGenerator,
-      ),
-    } as SessionCredentials;
-  }
-
-  /**
-   * Attempts to read the token in the sessionFile
-   * @returns the token, or undefined if token is not found
-   */
+  @ready(new sessionErrors.ErrorSessionNotRunning())
   public async readToken(): Promise<SessionToken | undefined> {
+    let sessionTokenFile;
     try {
-      this.logger.info('Reading session token');
-      const token = await this.fs.promises.readFile(this.sessionFile);
-      return token.toString() as SessionToken;
-    } catch (err) {
-      this.logger.info('No session token found');
-      return;
-    }
-  }
-
-  /**
-   * Writes the current token stored in this session into the sessionFile
-   */
-  public async writeToken() {
-    if (!this.token || this.token === '') {
-      this.logger.info('No token provided, skipping writing token to file.');
-      return;
-      // Should just do nothing.
-      // throw new sessionErrors.ErrorSessionNotStarted(
-      //   'No token, cannot write to file.',
-      // );
-    }
-    this.logger.info(`Writing token to ${this.sessionFile}`);
-    await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
-
-    try {
-      // Get a file descriptor for the session file so we can lock it
-      const fd = openSync(this.sessionFile, 'r');
-      // If we can't lock the session file (and no error is thrown) this means
-      // another concurrent process must have already locked it. The other process
-      // will unlock and refresh the token when it finishes so we can just drop
-      // our request.
-      if (!lock(fd)) {
+      sessionTokenFile = await this.fs.promises.open(
+        this.sessionTokenPath,
+        'r',
+      );
+      while (!lock(sessionTokenFile.fd)) {
+        await utils.sleep(2);
+      }
+      const sessionTokenData = await sessionTokenFile.readFile('utf-8');
+      const sessionToken = sessionTokenData.trim();
+      // WriteToken may create an empty session token file before it completes
+      if (sessionToken === '') {
         return;
       }
-      await this.fs.promises.writeFile(this.sessionFile, this._token);
-      lock.unlock(fd);
-      closeSync(fd);
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        await this.fs.promises.writeFile(this.sessionFile, this._token);
+      return sessionToken as SessionToken;
+    } catch (e) {
+      if (e.code === 'ENOENT') {
+        // If the file doesn't exist then no token is available
         return;
       }
-      throw err;
+      throw e;
+    } finally {
+      if (sessionTokenFile != null) {
+        lock.unlock(sessionTokenFile.fd);
+        await sessionTokenFile.close();
+      }
     }
   }
 
-  /**
-   * Clears the token in the file, if file does not exist, exits cleanly
-   */
-  public async clearFSToken() {
+  @ready(new sessionErrors.ErrorSessionNotRunning())
+  public async writeToken(sessionToken: SessionToken): Promise<void> {
+    let sessionTokenFile;
     try {
-      this.logger.info(`Clearing token from ${this.sessionFile}`);
-      this.fs.promises.writeFile(this.sessionFile, '');
-    } catch (err) {
-      return;
+      // Cannot use 'w', it truncates immediately
+      // should truncate only while holding the lock
+      sessionTokenFile = await this.fs.promises.open(
+        this.sessionTokenPath,
+        this.fs.constants.O_WRONLY | this.fs.constants.O_CREAT,
+      );
+      while (!lock(sessionTokenFile.fd)) {
+        // Write sleep should be half of read sleep
+        // this ensures write-preferring locking
+        await utils.sleep(1);
+      }
+      await sessionTokenFile.truncate();
+      // Writes from the beginning
+      await sessionTokenFile.writeFile(
+        (sessionToken as string) + '\n',
+        'utf-8',
+      );
+    } finally {
+      if (sessionTokenFile != null) {
+        lock.unlock(sessionTokenFile.fd);
+        await sessionTokenFile.close();
+      }
     }
-  }
-
-  /**
-   * Update, and write this session's SessionToken
-   */
-  public async refresh(token: SessionToken) {
-    this._token = token;
-    await this.writeToken();
   }
 }
 

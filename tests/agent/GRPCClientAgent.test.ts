@@ -1,14 +1,14 @@
+import type * as grpc from '@grpc/grpc-js';
 import type { NodeAddress, NodeInfo } from '@/nodes/types';
 import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { VaultName } from '@/vaults/types';
-
+import type { GRPCClientAgent } from '@/agent';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as grpc from '@grpc/grpc-js';
 import { Mutex } from 'async-mutex';
+import { DB } from '@matrixai/db';
 
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
@@ -16,19 +16,18 @@ import { VaultManager } from '@/vaults';
 import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
-import { GRPCClientAgent } from '@/agent';
+import { errors as agentErrors } from '@/agent';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { DB } from '@matrixai/db';
 import { NotificationsManager } from '@/notifications';
+import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
+import { makeNodeId } from '@/nodes/utils';
+import * as testUtils from './utils';
 import TestNodeConnection from '../nodes/TestNodeConnection';
 
-import * as testUtils from './utils';
-import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
 import { makeCrypto } from '../utils';
-import { makeNodeId } from '@/nodes/utils';
 
 describe('GRPC agent', () => {
   const password = 'password';
@@ -69,19 +68,26 @@ describe('GRPC agent', () => {
     vaultsPath = path.join(dataDir, 'vaults');
     dbPath = path.join(dataDir, 'db');
 
-    fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken: 'abc',
-      logger: logger,
-    });
-
-    revProxy = await ReverseProxy.createReverseProxy({
-      logger: logger,
-    });
-
     keyManager = await KeyManager.createKeyManager({
       password,
       keysPath,
       fs: fs,
+      logger: logger,
+    });
+
+    const tlsConfig: TLSConfig = {
+      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
+      certChainPem: await keyManager.getRootCertChainPem(),
+    };
+    fwdProxy = new ForwardProxy({
+      authToken: 'abc',
+      logger: logger,
+    });
+    await fwdProxy.start({
+      tlsConfig,
+    });
+
+    revProxy = new ReverseProxy({
       logger: logger,
     });
 
@@ -115,7 +121,6 @@ describe('GRPC agent', () => {
       keyManager: keyManager,
       fwdProxy: fwdProxy,
       revProxy: revProxy,
-      fs: fs,
       logger: logger,
     });
 
@@ -141,12 +146,6 @@ describe('GRPC agent', () => {
       logger: logger,
     });
 
-    await db.start();
-    const tlsConfig: TLSConfig = {
-      keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
-    };
-    await fwdProxy.start({ tlsConfig });
     await nodeManager.start();
     [server, port] = await testUtils.openTestAgentServer({
       keyManager,
@@ -161,20 +160,35 @@ describe('GRPC agent', () => {
     await testUtils.closeTestAgentClient(client);
     await testUtils.closeTestAgentServer(server);
 
+    await vaultManager.stop();
     await vaultManager.destroy();
+    await notificationsManager.stop();
     await notificationsManager.destroy();
+    await sigchain.stop();
     await sigchain.destroy();
     await nodeManager.stop();
+    await nodeManager.destroy();
+    await gestaltGraph.stop();
     await gestaltGraph.destroy();
+    await acl.stop();
     await acl.destroy();
     await fwdProxy.stop();
     await db.stop();
+    await db.destroy();
+    await keyManager.stop();
     await keyManager.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
+  });
+
+  test('GRPCClientAgent readiness', async () => {
+    await client.destroy();
+    await expect(async () => {
+      await client.echo(new utilsPB.EchoMessage());
+    }).rejects.toThrow(agentErrors.ErrorAgentClientDestroyed);
   });
   test('echo', async () => {
     const echoMessage = new utilsPB.EchoMessage();
@@ -185,7 +199,7 @@ describe('GRPC agent', () => {
   });
   test.skip('can check permissions', async () => {
     // FIXME: permissions not implemented on vaults.
-    const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
+    // const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
     await gestaltGraph.setNode(node1);
     // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
     // await vaultManager.unsetVaultPermissions('12345' as NodeId, vault.vaultId);
@@ -200,8 +214,8 @@ describe('GRPC agent', () => {
     // Await vaultManager.deleteVault(vault.vaultId);
   });
   test.skip('can scan vaults', async () => {
-    //FIXME, permissions not implemented on vaults
-    const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
+    // FIXME, permissions not implemented on vaults
+    // const vault = await vaultManager.createVault('TestAgentVault' as VaultName);
     await gestaltGraph.setNode(node1);
     const nodeIdMessage = new nodesPB.Node();
     nodeIdMessage.setNodeId(node1.id);
@@ -214,12 +228,12 @@ describe('GRPC agent', () => {
     expect(data).toStrictEqual([]);
     fail();
     // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = client.vaultsScan(nodeIdMessage);
-    const data2: string[] = [];
-    for await (const resp of response2) {
-      const chunk = resp.getNameOrId();
-      // Data2.push(Buffer.from(chunk).toString());
-    }
+    // const response2 = client.vaultsScan(nodeIdMessage);
+    // Const data2: string[] = [];
+    // for await (const resp of response2) {
+    // Const chunk = resp.getNameOrId();
+    // Data2.push(Buffer.from(chunk).toString());
+    // }
     // Expect(data2).toStrictEqual([`${vault.vaultName}\t${vault.vaultId}`]);
     // await vaultManager.deleteVault(vault.vaultId);
   });
@@ -284,6 +298,7 @@ describe('GRPC agent', () => {
     });
 
     afterEach(async () => {
+      await yKeyManager.stop();
       await yKeyManager.destroy();
     });
 

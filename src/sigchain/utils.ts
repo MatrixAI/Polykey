@@ -2,10 +2,10 @@ import type { PublicKeyPem } from '../keys/types';
 import type { ChainData, ChainDataEncoded } from './types';
 import type { ClaimId, ClaimIdString } from '../claims/types';
 
-import * as claimsUtils from '../claims/utils';
+import type { NodeId } from '../nodes/types';
 import { IdSortable } from '@matrixai/id';
+import * as claimsUtils from '../claims/utils';
 import { isIdString, isId, makeIdString, makeId } from '../GenericIdTypes';
-import { NodeId } from '../nodes/types';
 
 /**
  * Verifies each claim in a ChainDataEncoded record, and returns a ChainData

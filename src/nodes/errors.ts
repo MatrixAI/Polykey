@@ -2,13 +2,20 @@ import { ErrorPolykey } from '../errors';
 
 class ErrorNodes extends ErrorPolykey {}
 
-class ErrorNodeManagerNotStarted extends ErrorNodes {}
+class ErrorNodeManagerRunning extends ErrorNodes {}
+
+class ErrorNodeManagerNotRunning extends ErrorNodes {}
 
 class ErrorNodeManagerDestroyed extends ErrorNodes {}
 
-class ErrorNodeGraphNotStarted extends ErrorNodes {}
+class ErrorNodeGraphRunning extends ErrorNodes {}
+
+class ErrorNodeGraphNotRunning extends ErrorNodes {}
+
+class ErrorNodeGraphDestroyed extends ErrorNodes {}
 
 // Cannot locate a node through getClosestGlobalNodes
+
 class ErrorNodeGraphNodeNotFound extends ErrorNodes {}
 
 class ErrorNodeGraphNodeIdMissing extends ErrorNodes {}
@@ -19,7 +26,9 @@ class ErrorNodeGraphEmptyDatabase extends ErrorNodes {}
 
 class ErrorNodeGraphInvalidBucketIndex extends ErrorNodes {}
 
-class ErrorNodeConnectionNotStarted extends ErrorNodes {}
+class ErrorNodeConnectionRunning extends ErrorNodes {}
+
+class ErrorNodeConnectionNotRunning extends ErrorNodes {}
 
 class ErrorNodeConnectionDestroyed extends ErrorNodes {}
 
@@ -45,15 +54,19 @@ class ErrorInvalidHost extends ErrorNodes {
 
 export {
   ErrorNodes,
-  ErrorNodeManagerNotStarted,
+  ErrorNodeManagerRunning,
+  ErrorNodeManagerNotRunning,
   ErrorNodeManagerDestroyed,
-  ErrorNodeGraphNotStarted,
+  ErrorNodeGraphRunning,
+  ErrorNodeGraphNotRunning,
+  ErrorNodeGraphDestroyed,
   ErrorNodeGraphNodeNotFound,
   ErrorNodeGraphNodeIdMissing,
   ErrorNodeGraphSelfConnect,
   ErrorNodeGraphEmptyDatabase,
   ErrorNodeGraphInvalidBucketIndex,
-  ErrorNodeConnectionNotStarted,
+  ErrorNodeConnectionRunning,
+  ErrorNodeConnectionNotRunning,
   ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionTimeout,
   ErrorNodeConnectionNotExist,

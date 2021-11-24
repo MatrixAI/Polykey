@@ -16,15 +16,20 @@ import type { ACL } from '../acl';
 
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as gestaltsUtils from './utils';
 import * as gestaltsErrors from './errors';
-import { errors as dbErrors } from '@matrixai/db';
-import { utils as aclUtils, errors as aclErrors } from '../acl';
+import { utils as aclUtils } from '../acl';
 import * as utils from '../utils';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 
-interface GestaltGraph extends CreateDestroy {}
-@CreateDestroy()
+interface GestaltGraph extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new gestaltsErrors.ErrorGestaltsGraphRunning(),
+  new gestaltsErrors.ErrorGestaltsGraphDestroyed(),
+)
 class GestaltGraph {
   protected logger: Logger;
   protected db: DB;
@@ -45,7 +50,7 @@ class GestaltGraph {
   static async createGestaltGraph({
     db,
     acl,
-    logger,
+    logger = new Logger(this.name),
     fresh = false,
   }: {
     db: DB;
@@ -53,9 +58,10 @@ class GestaltGraph {
     logger?: Logger;
     fresh?: boolean;
   }): Promise<GestaltGraph> {
-    const logger_ = logger ?? new Logger(this.constructor.name);
-    const gestaltGraph = new GestaltGraph({ acl, db, logger: logger_ });
-    await gestaltGraph.create({ fresh });
+    logger.info(`Creating ${this.name}`);
+    const gestaltGraph = new GestaltGraph({ acl, db, logger });
+    await gestaltGraph.start({ fresh });
+    logger.info(`Created ${this.name}`);
     return gestaltGraph;
   }
 
@@ -69,14 +75,8 @@ class GestaltGraph {
     return this.lock.isLocked();
   }
 
-  private async create({ fresh }: { fresh: boolean }) {
-    this.logger.info('Starting Gestalt Graph');
-    if (!this.db.running) {
-      throw new dbErrors.ErrorDBNotRunning();
-    }
-    if (this.acl.destroyed) {
-      throw new aclErrors.ErrorACLDestroyed();
-    }
+  public async start({ fresh = false }: { fresh?: boolean } = {}) {
+    this.logger.info(`Starting ${this.constructor.name}`);
     const graphDb = await this.db.level(this.graphDbDomain);
     const graphMatrixDb = await this.db.level(
       this.graphMatrixDbDomain[1],
@@ -97,11 +97,19 @@ class GestaltGraph {
     this.graphMatrixDb = graphMatrixDb;
     this.graphNodesDb = graphNodesDb;
     this.graphIdentitiesDb = graphIdentitiesDb;
-    this.logger.info('Started Gestalts Graph');
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  async stop() {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   async destroy() {
-    this.logger.info('Destroyed Gestalt Graph');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    const graphDb = await this.db.level(this.graphDbDomain);
+    await graphDb.clear();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   /**
@@ -132,7 +140,7 @@ class GestaltGraph {
     }
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestalts(): Promise<Array<Gestalt>> {
     return await this._transaction(async () => {
       const unvisited: Map<GestaltKey, GestaltKeySet> = new Map();
@@ -187,13 +195,13 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestaltByNode(nodeId: NodeId): Promise<Gestalt | undefined> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     return this.getGestaltByKey(nodeKey);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestaltByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -202,7 +210,7 @@ class GestaltGraph {
     return this.getGestaltByKey(identityKey);
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setIdentity(identityInfo: IdentityInfo): Promise<void> {
     return await this._transaction(async () => {
       const ops = await this.setIdentityOps(identityInfo);
@@ -210,7 +218,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setIdentityOps(
     identityInfo: IdentityInfo,
   ): Promise<Array<DBOp>> {
@@ -240,7 +248,7 @@ class GestaltGraph {
     return ops;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unsetIdentity(providerId: ProviderId, identityId: IdentityId) {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
@@ -250,7 +258,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unsetIdentityOps(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -296,7 +304,7 @@ class GestaltGraph {
    * If this is a new node, it will set a new node pointer
    * to a new gestalt permission in the acl
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setNode(nodeInfo: NodeInfo): Promise<void> {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
@@ -306,7 +314,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setNodeOps(nodeInfo: NodeInfo): Promise<Array<DBOp>> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeInfo.id);
     const ops: Array<DBOp> = [];
@@ -346,7 +354,7 @@ class GestaltGraph {
    * If this node exists, it will remove the node pointer
    * to the gestalt permission in the acl
    */
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unsetNode(nodeId: NodeId): Promise<void> {
     return await this._transaction(async () => {
       return await this.acl._transaction(async () => {
@@ -356,7 +364,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unsetNodeOps(nodeId: NodeId): Promise<Array<DBOp>> {
     const nodeKey = gestaltsUtils.keyFromNode(nodeId);
     const nodeKeyKeys = await this.db.get<GestaltKeySet>(
@@ -398,7 +406,7 @@ class GestaltGraph {
     return ops;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async linkNodeAndIdentity(
     nodeInfo: NodeInfo,
     identityInfo: IdentityInfo,
@@ -411,7 +419,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async linkNodeAndIdentityOps(
     nodeInfo: NodeInfo,
     identityInfo: IdentityInfo,
@@ -555,7 +563,7 @@ class GestaltGraph {
     return ops;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async linkNodeAndNode(
     nodeInfo1: NodeInfo,
     nodeInfo2: NodeInfo,
@@ -568,7 +576,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async linkNodeAndNodeOps(
     nodeInfo1: NodeInfo,
     nodeInfo2: NodeInfo,
@@ -688,7 +696,7 @@ class GestaltGraph {
     return ops;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unlinkNodeAndIdentity(
     nodeId: NodeId,
     providerId: ProviderId,
@@ -706,7 +714,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unlinkNodeAndIdentityOps(
     nodeId: NodeId,
     providerId: ProviderId,
@@ -766,7 +774,7 @@ class GestaltGraph {
     return ops;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unlinkNodeAndNode(
     nodeId1: NodeId,
     nodeId2: NodeId,
@@ -779,7 +787,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unlinkNodeAndNodeOps(
     nodeId1: NodeId,
     nodeId2: NodeId,
@@ -837,7 +845,7 @@ class GestaltGraph {
     return ops;
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestaltActionsByNode(
     nodeId: NodeId,
   ): Promise<GestaltActions | undefined> {
@@ -859,7 +867,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async getGestaltActionsByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -899,7 +907,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setGestaltActionByNode(
     nodeId: NodeId,
     action: GestaltAction,
@@ -918,7 +926,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async setGestaltActionByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -956,7 +964,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unsetGestaltActionByNode(
     nodeId: NodeId,
     action: GestaltAction,
@@ -975,7 +983,7 @@ class GestaltGraph {
     });
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async unsetGestaltActionByIdentity(
     providerId: ProviderId,
     identityId: IdentityId,
@@ -1106,7 +1114,7 @@ class GestaltGraph {
     return [visited, visitedNodes, visitedIdentities];
   }
 
-  @ready(new gestaltsErrors.ErrorGestaltsGraphDestroyed())
+  @ready(new gestaltsErrors.ErrorGestaltsGraphNotRunning())
   public async clearDB() {
     await this.graphDb.clear();
   }
