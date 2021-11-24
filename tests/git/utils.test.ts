@@ -1,15 +1,15 @@
+import type { ReadCommitResult } from 'isomorphic-git';
+
+import type { PackIndex } from '@/git/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-
+import { EncryptedFS } from 'encryptedfs';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import * as gitErrors from '@/git/errors';
+import * as keysUtils from '@/keys/utils';
 import * as gitUtils from '@/git/utils';
 import * as gitTestUtils from './utils';
-import * as gitErrors from '@/git/errors';
-import { PackIndex } from '@/git/types';
-import { ReadCommitResult } from 'isomorphic-git';
-import { EncryptedFS } from 'encryptedfs';
-import { KeyManager } from '@/keys';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
 describe('Git utils', () => {
   const logger = new Logger('VaultManager Test', LogLevel.WARN, [
@@ -20,21 +20,16 @@ describe('Git utils', () => {
   let firstCommit: ReadCommitResult;
   let objectsPath: string;
   let efs: EncryptedFS;
-  let keyManager: KeyManager;
+  let dbKey: Buffer;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     objectsPath = path.join('.git', 'objects');
-    const keysPath = path.join(dataDir, 'KEYS');
-    keyManager = await KeyManager.createKeyManager({
-      keysPath,
-      password: 'password',
-      logger,
-    });
+    dbKey = await keysUtils.generateKey(256);
     efs = await EncryptedFS.createEncryptedFS({
-      dbKey: keyManager.dbKey,
+      dbKey,
       dbPath: dataDir,
       logger,
     });
@@ -47,17 +42,16 @@ describe('Git utils', () => {
     firstCommit = commits[0];
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await efs.stop();
     await efs.destroy();
-    await keyManager.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-  describe('Git Pack Index', () => {
-    test('from .idx', async () => {
+  describe('read index', () => {
+    test('of a packfile', async () => {
       const packDir = path.join('.git', 'objects', 'pack');
       const packfile = (await efs.promises.readdir(packDir))[0] as string;
       const idx = (await efs.promises.readFile(
@@ -73,54 +67,58 @@ describe('Git utils', () => {
       }
     });
   });
-  describe('Git Ref Manager', () => {
-    test('listRefs', async () => {
+  describe('list refs', () => {
+    test('on master', async () => {
       const refs = await gitUtils.listRefs(efs, '.git', 'refs/heads');
       expect(refs).toEqual(['master']);
     });
   });
-  test('encode string', async () => {
-    const foo = gitUtils.encode('hello world\n');
-    expect(foo).toBeTruthy();
-    expect(Buffer.compare(foo, Buffer.from('0010hello world\n')) === 0).toBe(
-      true,
-    );
-  });
-  test('encode empty string', async () => {
-    const foo = gitUtils.encode('');
-    expect(foo).toBeTruthy();
-    expect(Buffer.compare(foo, Buffer.from('0004')) === 0).toBe(true);
-  });
-  test('upload pack', async () => {
-    const res = (await gitUtils.uploadPack(efs, '.git', true)) as Buffer[];
-    const buffer = Buffer.concat(res);
-    expect(buffer.toString('utf8')).toBe(
-      `007d${firstCommit.oid} HEAD\0side-band-64k symref=HEAD:refs/heads/master agent=git/isomorphic-git@1.8.1
+  describe('encoding', () => {
+    test('a string', async () => {
+      const gitEncodedString = gitUtils.encode('hello world\n');
+      expect(gitEncodedString.equals(Buffer.from('0010hello world\n'))).toBe(
+        true,
+      );
+    });
+    test('an empty string', async () => {
+      const gitEncodedString = gitUtils.encode('');
+      expect(gitEncodedString.equals(Buffer.from('0004'))).toBe(true);
+    });
+    test('an upload pack', async () => {
+      const uploadPackBuffers = (await gitUtils.uploadPack(
+        efs,
+        '.git',
+        true,
+      )) as Buffer[];
+      const uploadPack = Buffer.concat(uploadPackBuffers);
+      expect(uploadPack.toString('utf8')).toBe(
+        `007d${firstCommit.oid} HEAD\0side-band-64k symref=HEAD:refs/heads/master agent=git/isomorphic-git@1.8.1
 003f${firstCommit.oid} refs/heads/master
 0000`,
-    );
+      );
+    });
   });
-  describe('Resolve refs', () => {
-    test('resolving a commit oid', async () => {
+  describe('resolve refs', () => {
+    test('to a commit oid', async () => {
       const ref = await gitUtils.resolve(efs, '.git', commits[0].oid);
       expect(ref).toBe(firstCommit.oid);
     });
-    test('HEAD', async () => {
+    test('to HEAD', async () => {
       const ref = await gitUtils.resolve(efs, '.git', 'HEAD');
       expect(ref).toBe(firstCommit.oid);
     });
-    test('HEAD depth', async () => {
+    test('to HEAD including depth', async () => {
       const ref = await gitUtils.resolve(efs, '.git', 'HEAD', 2);
       expect(ref).toBe('refs/heads/master');
     });
-    test('non-existant refs', async () => {
+    test('to non-existant refs', async () => {
       await expect(() =>
         gitUtils.resolve(efs, '.git', 'this-is-not-a-ref'),
       ).rejects.toThrow(gitErrors.ErrorGitUndefinedRefs);
     });
   });
-  describe('read object', () => {
-    test('object missing', async () => {
+  describe('read an object', () => {
+    test('missing', async () => {
       await expect(() =>
         gitUtils.readObject({
           fs: efs,
