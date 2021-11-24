@@ -1,16 +1,20 @@
+import type { TestServiceClient } from '@/proto/js/polykey/v1/test_service_grpc_pb';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
 import { utils as grpcUtils, errors as grpcErrors } from '@/grpc';
-import { TestServiceClient } from '@/proto/js/polykey/v1/test_service_grpc_pb';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
 
-const logger = new Logger('utils test', LogLevel.INFO, [new StreamHandler()]);
-
 describe('GRPC utils', () => {
+  const logger = new Logger('GRPC utils Test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let client: TestServiceClient, server: grpc.Server, port: number;
   beforeAll(async () => {
-    [server, port] = await utils.openTestServer();
+    // Mocked authenticate always passes authentication
+    const authenticate = async (metaClient, metaServer = new grpc.Metadata()) =>
+      metaServer;
+    [server, port] = await utils.openTestServer(authenticate, logger);
     client = await utils.openTestClient(port);
   }, global.polykeyStartupTimeout);
   afterAll(async () => {

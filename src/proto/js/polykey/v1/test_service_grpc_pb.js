@@ -61,6 +61,17 @@ var TestServiceService = exports.TestServiceService = {
     responseSerialize: serialize_polykey_v1_utils_EchoMessage,
     responseDeserialize: deserialize_polykey_v1_utils_EchoMessage,
   },
+  unaryAuthenticated: {
+    path: '/polykey.v1.TestService/UnaryAuthenticated',
+    requestStream: false,
+    responseStream: false,
+    requestType: polykey_v1_utils_utils_pb.EchoMessage,
+    responseType: polykey_v1_utils_utils_pb.EchoMessage,
+    requestSerialize: serialize_polykey_v1_utils_EchoMessage,
+    requestDeserialize: deserialize_polykey_v1_utils_EchoMessage,
+    responseSerialize: serialize_polykey_v1_utils_EchoMessage,
+    responseDeserialize: deserialize_polykey_v1_utils_EchoMessage,
+  },
 };
 
 exports.TestServiceClient = grpc.makeGenericClientConstructor(TestServiceService);

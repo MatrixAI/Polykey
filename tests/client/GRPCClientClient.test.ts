@@ -1,19 +1,18 @@
-import type { NodeId } from '@/nodes/types';
+import type * as grpc from '@grpc/grpc-js';
 import type { Host, Port } from '@/network/types';
-
+import type { NodeId } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 
-import * as grpc from '@grpc/grpc-js';
-
 import { GRPCClientClient } from '@/client';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
-
-import * as testUtils from './utils';
+import * as parsers from '@/bin/parsers';
 import { Session } from '@/sessions';
+import { errors as clientErrors } from '@/client';
+import * as testUtils from './utils';
 
 describe('GRPCClientClient', () => {
   const password = 'password';
@@ -35,34 +34,34 @@ describe('GRPCClientClient', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'node');
-    polykeyAgent = await PolykeyAgent.createPolykey({
+    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
       logger: logger,
-      cores: 1,
-      workerManager: null,
     });
 
-    await polykeyAgent.start({});
-    nodeId = polykeyAgent.nodes.getNodeId();
+    nodeId = polykeyAgent.nodeManager.getNodeId();
     [server, port] = await testUtils.openTestClientServer({
       polykeyAgent,
     });
-
-    client = await GRPCClientClient.createGRPCCLientClient({
+    const sessionTokenPath = path.join(nodePath, 'sessionToken');
+    const session = new Session({ sessionTokenPath, fs, logger });
+    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    await session.start({
+      sessionToken,
+    });
+    client = await GRPCClientClient.createGRPCClientClient({
       nodeId: nodeId,
       host: '127.0.0.1' as Host,
       port: port as Port,
+      tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
       logger: logger,
+      timeout: 10000,
+      session: session,
     });
-    const clientPath = path.join(nodePath, 'client');
-    const session = new Session({ clientPath, logger });
-    const token = await polykeyAgent.sessions.generateToken();
-    await session.start({ token });
-    await client.start({ timeout: 10000, session });
   }, global.polykeyStartupTimeout * 3);
   afterEach(async () => {
-    await client.stop();
+    await client.destroy();
     await testUtils.closeTestClientServer(server);
 
     await polykeyAgent.stop();
@@ -73,12 +72,22 @@ describe('GRPCClientClient', () => {
       recursive: true,
     });
   });
-  test('echo', async () => {
-    const echoMessage = new utilsPB.EchoMessage();
-    echoMessage.setChallenge('yes');
-    const response = await client.echo(echoMessage);
-    expect(response.getChallenge()).toBe('yes');
-    await client.stop();
+
+  test('cannot be called when destroyed', async () => {
+    await client.destroy();
+    await expect(async () => {
+      await client.agentStatus(new utilsPB.EmptyMessage());
+    }).rejects.toThrow(clientErrors.ErrorClientClientDestroyed);
+  });
+  test('can get status', async () => {
+    await fs.promises.writeFile(path.join(dataDir, 'password'), password);
+    const meta = await parsers.parseAuth({
+      passwordFile: path.join(dataDir, 'password'),
+      fs: fs,
+    });
+    const emptyMessage = new utilsPB.EmptyMessage();
+    const response = await client.agentStatus(emptyMessage, meta);
+    expect(response.getAddress()).toBeTruthy();
     await client.destroy();
   });
 });

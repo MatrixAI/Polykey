@@ -12,22 +12,27 @@ import type {
   ServerDuplexStream,
 } from '@grpc/grpc-js/build/src/server-call';
 import type {
-  ObjectReadable,
-  ObjectWritable,
-} from '@grpc/grpc-js/build/src/object-stream';
-import type {
   ChannelCredentials,
-  ClientOptions,
+  ChannelOptions,
   Client,
   ServiceError,
 } from '@grpc/grpc-js';
+import type {
+  PromiseUnaryCall,
+  AsyncGeneratorReadableStream,
+  AsyncGeneratorReadableStreamClient,
+  AsyncGeneratorWritableStream,
+  AsyncGeneratorWritableStreamClient,
+  AsyncGeneratorDuplexStream,
+  AsyncGeneratorDuplexStreamClient,
+} from './types';
 import type { CertificatePemChain, PrivateKeyPem } from '../keys/types';
 
 import { Buffer } from 'buffer';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from './errors';
 import * as errors from '../errors';
-import { promisify } from '../utils';
+import { promisify, promise } from '../utils';
 
 /**
  * GRPC insecure credentials for the client
@@ -50,15 +55,17 @@ function serverInsecureCredentials(): grpc.ServerCredentials {
 /**
  * GRPC secure credentials for the client
  * This is used when the GRPC client is directly connecting to the GRPC server
+ * When used without a key or certificate, this will result in
+ * encrypted communication only without authentication
  */
 function clientSecureCredentials(
-  keyPrivatePem: PrivateKeyPem,
-  certChainPem: CertificatePemChain,
+  keyPrivatePem?: PrivateKeyPem,
+  certChainPem?: CertificatePemChain,
 ): grpc.ChannelCredentials {
   const credentials = grpc.ChannelCredentials.createSsl(
     null,
-    Buffer.from(keyPrivatePem, 'ascii'),
-    Buffer.from(certChainPem, 'ascii'),
+    keyPrivatePem != null ? Buffer.from(keyPrivatePem, 'ascii') : undefined,
+    certChainPem != null ? Buffer.from(certChainPem, 'ascii') : undefined,
   );
   // @ts-ignore hack for undocumented property
   const connectionOptions = credentials.connectionOptions;
@@ -99,26 +106,39 @@ function serverSecureCredentials(
 /**
  * Acquire the HTTP2 session in a secure GRPC connection
  * Note that this does not work for insecure connections
+ * This relies on monkey patching the gRPC library internals
  */
 function getClientSession(
   client: Client,
-  clientOptions: ClientOptions,
-  clientCredentials: ChannelCredentials,
+  channelOptions: ChannelOptions,
+  channelCredentials: ChannelCredentials,
   host: string,
   port: number,
 ): Http2Session {
   const channel = client.getChannel();
+  // Channel state must be READY to acquire the session
+  if (channel.getConnectivityState(false) !== grpc.connectivityState.READY) {
+    throw grpcErrors.ErrorGRPCClientChannelNotReady;
+  }
   // @ts-ignore
   const channelTarget = channel.target;
   const subchannelTarget = { host, port };
   // @ts-ignore
   const subchannelPool = channel.subchannelPool;
+  // This must acquire the first channel in the subchannel pool
+  // Only the first channel is in ready state and therefore has the session property
+  // If this creates a new channel, then either channelOptions or
+  // channelCredentials is incorrect
   const subchannel = subchannelPool.getOrCreateSubchannel(
     channelTarget,
     subchannelTarget,
-    clientOptions,
-    clientCredentials,
+    channelOptions,
+    channelCredentials,
   );
+  // Subchannel state must be READY to acquire the session
+  if (subchannel.getConnectivityState() !== grpc.connectivityState.READY) {
+    throw grpcErrors.ErrorGRPCClientChannelNotReady;
+  }
   const session: Http2Session = subchannel.session;
   return session;
 }
@@ -163,7 +183,7 @@ function toError(e: ServiceError): errors.ErrorPolykey {
       ) {
         return new errors[errorName](errorMessage, JSON.parse(errorData));
       } else {
-        return new grpcErrors.ErrorGRPCConnection(e.message, {
+        return new grpcErrors.ErrorGRPCClientCall(e.message, {
           code: e.code,
           details: e.details,
           metadata: e.metadata.getMap(),
@@ -171,56 +191,7 @@ function toError(e: ServiceError): errors.ErrorPolykey {
       }
     }
   }
-  throw new errors.ErrorUndefinedBehaviour();
-}
-
-/**
- * Promisified Unary Call
- * Provides a pull-based API
- */
-class PromiseUnaryCall<T> extends Promise<T> {
-  call: ClientUnaryCall;
-}
-
-/**
- * Promisified Readable Stream
- * Wraps GRPC readable stream as an asynchronous generator
- * Provides a pull-based API
- */
-interface AsyncGeneratorReadableStream<
-  TRead,
-  TStream extends ObjectReadable<TRead>,
-> extends AsyncGenerator<TRead, void, null | void> {
-  stream: TStream;
-  read(v?: null): Promise<IteratorResult<TRead, void>>;
-}
-
-/**
- * Promisified Writable Stream
- * Wraps GRPC writable stream as an asynchronous generator
- * Provides a pull-based API
- */
-interface AsyncGeneratorWritableStream<
-  TWrite,
-  TStream extends ObjectWritable<TWrite>,
-> extends AsyncGenerator<void, void, TWrite | null> {
-  stream: TStream;
-  write(v: TWrite | null): Promise<void>;
-}
-
-/**
- * Promisified Duplex Stream
- * Wraps GRPC duplex stream as an asynchronous generator
- * Provides a pull-based API
- */
-interface AsyncGeneratorDuplexStream<
-  TRead,
-  TWrite,
-  TStream extends ObjectReadable<TRead> & ObjectWritable<TWrite>,
-> extends AsyncGenerator<TRead, void, TWrite | null> {
-  stream: TStream;
-  read(v?: null): Promise<IteratorResult<TRead, void>>;
-  write(v: TWrite | null): Promise<void>;
+  throw new errors.ErrorPolykeyUndefinedBehaviour();
 }
 
 /**
@@ -233,20 +204,28 @@ function promisifyUnaryCall<T>(
   f: (...args: any[]) => ClientUnaryCall,
 ): (...args: any[]) => PromiseUnaryCall<T> {
   return (...args) => {
-    let resolveP, rejectP;
-    const p: any = new Promise((resolve, reject) => {
-      resolveP = resolve;
-      rejectP = reject;
-    });
+    const { p, resolveP, rejectP } = promise<T>() as {
+      p: PromiseUnaryCall<T>;
+      resolveP: (value: T | PromiseLike<T>) => void;
+      rejectP: (reason?: any) => void;
+    };
+    const { p: pMeta, resolveP: resolveMetaP } = promise<grpc.Metadata>();
     const callback = (error: ServiceError, ...values) => {
       if (error != null) {
-        return rejectP(toError(error));
+        rejectP(toError(error));
+        return;
       }
-      return resolveP(values.length === 1 ? values[0] : values);
+      resolveP(values.length === 1 ? values[0] : values);
+      return;
     };
     args.push(callback);
     const call: ClientUnaryCall = f.apply(client, args);
+    // Leading metadata is always returned when unary call finishes
+    call.once('metadata', (meta) => {
+      resolveMetaP(meta);
+    });
     p.call = call;
+    p.meta = pMeta;
     return p;
   };
 }
@@ -262,7 +241,9 @@ function generatorReadable<TRead>(
 function generatorReadable<TRead>(
   stream: ServerReadableStream<TRead, any>,
 ): AsyncGeneratorReadableStream<TRead, ServerReadableStream<TRead, any>>;
-function generatorReadable(stream: any) {
+function generatorReadable<TRead>(
+  stream: ClientReadableStream<TRead> | ServerReadableStream<TRead, any>,
+) {
   const gf = async function* () {
     try {
       let vR = yield;
@@ -303,10 +284,18 @@ function promisifyReadableStreamCall<TRead>(
   f: (...args: any[]) => ClientReadableStream<TRead>,
 ): (
   ...args: any[]
-) => AsyncGeneratorReadableStream<TRead, ClientReadableStream<TRead>> {
+) => AsyncGeneratorReadableStreamClient<TRead, ClientReadableStream<TRead>> {
   return (...args) => {
     const stream = f.apply(client, args);
-    return generatorReadable<TRead>(stream);
+    const { p: pMeta, resolveP: resolveMetaP } = promise<grpc.Metadata>();
+    stream.once('metadata', (meta) => {
+      resolveMetaP(meta);
+    });
+    const g = generatorReadable<TRead>(
+      stream,
+    ) as AsyncGeneratorReadableStreamClient<TRead, ClientReadableStream<TRead>>;
+    g.meta = pMeta;
+    return g;
   };
 }
 
@@ -323,7 +312,9 @@ function generatorWritable<TWrite>(
 function generatorWritable<TWrite>(
   stream: ServerWritableStream<any, TWrite>,
 ): AsyncGeneratorWritableStream<TWrite, ServerWritableStream<any, TWrite>>;
-function generatorWritable(stream: any) {
+function generatorWritable<TWrite>(
+  stream: ClientWritableStream<TWrite> | ServerWritableStream<any, TWrite>,
+) {
   const streamWrite = promisify(stream.write).bind(stream);
   const gf = async function* () {
     let vW;
@@ -361,15 +352,15 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
 ): (
   ...args: any[]
 ) => [
-  AsyncGeneratorWritableStream<TWrite, ClientWritableStream<TWrite>>,
+  AsyncGeneratorWritableStreamClient<TWrite, ClientWritableStream<TWrite>>,
   Promise<TReturn>,
 ] {
   return (...args) => {
-    let resolveP, rejectP;
-    const p = new Promise<TReturn>((resolve, reject) => {
-      resolveP = resolve;
-      rejectP = reject;
-    });
+    const { p, resolveP, rejectP } = promise<TReturn>() as {
+      p: PromiseUnaryCall<TReturn>;
+      resolveP: (value: TReturn | PromiseLike<TReturn>) => void;
+      rejectP: (reason?: any) => void;
+    };
     const callback = (error, ...values) => {
       if (error != null) {
         return rejectP(toError(error));
@@ -378,7 +369,18 @@ function promisifyWritableStreamCall<TWrite, TReturn>(
     };
     args.push(callback);
     const stream = f.apply(client, args);
-    return [generatorWritable<TWrite>(stream), p];
+    const { p: pMeta, resolveP: resolveMetaP } = promise<grpc.Metadata>();
+    stream.once('metadata', (meta) => {
+      resolveMetaP(meta);
+    });
+    const g = generatorWritable<TWrite>(
+      stream,
+    ) as AsyncGeneratorWritableStreamClient<
+      TWrite,
+      ClientWritableStream<TWrite>
+    >;
+    g.meta = pMeta;
+    return [g, p];
   };
 }
 
@@ -396,9 +398,11 @@ function generatorDuplex<TRead, TWrite>(
 function generatorDuplex<TRead, TWrite>(
   stream: ServerDuplexStream<TRead, TWrite>,
 ): AsyncGeneratorDuplexStream<TRead, TWrite, ServerDuplexStream<TRead, TWrite>>;
-function generatorDuplex(stream: any) {
-  const gR = generatorReadable(stream);
-  const gW = generatorWritable(stream);
+function generatorDuplex<TRead, TWrite>(
+  stream: ClientDuplexStream<TWrite, TRead> | ServerDuplexStream<TRead, TWrite>,
+) {
+  const gR = generatorReadable(stream as any);
+  const gW = generatorWritable(stream as any);
   const gf = async function* () {
     let vR: any, vW: any;
     while (true) {
@@ -450,14 +454,26 @@ function promisifyDuplexStreamCall<TRead, TWrite>(
   f: (...args: any[]) => ClientDuplexStream<TWrite, TRead>,
 ): (
   ...args: any[]
-) => AsyncGeneratorDuplexStream<
+) => AsyncGeneratorDuplexStreamClient<
   TRead,
   TWrite,
   ClientDuplexStream<TWrite, TRead>
 > {
   return (...args) => {
     const stream = f.apply(client, args);
-    return generatorDuplex(stream);
+    const { p: pMeta, resolveP: resolveMetaP } = promise<grpc.Metadata>();
+    stream.once('metadata', (meta) => {
+      resolveMetaP(meta);
+    });
+    const g = generatorDuplex<TRead, TWrite>(
+      stream,
+    ) as AsyncGeneratorDuplexStreamClient<
+      TRead,
+      TWrite,
+      ClientDuplexStream<TWrite, TRead>
+    >;
+    g.meta = pMeta;
+    return g;
   };
 }
 
@@ -476,11 +492,4 @@ export {
   promisifyDuplexStreamCall,
   toError,
   fromError,
-};
-
-export type {
-  PromiseUnaryCall,
-  AsyncGeneratorReadableStream,
-  AsyncGeneratorWritableStream,
-  AsyncGeneratorDuplexStream,
 };

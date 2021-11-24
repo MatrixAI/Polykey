@@ -1,69 +1,74 @@
 import type { Host, Port, ProxyConfig } from '../network/types';
 import type { NodeId } from '../nodes/types';
 import type { TLSConfig } from '../network/types';
-
+import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
+import type * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 import Logger from '@matrixai/logger';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
-import { GRPCClient, utils as grpcUtils, errors as grpcErrors } from '../grpc';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import * as agentErrors from './errors';
+import { GRPCClient, utils as grpcUtils } from '../grpc';
 import { AgentServiceClient } from '../proto/js/polykey/v1/agent_service_grpc_pb';
-import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
-import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
-import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
 
-/**
- * GRPC Agent Endpoints.
- */
-
-@CreateDestroyStartStop(
-  new grpcErrors.ErrorGRPCClientNotStarted(),
-  new grpcErrors.ErrorGRPCClientDestroyed(),
-)
+interface GRPCClientAgent extends CreateDestroy {}
+@CreateDestroy()
 class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
+  /**
+   * Creates GRPCClientAgent
+   * This connects to the agent service
+   * This connection should not be encrypted with TLS because it
+   * will go through the network proxies
+   */
   static async createGRPCClientAgent({
     nodeId,
     host,
     port,
+    tlsConfig,
     proxyConfig,
-    logger,
+    timeout = Infinity,
+    logger = new Logger(this.name),
   }: {
     nodeId: NodeId;
     host: Host;
     port: Port;
     proxyConfig?: ProxyConfig;
+    tlsConfig?: Partial<TLSConfig>;
+    timeout?: number;
     logger?: Logger;
   }): Promise<GRPCClientAgent> {
-    const logger_ = logger ?? new Logger('GRPCClientAgent');
-    logger_.info('Creating GRPCClientAgent');
-    const grpcClientAgent = new GRPCClientAgent({
-      host,
-      logger: logger_,
+    logger.info(`Creating ${this.name}`);
+    const { client, serverCertChain } = await super.createClient({
+      clientConstructor: AgentServiceClient,
       nodeId,
+      host,
       port,
+      tlsConfig,
       proxyConfig,
+      timeout,
+      logger,
     });
-    logger_.info('Created GRPCClientAgent');
+    const grpcClientAgent = new GRPCClientAgent({
+      client,
+      nodeId,
+      host,
+      port,
+      tlsConfig,
+      proxyConfig,
+      serverCertChain,
+      logger,
+    });
+    logger.info(`Created ${this.name}`);
     return grpcClientAgent;
   }
 
-  public async start({
-    tlsConfig,
-    timeout = 25000,
-  }: {
-    tlsConfig?: TLSConfig;
-    timeout?: number;
-  } = {}): Promise<void> {
-    await super.start({
-      clientConstructor: AgentServiceClient,
-      tlsConfig,
-      timeout,
-    });
+  public async destroy() {
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    await super.destroy();
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public echo(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
       this.client,
@@ -71,7 +76,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public vaultsGitInfoGet(...args) {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.PackChunk>(
       this.client,
@@ -79,12 +84,12 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public vaultsGitPackGet(...args) {
     return this.client.vaultsGitPackGet(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public vaultsScan(...args) {
     return grpcUtils.promisifyReadableStreamCall<vaultsPB.Vault>(
       this.client,
@@ -92,7 +97,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public nodesClosestLocalNodesGet(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.NodeTable>(
       this.client,
@@ -100,7 +105,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public nodesClaimsGet(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.Claims>(
       this.client,
@@ -108,7 +113,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public nodesChainDataGet(...args) {
     return grpcUtils.promisifyUnaryCall<nodesPB.ChainData>(
       this.client,
@@ -116,7 +121,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public nodesHolePunchMessageSend(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
@@ -124,7 +129,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public notificationsSend(...args) {
     return grpcUtils.promisifyUnaryCall<notificationsPB.AgentNotification>(
       this.client,
@@ -132,7 +137,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public vaultsPermisssionsCheck(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.NodePermissionAllowed>(
       this.client,
@@ -140,7 +145,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     )(...args);
   }
 
-  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  @ready(new agentErrors.ErrorAgentClientDestroyed())
   public nodesCrossSignClaim(...args) {
     return grpcUtils.promisifyDuplexStreamCall<
       nodesPB.CrossSign,
