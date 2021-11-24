@@ -12,14 +12,12 @@ import type { NodeManager } from '../nodes';
 import type { Provider, IdentitiesManager } from '../identities';
 import type { Claim, ClaimIdString, ClaimLinkIdentity } from '../claims/types';
 
+import type { ChainData } from '../sigchain/types';
 import Logger from '@matrixai/logger';
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
+import * as discoveryErrors from './errors';
 import * as gestaltsUtils from '../gestalts/utils';
 import * as claimsUtils from '../claims/utils';
-import { errors as identitiesErrors } from '../identities';
-import { errors as gestaltsErrors } from '../gestalts';
-import * as discoveryErrors from './errors';
-import { ChainData } from '../sigchain/types';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 
 interface Discovery extends CreateDestroy {}
 @CreateDestroy()
@@ -33,22 +31,21 @@ class Discovery {
     gestaltGraph,
     identitiesManager,
     nodeManager,
-    logger,
+    logger = new Logger(this.name),
   }: {
     gestaltGraph: GestaltGraph;
     identitiesManager: IdentitiesManager;
     nodeManager: NodeManager;
     logger?: Logger;
   }): Promise<Discovery> {
-    const logger_ = logger ?? new Logger(this.constructor.name);
-
+    logger.info(`Creating ${this.name}`);
     const discovery = new Discovery({
       gestaltGraph,
       identitiesManager,
-      logger: logger_,
+      logger: logger,
       nodeManager,
     });
-    await discovery.create();
+    logger.info(`Created ${this.name}`);
     return discovery;
   }
 
@@ -69,19 +66,9 @@ class Discovery {
     this.logger = logger;
   }
 
-  private async create(): Promise<void> {
-    this.logger.info('Creating Discovery');
-    if (this.gestaltGraph.destroyed) {
-      throw new gestaltsErrors.ErrorGestaltsGraphDestroyed();
-    }
-    if (this.identitiesManager.destroyed) {
-      throw new identitiesErrors.ErrorIdentitiesManagerDestroyed();
-    }
-    this.logger.info('Created Discovery');
-  }
-
   public async destroy() {
-    this.logger.info('Destroyed Discovery');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
   @ready(new discoveryErrors.ErrorDiscoveryDestroyed())
   public discoverGestaltByNode(nodeId: NodeId) {
