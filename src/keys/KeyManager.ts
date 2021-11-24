@@ -9,20 +9,26 @@ import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 
+import type { VaultKey } from '../vaults/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as keysUtils from './utils';
 import * as keysErrors from './errors';
 import * as utils from '../utils';
 import * as networkUtils from '../network/utils';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import { VaultKey } from '../vaults/types';
 
 /**
  * Manage Root Keys and Root Certificates
  */
-interface KeyManager extends CreateDestroy {}
-@CreateDestroy()
+interface KeyManager extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new keysErrors.ErrorKeyManagerRunning(),
+  new keysErrors.ErrorKeyManagerDestroyed(),
+)
 class KeyManager {
   public readonly keysPath: string;
   public readonly rootPubPath: string;
@@ -39,16 +45,21 @@ class KeyManager {
   protected _vaultKey: Buffer;
   protected rootCert: Certificate;
   protected workerManager?: PolykeyWorkerManagerInterface;
+  protected rootKeyPairBits: number;
+  protected rootCertDuration: number;
+  protected dbKeyBits: number;
+  protected vaultKeyBits: number;
 
   static async createKeyManager({
     keysPath,
     password,
-    fs,
-    logger,
-    rootKeyPairBits,
-    rootCertDuration,
-    dbKeyBits,
-    fresh,
+    fs = require('fs'),
+    logger = new Logger(this.name),
+    rootKeyPairBits = 4096,
+    rootCertDuration = 31536000,
+    dbKeyBits = 256,
+    vaultKeyBits = 256,
+    fresh = false,
   }: {
     keysPath: string;
     password: string;
@@ -57,30 +68,43 @@ class KeyManager {
     rootKeyPairBits?: number;
     rootCertDuration?: number;
     dbKeyBits?: number;
+    vaultKeyBits?: number;
     fresh?: boolean;
   }): Promise<KeyManager> {
-    const logger_ = logger ?? new Logger(this.constructor.name);
-    const fs_ = fs ?? require('fs');
-
-    const keyManager_ = new KeyManager({ fs: fs_, logger: logger_, keysPath });
-    await keyManager_.create({
-      password,
-      rootKeyPairBits,
-      rootCertDuration,
+    logger.info(`Creating ${this.name}`);
+    const keyManager = new KeyManager({
       dbKeyBits,
+      rootCertDuration,
+      rootKeyPairBits,
+      vaultKeyBits,
+      fs,
+      logger,
+      keysPath,
+    });
+    await keyManager.start({
+      password,
       fresh,
     });
-    return keyManager_;
+    logger.info(`Created ${this.name}`);
+    return keyManager;
   }
 
   constructor({
     keysPath,
     fs,
     logger,
+    rootKeyPairBits,
+    rootCertDuration,
+    dbKeyBits,
+    vaultKeyBits,
   }: {
     keysPath: string;
     fs: FileSystem;
     logger: Logger;
+    rootKeyPairBits: number;
+    rootCertDuration: number;
+    dbKeyBits: number;
+    vaultKeyBits: number;
   }) {
     this.logger = logger;
     this.keysPath = keysPath;
@@ -91,6 +115,10 @@ class KeyManager {
     this.rootCertsPath = path.join(keysPath, 'root_certs');
     this.dbKeyPath = path.join(keysPath, 'db.key');
     this.vaultKeyPath = path.join(keysPath, 'vault.key');
+    this.rootKeyPairBits = rootKeyPairBits;
+    this.rootCertDuration = rootCertDuration;
+    this.dbKeyBits = dbKeyBits;
+    this.vaultKeyBits = vaultKeyBits;
   }
 
   public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
@@ -101,22 +129,14 @@ class KeyManager {
     delete this.workerManager;
   }
 
-  protected async create({
+  public async start({
     password,
-    rootKeyPairBits = 4096,
-    rootCertDuration = 31536000,
-    dbKeyBits = 256,
-    vaultKeyBits = 256,
     fresh = false,
   }: {
     password: string;
-    rootKeyPairBits?: number;
-    rootCertDuration?: number;
-    dbKeyBits?: number;
-    vaultKeyBits?: number;
     fresh?: boolean;
   }) {
-    this.logger.info('Creating Key Manager');
+    this.logger.info(`Starting ${this.constructor.name}`);
     this.logger.info(`Setting keys path to ${this.keysPath}`);
     if (fresh) {
       await this.fs.promises.rm(this.keysPath, {
@@ -126,35 +146,51 @@ class KeyManager {
     }
     await utils.mkdirExists(this.fs, this.keysPath);
     await utils.mkdirExists(this.fs, this.rootCertsPath);
-    const rootKeyPair = await this.setupRootKeyPair(password, rootKeyPairBits);
-    const rootCert = await this.setupRootCert(rootKeyPair, rootCertDuration);
+    const rootKeyPair = await this.setupRootKeyPair(
+      password,
+      this.rootKeyPairBits,
+    );
+    const rootCert = await this.setupRootCert(
+      rootKeyPair,
+      this.rootCertDuration,
+    );
     this.rootKeyPair = rootKeyPair;
     this.rootCert = rootCert;
-    this._dbKey = await this.setupKey(this.dbKeyPath, dbKeyBits);
-    this._vaultKey = await this.setupKey(this.vaultKeyPath, vaultKeyBits);
-    this.logger.info('Created Key Manager');
+    this._dbKey = await this.setupKey(this.dbKeyPath, this.dbKeyBits);
+    this._vaultKey = await this.setupKey(this.vaultKeyPath, this.vaultKeyBits);
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  public async stop() {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   public async destroy() {
-    this.logger.info('Destroyed Key Manager');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    await this.fs.promises.rm(this.keysPath, {
+      force: true,
+      recursive: true,
+    });
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getRootKeyPair(): KeyPair {
     return keysUtils.keyPairCopy(this.rootKeyPair);
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getRootKeyPairPem(): KeyPairPem {
     return keysUtils.keyPairToPem(this.rootKeyPair);
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getRootCert(): Certificate {
     return keysUtils.certCopy(this.rootCert);
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getRootCertPem(): CertificatePem {
     return keysUtils.certToPem(this.rootCert);
   }
@@ -162,7 +198,7 @@ class KeyManager {
   /**
    * Gets an array of certificates in order of leaf to root
    */
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async getRootCertChain(): Promise<Array<Certificate>> {
     const rootCertsNames = await this.getRootCertsNames();
     const rootCertsPems = await this.getRootCertsPems(rootCertsNames);
@@ -175,7 +211,7 @@ class KeyManager {
   /**
    * Gets an array of certificate pems in order of leaf to root
    */
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async getRootCertChainPems(): Promise<Array<CertificatePem>> {
     const rootCertsNames = await this.getRootCertsNames();
     const rootCertsPems = await this.getRootCertsPems(rootCertsNames);
@@ -186,7 +222,7 @@ class KeyManager {
   /**
    * Gets a concatenated certificate pem ordered from leaf to root
    */
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async getRootCertChainPem(): Promise<CertificatePemChain> {
     const rootCertPems = await this.getRootCertChainPems();
     return rootCertPems.join('');
@@ -195,12 +231,35 @@ class KeyManager {
   /**
    * Gets the node ID from the root certificate.
    */
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public getNodeId(): NodeId {
     return networkUtils.certNodeId(this.getRootCert());
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
+  public async checkPassword(password: string): Promise<boolean> {
+    let privateKeyPem;
+    try {
+      privateKeyPem = await this.fs.promises.readFile(this.rootKeyPath, {
+        encoding: 'utf8',
+      });
+    } catch (e) {
+      throw new keysErrors.ErrorRootKeysRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    try {
+      keysUtils.decryptPrivateKey(privateKeyPem, password);
+    } catch (e) {
+      return false;
+    }
+    return true;
+  }
+
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async encryptWithRootKeyPair(plainText: Buffer): Promise<Buffer> {
     const publicKey = this.rootKeyPair.publicKey;
     let cipherText;
@@ -221,7 +280,7 @@ class KeyManager {
     return cipherText;
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async decryptWithRootKeyPair(cipherText: Buffer): Promise<Buffer> {
     const privateKey = this.rootKeyPair.privateKey;
     let plainText;
@@ -242,7 +301,7 @@ class KeyManager {
     return plainText;
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async signWithRootKeyPair(data: Buffer): Promise<Buffer> {
     const privateKey = this.rootKeyPair.privateKey;
     let signature;
@@ -263,7 +322,7 @@ class KeyManager {
     return signature;
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async verifyWithRootKeyPair(
     data: Buffer,
     signature: Buffer,
@@ -285,7 +344,7 @@ class KeyManager {
     return signed;
   }
 
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async changeRootKeyPassword(password: string): Promise<void> {
     this.logger.info('Changing root key pair password');
     await this.writeRootKeyPair(this.rootKeyPair, password);
@@ -298,7 +357,7 @@ class KeyManager {
    * The parent signature is encoded with a custom Polykey extension
    * This maintains a certificate chain that provides zero-downtime migration
    */
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async renewRootKeyPair(
     password: string,
     bits: number = 4096,
@@ -353,7 +412,7 @@ class KeyManager {
    * Forces a reset of a new root certificate
    * The new root certificate is self-signed
    */
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async resetRootKeyPair(
     password: string,
     bits: number = 4096,
@@ -389,7 +448,7 @@ class KeyManager {
    * Generates a new root certificate
    * The new root certificate is self-signed
    */
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async resetRootCert(
     duration: number = 31536000,
     subjectAttrsExtra: Array<{ name: string; value: string }> = [],
@@ -409,7 +468,8 @@ class KeyManager {
     await this.writeRootCert(rootCert);
     this.rootCert = rootCert;
   }
-  @ready(new keysErrors.ErrorKeyManagerDestroyed())
+
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   public async garbageCollectRootCerts(force: boolean = false): Promise<void> {
     this.logger.info('Performing garbage collection of root certificates');
     const now = new Date();
@@ -537,8 +597,6 @@ class KeyManager {
     }
   }
 
-  // Functions that handle the DB key.
-
   protected async setupKey(
     keyPath: string,
     bits: number = 256,
@@ -621,15 +679,15 @@ class KeyManager {
     }
   }
 
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   get dbKey(): Buffer {
     return this._dbKey;
   }
 
+  @ready(new keysErrors.ErrorKeyManagerNotRunning())
   get vaultKey(): VaultKey {
     return this._vaultKey as VaultKey;
   }
-
-  // ---
 
   /**
    * Generates a key pair

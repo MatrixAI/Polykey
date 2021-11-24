@@ -27,25 +27,14 @@ import {
   pkcs5,
   util as forgeUtil,
 } from 'node-forge';
+import * as keysErrors from './errors';
 import config from '../config';
 import * as utils from '../utils';
-import * as keysErrors from './errors';
 import { promisify } from '../utils';
 import { makeNodeId } from '../nodes/utils';
 
 const ivSize = 16;
 const authTagSize = 16;
-
-/**
- * Polykey OIDs start at 1.3.6.1.4.1.57167.2
- */
-const oids = {
-  // 1.3.6.1.4.1.57167.2.2
-  extensions: {
-    polykeyVersion: '1.3.6.1.4.1.57167.2.2.1',
-    nodeSignature: '1.3.6.1.4.1.57167.2.2.2',
-  },
-};
 
 async function generateKeyPair(bits: number): Promise<KeyPair> {
   const generateKeyPair = promisify(pki.rsa.generateKeyPair).bind(pki.rsa);
@@ -286,13 +275,13 @@ function generateCertificate(
     },
     {
       name: 'polykeyVersion',
-      id: oids.extensions.polykeyVersion,
+      id: config.oids.extensions.polykeyVersion,
       critical: true,
       value: asn1.create(
         asn1.Class.APPLICATION,
         asn1.Type.IA5STRING,
         false,
-        config.version,
+        config.sourceVersion,
       ),
     },
   ];
@@ -301,7 +290,7 @@ function generateCertificate(
   const nodeSignature = cert.signature;
   extensions.push({
     name: 'nodeSignature',
-    id: oids.extensions.nodeSignature,
+    id: config.oids.extensions.nodeSignature,
     critical: true,
     value: asn1.create(
       asn1.Class.APPLICATION,
@@ -317,10 +306,10 @@ function generateCertificate(
 
 function certParseExtensions(exts: Array<any>): void {
   for (const ext of exts) {
-    if (ext.id === oids.extensions.polykeyVersion) {
+    if (ext.id === config.oids.extensions.polykeyVersion) {
       const parsed = asn1.fromDer(ext.value);
       ext.polykeyVersion = parsed.value;
-    } else if (ext.id === oids.extensions.nodeSignature) {
+    } else if (ext.id === config.oids.extensions.nodeSignature) {
       const parsed = asn1.fromDer(ext.value);
       ext.nodeSignature = parsed.value;
     }
@@ -380,7 +369,7 @@ function certVerified(cert1: Certificate, cert2: Certificate): boolean {
 function certVerifiedNode(cert: Certificate): boolean {
   const certNodeSignatureExt = cert.getExtension({
     // @ts-ignore
-    id: oids.extensions.nodeSignature,
+    id: config.oids.extensions.nodeSignature,
   }) as any;
   if (certNodeSignatureExt == null) {
     return false;
@@ -388,7 +377,7 @@ function certVerifiedNode(cert: Certificate): boolean {
   const certNodeSignature = certNodeSignatureExt.nodeSignature;
   const extensionsOrig = cert.extensions;
   const extensionsFiltered = extensionsOrig.filter((ext) => {
-    if (ext.id === oids.extensions.nodeSignature) {
+    if (ext.id === config.oids.extensions.nodeSignature) {
       return false;
     }
     return true;
@@ -550,7 +539,6 @@ async function decryptWithKey(
 }
 
 export {
-  oids,
   publicKeyToPem,
   publicKeyFromPem,
   publicKeyToAsn1,
