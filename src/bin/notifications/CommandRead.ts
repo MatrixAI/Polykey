@@ -1,0 +1,160 @@
+import type { Notification } from '../../notifications/types';
+import type { Metadata } from '@grpc/grpc-js';
+
+import CommandPolykey from '../CommandPolykey';
+import * as binUtils from '../utils';
+import * as binOptions from '../options';
+import * as parsers from '../parsers';
+
+class CommandRead extends CommandPolykey {
+  constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
+    super(...args);
+    this.name('read');
+    this.description('Display Notifications');
+    this.option(
+      '-u, --unread',
+      '(optional) Flag to only display unread notifications',
+    );
+    this.option(
+      '-n, --number [number]',
+      '(optional) Number of notifications to read',
+      'all',
+    );
+    this.option(
+      '-o, --order [order]',
+      '(optional) Order to read notifications',
+      'newest',
+    );
+    this.addOption(binOptions.nodeId);
+    this.addOption(binOptions.clientHost);
+    this.addOption(binOptions.clientPort);
+    this.action(async (options) => {
+      const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const notificationsPB = await import(
+        '../../proto/js/polykey/v1/notifications/notifications_pb'
+      );
+      const notificationsUtils = await import('../../notifications/utils');
+
+      const client = await PolykeyClient.createPolykeyClient({
+        nodePath: options.nodePath,
+        logger: this.logger.getChild(PolykeyClient.name),
+      });
+
+      const meta = await parsers.parseAuth({
+        passwordFile: options.passwordFile,
+        fs: this.fs,
+      });
+
+      try {
+        const grpcClient = client.grpcClient;
+        const notificationsReadMessage = new notificationsPB.Read();
+
+        if (options.unread) {
+          notificationsReadMessage.setUnread(true);
+        } else {
+          notificationsReadMessage.setUnread(false);
+        }
+        notificationsReadMessage.setNumber(options.number);
+        notificationsReadMessage.setOrder(options.order);
+
+        const response = await binUtils.retryAuth(
+          (auth?: Metadata) =>
+            grpcClient.notificationsRead(notificationsReadMessage, auth),
+          meta,
+        );
+
+        const notificationMessages = response.getNotificationList();
+        const notifications: Array<Notification> = [];
+        for (const message of notificationMessages) {
+          let data;
+          switch (message.getDataCase()) {
+            case notificationsPB.Notification.DataCase.GENERAL: {
+              data = {
+                type: 'General',
+                message: message.getGeneral()!.getMessage(),
+              };
+              break;
+            }
+            case notificationsPB.Notification.DataCase.GESTALT_INVITE: {
+              data = {
+                type: 'GestaltInvite',
+              };
+              break;
+            }
+            case notificationsPB.Notification.DataCase.VAULT_SHARE: {
+              const actions = message.getVaultShare()!.getActionsList();
+              data = {
+                type: 'VaultShare',
+                vaultId: message.getVaultShare()!.getVaultId(),
+                vaultName: message.getVaultShare()!.getVaultName(),
+                actions: actions.reduce(
+                  (acc, curr) => ((acc[curr] = null), acc),
+                  {},
+                ),
+              };
+              break;
+            }
+          }
+
+          const notification = {
+            data: data,
+            senderId: message.getSenderId(),
+            isRead: message.getIsRead(),
+          };
+          notifications.push(
+            notificationsUtils.validateNotification(notification),
+          );
+        }
+
+        if (notifications.length === 0) {
+          process.stdout.write(
+            binUtils.outputFormatter({
+              type: options.format === 'json' ? 'json' : 'list',
+              data: [`No notifications to display`],
+            }),
+          );
+        } else {
+          const output: any = [];
+          let notifCount = 1;
+          for (const notification of notifications) {
+            output.push(`${notifCount} - `);
+            switch (notification.data.type) {
+              case 'General': {
+                output.push(
+                  `Message from Keynode with ID ${notification.senderId}: ${notification.data.message}`,
+                );
+                output.push('');
+                break;
+              }
+              case 'GestaltInvite': {
+                output.push(
+                  `Keynode with ID ${notification.senderId} has invited you to join their Gestalt. Type the following command to accept their invitation: nodes claim ${notification.senderId}`,
+                );
+                output.push('');
+                break;
+              }
+              case 'VaultShare': {
+                output.push(
+                  `Keynode with ID ${notification.senderId} has shared their vault '${notification.data.vaultName}' with you.`,
+                );
+                output.push('');
+                break;
+              }
+            }
+            notifCount++;
+          }
+          process.stdout.write(
+            binUtils.outputFormatter({
+              type: options.format === 'json' ? 'json' : 'list',
+              data: output,
+            }),
+          );
+        }
+      } finally {
+        await client.stop();
+      }
+    });
+  }
+}
+
+export default CommandRead;

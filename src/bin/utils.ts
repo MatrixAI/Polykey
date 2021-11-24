@@ -1,14 +1,54 @@
 import type { POJO } from '../types';
 
+import os from 'os';
+import process from 'process';
+import { LogLevel } from '@matrixai/logger';
 import prompts from 'prompts';
-import commander from 'commander';
-import Logger, { LogLevel } from '@matrixai/logger';
-
 import * as grpc from '@grpc/grpc-js';
+import * as clientUtils from '../client/utils';
+import * as clientErrors from '../client/errors';
 
-const pathRegex = /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
+function getDefaultNodePath(): string | undefined {
+  const prefix = 'polykey';
+  const platform = os.platform();
+  let p: string;
+  if (platform === 'linux') {
+    const homeDir = os.homedir();
+    const dataDir = process.env.XDG_DATA_HOME;
+    if (dataDir != null) {
+      p = `${dataDir}/${prefix}`;
+    } else {
+      p = `${homeDir}/.local/share/${prefix}`;
+    }
+  } else if (platform === 'darwin') {
+    const homeDir = os.homedir();
+    p = `${homeDir}/Library/Application Support/${prefix}`;
+  } else if (platform === 'win32') {
+    const homeDir = os.homedir();
+    const appDataDir = process.env.LOCALAPPDATA;
+    if (appDataDir != null) {
+      p = `${appDataDir}/${prefix}`;
+    } else {
+      p = `${homeDir}/AppData/Local/${prefix}`;
+    }
+  } else {
+    return;
+  }
+  return p;
+}
 
-const logger = new Logger('polykey');
+/**
+ * Convert verbosity to LogLevel
+ */
+function verboseToLogLevel(c: number = 0): LogLevel {
+  let logLevel = LogLevel.WARN;
+  if (c === 1) {
+    logLevel = LogLevel.INFO;
+  } else if (c >= 2) {
+    logLevel = LogLevel.DEBUG;
+  }
+  return logLevel;
+}
 
 type OutputObject =
   | {
@@ -29,103 +69,10 @@ type OutputObject =
     }
   | {
       type: 'error';
+      name: string;
       description: string;
-      message: string;
+      message?: string;
     };
-
-function verboseToLogLevel(c: number): LogLevel {
-  let logLevel = LogLevel.WARN;
-  if (c === 1) {
-    logLevel = LogLevel.INFO;
-  } else if (c >= 2) {
-    logLevel = LogLevel.DEBUG;
-  }
-  return logLevel;
-}
-
-class PolykeyCommand extends commander.Command {
-  logger: Logger = logger;
-}
-
-function createCommand(
-  name?: string,
-  {
-    description,
-    aliases,
-    nodePath,
-    verbose,
-    format,
-    passwordFile,
-  }: {
-    description?: string | { description: string; args: any };
-    aliases?: Array<string>;
-    nodePath?: boolean;
-    verbose?: boolean;
-    format?: boolean;
-    passwordFile?: boolean;
-  } = {},
-) {
-  const cmd = new PolykeyCommand(name);
-  if (description) {
-    if (typeof description === 'string') {
-      cmd.description(description);
-    } else {
-      cmd.description(description.description, description.args);
-    }
-  }
-  if (aliases) {
-    cmd.aliases(aliases);
-  }
-  if (verbose) {
-    cmd.option(
-      '-v, --verbose',
-      'Log Verbose Messages',
-      (_, p) => {
-        return p + 1;
-      },
-      0,
-    );
-  }
-  if (format) {
-    cmd.addOption(
-      new commander.Option('-f, --format <format>', 'Output Format')
-        .choices(['human', 'json'])
-        .default('human'),
-    );
-  }
-  if (nodePath) {
-    cmd.option('-np, --node-path <nodePath>', 'provide the polykey path');
-  }
-  if (passwordFile) {
-    cmd.addOption(
-      new commander.Option(
-        '-pf --password-file <passwordFile>',
-        'Password File Path',
-      ),
-    );
-  }
-  return cmd;
-}
-
-function promisifyGrpc<T1, T2>(
-  fn: (
-    request: T1,
-    callback: (error: grpc.ServiceError | null, response: T2) => void,
-  ) => any,
-): (request: T1) => Promise<T2> {
-  return (request: T1): Promise<T2> => {
-    return new Promise<T2>((resolve, reject) => {
-      function customCallback(error: grpc.ServiceError, response: T2) {
-        if (error != null) {
-          return reject(error);
-        }
-        return resolve(response);
-      }
-      fn(request, customCallback);
-      return;
-    });
-  };
-}
 
 function outputFormatter(msg: OutputObject): string {
   let output = '';
@@ -151,7 +98,7 @@ function outputFormatter(msg: OutputObject): string {
   } else if (msg.type === 'json') {
     output = JSON.stringify(msg.data);
   } else if (msg.type === 'error') {
-    output += msg.description;
+    output += `${msg.name}: ${msg.description}`;
     if (msg.message) {
       output += ` - ${msg.message}`;
     }
@@ -169,40 +116,50 @@ async function requestPassword(): Promise<string> {
   return response.password;
 }
 
-// Async function requestPassword(keyManager: KeyManager, attempts: number = 3) {
-//   let i = 0;
-//   let correct = false;
-//   while (i < attempts) {
-//     const response = await prompts({
-//       type: 'text',
-//       name: 'password',
-//       message: 'Please enter your password',
-//     });
-//     try {
-//       clientUtils.checkPassword(response.password, keyManager);
-//       correct = true;
-//     } catch (err) {
-//       if (err instanceof clientErrors.ErrorPassword) {
-//         if (attempts == 2) {
-//           throw new clientErrors.ErrorPassword();
-//         }
-//         i++;
-//       }
-//     }
-//     if (correct) {
-//       break;
-//     }
-//   }
-//   return;
-// }
+/**
+ * CLI Authentication Retry Loop
+ * Retries unary calls on attended authentication errors
+ * Known as "privilege elevation"
+ */
+async function retryAuth<T>(
+  f: (meta: grpc.Metadata) => Promise<T>,
+  meta: grpc.Metadata = new grpc.Metadata(),
+): Promise<T> {
+  try {
+    return await f(meta);
+  } catch (e) {
+    // If it is any exception other than ErrorClientAuthMissing, throw the exception
+    // If it is ErrorClientAuthMissing and unattended, throw the exception
+    // Unattended means that either the `PK_PASSWORD` or `PK_TOKEN` was set
+    if (
+      !(e instanceof clientErrors.ErrorClientAuthMissing) ||
+      'PK_PASSWORD' in process.env ||
+      'PK_TOKEN' in process.env
+    ) {
+      throw e;
+    }
+  }
+  // Now enter the retry loop
+  while (true) {
+    // Prompt the user for password
+    const password = await requestPassword();
+    // Augment existing metadata
+    clientUtils.encodeAuthFromPassword(password, meta);
+    try {
+      return await f(meta);
+    } catch (e) {
+      if (!(e instanceof clientErrors.ErrorClientAuthDenied)) {
+        throw e;
+      }
+    }
+  }
+}
 
 export {
-  pathRegex,
+  getDefaultNodePath,
   verboseToLogLevel,
-  createCommand,
-  promisifyGrpc,
-  outputFormatter,
   OutputObject,
-  PolykeyCommand,
+  outputFormatter,
   requestPassword,
+  retryAuth,
 };

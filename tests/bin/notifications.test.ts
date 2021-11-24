@@ -1,17 +1,17 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 import type { NotificationData } from '@/notifications/types';
 import type { VaultName } from '@/vaults/types';
-
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as utils from './utils';
-import * as testUtils from './utils';
+import { utils as idUtils } from '@matrixai/id';
+
 import { PolykeyAgent } from '@';
 import { makeVaultId } from '@/vaults/utils';
+import * as utils from './utils';
+import * as testUtils from './utils';
 // Import { makeVaultId } from "@/vaults/utils";
-import { utils as idUtils } from '@matrixai/id';
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -28,7 +28,7 @@ import { utils as idUtils } from '@matrixai/id';
  */
 describe('CLI Notifications', () => {
   const password = 'password';
-  const logger = new Logger('pkWithStdio Test', LogLevel.WARN, [
+  const logger = new Logger('pkStdio Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let senderDataDir: string, receiverDataDir: string;
@@ -59,31 +59,25 @@ describe('CLI Notifications', () => {
     receiverPasswordFile = path.join(senderDataDir, 'passwordFile');
     await fs.promises.writeFile(senderPasswordFile, 'password');
     await fs.promises.writeFile(receiverPasswordFile, 'password');
-    senderPolykeyAgent = await PolykeyAgent.createPolykey({
+    senderPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: senderNodePath,
       logger: logger,
-      cores: 1,
-      workerManager: null,
     });
-    receiverPolykeyAgent = await PolykeyAgent.createPolykey({
+    receiverPolykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: receiverNodePath,
       logger: logger,
-      cores: 1,
-      workerManager: null,
     });
-    await senderPolykeyAgent.start({});
-    await receiverPolykeyAgent.start({});
-    senderNodeId = senderPolykeyAgent.nodes.getNodeId();
-    receiverNodeId = receiverPolykeyAgent.nodes.getNodeId();
-    await senderPolykeyAgent.nodes.setNode(receiverNodeId, {
-      ip: receiverPolykeyAgent.revProxy.getIngressHost(),
-      port: receiverPolykeyAgent.revProxy.getIngressPort(),
+    senderNodeId = senderPolykeyAgent.nodeManager.getNodeId();
+    receiverNodeId = receiverPolykeyAgent.nodeManager.getNodeId();
+    await senderPolykeyAgent.nodeManager.setNode(receiverNodeId, {
+      ip: receiverPolykeyAgent.revProxy.ingressHost,
+      port: receiverPolykeyAgent.revProxy.ingressPort,
     } as NodeAddress);
 
     // Authorize session
-    await utils.pk([
+    await utils.pkStdio([
       'agent',
       'unlock',
       '-np',
@@ -91,7 +85,7 @@ describe('CLI Notifications', () => {
       '--password-file',
       senderPasswordFile,
     ]);
-    await utils.pk([
+    await utils.pkStdio([
       'agent',
       'unlock',
       '-np',
@@ -99,7 +93,7 @@ describe('CLI Notifications', () => {
       '--password-file',
       receiverPasswordFile,
     ]);
-    await receiverPolykeyAgent.notifications.clearNotifications();
+    await receiverPolykeyAgent.notificationsManager.clearNotifications();
   }, global.polykeyStartupTimeout * 2);
   afterAll(async () => {
     await senderPolykeyAgent.stop();
@@ -110,7 +104,7 @@ describe('CLI Notifications', () => {
     await fs.promises.rmdir(receiverDataDir, { recursive: true });
   });
   afterEach(async () => {
-    await receiverPolykeyAgent.notifications.clearNotifications();
+    await receiverPolykeyAgent.notificationsManager.clearNotifications();
   });
 
   describe('commandSendNotification', () => {
@@ -122,11 +116,11 @@ describe('CLI Notifications', () => {
         vaults: {},
       });
       const commands = genCommandsSender(['send', receiverNodeId, 'msg']);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0); // Succeeds
+      const result = await testUtils.pkStdio(commands, {}, senderDataDir);
+      expect(result.exitCode).toBe(0); // Succeeds
       expect(result.stdout).toContain('msg');
       const notifications =
-        await receiverPolykeyAgent.notifications.readNotifications();
+        await receiverPolykeyAgent.notificationsManager.readNotifications();
       expect(notifications[0].data).toEqual({
         type: 'General',
         message: 'msg',
@@ -138,11 +132,11 @@ describe('CLI Notifications', () => {
         vaults: {},
       });
       const commands = genCommandsSender(['send', receiverNodeId, 'msg']);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0); // Succeeds
+      const result = await testUtils.pkStdio(commands, {}, senderDataDir);
+      expect(result.exitCode).toBe(0); // Succeeds
       expect(result.stdout).toContain('msg');
       const notifications =
-        await receiverPolykeyAgent.notifications.readNotifications();
+        await receiverPolykeyAgent.notificationsManager.readNotifications();
       expect(notifications).toEqual([]); // Notification should be sent but not received
     });
   });
@@ -169,12 +163,16 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkWithStdio(senderCommands1);
-      await testUtils.pkWithStdio(senderCommands2);
-      await testUtils.pkWithStdio(senderCommands3);
+      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands = genCommandsReceiver(['read']);
-      const result1 = await testUtils.pkWithStdio(receiverCommands);
-      expect(result1.code).toBe(0);
+      const result1 = await testUtils.pkStdio(
+        receiverCommands,
+        {},
+        receiverDataDir,
+      );
+      expect(result1.exitCode).toBe(0);
       expect(result1.stdout).toContain('msg1');
       expect(result1.stdout).toContain('msg2');
       expect(result1.stdout).toContain('msg3');
@@ -183,9 +181,13 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg4',
       ]);
-      await testUtils.pkWithStdio(senderCommands4);
-      const result2 = await testUtils.pkWithStdio(receiverCommands);
-      expect(result2.code).toBe(0);
+      await testUtils.pkStdio(senderCommands4, {}, senderDataDir);
+      const result2 = await testUtils.pkStdio(
+        receiverCommands,
+        {},
+        receiverDataDir,
+      );
+      expect(result2.exitCode).toBe(0);
       expect(result2.stdout).toContain('msg1');
       expect(result2.stdout).toContain('msg2');
       expect(result2.stdout).toContain('msg3');
@@ -213,20 +215,24 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkWithStdio(senderCommands1);
-      await testUtils.pkWithStdio(senderCommands2);
-      await testUtils.pkWithStdio(senderCommands3);
+      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands1 = genCommandsReceiver(['read']);
-      await testUtils.pkWithStdio(receiverCommands1);
+      await testUtils.pkStdio(receiverCommands1, {}, receiverDataDir);
       const senderCommands4 = genCommandsSender([
         'send',
         receiverNodeId,
         'msg4',
       ]);
-      await testUtils.pkWithStdio(senderCommands4);
+      await testUtils.pkStdio(senderCommands4, {}, senderDataDir);
       const receiverCommands2 = genCommandsReceiver(['read', '--unread']);
-      const result = await testUtils.pkWithStdio(receiverCommands2);
-      expect(result.code).toBe(0);
+      const result = await testUtils.pkStdio(
+        receiverCommands2,
+        {},
+        receiverDataDir,
+      );
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).not.toContain('msg1'); // Previously read notifications should be ignored
       expect(result.stdout).not.toContain('msg2');
       expect(result.stdout).not.toContain('msg3');
@@ -254,12 +260,16 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkWithStdio(senderCommands1);
-      await testUtils.pkWithStdio(senderCommands2);
-      await testUtils.pkWithStdio(senderCommands3);
+      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands = genCommandsReceiver(['read', '--number', '2']);
-      const result = await testUtils.pkWithStdio(receiverCommands);
-      expect(result.code).toBe(0);
+      const result = await testUtils.pkStdio(
+        receiverCommands,
+        {},
+        receiverDataDir,
+      );
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).not.toContain('msg1'); // Oldest notification not included
       expect(result.stdout).toContain('msg2');
       expect(result.stdout).toContain('msg3');
@@ -286,9 +296,9 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkWithStdio(senderCommands1);
-      await testUtils.pkWithStdio(senderCommands2);
-      await testUtils.pkWithStdio(senderCommands3);
+      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands = genCommandsReceiver([
         'read',
         '--unread',
@@ -297,20 +307,36 @@ describe('CLI Notifications', () => {
         '--order',
         'oldest',
       ]);
-      const result1 = await testUtils.pkWithStdio(receiverCommands);
-      const result2 = await testUtils.pkWithStdio(receiverCommands);
-      const result3 = await testUtils.pkWithStdio(receiverCommands);
-      expect(result1.code).toBe(0);
-      expect(result2.code).toBe(0);
-      expect(result3.code).toBe(0);
+      const result1 = await testUtils.pkStdio(
+        receiverCommands,
+        {},
+        receiverDataDir,
+      );
+      const result2 = await testUtils.pkStdio(
+        receiverCommands,
+        {},
+        receiverDataDir,
+      );
+      const result3 = await testUtils.pkStdio(
+        receiverCommands,
+        {},
+        receiverDataDir,
+      );
+      expect(result1.exitCode).toBe(0);
+      expect(result2.exitCode).toBe(0);
+      expect(result3.exitCode).toBe(0);
       expect(result1.stdout).toContain('msg1');
       expect(result2.stdout).toContain('msg2');
       expect(result3.stdout).toContain('msg3');
     });
     test('Should read no notifications.', async () => {
       const receiverCommands = genCommandsReceiver(['read']);
-      const result = await testUtils.pkWithStdio(receiverCommands);
-      expect(result.code).toBe(0);
+      const result = await testUtils.pkStdio(
+        receiverCommands,
+        {},
+        receiverDataDir,
+      );
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).toEqual('No notifications to display\n');
     });
     test('Should read all types of notifications.', async () => {
@@ -336,21 +362,21 @@ describe('CLI Notifications', () => {
           pull: null,
         },
       };
-      await senderPolykeyAgent.notifications.sendNotification(
+      await senderPolykeyAgent.notificationsManager.sendNotification(
         receiverNodeId,
         notificationData1,
       );
-      await senderPolykeyAgent.notifications.sendNotification(
+      await senderPolykeyAgent.notificationsManager.sendNotification(
         receiverNodeId,
         notificationData2,
       );
-      await senderPolykeyAgent.notifications.sendNotification(
+      await senderPolykeyAgent.notificationsManager.sendNotification(
         receiverNodeId,
         notificationData3,
       );
       const commands = genCommandsReceiver(['read']);
-      const result = await testUtils.pkWithStdio(commands);
-      expect(result.code).toBe(0);
+      const result = await testUtils.pkStdio(commands, {}, receiverDataDir);
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Message from Keynode');
       expect(result.stdout).toContain('invited you to join their Gestalt');
       expect(result.stdout).toContain('shared their vault');
@@ -379,14 +405,18 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkWithStdio(senderCommands1);
-      await testUtils.pkWithStdio(senderCommands2);
-      await testUtils.pkWithStdio(senderCommands3);
+      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommandsClear = genCommandsReceiver(['clear']);
       const receiverCommandsRead = genCommandsReceiver(['read']);
-      await testUtils.pkWithStdio(receiverCommandsClear);
-      const result = await testUtils.pkWithStdio(receiverCommandsRead);
-      expect(result.code).toBe(0);
+      await testUtils.pkStdio(receiverCommandsClear);
+      const result = await testUtils.pkStdio(
+        receiverCommandsRead,
+        {},
+        receiverDataDir,
+      );
+      expect(result.exitCode).toBe(0);
       expect(result.stdout).toEqual('No notifications to display\n'); // Should be no notifications left
     });
   });

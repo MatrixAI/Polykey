@@ -1,0 +1,61 @@
+import type { Metadata } from '@grpc/grpc-js';
+
+import CommandPolykey from '../CommandPolykey';
+import * as binUtils from '../utils';
+import * as binOptions from '../options';
+import * as parsers from '../parsers';
+
+class CommandDecrypt extends CommandPolykey {
+  constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
+    super(...args);
+    this.name('decrypt');
+    this.description('Decrypt a File using the Root Keypair');
+    this.argument(
+      '<filePath>',
+      'Path to the file to decrypt, file must use binary encoding',
+    );
+    this.addOption(binOptions.nodeId);
+    this.addOption(binOptions.clientHost);
+    this.addOption(binOptions.clientPort);
+    this.action(async (filePath, options) => {
+      const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
+
+      const client = await PolykeyClient.createPolykeyClient({
+        logger: this.logger.getChild(PolykeyClient.name),
+        nodePath: options.nodePath,
+      });
+
+      const meta = await parsers.parseAuth({
+        passwordFile: options.passwordFile,
+        fs: this.fs,
+      });
+
+      try {
+        const grpcClient = client.grpcClient;
+        const cryptoMessage = new keysPB.Crypto();
+        const cipherText = await parsers.parseFilePath({
+          filePath,
+          fs: this.fs,
+        });
+
+        cryptoMessage.setData(cipherText);
+        const response = await binUtils.retryAuth(
+          (auth?: Metadata) => grpcClient.keysDecrypt(cryptoMessage, auth),
+          meta,
+        );
+
+        process.stdout.write(
+          binUtils.outputFormatter({
+            type: options.format === 'json' ? 'json' : 'list',
+            data: [`Decrypted data:\t\t${response.getData()}`],
+          }),
+        );
+      } finally {
+        await client.stop();
+      }
+    });
+  }
+}
+
+export default CommandDecrypt;
