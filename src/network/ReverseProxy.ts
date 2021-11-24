@@ -6,29 +6,23 @@ import type { Timer } from '../types';
 import UTP from 'utp-native';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';
+import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import ConnectionReverse from './ConnectionReverse';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
 import { promisify, sleep, timerStart, timerStop } from '../utils';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 
-interface ReverseProxy extends CreateDestroyStartStop {}
-@CreateDestroyStartStop(
-  new networkErrors.ErrorReverseProxyNotStarted(),
-  new networkErrors.ErrorReverseProxyDestroyed(),
-)
+interface ReverseProxy extends StartStop {}
+@StartStop()
 class ReverseProxy {
   public readonly connConnectTime: number;
   public readonly connTimeoutTime: number;
 
   protected logger: Logger;
-  protected ingressHost: Host;
-  protected ingressPort: Port;
-  protected serverHost: Host;
-  protected serverPort: Port;
+  protected _ingressHost: Host;
+  protected _ingressPort: Port;
+  protected _serverHost: Host;
+  protected _serverPort: Port;
   protected utpSocket: UTP;
   protected tlsConfig: TLSConfig;
   protected connectionLocks: Map<Address, Mutex> = new Map();
@@ -37,7 +31,7 @@ class ReverseProxy {
     proxy: new Map(),
   };
 
-  static async createReverseProxy({
+  constructor({
     connConnectTime = 20000,
     connTimeoutTime = 20000,
     logger,
@@ -45,26 +39,9 @@ class ReverseProxy {
     connConnectTime?: number;
     connTimeoutTime?: number;
     logger?: Logger;
-  }): Promise<ReverseProxy> {
-    const logger_ = logger ?? new Logger('ReverseProxy');
-    return new ReverseProxy({
-      connConnectTime,
-      connTimeoutTime,
-      logger: logger_,
-    });
-  }
-
-  constructor({
-    connConnectTime,
-    connTimeoutTime,
-    logger,
-  }: {
-    connConnectTime: number;
-    connTimeoutTime: number;
-    logger: Logger;
   }) {
-    logger.info('Creating Reverse Proxy');
-    this.logger = logger;
+    this.logger = logger ?? new Logger(ReverseProxy.name);
+    this.logger.info('Creating Reverse Proxy');
     this.connConnectTime = connConnectTime;
     this.connTimeoutTime = connTimeoutTime;
     this.logger.info('Created Reverse Proxy');
@@ -74,18 +51,20 @@ class ReverseProxy {
    * UTP only supports IPv4
    */
   public async start({
-    ingressHost = '0.0.0.0' as Host,
-    ingressPort = 0 as Port,
     serverHost,
     serverPort,
+    ingressHost = '0.0.0.0' as Host,
+    ingressPort = 0 as Port,
     tlsConfig,
   }: {
-    ingressHost?: Host;
-    ingressPort?: Port;
     serverHost: Host;
     serverPort: Port;
+    ingressHost?: Host;
+    ingressPort?: Port;
     tlsConfig: TLSConfig;
   }): Promise<void> {
+    this._ingressHost = ingressHost;
+    this.tlsConfig = tlsConfig;
     let ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let serverAddress = networkUtils.buildAddress(serverHost, serverPort);
     this.logger.info(
@@ -95,15 +74,15 @@ class ReverseProxy {
       allowHalfOpen: false,
     });
     const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(ingressPort, ingressHost);
-    ingressPort = utpSocket.address().port;
-    this.ingressHost = ingressHost;
-    this.ingressPort = ingressPort;
-    this.serverHost = serverHost;
-    this.serverPort = serverPort;
-    this.tlsConfig = tlsConfig;
+    await utpSocketListen(ingressPort, this._ingressHost);
+    this._ingressPort = utpSocket.address().port;
+    this._serverHost = serverHost;
+    this._serverPort = serverPort;
     this.utpSocket = utpSocket;
-    ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
+    ingressAddress = networkUtils.buildAddress(
+      this._ingressHost,
+      this._ingressPort,
+    );
     serverAddress = networkUtils.buildAddress(serverHost, serverPort);
     this.logger.info(
       `Started Reverse Proxy from ${ingressAddress} to ${serverAddress}`,
@@ -128,24 +107,24 @@ class ReverseProxy {
     this.logger.info('Stopped Reverse Proxy');
   }
 
-  public async destroy() {
-    this.logger.info('Destroyed Reverse Proxy');
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  get ingressHost(): Host {
+    return this._ingressHost;
   }
 
-  public getIngressHost(): Host {
-    return this.ingressHost;
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  get ingressPort(): Port {
+    return this._ingressPort;
   }
 
-  public getIngressPort(): Port {
-    return this.ingressPort;
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  get serverHost(): Host {
+    return this._serverHost;
   }
 
-  public getServerHost(): Host {
-    return this.serverHost;
-  }
-
-  public getServerPort(): Port {
-    return this.serverPort;
+  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  get serverPort(): Port {
+    return this._serverPort;
   }
 
   public setTLSConfig(tlsConfig: TLSConfig): void {
@@ -169,8 +148,8 @@ class ReverseProxy {
       certificates: clientCertificates,
       egressHost: conn.host,
       egressPort: conn.port,
-      ingressHost: this.ingressHost,
-      ingressPort: this.ingressPort,
+      ingressHost: this._ingressHost,
+      ingressPort: this._ingressPort,
     };
   }
 
@@ -191,12 +170,12 @@ class ReverseProxy {
       certificates: clientCertificates,
       egressHost: conn.host,
       egressPort: conn.port,
-      ingressHost: this.ingressHost,
-      ingressPort: this.ingressPort,
+      ingressHost: this._ingressHost,
+      ingressPort: this._ingressPort,
     };
   }
 
-  public getConnectionCount(): number {
+  get connectionCount(): number {
     return this.connections.egress.size;
   }
 
@@ -318,15 +297,17 @@ class ReverseProxy {
       return conn;
     }
     conn = new ConnectionReverse({
-      serverHost: this.serverHost,
-      serverPort: this.serverPort,
+      serverHost: this._serverHost,
+      serverPort: this._serverPort,
       connections: this.connections,
       utpSocket: this.utpSocket,
       host: egressHost,
       port: egressPort,
       tlsConfig: this.tlsConfig,
       timeoutTime: this.connTimeoutTime,
-      logger: this.logger.getChild(`Connection ${egressAddress}`),
+      logger: this.logger.getChild(
+        `${ConnectionReverse.name} ${egressAddress}`,
+      ),
     });
     await conn.start({ timer });
     return conn;

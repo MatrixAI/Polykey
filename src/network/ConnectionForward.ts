@@ -160,7 +160,6 @@ class ConnectionForward extends Connection {
         throw new networkErrors.ErrorConnectionComposed();
       }
       this.logger.info('Composing Connection Forward');
-      this._composed = true;
       this.tlsSocket.on('error', (e) => {
         if (!clientSocket.destroyed) {
           clientSocket.destroy(e);
@@ -191,6 +190,7 @@ class ConnectionForward extends Connection {
         this.clientPort,
       );
       this.connections.client.set(this.clientAddress, this);
+      this._composed = true;
       this.logger.info('Composed Connection Forward');
     } catch (e) {
       this._composed = false;

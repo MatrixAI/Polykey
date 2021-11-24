@@ -158,7 +158,6 @@ class ConnectionReverse extends Connection {
         throw new networkErrors.ErrorConnectionComposed();
       }
       this.logger.info('Composing Connection Reverse');
-      this._composed = true;
       // Promise for secure establishment
       const { p: secureP, resolveP: resolveSecureP } = promise<void>();
       // Promise for compose errors
@@ -226,6 +225,7 @@ class ConnectionReverse extends Connection {
       tlsSocket.pipe(this.serverSocket);
       this.serverSocket.pipe(tlsSocket);
       this.clientCertChain = clientCertChain;
+      this._composed = true;
       this.logger.info('Composed Connection Reverse');
     } catch (e) {
       this._composed = false;

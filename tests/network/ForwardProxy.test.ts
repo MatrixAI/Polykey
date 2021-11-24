@@ -1,7 +1,7 @@
 import type { Socket } from 'net';
-import type { NodeId } from '@/nodes/types';
-import type { Host, Port } from '@/network/types';
 
+import type { Host, Port } from '@/network/types';
+import type { NodeId } from '@/nodes/types';
 import http from 'http';
 import net from 'net';
 import tls from 'tls';
@@ -20,6 +20,8 @@ describe('ForwardProxy', () => {
     new StreamHandler(),
   ]);
   let keyPairPem, certPem;
+  let fwdProxy: ForwardProxy;
+  let authToken: string;
 
   // Helper functions
   async function connect(
@@ -64,38 +66,9 @@ describe('ForwardProxy', () => {
     );
     certPem = keysUtils.certToPem(cert);
   });
-  test('starting and stopping the forward proxy', async () => {
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken: 'abc',
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    expect(typeof fwdProxy.getProxyHost()).toBe('string');
-    expect(typeof fwdProxy.getProxyPort()).toBe('number');
-    expect(fwdProxy.getProxyPort()).toBeGreaterThan(0);
-    expect(typeof fwdProxy.getEgressHost()).toBe('string');
-    expect(typeof fwdProxy.getEgressPort()).toBe('number');
-    expect(fwdProxy.getEgressPort()).toBeGreaterThan(0);
-    expect(fwdProxy.getConnectionCount()).toBe(0);
-    await fwdProxy.stop();
-    await fwdProxy.start({
-      proxyHost: '::1' as Host,
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    expect(fwdProxy.getProxyHost()).toBe('::1');
-    await fwdProxy.stop();
-  });
-  test('connect failures to the forward proxy', async () => {
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
+  beforeEach(async () => {
+    authToken = 'sdafjs8';
+    fwdProxy = new ForwardProxy({
       authToken,
       logger,
     });
@@ -106,12 +79,59 @@ describe('ForwardProxy', () => {
         certChainPem: certPem,
       },
     });
+  });
+  afterEach(async () => {
+    await fwdProxy.stop();
+  });
+
+  test('reverseProxy readiness', async () => {
+    const fwdProxy = new ForwardProxy({
+      authToken: '',
+      logger: logger,
+    });
+
+    // Should be a noop
+    await fwdProxy.stop();
+    await fwdProxy.start({
+      tlsConfig: {
+        keyPrivatePem: keyPairPem.privateKey,
+        certChainPem: certPem,
+      },
+    });
+    await fwdProxy.stop();
+    expect(() => {
+      fwdProxy.proxyHost;
+    }).toThrow(networkErrors.ErrorForwardProxyNotStarted);
+    await expect(async () => {
+      await fwdProxy.closeConnection('::1' as Host, 1 as Port);
+    }).rejects.toThrow(networkErrors.ErrorForwardProxyNotStarted);
+  });
+  test('starting and stopping the forward proxy', async () => {
+    expect(typeof fwdProxy.proxyHost).toBe('string');
+    expect(typeof fwdProxy.proxyPort).toBe('number');
+    expect(fwdProxy.proxyPort).toBeGreaterThan(0);
+    expect(typeof fwdProxy.egressHost).toBe('string');
+    expect(typeof fwdProxy.egressPort).toBe('number');
+    expect(fwdProxy.egressPort).toBeGreaterThan(0);
+    expect(fwdProxy.connectionCount).toBe(0);
+    await fwdProxy.stop();
+    await fwdProxy.start({
+      proxyHost: '::1' as Host,
+      tlsConfig: {
+        keyPrivatePem: keyPairPem.privateKey,
+        certChainPem: certPem,
+      },
+    });
+    expect(fwdProxy.proxyHost).toBe('::1');
+    await fwdProxy.stop();
+  });
+  test('connect failures to the forward proxy', async () => {
     const authTokenEncoded = Buffer.from(authToken, 'utf-8').toString('base64');
     // Incorrect auth token
     await expect(() =>
       connect(
-        fwdProxy.getProxyHost(),
-        fwdProxy.getProxyPort(),
+        fwdProxy.proxyHost,
+        fwdProxy.proxyPort,
         'sdfisojfo',
         `127.0.0.1:80?nodeId=${encodeURIComponent('SOMENODEID')}`,
       ),
@@ -119,8 +139,8 @@ describe('ForwardProxy', () => {
     // No node id
     await expect(() =>
       connect(
-        fwdProxy.getProxyHost(),
-        fwdProxy.getProxyPort(),
+        fwdProxy.proxyHost,
+        fwdProxy.proxyPort,
         authTokenEncoded,
         '127.0.0.1:80',
       ),
@@ -128,8 +148,8 @@ describe('ForwardProxy', () => {
     // Missing target
     await expect(() =>
       connect(
-        fwdProxy.getProxyHost(),
-        fwdProxy.getProxyPort(),
+        fwdProxy.proxyHost,
+        fwdProxy.proxyPort,
         authTokenEncoded,
         `?nodeId=${encodeURIComponent('123')}`,
       ),
@@ -137,8 +157,8 @@ describe('ForwardProxy', () => {
     // Targetting an un-used port
     await expect(() =>
       connect(
-        fwdProxy.getProxyHost(),
-        fwdProxy.getProxyPort(),
+        fwdProxy.proxyHost,
+        fwdProxy.proxyPort,
         authTokenEncoded,
         `127.0.0.1:0?nodeId=${encodeURIComponent('123')}`,
       ),
@@ -146,17 +166,6 @@ describe('ForwardProxy', () => {
     await fwdProxy.stop();
   });
   test('open connection to port 0 fails', async () => {
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
     // Cannot open connection to port 0
     await expect(() =>
       fwdProxy.openConnection('abc' as NodeId, '127.0.0.1' as Host, 0 as Port),
@@ -164,17 +173,6 @@ describe('ForwardProxy', () => {
     await fwdProxy.stop();
   });
   test('open connection timeout due to hanging remote', async () => {
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
     // This UTP server will just hang and not respond
     let receivedConnection = false;
     const utpSocketHang = UTP.createServer(() => {
@@ -201,17 +199,6 @@ describe('ForwardProxy', () => {
     await fwdProxy.stop();
   });
   test('open connection reset due to ending remote', async () => {
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
     // This UTP Server will immediately end and destroy
     // the connection upon receiving a connection
     let receivedConnection = false;
@@ -246,19 +233,8 @@ describe('ForwardProxy', () => {
     await fwdProxy.stop();
   });
   test('open connection fails due to missing certificates', async () => {
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    const egressHost = fwdProxy.getEgressHost();
-    const egressPort = fwdProxy.getEgressPort();
+    const egressHost = fwdProxy.egressHost;
+    const egressPort = fwdProxy.egressPort;
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
@@ -306,7 +282,7 @@ describe('ForwardProxy', () => {
     await utpSocketListen(0, '127.0.0.1');
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     // This is an SSL handshake failure
     await expect(() =>
       fwdProxy.openConnection(
@@ -331,19 +307,8 @@ describe('ForwardProxy', () => {
       86400,
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    const egressHost = fwdProxy.getEgressHost();
-    const egressPort = fwdProxy.getEgressPort();
+    const egressHost = fwdProxy.egressHost;
+    const egressPort = fwdProxy.egressPort;
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
@@ -397,7 +362,7 @@ describe('ForwardProxy', () => {
     await utpSocketListen(0, '127.0.0.1');
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     await expect(() =>
       fwdProxy.openConnection(
         'somerandomnodeid' as NodeId,
@@ -409,7 +374,7 @@ describe('ForwardProxy', () => {
     // The secure event won't be fired
     // because the connection will be ended before that happens
     expect(secured).toBe(false);
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -427,19 +392,8 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    const egressHost = fwdProxy.getEgressHost();
-    const egressPort = fwdProxy.getEgressPort();
+    const egressHost = fwdProxy.egressHost;
+    const egressPort = fwdProxy.egressPort;
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
       promise<void>();
@@ -494,7 +448,7 @@ describe('ForwardProxy', () => {
     await utpSocketListen(0, '127.0.0.1');
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     await fwdProxy.openConnection(
       serverNodeId,
       utpSocketHost as Host,
@@ -508,12 +462,12 @@ describe('ForwardProxy', () => {
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
-    expect(fwdProxy.getConnectionCount()).toBe(1);
+    expect(fwdProxy.connectionCount).toBe(1);
     await fwdProxy.closeConnection(
       utpSocketHost as Host,
       utpSocketPort as Port,
     );
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     await expect(remoteClosedP).resolves.toBeUndefined();
     utpSocket.off('message', handleMessage);
     utpSocket.close();
@@ -531,20 +485,8 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      proxyHost: '::1' as Host,
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    const egressHost = fwdProxy.getEgressHost();
-    const egressPort = fwdProxy.getEgressPort();
+    const egressHost = fwdProxy.egressHost;
+    const egressPort = fwdProxy.egressPort;
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
       promise<void>();
@@ -608,16 +550,16 @@ describe('ForwardProxy', () => {
     await expect(remoteSecureP).resolves.toBeUndefined();
     const authTokenEncoded = Buffer.from(authToken, 'utf-8').toString('base64');
     const clientSocket = await connect(
-      fwdProxy.getProxyHost(),
-      fwdProxy.getProxyPort(),
+      fwdProxy.proxyHost,
+      fwdProxy.proxyPort,
       authTokenEncoded,
       `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
         serverNodeId,
       )}`,
     );
     expect(clientSocket).toBeInstanceOf(net.Socket);
-    expect(clientSocket.remoteAddress).toBe(fwdProxy.getProxyHost());
-    expect(clientSocket.remotePort).toBe(fwdProxy.getProxyPort());
+    expect(clientSocket.remoteAddress).toBe(fwdProxy.proxyHost);
+    expect(clientSocket.remotePort).toBe(fwdProxy.proxyPort);
     const { p: localClosedP, resolveP: resolveLocalClosedP } = promise<void>();
     clientSocket.on('close', () => {
       resolveLocalClosedP();
@@ -644,20 +586,8 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      proxyHost: '::1' as Host,
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    const egressHost = fwdProxy.getEgressHost();
-    const egressPort = fwdProxy.getEgressPort();
+    const egressHost = fwdProxy.egressHost;
+    const egressPort = fwdProxy.egressPort;
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
       promise<void>();
@@ -714,8 +644,8 @@ describe('ForwardProxy', () => {
     const utpSocketPort = utpSocket.address().port;
     const authTokenEncoded = Buffer.from(authToken, 'utf-8').toString('base64');
     const clientSocket = await connect(
-      fwdProxy.getProxyHost(),
-      fwdProxy.getProxyPort(),
+      fwdProxy.proxyHost,
+      fwdProxy.proxyPort,
       authTokenEncoded,
       `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
         serverNodeId,
@@ -724,8 +654,8 @@ describe('ForwardProxy', () => {
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
     expect(clientSocket).toBeInstanceOf(net.Socket);
-    expect(clientSocket.remoteAddress).toBe(fwdProxy.getProxyHost());
-    expect(clientSocket.remotePort).toBe(fwdProxy.getProxyPort());
+    expect(clientSocket.remoteAddress).toBe(fwdProxy.proxyHost);
+    expect(clientSocket.remotePort).toBe(fwdProxy.proxyPort);
     const { p: localClosedP, resolveP: resolveLocalClosedP } = promise<void>();
     clientSocket.on('close', () => {
       resolveLocalClosedP();
@@ -752,19 +682,8 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    const egressHost = fwdProxy.getEgressHost();
-    const egressPort = fwdProxy.getEgressPort();
+    const egressHost = fwdProxy.egressHost;
+    const egressPort = fwdProxy.egressPort;
     const { p: remoteReadyP, resolveP: resolveRemoteReadyP } = promise<void>();
     const { p: remoteSecureP, resolveP: resolveRemoteSecureP } =
       promise<void>();
@@ -818,7 +737,7 @@ describe('ForwardProxy', () => {
     await utpSocketListen(0, '127.0.0.1');
     const utpSocketHost = utpSocket.address().address;
     const utpSocketPort = utpSocket.address().port;
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     await fwdProxy.openConnection(
       serverNodeId,
       utpSocketHost as Host,
@@ -826,9 +745,9 @@ describe('ForwardProxy', () => {
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
-    expect(fwdProxy.getConnectionCount()).toBe(1);
+    expect(fwdProxy.connectionCount).toBe(1);
     await fwdProxy.stop();
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -857,19 +776,8 @@ describe('ForwardProxy', () => {
     );
     const serverCertPem2 = keysUtils.certToPem(serverCert2);
     const serverNodeId2 = networkUtils.certNodeId(serverCert2);
-    const authToken = 'sdafjs8';
-    const fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken,
-      logger,
-    });
-    await fwdProxy.start({
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    const egressHost = fwdProxy.getEgressHost();
-    const egressPort = fwdProxy.getEgressPort();
+    const egressHost = fwdProxy.egressHost;
+    const egressPort = fwdProxy.egressPort;
     // First signals
     const { p: remoteReadyP1, resolveP: resolveRemoteReadyP1 } =
       promise<void>();
@@ -970,7 +878,7 @@ describe('ForwardProxy', () => {
     await utpSocketListen2(0, '127.0.0.1');
     const utpSocketHost2 = utpSocket2.address().address;
     const utpSocketPort2 = utpSocket2.address().port;
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     await fwdProxy.openConnection(
       serverNodeId1,
       utpSocketHost1 as Host,
@@ -981,7 +889,7 @@ describe('ForwardProxy', () => {
       utpSocketHost2 as Host,
       utpSocketPort2 as Port,
     );
-    expect(fwdProxy.getConnectionCount()).toBe(2);
+    expect(fwdProxy.connectionCount).toBe(2);
     await expect(remoteReadyP1).resolves.toBeUndefined();
     await expect(remoteReadyP2).resolves.toBeUndefined();
     await fwdProxy.closeConnection(
@@ -992,7 +900,7 @@ describe('ForwardProxy', () => {
       utpSocketHost2 as Host,
       utpSocketPort2 as Port,
     );
-    expect(fwdProxy.getConnectionCount()).toBe(0);
+    expect(fwdProxy.connectionCount).toBe(0);
     await expect(remoteClosedP1).resolves.toBeUndefined();
     await expect(remoteClosedP2).resolves.toBeUndefined();
     utpSocket1.off('message', handleMessage1);

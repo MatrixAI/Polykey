@@ -1,6 +1,6 @@
 import type { Host, Port } from '@/network/types';
-
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import grpc from '@grpc/grpc-js';
 import { utils as keysUtils } from '@/keys';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
@@ -33,19 +33,23 @@ describe('network index', () => {
     );
     const serverCertPem = keysUtils.certToPem(serverCert);
     const serverNodeId = networkUtils.certNodeId(serverCert);
-    const [server, serverPort] = await openTestServer();
-    const revProxy = await ReverseProxy.createReverseProxy({ logger });
+    const authenticate = async (metaClient, metaServer = new grpc.Metadata()) =>
+      metaServer;
+    const [server, serverPort] = await openTestServer(authenticate, logger);
+    const revProxy = new ReverseProxy({
+      logger,
+    });
     await revProxy.start({
-      ingressHost: '127.0.0.1' as Host,
-      ingressPort: 0 as Port,
       serverHost: '127.0.0.1' as Host,
       serverPort: serverPort as Port,
+      ingressHost: '127.0.0.1' as Host,
+      ingressPort: 0 as Port,
       tlsConfig: {
         keyPrivatePem: serverKeyPairPem.privateKey,
         certChainPem: serverCertPem,
       },
     });
-    const fwdProxy = await ForwardProxy.createForwardProxy({
+    const fwdProxy = new ForwardProxy({
       authToken: 'abc',
       logger,
     });
@@ -59,18 +63,17 @@ describe('network index', () => {
       egressHost: '127.0.0.1' as Host,
       egressPort: 0 as Port,
     });
-    const client = new GRPCClientTest({
+    const client = await GRPCClientTest.createGRPCClientTest({
       nodeId: serverNodeId,
-      host: revProxy.getIngressHost(),
-      port: revProxy.getIngressPort(),
+      host: revProxy.ingressHost,
+      port: revProxy.ingressPort,
       proxyConfig: {
-        host: fwdProxy.getProxyHost(),
-        port: fwdProxy.getProxyPort(),
+        host: fwdProxy.proxyHost,
+        port: fwdProxy.proxyPort,
         authToken: fwdProxy.authToken,
       },
       logger,
     });
-    await client.start();
     const m = new utilsPB.EchoMessage();
     const challenge = 'Hello!';
     m.setChallenge(challenge);
@@ -102,34 +105,34 @@ describe('network index', () => {
       expect(duplexStreamResponse.value.getChallenge()).toBe(m.getChallenge());
     }
     // Ensure that the connection count is the same
-    expect(fwdProxy.getConnectionCount()).toBe(1);
-    expect(revProxy.getConnectionCount()).toBe(1);
+    expect(fwdProxy.connectionCount).toBe(1);
+    expect(revProxy.connectionCount).toBe(1);
     expect(
       fwdProxy.getConnectionInfoByIngress(client.host, client.port),
     ).toEqual(
       expect.objectContaining({
         nodeId: serverNodeId,
-        egressHost: fwdProxy.getEgressHost(),
-        egressPort: fwdProxy.getEgressPort(),
-        ingressHost: revProxy.getIngressHost(),
-        ingressPort: revProxy.getIngressPort(),
+        egressHost: fwdProxy.egressHost,
+        egressPort: fwdProxy.egressPort,
+        ingressHost: revProxy.ingressHost,
+        ingressPort: revProxy.ingressPort,
       }),
     );
     expect(
       revProxy.getConnectionInfoByEgress(
-        fwdProxy.getEgressHost(),
-        fwdProxy.getEgressPort(),
+        fwdProxy.egressHost,
+        fwdProxy.egressPort,
       ),
     ).toEqual(
       expect.objectContaining({
         nodeId: clientNodeId,
-        egressHost: fwdProxy.getEgressHost(),
-        egressPort: fwdProxy.getEgressPort(),
-        ingressHost: revProxy.getIngressHost(),
-        ingressPort: revProxy.getIngressPort(),
+        egressHost: fwdProxy.egressHost,
+        egressPort: fwdProxy.egressPort,
+        ingressHost: revProxy.ingressHost,
+        ingressPort: revProxy.ingressPort,
       }),
     );
-    await client.stop();
+    await client.destroy();
     await fwdProxy.stop();
     await revProxy.stop();
     await closeTestServer(server);
