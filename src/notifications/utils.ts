@@ -11,13 +11,11 @@ import type { KeyPairPem } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 import type { VaultId } from '../vaults/types';
 
-import EmbeddedJWK from 'jose/jwk/embedded';
-import jwtVerify from 'jose/jwt/verify';
+import type { DefinedError } from 'ajv';
 import { createPublicKey, createPrivateKey } from 'crypto';
-import { SignJWT } from 'jose/jwt/sign';
-import { fromKeyLike } from 'jose/jwk/from_key_like';
-import { DefinedError } from 'ajv';
+import { SignJWT, exportJWK, jwtVerify, EmbeddedJWK } from 'jose';
 
+import { IdSortable } from '@matrixai/id';
 import {
   notificationValidate,
   generalNotificationValidate,
@@ -25,7 +23,6 @@ import {
   vaultShareNotificationValidate,
 } from './schema';
 import * as notificationsErrors from './errors';
-import { IdSortable } from '@matrixai/id';
 import { isId, makeId } from '../GenericIdTypes';
 
 function isNotificationId(arg: any): arg is NotificationId {
@@ -66,9 +63,9 @@ async function signNotification(
 ): Promise<SignedNotification> {
   const publicKey = createPublicKey(keyPair.publicKey);
   const privateKey = createPrivateKey(keyPair.privateKey);
-  const jwkPublicKey = await fromKeyLike(publicKey);
+  const jwkPublicKey = await exportJWK(publicKey);
   const jwt = await new SignJWT(notification)
-    .setProtectedHeader({ alg: 'RS256', b64: true, jwk: jwkPublicKey })
+    .setProtectedHeader({ alg: 'RS256', jwk: jwkPublicKey })
     .setIssuedAt()
     .sign(privateKey);
   return jwt as SignedNotification;

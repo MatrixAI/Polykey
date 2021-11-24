@@ -4,6 +4,10 @@ class ErrorNotifications extends ErrorPolykey {}
 
 class ErrorNotificationsUnknownNode extends ErrorNotifications {}
 
+class ErrorNotificationsRunning extends ErrorNotifications {}
+
+class ErrorNotificationsNotRunning extends ErrorNotifications {}
+
 class ErrorNotificationsDestroyed extends ErrorNotifications {}
 
 class ErrorNotificationsPermissionsNotFound extends ErrorNotifications {}
@@ -30,6 +34,8 @@ class ErrorNotificationsValidationFailed extends ErrorSchemaValidate {}
 export {
   ErrorNotifications,
   ErrorNotificationsUnknownNode,
+  ErrorNotificationsRunning,
+  ErrorNotificationsNotRunning,
   ErrorNotificationsDestroyed,
   ErrorNotificationsPermissionsNotFound,
   ErrorNotificationsDb,
