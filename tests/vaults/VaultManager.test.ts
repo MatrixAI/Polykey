@@ -2,11 +2,13 @@ import type { NodeId, NodeAddress, NodeInfo } from '@/nodes/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
 import type { VaultId, VaultKey, VaultName } from '@/vaults/types';
 import type { ChainData } from '@/sigchain/types';
-
+import type { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { DB } from '@matrixai/db';
+import { utils as idUtils } from '@matrixai/id';
 
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
@@ -14,18 +16,15 @@ import { Sigchain } from '@/sigchain';
 import { VaultManager, vaultOps } from '@/vaults';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
-import { DB } from '@matrixai/db';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import GRPCServer from '@/grpc/GRPCServer';
 import { AgentServiceService, createAgentService } from '@/agent';
 import { NotificationsManager } from '@/notifications';
-import { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 
 import { errors as vaultErrors } from '@/vaults';
 import { utils as vaultUtils } from '@/vaults';
-import { makeCrypto } from '../utils';
 import { makeVaultId } from '@/vaults/utils';
-import { utils as idUtils } from '@matrixai/id';
+import { makeCrypto } from '../utils';
 
 describe('VaultManager', () => {
   const password = 'password';
@@ -64,14 +63,14 @@ describe('VaultManager', () => {
   const thirdVaultName = 'ThirdTestVault' as VaultName;
 
   beforeAll(async () => {
-    fwdProxy = await ForwardProxy.createForwardProxy({
+    fwdProxy = new ForwardProxy({
       authToken: 'abc',
       logger: logger,
     });
-    revProxy = await ReverseProxy.createReverseProxy({
+    revProxy = new ReverseProxy({
       logger: logger,
     });
-    altRevProxy = await ReverseProxy.createReverseProxy({
+    altRevProxy = new ReverseProxy({
       logger: logger,
     });
   });
@@ -103,7 +102,6 @@ describe('VaultManager', () => {
       logger: logger,
       crypto: makeCrypto(keyManager),
     });
-    await db.start();
 
     sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
@@ -117,7 +115,6 @@ describe('VaultManager', () => {
       keyManager: keyManager,
       fwdProxy: fwdProxy,
       revProxy: revProxy,
-      fs: fs,
       logger: logger,
     });
     await nodeManager.start();
@@ -147,20 +144,35 @@ describe('VaultManager', () => {
     });
   });
   afterEach(async () => {
-    await vaultManager.destroy();
-    await gestaltGraph.destroy();
-    await acl.destroy();
+    await vaultManager.stop();
+    await gestaltGraph.stop();
+    await acl.stop();
     await db.stop();
     await nodeManager.stop();
-    await keyManager.destroy();
+    await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-
   afterAll(async () => {
     await fwdProxy.stop();
+  });
+
+  test('VaultManager readiness', async () => {
+    await expect(vaultManager.destroy()).rejects.toThrow(
+      vaultErrors.ErrorVaultManagerRunning,
+    );
+    // Should be a noop
+    await vaultManager.start();
+    await vaultManager.stop();
+    await vaultManager.destroy();
+    await expect(vaultManager.start()).rejects.toThrow(
+      vaultErrors.ErrorVaultManagerDestroyed,
+    );
+    await expect(async () => {
+      await vaultManager.listVaults();
+    }).rejects.toThrow(vaultErrors.ErrorVaultManagerNotRunning);
   });
   test('is type correct', () => {
     expect(vaultManager).toBeInstanceOf(VaultManager);
@@ -279,7 +291,7 @@ describe('VaultManager', () => {
       expect(vaultId).not.toBeUndefined();
       const vault = await vaultManager.openVault(vaultId);
       expect(vault).toBeTruthy();
-      await vaultManager.destroy();
+      await vaultManager.stop();
       await db.stop();
       await db.start();
       vaultManager = await VaultManager.createVaultManager({
@@ -334,7 +346,7 @@ describe('VaultManager', () => {
       await efs.writeFile('test', 'test');
     });
     await vaultManager.closeVault(vault.vaultId);
-    await vaultManager.destroy();
+    await vaultManager.stop();
     vaultManager = await VaultManager.createVaultManager({
       keyManager: keyManager,
       vaultsPath,
@@ -398,7 +410,7 @@ describe('VaultManager', () => {
         vn.push(vaultName),
       );
       expect(vn.sort()).toEqual(alteredVaultNames.sort());
-      await vaultManager.destroy();
+      await vaultManager.stop();
       await db.stop();
 
       await db.start();
@@ -427,7 +439,7 @@ describe('VaultManager', () => {
         vnAltered.push(vaultName),
       );
       expect(vnAltered.sort()).toEqual(alteredVaultNames.sort());
-      await vaultManagerReloaded.destroy();
+      await vaultManagerReloaded.stop();
     },
     global.defaultTimeout * 2,
   );
@@ -532,24 +544,20 @@ describe('VaultManager', () => {
 
     let targetAgentService: IAgentServiceServer,
       altAgentService: IAgentServiceServer;
-    let targetServer: GRPCServer, altServer: GRPCServer;
+    let targetAgentServer: GRPCServer, altAgentServer: GRPCServer;
 
     let node: NodeInfo;
 
     let altFwdProxy: ForwardProxy;
 
     beforeAll(async () => {
-      altFwdProxy = await ForwardProxy.createForwardProxy({
+      altFwdProxy = new ForwardProxy({
         authToken: 'abc',
         logger: logger,
       });
     });
 
     beforeEach(async () => {
-      node = {
-        id: nodeManager.getNodeId(),
-        chain: { nodes: {}, identities: {} } as ChainData,
-      };
       targetDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
       );
@@ -564,7 +572,11 @@ describe('VaultManager', () => {
         keyPrivatePem: targetKeyManager.getRootKeyPairPem().privateKey,
         certChainPem: await targetKeyManager.getRootCertChainPem(),
       };
-      targetFwdProxy = await ForwardProxy.createForwardProxy({
+      node = {
+        id: nodeManager.getNodeId(),
+        chain: { nodes: {}, identities: {} } as ChainData,
+      };
+      targetFwdProxy = new ForwardProxy({
         authToken: '',
         logger: logger,
       });
@@ -573,7 +585,6 @@ describe('VaultManager', () => {
         logger: logger,
         crypto: makeCrypto(keyManager),
       });
-      await targetDb.start();
       targetSigchain = await Sigchain.createSigchain({
         keyManager: targetKeyManager,
         db: targetDb,
@@ -585,7 +596,6 @@ describe('VaultManager', () => {
         keyManager: targetKeyManager,
         fwdProxy: targetFwdProxy,
         revProxy: revProxy,
-        fs: fs,
         logger: logger,
       });
       await targetNodeManager.start();
@@ -627,10 +637,10 @@ describe('VaultManager', () => {
         sigchain: targetSigchain,
         notificationsManager: targetNotificationsManager,
       });
-      targetServer = await GRPCServer.createGRPCServer({
+      targetAgentServer = new GRPCServer({
         logger: logger,
       });
-      await targetServer.start({
+      await targetAgentServer.start({
         services: [[AgentServiceService, targetAgentService]],
         host: targetHost,
       });
@@ -666,7 +676,6 @@ describe('VaultManager', () => {
         logger: logger,
         crypto: makeCrypto(keyManager),
       });
-      await altDb.start();
       altSigchain = await Sigchain.createSigchain({
         keyManager: altKeyManager,
         db: altDb,
@@ -678,7 +687,6 @@ describe('VaultManager', () => {
         keyManager: altKeyManager,
         fwdProxy: altFwdProxy,
         revProxy: altRevProxy,
-        fs: fs,
         logger: logger,
       });
       await altNodeManager.start();
@@ -719,27 +727,27 @@ describe('VaultManager', () => {
         sigchain: altSigchain,
         notificationsManager: altNotificationsManager,
       });
-      altServer = await GRPCServer.createGRPCServer({
+      altAgentServer = new GRPCServer({
         logger: logger,
       });
-      await altServer.start({
+      await altAgentServer.start({
         services: [[AgentServiceService, altAgentService]],
         host: altHostIn,
       });
 
       await revProxy.start({
+        serverHost: targetHost,
+        serverPort: targetAgentServer.port,
         ingressHost: targetHost,
         ingressPort: targetPort,
-        serverHost: targetHost,
-        serverPort: targetServer.getPort(),
         tlsConfig: revTLSConfig,
       });
 
       await altRevProxy.start({
+        serverHost: altHostIn,
+        serverPort: altAgentServer.port,
         ingressHost: altHostIn,
         ingressPort: altPortIn,
-        serverHost: altHostIn,
-        serverPort: altServer.getPort(),
         tlsConfig: altRevTLSConfig,
       });
     }, global.polykeyStartupTimeout * 2);
@@ -748,36 +756,33 @@ describe('VaultManager', () => {
       await revProxy.closeConnection(altHost, altPort);
       await revProxy.closeConnection(sourceHost, sourcePort);
       await altRevProxy.closeConnection(sourceHost, sourcePort);
-      await fwdProxy.closeConnection(
-        fwdProxy.getEgressHost(),
-        fwdProxy.getEgressPort(),
-      );
+      await fwdProxy.closeConnection(fwdProxy.egressHost, fwdProxy.egressPort);
       await altFwdProxy.closeConnection(
-        altFwdProxy.getEgressHost(),
-        altFwdProxy.getEgressPort(),
+        altFwdProxy.egressHost,
+        altFwdProxy.egressPort,
       );
       await revProxy.stop();
       await altRevProxy.stop();
-      await targetServer.stop();
-      await targetVaultManager.destroy();
-      await targetGestaltGraph.destroy();
-      await targetNotificationsManager.destroy();
-      await targetACL.destroy();
+      await targetAgentServer.stop();
+      await targetVaultManager.stop();
+      await targetGestaltGraph.stop();
+      await targetNotificationsManager.stop();
+      await targetACL.stop();
       await targetDb.stop();
       await targetNodeManager.stop();
-      await targetKeyManager.destroy();
+      await targetKeyManager.stop();
       await fs.promises.rm(targetDataDir, {
         force: true,
         recursive: true,
       });
-      await altServer.stop();
-      await altGestaltGraph.destroy();
-      await altVaultManager.destroy();
-      await altNotificationsManager.destroy();
-      await altACL.destroy();
+      await altAgentServer.stop();
+      await altGestaltGraph.stop();
+      await altVaultManager.stop();
+      await altNotificationsManager.stop();
+      await altACL.stop();
       await altDb.stop();
       await altNodeManager.stop();
-      await altKeyManager.destroy();
+      await altKeyManager.stop();
       await fs.promises.rm(altDataDir, {
         force: true,
         recursive: true,

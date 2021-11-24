@@ -11,33 +11,40 @@ import type { FileSystem } from '../types';
 import type { NodeId } from '../nodes/types';
 import type { PolykeyWorkerManagerInterface } from '../workers/types';
 
+import type { MutexInterface } from 'async-mutex';
+import type { POJO } from 'encryptedfs';
+import type { KeyManager } from '../keys';
+import type { NodeManager } from '../nodes';
+import type { GestaltGraph } from '../gestalts';
+import type { ACL } from '../acl';
+import type { NotificationsManager } from '../notifications';
 import path from 'path';
 import Logger from '@matrixai/logger';
-import { Mutex, MutexInterface } from 'async-mutex';
+import { Mutex } from 'async-mutex';
 import git from 'isomorphic-git';
 import { PassThrough } from 'readable-stream';
 import * as grpc from '@grpc/grpc-js';
-
-import { KeyManager } from '../keys';
-import { NodeManager } from '../nodes';
-import { GestaltGraph } from '../gestalts';
-import { ACL } from '../acl';
-import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
-import * as utils from '../utils';
+import { EncryptedFS } from 'encryptedfs';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { utils as idUtils } from '@matrixai/id';
 import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
+import VaultInternal from './VaultInternal';
+import { makeVaultId } from './utils';
+import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
+import * as utils from '../utils';
 import * as gitUtils from '../git/utils';
 import * as gitErrors from '../git/errors';
 import * as gestaltErrors from '../gestalts/errors';
-import { EncryptedFS, POJO } from 'encryptedfs';
-import VaultInternal from './VaultInternal';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
-import { utils as idUtils } from '@matrixai/id';
-import { makeVaultId } from './utils';
-import { NotificationsManager } from '../notifications';
 
-interface VaultManager extends CreateDestroy {}
-@CreateDestroy()
+interface VaultManager extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new vaultsErrors.ErrorVaultManagerRunning(),
+  new vaultsErrors.ErrorVaultManagerDestroyed(),
+)
 class VaultManager {
   public readonly vaultsPath: string;
 
@@ -58,111 +65,130 @@ class VaultManager {
   protected keyManager: KeyManager;
 
   static async createVaultManager({
-    fresh = false,
-    keyManager,
     vaultsPath,
-    vaultsKey,
+    keyManager,
     nodeManager,
     gestaltGraph,
     acl,
     db,
-    fs,
-    logger,
+    vaultsKey,
+    fs = require('fs'),
+    logger = new Logger(this.name),
+    fresh = false,
   }: {
-    fresh?: boolean;
-    keyManager: KeyManager;
     vaultsPath: string;
-    vaultsKey: VaultKey;
+    keyManager: KeyManager;
     nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     acl: ACL;
     db: DB;
+    vaultsKey: VaultKey;
     fs?: FileSystem;
     logger?: Logger;
+    fresh?: boolean;
   }) {
-    logger = logger ?? new Logger(this.constructor.name);
-    const fileSystem = fs ?? require('fs');
-    logger.info('Creating Vault Manager');
-    const vaultsDbDomain = 'VaultManager';
-    const vaultsDb = await db.level(vaultsDbDomain);
-    const vaultsNamesDbDomain = [vaultsDbDomain, 'names'];
-    const vaultsNamesDb = await db.level(vaultsNamesDbDomain[1], vaultsDb);
-    if (fresh) {
-      await vaultsDb.clear();
-      await fileSystem.promises.rm(vaultsPath, {
-        force: true,
-        recursive: true,
-      });
-      logger.info(`Removing vaults directory at '${vaultsPath}'`);
-    }
-    await utils.mkdirExists(fileSystem, vaultsPath, { recursive: true });
-    const efs = await EncryptedFS.createEncryptedFS({
-      dbPath: vaultsPath,
-      dbKey: vaultsKey,
-      logger: logger,
-    });
-    await efs.start();
-    logger.info('Created Vault Manager');
-    return new VaultManager({
+    logger.info(`Creating ${this.name}`);
+    const vaultManager = new VaultManager({
+      vaultsPath,
       keyManager,
       nodeManager,
       gestaltGraph,
       acl,
       db,
       vaultsKey,
-      vaultsDbDomain,
-      vaultsNamesDbDomain,
-      vaultsDb,
-      vaultsNamesDb,
-      efs,
       fs,
       logger,
     });
+    logger.info(`Created ${this.name}`);
+    await vaultManager.start({ fresh });
+    return vaultManager;
   }
 
   constructor({
+    vaultsPath,
     keyManager,
     nodeManager,
     gestaltGraph,
     acl,
     db,
     vaultsKey,
-    vaultsDbDomain,
-    vaultsNamesDbDomain,
-    vaultsDb,
-    vaultsNamesDb,
-    efs,
     fs,
     logger,
   }: {
+    vaultsPath: string;
     keyManager: KeyManager;
     nodeManager: NodeManager;
     gestaltGraph: GestaltGraph;
     acl: ACL;
     db: DB;
     vaultsKey: VaultKey;
-    vaultsDbDomain: string;
-    vaultsNamesDbDomain: Array<string>;
-    vaultsDb: DBLevel;
-    vaultsNamesDb: DBLevel;
-    efs: EncryptedFS;
-    fs?: FileSystem;
-    logger?: Logger;
+    fs: FileSystem;
+    logger: Logger;
   }) {
+    this.vaultsPath = vaultsPath;
     this.keyManager = keyManager;
     this.nodeManager = nodeManager;
     this.gestaltGraph = gestaltGraph;
     this.acl = acl;
     this.db = db;
-    this.vaultsDbDomain = vaultsDbDomain;
-    this.vaultsNamesDbDomain = vaultsNamesDbDomain;
-    this.vaultsDb = vaultsDb;
-    this.vaultsNamesDb = vaultsNamesDb;
     this.vaultsMap = new Map();
-    this.efs = efs;
-    this.fs = fs ?? require('fs');
+    this.fs = fs;
     this.vaultsKey = vaultsKey;
-    this.logger = logger ?? new Logger(this.constructor.name);
+    this.logger = logger;
+  }
+
+  public async start({
+    fresh = false,
+  }: { fresh?: boolean } = {}): Promise<void> {
+    this.logger.info(`Starting ${this.constructor.name}`);
+    this.vaultsDbDomain = 'VaultManager';
+    this.vaultsDb = await this.db.level(this.vaultsDbDomain);
+    this.vaultsNamesDbDomain = [this.vaultsDbDomain, 'names'];
+    this.vaultsNamesDb = await this.db.level(
+      this.vaultsNamesDbDomain[1],
+      this.vaultsDb,
+    );
+    if (fresh) {
+      await this.vaultsDb.clear();
+      await this.fs.promises.rm(this.vaultsPath, {
+        force: true,
+        recursive: true,
+      });
+      this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
+    }
+    await utils.mkdirExists(this.fs, this.vaultsPath);
+    this.efs = await EncryptedFS.createEncryptedFS({
+      dbPath: this.vaultsPath,
+      dbKey: this.vaultsKey,
+      logger: this.logger,
+    });
+    await this.efs.start();
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  public async stop(): Promise<void> {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    // Destroying managed vaults.
+    for (const vault of this.vaultsMap.values()) {
+      await vault.vault?.destroy();
+    }
+    await this.efs.stop();
+    this.logger.info(`Stopped ${this.constructor.name}`);
+  }
+
+  public async destroy(): Promise<void> {
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    // We want to remove any state for the vault manager.
+    // this includes clearing out all DB domains and destroying the EFS.
+    const vaultsDb = await this.db.level(this.vaultsDbDomain);
+    await vaultsDb.clear();
+    await this.efs.destroy();
+    this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
+    await this.fs.promises.rm(this.vaultsPath, {
+      force: true,
+      recursive: true,
+    });
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   public setWorkerManager(workerManager: PolykeyWorkerManagerInterface) {
@@ -205,17 +231,7 @@ class VaultManager {
     }
   }
 
-  public async destroy(): Promise<void> {
-    this.logger.info('Destroying Vault Manager');
-    // Destroying managed vaults.
-    for (const vault of this.vaultsMap.values()) {
-      await vault.vault?.destroy();
-    }
-    await this.efs.stop();
-    this.logger.info('Destroyed Vault Manager');
-  }
-
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async getVaultName(vaultId: VaultId): Promise<VaultName | undefined> {
     const vaultMeta = await this.db.get<POJO>(
       this.vaultsNamesDbDomain,
@@ -225,7 +241,7 @@ class VaultManager {
     return vaultMeta.name;
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async createVault(vaultName: VaultName): Promise<Vault> {
     const vaultId = await this.generateVaultId();
     const lock = new Mutex();
@@ -246,7 +262,7 @@ class VaultManager {
     }, [vaultId]);
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async destroyVault(vaultId: VaultId) {
     await this._transaction(async () => {
       const vaultName = await this.getVaultName(vaultId);
@@ -259,14 +275,14 @@ class VaultManager {
     }, [vaultId]);
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async openVault(vaultId: VaultId): Promise<Vault> {
     const vaultName = await this.getVaultName(vaultId);
     if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
     return await this.getVault(vaultId);
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async closeVault(vaultId: VaultId) {
     const vaultName = await this.getVaultName(vaultId);
     if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
@@ -275,7 +291,7 @@ class VaultManager {
     this.vaultsMap.delete(idUtils.toString(vaultId));
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async listVaults(): Promise<VaultList> {
     const vaults: VaultList = new Map();
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
@@ -287,7 +303,7 @@ class VaultManager {
     return vaults;
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async renameVault(
     vaultId: VaultId,
     newVaultName: VaultName,
@@ -307,7 +323,7 @@ class VaultManager {
     }, [vaultId]);
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async getVaultId(vaultName: VaultName): Promise<VaultId | undefined> {
     for await (const o of this.vaultsNamesDb.createReadStream({})) {
       const dbMeta = (o as any).value;
@@ -319,7 +335,7 @@ class VaultManager {
     }
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async shareVault(vaultId: VaultId, nodeId: NodeId): Promise<void> {
     const vaultName = await this.getVaultName(vaultId);
     if (!vaultName) throw new vaultsErrors.ErrorVaultUndefined();
@@ -348,7 +364,7 @@ class VaultManager {
     });
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async cloneVault(
     nodeId: NodeId,
     vaultNameOrId: VaultId | VaultName,
@@ -660,7 +676,7 @@ class VaultManager {
     return vaultId;
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async *handleInfoRequest(
     vaultId: VaultId,
   ): AsyncGenerator<Buffer | null> {
@@ -678,7 +694,7 @@ class VaultManager {
     }
   }
 
-  @ready(new vaultsErrors.ErrorVaultManagerDestroyed())
+  @ready(new vaultsErrors.ErrorVaultManagerNotRunning())
   public async handlePackRequest(
     vaultId: VaultId,
     body: Buffer,

@@ -4,19 +4,18 @@ import type {
   FileSystemWritable,
   CommitLog,
 } from './types';
+import type { MutexInterface } from 'async-mutex';
 
+import type { EncryptedFS } from 'encryptedfs';
+import type { KeyManager } from '../keys';
 import path from 'path';
 import git from 'isomorphic-git';
 import { Mutex } from 'async-mutex';
-import { EncryptedFS } from 'encryptedfs';
 import Logger from '@matrixai/logger';
-import type { MutexInterface } from 'async-mutex';
-
+import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import * as vaultsUtils from './utils';
 import * as vaultsErrors from './errors';
-import { CreateDestroy, ready } from '@matrixai/async-init/dist/CreateDestroy';
 import { makeVaultIdPretty } from './utils';
-import { KeyManager } from '../keys';
 
 const lastTag = 'last';
 
@@ -38,7 +37,7 @@ class VaultInternal {
     vaultId,
     keyManager,
     efs,
-    logger,
+    logger = new Logger(this.name),
     fresh = false,
   }: {
     vaultId: VaultId;
@@ -47,7 +46,7 @@ class VaultInternal {
     logger?: Logger;
     fresh?: boolean;
   }) {
-    logger = logger ?? new Logger(this.constructor.name);
+    logger.info(`Creating ${this.name}`);
     if (fresh) {
       try {
         await efs.rmdir(makeVaultIdPretty(vaultId), { recursive: true });
@@ -116,7 +115,7 @@ class VaultInternal {
         workingDir,
         logger,
       });
-      logger.info(`Starting vault at '${makeVaultIdPretty(vaultId)}'`);
+      logger.info(`Created ${this.name} at '${makeVaultIdPretty(vaultId)}'`);
       return vault;
     }
   }
@@ -134,7 +133,7 @@ class VaultInternal {
     efs: EncryptedFS;
     efsVault: EncryptedFS;
     workingDir: string;
-    logger?: Logger;
+    logger: Logger;
   }) {
     this.baseDir = path.join(makeVaultIdPretty(vaultId), 'contents');
     this.gitDir = path.join(makeVaultIdPretty(vaultId), '.git');
@@ -143,11 +142,16 @@ class VaultInternal {
     this.efsRoot = efs;
     this.efsVault = efsVault;
     this.workingDir = workingDir;
-    this.logger = logger ?? new Logger(this.constructor.name);
+    this.logger = logger;
     this.lock = new Mutex();
   }
 
   public async destroy(): Promise<void> {
+    this.logger.info(
+      `Destroying ${this.constructor.name} at '${makeVaultIdPretty(
+        this.vaultId,
+      )}'`,
+    );
     const release = await this.lock.acquire();
     try {
       await this.efsRoot.writeFile(
@@ -158,7 +162,9 @@ class VaultInternal {
       release();
     }
     this.logger.info(
-      `Destroying vault at '${makeVaultIdPretty(this.vaultId)}'`,
+      `Destroyed ${this.constructor.name} at '${makeVaultIdPretty(
+        this.vaultId,
+      )}'`,
     );
   }
 
