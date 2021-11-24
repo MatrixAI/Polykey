@@ -1,21 +1,24 @@
 import type { Permission } from '@/acl/types';
 import type { NodeId } from '@/nodes/types';
-import type { VaultId } from '@/vaults/types';
-
+import type { VaultAction, VaultId } from '@/vaults/types';
+import type { GestaltAction } from '@/gestalts/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { DB } from '@matrixai/db';
+import { utils as idUtils } from '@matrixai/id';
+
 import { ACL, errors as aclErrors } from '@/acl';
 import { KeyManager } from '@/keys';
-import { DB } from '@matrixai/db';
-import { makeCrypto } from '../utils';
-import { utils as idUtils } from '@matrixai/id';
 import { makeVaultId } from '@/vaults/utils';
+import { makeCrypto } from '../utils';
 
 describe('ACL', () => {
   const password = 'password';
-  const logger = new Logger('ACL Test', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger(`${ACL.name} Test`, LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
@@ -40,7 +43,6 @@ describe('ACL', () => {
       logger,
       crypto: makeCrypto(keyManager),
     });
-    await db.start();
     vaultId1 = makeVaultId(idUtils.fromString('vault1xxxxxxxxxx'));
     vaultId2 = makeVaultId(idUtils.fromString('vault2xxxxxxxxxx'));
     vaultId3 = makeVaultId(idUtils.fromString('vault3xxxxxxxxxx'));
@@ -48,11 +50,84 @@ describe('ACL', () => {
   });
   afterEach(async () => {
     await db.stop();
-    await keyManager.destroy();
+    await keyManager.stop();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
+  });
+  test('acl readiness', async () => {
+    const acl = await ACL.createACL({
+      db,
+      logger,
+    });
+    await expect(async () => {
+      await acl.destroy();
+    }).rejects.toThrow(aclErrors.ErrorACLRunning);
+    // Should be a noop
+    await acl.start();
+    await acl.stop();
+    await acl.destroy();
+    await expect(async () => {
+      await acl.start();
+    }).rejects.toThrow(aclErrors.ErrorACLDestroyed);
+    await expect(
+      acl.sameNodePerm('x' as NodeId, 'y' as NodeId),
+    ).rejects.toThrow(aclErrors.ErrorACLNotRunning);
+    await expect(acl.getNodePerms()).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.getVaultPerms()).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.getNodePerm('x' as NodeId)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.getVaultPerm(1 as VaultId)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(
+      acl.setNodeAction('x' as NodeId, {} as GestaltAction),
+    ).rejects.toThrow(aclErrors.ErrorACLNotRunning);
+    await expect(
+      acl.unsetNodeAction('x' as NodeId, {} as GestaltAction),
+    ).rejects.toThrow(aclErrors.ErrorACLNotRunning);
+    await expect(
+      acl.setVaultAction(1 as VaultId, 'x' as NodeId, {} as VaultAction),
+    ).rejects.toThrow(aclErrors.ErrorACLNotRunning);
+    await expect(
+      acl.unsetVaultAction(1 as VaultId, 'x' as NodeId, {} as VaultAction),
+    ).rejects.toThrow(aclErrors.ErrorACLNotRunning);
+    await expect(acl.setNodesPerm([], {} as Permission)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.setNodesPermOps([], {} as Permission)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(
+      acl.setNodePerm('x' as NodeId, {} as Permission),
+    ).rejects.toThrow(aclErrors.ErrorACLNotRunning);
+    await expect(
+      acl.setNodePermOps('x' as NodeId, {} as Permission),
+    ).rejects.toThrow(aclErrors.ErrorACLNotRunning);
+    await expect(acl.unsetNodePerm('x' as NodeId)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.unsetNodePermOps('x' as NodeId)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.unsetVaultPerms(1 as VaultId)).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.joinNodePerm('x' as NodeId, [])).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.joinNodePermOps('x' as NodeId, [])).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
+    await expect(acl.joinVaultPerms(1 as VaultId, [])).rejects.toThrow(
+      aclErrors.ErrorACLNotRunning,
+    );
   });
   test('trust and untrust gestalts', async () => {
     const acl = await ACL.createACL({ db, logger });
@@ -111,7 +186,7 @@ describe('ACL', () => {
     // Check that the permission object is identical
     // this should be a performance optimisation
     expect(nodePerms[0]['g1-first']).toBe(nodePerms[0]['g1-second']);
-    await acl.destroy();
+    await acl.stop();
   });
   test('setting and unsetting vault actions', async () => {
     const acl = await ACL.createACL({ db, logger });
@@ -168,7 +243,7 @@ describe('ACL', () => {
         },
       },
     });
-    await acl.destroy();
+    await acl.stop();
   });
   test('joining existing gestalt permissions', async () => {
     const acl = await ACL.createACL({ db, logger });
@@ -196,7 +271,7 @@ describe('ACL', () => {
         'g1-fourth': g1Perm,
       },
     ]);
-    await acl.destroy();
+    await acl.stop();
   });
   test('joining existing vault permissions', async () => {
     const acl = await ACL.createACL({ db, logger });
@@ -259,7 +334,7 @@ describe('ACL', () => {
     // Object identity for performance
     expect(vaultPerms[vaultId1]['g1-1']).toEqual(vaultPerms[vaultId2]['g1-1']);
     expect(vaultPerms[vaultId2]['g1-1']).toEqual(vaultPerms[vaultId3]['g1-1']);
-    await acl.destroy();
+    await acl.stop();
   });
   test('node removal', async () => {
     const acl = await ACL.createACL({ db, logger });
@@ -279,7 +354,7 @@ describe('ACL', () => {
     await acl.unsetNodePerm('g1-second' as NodeId);
     expect(await acl.getNodePerm('g1-second' as NodeId)).toBeUndefined();
     expect(await acl.getNodePerms()).toHaveLength(0);
-    await acl.destroy();
+    await acl.stop();
   });
   test('vault removal', async () => {
     const acl = await ACL.createACL({ db, logger });
@@ -320,7 +395,7 @@ describe('ACL', () => {
         },
       },
     });
-    await acl.destroy();
+    await acl.stop();
   });
   test('transactional operations', async () => {
     const acl = await ACL.createACL({ db, logger });
@@ -415,6 +490,6 @@ describe('ACL', () => {
     // then results[2] woudl equal []
     // the order of execution is not specified
     expect([results[1], []]).toContainEqual(results[2]);
-    await acl.destroy();
+    await acl.stop();
   });
 });

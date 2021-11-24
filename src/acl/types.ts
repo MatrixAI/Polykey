@@ -1,7 +1,7 @@
 import type { Opaque } from '../types';
 import type { GestaltAction } from '../gestalts/types';
 import type { VaultActions, VaultId } from '../vaults/types';
-import { Id, IdString } from '../GenericIdTypes';
+import type { Id, IdString } from '../GenericIdTypes';
 
 type PermissionId = Opaque<'PermissionId', Id>;
 
