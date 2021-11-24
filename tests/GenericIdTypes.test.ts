@@ -1,8 +1,9 @@
-import { makeIdString, makeId, IdString } from '@/GenericIdTypes';
-import { Opaque } from '@/types';
-import { ErrorInvalidId } from '@/errors';
-import { Id } from '@matrixai/id/dist/Id';
+import type { Id } from '@matrixai/id/dist/Id';
+import type { IdString } from '@/GenericIdTypes';
+import type { Opaque } from '@/types';
 import { utils as idUtils } from '@matrixai/id';
+import { makeIdString, makeId } from '@/GenericIdTypes';
+import { ErrorInvalidId } from '@/errors';
 
 describe('GenericID Type utility functions', () => {
   type TestRawType = Opaque<'testRawType', Id>;

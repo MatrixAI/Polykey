@@ -1,0 +1,198 @@
+import type { StateVersion } from './types';
+import type { FileSystem } from '../types';
+
+import path from 'path';
+import Logger from '@matrixai/logger';
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import * as schemaErrors from './errors';
+import * as utils from '../utils';
+import config from '../config';
+
+interface Schema extends CreateDestroyStartStop {}
+@CreateDestroyStartStop(
+  new schemaErrors.ErrorSchemaRunning(),
+  new schemaErrors.ErrorSchemaDestroyed(),
+)
+class Schema {
+  public static async createSchema({
+    statePath,
+    stateVersion = config.stateVersion as StateVersion,
+    lock = new utils.RWLock(),
+    fs = require('fs'),
+    logger = new Logger(this.name),
+    fresh = false,
+  }: {
+    statePath: string;
+    stateVersion?: StateVersion;
+    lock?: utils.RWLock;
+    fs?: FileSystem;
+    logger?: Logger;
+    fresh?: boolean;
+  }): Promise<Schema> {
+    logger.info(`Creating ${this.name}`);
+    const schema = new Schema({
+      statePath,
+      stateVersion,
+      lock,
+      fs,
+      logger,
+    });
+    await schema.start({ fresh });
+    logger.info(`Created ${this.name}`);
+    return schema;
+  }
+
+  public readonly statePath: string;
+  public readonly stateVersionPath: string;
+  public readonly stateVersion: StateVersion;
+  protected lock: utils.RWLock;
+  protected fs: FileSystem;
+  protected logger: Logger;
+
+  public constructor({
+    statePath,
+    stateVersion,
+    lock,
+    fs,
+    logger,
+  }: {
+    statePath: string;
+    stateVersion: StateVersion;
+    lock: utils.RWLock;
+    fs: FileSystem;
+    logger: Logger;
+  }) {
+    this.logger = logger;
+    this.statePath = statePath;
+    this.stateVersionPath = path.join(statePath, 'version');
+    this.stateVersion = stateVersion;
+    this.lock = lock;
+    this.fs = fs;
+  }
+
+  public async start({
+    fresh = false,
+  }: {
+    fresh?: boolean;
+  } = {}) {
+    this.logger.info(`Starting ${this.constructor.name}`);
+    this.logger.info(`Setting state path to ${this.statePath}`);
+    if (fresh) {
+      try {
+        await this.fs.promises.rm(this.statePath, {
+          force: true,
+          recursive: true,
+        });
+      } catch (e) {
+        throw new schemaErrors.ErrorSchemaStateDelete(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+    }
+    try {
+      await utils.mkdirExists(this.fs, this.statePath);
+    } catch (e) {
+      throw new schemaErrors.ErrorSchemaStateCreate(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    const stateVersion = await this.readVersion();
+    if (stateVersion == null) {
+      await this.writeVersion(this.stateVersion);
+    } else {
+      if (stateVersion > this.stateVersion) {
+        throw new schemaErrors.ErrorSchemaVersionTooNew();
+      } else if (stateVersion < this.stateVersion) {
+        await this.upgradeVersion(stateVersion);
+      }
+    }
+    this.logger.info(`Started ${this.constructor.name}`);
+  }
+
+  public async stop(): Promise<void> {
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    this.logger.info(`Stopped ${this.constructor.name}`);
+  }
+
+  public async destroy(): Promise<void> {
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    try {
+      await this.fs.promises.rm(this.statePath, {
+        force: true,
+        recursive: true,
+      });
+    } catch (e) {
+      throw new schemaErrors.ErrorSchemaStateDelete(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+    this.logger.info(`Destroyed ${this.constructor.name}`);
+  }
+
+  public async readVersion(): Promise<StateVersion | undefined> {
+    return await this.lock.read(async () => {
+      let stateVersionData: string;
+      try {
+        stateVersionData = await this.fs.promises.readFile(
+          this.stateVersionPath,
+          'utf-8',
+        );
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          return;
+        }
+        throw new schemaErrors.ErrorSchemaVersionRead(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+      const stateVersion = parseInt(stateVersionData.trim());
+      if (isNaN(stateVersion)) {
+        throw schemaErrors.ErrorSchemaVersionParse;
+      }
+      return stateVersion as StateVersion;
+    });
+  }
+
+  protected async writeVersion(stateVersion: StateVersion): Promise<void> {
+    return await this.lock.write(async () => {
+      try {
+        await this.fs.promises.writeFile(
+          this.stateVersionPath,
+          stateVersion + '\n',
+          'utf-8',
+        );
+      } catch (e) {
+        throw new schemaErrors.ErrorSchemaVersionWrite(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+    });
+  }
+
+  /**
+   * This is only called when the version is older.
+   */
+  protected async upgradeVersion(_stateVersion: StateVersion): Promise<void> {
+    return await this.lock.write(async () => {
+      // TODO: to be implemented
+      throw new schemaErrors.ErrorSchemaVersionTooOld();
+    });
+  }
+}
+
+export default Schema;

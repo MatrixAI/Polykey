@@ -1,12 +1,12 @@
+import type Logger from '@matrixai/logger';
 import type { NodeAddress } from '@/nodes/types';
-
+import type { KeyManager } from '@/keys';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import Logger from '@matrixai/logger';
-import { PolykeyAgent } from '../src';
 import { sleep } from '@/utils';
-import { KeyManager, utils as keyUtils } from '@/keys';
+import { utils as keyUtils } from '@/keys';
+import { PolykeyAgent } from '../src';
 
 /**
  * Helper function to create a remote keynode to contact.
@@ -23,7 +23,7 @@ async function setupRemoteKeynode({
   // Create and start the keynode + its temp directory
   let nodeDir: string;
   if (dataDir) {
-    //Add the directory.
+    // Add the directory.
     nodeDir = path.join(dataDir, `remoteNode`);
     await fs.promises.mkdir(nodeDir, { recursive: true });
   } else {
@@ -31,15 +31,11 @@ async function setupRemoteKeynode({
       path.join(os.tmpdir(), 'polykey-test-remote-'),
     );
   }
-  const remote = await PolykeyAgent.createPolykey({
+  return await PolykeyAgent.createPolykeyAgent({
     password: 'password',
     nodePath: nodeDir,
     logger: logger,
-    cores: 1,
-    workerManager: null,
   });
-  await remote.start({});
-  return remote;
 }
 
 /**
@@ -60,9 +56,9 @@ async function addRemoteDetails(
   remoteNode: PolykeyAgent,
 ) {
   // Add remote node's details to local node
-  await localNode.nodes.setNode(remoteNode.nodes.getNodeId(), {
-    ip: remoteNode.revProxy.getIngressHost(),
-    port: remoteNode.revProxy.getIngressPort(),
+  await localNode.nodeManager.setNode(remoteNode.nodeManager.getNodeId(), {
+    ip: remoteNode.revProxy.ingressHost,
+    port: remoteNode.revProxy.ingressPort,
   } as NodeAddress);
 }
 

@@ -1,16 +1,19 @@
-import type { NodeId } from './nodes/types';
 import type { FileSystem, LockConfig } from './types';
+import type { NodeId } from './nodes/types';
 
 import path from 'path';
 import Logger from '@matrixai/logger';
-
+import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as utils from './utils';
 import { Session } from './sessions';
-import { Lockfile, LOCKFILE_NAME } from './lockfile';
+import { Status } from './status';
 import * as errors from './errors';
 import { GRPCClientClient } from './client';
-import { ErrorClientClientNotStarted } from './client/errors';
-import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { sleep } from './utils';
+
+// 2. client path should be an independent property
+// 3. You should be able to start a PK client without actually having access to the node path
+// 4. You will need access to all connection properties though
 
 /**
  * This PolykeyClient would create a new PolykeyClient object that constructs
@@ -20,72 +23,91 @@ import { CreateDestroyStartStop } from '@matrixai/async-init/dist/CreateDestroyS
  * The grpcClient is accessible, and so should be possible to perform tasks like:
  * grpcClient.echo or whatever functions exist.
  *
- * It should read from some lockfile in the nodePath,
+ * It should read from some Status file in the nodePath,
  * which is usually the default polykey path
  */
 interface PolykeyClient extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
-  new errors.ErrorPolykeyClientNotRunning(),
+  new errors.ErrorPolykeyClientRunning(),
   new errors.ErrorPolykeyClientDestroyed(),
 )
 class PolykeyClient {
-  protected _grpcClient: GRPCClientClient;
-
-  public readonly logger: Logger;
-  public readonly nodePath: string;
-  public readonly fs: FileSystem;
-  public readonly grpcHost: string;
-  public readonly grpcPort: number;
-  public readonly lockPath: string;
-  public readonly clientPath: string;
-
-  // Session
-  public readonly session: Session;
-
   static async createPolykeyClient({
     nodePath,
-    fs,
-    logger,
+    clientPath = path.join(nodePath, 'client'),
+    session,
+    fs = require('fs'),
+    logger = new Logger(this.name),
+    // Optional start
+    timeout,
+    host,
+    port,
   }: {
-    nodePath?: string;
+    nodePath: string;
+    clientPath?: string;
+    session?: Session;
     fs?: FileSystem;
     logger?: Logger;
+    timeout?: number;
+    host?: string;
+    port?: number;
   }): Promise<PolykeyClient> {
-    const fs_ = fs ?? require('fs');
-    const logger_ = logger ?? new Logger('CLI Logger');
-    const nodePath_ =
-      nodePath ?? path.resolve(nodePath ?? utils.getDefaultNodePath());
-    const clientPath_ = path.join(nodePath_, 'client');
-    const session_ = new Session({
-      clientPath: clientPath_,
-      logger: logger_,
+    logger.info(`Creating ${this.name}`);
+    nodePath = path.resolve(nodePath);
+    clientPath = path.resolve(clientPath);
+    const sessionTokenPath = path.join(clientPath, 'token');
+    session =
+      session ??
+      (await Session.createSession({
+        sessionTokenPath,
+        logger: logger.getChild(Session.name),
+      }));
+    const pkClient = new PolykeyClient({
+      nodePath,
+      clientPath,
+      session,
+      fs,
+      logger,
     });
-    return new PolykeyClient({
-      fs: fs_,
-      logger: logger_,
-      nodePath: nodePath_,
-      clientPath: clientPath_,
-      session: session_,
+    await pkClient.start({
+      timeout,
+      host,
+      port,
     });
+    logger.info(`Created ${this.name}`);
+    return pkClient;
   }
+
+  // Optional parameters are encapsulated parameters
+  // the node path is optional?
+  // are we sure about this?
+
+  public readonly clientPath: string;
+  public readonly nodePath: string;
+  public readonly fs: FileSystem;
+  public readonly logger: Logger;
+
+  public readonly grpcHost: string;
+  public readonly grpcPort: number;
+  public readonly session: Session;
+  protected _grpcClient: GRPCClientClient;
 
   constructor({
     nodePath,
-    fs,
-    logger,
     clientPath,
     session,
+    fs,
+    logger,
   }: {
     nodePath: string;
-    fs: FileSystem;
-    logger: Logger;
     clientPath: string;
     session: Session;
+    fs: FileSystem;
+    logger: Logger;
   }) {
-    this.fs = fs;
     this.logger = logger;
+    this.fs = fs;
     this.nodePath = nodePath;
-    this.lockPath = path.join(this.nodePath, LOCKFILE_NAME);
     this.clientPath = clientPath;
     this.session = session;
   }
@@ -98,22 +120,36 @@ class PolykeyClient {
     timeout?: number;
     host?: string;
     port?: number;
-  }) {
-    this.logger.info('Starting PolykeyClient');
-    const status = await Lockfile.checkLock(this.fs, this.lockPath);
-    if (status === 'UNLOCKED') {
-      throw new ErrorClientClientNotStarted(
-        'Polykey Lockfile not locked. Is the PolykeyAgent started?',
-      );
-    } else if (status === 'DOESNOTEXIST') {
-      throw new ErrorClientClientNotStarted(
-        'Polykey Lockfile not found. Is the PolykeyAgent started?',
-      );
+  } = {}): Promise<void> {
+    this.logger.info(`Starting ${this.constructor.name}`);
+
+    const status = await Status.createStatus({
+      nodePath: this.nodePath,
+      fs: this.fs,
+      logger: this.logger.getChild('Lockfile'),
+    });
+    let starting = true;
+    for (let i = 0; i < 8 && starting; i++) {
+      switch (await status.checkStatus()) {
+        case 'STARTING':
+          await sleep(250);
+          continue;
+        case 'RUNNING':
+          starting = false;
+          break;
+        case 'STOPPING':
+        case 'UNLOCKED':
+        default: {
+          throw new errors.ErrorPolykey(
+            'Polykey Status file not locked. Is the PolykeyAgent started?',
+          );
+        }
+      }
     }
 
     let lock: LockConfig;
     try {
-      lock = await Lockfile.parseLock(this.fs, this.lockPath);
+      lock = await status.parseStatus();
     } catch (err) {
       throw new errors.ErrorPolykey('Could not parse Polykey Lockfile.');
     }
@@ -122,16 +158,14 @@ class PolykeyClient {
     await this.session.start();
 
     // Create a new GRPCClientClient
-    this._grpcClient = await GRPCClientClient.createGRPCCLientClient({
+    this._grpcClient = await GRPCClientClient.createGRPCClientClient({
       nodeId: lock.nodeId as NodeId,
       host: host ?? lock.host ?? 'localhost',
       port: port ?? lock.port ?? 0,
-      logger: this.logger,
-    });
-
-    await this.grpcClient.start({
       timeout: timeout ?? 30000,
+      tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
       session: this.session,
+      logger: this.logger.getChild(GRPCClientClient.name),
     });
 
     if (!host && !lock.host) {
@@ -141,20 +175,36 @@ class PolykeyClient {
       this.logger.warn('PolykeyClient started with default port: 0');
     }
 
-    await utils.mkdirExists(this.fs, this.clientPath, { recursive: true });
-    this.logger.info('Started PolykeyClient');
+    await utils.mkdirExists(this.fs, this.clientPath);
+    this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop() {
-    this.logger.info('Stopping PolykeyClient');
+    this.logger.info(`Stopping ${this.constructor.name}`);
     if (this.grpcClient) {
-      await this.grpcClient.stop();
+      await this.grpcClient.destroy();
     }
-    this.logger.info('Stopped PolykeyClient');
+    await this.session.stop();
+    this.logger.info(`Stopped ${this.constructor.name}`);
   }
 
   public async destroy() {
-    this.logger.info('Destroyed PolykeyClient');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+
+    // What is a "Session" again
+    // it's an object that you start and maintain locks on it
+    // you can CreateDestroy it
+    // but do you start it?
+
+    // should wipe out the actual session token and client-related data
+    // you must call all encapsulated properties
+    //
+    if (this.grpcClient) {
+      await this.grpcClient.destroy();
+    }
+    await this.session.destroy();
+
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   public get grpcClient(): GRPCClientClient {

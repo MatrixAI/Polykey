@@ -1,59 +1,48 @@
-import type { POJO } from './types';
+import ErrorPolykey from './ErrorPolykey';
 
-import { CustomError } from 'ts-custom-error';
-
-class ErrorPolykey extends CustomError {
-  data: POJO;
-  description: string = `${this.constructor.name}: Polykey error`;
-  exitCode: number = 1;
-  constructor(message: string = '', data: POJO = {}) {
-    super(message);
-    this.data = data;
-  }
-  toJSON(): string {
-    return JSON.stringify({
-      name: this.name,
-      description: this.description,
-      message: this.message,
-      exitCode: this.exitCode,
-      data: this.data,
-      stack: this.stack,
-    });
-  }
+/**
+ * This is a special error that is only used for absurd situations
+ * Intended to placate typescript so that unreachable code type checks
+ * If this is thrown, this means there is a bug in the code
+ */
+class ErrorPolykeyUndefinedBehaviour extends ErrorPolykey {
+  description = 'You should never see this error';
+  exitCode = 70;
 }
+
+class ErrorPolykeyAgentRunning extends ErrorPolykey {}
 
 class ErrorPolykeyAgentNotRunning extends ErrorPolykey {}
 
 class ErrorPolykeyAgentDestroyed extends ErrorPolykey {}
 
+class ErrorPolykeyClientRunning extends ErrorPolykey {}
+
 class ErrorPolykeyClientNotRunning extends ErrorPolykey {}
 
 class ErrorPolykeyClientDestroyed extends ErrorPolykey {}
-
-class ErrorUndefinedBehaviour extends ErrorPolykey {}
-
-class ErrorStateVersionMismatch extends ErrorPolykey {}
 
 class ErrorInvalidId extends ErrorPolykey {}
 
 export {
   ErrorPolykey,
+  ErrorPolykeyUndefinedBehaviour,
+  ErrorPolykeyAgentRunning,
   ErrorPolykeyAgentNotRunning,
   ErrorPolykeyAgentDestroyed,
+  ErrorPolykeyClientRunning,
   ErrorPolykeyClientNotRunning,
   ErrorPolykeyClientDestroyed,
-  ErrorUndefinedBehaviour,
-  ErrorStateVersionMismatch,
   ErrorInvalidId,
 };
 
 /**
  * Recursively export all domain-level error classes
  * This ensures that we have one place to construct and
- * reference all Polykey errors
+ * reference all Polykey errors.
+ * This is used by gRPC to serialize errors from agent to client.
  */
 export * from './acl/errors';
-export { errors } from '@matrixai/db';
 export * from './sessions/errors';
 export * from './keys/errors';
 export * from './vaults/errors';

@@ -1,38 +1,9 @@
-import os from 'os';
+import type { MutexInterface } from 'async-mutex';
+
+import type { FileSystem, Timer } from './types';
 import process from 'process';
-import { Buffer } from 'buffer';
-import { FileSystem, Timer } from './types';
-
-import * as errors from './errors';
-
-function getDefaultNodePath(): string {
-  const prefix = 'polykey';
-  const platform = os.platform();
-  let p: string;
-  if (platform === 'linux') {
-    const homeDir = os.homedir();
-    const dataDir = process.env.XDG_DATA_HOME;
-    if (dataDir != null) {
-      p = `${dataDir}/${prefix}`;
-    } else {
-      p = `${homeDir}/.local/share/${prefix}`;
-    }
-  } else if (platform === 'darwin') {
-    const homeDir = os.homedir();
-    p = `${homeDir}/Library/Application Support/${prefix}`;
-  } else if (platform === 'win32') {
-    const homeDir = os.homedir();
-    const appDataDir = process.env.LOCALAPPDATA;
-    if (appDataDir != null) {
-      p = `${appDataDir}/${prefix}`;
-    } else {
-      p = `${homeDir}/AppData/Local/${prefix}`;
-    }
-  } else {
-    throw new errors.ErrorPolykey('Unknown platform');
-  }
-  return p;
-}
+import path from 'path';
+import { Mutex } from 'async-mutex';
 
 async function mkdirExists(fs: FileSystem, path, ...args) {
   try {
@@ -44,18 +15,83 @@ async function mkdirExists(fs: FileSystem, path, ...args) {
   }
 }
 
+/**
+ * Test whether a path includes another path
+ * This will return true when path 1 is the same as path 2
+ */
+function pathIncludes(p1: string, p2: string): boolean {
+  const relative = path.relative(p2, p1);
+  // Absolute directory check is needed for Windows
+  return (
+    (relative === '' || !relative.startsWith('..')) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+function pidIsRunning(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function sleep(ms: number) {
   return await new Promise((r) => setTimeout(r, ms));
+}
+
+function isEmptyObject(o) {
+  for (const k in o) return false;
+  return true;
+}
+
+function filterEmptyObject(o) {
+  return Object.fromEntries(
+    Object.entries(o)
+      .filter(([_, v]) => v !== undefined)
+      .map(([k, v]) => [k, v === Object(v) ? filterEmptyObject(v) : v]),
+  );
 }
 
 function getUnixtime(date: Date = new Date()) {
   return Math.round(date.getTime() / 1000);
 }
 
-function byteSize(bytes: string) {
-  return Buffer.byteLength(bytes, 'binary');
+function getRandomInt(max = Number.MAX_SAFE_INTEGER) {
+  return Math.floor(Math.random() * max);
 }
 
+/**
+ * Poll execution and use condition to accept or reject the results
+ */
+async function poll<T, E = any>(
+  f: () => Promise<T>,
+  condition: {
+    (e: E, result?: undefined): boolean;
+    (e: null, result: T): boolean;
+  },
+  interval = 1000,
+) {
+  let result: T;
+  while (true) {
+    try {
+      result = await f();
+      if (condition(null, result)) {
+        return result;
+      }
+    } catch (e) {
+      if (condition(e)) {
+        throw e;
+      }
+    }
+    await sleep(interval);
+  }
+}
+
+/**
+ * Convert callback-style to promise-style
+ */
 function promisify<T>(f): (...args: any[]) => Promise<T> {
   return function <T>(...args): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -71,6 +107,9 @@ function promisify<T>(f): (...args: any[]) => Promise<T> {
   };
 }
 
+/**
+ * Deconstructed promise
+ */
 function promise<T>(): {
   p: Promise<T>;
   resolveP: (value: T | PromiseLike<T>) => void;
@@ -86,15 +125,6 @@ function promise<T>(): {
     resolveP,
     rejectP,
   };
-}
-
-function isEmptyObject(o) {
-  for (const k in o) return false;
-  return true;
-}
-
-function getRandomInt(max = Number.MAX_SAFE_INTEGER) {
-  return Math.floor(Math.random() * max);
 }
 
 function timerStart(timeout: number): Timer {
@@ -113,15 +143,6 @@ function timerStop(timer: Timer): void {
   clearTimeout(timer.timer);
 }
 
-function pidIsRunning(pid: number) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return false;
-  }
-}
-
 function arraySet<T>(items: Array<T>, item: T) {
   if (items.indexOf(item) === -1) {
     items.push(item);
@@ -135,19 +156,53 @@ function arrayUnset<T>(items: Array<T>, item: T) {
   }
 }
 
+class RWLock {
+  protected readerCount: number = 0;
+  protected lock: Mutex = new Mutex();
+  protected release: MutexInterface.Releaser;
+
+  public async read<T>(f: () => Promise<T>): Promise<T> {
+    let readerCount = ++this.readerCount;
+    // The first reader locks
+    if (readerCount === 1) {
+      this.release = await this.lock.acquire();
+    }
+    try {
+      return await f();
+    } finally {
+      readerCount = --this.readerCount;
+      // The last reader unlocks
+      if (readerCount === 0) {
+        this.release();
+      }
+    }
+  }
+
+  public async write<T>(f: () => Promise<T>): Promise<T> {
+    this.release = await this.lock.acquire();
+    try {
+      return await f();
+    } finally {
+      this.release();
+    }
+  }
+}
+
 export {
-  getDefaultNodePath,
   mkdirExists,
+  pathIncludes,
+  pidIsRunning,
   sleep,
-  getUnixtime,
-  byteSize,
-  promisify,
   isEmptyObject,
+  filterEmptyObject,
+  getUnixtime,
   getRandomInt,
+  poll,
+  promisify,
+  promise,
   timerStart,
   timerStop,
-  promise,
-  pidIsRunning,
   arraySet,
   arrayUnset,
+  RWLock,
 };

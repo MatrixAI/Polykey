@@ -1,19 +1,19 @@
-import type { NodeId, NodeAddress, NodeData } from '@/nodes/types';
+import type { NodeGraph } from '@/nodes';
 import type { Host, Port } from '@/network/types';
-
+import type { NodeId, NodeAddress, NodeData } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import * as nodesUtils from '@/nodes/utils';
-import * as nodesTestUtils from './utils';
-import { NodeGraph, NodeManager } from '@/nodes';
+import { DB } from '@matrixai/db';
+import { NodeManager, errors as nodesErrors } from '@/nodes';
 import { KeyManager } from '@/keys';
 import { ForwardProxy, ReverseProxy } from '@/network';
-import { DB } from '@matrixai/db';
+import * as nodesUtils from '@/nodes/utils';
 import { Sigchain } from '@/sigchain';
-import { makeCrypto } from '../utils';
 import { makeNodeId } from '@/nodes/utils';
+import * as nodesTestUtils from './utils';
+import { makeCrypto } from '../utils';
 
 // FIXME, some of these tests fail randomly.
 describe('NodeGraph', () => {
@@ -104,12 +104,12 @@ describe('NodeGraph', () => {
       keysPath,
       logger,
     });
-    fwdProxy = await ForwardProxy.createForwardProxy({
+    fwdProxy = new ForwardProxy({
       authToken: 'auth',
       logger: logger,
     });
 
-    revProxy = await ReverseProxy.createReverseProxy({
+    revProxy = new ReverseProxy({
       logger: logger,
     });
 
@@ -121,7 +121,6 @@ describe('NodeGraph', () => {
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
-    await db.start();
     sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
       db: db,
@@ -135,7 +134,6 @@ describe('NodeGraph', () => {
       revProxy: revProxy,
       logger: logger,
     });
-    await nodeManager.start();
     // Retrieve the NodeGraph reference from NodeManager
     // @ts-ignore
     nodeGraph = nodeManager.nodeGraph;
@@ -148,9 +146,9 @@ describe('NodeGraph', () => {
 
   afterAll(async () => {
     await db.stop();
-    await sigchain.destroy();
+    await sigchain.stop();
     await nodeManager.stop();
-    await keyManager.destroy();
+    await keyManager.stop();
     await fwdProxy.stop();
     await fs.promises.rm(dataDir, {
       force: true,
@@ -158,6 +156,36 @@ describe('NodeGraph', () => {
     });
   });
 
+  test('NodeGraph readiness', async () => {
+    const nodeManager2 = await NodeManager.createNodeManager({
+      db: db,
+      sigchain: sigchain,
+      keyManager: keyManager,
+      fwdProxy: fwdProxy,
+      revProxy: revProxy,
+      logger: logger,
+    });
+    // @ts-ignore
+    const nodeGraph = nodeManager2.nodeGraph;
+    await expect(nodeGraph.destroy()).rejects.toThrow(
+      nodesErrors.ErrorNodeGraphRunning,
+    );
+    // Should be a noop
+    await nodeGraph.start();
+    await nodeGraph.stop();
+    await nodeGraph.destroy();
+    await expect(async () => {
+      await nodeGraph.start();
+    }).rejects.toThrow(nodesErrors.ErrorNodeGraphDestroyed);
+    expect(() => {
+      nodeGraph.getNodeId();
+    }).toThrow(nodesErrors.ErrorNodeGraphNotRunning);
+    await expect(async () => {
+      await nodeGraph.getBucket(0);
+    }).rejects.toThrow(nodesErrors.ErrorNodeGraphNotRunning);
+    await nodeManager2.stop();
+    await nodeManager2.destroy();
+  });
   test('finds correct node address', async () => {
     // New node added
     const newNode2Id = nodeId1;
@@ -187,15 +215,11 @@ describe('NodeGraph', () => {
     // Check new node is in retrieved bucket from database
     // bucketIndex = 1 as "NODEID1" XOR "NODEID2" = 3
     const bucket = await nodeGraph.getBucket(1);
-    if (bucket) {
-      expect(bucket[newNode2Id]).toEqual({
-        address: { ip: '227.1.1.1', port: 4567 },
-        lastUpdated: expect.any(Date),
-      });
-    } else {
-      // Should be unreachable
-      fail('Bucket undefined');
-    }
+    expect(bucket).toBeDefined();
+    expect(bucket![newNode2Id]).toEqual({
+      address: { ip: '227.1.1.1', port: 4567 },
+      lastUpdated: expect.any(Date),
+    });
   });
   test('adds multiple nodes into the same bucket', async () => {
     // Add 3 new nodes into bucket 4

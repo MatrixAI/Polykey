@@ -10,7 +10,12 @@ import type {
   ClaimIdString,
 } from '../claims/types';
 
+import type { ForwardProxy } from '../network';
 import Logger from '@matrixai/logger';
+import {
+  CreateDestroyStartStop,
+  ready,
+} from '@matrixai/async-init/dist/CreateDestroyStartStop';
 import * as nodesUtils from './utils';
 import * as nodesErrors from './errors';
 import * as claimsUtils from '../claims/utils';
@@ -22,18 +27,14 @@ import { GRPCClientAgent } from '../agent';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
-import { ForwardProxy, utils as networkUtils } from '../network';
-import {
-  CreateDestroyStartStop,
-  ready,
-} from '@matrixai/async-init/dist/CreateDestroyStartStop';
+import { utils as networkUtils } from '../network';
 
 /**
  * Encapsulates the unidirectional client-side connection of one node to another.
  */
 interface NodeConnection extends CreateDestroyStartStop {}
 @CreateDestroyStartStop(
-  new nodesErrors.ErrorNodeConnectionNotStarted(),
+  new nodesErrors.ErrorNodeConnectionRunning(),
   new nodesErrors.ErrorNodeConnectionDestroyed(),
 )
 class NodeConnection {
@@ -59,7 +60,8 @@ class NodeConnection {
     targetPort,
     forwardProxy,
     keyManager,
-    logger,
+    logger = new Logger(this.name),
+    brokerConnections = new Map<NodeId, NodeConnection>(),
   }: {
     targetNodeId: NodeId;
     targetHost: Host;
@@ -67,32 +69,25 @@ class NodeConnection {
     forwardProxy: ForwardProxy;
     keyManager: KeyManager;
     logger?: Logger;
+    brokerConnections?: Map<NodeId, NodeConnection>;
   }): Promise<NodeConnection> {
-    const logger_ = logger ?? new Logger('NodeConnection');
-    const proxyConfig_ = {
-      host: forwardProxy.getProxyHost(),
-      port: forwardProxy.getProxyPort(),
+    logger.info(`Creating ${this.name}`);
+    const proxyConfig = {
+      host: forwardProxy.proxyHost,
+      port: forwardProxy.proxyPort,
       authToken: forwardProxy.authToken,
     } as ProxyConfig;
-    const client_ = await GRPCClientAgent.createGRPCClientAgent({
-      nodeId: targetNodeId,
-      host: targetHost,
-      port: targetPort,
-      proxyConfig: proxyConfig_,
-      logger: logger ?? new Logger('NodeConnectionClient'),
-    });
-    logger_.info('Creating NodeConnection');
     const nodeConnection = new NodeConnection({
       forwardProxy,
       keyManager,
-      logger: logger_,
+      logger,
       targetHost,
       targetNodeId,
       targetPort,
-      proxyConfig: proxyConfig_,
-      client: client_,
+      proxyConfig,
     });
-    logger_.info('Created NodeConnection');
+    await nodeConnection.start({ brokerConnections });
+    logger.info(`Created ${this.name}`);
     return nodeConnection;
   }
 
@@ -104,7 +99,6 @@ class NodeConnection {
     keyManager,
     logger,
     proxyConfig,
-    client,
   }: {
     targetNodeId: NodeId;
     targetHost: Host;
@@ -113,7 +107,6 @@ class NodeConnection {
     keyManager: KeyManager;
     logger: Logger;
     proxyConfig: ProxyConfig;
-    client: GRPCClientAgent;
   }) {
     this.logger = logger;
     this.targetNodeId = targetNodeId;
@@ -122,7 +115,6 @@ class NodeConnection {
     this.fwdProxy = forwardProxy;
     this.keyManager = keyManager;
     this.proxyConfig = proxyConfig;
-    this.client = client;
   }
 
   /**
@@ -136,13 +128,13 @@ class NodeConnection {
     brokerConnections = new Map<NodeId, NodeConnection>(),
   }: {
     brokerConnections?: Map<NodeId, NodeConnection>;
-  }) {
-    this.logger.info('Starting NodeConnection');
+  } = {}) {
+    this.logger.info(`Starting ${this.constructor.name}`);
 
     // 1. Get the egress port of the fwdProxy (used for hole punching)
     const egressAddress = networkUtils.buildAddress(
-      this.fwdProxy.getEgressHost() as Host,
-      this.fwdProxy.getEgressPort() as Port,
+      this.fwdProxy.egressHost,
+      this.fwdProxy.egressPort,
     );
     // Also need to sign this for authentication (i.e. from expected source)
     const signature = await this.keyManager.signWithRootKeyPair(
@@ -155,8 +147,15 @@ class NodeConnection {
     // 4. Start sending hole-punching packets to other node (done in openConnection())
     // Done in parallel
     try {
-      await Promise.all([
-        this.client.start(),
+      const [client] = await Promise.all([
+        GRPCClientAgent.createGRPCClientAgent({
+          nodeId: this.targetNodeId,
+          host: this.ingressHost,
+          port: this.ingressPort,
+          proxyConfig: this.proxyConfig,
+          logger: this.logger.getChild(GRPCClientAgent.name),
+          timeout: 20000,
+        }),
         Array.from(brokerConnections, ([_, conn]) =>
           conn.sendHolePunchMessage(
             this.keyManager.getNodeId(),
@@ -166,6 +165,7 @@ class NodeConnection {
           ),
         ),
       ]);
+      this.client = client;
     } catch (e) {
       await this.stop();
       // If the connection times out, re-throw this with a higher level nodes exception
@@ -177,25 +177,28 @@ class NodeConnection {
     // 5. When finished, you have a connection to other node
     // The GRPCClient is ready to be used for requests
     this.logger.info(
-      `Started NodeConnection from ${this.keyManager.getNodeId()} to ${
-        this.targetNodeId
-      }`,
+      `Started ${
+        this.constructor.name
+      } from ${this.keyManager.getNodeId()} to ${this.targetNodeId}`,
     );
   }
 
   public async stop() {
-    this.logger.info('Stopping NodeConnection');
-    await this.client.stop();
+    this.logger.info(`Stopping ${this.constructor.name}`);
+    if (this.client != null) {
+      await this.client.destroy();
+    }
     // Await this.fwdProxy.closeConnection(this.ingressHost, this.ingressPort);
     this.logger.info(
-      `Stopped NodeConnection from ${this.keyManager.getNodeId()} to ${
-        this.targetNodeId
-      }`,
+      `Stopped ${
+        this.constructor.name
+      } from ${this.keyManager.getNodeId()} to ${this.targetNodeId}`,
     );
   }
 
   public async destroy() {
-    this.logger.info('Destroyed NodeConnection');
+    this.logger.info(`Destroying ${this.constructor.name}`);
+    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   public getClient() {
@@ -207,7 +210,7 @@ class NodeConnection {
    * end of this connection.
    * Ordered from newest to oldest.
    */
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public getRootCertChain(): Array<Certificate> {
     const connInfo = this.fwdProxy.getConnectionInfoByIngress(
       this.ingressHost,
@@ -226,7 +229,7 @@ class NodeConnection {
    * Sometimes these previous root keys are also still valid - these would be
    * found in the certificate chain.
    */
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public getExpectedPublicKey(expectedNodeId: NodeId): PublicKeyPem | null {
     const certificates = this.getRootCertChain();
     let publicKey: PublicKeyPem | null = null;
@@ -246,7 +249,7 @@ class NodeConnection {
    * @param targetNodeId the node ID to find other nodes closest to it
    * @returns list of nodes and their IP/port that are closest to the target
    */
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public async getClosestNodes(targetNodeId: NodeId): Promise<Array<NodeData>> {
     // Construct the message
     const nodeIdMessage = new nodesPB.Node();
@@ -278,7 +281,7 @@ class NodeConnection {
    * @param signature signature to verify source node is sender (signature based
    * on egressAddress as message)
    */
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public async sendHolePunchMessage(
     sourceNodeId: NodeId,
     targetNodeId: NodeId,
@@ -296,7 +299,7 @@ class NodeConnection {
   /**
    * Performs a GRPC request to send a notification to the target.
    */
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public async sendNotification(message: SignedNotification): Promise<void> {
     const notificationMsg = new notificationsPB.AgentNotification();
     notificationMsg.setContent(message);
@@ -309,7 +312,7 @@ class NodeConnection {
    * the connection.
    * @returns the reconstructed NodeInfo (containing UNVERIFIED links)
    */
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public async getChainData(): Promise<ChainDataEncoded> {
     const chainData: ChainDataEncoded = {};
     const emptyMsg = new utilsPB.EmptyMessage();
@@ -334,7 +337,7 @@ class NodeConnection {
     return chainData;
   }
 
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public async claimNode(
     singlySignedClaim: ClaimIntermediary,
   ): Promise<ClaimEncoded> {
@@ -432,7 +435,7 @@ class NodeConnection {
   /**
    * Retrieves all the vaults for a peers node
    */
-  @ready(new nodesErrors.ErrorNodeConnectionNotStarted())
+  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
   public async scanVaults(): Promise<Array<string>> {
     // Create the handler for git to scan from
     const gitRequest = await vaultsUtils.constructGitHandler(

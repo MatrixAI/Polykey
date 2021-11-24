@@ -1,9 +1,8 @@
-import type { PolykeyAgent } from '@';
-import type { NodeId, NodeAddress } from '@/nodes/types';
-import type { Host, Port } from '@/network/types';
-import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
 import type { ClaimIdString } from '@/claims/types';
-
+import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
+import type { Host, Port } from '@/network/types';
+import type { NodeId, NodeAddress } from '@/nodes/types';
+import type { PolykeyAgent } from '@';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -15,11 +14,11 @@ import { NodeManager } from '@/nodes';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { Sigchain } from '@/sigchain';
 import { sleep } from '@/utils';
-import * as testUtils from '../utils';
 import * as nodesErrors from '@/nodes/errors';
 import * as claimsUtils from '@/claims/utils';
-import { makeCrypto } from '../utils';
 import { makeNodeId } from '@/nodes/utils';
+import { makeCrypto } from '../utils';
+import * as testUtils from '../utils';
 
 describe('NodeManager', () => {
   const password = 'password';
@@ -50,15 +49,6 @@ describe('NodeManager', () => {
     'vi3et1hrpv2m2lrplcm7cu913kr45v51cak54vm68anlbvuf83ra0',
   );
 
-  beforeAll(async () => {
-    fwdProxy = await ForwardProxy.createForwardProxy({
-      authToken: 'abc',
-      logger: logger,
-    });
-    revProxy = await ReverseProxy.createReverseProxy({
-      logger: logger,
-    });
-  });
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -73,6 +63,14 @@ describe('NodeManager', () => {
     const cert = keyManager.getRootCert();
     keyPairPem = keyManager.getRootKeyPairPem();
     certPem = keysUtils.certToPem(cert);
+
+    fwdProxy = new ForwardProxy({
+      authToken: 'abc',
+      logger: logger,
+    });
+    revProxy = new ReverseProxy({
+      logger: logger,
+    });
 
     await fwdProxy.start({
       tlsConfig: {
@@ -90,7 +88,6 @@ describe('NodeManager', () => {
     });
     const dbPath = `${dataDir}/db`;
     db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
-    await db.start();
     sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
 
     nodeManager = await NodeManager.createNodeManager({
@@ -105,9 +102,12 @@ describe('NodeManager', () => {
   });
   afterEach(async () => {
     await nodeManager.stop();
+    await nodeManager.destroy();
+    await sigchain.stop();
     await sigchain.destroy();
     await db.stop();
     await db.destroy();
+    await keyManager.stop();
     await keyManager.destroy();
     await fwdProxy.stop();
     await revProxy.stop();
@@ -116,19 +116,21 @@ describe('NodeManager', () => {
       recursive: true,
     });
   });
-  afterAll(async () => {
+
+  test('NodeManager readiness', async () => {
+    await expect(nodeManager.destroy()).rejects.toThrow(
+      nodesErrors.ErrorNodeManagerRunning,
+    );
+    // Should be a noop
+    await nodeManager.start();
     await nodeManager.stop();
     await nodeManager.destroy();
-    await fwdProxy.stop();
-    await fwdProxy.destroy();
-    await revProxy.stop();
-    await revProxy.destroy();
-    await keyManager.destroy();
-    await db.stop();
-    await db.destroy();
-    await sigchain.destroy();
+    await expect(nodeManager.start()).rejects.toThrow(
+      nodesErrors.ErrorNodeManagerDestroyed,
+    );
+    // Await expect(nodeManager.readToken()).rejects.toThrow(nodesErrors.ErrorNodeManagerNotRunning);
+    // await expect(nodeManager.writeToken()).rejects.toThrow(nodesErrors.ErrorNodeManagerNotRunning);
   });
-
   describe('getConnectionToNode', () => {
     let target: PolykeyAgent;
     let targetNodeId: NodeId;
@@ -141,11 +143,11 @@ describe('NodeManager', () => {
     }, global.polykeyStartupTimeout);
 
     beforeEach(async () => {
-      await target.start({});
-      targetNodeId = target.keys.getNodeId();
+      await target.start({ password: 'password' });
+      targetNodeId = target.keyManager.getNodeId();
       targetNodeAddress = {
-        ip: target.revProxy.getIngressHost(),
-        port: target.revProxy.getIngressPort(),
+        ip: target.revProxy.ingressHost,
+        port: target.revProxy.ingressPort,
       };
       await nodeManager.setNode(targetNodeId, targetNodeAddress);
     });
@@ -237,17 +239,16 @@ describe('NodeManager', () => {
       global.failedConnectionTimeout * 2,
     );
   });
-
   test(
     'pings node',
     async () => {
       const server = await testUtils.setupRemoteKeynode({
         logger: logger,
       });
-      const serverNodeId = server.nodes.getNodeId();
+      const serverNodeId = server.nodeManager.getNodeId();
       let serverNodeAddress: NodeAddress = {
-        ip: server.revProxy.getIngressHost(),
-        port: server.revProxy.getIngressPort(),
+        ip: server.revProxy.ingressHost,
+        port: server.revProxy.ingressPort,
       };
       await nodeManager.setNode(serverNodeId, serverNodeAddress);
 
@@ -258,11 +259,11 @@ describe('NodeManager', () => {
       const active1 = await nodeManager.pingNode(serverNodeId);
       expect(active1).toBe(false);
       // Bring server node online
-      await server.start({});
+      await server.start({ password: 'password' });
       // Update the node address (only changes because we start and stop)
       serverNodeAddress = {
-        ip: server.revProxy.getIngressHost(),
-        port: server.revProxy.getIngressPort(),
+        ip: server.revProxy.ingressHost,
+        port: server.revProxy.ingressPort,
       };
       await nodeManager.setNode(serverNodeId, serverNodeAddress);
       // Check if active
@@ -307,11 +308,11 @@ describe('NodeManager', () => {
         port: 11111 as Port,
       };
       const server = await testUtils.setupRemoteKeynode({ logger: logger });
-      await nodeManager.setNode(server.nodes.getNodeId(), {
-        ip: server.revProxy.getIngressHost(),
-        port: server.revProxy.getIngressPort(),
+      await nodeManager.setNode(server.nodeManager.getNodeId(), {
+        ip: server.revProxy.ingressHost,
+        port: server.revProxy.ingressPort,
       } as NodeAddress);
-      await server.nodes.setNode(nodeId, nodeAddress);
+      await server.nodeManager.setNode(nodeId, nodeAddress);
       const foundAddress2 = await nodeManager.findNode(nodeId);
       expect(foundAddress2).toStrictEqual(nodeAddress);
 
@@ -325,14 +326,14 @@ describe('NodeManager', () => {
       // Case 3: node exhausts all contacts and cannot find node
       const nodeId = nodeId1;
       const server = await testUtils.setupRemoteKeynode({ logger: logger });
-      await nodeManager.setNode(server.nodes.getNodeId(), {
-        ip: server.revProxy.getIngressHost(),
-        port: server.revProxy.getIngressPort(),
+      await nodeManager.setNode(server.nodeManager.getNodeId(), {
+        ip: server.revProxy.ingressHost,
+        port: server.revProxy.ingressPort,
       } as NodeAddress);
       // Add a dummy node to the server node graph database
       // Server will not be able to connect to this node (the only node in its
       // database), and will therefore not be able to locate the node.
-      await server.nodes.setNode(dummyNode, {
+      await server.nodeManager.setNode(dummyNode, {
         ip: '127.0.0.2' as Host,
         port: 22222 as Port,
       } as NodeAddress);
@@ -381,25 +382,25 @@ describe('NodeManager', () => {
       x = await testUtils.setupRemoteKeynode({
         logger: logger,
       });
-      xNodeId = x.nodes.getNodeId();
+      xNodeId = x.nodeManager.getNodeId();
       xNodeAddress = {
-        ip: x.revProxy.getIngressHost(),
-        port: x.revProxy.getIngressPort(),
+        ip: x.revProxy.ingressHost,
+        port: x.revProxy.ingressPort,
       };
-      xPublicKey = x.keys.getRootKeyPairPem().publicKey;
+      xPublicKey = x.keyManager.getRootKeyPairPem().publicKey;
 
       y = await testUtils.setupRemoteKeynode({
         logger: logger,
       });
-      yNodeId = y.nodes.getNodeId();
+      yNodeId = y.nodeManager.getNodeId();
       yNodeAddress = {
-        ip: y.revProxy.getIngressHost(),
-        port: y.revProxy.getIngressPort(),
+        ip: y.revProxy.ingressHost,
+        port: y.revProxy.ingressPort,
       };
-      yPublicKey = y.keys.getRootKeyPairPem().publicKey;
+      yPublicKey = y.keyManager.getRootKeyPairPem().publicKey;
 
-      await x.nodes.setNode(yNodeId, yNodeAddress);
-      await y.nodes.setNode(xNodeId, xNodeAddress);
+      await x.nodeManager.setNode(yNodeId, yNodeAddress);
+      await y.nodeManager.setNode(xNodeId, xNodeAddress);
     }, global.polykeyStartupTimeout * 2);
     afterAll(async () => {
       await testUtils.cleanupRemoteKeynode(x);
@@ -417,7 +418,7 @@ describe('NodeManager', () => {
       // 2. X <- sends its intermediary signed claim <- Y
       // 3. X -> sends doubly signed claim (Y's intermediary) + its own intermediary claim -> Y
       // 4. X <- sends doubly signed claim (X's intermediary) <- Y
-      await y.nodes.claimNode(xNodeId);
+      await y.nodeManager.claimNode(xNodeId);
 
       // Check both sigchain locks are released
       expect(x.sigchain.locked).toBe(false);
