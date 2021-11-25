@@ -8,7 +8,7 @@ import * as schemaErrors from '@/schema/errors';
 import config from '@/config';
 
 describe('Schema', () => {
-  const logger = new Logger(`${Schema.name} Test`, LogLevel.INFO, [
+  const logger = new Logger(`${Schema.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
