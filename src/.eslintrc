@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "fs",
+            "message": "Please use dependency-injected fs"
+          },
+          {
+            "name": "@",
+            "message": "Replace with relative path"
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["@/**"],
+            "message": "Replace with relative path"
+          }
+        ]
+      }
+    ]
+  }
+}

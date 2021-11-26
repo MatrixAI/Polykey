@@ -1,6 +1,6 @@
 import type { Metadata } from '@grpc/grpc-js';
 
-import type PolykeyClient from '@/PolykeyClient';
+import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../options';
