@@ -10,6 +10,11 @@ class ErrorPolykeyUndefinedBehaviour extends ErrorPolykey {
   exitCode = 70;
 }
 
+class ErrorPolykeyUnimplemented extends ErrorPolykey {
+  description = 'This is an unimplemented functionality';
+  exitCode = 69;
+}
+
 class ErrorPolykeyAgentRunning extends ErrorPolykey {}
 
 class ErrorPolykeyAgentNotRunning extends ErrorPolykey {}
@@ -27,6 +32,7 @@ class ErrorInvalidId extends ErrorPolykey {}
 export {
   ErrorPolykey,
   ErrorPolykeyUndefinedBehaviour,
+  ErrorPolykeyUnimplemented,
   ErrorPolykeyAgentRunning,
   ErrorPolykeyAgentNotRunning,
   ErrorPolykeyAgentDestroyed,
