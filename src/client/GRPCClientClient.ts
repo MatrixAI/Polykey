@@ -293,7 +293,15 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     )(...args);
   }
 
-  @ready(new clientErrors.ErrorClientClientDestroyed())
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
+  public vaultsSecretsEnv(...args) {
+    return grpcUtils.promisifyReadableStreamCall<secretsPB.Secret>(
+      this.client,
+      this.client.vaultsSecretsEnv,
+    )(...args);
+  }
+
+  @ready(new grpcErrors.ErrorGRPCClientNotStarted())
   public keysKeyPairRoot(...args) {
     return grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
       this.client,

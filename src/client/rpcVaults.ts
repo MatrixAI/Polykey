@@ -639,6 +639,73 @@ const createVaultRPC = ({
         await genWritable.throw(err);
       }
     },
+    secretsEnv: async (
+      call: grpc.ServerWritableStream<
+        secretsPB.Directory,
+        secretsPB.Directory
+      >,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+      try {
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+        //Getting the vault.
+        const directoryMessage = call.request;
+        const vaultMessage = directoryMessage.getVault();
+        if (vaultMessage == null) {
+          await genWritable.throw({ code: grpc.status.NOT_FOUND });
+          return;
+        }
+        const vaultId = await utils.parseVaultInput(vaultMessage, vaultManager);
+        const pattern = directoryMessage.getSecretDirectory();
+        const res = await vaultManager.glob(vaultId, pattern);
+        const dirMessage = new secretsPB.Directory();
+        for (const file in res) {
+          dirMessage.setSecretDirectory(file);
+          await genWritable.next(dirMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
+      }
+    },
+    vaultsSecretsEnv: async (
+      call: grpc.ServerWritableStream<secretsPB.Directory, secretsPB.Secret>,
+    ): Promise<void> => {
+      const genWritable = grpcUtils.generatorWritable(call);
+
+      try {
+        await sessionManager.verifyToken(utils.getToken(call.metadata));
+        const responseMeta = utils.createMetaTokenResponse(
+          await sessionManager.generateToken(),
+        );
+        call.sendMetadata(responseMeta);
+        const directoryMessage = call.request;
+        const vaultMessage = directoryMessage.getVault();
+        if (vaultMessage == null) {
+          await genWritable.throw({ code: grpc.status.NOT_FOUND });
+          return;
+        }
+        const pattern = directoryMessage.getSecretDirectory();
+        const id = await utils.parseVaultInput(vaultMessage, vaultManager);
+        const vault = await vaultManager.openVault(id);
+        const secretList = await vaultManager.glob(id, pattern);
+        let secretMessage: secretsPB.Secret;
+        for (const secretName of secretList) {
+          const secretContent = await vaultOps.getSecret(vault, secretName);
+          secretMessage = new secretsPB.Secret();
+          secretMessage.setSecretName(secretName);
+          secretMessage.setSecretContent(secretContent);
+          await genWritable.next(secretMessage);
+        }
+        await genWritable.next(null);
+      } catch (err) {
+        await genWritable.throw(err);
+      }
+    },
   };
 };
 

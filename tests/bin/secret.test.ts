@@ -2,6 +2,7 @@ import type { VaultName } from '@/vaults/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import nexpect from 'nexpect';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import { vaultOps } from '@/vaults';
@@ -52,6 +53,69 @@ describe('CLI secrets', () => {
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
+    });
+  });
+
+  describe('commandSecretEnv', () => {
+    test('should wrap globbed secrets', async () => {
+      const vaultName = 'Vault0' as VaultName;
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+
+      await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST VAR 1', 'test-1');
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
+      await vaultOps.addSecret(vault, 'TEST_VAR_3', 'test-3');
+      await vaultOps.addSecret(vault, 'dir1/dir2/dir3/TEST_VAR_4', 'test-4');
+
+      let message = 'TEST VAR 1=test-1\nTEST_VAR_2=test-2\n';
+
+      command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        'Vault0:dir1/dir2/*',
+      ];
+
+      let result = await utils.pkWithStdio(command);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain(message);
+
+      nexpect.spawn('echo', ['$TEST VAR 1']).expect('');
+
+      command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '-e',
+        'Vault0:**/*',
+      ];
+
+      message = 'export TEST_VAR_3=test-3\nexport TEST VAR 1=test-1\nexport TEST_VAR_2=test-2\nexport TEST_VAR_4=test-4\n';
+
+      result = await utils.pkWithStdio(command);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain(message);
+      nexpect.spawn('echo', ['$TEST_VAR_3']).expect('test-3');
+      nexpect.spawn('echo', ['$TEST VAR 1']).expect('test-1');
+      nexpect.spawn('echo', ['$TEST_VAR_2']).expect('test-2');
+      nexpect.spawn('echo', ['$TEST_VAR_4']).expect('test-4');
+    });
+    test('can export secrets to a bash subshell', async (done) => {
+      const vaultName = 'Vault000' as VaultName;
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+
+      await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
+
+      nexpect.spawn('npm', ['run', 'polykey', '--', 'secrets', 'env', '-np', dataDir, '-e', 'Vault000:**/*', 'bash'])
+        .sendline('echo $TEST_VAR_2')
+        .sendline('exit')
+        .run(function (_, stdout) {
+          expect(stdout).toContain('test-2');
+          done();
+        });
     });
   });
 
@@ -248,6 +312,103 @@ describe('CLI secrets', () => {
         'secrets/secret-2',
         'secrets/secret-3',
       ]);
+    });
+  });
+
+  describe('commandNewDirSecret', () => {
+    test('should inject secrets into a sub-shell', async () => {
+      const vaultName = 'Vault9' as VaultName;
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+
+      const vaultName2 = 'Vault10' as VaultName;
+      const vault2 = await polykeyAgent.vaults.createVault(vaultName2);
+
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_1', Buffer.from('test-1'));
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_2', Buffer.from('test-2'));
+      await vaultOps.addSecret(vault2, 'TEST_VARIABLE_3', Buffer.from('test-3'));
+
+      // const secretPath = path.join(dataDir, 'secret');
+      // await fs.promises.writeFile(secretPath, 'this is a secret');
+
+      const result = await utils.pk([
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+        'Vault1:TEST_VARIABLE_1',
+        'Vault2:TEST_VARIABLE_3',
+        'Vault1:TEST_VARIABLE_2',
+        // 'bash',
+      ]);
+      expect(result).toBe(0);
+
+      // let list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MySecret']);
+      // expect(await vault.getSecret('MySecret')).toStrictEqual(
+      //   Buffer.from('this is a secret'),
+      // );
+
+      // await polykeyAgent.sessionManager.stopSession();
+      // const result2 = await utils.pk([
+      //   'secrets',
+      //   'create',
+      //   '-np',
+      //   dataDir,
+      //   '-sp',
+      //   'Vault1:MySecret',
+      //   '-fp',
+      //   secretPath,
+      // ]);
+      // expect(result2).toBe(passwordExitCode);
+
+      // list = await vault.listSecrets();
+      // expect(list.sort()).toStrictEqual(['MySecret']);
+    });
+    test('should export secrets', async () => {
+      const stdoutSpy = jest.spyOn(process.stdout, 'write');
+
+      const vaultName = 'Vault11' as VaultName;
+      const vault = await polykeyAgent.vaults.createVault(vaultName);
+
+      const vaultName2 = 'Vault12' as VaultName;
+      const vault2 = await polykeyAgent.vaults.createVault(vaultName2);
+
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_1', Buffer.from('test-1'));
+      await vaultOps.addSecret(vault, 'TEST_VARIABLE_2', Buffer.from('test-2'));
+      await vaultOps.addSecret(vault2, 'TEST_VARIABLE_3', Buffer.from('test-3'));
+
+      const message = 'export TEST_VAR_1=test-1\nTEST_VAR_3=test-3\nexport TEST_VAR_4=test-2\n';
+      const message2 = 'export TEST_VAR_1=test-1\nexport TEST_VAR_3=test-3\nexport TEST_VAR_4=test-2\n';
+
+      const result = await utils.pk([
+        'secrets',
+        'env',
+        '--',
+        '-e',
+        'Vault1:TEST_VAR_1',
+        'Vault2:TEST_VAR_3',
+        '-e',
+        'Vault1:TEST_VAR_2=TEST_VAR_4',
+      ]);
+      expect(result).toBe(0);
+      expect(stdoutSpy).toHaveBeenLastCalledWith(message);
+
+      const result2 = await utils.pk([
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--password-file',
+        passwordFile,
+        '-e',
+        'Vault1:TEST_VAR_1',
+        'Vault2:TEST_VAR_3',
+        'Vault1:TEST_VAR_2=TEST_VAR_4',
+      ]);
+      expect(result2).toBe(0);
+      expect(stdoutSpy).toHaveBeenLastCalledWith(message2);
     });
   });
 });

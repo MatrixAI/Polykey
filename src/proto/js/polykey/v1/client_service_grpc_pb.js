@@ -923,6 +923,17 @@ vaultsList: {
     responseSerialize: serialize_polykey_v1_vaults_LogEntry,
     responseDeserialize: deserialize_polykey_v1_vaults_LogEntry,
   },
+  vaultsSecretsEnv: {
+    path: '/polykey.v1.ClientService/VaultsSecretsEnv',
+    requestStream: false,
+    responseStream: true,
+    requestType: polykey_v1_secrets_secrets_pb.Directory,
+    responseType: polykey_v1_secrets_secrets_pb.Secret,
+    requestSerialize: serialize_polykey_v1_secrets_Directory,
+    requestDeserialize: deserialize_polykey_v1_secrets_Directory,
+    responseSerialize: serialize_polykey_v1_secrets_Secret,
+    responseDeserialize: deserialize_polykey_v1_secrets_Secret,
+  },
   // Identities
 identitiesAuthenticate: {
     path: '/polykey.v1.ClientService/IdentitiesAuthenticate',

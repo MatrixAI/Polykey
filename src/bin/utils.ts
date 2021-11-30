@@ -4,6 +4,10 @@ import os from 'os';
 import process from 'process';
 import { LogLevel } from '@matrixai/logger';
 import prompts from 'prompts';
+import { spawn } from 'cross-spawn';
+import commander from 'commander';
+import Logger, { LogLevel } from '@matrixai/logger';
+
 import * as grpc from '@grpc/grpc-js';
 import * as clientUtils from '../client/utils';
 import * as clientErrors from '../client/errors';
@@ -153,11 +157,101 @@ async function retryAuth<T>(
       }
     }
   }
+// Async function requestPassword(keyManager: KeyManager, attempts: number = 3) {
+//   let i = 0;
+//   let correct = false;
+//   while (i < attempts) {
+//     const response = await prompts({
+//       type: 'text',
+//       name: 'password',
+//       message: 'Please enter your password',
+//     });
+//     try {
+//       clientUtils.checkPassword(response.password, keyManager);
+//       correct = true;
+//     } catch (err) {
+//       if (err instanceof clientErrors.ErrorPassword) {
+//         if (attempts == 2) {
+//           throw new clientErrors.ErrorPassword();
+//         }
+//         i++;
+//       }
+//     }
+//     if (correct) {
+//       break;
+//     }
+//   }
+//   return;
+// }
+function spawnShell(command: string, environmentVariables: POJO, format: string): void {
+  // This code is what this function should look like after the kexec package is added
+  // try {
+  //   kexec(command, {
+  //     stdio: 'inherit',
+  //     env: environmentVariables,
+  //     shell: true,
+  //   });
+  // } catch (err) {
+  //   if (
+  //     err.code !== "MODULE_NOT_FOUND" &&
+  //     err.code !== "UNDECLARED_DEPENDENCY"
+  //   ) {
+  //     throw err;
+  //   }
+
+  //   const shell = spawn(command, {
+  //     stdio: 'inherit',
+  //     env: environmentVariables,
+  //     shell: true,
+  //   });
+  //   shell.on("exit", (code: number, signal: NodeJS.Signals) => {
+  //     process.on("exit", () => {
+  //       if (signal) {
+  //         process.kill(process.pid, signal);
+  //       } else {
+  //         process.exitCode = code;
+  //       }
+  //     });
+  //   });
+  //   process.on("SIGINT", () => {
+  //     shell.kill("SIGINT")
+  //   });
+  //   shell.on('close', (code) => {
+  //     if (code != 0) {
+  //       process.stdout.write(
+  //         outputFormatter({
+  //           type: format === 'json' ? 'json' : 'list',
+  //           data: [`Terminated with ${code}`],
+  //         }),
+  //       );
+  //     }
+  //   });
+  // }
+  const shell = spawn(command, {
+    stdio: 'inherit',
+    env: environmentVariables,
+    shell: true,
+  });
+
+  shell.on('close', (code) => {
+    if (code != 0) {
+      process.stdout.write(
+        outputFormatter({
+          type: format === 'json' ? 'json' : 'list',
+          data: [`Terminated with ${code}`],
+        }),
+      );
+    }
+  });
 }
 
 export {
   getDefaultNodePath,
   verboseToLogLevel,
+  createCommand,
+  promisifyGrpc,
+  outputFormatter,
+  spawnShell,
   OutputObject,
   outputFormatter,
   requestPassword,

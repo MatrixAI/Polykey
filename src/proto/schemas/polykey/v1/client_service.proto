@@ -64,6 +64,7 @@ service ClientService {
   rpc VaultsPermissions(polykey.v1.vaults.PermGet) returns (stream polykey.v1.vaults.Permission);
   rpc VaultsVersion(polykey.v1.vaults.Version) returns (polykey.v1.vaults.VersionResult);
   rpc VaultsLog(polykey.v1.vaults.Log) returns (stream polykey.v1.vaults.LogEntry);
+  rpc VaultsSecretsEnv(polykey.v1.secrets.Directory) returns(stream polykey.v1.secrets.Secret);
 
   // Identities
   rpc IdentitiesAuthenticate(polykey.v1.identities.Provider) returns (stream polykey.v1.identities.Provider);
