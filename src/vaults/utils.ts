@@ -14,13 +14,8 @@ import type { NodeId } from '../nodes/types';
 import type { GRPCClientAgent } from '../agent';
 import path from 'path';
 import { IdRandom } from '@matrixai/id';
-<<<<<<< HEAD
-=======
-
->>>>>>> wip
 import * as grpc from '@grpc/grpc-js';
 import * as vaultsErrors from './errors';
-import { GitRequest } from '../git';
 import { promisify } from '../utils';
 import * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';

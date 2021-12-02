@@ -64,16 +64,22 @@ function parseSecretPath(
   secretPath: string,
 ): [string, string, string | undefined] {
   // E.g. If 'vault1:a/b/c', ['vault1', 'a/b/c'] is returned
-  //      If 'vault1:a/b/c=VARIABLE', ['vault1, 'a/b/c', 'VAIRABLE'] is returned
+  //      If 'vault1:a/b/c=VARIABLE', ['vault1, 'a/b/c', 'VARIABLE'] is returned
   const secretPathRegex =
-    /^([\w-]+)(?::)([\w\-\\\/\.\$]+)(?:=)?([a-zA-Z_][\w]+)?$/;
-  if (!secretPathRegex.test(secretPath)) {
-    throw new commander.InvalidArgumentError(
-      `${secretPath} is not of the format <vaultName>:<directoryPath>`,
-    );
-  }
-  const [, vaultName, directoryPath] = secretPath.match(secretPathRegex)!;
-  return [vaultName, directoryPath, undefined];
+    /^([\w-]+)(?::){1}([\w\-\\\/\.\$\*]+)(?:=)?([a-zA-Z_][\w]+)?$/;
+  const regexSecretPathResults = secretPathRegex.exec(secretPath);
+  if (regexSecretPathResults == null ||
+    regexSecretPathResults[1] == null ||
+    regexSecretPathResults[2] == null){
+      throw new commander.InvalidArgumentError(
+        `${secretPath} is not of the format <vaultName>:<directoryPath>`,
+      );
+    }
+  return [
+    regexSecretPathResults[1],
+    regexSecretPathResults[2],
+    regexSecretPathResults[3],
+  ];
 }
 
 function parseGestaltId(gestaltId: string) {

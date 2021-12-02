@@ -2,7 +2,7 @@ import CommandCreate from './CommandCreate';
 import CommandDelete from './CommandDelete';
 import CommandDir from './CommandDir';
 import CommandEdit from './CommandEdit';
-// Import CommandEnv from './CommandEnv';
+import CommandEnv from './CommandEnv';
 import CommandGet from './CommandGet';
 import CommandList from './CommandList';
 import CommandMkdir from './CommandMkdir';
@@ -19,7 +19,7 @@ class CommandSecrets extends CommandPolykey {
     this.addCommand(new CommandDelete());
     this.addCommand(new CommandDir());
     this.addCommand(new CommandEdit());
-    // This.addCommand(new CommandEnv);
+    this.addCommand(new CommandEnv());
     this.addCommand(new CommandGet());
     this.addCommand(new CommandList());
     this.addCommand(new CommandMkdir());

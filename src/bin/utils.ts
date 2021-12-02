@@ -2,7 +2,6 @@ import type { POJO } from '../types';
 
 import os from 'os';
 import process from 'process';
-import { LogLevel } from '@matrixai/logger';
 import prompts from 'prompts';
 import { spawn } from 'cross-spawn';
 import commander from 'commander';
@@ -157,32 +156,8 @@ async function retryAuth<T>(
       }
     }
   }
-// Async function requestPassword(keyManager: KeyManager, attempts: number = 3) {
-//   let i = 0;
-//   let correct = false;
-//   while (i < attempts) {
-//     const response = await prompts({
-//       type: 'text',
-//       name: 'password',
-//       message: 'Please enter your password',
-//     });
-//     try {
-//       clientUtils.checkPassword(response.password, keyManager);
-//       correct = true;
-//     } catch (err) {
-//       if (err instanceof clientErrors.ErrorPassword) {
-//         if (attempts == 2) {
-//           throw new clientErrors.ErrorPassword();
-//         }
-//         i++;
-//       }
-//     }
-//     if (correct) {
-//       break;
-//     }
-//   }
-//   return;
-// }
+}
+
 function spawnShell(command: string, environmentVariables: POJO, format: string): void {
   // This code is what this function should look like after the kexec package is added
   // try {
@@ -248,12 +223,9 @@ function spawnShell(command: string, environmentVariables: POJO, format: string)
 export {
   getDefaultNodePath,
   verboseToLogLevel,
-  createCommand,
-  promisifyGrpc,
-  outputFormatter,
   spawnShell,
-  OutputObject,
   outputFormatter,
   requestPassword,
+  OutputObject,
   retryAuth,
 };

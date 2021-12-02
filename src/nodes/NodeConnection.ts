@@ -434,16 +434,16 @@ class NodeConnection {
 
   /**
    * Retrieves all the vaults for a peers node
-   */
-  @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
-  public async scanVaults(): Promise<Array<string>> {
-    // Create the handler for git to scan from
-    const gitRequest = await vaultsUtils.constructGitHandler(
-      this.client,
-      this.keyManager.getNodeId(),
-    );
-    return await gitRequest.scanVaults();
-  }
+  //  */
+  // @ready(new nodesErrors.ErrorNodeConnectionNotRunning())
+  // public async scanVaults(): Promise<Array<string>> {
+  //   // Create the handler for git to scan from
+  //   const gitRequest = await vaultsUtils.constructGitHandler(
+  //     this.client,
+  //     this.keyManager.getNodeId(),
+  //   );
+  //   return await gitRequest.scanVaults();
+  // }
 }
 
 export default NodeConnection;

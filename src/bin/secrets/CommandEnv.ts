@@ -1,179 +1,113 @@
-// Import { spawn } from 'child_process';
-// import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-// import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-// import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
-// import PolykeyClient from '../../PolykeyClient';
-// import * as utils from '../../utils';
-// import * as binUtils from '../utils';
-// import * as CLIErrors from '../errors';
-// import * as grpcErrors from '../../grpc/errors';
+import type { Metadata } from '@grpc/grpc-js';
 
-// import CommandPolykey from '../CommandPolykey';
-// import * as binOptions from '../options';
+import path from 'path';
+import CommandPolykey from '../CommandPolykey';
+import * as binOptions from '../options';
+import * as parsers from '../parsers';
+import * as binUtils from '../utils';
+import * as CLIErrors from '../errors';
 
-// class CommandEnv extends CommandPolykey {
-//   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
-//     super(...args);
-//     this.name('env');
-//     this.description('Secrets Env');
-//     this.option(
-//       '--command <command>',
-//       'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
-//     );
-//     this.option(
-//       '--run <run>',
-//       'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
-//     );
-//     this.arguments(
-//       "Secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]', you can also control what the environment variable will be called using '[<variableName>]' (defaults to upper, snake case of the original secret name)",
-//     );
-//     this.addOption(binOptions.nodeId);
-//     this.addOption(binOptions.clientHost);
-//     this.addOption(binOptions.clientPort);
-//     this.action(async (options, command) => {
+class CommandEnv extends CommandPolykey {
+  constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
+    super(...args);
+    this.name('env');
+    this.description('Secrets Env');
+    this.argument('<secretFiles...>');
+    this.option('-e, --export',
+      'Sources all input secrets'
+    );
+    this.addOption(binOptions.nodeId);
+    this.addOption(binOptions.clientHost);
+    this.addOption(binOptions.clientPort);
+    this.action(async (secretFiles, options) => {
+      const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const vaultsPB = await import(
+        '../../proto/js/polykey/v1/vaults/vaults_pb'
+      );
+      const secretsPB = await import(
+        '../../proto/js/polykey/v1/secrets/secrets_pb'
+      );
 
-//     });
-//   }
-// }
+      const client = await PolykeyClient.createPolykeyClient({
+        nodePath: options.nodePath,
+        logger: this.logger.getChild(PolykeyClient.name),
+      });
 
-// export default CommandEnv;
+      const meta = await parsers.parseAuth({
+        passwordFile: options.passwordFile,
+        fs: this.fs,
+      });
 
-// OLD COMMAND
-// const env = binUtils.createCommand('env', {
-//   description: 'Runs a modified environment with injected secrets',
-//   nodePath: true,
-//   verbose: true,
-//   format: true,
-// });
-// env.option(
-//   '--command <command>',
-//   'In the environment of the derivation, run the shell command cmd in an interactive shell (Use --run to use a non-interactive shell instead)',
-// );
-// env.option(
-//   '--run <run>',
-//   'In the environment of the derivation, run the shell command cmd in a non-interactive shell, meaning (among other things) that if you hit Ctrl-C while the command is running, the shell exits (Use --command to use an interactive shell instead)',
-// );
-// env.arguments(
-//   "Secrets to inject into env, of the format '<vaultName>:<secretPath>[=<variableName>]', you can also control what the environment variable will be called using '[<variableName>]' (defaults to upper, snake case of the original secret name)",
-// );
-// env.action(async (options, command) => {
-//   const clientConfig = {};
-//   clientConfig['logger'] = new Logger('CLI Logger', LogLevel.WARN, [
-//     new StreamHandler(),
-//   ]);
-//   if (options.verbose) {
-//     clientConfig['logger'].setLevel(LogLevel.DEBUG);
-//   }
-//   clientConfig['nodePath'] = options.nodePath
-//     ? options.nodePath
-//     : utils.getDefaultNodePath();
+      try {
+        const directoryMessage = new secretsPB.Directory();
+        const vaultMessage = new vaultsPB.Vault();
+        directoryMessage.setVault(vaultMessage);
+        let shellCommand;
+        try {
+          parsers.parseSecretPath(secretFiles[secretFiles.length - 1])
+        } catch (e) {
+          // If the last argument does not match the secret path format,
+          // take it as a shell command
+          if (e instanceof CLIErrors.ErrorInvalidArguments) {
+            shellCommand = secretFiles.pop();
+          } else {
+            throw e;
+          }
+        }
+        // If there were no secrets passed in then we throw
+        if (secretFiles.length < 1) {
+          throw new CLIErrors.ErrorSecretsUndefined();
+        }
+        const secretEnv = { ...process.env };
+        const grpcClient = client.grpcClient;
+        let output = '';
+        const data: string[] = [];
+        for (const secretPath of secretFiles) {
+          if (secretPath.includes(':')) {
+            // If the overall flag for exporting has been specified then
+            // export all variables
+            if (options.export) {
+              output = 'export ';
+            }
+            // Extract the secret path and the optional variable name
+            const [vaultName, secretExpression, variableName] = parsers.parseSecretPath(secretPath);
+            vaultMessage.setNameOrId(vaultName);
+            directoryMessage.setSecretDirectory(secretExpression);
+            await binUtils.retryAuth(async (meta: Metadata) => {
+              const stream = grpcClient.vaultsSecretsEnv(directoryMessage, meta);
+              for await (const secret of stream) {
+                const secretName = secret.getSecretName();
+                const secretContent = Buffer.from(secret.getSecretContent());
+                const secretVariableName = variableName ? variableName: path.basename(secretName.toUpperCase().replace('-', '_'));
+                // Set the secret as an environment variable for the subshell
+                secretEnv[secretVariableName] = secretContent.toString();
+                data.push(output + `${secretVariableName}=${secretContent.toString()}`);
+              }
+            }, meta);
+            output = '';
+          } else if (secretPath === '-e' || secretPath === '--export') {
+            // The next secret will be exported
+            output = 'export ';
+          } else {
+            throw new CLIErrors.ErrorSecretPathFormat();
+          }
+        }
 
-//   const client = await PolykeyClient.createPolykeyClient(clientConfig);
-//   const vaultMessage = new vaultsPB.Vault();
-//   const secretMessage = new secretsPB.Secret();
-//   secretMessage.setVault(vaultMessage);
-//   const secretPathList: string[] = Array.from<string>(command.args.values());
+        if (shellCommand) {
+          binUtils.spawnShell(shellCommand, secretEnv, options.format);
+        } else {
+          process.stdout.write(
+            binUtils.outputFormatter({
+              type: options.format === 'json' ? 'json' : 'list',
+              data: data,
+            }),
+          );
+        }
+      } finally {
+        await client.stop();
+      }
+    });
+  }
+}
 
-//   try {
-//     if (secretPathList.length < 1) {
-//       throw new CLIErrors.ErrorSecretsUndefined();
-//     }
-
-//     const parsedPathList: {
-//       vaultName: string;
-//       secretName: string;
-//       variableName: string;
-//     }[] = [];
-
-//     for (const path of secretPathList) {
-//       if (!binUtils.pathRegex.test(path)) {
-//         throw new CLIErrors.ErrorSecretPathFormat();
-//       }
-
-//       const [, vaultName, secretName, variableName] = path.match(
-//         binUtils.pathRegex,
-//       )!;
-//       parsedPathList.push({
-//         vaultName,
-//         secretName,
-//         variableName:
-//           variableName ?? secretName.toUpperCase().replace('-', '_'),
-//       });
-//     }
-
-//     const secretEnv = { ...process.env };
-
-//     await client.start({});
-//     const grpcClient = client.grpcClient;
-
-//     for (const obj of parsedPathList) {
-//       vaultMessage.setNameOrId(obj.vaultName);
-//       secretMessage.setSecretName(obj.secretName);
-//       const res = await binUtils.unaryCallCARL<secretsPB.Secret>(
-//         client,
-//         attemptUnaryCall(client, grpcClient.vaultsSecretsGet),
-//       )(secretMessage);
-
-//       const secret = res.getSecretName();
-//       secretEnv[obj.variableName] = secret;
-//     }
-
-//     const shellPath = process.env.SHELL ?? 'sh';
-//     const args: string[] = [];
-
-//     if (options.command && options.run) {
-//       throw new CLIErrors.ErrorInvalidArguments(
-//         'Only one of --command or --run can be specified',
-//       );
-//     } else if (options.command) {
-//       args.push('-i');
-//       args.push('-c');
-//       args.push(`"${options.command}"`);
-//     } else if (options.run) {
-//       args.push('-c');
-//       args.push(`"${options.run}"`);
-//     }
-
-//     const shell = spawn(shellPath, args, {
-//       stdio: 'inherit',
-//       env: secretEnv,
-//       shell: true,
-//     });
-
-//     shell.on('close', (code) => {
-//       if (code !== 0) {
-//         process.stdout.write(
-//           binUtils.outputFormatter({
-//             type: options.format === 'json' ? 'json' : 'list',
-//             data: [`Terminated with ${code}`],
-//           }),
-//         );
-//       }
-//     });
-//   } catch (err) {
-//     if (err instanceof grpcErrors.ErrorGRPCClientTimeout) {
-//       process.stderr.write(`${err.message}\n`);
-//     }
-//     if (err instanceof grpcErrors.ErrorGRPCServerNotStarted) {
-//       process.stderr.write(`${err.message}\n`);
-//     } else {
-//       process.stderr.write(
-//         binUtils.outputFormatter({
-//           type: 'error',
-//           description: err.description,
-//           message: err.message,
-//         }),
-//       );
-//       throw err;
-//     }
-//   } finally {
-//     await client.stop();
-//     options.nodePath = undefined;
-//     options.verbose = undefined;
-//     options.format = undefined;
-//     options.command = undefined;
-//     options.run = undefined;
-//   }
-// });
-
-// export default env;
+export default CommandEnv;
