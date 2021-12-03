@@ -1,3 +1,4 @@
+import type { StdioOptions } from 'child_process';
 import type { AgentChildProcessInput, AgentChildProcessOutput } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { RecoveryCode } from '../../keys/types';
@@ -56,16 +57,21 @@ class CommandStart extends CommandPolykey {
       };
       let recoveryCodeOut: RecoveryCode | undefined;
       if (options.background) {
-        let agentOutPath = path.join(options.nodePath, 'out.log');
-        let agentErrPath = path.join(options.nodePath, 'err.log');
-        if (options.backgroundOutFile) {
-          agentOutPath = options.backgroundOutFile;
+        const stdio: StdioOptions = ['ignore', 'ignore', 'ignore', 'ipc'];
+        if (options.backgroundOutFile != null) {
+          const agentOutFile = await this.fs.promises.open(
+            options.backgroundOutFile,
+            'w',
+          );
+          stdio[1] = agentOutFile.fd;
         }
-        if (options.backgroundErrFile) {
-          agentErrPath = options.backgroundErrFile;
+        if (options.backgroundErrFile != null) {
+          const agentErrFile = await this.fs.promises.open(
+            options.backgroundErrFile,
+            'w',
+          );
+          stdio[2] = agentErrFile.fd;
         }
-        const agentOutFile = await this.fs.promises.open(agentOutPath, 'w');
-        const agentErrFile = await this.fs.promises.open(agentErrPath, 'w');
         const agentProcess = child_process.fork(
           path.join(__dirname, '../polykeyAgent.ts'),
           [],
@@ -74,7 +80,7 @@ class CommandStart extends CommandPolykey {
             env: process.env,
             detached: true,
             serialization: 'advanced',
-            stdio: ['ignore', agentOutFile.fd, agentErrFile.fd, 'ipc'],
+            stdio,
           },
         );
         const {

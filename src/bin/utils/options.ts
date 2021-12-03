@@ -3,7 +3,6 @@
  * Use PolykeyCommand.addOption or PolykeyCommand.addArgument
  * @module
  */
-import path from 'path';
 import commander from 'commander';
 import * as binParsers from './parsers';
 import config from '../../config';
@@ -92,19 +91,11 @@ const background = new commander.Option(
 const backgroundOutFile = new commander.Option(
   '-bof, --background-out-file <path>',
   'Path to STDOUT for agent process',
-).default(
-  config.defaults.nodePath != null
-    ? path.join(config.defaults.nodePath!, 'out.log')
-    : undefined,
 );
 
 const backgroundErrFile = new commander.Option(
   '-bef, --background-err-file <path>',
   'Path to STDERR for agent process',
-).default(
-  config.defaults.nodePath != null
-    ? path.join(config.defaults.nodePath!, 'err.log')
-    : undefined,
 );
 
 export {

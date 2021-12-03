@@ -31,7 +31,7 @@ const logger = new Logger('polykey', undefined, [new StreamHandler()]);
  */
 async function main(_argv = process.argv): Promise<number> {
   const exitHandlers = new binUtils.ExitHandlers();
-  const processSend = promisify<void>(process.send!);
+  const processSend = promisify<void>(process.send!.bind(process));
   const { p: messageInP, resolveP: resolveMessageInP } =
     promise<AgentChildProcessInput>();
   process.once('message', (data) => {
