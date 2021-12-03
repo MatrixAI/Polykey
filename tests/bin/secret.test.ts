@@ -342,7 +342,13 @@ describe('CLI secrets', () => {
       await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
       await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
 
-      nexpect.spawn('npm', ['run', 'polykey', '--', 'secrets', 'env', '-np', dataDir, '-e', 'Vault000:**/*', 'bash'])
+      let shell;
+      if (process.platform === 'win32') {
+        shell = 'cmd';
+      } else {
+        shell = 'bash';
+      }
+      nexpect.spawn('npm', ['run', 'polykey', '--', 'secrets', 'env', '-np', dataDir, '-e', 'Vault000:**/*', shell])
         .sendline('echo $TEST_VAR_2')
         .sendline('exit')
         .run(function (_, stdout) {
