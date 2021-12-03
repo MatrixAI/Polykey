@@ -56,106 +56,6 @@ describe('CLI secrets', () => {
     });
   });
 
-  describe.only('commandSecretEnv', () => {
-    test('should wrap globbed secrets', async () => {
-      const vaultName = 'Vault0' as VaultName;
-      const vault = await polykeyAgent.vaultManager.createVault(vaultName);
-
-      await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
-      await vaultOps.addSecret(vault, 'dir1/dir2/TEST VAR 1', 'test-1');
-      await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
-      await vaultOps.addSecret(vault, 'TEST_VAR_3', 'test-3');
-      await vaultOps.addSecret(vault, 'dir1/dir2/dir3/TEST_VAR_4', 'test-4');
-
-      let messages = [
-        'TEST VAR 1=test-1\n',
-        'TEST_VAR_2=test-2\n'
-      ];
-
-      command = [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        'Vault0:dir1/dir2/*',
-      ];
-      let result = await utils.pkStdio(command);
-      expect(result.exitCode).toBe(0);
-      for (const message of messages) {
-        expect(result.stdout).toContain(message);
-      }
-
-      nexpect.spawn('echo', ['$TEST VAR 1']).expect('');
-
-      command = [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '--',
-        '-e',
-        'Vault0:dir1/dir2/*',
-        'Vault0:TEST_VAR_3',
-      ];
-
-      messages = [
-        'TEST_VAR_3=test-3\n',
-        'export TEST VAR 1=test-1\n',
-        'export TEST_VAR_2=test-2\n',
-      ];
-
-      result = await utils.pkStdio(command);
-      expect(result.exitCode).toBe(0);
-      for (const message of messages) {
-        expect(result.stdout).toContain(message);
-      }
-      nexpect.spawn('echo', ['$TEST_VAR_3']).expect('');
-      nexpect.spawn('echo', ['$TEST VAR 1']).expect('test-1');
-      nexpect.spawn('echo', ['$TEST_VAR_2']).expect('test-2');
-
-      command = [
-        'secrets',
-        'env',
-        '-np',
-        dataDir,
-        '-e',
-        'Vault0:**/*',
-      ];
-
-      messages = [
-        'export TEST_VAR_3=test-3\n',
-        'export TEST VAR 1=test-1\n',
-        'export TEST_VAR_2=test-2\n',
-        'export TEST_VAR_4=test-4\n',
-      ];
-
-      result = await utils.pkStdio(command);
-      expect(result.exitCode).toBe(0);
-      for (const message of messages) {
-        expect(result.stdout).toContain(message);
-      }
-      nexpect.spawn('echo', ['$TEST_VAR_3']).expect('test-3');
-      nexpect.spawn('echo', ['$TEST VAR 1']).expect('test-1');
-      nexpect.spawn('echo', ['$TEST_VAR_2']).expect('test-2');
-      nexpect.spawn('echo', ['$TEST_VAR_4']).expect('test-4');
-    });
-    test('can export secrets to a bash subshell', async (done) => {
-      const vaultName = 'Vault000' as VaultName;
-      const vault = await polykeyAgent.vaultManager.createVault(vaultName);
-
-      await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
-      await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
-
-      nexpect.spawn('npm', ['run', 'polykey', '--', 'secrets', 'env', '-np', dataDir, '-e', 'Vault000:**/*', 'bash'])
-        .sendline('echo $TEST_VAR_2')
-        .run(function (_, stdout) {
-          expect(stdout).toContain('test-2');
-          done();
-        })
-        // .sendline('exit')
-    });
-  });
-
   describe('commandCreateSecret', () => {
     test('should create secrets', async () => {
       const vaultName = 'Vault1' as VaultName;
@@ -349,6 +249,106 @@ describe('CLI secrets', () => {
         'secrets/secret-2',
         'secrets/secret-3',
       ]);
+    });
+  });
+
+  describe('commandSecretEnv', () => {
+    test('should wrap globbed secrets', async () => {
+      const vaultName = 'Vault0' as VaultName;
+      const vault = await polykeyAgent.vaultManager.createVault(vaultName);
+
+      await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST VAR 1', 'test-1');
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
+      await vaultOps.addSecret(vault, 'TEST_VAR_3', 'test-3');
+      await vaultOps.addSecret(vault, 'dir1/dir2/dir3/TEST_VAR_4', 'test-4');
+
+      let messages = [
+        'TEST VAR 1=test-1\n',
+        'TEST_VAR_2=test-2\n'
+      ];
+
+      command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        'Vault0:dir1/dir2/*',
+      ];
+      let result = await utils.pkStdio(command);
+      expect(result.exitCode).toBe(0);
+      for (const message of messages) {
+        expect(result.stdout).toContain(message);
+      }
+
+      nexpect.spawn('echo', ['$TEST VAR 1']).expect('');
+
+      command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '--',
+        '-e',
+        'Vault0:dir1/dir2/*',
+        'Vault0:TEST_VAR_3',
+      ];
+
+      messages = [
+        'TEST_VAR_3=test-3\n',
+        'export TEST VAR 1=test-1\n',
+        'export TEST_VAR_2=test-2\n',
+      ];
+
+      result = await utils.pkStdio(command);
+      expect(result.exitCode).toBe(0);
+      for (const message of messages) {
+        expect(result.stdout).toContain(message);
+      }
+      nexpect.spawn('echo', ['$TEST_VAR_3']).expect('');
+      nexpect.spawn('echo', ['$TEST VAR 1']).expect('test-1');
+      nexpect.spawn('echo', ['$TEST_VAR_2']).expect('test-2');
+
+      command = [
+        'secrets',
+        'env',
+        '-np',
+        dataDir,
+        '-e',
+        'Vault0:**/*',
+      ];
+
+      messages = [
+        'export TEST_VAR_3=test-3\n',
+        'export TEST VAR 1=test-1\n',
+        'export TEST_VAR_2=test-2\n',
+        'export TEST_VAR_4=test-4\n',
+      ];
+
+      result = await utils.pkStdio(command);
+      expect(result.exitCode).toBe(0);
+      for (const message of messages) {
+        expect(result.stdout).toContain(message);
+      }
+      nexpect.spawn('echo', ['$TEST_VAR_3']).expect('test-3');
+      nexpect.spawn('echo', ['$TEST VAR 1']).expect('test-1');
+      nexpect.spawn('echo', ['$TEST_VAR_2']).expect('test-2');
+      nexpect.spawn('echo', ['$TEST_VAR_4']).expect('test-4');
+    });
+    test('can export secrets to a bash subshell', async (done) => {
+      const vaultName = 'Vault000' as VaultName;
+      const vault = await polykeyAgent.vaultManager.createVault(vaultName);
+
+      await vaultOps.mkdir(vault, 'dir1/dir2/dir3', { recursive: true });
+      await vaultOps.addSecret(vault, 'dir1/dir2/TEST_VAR_2', 'test-2');
+
+      nexpect.spawn('npm', ['run', 'polykey', '--', 'secrets', 'env', '-np', dataDir, '-e', 'Vault000:**/*', 'bash'])
+        .sendline('echo $TEST_VAR_2')
+        .sendline('exit')
+        .run(function (_, stdout) {
+          expect(stdout).toContain('test-2');
+          done();
+        })
     });
   });
 });

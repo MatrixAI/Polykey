@@ -598,13 +598,13 @@ class NodeManager {
   /**
    * Retrieves all the vaults for a peers node
    */
-  @ready(new nodesErrors.ErrorNodeManagerNotRunning())
-  public async scanNodeVaults(nodeId: string): Promise<Array<string>> {
-    // Create a connection to another node
-    const connection = await this.getConnectionToNode(nodeId as NodeId);
-    // Scan the vaults of the node over the connection
-    return await connection.scanVaults();
-  }
+  // @ready(new nodesErrors.ErrorNodeManagerNotRunning())
+  // public async scanNodeVaults(nodeId: string): Promise<Array<string>> {
+  //   // Create a connection to another node
+  //   const connection = await this.getConnectionToNode(nodeId as NodeId);
+  //   // Scan the vaults of the node over the connection
+  //   return await connection.scanVaults();
+  // }
 
   public async clearDB() {
     await this.nodeGraph.clearDB();

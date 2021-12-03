@@ -6,6 +6,7 @@ import * as binOptions from '../options';
 import * as parsers from '../parsers';
 import * as binUtils from '../utils';
 import * as CLIErrors from '../errors';
+import { InvalidArgumentError } from 'commander';
 
 class CommandEnv extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -48,7 +49,7 @@ class CommandEnv extends CommandPolykey {
         } catch (e) {
           // If the last argument does not match the secret path format,
           // take it as a shell command
-          if (e instanceof CLIErrors.ErrorInvalidArguments) {
+          if (e instanceof InvalidArgumentError) {
             shellCommand = secretFiles.pop();
           } else {
             throw e;
