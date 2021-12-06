@@ -24,6 +24,8 @@ import PolykeyAgent from '../PolykeyAgent';
 import ErrorPolykey from '../ErrorPolykey';
 import { promisify, promise } from '../utils';
 
+process.title = 'polykey-agent';
+
 const logger = new Logger('polykey', undefined, [new StreamHandler()]);
 
 /**
@@ -38,6 +40,7 @@ async function main(_argv = process.argv): Promise<number> {
     resolveMessageInP(data);
   });
   const messageIn = await messageInP;
+  logger.setLevel(messageIn.logLevel);
   let pkAgent: PolykeyAgent;
   exitHandlers.handlers.push(async () => {
     if (pkAgent != null) await pkAgent.stop();

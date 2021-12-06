@@ -1,3 +1,4 @@
+import type { LogLevel } from '@matrixai/logger';
 import type { POJO } from '../types';
 import type { RecoveryCode } from '../keys/types';
 import type { Host, Port } from '../network/types';
@@ -9,6 +10,7 @@ import type { Host, Port } from '../network/types';
  * However traditional classes cannot be
  */
 type AgentChildProcessInput = {
+  logLevel: LogLevel;
   agentConfig: {
     password: string;
     nodePath?: string;

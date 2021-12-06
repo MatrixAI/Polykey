@@ -5,22 +5,22 @@ class ErrorStatus extends ErrorPolykey {}
 class ErrorStatusNotRunning extends ErrorStatus {}
 
 class ErrorStatusLocked extends ErrorStatus {
-  decription = 'Status is locked by another process';
+  description = 'Status is locked by another process';
   exitCode = sysexits.TEMPFAIL;
 }
 
 class ErrorStatusRead extends ErrorStatus {
-  decription = 'Failed to read status info';
+  description = 'Failed to read status info';
   exitCode = sysexits.IOERR;
 }
 
 class ErrorStatusWrite extends ErrorStatus {
-  decription = 'Failed to write status info';
+  description = 'Failed to write status info';
   exitCode = sysexits.IOERR;
 }
 
 class ErrorStatusParse extends ErrorStatus {
-  decription = 'Failed to parse status info';
+  description = 'Failed to parse status info';
   exitCode = sysexits.CONFIG;
 }
 

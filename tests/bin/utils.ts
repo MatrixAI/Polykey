@@ -9,7 +9,9 @@ import * as mockProcess from 'jest-mock-process';
 import mockedEnv from 'mocked-env';
 import nexpect from 'nexpect';
 import Logger from '@matrixai/logger';
-import main from '../../src/bin/polykey';
+import main from '@/bin/polykey';
+import * as binUtils from '@/bin/utils';
+import * as statusErrors from '@/status/errors';
 
 /**
  * Runs pk command functionally
@@ -277,4 +279,86 @@ async function pkExpect({
   });
 }
 
-export { pk, pkStdio, pkExec, pkSpawn, pkExpect };
+/**
+ * Creates a PK agent running in the global path
+ * Use this in beforeAll, and use the result in afterAll
+ * Uses a references directory as a reference count
+ */
+async function pkAgent(
+  args: Array<string> = [],
+  env: Record<string, string | undefined> = {},
+) {
+  // The references directory will act like our reference count
+  try {
+    return await fs.promises.mkdir(path.join(global.binAgentDir, 'references'));
+  } catch (e) {
+    if (e.code !== 'EEXIST') {
+      throw e;
+    }
+  }
+  const reference = Math.floor(Math.random() * 1000).toString();
+  // Plus 1 to the reference count
+  await fs.promises.writeFile(
+    path.join(global.binAgentDir, 'references', reference),
+    reference,
+  );
+  const { exitCode, stderr } = await pkStdio(
+    [
+      'agent',
+      'start',
+      // 1024 is the smallest size and is faster to start
+      '--root-key-pair-bits',
+      '1024',
+      ...args,
+    ],
+    {
+      PK_NODE_PATH: global.binAgentDir,
+      PK_PASSWORD: global.binAgentPassword,
+      ...env,
+    },
+    global.binAgentDir,
+  );
+  // If the status is locked, we can ignore the start call
+  if (exitCode !== 0) {
+    // Last line of STDERR
+    const stdErrLine = stderr.trim().split('\n').pop();
+    const e = new statusErrors.ErrorStatusLocked();
+    // Expected output for ErrorStatusLocked
+    const eOutput = binUtils
+      .outputFormatter({
+        type: 'error',
+        name: e.name,
+        description: e.description,
+        message: e.message,
+      })
+      .trim();
+    if (exitCode !== e.exitCode || stdErrLine !== eOutput) {
+      // This should not happen
+      throw new Error('Failed to start Polykey Agent');
+    }
+  }
+  return async () => {
+    await fs.promises.rm(
+      path.join(global.binAgentDir, 'references', reference),
+    );
+    // If the pids directory is not empty, there are other processes still running
+    try {
+      await fs.promises.rmdir(path.join(global.binAgentDir, 'references'));
+    } catch (e) {
+      if (e.code === 'ENOTEMPTY') {
+        return;
+      }
+      throw e;
+    }
+    await pkStdio(
+      ['agent', 'stop', '--verbose'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+        PK_PASSWORD: global.binAgentPassword,
+      },
+      global.binAgentDir,
+    );
+  };
+}
+
+export { pk, pkStdio, pkExec, pkSpawn, pkExpect, pkAgent };

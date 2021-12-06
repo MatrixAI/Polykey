@@ -17,7 +17,9 @@ import config from '../../config';
 const nodePath = new commander.Option(
   '-np, --node-path <path>',
   'Path to Node State',
-).default(config.defaults.nodePath);
+)
+  .env('PK_NODE_PATH')
+  .default(config.defaults.nodePath);
 
 /**
  * Formatting choice of human, json, defaults to human
@@ -98,6 +100,11 @@ const backgroundErrFile = new commander.Option(
   'Path to STDERR for agent process',
 );
 
+const rootKeyPairBits = new commander.Option(
+  '-rkpb --root-key-pair-bits <bitsize>',
+  'Bit size of root key pair',
+).argParser(binParsers.parseNumber);
+
 export {
   nodePath,
   format,
@@ -112,4 +119,5 @@ export {
   background,
   backgroundOutFile,
   backgroundErrFile,
+  rootKeyPairBits,
 };

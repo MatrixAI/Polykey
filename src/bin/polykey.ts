@@ -27,6 +27,8 @@ import * as binUtils from './utils';
 import ErrorPolykey from '../ErrorPolykey';
 import config from '../config';
 
+process.title = 'polykey';
+
 async function main(argv = process.argv): Promise<number> {
   // Registers signal and process error handler
   // Any resource cleanup must be resolved within their try-catch block

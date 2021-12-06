@@ -18,6 +18,7 @@ class CommandStart extends CommandPolykey {
     this.name('start');
     this.description('Start the Polykey Agent');
     this.addOption(binOptions.recoveryCodeFile);
+    this.addOption(binOptions.rootKeyPairBits);
     this.addOption(binOptions.clientHost);
     this.addOption(binOptions.clientPort);
     this.addOption(binOptions.ingressHost);
@@ -45,6 +46,7 @@ class CommandStart extends CommandPolykey {
         password,
         nodePath: options.nodePath,
         keysConfig: {
+          rootKeyPairBits: options.rootKeyPairBits,
           recoveryCode: recoveryCodeIn,
         },
         networkConfig: {
@@ -73,7 +75,7 @@ class CommandStart extends CommandPolykey {
           stdio[2] = agentErrFile.fd;
         }
         const agentProcess = child_process.fork(
-          path.join(__dirname, '../polykeyAgent.ts'),
+          path.join(__dirname, '../polykey-agent'),
           [],
           {
             cwd: process.cwd(),
@@ -112,7 +114,7 @@ class CommandStart extends CommandPolykey {
             new binErrors.ErrorCLIPolykeyAgentProcess(e.message),
           );
         });
-        // If the process exits during initial execution of polykeyAgent script
+        // If the process exits during initial execution of polykey-agent script
         // Then it is an exception, because the agent process is meant to be a long-running daemon
         agentProcess.once('close', (code, signal) => {
           rejectAgentProcessP(
@@ -126,6 +128,7 @@ class CommandStart extends CommandPolykey {
           );
         });
         const messageIn: AgentChildProcessInput = {
+          logLevel: this.logger.getEffectiveLevel(),
           agentConfig,
         };
         agentProcess.send(messageIn, (e) => {
@@ -138,6 +141,8 @@ class CommandStart extends CommandPolykey {
         });
         await agentProcessP;
       } else {
+        // Change process name to polykey-agent
+        process.title = 'polykey-agent';
         // eslint-disable-next-line prefer-const
         let pkAgent: PolykeyAgent | undefined;
         this.exitHandlers.handlers.push(async () => {
