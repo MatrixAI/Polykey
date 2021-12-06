@@ -23,6 +23,8 @@ async function pk(args: Array<string>): Promise<any> {
 /**
  * Runs pk command functionally with mocked STDIO
  * Both stdout and stderr are the entire output including newlines
+ * This can only be used serially, because the mocks it relies on are global singletons
+ * If it is used concurrently, the mocking side-effects can conflict
  * @param env Augments env for command execution
  * @param cwd Defaults to temporary directory
  */
