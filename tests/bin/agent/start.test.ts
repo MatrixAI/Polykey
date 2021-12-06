@@ -10,7 +10,7 @@ import config from '@/config';
 import * as testUtils from '../utils';
 
 describe('start', () => {
-  const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger('start test', LogLevel.INFO, [new StreamHandler()]);
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -24,60 +24,21 @@ describe('start', () => {
     });
   });
   test(
-    'start in foreground with parameters',
+    'start in foreground',
     async () => {
       const password = 'abc123';
-      const passwordPath = path.join(dataDir, 'password');
-      await fs.promises.writeFile(passwordPath, password);
       const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
           '--node-path',
           path.join(dataDir, 'polykey'),
-          '--password-file',
-          passwordPath,
           '--root-key-pair-bits',
           '1024',
+          '--client-host',
           '--verbose',
         ],
-        undefined,
-        dataDir,
-        logger,
-      );
-      const rlOut = readline.createInterface(agentProcess.stdout!);
-      const recoveryCode = await new Promise<RecoveryCode>(
-        (resolve, reject) => {
-          rlOut.once('line', resolve);
-          rlOut.once('close', reject);
-        },
-      );
-      expect(typeof recoveryCode).toBe('string');
-      expect(
-        recoveryCode.split(' ').length === 12 ||
-          recoveryCode.split(' ').length === 24,
-      ).toBe(true);
-      agentProcess.kill('SIGTERM');
-      const [exitCode, signal] = await new Promise<
-        [number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess.once('exit', (code, signal) => {
-          resolve([code, signal]);
-        });
-      });
-      expect(exitCode).toBe(null);
-      expect(signal).toBe('SIGTERM');
-    },
-    global.defaultTimeout * 2,
-  );
-  test(
-    'start in foreground with environment variables',
-    async () => {
-      const password = 'abc123';
-      const agentProcess = await testUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
         {
-          PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
         dataDir,
@@ -109,13 +70,17 @@ describe('start', () => {
     global.defaultTimeout * 2,
   );
   test(
-    'start in background with environment variables',
+    'start in background',
     async () => {
       const password = 'abc123';
+      const passwordPath = path.join(dataDir, 'password');
+      await fs.promises.writeFile(passwordPath, password);
       const agentProcess = await testUtils.pkSpawn(
         [
           'agent',
           'start',
+          '--password-file',
+          passwordPath,
           '--root-key-pair-bits',
           '1024',
           '--background',
@@ -127,7 +92,6 @@ describe('start', () => {
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
-          PK_PASSWORD: password,
         },
         dataDir,
         logger,
@@ -326,7 +290,6 @@ describe('start', () => {
           message: errorStatusLocked.message,
         })
         .trim();
-
       // It's either the first or second process
       if (index === 0) {
         expect(stdErrLine1).toBeDefined();
@@ -355,6 +318,58 @@ describe('start', () => {
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGTERM');
       }
+    },
+    global.defaultTimeout * 2,
+  );
+  test(
+    'start with existing state',
+    async () => {
+      const password = 'abc123';
+      const agentProcess1 = await testUtils.pkSpawn(
+        ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger,
+      );
+      const rlOut = readline.createInterface(agentProcess1.stdout!);
+      await new Promise<RecoveryCode>((resolve, reject) => {
+        rlOut.once('line', resolve);
+        rlOut.once('close', reject);
+      });
+      agentProcess1.kill('SIGTERM');
+      await new Promise<[number | null, NodeJS.Signals | null]>((resolve) => {
+        agentProcess1.once('exit', (code, signal) => {
+          resolve([code, signal]);
+        });
+      });
+      const agentProcess2 = await testUtils.pkSpawn(
+        ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger,
+      );
+      const status = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        fs,
+        logger,
+      });
+      await status.waitFor('LIVE');
+      agentProcess2.kill('SIGTERM');
+      const [exitCode, signal] = await new Promise<
+        [number | null, NodeJS.Signals | null]
+      >((resolve) => {
+        agentProcess2.once('exit', (code, signal) => {
+          resolve([code, signal]);
+        });
+      });
+      expect(exitCode).toBe(null);
+      expect(signal).toBe('SIGTERM');
     },
     global.defaultTimeout * 2,
   );
