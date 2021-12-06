@@ -10,6 +10,7 @@ class CommandBootstrap extends CommandPolykey {
     this.description('Bootstrap Keynode State');
     this.addOption(binOptions.recoveryCodeFile);
     this.addOption(binOptions.rootKeyPairBits);
+    this.addOption(binOptions.fresh);
     this.action(async (options) => {
       const bootstrapUtils = await import('../../bootstrap/utils');
       const password = await binProcessors.processPassword(

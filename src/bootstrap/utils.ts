@@ -3,6 +3,7 @@ import type { RecoveryCode } from '../keys/types';
 import path from 'path';
 import Logger from '@matrixai/logger';
 import { DB } from '@matrixai/db';
+import * as bootstrapErrors from './errors';
 import { IdentitiesManager } from '../identities';
 import { SessionManager } from '../sessions';
 import { Status } from '../status';
@@ -68,6 +69,12 @@ async function bootstrapState({
   });
   try {
     await status.start({ pid: process.pid });
+    if (!fresh) {
+      // Check the if number of directory entries is greater than 1 due to status.json
+      if ((await fs.promises.readdir(nodePath)).length > 1) {
+        throw new bootstrapErrors.ErrorBootstrapExistingState();
+      }
+    }
     // Construction occurs here, fresh is propagated
     // If any creations fail, then nodePath may be left with intermediate state
     // Therefore the fresh parameter is expected to be true under normal usage

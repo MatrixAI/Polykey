@@ -22,6 +22,7 @@ async function pk(args: Array<string>): Promise<any> {
 
 /**
  * Runs pk command functionally with mocked STDIO
+ * Both stdout and stderr are the entire output including newlines
  * @param env Augments env for command execution
  * @param cwd Defaults to temporary directory
  */
@@ -105,6 +106,7 @@ async function pkStdio(
  * Runs pk command through subprocess
  * This is used when a subprocess functionality needs to be used
  * This is intended for terminating subprocesses
+ * Both stdout and stderr are the entire output including newlines
  * @param env Augments env for command execution
  * @param cwd Defaults to temporary directory
  */
@@ -206,6 +208,7 @@ async function pkSpawn(
   );
   const rlErr = readline.createInterface(subprocess.stderr!);
   rlErr.on('line', (l) => {
+    // The readline library will trim newlines
     logger.info(l);
   });
   return subprocess;

@@ -7,10 +7,10 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Status, errors as statusErrors } from '@/status';
 import * as binUtils from '@/bin/utils';
 import config from '@/config';
-import * as testUtils from '../utils';
+import * as testBinUtils from '../utils';
 
 describe('start', () => {
-  const logger = new Logger('start test', LogLevel.INFO, [new StreamHandler()]);
+  const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -27,7 +27,7 @@ describe('start', () => {
     'start in foreground',
     async () => {
       const password = 'abc123';
-      const agentProcess = await testUtils.pkSpawn(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -35,7 +35,6 @@ describe('start', () => {
           path.join(dataDir, 'polykey'),
           '--root-key-pair-bits',
           '1024',
-          '--client-host',
           '--verbose',
         ],
         {
@@ -66,6 +65,14 @@ describe('start', () => {
       });
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
+      // Check for graceful exit
+      const status = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        fs,
+        logger,
+      });
+      const statusInfo = (await status.readStatus())!;
+      expect(statusInfo.status).toBe('DEAD');
     },
     global.defaultTimeout * 2,
   );
@@ -75,7 +82,7 @@ describe('start', () => {
       const password = 'abc123';
       const passwordPath = path.join(dataDir, 'password');
       await fs.promises.writeFile(passwordPath, password);
-      const agentProcess = await testUtils.pkSpawn(
+      const agentProcess = await testBinUtils.pkSpawn(
         [
           'agent',
           'start',
@@ -137,7 +144,8 @@ describe('start', () => {
       const statusInfo1 = (await status.readStatus())!;
       expect(statusInfo1).toBeDefined();
       expect(statusInfo1.status).toBe('LIVE');
-      process.kill(statusInfo1.data.pid, 'SIGTERM');
+      process.kill(statusInfo1.data.pid, 'SIGINT');
+      // Check for graceful exit
       const statusInfo2 = await status.waitFor('DEAD');
       expect(statusInfo2.status).toBe('DEAD');
     },
@@ -149,7 +157,7 @@ describe('start', () => {
       const password = 'abc123';
       // One of these processes is blocked
       const [agentProcess1, agentProcess2] = await Promise.all([
-        testUtils.pkSpawn(
+        testBinUtils.pkSpawn(
           ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -158,7 +166,7 @@ describe('start', () => {
           dataDir,
           logger.getChild('agentProcess1'),
         ),
-        testUtils.pkSpawn(
+        testBinUtils.pkSpawn(
           ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -205,7 +213,7 @@ describe('start', () => {
       if (index === 0) {
         expect(stdErrLine1).toBeDefined();
         expect(stdErrLine1).toBe(eOutput);
-        agentProcess2.kill('SIGTERM');
+        agentProcess2.kill('SIGQUIT');
         const [exitCode, signal] = await new Promise<
           [number | null, NodeJS.Signals | null]
         >((resolve) => {
@@ -214,11 +222,11 @@ describe('start', () => {
           });
         });
         expect(exitCode).toBe(null);
-        expect(signal).toBe('SIGTERM');
+        expect(signal).toBe('SIGQUIT');
       } else if (index === 1) {
         expect(stdErrLine2).toBeDefined();
         expect(stdErrLine2).toBe(eOutput);
-        agentProcess1.kill('SIGTERM');
+        agentProcess1.kill('SIGQUIT');
         const [exitCode, signal] = await new Promise<
           [number | null, NodeJS.Signals | null]
         >((resolve) => {
@@ -227,7 +235,7 @@ describe('start', () => {
           });
         });
         expect(exitCode).toBe(null);
-        expect(signal).toBe('SIGTERM');
+        expect(signal).toBe('SIGQUIT');
       }
     },
     global.defaultTimeout * 2,
@@ -238,7 +246,7 @@ describe('start', () => {
       const password = 'abc123';
       // One of these processes is blocked
       const [agentProcess, bootstrapProcess] = await Promise.all([
-        testUtils.pkSpawn(
+        testBinUtils.pkSpawn(
           ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -247,7 +255,7 @@ describe('start', () => {
           dataDir,
           logger.getChild('agentProcess'),
         ),
-        testUtils.pkSpawn(
+        testBinUtils.pkSpawn(
           ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -325,7 +333,7 @@ describe('start', () => {
     'start with existing state',
     async () => {
       const password = 'abc123';
-      const agentProcess1 = await testUtils.pkSpawn(
+      const agentProcess1 = await testBinUtils.pkSpawn(
         ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -339,13 +347,15 @@ describe('start', () => {
         rlOut.once('line', resolve);
         rlOut.once('close', reject);
       });
-      agentProcess1.kill('SIGTERM');
-      await new Promise<[number | null, NodeJS.Signals | null]>((resolve) => {
+      agentProcess1.kill('SIGHUP');
+      const [exitCode1, signal1] = await new Promise<[number | null, NodeJS.Signals | null]>((resolve) => {
         agentProcess1.once('exit', (code, signal) => {
           resolve([code, signal]);
         });
       });
-      const agentProcess2 = await testUtils.pkSpawn(
+      expect(exitCode1).toBe(null);
+      expect(signal1).toBe('SIGHUP');
+      const agentProcess2 = await testBinUtils.pkSpawn(
         ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
@@ -354,22 +364,109 @@ describe('start', () => {
         dataDir,
         logger,
       );
-      const status = new Status({
+      const status1 = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
         fs,
         logger,
       });
-      await status.waitFor('LIVE');
-      agentProcess2.kill('SIGTERM');
-      const [exitCode, signal] = await new Promise<
+      await status1.waitFor('LIVE');
+      agentProcess2.kill('SIGHUP');
+      const [exitCode2, signal2] = await new Promise<
         [number | null, NodeJS.Signals | null]
       >((resolve) => {
         agentProcess2.once('exit', (code, signal) => {
           resolve([code, signal]);
         });
       });
+      expect(exitCode2).toBe(null);
+      expect(signal2).toBe('SIGHUP');
+      // Check for graceful exit
+      const status2 = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        fs,
+        logger,
+      });
+      const statusInfo2 = (await status2.readStatus())!;
+      expect(statusInfo2.status).toBe('DEAD');
+    },
+    global.defaultTimeout * 2,
+  );
+  test(
+    'start when interrupted, requires fresh on next start',
+    async () => {
+      const password = 'password';
+      const agentProcess1 = await testBinUtils.pkSpawn(
+        ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger.getChild('agentProcess1'),
+      );
+      const rlErr = readline.createInterface(agentProcess1.stderr!);
+      // Interrupt when generating the root key pair
+      await new Promise<void>((resolve, reject) => {
+        rlErr.once('close', reject);
+        rlErr.on('line', (l) => {
+          // This line is brittle
+          // It may change if the log format changes
+          // Make sure to keep it updated at the exact point when the DB is created
+          if (l === 'INFO:DB:Created DB') {
+            agentProcess1.kill('SIGINT');
+            resolve();
+          }
+        });
+      });
+      const [exitCode, signal] = await new Promise<
+        [number | null, NodeJS.Signals | null]
+      >((resolve) => {
+        agentProcess1.once('exit', (code, signal) => {
+          resolve([code, signal]);
+        });
+      });
       expect(exitCode).toBe(null);
-      expect(signal).toBe('SIGTERM');
+      expect(signal).toBe('SIGINT');
+      // Unlike bootstrapping, agent start can succeed under certain compatible partial state
+      // However in some cases, state will conflict, and the start will fail with various errors
+      // In such cases, the `--fresh` option must be used
+      const agentProcess2 = await testBinUtils.pkSpawn(
+        ['agent', 'start', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger.getChild('agentProcess2'),
+      );
+      const rlOut = readline.createInterface(agentProcess2.stdout!);
+      const recoveryCode = await new Promise<RecoveryCode>(
+        (resolve, reject) => {
+          rlOut.once('line', resolve);
+          rlOut.once('close', reject);
+        },
+      );
+      expect(typeof recoveryCode).toBe('string');
+      expect(
+        recoveryCode.split(' ').length === 12 ||
+          recoveryCode.split(' ').length === 24,
+      ).toBe(true);
+      agentProcess2.kill('SIGQUIT');
+      await new Promise<
+        [number | null, NodeJS.Signals | null]
+      >((resolve) => {
+        agentProcess2.once('exit', (code, signal) => {
+          resolve([code, signal]);
+        });
+      });
+      // Check for graceful exit
+      const status = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        fs,
+        logger,
+      });
+      const statusInfo = (await status.readStatus())!;
+      expect(statusInfo.status).toBe('DEAD');
     },
     global.defaultTimeout * 2,
   );

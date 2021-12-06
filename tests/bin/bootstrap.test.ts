@@ -1,20 +1,22 @@
+import type { RecoveryCode } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import * as utils from './utils';
+import readline from 'readline';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { Status, errors as statusErrors } from '@/status';
+import { errors as bootstrapErrors } from '@/bootstrap';
+import * as binUtils from '@/bin/utils';
+import config from '@/config';
+import * as testBinUtils from './utils';
 
-describe('CLI bootstrap', () => {
+describe('bootstrap', () => {
+  const logger = new Logger('bootstrap test', LogLevel.INFO, [new StreamHandler()]);
   let dataDir: string;
-  let passwordFile: string;
-  let nodePath: string;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    passwordFile = path.join(dataDir, 'passwordFile');
-    nodePath = path.join(dataDir, 'testnode');
-    await fs.promises.writeFile(passwordFile, 'password');
   });
   afterEach(async () => {
     await fs.promises.rm(dataDir, {
@@ -22,83 +24,79 @@ describe('CLI bootstrap', () => {
       recursive: true,
     });
   });
-
   test(
-    "Should create keynode state if directory doesn't exist.",
+    'bootstrap when interrupted, requires fresh on next bootstrap',
     async () => {
-      const result = await utils.pkStdio([
-        'bootstrap',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-      ]);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout.split(' ')).toHaveLength(24);
+      const password = 'password';
+      const bootstrapProcess1 = await testBinUtils.pkSpawn(
+        ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger.getChild('bootstrapProcess1'),
+      );
+      const rlErr = readline.createInterface(bootstrapProcess1.stderr!);
+      // Interrupt when generating the root key pair
+      await new Promise<void>((resolve, reject) => {
+        rlErr.once('close', reject);
+        rlErr.on('line', (l) => {
+          // This line is brittle
+          // It may change if the log format changes
+          // Make sure to keep it updated at the exact point when the root key pair is generated
+          if (l === 'INFO:KeyManager:Generating root key pair') {
+            bootstrapProcess1.kill('SIGINT');
+            resolve();
+          }
+        });
+      });
+      const [exitCode, signal] = await new Promise<
+        [number | null, NodeJS.Signals | null]
+      >((resolve) => {
+        bootstrapProcess1.once('exit', (code, signal) => {
+          resolve([code, signal]);
+        });
+      });
+      expect(exitCode).toBe(null);
+      expect(signal).toBe('SIGINT');
+      // Attempting to bootstrap should fail with existing state
+      const bootstrapProcess2 = await testBinUtils.pkStdio(
+        ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir
+      );
+      const stdErrLine = bootstrapProcess2.stderr.trim().split('\n').pop();
+      const errorBootstrapExistingState = new bootstrapErrors.ErrorBootstrapExistingState();
+      expect(bootstrapProcess2.exitCode).toBe(errorBootstrapExistingState.exitCode);
+      const eOutput = binUtils
+        .outputFormatter({
+          type: 'error',
+          name: errorBootstrapExistingState.name,
+          description: errorBootstrapExistingState.description,
+          message: errorBootstrapExistingState.message,
+        })
+        .trim();
+      expect(stdErrLine).toBe(eOutput);
+      // Attempting to bootstrap with --fresh should succeed
+      const bootstrapProcess3 = await testBinUtils.pkStdio(
+        ['bootstrap', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir
+      );
+      expect(bootstrapProcess3.exitCode).toBe(0);
+      const recoveryCode = bootstrapProcess3.stdout.trim();
+      expect(
+        recoveryCode.split(' ').length === 12 ||
+          recoveryCode.split(' ').length === 24,
+      ).toBe(true);
     },
-    global.polykeyStartupTimeout * 2,
-  );
-  test(
-    'Should create keynode state if directory is empty.',
-    async () => {
-      await fs.promises.mkdir(nodePath);
-      const result = await utils.pkStdio([
-        'bootstrap',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-        '-vvvv',
-      ]);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout.split(' ')).toHaveLength(24);
-    },
-    global.polykeyStartupTimeout * 2,
-  );
-  test(
-    'Should generate a recovery code when creating state.',
-    async () => {
-      await fs.promises.mkdir(nodePath);
-      const result = await utils.pkStdio([
-        'bootstrap',
-        '-np',
-        nodePath,
-        '--password-file',
-        passwordFile,
-      ]);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout.split(' ')).toHaveLength(24);
-    },
-    global.polykeyStartupTimeout * 3,
-  );
-  test(
-    'concurrent bootstrapping',
-    async () => {
-      await fs.promises.mkdir(nodePath);
-
-      // Bootstrapping two nodes at the same time.
-      const results = await Promise.all([
-        utils.pkStdio([
-          'bootstrap',
-          '-np',
-          nodePath,
-          '--password-file',
-          passwordFile,
-        ]),
-        utils.pkStdio([
-          'bootstrap',
-          '-np',
-          nodePath,
-          '--password-file',
-          passwordFile,
-        ]),
-      ]);
-
-      // 1 fails and 1 succeeds.
-
-      expect(JSON.stringify(results)).toContain(':0');
-      expect(JSON.stringify(results)).toContain(':75');
-    },
-    global.defaultTimeout * 4,
+    global.defaultTimeout * 2,
   );
 });

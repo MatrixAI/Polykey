@@ -38,6 +38,14 @@ const verbose = new commander.Option('-v, --verbose', 'Log Verbose Messages')
   .default(0);
 
 /**
+ * Ignore any existing state during side-effectful construction
+ */
+const fresh = new commander.Option(
+  '--fresh',
+  'Ignore existing state during construction'
+).default(false);
+
+/**
  * Node ID used for connecting to a remote agent
  */
 const nodeId = new commander.Option('-ni', '--node-id <id>').env('PK_NODE_ID');
@@ -109,6 +117,7 @@ export {
   nodePath,
   format,
   verbose,
+  fresh,
   nodeId,
   clientHost,
   clientPort,

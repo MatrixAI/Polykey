@@ -26,6 +26,7 @@ class CommandStart extends CommandPolykey {
     this.addOption(binOptions.background);
     this.addOption(binOptions.backgroundOutFile);
     this.addOption(binOptions.backgroundErrFile);
+    this.addOption(binOptions.fresh);
     this.action(async (options) => {
       options.clientHost =
         options.clientHost ?? config.defaults.networkConfig.clientHost;
