@@ -11,7 +11,9 @@ import config from '@/config';
 import * as testBinUtils from './utils';
 
 describe('bootstrap', () => {
-  const logger = new Logger('bootstrap test', LogLevel.INFO, [new StreamHandler()]);
+  const logger = new Logger('bootstrap test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
@@ -51,13 +53,9 @@ describe('bootstrap', () => {
           }
         });
       });
-      const [exitCode, signal] = await new Promise<
-        [number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        bootstrapProcess1.once('exit', (code, signal) => {
-          resolve([code, signal]);
-        });
-      });
+      const [exitCode, signal] = await testBinUtils.processExit(
+        bootstrapProcess1,
+      );
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGINT');
       // Attempting to bootstrap should fail with existing state
@@ -67,11 +65,14 @@ describe('bootstrap', () => {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
-        dataDir
+        dataDir,
       );
       const stdErrLine = bootstrapProcess2.stderr.trim().split('\n').pop();
-      const errorBootstrapExistingState = new bootstrapErrors.ErrorBootstrapExistingState();
-      expect(bootstrapProcess2.exitCode).toBe(errorBootstrapExistingState.exitCode);
+      const errorBootstrapExistingState =
+        new bootstrapErrors.ErrorBootstrapExistingState();
+      expect(bootstrapProcess2.exitCode).toBe(
+        errorBootstrapExistingState.exitCode,
+      );
       const eOutput = binUtils
         .outputFormatter({
           type: 'error',
@@ -88,7 +89,7 @@ describe('bootstrap', () => {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
-        dataDir
+        dataDir,
       );
       expect(bootstrapProcess3.exitCode).toBe(0);
       const recoveryCode = bootstrapProcess3.stdout.trim();

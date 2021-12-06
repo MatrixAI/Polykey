@@ -42,7 +42,7 @@ const verbose = new commander.Option('-v, --verbose', 'Log Verbose Messages')
  */
 const fresh = new commander.Option(
   '--fresh',
-  'Ignore existing state during construction'
+  'Ignore existing state during construction',
 ).default(false);
 
 /**

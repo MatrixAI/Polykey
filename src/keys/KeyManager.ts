@@ -583,15 +583,13 @@ class KeyManager {
     let recoveryCodeNew: RecoveryCode | undefined;
     if (await this.existsRootKeyPair()) {
       if (recoveryCode != null) {
-        // Recover the key pair with the recovery code
-        // Check if the generated key pair matches
-        const rootKeyPairCheck = await this.generateKeyPair(bits, recoveryCode);
-        if (!(await this.matchRootKeyPair(rootKeyPairCheck))) {
+        const recoveredKeyPair = await this.recoverRootKeyPair(recoveryCode);
+        if (recoveredKeyPair == null) {
           throw new keysErrors.ErrorKeysRecoveryCodeIncorrect();
         }
         // Recovered key pair, write the key pair with the new password
-        rootKeyPair = rootKeyPairCheck;
-        await this.writeRootKeyPair(rootKeyPairCheck, password);
+        rootKeyPair = recoveredKeyPair;
+        await this.writeRootKeyPair(recoveredKeyPair, password);
       } else {
         // Load key pair by decrypting with password
         rootKeyPair = await this.readRootKeyPair(password);
@@ -698,16 +696,21 @@ class KeyManager {
     }
   }
 
-  protected async matchRootKeyPair(keyPair: KeyPair): Promise<boolean> {
+  /**
+   * Recovers root key pair with recovery code
+   * Checks if the generated key pair public key matches
+   * Uses the existing key pair's public key bit size
+   * To generate the recovered key pair
+   */
+  protected async recoverRootKeyPair(
+    recoveryCode: RecoveryCode,
+  ): Promise<KeyPair | undefined> {
     let publicKeyPem: string;
     try {
       publicKeyPem = await this.fs.promises.readFile(this.rootPubPath, {
         encoding: 'utf8',
       });
     } catch (e) {
-      if (e.code === 'ENOENT') {
-        return false;
-      }
       throw new keysErrors.ErrorRootKeysRead(e.message, {
         errno: e.errno,
         syscall: e.syscall,
@@ -715,8 +718,21 @@ class KeyManager {
         path: e.path,
       });
     }
-    const publicKeyPemCheck = keysUtils.publicKeyToPem(keyPair.publicKey);
-    return publicKeyPemCheck === publicKeyPem;
+    const rootKeyPairBits = keysUtils.publicKeyBitSize(
+      keysUtils.publicKeyFromPem(publicKeyPem),
+    );
+    const recoveredKeyPair = await this.generateKeyPair(
+      rootKeyPairBits,
+      recoveryCode,
+    );
+    const recoveredPublicKeyPem = keysUtils.publicKeyToPem(
+      recoveredKeyPair.publicKey,
+    );
+    if (recoveredPublicKeyPem === publicKeyPem) {
+      return recoveredKeyPair;
+    } else {
+      return;
+    }
   }
 
   protected async setupKey(

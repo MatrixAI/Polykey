@@ -56,13 +56,7 @@ describe('start', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
       agentProcess.kill('SIGTERM');
-      const [exitCode, signal] = await new Promise<
-        [number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess.once('exit', (code, signal) => {
-          resolve([code, signal]);
-        });
-      });
+      const [exitCode, signal] = await testBinUtils.processExit(agentProcess);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGTERM');
       // Check for graceful exit
@@ -214,26 +208,18 @@ describe('start', () => {
         expect(stdErrLine1).toBeDefined();
         expect(stdErrLine1).toBe(eOutput);
         agentProcess2.kill('SIGQUIT');
-        const [exitCode, signal] = await new Promise<
-          [number | null, NodeJS.Signals | null]
-        >((resolve) => {
-          agentProcess2.once('exit', (code, signal) => {
-            resolve([code, signal]);
-          });
-        });
+        const [exitCode, signal] = await testBinUtils.processExit(
+          agentProcess2,
+        );
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGQUIT');
       } else if (index === 1) {
         expect(stdErrLine2).toBeDefined();
         expect(stdErrLine2).toBe(eOutput);
         agentProcess1.kill('SIGQUIT');
-        const [exitCode, signal] = await new Promise<
-          [number | null, NodeJS.Signals | null]
-        >((resolve) => {
-          agentProcess1.once('exit', (code, signal) => {
-            resolve([code, signal]);
-          });
-        });
+        const [exitCode, signal] = await testBinUtils.processExit(
+          agentProcess1,
+        );
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGQUIT');
       }
@@ -303,26 +289,16 @@ describe('start', () => {
         expect(stdErrLine1).toBeDefined();
         expect(stdErrLine1).toBe(eOutput);
         bootstrapProcess.kill('SIGTERM');
-        const [exitCode, signal] = await new Promise<
-          [number | null, NodeJS.Signals | null]
-        >((resolve) => {
-          bootstrapProcess.once('exit', (code, signal) => {
-            resolve([code, signal]);
-          });
-        });
+        const [exitCode, signal] = await testBinUtils.processExit(
+          bootstrapProcess,
+        );
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGTERM');
       } else if (index === 1) {
         expect(stdErrLine2).toBeDefined();
         expect(stdErrLine2).toBe(eOutput);
         agentProcess.kill('SIGTERM');
-        const [exitCode, signal] = await new Promise<
-          [number | null, NodeJS.Signals | null]
-        >((resolve) => {
-          agentProcess.once('exit', (code, signal) => {
-            resolve([code, signal]);
-          });
-        });
+        const [exitCode, signal] = await testBinUtils.processExit(agentProcess);
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGTERM');
       }
@@ -348,11 +324,9 @@ describe('start', () => {
         rlOut.once('close', reject);
       });
       agentProcess1.kill('SIGHUP');
-      const [exitCode1, signal1] = await new Promise<[number | null, NodeJS.Signals | null]>((resolve) => {
-        agentProcess1.once('exit', (code, signal) => {
-          resolve([code, signal]);
-        });
-      });
+      const [exitCode1, signal1] = await testBinUtils.processExit(
+        agentProcess1,
+      );
       expect(exitCode1).toBe(null);
       expect(signal1).toBe('SIGHUP');
       const agentProcess2 = await testBinUtils.pkSpawn(
@@ -364,30 +338,21 @@ describe('start', () => {
         dataDir,
         logger,
       );
-      const status1 = new Status({
+      const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
         fs,
         logger,
       });
-      await status1.waitFor('LIVE');
+      await status.waitFor('LIVE');
       agentProcess2.kill('SIGHUP');
-      const [exitCode2, signal2] = await new Promise<
-        [number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess2.once('exit', (code, signal) => {
-          resolve([code, signal]);
-        });
-      });
+      const [exitCode2, signal2] = await testBinUtils.processExit(
+        agentProcess2,
+      );
       expect(exitCode2).toBe(null);
       expect(signal2).toBe('SIGHUP');
       // Check for graceful exit
-      const status2 = new Status({
-        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
-        fs,
-        logger,
-      });
-      const statusInfo2 = (await status2.readStatus())!;
-      expect(statusInfo2.status).toBe('DEAD');
+      const statusInfo = (await status.readStatus())!;
+      expect(statusInfo.status).toBe('DEAD');
     },
     global.defaultTimeout * 2,
   );
@@ -418,20 +383,21 @@ describe('start', () => {
           }
         });
       });
-      const [exitCode, signal] = await new Promise<
-        [number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess1.once('exit', (code, signal) => {
-          resolve([code, signal]);
-        });
-      });
+      const [exitCode, signal] = await testBinUtils.processExit(agentProcess1);
       expect(exitCode).toBe(null);
       expect(signal).toBe('SIGINT');
       // Unlike bootstrapping, agent start can succeed under certain compatible partial state
       // However in some cases, state will conflict, and the start will fail with various errors
       // In such cases, the `--fresh` option must be used
       const agentProcess2 = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--fresh', '--verbose'],
+        [
+          'agent',
+          'start',
+          '--root-key-pair-bits',
+          '1024',
+          '--fresh',
+          '--verbose',
+        ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -452,13 +418,7 @@ describe('start', () => {
           recoveryCode.split(' ').length === 24,
       ).toBe(true);
       agentProcess2.kill('SIGQUIT');
-      await new Promise<
-        [number | null, NodeJS.Signals | null]
-      >((resolve) => {
-        agentProcess2.once('exit', (code, signal) => {
-          resolve([code, signal]);
-        });
-      });
+      await testBinUtils.processExit(agentProcess2);
       // Check for graceful exit
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
@@ -469,5 +429,108 @@ describe('start', () => {
       expect(statusInfo.status).toBe('DEAD');
     },
     global.defaultTimeout * 2,
+  );
+  test(
+    'start from recovery code',
+    async () => {
+      const password1 = 'abc123';
+      const password2 = 'new password';
+      const status = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        fs,
+        logger,
+      });
+      const agentProcess1 = await testBinUtils.pkSpawn(
+        [
+          'agent',
+          'start',
+          '--node-path',
+          path.join(dataDir, 'polykey'),
+          '--root-key-pair-bits',
+          '1024',
+          '--verbose',
+        ],
+        {
+          PK_PASSWORD: password1,
+        },
+        dataDir,
+        logger.getChild('agentProcess1'),
+      );
+      const rlOut = readline.createInterface(agentProcess1.stdout!);
+      const recoveryCode = await new Promise<RecoveryCode>(
+        (resolve, reject) => {
+          rlOut.once('line', resolve);
+          rlOut.once('close', reject);
+        },
+      );
+      const statusInfo1 = (await status.readStatus())!;
+      agentProcess1.kill('SIGTERM');
+      await testBinUtils.processExit(agentProcess1);
+      const recoveryCodePath = path.join(dataDir, 'recovery-code');
+      await fs.promises.writeFile(recoveryCodePath, recoveryCode + '\n');
+      // When recovering, having the wrong bit size is not a problem
+      const agentProcess2 = await testBinUtils.pkSpawn(
+        [
+          'agent',
+          'start',
+          '--recovery-code-file',
+          recoveryCodePath,
+          '--root-key-pair-bits',
+          '2048',
+          '--verbose',
+        ],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password2,
+        },
+        dataDir,
+        logger.getChild('agentProcess2'),
+      );
+      const statusInfo2 = await status.waitFor('LIVE');
+      expect(statusInfo2.status).toBe('LIVE');
+      // Node Id hasn't changed
+      expect(statusInfo1.data.nodeId).toBe(statusInfo2.data.nodeId);
+      agentProcess2.kill('SIGTERM');
+      await testBinUtils.processExit(agentProcess2);
+      // Check that the password has changed
+      const agentProcess3 = await testBinUtils.pkSpawn(
+        ['agent', 'start', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password2,
+        },
+        dataDir,
+        logger.getChild('agentProcess3'),
+      );
+      const statusInfo3 = await status.waitFor('LIVE');
+      expect(statusInfo3.status).toBe('LIVE');
+      // Node ID hasn't changed
+      expect(statusInfo1.data.nodeId).toBe(statusInfo3.data.nodeId);
+      agentProcess3.kill('SIGTERM');
+      await testBinUtils.processExit(agentProcess3);
+      // Checks deterministic generation using the same recovery code
+      // First by deleting the polykey state
+      await fs.promises.rm(path.join(dataDir, 'polykey'), {
+        force: true,
+        recursive: true,
+      });
+      const agentProcess4 = await testBinUtils.pkSpawn(
+        ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password2,
+          PK_RECOVERY_CODE: recoveryCode,
+        },
+        dataDir,
+        logger.getChild('agentProcess4'),
+      );
+      const statusInfo4 = await status.waitFor('LIVE');
+      expect(statusInfo4.status).toBe('LIVE');
+      // Same Node ID as before
+      expect(statusInfo1.data.nodeId).toBe(statusInfo4.data.nodeId);
+      agentProcess4.kill('SIGTERM');
+      await testBinUtils.processExit(agentProcess4);
+    },
+    global.defaultTimeout * 3,
   );
 });

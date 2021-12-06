@@ -364,4 +364,22 @@ async function pkAgent(
   };
 }
 
-export { pk, pkStdio, pkExec, pkSpawn, pkExpect, pkAgent };
+/**
+ * Waits for child process to exit
+ * When process is terminated with signal
+ * The code will be null
+ * When the process exits by itself, the signal will be null
+ */
+async function processExit(
+  process: ChildProcess,
+): Promise<[number | null, NodeJS.Signals | null]> {
+  return await new Promise<[number | null, NodeJS.Signals | null]>(
+    (resolve) => {
+      process.once('exit', (code, signal) => {
+        resolve([code, signal]);
+      });
+    },
+  );
+}
+
+export { pk, pkStdio, pkExec, pkSpawn, pkExpect, pkAgent, processExit };
