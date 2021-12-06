@@ -75,50 +75,6 @@
 //         recursive: true,
 //       });
 //     });
-//     test(
-//       'concurrent agent start and bootstrap.',
-//       async () => {
-//         const nodePath = path.join(dataDir, 'third');
-//         const command1 = [
-//           'agent',
-//           'start',
-//           '-np',
-//           nodePath,
-//           '--password-file',
-//           passwordFile,
-//         ];
-//         const command2 = [
-//           'bootstrap',
-//           '-np',
-//           nodePath,
-//           '--password-file',
-//           passwordFile,
-//         ];
-
-//         // We can await this since it should finish after spawning the background agent.
-//         const prom1 = testUtils.pkExec(command1);
-//         const prom2 = testUtils.pkExec(command2);
-
-//         const status = new Status({
-//           statusPath: statusPath(nodePath),
-//           fs,
-//           logger,
-//         });
-//         try {
-//           await status.waitFor('LIVE', 20000);
-//         } catch (e) {
-//           // Noop
-//         }
-//         // Kill externally.
-//         await killAgent(nodePath, passwordFile);
-
-//         const results = await Promise.all([prom1, prom2]); // Waiting for agent to finish running.
-//         expect(results[0].exitCode).toBe(0);
-//         expect(results[1].exitCode).toBe(64);
-//       },
-//       global.defaultTimeout * 5,
-//     );
-
 //     describe('getting agent status', () => {
 //       test('should get the status of an online agent', async () => {
 //         const result = await testUtils.pkStdio([

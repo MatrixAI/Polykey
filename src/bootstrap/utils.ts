@@ -17,21 +17,28 @@ import { VaultManager } from '../vaults';
 import { NotificationsManager } from '../notifications';
 import { mkdirExists } from '../utils';
 import config from '../config';
+import * as utils from '../utils';
+import * as errors from '../errors';
 
 /**
  * Bootstraps the Node Path
  */
 async function bootstrapState({
-  nodePath,
   password,
-  recoveryCode,
+  nodePath = config.defaults.nodePath,
+  keysConfig = {},
   fresh = false,
   fs = require('fs'),
   logger = new Logger(bootstrapState.name),
 }: {
-  nodePath: string;
   password: string;
-  recoveryCode?: RecoveryCode;
+  nodePath?: string;
+  keysConfig?: {
+    rootKeyPairBits?: number;
+    rootCertDuration?: number;
+    dbKeyBits?: number;
+    recoveryCode?: RecoveryCode;
+  };
   fresh?: boolean;
   fs?: FileSystem;
   logger?: Logger;
@@ -40,6 +47,13 @@ async function bootstrapState({
   logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
   process.umask(umask);
   logger.info(`Setting node path to ${nodePath}`);
+  if (nodePath == null) {
+    throw new errors.ErrorUtilsNodePath();
+  }
+  const keysConfig_ = {
+    ...config.defaults.keysConfig,
+    ...utils.filterEmptyObject(keysConfig),
+  };
   await mkdirExists(fs, nodePath);
   // Setup node path and sub paths
   const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -65,11 +79,11 @@ async function bootstrapState({
       fresh,
     });
     const keyManager = await KeyManager.createKeyManager({
+      ...keysConfig_,
       keysPath,
       password,
       fs,
       logger: logger.getChild(KeyManager.name),
-      recoveryCode,
       fresh,
     });
     const db = await DB.createDB({

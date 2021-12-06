@@ -71,43 +71,6 @@ describe('CLI bootstrap', () => {
     },
     global.polykeyStartupTimeout * 3,
   );
-  test('Should fail to create keynode state if keynode exists.', async () => {
-    const result = await utils.pkStdio([
-      'bootstrap',
-      '-np',
-      nodePath,
-      '--password-file',
-      passwordFile,
-    ]);
-    expect(result.exitCode).toBe(0);
-
-    // Should fail here.
-    const result2 = await utils.pkStdio([
-      'bootstrap',
-      '-np',
-      nodePath,
-      '--password-file',
-      passwordFile,
-    ]);
-    expect(result2.exitCode).not.toBe(0);
-    expect(result2.stderr).toContain('ErrorBootstrapExistingState:');
-    expect(result2.stderr).toContain('Node path is occupied');
-  });
-  test('Should fail to create keynode state if other files exists.', async () => {
-    await fs.promises.mkdir(path.join(nodePath, 'NOTAKEYNODEDIR'), {
-      recursive: true,
-    });
-    const result = await utils.pkStdio([
-      'bootstrap',
-      '-np',
-      nodePath,
-      '--password-file',
-      passwordFile,
-    ]);
-    expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain('ErrorBootstrapExistingState:');
-    expect(result.stderr).toContain('Node path is occupied');
-  });
   test(
     'concurrent bootstrapping',
     async () => {

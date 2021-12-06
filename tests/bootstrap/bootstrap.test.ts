@@ -2,14 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
 import PolykeyAgent from '@/PolykeyAgent';
-
-import * as bootstrapErrors from '@/bootstrap/errors';
 import * as bootstrapUtils from '@/bootstrap/utils';
 import { Status } from '@/status';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:
@@ -22,16 +18,6 @@ describe('Bootstrap', () => {
   ]);
   let dataDir: string;
   let nodePath: string;
-
-  // Helper functions
-  async function fakeKeynode(nodePath) {
-    await fs.promises.mkdir(path.join(nodePath, 'keys'));
-    await fs.promises.mkdir(path.join(nodePath, 'db'));
-    await fs.promises.writeFile(
-      path.join(nodePath, 'versionFile'),
-      'Versions or something IDK',
-    );
-  }
 
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'status-test-'));
@@ -63,20 +49,6 @@ describe('Bootstrap', () => {
         password,
         logger,
       });
-    });
-
-    test('Should throw error if other files exists.', async () => {
-      await fs.promises.mkdir(path.join(nodePath, 'NotAnNodeDirectory'));
-      await expect(() =>
-        bootstrapUtils.bootstrapState({ nodePath, password, logger }),
-      ).rejects.toThrow(bootstrapErrors.ErrorBootstrapExistingState);
-    });
-
-    test('should throw error if keynode already exists.', async () => {
-      await fakeKeynode(nodePath);
-      await expect(() =>
-        bootstrapUtils.bootstrapState({ nodePath, password, logger }),
-      ).rejects.toThrow(bootstrapErrors.ErrorBootstrapExistingState);
     });
 
     test(

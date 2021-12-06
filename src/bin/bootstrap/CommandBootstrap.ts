@@ -9,6 +9,7 @@ class CommandBootstrap extends CommandPolykey {
     this.name('bootstrap');
     this.description('Bootstrap Keynode State');
     this.addOption(binOptions.recoveryCodeFile);
+    this.addOption(binOptions.rootKeyPairBits);
     this.action(async (options) => {
       const bootstrapUtils = await import('../../bootstrap/utils');
       const password = await binProcessors.processPassword(
@@ -20,9 +21,12 @@ class CommandBootstrap extends CommandPolykey {
         this.fs,
       );
       const recoveryCodeOut = await bootstrapUtils.bootstrapState({
-        nodePath: options.nodePath,
         password,
-        recoveryCode: recoveryCodeIn,
+        nodePath: options.nodePath,
+        keysConfig: {
+          rootKeyPairBits: options.rootKeyPairBits,
+          recoveryCode: recoveryCodeIn,
+        },
         fresh: options.fresh,
         fs: this.fs,
         logger: this.logger,

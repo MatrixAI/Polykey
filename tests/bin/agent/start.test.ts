@@ -268,4 +268,94 @@ describe('start', () => {
     },
     global.defaultTimeout * 2,
   );
+  test(
+    'concurrent bootstrap is coalesced',
+    async () => {
+      const password = 'abc123';
+      // One of these processes is blocked
+      const [agentProcess, bootstrapProcess] = await Promise.all([
+        testUtils.pkSpawn(
+          ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
+          {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          dataDir,
+          logger.getChild('agentProcess'),
+        ),
+        testUtils.pkSpawn(
+          ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
+          {
+            PK_NODE_PATH: path.join(dataDir, 'polykey'),
+            PK_PASSWORD: password,
+          },
+          dataDir,
+          logger.getChild('bootstrapProcess'),
+        ),
+      ]);
+      // These will be the last line of STDERR
+      // The readline library will automatically trim off newlines
+      let stdErrLine1;
+      let stdErrLine2;
+      const rlErr1 = readline.createInterface(agentProcess.stderr!);
+      const rlErr2 = readline.createInterface(bootstrapProcess.stderr!);
+      rlErr1.on('line', (l) => {
+        stdErrLine1 = l;
+      });
+      rlErr2.on('line', (l) => {
+        stdErrLine2 = l;
+      });
+      const [index, exitCode, signal] = await new Promise<
+        [number, number | null, NodeJS.Signals | null]
+      >((resolve) => {
+        agentProcess.once('exit', (code, signal) => {
+          resolve([0, code, signal]);
+        });
+        bootstrapProcess.once('exit', (code, signal) => {
+          resolve([1, code, signal]);
+        });
+      });
+      const errorStatusLocked = new statusErrors.ErrorStatusLocked();
+      expect(exitCode).toBe(errorStatusLocked.exitCode);
+      expect(signal).toBe(null);
+      const eOutput = binUtils
+        .outputFormatter({
+          type: 'error',
+          name: errorStatusLocked.name,
+          description: errorStatusLocked.description,
+          message: errorStatusLocked.message,
+        })
+        .trim();
+
+      // It's either the first or second process
+      if (index === 0) {
+        expect(stdErrLine1).toBeDefined();
+        expect(stdErrLine1).toBe(eOutput);
+        bootstrapProcess.kill('SIGTERM');
+        const [exitCode, signal] = await new Promise<
+          [number | null, NodeJS.Signals | null]
+        >((resolve) => {
+          bootstrapProcess.once('exit', (code, signal) => {
+            resolve([code, signal]);
+          });
+        });
+        expect(exitCode).toBe(null);
+        expect(signal).toBe('SIGTERM');
+      } else if (index === 1) {
+        expect(stdErrLine2).toBeDefined();
+        expect(stdErrLine2).toBe(eOutput);
+        agentProcess.kill('SIGTERM');
+        const [exitCode, signal] = await new Promise<
+          [number | null, NodeJS.Signals | null]
+        >((resolve) => {
+          agentProcess.once('exit', (code, signal) => {
+            resolve([code, signal]);
+          });
+        });
+        expect(exitCode).toBe(null);
+        expect(signal).toBe('SIGTERM');
+      }
+    },
+    global.defaultTimeout * 2,
+  );
 });
