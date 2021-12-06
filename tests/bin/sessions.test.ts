@@ -5,9 +5,15 @@ import path from 'path';
 import fs from 'fs';
 import lock from 'fd-lock';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { PolykeyAgent } from '@';
+import PolykeyAgent from '@/PolykeyAgent';
 import { sleep } from '@/utils';
 import * as testUtils from './utils';
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -46,7 +52,7 @@ describe('Session Token Refreshing', () => {
     nodePath = path.join(dataDir, 'keynode');
     command = ['vaults', 'list', '-np', nodePath];
     passwordFile = path.join(dataDir, 'passwordFile');
-    sessionFile = path.join(nodePath, 'client', 'token');
+    sessionFile = path.join(nodePath, 'token');
     await fs.promises.writeFile(passwordFile, 'password');
     polykeyAgent = await PolykeyAgent.createPolykeyAgent({
       password: 'password',

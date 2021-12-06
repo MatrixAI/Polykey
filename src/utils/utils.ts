@@ -1,9 +1,41 @@
-import type { MutexInterface } from 'async-mutex';
-
-import type { FileSystem, Timer } from './types';
+import type { FileSystem, Timer } from '../types';
+import os from 'os';
 import process from 'process';
 import path from 'path';
-import { Mutex } from 'async-mutex';
+import * as utilsErrors from './errors';
+
+function getDefaultNodePath(): string | undefined {
+  const prefix = 'polykey';
+  const platform = os.platform();
+  let p: string;
+  if (platform === 'linux') {
+    const homeDir = os.homedir();
+    const dataDir = process.env.XDG_DATA_HOME;
+    if (dataDir != null) {
+      p = `${dataDir}/${prefix}`;
+    } else {
+      p = `${homeDir}/.local/share/${prefix}`;
+    }
+  } else if (platform === 'darwin') {
+    const homeDir = os.homedir();
+    p = `${homeDir}/Library/Application Support/${prefix}`;
+  } else if (platform === 'win32') {
+    const homeDir = os.homedir();
+    const appDataDir = process.env.LOCALAPPDATA;
+    if (appDataDir != null) {
+      p = `${appDataDir}/${prefix}`;
+    } else {
+      p = `${homeDir}/AppData/Local/${prefix}`;
+    }
+  } else {
+    return;
+  }
+  return p;
+}
+
+function never(): never {
+  throw new utilsErrors.ErrorUtilsUndefinedBehaviour();
+}
 
 async function mkdirExists(fs: FileSystem, path, ...args) {
   try {
@@ -46,6 +78,9 @@ function isEmptyObject(o) {
   return true;
 }
 
+/**
+ * Filters out all undefined properties recursively
+ */
 function filterEmptyObject(o) {
   return Object.fromEntries(
     Object.entries(o)
@@ -72,20 +107,29 @@ async function poll<T, E = any>(
     (e: null, result: T): boolean;
   },
   interval = 1000,
-) {
-  let result: T;
-  while (true) {
-    try {
-      result = await f();
-      if (condition(null, result)) {
-        return result;
+  timeout?: number,
+): Promise<T> {
+  const timer = timeout != null ? timerStart(timeout) : undefined;
+  try {
+    let result: T;
+    while (true) {
+      if (timer?.timedOut) {
+        throw new utilsErrors.ErrorUtilsPollTimeout();
       }
-    } catch (e) {
-      if (condition(e)) {
-        throw e;
+      try {
+        result = await f();
+        if (condition(null, result)) {
+          return result;
+        }
+      } catch (e) {
+        if (condition(e)) {
+          throw e;
+        }
       }
+      await sleep(interval);
     }
-    await sleep(interval);
+  } finally {
+    if (timer != null) timerStop(timer);
   }
 }
 
@@ -156,39 +200,9 @@ function arrayUnset<T>(items: Array<T>, item: T) {
   }
 }
 
-class RWLock {
-  protected readerCount: number = 0;
-  protected lock: Mutex = new Mutex();
-  protected release: MutexInterface.Releaser;
-
-  public async read<T>(f: () => Promise<T>): Promise<T> {
-    let readerCount = ++this.readerCount;
-    // The first reader locks
-    if (readerCount === 1) {
-      this.release = await this.lock.acquire();
-    }
-    try {
-      return await f();
-    } finally {
-      readerCount = --this.readerCount;
-      // The last reader unlocks
-      if (readerCount === 0) {
-        this.release();
-      }
-    }
-  }
-
-  public async write<T>(f: () => Promise<T>): Promise<T> {
-    this.release = await this.lock.acquire();
-    try {
-      return await f();
-    } finally {
-      this.release();
-    }
-  }
-}
-
 export {
+  getDefaultNodePath,
+  never,
   mkdirExists,
   pathIncludes,
   pidIsRunning,
@@ -204,5 +218,4 @@ export {
   timerStop,
   arraySet,
   arrayUnset,
-  RWLock,
 };

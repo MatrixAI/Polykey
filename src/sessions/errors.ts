@@ -1,21 +1,21 @@
 import { ErrorPolykey } from '../errors';
 
-class ErrorSession extends ErrorPolykey {}
+class ErrorSessions extends ErrorPolykey {}
 
-class ErrorSessionRunning extends ErrorSession {}
+class ErrorSessionRunning extends ErrorSessions {}
 
-class ErrorSessionNotRunning extends ErrorSession {}
+class ErrorSessionNotRunning extends ErrorSessions {}
 
-class ErrorSessionDestroyed extends ErrorSession {}
+class ErrorSessionDestroyed extends ErrorSessions {}
 
-class ErrorSessionManagerRunning extends ErrorSession {}
+class ErrorSessionManagerRunning extends ErrorSessions {}
 
-class ErrorSessionManagerNotRunning extends ErrorSession {}
+class ErrorSessionManagerNotRunning extends ErrorSessions {}
 
-class ErrorSessionManagerDestroyed extends ErrorSession {}
+class ErrorSessionManagerDestroyed extends ErrorSessions {}
 
 export {
-  ErrorSession,
+  ErrorSessions,
   ErrorSessionRunning,
   ErrorSessionNotRunning,
   ErrorSessionDestroyed,

@@ -3,9 +3,15 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { PolykeyAgent } from '@';
+import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
 import * as utils from './utils';
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -56,30 +62,34 @@ describe('CLI secrets', () => {
   });
 
   describe('commandCreateSecret', () => {
-    test('should create secrets', async () => {
-      const vaultName = 'Vault1' as VaultName;
-      const vault = await polykeyAgent.vaultManager.createVault(vaultName);
-      const secretPath = path.join(dataDir, 'secret');
-      await fs.promises.writeFile(secretPath, 'this is a secret');
+    test(
+      'should create secrets',
+      async () => {
+        const vaultName = 'Vault1' as VaultName;
+        const vault = await polykeyAgent.vaultManager.createVault(vaultName);
+        const secretPath = path.join(dataDir, 'secret');
+        await fs.promises.writeFile(secretPath, 'this is a secret');
 
-      command = [
-        'secrets',
-        'create',
-        '-np',
-        dataDir,
-        secretPath,
-        `${vaultName}:MySecret`,
-      ];
+        command = [
+          'secrets',
+          'create',
+          '-np',
+          dataDir,
+          secretPath,
+          `${vaultName}:MySecret`,
+        ];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
+        const result = await utils.pkStdio([...command], {}, dataDir);
+        expect(result.exitCode).toBe(0);
 
-      const list = await vaultOps.listSecrets(vault);
-      expect(list.sort()).toStrictEqual(['MySecret']);
-      expect(
-        (await vaultOps.getSecret(vault, 'MySecret')).toString(),
-      ).toStrictEqual('this is a secret');
-    });
+        const list = await vaultOps.listSecrets(vault);
+        expect(list.sort()).toStrictEqual(['MySecret']);
+        expect(
+          (await vaultOps.getSecret(vault, 'MySecret')).toString(),
+        ).toStrictEqual('this is a secret');
+      },
+      global.defaultTimeout * 2,
+    );
   });
   describe('commandDeleteSecret', () => {
     test('should delete secrets', async () => {

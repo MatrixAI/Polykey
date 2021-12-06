@@ -4,8 +4,15 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import config from '@/config';
-// Import { ErrorStateVersionMismatch } from '@/errors';
-import { checkAgentRunning } from '@/agent/utils';
+import { Status } from '@/status';
+import * as schemaErrors from '@/schema/errors';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('Polykey', () => {
   const password = 'password';
@@ -131,8 +138,7 @@ describe('Polykey', () => {
           nodePath,
           logger,
         });
-      }).rejects.toThrow(); // FIXME, use proper error here.
-      // ErrorStateVersionMismatch
+      }).rejects.toThrow(schemaErrors.ErrorSchemaVersionParse);
     },
     global.polykeyStartupTimeout,
   );
@@ -157,19 +163,28 @@ describe('Polykey', () => {
     },
     global.polykeyStartupTimeout,
   );
-  test('Stopping and destroying properly stops Polykey', async () => {
-    // Starting.
-    const nodePath = `${dataDir}/polykey`;
-    pk = await PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath,
-      logger,
-    });
-    expect(await checkAgentRunning(nodePath)).toBeTruthy();
-
-    await pk.stop();
-    expect(await checkAgentRunning(nodePath)).toBeFalsy();
-    await pk.destroy();
-    expect(await checkAgentRunning(nodePath)).toBeFalsy();
-  });
+  test(
+    'Stopping and destroying properly stops Polykey',
+    async () => {
+      // Starting.
+      const nodePath = `${dataDir}/polykey`;
+      pk = await PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath,
+        logger,
+      });
+      const statusPath = path.join(nodePath, 'status.json');
+      const status = new Status({
+        statusPath,
+        fs,
+        logger,
+      });
+      await status.waitFor('LIVE', 2000);
+      await pk.stop();
+      await status.waitFor('DEAD', 2000);
+      await pk.destroy();
+      await status.waitFor('DEAD', 2000);
+    },
+    global.polykeyStartupTimeout * 2,
+  );
 });

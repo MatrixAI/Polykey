@@ -9,9 +9,15 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { KeyManager } from '@/keys';
 import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
-import * as agentUtils from '@/agent/utils';
-import { sleep } from '@/utils';
+import { Status } from '@/status';
 import * as testUtils from './utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -104,8 +110,13 @@ describe('Agent client service', () => {
       const emptyMessage = new utilsPB.EmptyMessage();
       await agentStop(emptyMessage, callCredentials);
 
-      await sleep(5000);
-      expect(await agentUtils.checkAgentRunning(dataDir)).toBeFalsy();
+      const statusPath = path.join(polykeyAgent.nodePath, 'status');
+      const status = new Status({
+        statusPath,
+        fs,
+        logger,
+      });
+      await status.waitFor('DEAD', 10000);
     },
     global.polykeyStartupTimeout * 2,
   );

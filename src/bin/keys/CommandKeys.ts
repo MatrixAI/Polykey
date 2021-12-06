@@ -15,16 +15,16 @@ class CommandKeys extends CommandPolykey {
     super(...args);
     this.name('keys');
     this.description('Keys Operations');
-    this.addCommand(new CommandCert());
-    this.addCommand(new CommandCertchain());
-    this.addCommand(new CommandDecrypt());
-    this.addCommand(new CommandEncrypt());
-    this.addCommand(new CommandPassword());
-    this.addCommand(new CommandRenew());
-    this.addCommand(new CommandReset());
-    this.addCommand(new CommandRoot());
-    this.addCommand(new CommandSign());
-    this.addCommand(new CommandVerify());
+    this.addCommand(new CommandCert(...args));
+    this.addCommand(new CommandCertchain(...args));
+    this.addCommand(new CommandDecrypt(...args));
+    this.addCommand(new CommandEncrypt(...args));
+    this.addCommand(new CommandPassword(...args));
+    this.addCommand(new CommandRenew(...args));
+    this.addCommand(new CommandReset(...args));
+    this.addCommand(new CommandRoot(...args));
+    this.addCommand(new CommandSign(...args));
+    this.addCommand(new CommandVerify(...args));
   }
 }
 

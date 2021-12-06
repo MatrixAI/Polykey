@@ -1,10 +1,8 @@
 import type Logger from '@matrixai/logger';
 import type { NodeAddress } from '@/nodes/types';
-import type { KeyManager } from '@/keys';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { sleep } from '@/utils';
 import { utils as keyUtils } from '@/keys';
 import { PolykeyAgent } from '../src';
 
@@ -31,11 +29,12 @@ async function setupRemoteKeynode({
       path.join(os.tmpdir(), 'polykey-test-remote-'),
     );
   }
-  return await PolykeyAgent.createPolykeyAgent({
+  const agent = await PolykeyAgent.createPolykeyAgent({
     password: 'password',
     nodePath: nodeDir,
     logger: logger,
   });
+  return agent;
 }
 
 /**
@@ -62,23 +61,9 @@ async function addRemoteDetails(
   } as NodeAddress);
 }
 
-async function poll(
-  timeout: number,
-  condition: () => Promise<boolean>,
-  delay: number = 1000,
-) {
-  let timeProgress = 0;
-  while (timeProgress < timeout) {
-    if (await condition()) break;
-    await sleep(delay);
-    timeProgress += delay;
-  }
-  expect(await condition()).toBeTruthy();
-}
-
-function makeCrypto(keyManager: KeyManager) {
+function makeCrypto(dbKey: Buffer) {
   return {
-    key: keyManager.dbKey,
+    key: dbKey,
     ops: {
       encrypt: keyUtils.encryptWithKey,
       decrypt: keyUtils.decryptWithKey,
@@ -90,6 +75,5 @@ export {
   setupRemoteKeynode,
   cleanupRemoteKeynode,
   addRemoteDetails,
-  poll,
   makeCrypto,
 };

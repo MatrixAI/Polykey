@@ -2,35 +2,25 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
-import { bootstrapPolykeyState, checkKeynodeState } from '@/bootstrap';
 import PolykeyAgent from '@/PolykeyAgent';
+import * as bootstrapUtils from '@/bootstrap/utils';
+import { Status } from '@/status';
 
-import * as bootstrapErrors from '@/bootstrap/errors';
-import * as agentUtils from '@/agent/utils';
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
-describe.skip('Bootstrap', () => {
-  const password = 'password';
+describe('Bootstrap', () => {
   const logger = new Logger('AgentServerTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;
   let nodePath: string;
 
-  // Helper functions
-  async function fakeKeynode(nodePath) {
-    await fs.promises.mkdir(path.join(nodePath, 'keys'));
-    await fs.promises.mkdir(path.join(nodePath, 'db'));
-    await fs.promises.writeFile(
-      path.join(nodePath, 'versionFile'),
-      'Versions or something IDK',
-    );
-  }
-
   beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'lockfile-test-'),
-    );
+    dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'status-test-'));
     nodePath = path.join(dataDir, 'Node');
     await fs.promises.mkdir(nodePath);
   });
@@ -41,80 +31,51 @@ describe.skip('Bootstrap', () => {
     });
   });
 
-  describe('checkKeynodeState should detect', () => {
-    test('no directory', async () => {
-      await fs.promises.rmdir(nodePath);
-      expect(await checkKeynodeState(nodePath)).toBe('NO_DIRECTORY');
-    });
+  describe('BootstrapPolykeyState', () => {
+    const password = 'password123';
+    test(
+      'should create state if no directory',
+      async () => {
+        // Await fs.promises.rmdir(nodePath);
+        await bootstrapUtils.bootstrapState({ nodePath, password, logger });
+        // Should have keynode state;
+      },
+      global.polykeyStartupTimeout * 4,
+    );
 
-    test('empty directory', async () => {
-      expect(await checkKeynodeState(nodePath)).toBe('EMPTY_DIRECTORY');
-    });
-
-    test('other contents in directory', async () => {
-      await fs.promises.mkdir(path.join(nodePath, 'NotAnNodeDirectory'));
-      expect(await checkKeynodeState(nodePath)).toBe('OTHER_EXISTS');
-    });
-
-    test('keynode without contents in directory', async () => {
-      await fakeKeynode(nodePath);
-      expect(await checkKeynodeState(nodePath)).toBe('MALFORMED_KEYNODE');
+    test('should create state if empty directory', async () => {
+      await bootstrapUtils.bootstrapState({
+        nodePath,
+        password,
+        logger,
+      });
     });
 
     test(
-      'keynode with contents in directory',
+      'should be able to start agent on created state.',
       async () => {
-        const pk = await PolykeyAgent.createPolykeyAgent({
+        await bootstrapUtils.bootstrapState({
+          nodePath,
           password,
-          nodePath: nodePath,
-          logger: logger,
+          logger,
         });
-        await pk.stop();
-        await pk.destroy();
-        expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
+        const polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+          password,
+          nodePath,
+          logger,
+        });
+        const statusPath = path.join(nodePath, 'status.json');
+        const status = new Status({
+          statusPath,
+          fs,
+          logger,
+        });
+        await status.waitFor('LIVE', 10000);
+        await polykeyAgent.stop();
+        await polykeyAgent.destroy();
+        await status.waitFor('DEAD', 10000);
       },
-      global.polykeyStartupTimeout,
+      global.polykeyStartupTimeout * 2,
     );
-  });
-  describe('BootstrapPolykeyState', () => {
-    const password = 'password123';
-    test('should create state if no directory', async () => {
-      // Await fs.promises.rmdir(nodePath);
-      await bootstrapPolykeyState(nodePath, password);
-      // Should have keynode state;
-      expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
-    });
-
-    test('should create state if empty directory', async () => {
-      await bootstrapPolykeyState(nodePath, password);
-      expect(await checkKeynodeState(nodePath)).toBe('KEYNODE_EXISTS');
-    });
-
-    test('Should throw error if other files exists.', async () => {
-      await fs.promises.mkdir(path.join(nodePath, 'NotAnNodeDirectory'));
-      await expect(() =>
-        bootstrapPolykeyState(nodePath, password),
-      ).rejects.toThrow(bootstrapErrors.ErrorExistingState);
-    });
-
-    test('should throw error if keynode already exists.', async () => {
-      await fakeKeynode(nodePath);
-      await expect(() =>
-        bootstrapPolykeyState(nodePath, password),
-      ).rejects.toThrow(bootstrapErrors.ErrorMalformedKeynode);
-    });
-
-    test('should be able to start agent on created state.', async () => {
-      await bootstrapPolykeyState(nodePath, password);
-      const polykeyAgent = await PolykeyAgent.createPolykeyAgent({
-        password,
-        nodePath: nodePath,
-        logger: logger,
-      });
-      expect(await agentUtils.checkAgentRunning(nodePath)).toBeTruthy();
-      await polykeyAgent.stop();
-      await polykeyAgent.destroy();
-      expect(await agentUtils.checkAgentRunning(nodePath)).toBeFalsy();
-    });
   });
 });

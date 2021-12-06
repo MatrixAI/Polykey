@@ -1,6 +1,8 @@
 import type { IClientServiceServer } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import type { SessionToken } from '@/sessions/types';
 import type { PolykeyAgent } from '@';
+import type { NodeId } from '@/nodes/types';
+import type { Host, Port } from '@/network/types';
 import * as grpc from '@grpc/grpc-js';
 
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -34,6 +36,7 @@ async function openTestClientServer({
     fwdProxy: polykeyAgent.fwdProxy,
     revProxy: polykeyAgent.revProxy,
     clientGrpcServer: polykeyAgent.grpcServerClient,
+    fs: polykeyAgent.fs,
   });
 
   const callCredentials = _secure
@@ -56,18 +59,24 @@ const closeTestClientServer = async (server) => {
   await tryShutdown();
 };
 
-async function openTestClientClient(nodePath) {
+async function openTestClientClient(
+  nodeId: NodeId,
+  host: Host,
+  port: Port,
+  clientPath: string,
+) {
   const logger = new Logger('ClientClientTest', LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const fs = require('fs/promises');
 
   const pkc: PolykeyClient = await PolykeyClient.createPolykeyClient({
-    nodePath,
+    nodePath: clientPath,
+    host: host,
+    nodeId,
+    port: port,
     fs,
     logger,
-  });
-  await pkc.start({
     timeout: 30000,
   });
 

@@ -10,7 +10,14 @@ import * as errors from '@/vaults/errors';
 import { VaultInternal, vaultOps } from '@/vaults';
 import { KeyManager } from '@/keys';
 import { generateVaultId } from '@/vaults/utils';
-import { getRandomBytes } from '@/keys/utils';
+import * as keysUtils from '@/keys/utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('VaultOps', () => {
   const password = 'password';
@@ -292,7 +299,7 @@ describe('VaultOps', () => {
       await fs.promises.writeFile(path.join(secretDir, name), content);
     }
 
-    await vaultOps.addSecretDirectory(vault, secretDir);
+    await vaultOps.addSecretDirectory(vault, secretDir, fs);
 
     expect((await vaultOps.listSecrets(vault)).sort()).toStrictEqual(
       [
@@ -370,10 +377,10 @@ describe('VaultOps', () => {
     );
     const secretDirName = path.basename(secretDir);
     const name = 'secret';
-    const content = await getRandomBytes(5);
+    const content = await keysUtils.getRandomBytes(5);
     await fs.promises.writeFile(path.join(secretDir, name), content);
 
-    await vaultOps.addSecretDirectory(vault, secretDir);
+    await vaultOps.addSecretDirectory(vault, secretDir, fs);
     await expect(
       vault.access((efs) => efs.readdir(secretDirName)),
     ).resolves.toContain('secret');
@@ -410,7 +417,7 @@ describe('VaultOps', () => {
       'secret5',
     );
 
-    await vaultOps.addSecretDirectory(vault, path.join(secretDir));
+    await vaultOps.addSecretDirectory(vault, path.join(secretDir), fs);
     const list = await vaultOps.listSecrets(vault);
     expect(list.sort()).toStrictEqual(
       [
@@ -459,7 +466,7 @@ describe('VaultOps', () => {
       path.join(secretDirName, 'secret1'),
       'blocking-secret',
     );
-    await vaultOps.addSecretDirectory(vault, secretDir);
+    await vaultOps.addSecretDirectory(vault, secretDir, fs);
     const list = await vaultOps.listSecrets(vault);
     expect(list.sort()).toStrictEqual(
       [
@@ -503,7 +510,7 @@ describe('VaultOps', () => {
         path.join(secretDirName, 'secret 9'),
         'secret-content',
       );
-      await vaultOps.addSecretDirectory(vault, secretDir);
+      await vaultOps.addSecretDirectory(vault, secretDir, fs);
 
       for (let j = 0; j < 8; j++) {
         await expect(

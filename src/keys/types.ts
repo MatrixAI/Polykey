@@ -1,4 +1,5 @@
 import type { asn1, pki } from 'node-forge';
+import type { Opaque } from '../types';
 
 type PublicKey = pki.rsa.PublicKey;
 type PrivateKey = pki.rsa.PrivateKey;
@@ -21,6 +22,7 @@ type Certificate = pki.Certificate;
 type CertificateAsn1 = asn1.Asn1;
 type CertificatePem = string;
 type CertificatePemChain = string;
+type RecoveryCode = Opaque<'RecoveryCode', string>;
 
 export type {
   PublicKey,
@@ -38,4 +40,5 @@ export type {
   CertificateAsn1,
   CertificatePem,
   CertificatePemChain,
+  RecoveryCode,
 };

@@ -69,16 +69,10 @@ interface FileSystem {
   };
   constants: typeof fs.constants;
 }
-type LockStatus = 'STARTING' | 'RUNNING' | 'STOPPING' | 'UNLOCKED';
-type LockConfig = {
-  status: LockStatus;
-  pid: number;
-  nodeId?: string;
-  clientHost?: string;
-  clientPort?: number | undefined;
-} & POJO;
 
-export {
+type FileHandle = fs.promises.FileHandle;
+
+export type {
   POJO,
   Opaque,
   AbstractConstructorParameters,
@@ -88,6 +82,5 @@ export {
   Ref,
   Timer,
   FileSystem,
-  LockStatus,
-  LockConfig,
+  FileHandle,
 };

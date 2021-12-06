@@ -15,6 +15,13 @@ import { makeNodeId } from '@/nodes/utils';
 import * as nodesTestUtils from './utils';
 import { makeCrypto } from '../utils';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 // FIXME, some of these tests fail randomly.
 describe('NodeGraph', () => {
   const password = 'password';
@@ -120,7 +127,11 @@ describe('NodeGraph', () => {
       },
     });
     const dbPath = `${dataDir}/db`;
-    db = await DB.createDB({ dbPath, logger, crypto: makeCrypto(keyManager) });
+    db = await DB.createDB({
+      dbPath,
+      logger,
+      crypto: makeCrypto(keyManager.dbKey),
+    });
     sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
       db: db,
@@ -469,63 +480,67 @@ describe('NodeGraph', () => {
       },
     ]);
   });
-  test('refreshes buckets', async () => {
-    const initialNodes: Record<NodeId, NodeData> = {};
-    // Generate and add some nodes
-    for (let i = 1; i < 255; i += 20) {
-      const newNodeId = nodesTestUtils.generateNodeIdForBucket(
-        nodeManager.getNodeId(),
-        i,
-      );
-      const nodeAddress = {
-        ip: (i + '.' + i + '.' + i + '.' + i) as Host,
-        port: i as Port,
-      };
-      await nodeGraph.setNode(newNodeId, nodeAddress);
-      initialNodes[newNodeId] = {
-        id: newNodeId,
-        address: nodeAddress,
-        distance: nodesUtils.calculateDistance(
+  test(
+    'refreshes buckets',
+    async () => {
+      const initialNodes: Record<NodeId, NodeData> = {};
+      // Generate and add some nodes
+      for (let i = 1; i < 255; i += 20) {
+        const newNodeId = nodesTestUtils.generateNodeIdForBucket(
           nodeManager.getNodeId(),
-          newNodeId,
-        ),
-      };
-    }
-
-    // Renew the keypair
-    await keyManager.renewRootKeyPair('newPassword');
-    // Reset the test's node ID state
-    nodeId = keyManager.getNodeId();
-    // Refresh the buckets
-    await nodeGraph.refreshBuckets();
-
-    // Get all the new buckets, and expect that each node is in the correct bucket
-    const newBuckets = await nodeGraph.getAllBuckets();
-    let nodeCount = 0;
-    for (const b of newBuckets) {
-      for (const n of Object.keys(b)) {
-        const nodeId = makeNodeId(n);
-        // Check that it was a node in the original DB
-        expect(initialNodes[nodeId]).toBeDefined();
-        // Check it's in the correct bucket
-        const expectedIndex = nodesUtils.calculateBucketIndex(
-          nodeGraph.getNodeId(),
-          nodeId,
-          nodeGraph.nodeIdBits,
+          i,
         );
-        const expectedBucket = await nodeGraph.getBucket(expectedIndex);
-        expect(expectedBucket).toBeDefined();
-        expect(expectedBucket![nodeId]).toBeDefined();
-        // Check it has the correct address
-        expect(b[nodeId].address).toEqual(initialNodes[nodeId].address);
-        nodeCount++;
+        const nodeAddress = {
+          ip: (i + '.' + i + '.' + i + '.' + i) as Host,
+          port: i as Port,
+        };
+        await nodeGraph.setNode(newNodeId, nodeAddress);
+        initialNodes[newNodeId] = {
+          id: newNodeId,
+          address: nodeAddress,
+          distance: nodesUtils.calculateDistance(
+            nodeManager.getNodeId(),
+            newNodeId,
+          ),
+        };
       }
-    }
-    // We had less than k (20) nodes, so we expect that all nodes will be re-added
-    // If we had more than k nodes, we may lose some of them (because the nodes
-    // may be re-added to newly full buckets)
-    expect(Object.keys(initialNodes).length).toEqual(nodeCount);
-  });
+
+      // Renew the keypair
+      await keyManager.renewRootKeyPair('newPassword');
+      // Reset the test's node ID state
+      nodeId = keyManager.getNodeId();
+      // Refresh the buckets
+      await nodeGraph.refreshBuckets();
+
+      // Get all the new buckets, and expect that each node is in the correct bucket
+      const newBuckets = await nodeGraph.getAllBuckets();
+      let nodeCount = 0;
+      for (const b of newBuckets) {
+        for (const n of Object.keys(b)) {
+          const nodeId = makeNodeId(n);
+          // Check that it was a node in the original DB
+          expect(initialNodes[nodeId]).toBeDefined();
+          // Check it's in the correct bucket
+          const expectedIndex = nodesUtils.calculateBucketIndex(
+            nodeGraph.getNodeId(),
+            nodeId,
+            nodeGraph.nodeIdBits,
+          );
+          const expectedBucket = await nodeGraph.getBucket(expectedIndex);
+          expect(expectedBucket).toBeDefined();
+          expect(expectedBucket![nodeId]).toBeDefined();
+          // Check it has the correct address
+          expect(b[nodeId].address).toEqual(initialNodes[nodeId].address);
+          nodeCount++;
+        }
+      }
+      // We had less than k (20) nodes, so we expect that all nodes will be re-added
+      // If we had more than k nodes, we may lose some of them (because the nodes
+      // may be re-added to newly full buckets)
+      expect(Object.keys(initialNodes).length).toEqual(nodeCount);
+    },
+    global.defaultTimeout * 4,
+  );
   test('finds a single closest node', async () => {
     // New node added
     const newNode2Id = nodeId1;

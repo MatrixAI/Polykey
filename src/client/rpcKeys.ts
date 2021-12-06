@@ -181,7 +181,7 @@ const createKeysRPC = ({
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
 
-        await keyManager.changeRootKeyPassword(call.request.getPassword());
+        await keyManager.changePassword(call.request.getPassword());
       } catch (err) {
         callback(grpcUtils.fromError(err), response);
       }

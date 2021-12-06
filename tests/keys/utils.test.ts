@@ -70,4 +70,31 @@ describe('utils', () => {
       keysUtils.decryptPrivateKey(privateKeyPemEncrypted2, password3);
     }).toThrow(Error);
   });
+  test('generates recovery code', async () => {
+    const recoveryCode = keysUtils.generateRecoveryCode();
+    expect(recoveryCode.split(' ')).toHaveLength(24);
+    const recoveryCode24 = keysUtils.generateRecoveryCode();
+    expect(recoveryCode24.split(' ')).toHaveLength(24);
+    const recoveryCode12 = keysUtils.generateRecoveryCode(12);
+    expect(recoveryCode12.split(' ')).toHaveLength(12);
+  });
+  test(
+    'generating key pair from recovery code is deterministic',
+    async () => {
+      const recoveryCode = keysUtils.generateRecoveryCode(12);
+      // Deterministic key pair generation can take between 4 to 10 seconds
+      const keyPair1 = await keysUtils.generateDeterministicKeyPair(
+        256,
+        recoveryCode,
+      );
+      const keyPair2 = await keysUtils.generateDeterministicKeyPair(
+        256,
+        recoveryCode,
+      );
+      const nodeId1 = keysUtils.publicKeyToFingerprint(keyPair1.publicKey);
+      const nodeId2 = keysUtils.publicKeyToFingerprint(keyPair2.publicKey);
+      expect(nodeId1).toBe(nodeId2);
+    },
+    global.defaultTimeout * 2,
+  );
 });

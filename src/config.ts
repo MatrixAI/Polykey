@@ -1,3 +1,5 @@
+import type { Host, Port } from './network/types';
+import { getDefaultNodePath } from './utils';
 // @ts-ignore package.json is outside rootDir
 import { version } from '../package.json';
 
@@ -46,6 +48,48 @@ const config = {
     extensions: {
       polykeyVersion: '1.3.6.1.4.1.57167.2.2.1',
       nodeSignature: '1.3.6.1.4.1.57167.2.2.2',
+    },
+  },
+  /**
+   * Default configuration
+   */
+  defaults: {
+    nodePath: getDefaultNodePath(),
+    statusBase: 'status.json',
+    stateBase: 'state',
+    dbBase: 'db',
+    keysBase: 'keys',
+    vaultsBase: 'vaults',
+    tokenBase: 'token',
+    keysConfig: {
+      rootKeyPairBits: 4096,
+      rootCertDuration: 31536000,
+      dbKeyBits: 256,
+    },
+    networkConfig: {
+      // ForwardProxy
+      proxyHost: '127.0.0.1' as Host,
+      proxyPort: 0 as Port,
+      egressHost: '0.0.0.0' as Host,
+      egressPort: 0 as Port,
+      // ReverseProxy
+      ingressHost: '0.0.0.0' as Host,
+      ingressPort: 0 as Port,
+      // GRPCServer for agent service
+      agentHost: '127.0.0.1' as Host,
+      agentPort: 0 as Port,
+      // GRPCServer for client service
+      clientHost: '127.0.0.1' as Host,
+      clientPort: 0 as Port,
+    },
+    forwardProxyConfig: {
+      connConnectTime: 20000,
+      connTimeoutTime: 20000,
+      connPingIntervalTime: 1000,
+    },
+    reverseProxyConfig: {
+      connConnectTime: 20000,
+      connTimeoutTime: 20000,
     },
   },
 };

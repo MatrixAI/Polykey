@@ -2,9 +2,14 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
-import { PolykeyAgent } from '@';
+import PolykeyAgent from '@/PolykeyAgent';
 import * as utils from './utils';
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -140,56 +145,64 @@ describe('CLI keys', () => {
   });
 
   describe('commandRenewKeypair', () => {
-    test('should renew the keypair', async () => {
-      // Starting new node.
+    test(
+      'should renew the keypair',
+      async () => {
+        // Starting new node.
 
-      const rootKeypairOld = polykeyAgent.keyManager.getRootKeyPair();
-      const passPath = path.join(dataDir, 'passwordNew');
-      await fs.promises.writeFile(passPath, 'password-new');
+        const rootKeypairOld = polykeyAgent.keyManager.getRootKeyPair();
+        const passPath = path.join(dataDir, 'passwordNew');
+        await fs.promises.writeFile(passPath, 'password-new');
 
-      command = ['keys', 'renew', '-np', nodePath, passPath];
+        command = ['keys', 'renew', '-np', nodePath, passPath];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
+        const result = await utils.pkStdio([...command], {}, dataDir);
+        expect(result.exitCode).toBe(0);
 
-      const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
-      expect(rootKeypairNew.privateKey).not.toBe(rootKeypairOld.privateKey);
-      expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
+        const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
+        expect(rootKeypairNew.privateKey).not.toBe(rootKeypairOld.privateKey);
+        expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
 
-      await polykeyAgent.stop();
+        await polykeyAgent.stop();
 
-      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
-        password: 'password-new',
-        nodePath: nodePath,
-        logger: logger,
-      });
-      await polykeyAgent.keyManager.changeRootKeyPassword(password);
-    });
+        polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+          password: 'password-new',
+          nodePath: nodePath,
+          logger: logger,
+        });
+        await polykeyAgent.keyManager.changePassword(password);
+      },
+      global.polykeyStartupTimeout * 4,
+    );
   });
   describe('commandResetKeyPair', () => {
-    test('should reset the keypair', async () => {
-      const rootKeypairOld = polykeyAgent.keyManager.getRootKeyPair();
-      const passPath = path.join(dataDir, 'passwordNewNew');
-      await fs.promises.writeFile(passPath, 'password-new-new');
+    test(
+      'should reset the keypair',
+      async () => {
+        const rootKeypairOld = polykeyAgent.keyManager.getRootKeyPair();
+        const passPath = path.join(dataDir, 'passwordNewNew');
+        await fs.promises.writeFile(passPath, 'password-new-new');
 
-      command = ['keys', 'reset', '-np', nodePath, passPath];
+        command = ['keys', 'reset', '-np', nodePath, passPath];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
-      expect(result.exitCode).toBe(0);
+        const result = await utils.pkStdio([...command], {}, dataDir);
+        expect(result.exitCode).toBe(0);
 
-      const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
-      expect(rootKeypairNew.privateKey).not.toBe(rootKeypairOld.privateKey);
-      expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
+        const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
+        expect(rootKeypairNew.privateKey).not.toBe(rootKeypairOld.privateKey);
+        expect(rootKeypairNew.publicKey).not.toBe(rootKeypairOld.publicKey);
 
-      await polykeyAgent.stop();
+        await polykeyAgent.stop();
 
-      polykeyAgent = await PolykeyAgent.createPolykeyAgent({
-        password: 'password-new-new',
-        nodePath: nodePath,
-        logger: logger,
-      });
-      await polykeyAgent.keyManager.changeRootKeyPassword(password);
-    });
+        polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+          password: 'password-new-new',
+          nodePath: nodePath,
+          logger: logger,
+        });
+        await polykeyAgent.keyManager.changePassword(password);
+      },
+      global.polykeyStartupTimeout * 4,
+    );
   });
   describe('commandChangePassword', () => {
     test(
@@ -210,9 +223,9 @@ describe('CLI keys', () => {
           nodePath: nodePath,
           logger: logger,
         });
-        await polykeyAgent.keyManager.changeRootKeyPassword(password);
+        await polykeyAgent.keyManager.changePassword(password);
       },
-      global.defaultTimeout * 2,
+      global.polykeyStartupTimeout * 4,
     );
   });
 });

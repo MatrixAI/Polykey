@@ -14,8 +14,15 @@ import { KeyManager } from '@/keys';
 import { sleep } from '@/utils';
 
 import * as claimsUtils from '@/claims/utils';
-import * as keysUtils from '@/keys/utils';
 import * as claimsErrors from '@/claims/errors';
+import * as keysUtils from '@/keys/utils';
+
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 describe('Claims utils', () => {
   const password = 'password';

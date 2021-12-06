@@ -4,10 +4,16 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { PolykeyAgent } from '@';
+import PolykeyAgent from '@/PolykeyAgent';
 import { makeNodeId } from '@/nodes/utils';
 import * as testUtils from './utils';
 import * as testKeynodeUtils from '../utils';
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -144,13 +150,17 @@ describe('CLI Nodes', () => {
       });
       await remoteOnline.nodeManager.clearDB();
     });
-    test('Should send a gestalt invite', async () => {
-      const commands = genCommands(['claim', remoteOnlineNodeId]);
-      const result = await testUtils.pkStdio(commands, {}, dataDir);
-      expect(result.exitCode).toBe(0); // Succeeds.
-      expect(result.stdout).toContain('Gestalt Invite');
-      expect(result.stdout).toContain(remoteOnlineNodeId);
-    });
+    test(
+      'Should send a gestalt invite',
+      async () => {
+        const commands = genCommands(['claim', remoteOnlineNodeId]);
+        const result = await testUtils.pkStdio(commands);
+        expect(result.exitCode).toBe(0); // Succeeds.
+        expect(result.stdout).toContain('Gestalt Invite');
+        expect(result.stdout).toContain(remoteOnlineNodeId);
+      },
+      global.polykeyStartupTimeout * 4,
+    );
     test('Should send a gestalt invite (force invite)', async () => {
       await remoteOnline.notificationsManager.sendNotification(keynodeId, {
         type: 'GestaltInvite',

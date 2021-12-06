@@ -1,5 +1,6 @@
 import type { Vault, VaultId, VaultName } from '../vaults/types';
 import type { VaultManager } from '../vaults';
+import type { FileSystem } from '../types';
 
 import type * as utils from './utils';
 import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
@@ -24,9 +25,11 @@ function decodeVaultId(input: string): VaultId | undefined {
 const createVaultRPC = ({
   vaultManager,
   authenticate,
+  fs,
 }: {
   vaultManager: VaultManager;
   authenticate: utils.Authenticate;
+  fs: FileSystem;
 }) => {
   return {
     vaultsList: async (
@@ -450,7 +453,7 @@ const createVaultRPC = ({
         if (!vaultId) throw new vaultsErrors.ErrorVaultUndefined();
         const vault = await vaultManager.openVault(vaultId);
         const secretsPath = call.request.getSecretDirectory();
-        await vaultOps.addSecretDirectory(vault, secretsPath);
+        await vaultOps.addSecretDirectory(vault, secretsPath, fs);
         response.setSuccess(true);
         callback(null, response);
       } catch (err) {

@@ -51,14 +51,15 @@ interface PolykeyAgent extends CreateDestroyStartStop {}
 class PolykeyAgent {
   public static async createPolykeyAgent({
     // Required parameters
-    nodePath,
     password,
     // Optional configuration
+    nodePath = config.defaults.nodePath,
     keysConfig = {},
     networkConfig = {},
     forwardProxyConfig = {},
     reverseProxyConfig = {},
     // Optional dependencies
+    status,
     schema,
     keyManager,
     db,
@@ -79,12 +80,13 @@ class PolykeyAgent {
     logger = new Logger(this.name),
     fresh = false,
   }: {
-    nodePath: string;
     password: string;
+    nodePath?: string;
     keysConfig?: {
       rootKeyPairBits?: number;
       rootCertDuration?: number;
       dbKeyBits?: number;
+      recoveryCode?: string;
     };
     forwardProxyConfig?: {
       authToken?: string;
@@ -97,6 +99,7 @@ class PolykeyAgent {
       connTimeoutTime?: number;
     };
     networkConfig?: NetworkConfig;
+    status?: Status;
     schema?: Schema;
     keyManager?: KeyManager;
     db?: DB;
@@ -121,56 +124,38 @@ class PolykeyAgent {
     const umask = 0o077;
     logger.info(`Setting umask to ${umask.toString(8).padStart(3, '0')}`);
     process.umask(umask);
+    if (nodePath == null) {
+      throw new errors.ErrorUtilsNodePath();
+    }
     logger.info(`Setting node path to ${nodePath}`);
     const keysConfig_ = {
-      rootKeyPairBits: 4096,
-      rootCertDuration: 31536000,
-      dbKeyBits: 256,
+      ...config.defaults.keysConfig,
       ...utils.filterEmptyObject(keysConfig),
     };
     const forwardProxyConfig_ = {
       authToken: (await keysUtils.getRandomBytes(10)).toString(),
-      connConnectTime: 20000,
-      connTimeoutTime: 20000,
-      connPingIntervalTime: 1000,
+      ...config.defaults.forwardProxyConfig,
       ...utils.filterEmptyObject(forwardProxyConfig),
     };
     const reverseProxyConfig_ = {
-      connConnectTime: 20000,
-      connTimeoutTime: 20000,
+      ...config.defaults.reverseProxyConfig,
       ...utils.filterEmptyObject(reverseProxyConfig),
     };
-    const networkConfig_ = {
-      // ForwardProxy
-      proxyHost: '127.0.0.1' as Host,
-      proxyPort: 0 as Port,
-      egressHost: '0.0.0.0' as Host,
-      egressPort: 0 as Port,
-      // ReverseProxy
-      ingressHost: '0.0.0.0' as Host,
-      ingressPort: 0 as Port,
-      // GRPCServer for agent service
-      agentHost: '127.0.0.1' as Host,
-      agentPort: 0 as Port,
-      // GRPCServer for client service
-      clientHost: '127.0.0.1' as Host,
-      clientPort: 0 as Port,
-      ...networkConfig,
-    };
-
     await utils.mkdirExists(fs, nodePath);
-    const statePath = path.join(nodePath, 'state');
-    const dbPath = path.join(statePath, 'db');
-    const keysPath = path.join(statePath, 'keys');
-    const vaultsPath = path.join(statePath, 'vaults');
-
-    const status = await Status.createStatus({
-      nodePath: nodePath,
-      fs: fs,
-      logger: logger.getChild('Lockfile'),
-    });
-    await status.start();
-
+    const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statePath = path.join(nodePath, config.defaults.stateBase);
+    const dbPath = path.join(statePath, config.defaults.dbBase);
+    const keysPath = path.join(statePath, config.defaults.keysBase);
+    const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
+    status =
+      status ??
+      new Status({
+        statusPath,
+        fs: fs,
+        logger: logger.getChild(Status.name),
+      });
+    // Start locking the status
+    await status.start({ pid: process.pid });
     schema =
       schema ??
       (await Schema.createSchema({
@@ -179,7 +164,6 @@ class PolykeyAgent {
         logger: logger.getChild(Schema.name),
         fresh,
       }));
-
     keyManager =
       keyManager ??
       (await KeyManager.createKeyManager({
@@ -190,8 +174,6 @@ class PolykeyAgent {
         logger: logger.getChild(KeyManager.name),
         fresh,
       }));
-    await status.updateStatus('nodeId', keyManager.getNodeId());
-
     db =
       db ??
       (await DB.createDB({
@@ -207,7 +189,6 @@ class PolykeyAgent {
         logger: logger.getChild(DB.name),
         fresh,
       }));
-
     identitiesManager =
       identitiesManager ??
       (await IdentitiesManager.createIdentitiesManager({
@@ -215,14 +196,12 @@ class PolykeyAgent {
         logger: logger.getChild(IdentitiesManager.name),
         fresh,
       }));
-
     // Registering providers
     const githubProvider = new providers.GithubProvider({
       clientId: config.providers['github.com'].clientId,
       logger: logger.getChild(providers.GithubProvider.name),
     });
     identitiesManager.registerProvider(githubProvider);
-
     sigchain =
       sigchain ??
       (await Sigchain.createSigchain({
@@ -231,7 +210,6 @@ class PolykeyAgent {
         logger: logger.getChild(Sigchain.name),
         fresh,
       }));
-
     acl =
       acl ??
       (await ACL.createACL({
@@ -239,7 +217,6 @@ class PolykeyAgent {
         logger: logger.getChild(ACL.name),
         fresh,
       }));
-
     gestaltGraph =
       gestaltGraph ??
       (await GestaltGraph.createGestaltGraph({
@@ -248,21 +225,18 @@ class PolykeyAgent {
         logger: logger.getChild(GestaltGraph.name),
         fresh,
       }));
-
     fwdProxy =
       fwdProxy ??
       new ForwardProxy({
         ...forwardProxyConfig_,
         logger: logger.getChild(ForwardProxy.name),
       });
-
     revProxy =
       revProxy ??
       new ReverseProxy({
         ...reverseProxyConfig_,
         logger: logger.getChild(ReverseProxy.name),
       });
-
     nodeManager =
       nodeManager ??
       (await NodeManager.createNodeManager({
@@ -274,7 +248,6 @@ class PolykeyAgent {
         logger: logger.getChild(NodeManager.name),
         fresh,
       }));
-
     discovery =
       discovery ??
       (await Discovery.createDiscovery({
@@ -283,7 +256,6 @@ class PolykeyAgent {
         nodeManager,
         logger: logger.getChild(Discovery.name),
       }));
-
     vaultManager =
       vaultManager ??
       (await VaultManager.createVaultManager({
@@ -298,7 +270,6 @@ class PolykeyAgent {
         logger: logger.getChild(VaultManager.name),
         fresh,
       }));
-
     notificationsManager =
       notificationsManager ??
       (await NotificationsManager.createNotificationsManager({
@@ -309,27 +280,24 @@ class PolykeyAgent {
         logger: logger.getChild(NotificationsManager.name),
         fresh,
       }));
-
     sessionManager =
       sessionManager ??
       (await SessionManager.createSessionManager({
         db,
         keyManager,
         logger: logger.getChild(SessionManager.name),
+        fresh,
       }));
-
     grpcServerClient =
       grpcServerClient ??
       new GRPCServer({
         logger: logger.getChild(GRPCServer.name + 'Client'),
       });
-
     grpcServerAgent =
       grpcServerAgent ??
       new GRPCServer({
         logger: logger.getChild(GRPCServer.name + 'Agent'),
       });
-
     const polykeyAgent = new PolykeyAgent({
       nodePath,
       status,
@@ -352,13 +320,11 @@ class PolykeyAgent {
       fs,
       logger,
     });
-
     await polykeyAgent.start({
       password,
+      networkConfig,
       fresh,
-      networkConfig: networkConfig_,
     });
-    // Finished the start process.
     logger.info(`Created ${this.name}`);
     return polykeyAgent;
   }
@@ -381,8 +347,8 @@ class PolykeyAgent {
   public readonly sessionManager: SessionManager;
   public readonly grpcServerAgent: GRPCServer;
   public readonly grpcServerClient: GRPCServer;
+  public readonly fs: FileSystem;
 
-  protected fs: FileSystem;
   protected logger: Logger;
 
   constructor({
@@ -459,28 +425,13 @@ class PolykeyAgent {
     networkConfig?: NetworkConfig;
     fresh?: boolean;
   }) {
-    const networkConfig_ = {
-      // ForwardProxy
-      proxyHost: '127.0.0.1' as Host,
-      proxyPort: 0 as Port,
-      egressHost: '0.0.0.0' as Host,
-      egressPort: 0 as Port,
-      // ReverseProxy
-      ingressHost: '0.0.0.0' as Host,
-      ingressPort: 0 as Port,
-      // GRPCServer for agent service
-      agentHost: '127.0.0.1' as Host,
-      agentPort: 0 as Port,
-      // GRPCServer for client service
-      clientHost: '127.0.0.1' as Host,
-      clientPort: 0 as Port,
-      ...networkConfig,
-    };
-
     this.logger.info(`Starting ${this.constructor.name}`);
-    await this.status.start();
+    const networkConfig_ = {
+      ...config.defaults.networkConfig,
+      ...utils.filterEmptyObject(networkConfig),
+    };
+    await this.status.start({ pid: process.pid });
     await this.schema.start({ fresh });
-
     const agentService = createAgentService({
       keyManager: this.keyManager,
       vaultManager: this.vaultManager,
@@ -488,7 +439,6 @@ class PolykeyAgent {
       sigchain: this.sigchain,
       notificationsManager: this.notificationsManager,
     });
-
     const clientService = createClientService({
       polykeyAgent: this,
       discovery: this.discovery,
@@ -502,6 +452,7 @@ class PolykeyAgent {
       fwdProxy: this.fwdProxy,
       revProxy: this.revProxy,
       clientGrpcServer: this.grpcServerClient,
+      fs: this.fs,
     });
 
     // Starting modules
@@ -554,13 +505,12 @@ class PolykeyAgent {
     await this.notificationsManager.start({ fresh });
     await this.sessionManager.start({ fresh });
 
-    await this.status.updateStatus('host', this.grpcServerClient.host);
-    await this.status.updateStatus('port', this.grpcServerClient.port);
-    await this.status.updateStatus('ingressHost', this.revProxy.ingressHost);
-    await this.status.updateStatus('ingressPort', this.revProxy.ingressPort);
-    await this.status.updateStatus('fwdProxyHost', this.fwdProxy.proxyHost);
-    await this.status.updateStatus('fwdProxyPort', this.fwdProxy.proxyPort);
-    await this.status.finishStart();
+    await this.status.finishStart({
+      pid: process.pid,
+      nodeId: this.keyManager.getNodeId(),
+      clientHost: this.grpcServerClient.host,
+      clientPort: this.grpcServerClient.port,
+    });
 
     this.logger.info(`Started ${this.constructor.name}`);
   }
@@ -570,7 +520,7 @@ class PolykeyAgent {
    */
   public async stop() {
     this.logger.info(`Stopping ${this.constructor.name}`);
-    await this.status.beginStop();
+    await this.status.beginStop({ pid: process.pid });
     await this.sessionManager.stop();
     await this.notificationsManager.stop();
     await this.vaultManager.stop();
@@ -586,7 +536,7 @@ class PolykeyAgent {
     await this.db.stop();
     await this.keyManager.stop();
     await this.schema.stop();
-    await this.status.stop();
+    await this.status.stop({});
     this.logger.info(`Stopped ${this.constructor.name}`);
   }
 

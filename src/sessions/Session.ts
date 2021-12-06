@@ -143,10 +143,7 @@ class Session {
       }
       await sessionTokenFile.truncate();
       // Writes from the beginning
-      await sessionTokenFile.writeFile(
-        (sessionToken as string) + '\n',
-        'utf-8',
-      );
+      await sessionTokenFile.write((sessionToken as string) + '\n', 0, 'utf-8');
     } finally {
       if (sessionTokenFile != null) {
         lock.unlock(sessionTokenFile.fd);

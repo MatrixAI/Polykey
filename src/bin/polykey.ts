@@ -1,6 +1,18 @@
 #!/usr/bin/env node
 
+import fs from 'fs';
 import process from 'process';
+/**
+ * Hack for wiping out the threads signal handlers
+ * See: https://github.com/andywer/threads.js/issues/388
+ * This is done statically during this import
+ * It is essential that the threads import here is very first import of threads module
+ * in the entire codebase for this hack to work
+ * If the worker manager is used, it must be stopped gracefully with the PolykeyAgent
+ */
+import 'threads';
+process.removeAllListeners('SIGINT');
+process.removeAllListeners('SIGTERM');
 import commander from 'commander';
 import CommandBootstrap from './bootstrap';
 import CommandAgent from './agent';
@@ -10,30 +22,37 @@ import CommandKeys from './keys';
 import CommandNodes from './nodes';
 import CommandIdentities from './identities';
 import CommandNotifications from './notifications';
-
 import CommandPolykey from './CommandPolykey';
 import * as binUtils from './utils';
 import ErrorPolykey from '../ErrorPolykey';
 import config from '../config';
 
+process.title = 'polykey';
+
 async function main(argv = process.argv): Promise<number> {
-  const rootCommand = new CommandPolykey();
+  // Registers signal and process error handler
+  // Any resource cleanup must be resolved within their try-catch block
+  // Leaf commands may register exit handlers in case of signal exits
+  // Process error handler should only be used by non-terminating commands
+  // When testing, this entire must be mocked to be a noop
+  const exitHandlers = new binUtils.ExitHandlers();
+  const rootCommand = new CommandPolykey({ exitHandlers, fs });
   rootCommand.name('polykey');
   rootCommand.version(config.sourceVersion);
   rootCommand.description('Polykey CLI');
-  rootCommand.addCommand(new CommandBootstrap());
-  rootCommand.addCommand(new CommandAgent());
-  rootCommand.addCommand(new CommandNodes());
-  rootCommand.addCommand(new CommandSecrets());
-  rootCommand.addCommand(new CommandKeys());
-  rootCommand.addCommand(new CommandVaults());
-  rootCommand.addCommand(new CommandIdentities());
-  rootCommand.addCommand(new CommandNotifications());
+  rootCommand.addCommand(new CommandBootstrap({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandAgent({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandNodes({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandSecrets({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandKeys({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandVaults({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandIdentities({ exitHandlers, fs }));
+  rootCommand.addCommand(new CommandNotifications({ exitHandlers, fs }));
   try {
     // `argv` will have node path and the script path as the first 2 parameters
     // navigates and executes the subcommand
     await rootCommand.parseAsync(argv);
-    // Successful execution
+    // Successful execution (even if the command was non-terminating)
     process.exitCode = 0;
   } catch (e) {
     if (e instanceof commander.CommanderError) {

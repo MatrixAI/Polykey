@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@",
+            "message": "Replace with relative path"
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["@/**"],
+            "message": "Replace with relative path"
+          }
+        ]
+      }
+    ]
+  }
+}

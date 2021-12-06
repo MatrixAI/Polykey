@@ -14,6 +14,13 @@ import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
 import * as testUtils from './utils';
 
+// Mocks.
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
  * Setting up the PolykeyAgent has been done in a beforeAll block.
@@ -110,99 +117,107 @@ describe('Keys client service', () => {
     expect(key.getPrivate()).toBe(keyPair.privateKey);
     expect(key.getPublic()).toBe(keyPair.publicKey);
   });
-  test('should reset root keypair', async () => {
-    const getRootKeyPair = grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
-      client,
-      client.keysKeyPairRoot,
-    );
+  test(
+    'should reset root keypair',
+    async () => {
+      const getRootKeyPair = grpcUtils.promisifyUnaryCall<keysPB.KeyPair>(
+        client,
+        client.keysKeyPairRoot,
+      );
 
-    const resetKeyPair = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
-      client,
-      client.keysKeyPairReset,
-    );
+      const resetKeyPair = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+        client,
+        client.keysKeyPairReset,
+      );
 
-    const keyPair = keyManager.getRootKeyPairPem();
-    const nodeId1 = nodeManager.getNodeId();
-    // @ts-ignore - get protected property
-    const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig1 = polykeyAgent.grpcServerClient.tlsConfig;
-    const expectedTLSConfig1: TLSConfig = {
-      keyPrivatePem: keyPair.privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
-    };
-    expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(revTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
-    const keyMessage = new keysPB.Key();
-    keyMessage.setName('somepassphrase');
-    await resetKeyPair(keyMessage, callCredentials);
-    const emptyMessage = new utilsPB.EmptyMessage();
-    await fs.promises.writeFile(passwordFile, 'somepassphrase');
-    const key = await getRootKeyPair(emptyMessage, callCredentials);
-    const nodeId2 = nodeManager.getNodeId();
-    // @ts-ignore - get protected property
-    const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig2 = polykeyAgent.grpcServerClient.tlsConfig;
-    const expectedTLSConfig2: TLSConfig = {
-      keyPrivatePem: key.getPrivate(),
-      certChainPem: await keyManager.getRootCertChainPem(),
-    };
-    expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(revTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(key.getPrivate()).not.toBe(keyPair.privateKey);
-    expect(key.getPublic()).not.toBe(keyPair.publicKey);
-    expect(nodeId1).not.toBe(nodeId2);
-  });
-  test('should renew root keypair', async () => {
-    const renewKeyPair = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
-      client,
-      client.keysKeyPairRenew,
-    );
+      const keyPair = keyManager.getRootKeyPairPem();
+      const nodeId1 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig1 = polykeyAgent.grpcServerClient.tlsConfig;
+      const expectedTLSConfig1: TLSConfig = {
+        keyPrivatePem: keyPair.privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(revTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
+      const keyMessage = new keysPB.Key();
+      keyMessage.setName('somepassphrase');
+      await resetKeyPair(keyMessage, callCredentials);
+      const emptyMessage = new utilsPB.EmptyMessage();
+      await fs.promises.writeFile(passwordFile, 'somepassphrase');
+      const key = await getRootKeyPair(emptyMessage, callCredentials);
+      const nodeId2 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig2 = polykeyAgent.grpcServerClient.tlsConfig;
+      const expectedTLSConfig2: TLSConfig = {
+        keyPrivatePem: key.getPrivate(),
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(revTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(key.getPrivate()).not.toBe(keyPair.privateKey);
+      expect(key.getPublic()).not.toBe(keyPair.publicKey);
+      expect(nodeId1).not.toBe(nodeId2);
+    },
+    global.defaultTimeout * 3,
+  );
+  test(
+    'should renew root keypair',
+    async () => {
+      const renewKeyPair = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+        client,
+        client.keysKeyPairRenew,
+      );
 
-    const rootKeyPair1 = keyManager.getRootKeyPairPem();
-    const nodeId1 = nodeManager.getNodeId();
-    // @ts-ignore - get protected property
-    const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig1 = polykeyAgent.grpcServerClient.tlsConfig;
-    const expectedTLSConfig1: TLSConfig = {
-      keyPrivatePem: rootKeyPair1.privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
-    };
-    expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(revTLSConfig1).toEqual(expectedTLSConfig1);
-    expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
-    const keyMessage = new keysPB.Key();
-    keyMessage.setName('somepassphrase');
-    await renewKeyPair(keyMessage, callCredentials);
-    const rootKeyPair2 = keyManager.getRootKeyPairPem();
-    const nodeId2 = nodeManager.getNodeId();
-    // @ts-ignore - get protected property
-    const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
-    // @ts-ignore - get protected property
-    const serverTLSConfig2 = polykeyAgent.grpcServerClient.tlsConfig;
-    const expectedTLSConfig2: TLSConfig = {
-      keyPrivatePem: rootKeyPair2.privateKey,
-      certChainPem: await keyManager.getRootCertChainPem(),
-    };
-    expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(revTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
-    expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
-    expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
-    expect(nodeId1).not.toBe(nodeId2);
-  });
+      const rootKeyPair1 = keyManager.getRootKeyPairPem();
+      const nodeId1 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig1 = polykeyAgent.grpcServerClient.tlsConfig;
+      const expectedTLSConfig1: TLSConfig = {
+        keyPrivatePem: rootKeyPair1.privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(revTLSConfig1).toEqual(expectedTLSConfig1);
+      expect(serverTLSConfig1).toEqual(expectedTLSConfig1);
+      const keyMessage = new keysPB.Key();
+      keyMessage.setName('somepassphrase');
+      await renewKeyPair(keyMessage, callCredentials);
+      const rootKeyPair2 = keyManager.getRootKeyPairPem();
+      const nodeId2 = nodeManager.getNodeId();
+      // @ts-ignore - get protected property
+      const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
+      // @ts-ignore - get protected property
+      const serverTLSConfig2 = polykeyAgent.grpcServerClient.tlsConfig;
+      const expectedTLSConfig2: TLSConfig = {
+        keyPrivatePem: rootKeyPair2.privateKey,
+        certChainPem: await keyManager.getRootCertChainPem(),
+      };
+      expect(fwdTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(revTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(serverTLSConfig2).toEqual(expectedTLSConfig2);
+      expect(rootKeyPair2.privateKey).not.toBe(rootKeyPair1.privateKey);
+      expect(rootKeyPair2.publicKey).not.toBe(rootKeyPair1.publicKey);
+      expect(nodeId1).not.toBe(nodeId2);
+    },
+    global.defaultTimeout * 3,
+  );
   test('should encrypt and decrypt with root keypair', async () => {
     const encryptWithKeyPair = grpcUtils.promisifyUnaryCall<keysPB.Crypto>(
       client,

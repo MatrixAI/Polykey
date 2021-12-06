@@ -1,4 +1,3 @@
-// Import type { Buffer } from 'buffer';
 import type { Permission, VaultActions, PermissionIdString } from './types';
 import type { DB, DBLevel, DBOp } from '@matrixai/db';
 import type { NodeId } from '../nodes/types';
