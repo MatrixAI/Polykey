@@ -23,14 +23,10 @@ class CommandStatus extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      // Undefined statusInfo is the equivalent of a DEAD status
-      const statusInfo: StatusInfo =
-        clientStatus.statusInfo != null
-          ? clientStatus.statusInfo
-          : { status: 'DEAD', data: {} };
+      const statusInfo = clientStatus.statusInfo;
       // If status is not LIVE, we return what we have in the status info
       // If status is LIVE, then we connect and acquire agent information
-      if (statusInfo.status !== 'LIVE') {
+      if (statusInfo != null && statusInfo?.status !== 'LIVE') {
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'dict',
@@ -77,7 +73,7 @@ class CommandStatus extends CommandPolykey {
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'dict',
             data: {
-              status: statusInfo.status,
+              status: 'LIVE',
               nodeId,
               clientHost,
               clientPort,

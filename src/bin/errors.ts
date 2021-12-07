@@ -8,10 +8,20 @@ class ErrorCLINodePath extends ErrorCLI {
   exitCode = sysexits.USAGE;
 }
 
+class ErrorCLIStatusMissing extends ErrorCLI {
+  description = 'Could not resolve nodeId, clientHost or clientPort from non-existent Status';
+  exitCode = sysexits.USAGE;
+}
+
 class ErrorCLIStatusNotLive extends ErrorCLI {
   description =
     'Could not resolve nodeId, clientHost or clientPort from Status';
   exitCode = sysexits.USAGE;
+}
+
+class ErrorCLIStatusStarting extends ErrorCLI {
+  description = 'Agent is starting';
+  exitCode = sysexits.TEMPFAIL;
 }
 
 class ErrorCLIPolykeyAgentProcess extends ErrorCLI {
@@ -70,6 +80,8 @@ export {
   ErrorCLI,
   ErrorCLINodePath,
   ErrorCLIPasswordMissing,
+  ErrorCLIStatusMissing,
+  ErrorCLIStatusStarting,
   ErrorCLIStatusNotLive,
   ErrorCLIPolykeyAgentProcess,
   ErrorCLIPasswordFileRead,

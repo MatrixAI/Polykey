@@ -159,41 +159,67 @@ async function processClientStatus(
   logger = new Logger(processClientStatus.name),
 ): Promise<
   | {
-      statusInfo: StatusStarting | StatusStopping | StatusDead | undefined;
+      statusInfo: StatusStarting | StatusStopping | StatusDead;
+      status: Status;
       nodeId: NodeId | undefined;
       clientHost: Host | undefined;
       clientPort: Port | undefined;
     }
   | {
-      statusInfo: StatusLive;
+      statusInfo: StatusLive,
+      status: Status;
+      nodeId: NodeId;
+      clientHost: Host;
+      clientPort: Port;
+    }
+  | {
+      statusInfo: undefined,
+      status: undefined,
       nodeId: NodeId;
       clientHost: Host;
       clientPort: Port;
     }
 > {
+  // If all parameters are set, no status and no statusInfo is used
+  if (nodeId != null && clientHost != null && clientPort != null) {
+    return {
+      statusInfo: undefined,
+      status: undefined,
+      nodeId,
+      clientHost,
+      clientPort
+    };
+  }
   const statusPath = path.join(nodePath, config.defaults.statusBase);
   const status = new Status({
     statusPath,
     fs,
     logger: logger.getChild(Status.name),
   });
-  const statusInfo = await status.readStatus();
-  if (statusInfo?.status === 'LIVE') {
+  let statusInfo = await status.readStatus();
+  // If not all parameters are set, and that the status doesn't exist
+  // Then this an exception
+  if (statusInfo == null) {
+    throw new binErrors.ErrorCLIStatusMissing();
+  }
+  if (statusInfo.status === 'LIVE') {
     if (nodeId == null) nodeId = statusInfo.data.nodeId;
     if (clientHost == null) clientHost = statusInfo.data.clientHost;
     if (clientPort == null) clientPort = statusInfo.data.clientPort;
     return {
+      statusInfo,
+      status,
       nodeId,
       clientHost,
-      clientPort,
-      statusInfo,
+      clientPort
     };
   }
   return {
+    statusInfo,
+    status,
     nodeId,
     clientHost,
-    clientPort,
-    statusInfo,
+    clientPort
   };
 }
 

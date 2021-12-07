@@ -1,8 +1,10 @@
+import type { StatusInfo } from '../../status/types';
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
+import * as binErrors from '../errors';
 
 class CommandStop extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -15,7 +17,7 @@ class CommandStop extends CommandPolykey {
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
-      const clientOptions = await binProcessors.processClientOptions(
+      const clientStatus = await binProcessors.processClientStatus(
         options.nodePath,
         options.nodeId,
         options.clientHost,
@@ -23,6 +25,20 @@ class CommandStop extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
+      const statusInfo = clientStatus.statusInfo;
+      if (
+        statusInfo?.status === 'DEAD'
+      ) {
+        this.logger.info('Agent is already dead');
+        return;
+      } else if (statusInfo?.status === 'STOPPING') {
+        this.logger.info('Agent is already stopping');
+        return;
+      } else if (statusInfo?.status === 'STARTING') {
+        throw new binErrors.ErrorCLIStatusStarting();
+      }
+      // Either the statusInfo is undefined or LIVE
+      // Either way, the connection parameters now exist
       let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
@@ -30,9 +46,9 @@ class CommandStop extends CommandPolykey {
       try {
         pkClient = await PolykeyClient.createPolykeyClient({
           nodePath: options.nodePath,
-          nodeId: clientOptions.nodeId,
-          host: clientOptions.clientHost,
-          port: clientOptions.clientPort,
+          nodeId: clientStatus.nodeId!,
+          host: clientStatus.clientHost!,
+          port: clientStatus.clientPort!,
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const meta = await binProcessors.processAuthentication(
@@ -45,12 +61,7 @@ class CommandStop extends CommandPolykey {
           (auth) => grpcClient.agentStop(emptyMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: ['PolyKey Agent stopped'],
-          }),
-        );
+        this.logger.info('Stopping Agent');
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }
