@@ -4,6 +4,8 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Status } from '@/status';
 import config from '@/config';
+import * as binUtils from '@/bin/utils';
+import * as binErrors from '@/bin/errors';
 import * as testBinUtils from '../utils';
 
 describe('stop', () => {
@@ -142,6 +144,70 @@ describe('stop', () => {
       expect(agentStop2.exitCode).toBe(0);
       expect(agentStop3.exitCode).toBe(0);
       expect(agentStop4.exitCode).toBe(0);
+    },
+    global.defaultTimeout * 2
+  );
+  test(
+    'stopping starting agent results in error',
+    async () => {
+      const password = 'abc123';
+      const status = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        fs,
+        logger,
+      });
+      await testBinUtils.pkSpawn(
+        [
+          'agent',
+          'start',
+          // 1024 is the smallest size and is faster to start
+          '--root-key-pair-bits',
+          '1024',
+          '--verbose'
+        ],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+        logger
+      );
+      await status.waitFor('STARTING');
+      const { exitCode, stderr } = await testBinUtils.pkStdio(
+        [
+          'agent',
+          'stop',
+        ],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+        },
+        dataDir,
+      );
+      const e = new binErrors.ErrorCLIStatusStarting();
+      expect(exitCode).toBe(e.exitCode);
+      const stdErrLine = stderr.trim().split('\n').pop();
+      const eOutput = binUtils
+        .outputFormatter({
+          type: 'error',
+          name: e.name,
+          description: e.description,
+          message: e.message,
+        })
+        .trim();
+      expect(stdErrLine).toBe(eOutput);
+      await status.waitFor('LIVE');
+      await testBinUtils.pkStdio(
+        [
+          'agent',
+          'stop',
+        ],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      await status.waitFor('DEAD');
     },
     global.defaultTimeout * 2
   );
