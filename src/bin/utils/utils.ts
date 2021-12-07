@@ -64,7 +64,14 @@ function outputFormatter(msg: OutputObject): string {
     }
   } else if (msg.type === 'dict') {
     for (const key in msg.data) {
-      output += `${key}:\t${msg.data[key]}\n`;
+      let value = msg.data[key].toString();
+      // Remove the last line terminator if it exists
+      // This may exist if the value is multi-line string
+      value = value.replace(/(?:\r\n|\n)$/, '');
+      // If the string has line terminators internally
+      // Then we must append `\t` separator after each line terminator
+      value = value.replace(/(\r\n|\n)/g, '$1\t');
+      output += `${key}\t${value}\n`;
     }
   } else if (msg.type === 'json') {
     output = JSON.stringify(msg.data);

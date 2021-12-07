@@ -5,25 +5,38 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
-import * as polykey_v1_nodes_nodes_pb from "../../../polykey/v1/nodes/nodes_pb";
-import * as polykey_v1_keys_keys_pb from "../../../polykey/v1/keys/keys_pb";
 
 export class InfoMessage extends jspb.Message { 
-
-    hasNodeId(): boolean;
-    clearNodeId(): void;
-    getNodeId(): polykey_v1_nodes_nodes_pb.Node | undefined;
-    setNodeId(value?: polykey_v1_nodes_nodes_pb.Node): InfoMessage;
-
-    hasAddress(): boolean;
-    clearAddress(): void;
-    getAddress(): polykey_v1_nodes_nodes_pb.Address | undefined;
-    setAddress(value?: polykey_v1_nodes_nodes_pb.Address): InfoMessage;
-
-    hasCert(): boolean;
-    clearCert(): void;
-    getCert(): polykey_v1_keys_keys_pb.Certificate | undefined;
-    setCert(value?: polykey_v1_keys_keys_pb.Certificate): InfoMessage;
+    getPid(): number;
+    setPid(value: number): InfoMessage;
+    getNodeId(): string;
+    setNodeId(value: string): InfoMessage;
+    getClientHost(): string;
+    setClientHost(value: string): InfoMessage;
+    getClientPort(): number;
+    setClientPort(value: number): InfoMessage;
+    getIngressHost(): string;
+    setIngressHost(value: string): InfoMessage;
+    getIngressPort(): number;
+    setIngressPort(value: number): InfoMessage;
+    getEgressHost(): string;
+    setEgressHost(value: string): InfoMessage;
+    getEgressPort(): number;
+    setEgressPort(value: number): InfoMessage;
+    getAgentHost(): string;
+    setAgentHost(value: string): InfoMessage;
+    getAgentPort(): number;
+    setAgentPort(value: number): InfoMessage;
+    getProxyHost(): string;
+    setProxyHost(value: string): InfoMessage;
+    getProxyPort(): number;
+    setProxyPort(value: number): InfoMessage;
+    getRootPublicKeyPem(): string;
+    setRootPublicKeyPem(value: string): InfoMessage;
+    getRootCertPem(): string;
+    setRootCertPem(value: string): InfoMessage;
+    getRootCertChainPem(): string;
+    setRootCertChainPem(value: string): InfoMessage;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InfoMessage.AsObject;
@@ -37,8 +50,20 @@ export class InfoMessage extends jspb.Message {
 
 export namespace InfoMessage {
     export type AsObject = {
-        nodeId?: polykey_v1_nodes_nodes_pb.Node.AsObject,
-        address?: polykey_v1_nodes_nodes_pb.Address.AsObject,
-        cert?: polykey_v1_keys_keys_pb.Certificate.AsObject,
+        pid: number,
+        nodeId: string,
+        clientHost: string,
+        clientPort: number,
+        ingressHost: string,
+        ingressPort: number,
+        egressHost: string,
+        egressPort: number,
+        agentHost: string,
+        agentPort: number,
+        proxyHost: string,
+        proxyPort: number,
+        rootPublicKeyPem: string,
+        rootCertPem: string,
+        rootCertChainPem: string,
     }
 }

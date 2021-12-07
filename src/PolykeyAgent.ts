@@ -449,9 +449,10 @@ class PolykeyAgent {
       notificationsManager: this.notificationsManager,
       sessionManager: this.sessionManager,
       vaultManager: this.vaultManager,
+      grpcServerClient: this.grpcServerClient,
+      grpcServerAgent: this.grpcServerAgent,
       fwdProxy: this.fwdProxy,
       revProxy: this.revProxy,
-      clientGrpcServer: this.grpcServerClient,
       fs: this.fs,
     });
 

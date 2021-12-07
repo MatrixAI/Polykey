@@ -1,4 +1,5 @@
-import type { StatusInfo } from '../../status/types';
+import type PolykeyClient from '../../PolykeyClient';
+import type * as agentPB from '../../proto/js/polykey/v1/agent/agent_pb';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -37,11 +38,11 @@ class CommandStatus extends CommandPolykey {
           }),
         );
       } else {
-        let pkClient;
+        let pkClient: PolykeyClient;
         this.exitHandlers.handlers.push(async () => {
           if (pkClient != null) await pkClient.stop();
         });
-        let response;
+        let response: agentPB.InfoMessage;
         try {
           pkClient = await PolykeyClient.createPolykeyClient({
             nodeId: clientStatus.nodeId!,
@@ -60,24 +61,43 @@ class CommandStatus extends CommandPolykey {
             meta,
           );
         } finally {
-          if (pkClient != null) await pkClient.stop();
+          if (pkClient! != null) await pkClient.stop();
         }
-        const nodeMessage = response.getNodeId()!;
-        const addressMessage = response.getAddress()!;
-        const certMessage = response.getCert()!;
-        const nodeId = nodeMessage.getNodeId();
-        const clientHost = addressMessage.getHost();
-        const clientPort = addressMessage.getPort();
-        const certChain = certMessage.getCert();
+        const pid = response.getPid();
+        const nodeId = response.getNodeId();
+        const clientHost = response.getClientHost();
+        const clientPort = response.getClientPort();
+        const ingressHost = response.getIngressHost();
+        const ingressPort = response.getIngressPort();
+        const egressHost = response.getEgressHost();
+        const egressPort = response.getEgressPort();
+        const agentHost = response.getAgentHost();
+        const agentPort = response.getAgentPort();
+        const proxyHost = response.getProxyHost();
+        const proxyPort = response.getProxyPort();
+        const rootPublicKeyPem = response.getRootPublicKeyPem();
+        const rootCertPem = response.getRootCertPem();
+        const rootCertChainPem = response.getRootCertChainPem();
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'dict',
             data: {
               status: 'LIVE',
+              pid,
               nodeId,
               clientHost,
               clientPort,
-              certChain,
+              ingressHost,
+              ingressPort,
+              egressHost,
+              egressPort,
+              agentHost,
+              agentPort,
+              proxyHost,
+              proxyPort,
+              rootPublicKeyPem,
+              rootCertPem,
+              rootCertChainPem
             },
           }),
         );

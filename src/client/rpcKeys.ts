@@ -17,14 +17,14 @@ const createKeysRPC = ({
   authenticate,
   fwdProxy,
   revProxy,
-  clientGrpcServer,
+  grpcServerClient,
 }: {
   keyManager: KeyManager;
   nodeManager: NodeManager;
   authenticate: utils.Authenticate;
   fwdProxy: ForwardProxy;
   revProxy: ReverseProxy;
-  clientGrpcServer: GRPCServer;
+  grpcServerClient: GRPCServer;
 }) => {
   return {
     keysKeyPairRoot: async (
@@ -63,7 +63,7 @@ const createKeysRPC = ({
           };
           fwdProxy.setTLSConfig(tlsConfig);
           revProxy.setTLSConfig(tlsConfig);
-          clientGrpcServer.setTLSConfig(tlsConfig);
+          grpcServerClient.setTLSConfig(tlsConfig);
           // Finally, refresh the node buckets
           await nodeManager.refreshBuckets();
         });
@@ -90,7 +90,7 @@ const createKeysRPC = ({
           };
           fwdProxy.setTLSConfig(tlsConfig);
           revProxy.setTLSConfig(tlsConfig);
-          clientGrpcServer.setTLSConfig(tlsConfig);
+          grpcServerClient.setTLSConfig(tlsConfig);
           // Finally, refresh the node buckets
           await nodeManager.refreshBuckets();
         });

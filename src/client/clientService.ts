@@ -7,8 +7,8 @@ import type { GestaltGraph } from '../gestalts';
 import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 import type { Discovery } from '../discovery';
-import type { ForwardProxy, ReverseProxy } from '../network';
 import type { GRPCServer } from '../grpc';
+import type { ForwardProxy, ReverseProxy } from '../network';
 import type { FileSystem } from '../types';
 
 import type * as grpc from '@grpc/grpc-js';
@@ -43,9 +43,10 @@ function createClientService({
   sessionManager,
   notificationsManager,
   discovery,
+  grpcServerClient,
+  grpcServerAgent,
   fwdProxy,
   revProxy,
-  clientGrpcServer,
   fs,
 }: {
   polykeyAgent: PolykeyAgent;
@@ -57,9 +58,10 @@ function createClientService({
   sessionManager: SessionManager;
   notificationsManager: NotificationsManager;
   discovery: Discovery;
+  grpcServerClient: GRPCServer;
+  grpcServerAgent: GRPCServer;
   fwdProxy: ForwardProxy;
   revProxy: ReverseProxy;
-  clientGrpcServer: GRPCServer;
   fs: FileSystem;
 }) {
   const authenticate = clientUtils.authenticator(sessionManager, keyManager);
@@ -67,6 +69,10 @@ function createClientService({
     ...createStatusRPC({
       authenticate,
       keyManager,
+      grpcServerClient,
+      grpcServerAgent,
+      fwdProxy,
+      revProxy
     }),
     ...createSessionsRPC({
       authenticate,
@@ -84,7 +90,7 @@ function createClientService({
       authenticate,
       fwdProxy,
       revProxy,
-      clientGrpcServer,
+      grpcServerClient,
     }),
     ...createIdentitiesRPC({
       identitiesManager,

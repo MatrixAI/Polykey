@@ -2,11 +2,20 @@ syntax = "proto3";
 
 package polykey.v1.agent;
 
-import "polykey/v1/nodes/nodes.proto";
-import "polykey/v1/keys/keys.proto";
-
 message InfoMessage {
-  polykey.v1.nodes.Node node_id = 1;
-  polykey.v1.nodes.Address address = 2;
-  polykey.v1.keys.Certificate cert = 3;
+  uint32 pid = 1;
+  string node_id = 2;
+  string client_host = 3;
+  uint32 client_port = 4;
+  string ingress_host = 5;
+  uint32 ingress_port = 6;
+  string egress_host = 7;
+  uint32 egress_port = 8;
+  string agent_host = 9;
+  uint32 agent_port = 10;
+  string proxy_host = 11;
+  uint32 proxy_port = 12;
+  string root_public_key_pem = 13;
+  string root_cert_pem = 14;
+  string root_cert_chain_pem = 15;
 }

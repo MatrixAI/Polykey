@@ -1,11 +1,8 @@
-import type { RecoveryCode } from '@/keys/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import readline from 'readline';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { Status, errors as statusErrors } from '@/status';
-import * as binUtils from '@/bin/utils';
+import { Status } from '@/status';
 import * as binErrors from '@/bin/errors';
 import config from '@/config';
 import * as testBinUtils from '../utils';
@@ -31,7 +28,16 @@ describe('status', () => {
       recursive: true,
     });
   });
-  test.only('status on LIVE agent', async () => {
+  test('status on LIVE agent', async () => {
+    const status = new Status({
+      statusPath: path.join(
+        global.binAgentDir,
+        config.defaults.statusBase
+      ),
+      fs,
+      logger
+    });
+    const statusInfo = (await status.readStatus())!;
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'agent',
@@ -47,6 +53,24 @@ describe('status', () => {
       global.binAgentDir
     );
     expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({
+      status: 'LIVE',
+      pid: expect.any(Number),
+      nodeId: statusInfo.data.nodeId,
+      clientHost: statusInfo.data.clientHost,
+      clientPort: statusInfo.data.clientPort,
+      ingressHost: statusInfo.data.ingressHost,
+      ingressPort: statusInfo.data.ingressPort,
+      egressHost: expect.any(String),
+      egressPort: expect.any(Number),
+      agentHost: expect.any(String),
+      agentPort: expect.any(Number),
+      proxyHost: expect.any(String),
+      proxyPort: expect.any(Number),
+      rootPublicKeyPem: expect.any(String),
+      rootCertPem: expect.any(String),
+      rootCertChainPem: expect.any(String),
+    });
   });
   test('status on remote LIVE agent', async () => {
     const passwordPath = path.join(dataDir, 'password');
@@ -60,7 +84,7 @@ describe('status', () => {
       logger
     });
     const statusInfo = (await status.readStatus())!;
-    const { exitCode, stdout, stderr } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await testBinUtils.pkStdio(
       [
         'agent',
         'status',
@@ -72,10 +96,30 @@ describe('status', () => {
         statusInfo.data.clientHost,
         '--client-port',
         statusInfo.data.clientPort.toString(),
+        '--format',
+        'json',
         '--verbose'
       ]
     );
     expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({
+      status: 'LIVE',
+      pid: expect.any(Number),
+      nodeId: statusInfo.data.nodeId,
+      clientHost: statusInfo.data.clientHost,
+      clientPort: statusInfo.data.clientPort,
+      ingressHost: statusInfo.data.ingressHost,
+      ingressPort: statusInfo.data.ingressPort,
+      egressHost: expect.any(String),
+      egressPort: expect.any(Number),
+      agentHost: expect.any(String),
+      agentPort: expect.any(Number),
+      proxyHost: expect.any(String),
+      proxyPort: expect.any(Number),
+      rootPublicKeyPem: expect.any(String),
+      rootCertPem: expect.any(String),
+      rootCertChainPem: expect.any(String),
+    });
   });
   test('status on missing agent', async () => {
     const { exitCode, stderr } = await testBinUtils.pkStdio(
@@ -84,6 +128,9 @@ describe('status', () => {
         'status',
         '--verbose'
       ],
+      {
+        PK_NODE_PATH: path.join(dataDir, 'polykey'),
+      }
     );
     testBinUtils.expectProcessError(
       exitCode,

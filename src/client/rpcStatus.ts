@@ -1,19 +1,27 @@
-import type { KeyManager } from '../keys';
-
 import type * as grpc from '@grpc/grpc-js';
-import type * as utils from './utils';
+import type { Authenticate } from './utils';
+import type { KeyManager } from '../keys';
+import type { GRPCServer } from '../grpc';
+import type { ForwardProxy, ReverseProxy } from '../network';
 import type * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
+import process from 'process';
 import * as grpcUtils from '../grpc/utils';
-import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as keysPB from '../proto/js/polykey/v1/keys/keys_pb';
 import * as agentPB from '../proto/js/polykey/v1/agent/agent_pb';
 
 const createStatusRPC = ({
   authenticate,
   keyManager,
+  grpcServerClient,
+  grpcServerAgent,
+  fwdProxy,
+  revProxy,
 }: {
-  authenticate: utils.Authenticate;
+  authenticate: Authenticate;
   keyManager: KeyManager;
+  grpcServerClient: GRPCServer;
+  grpcServerAgent: GRPCServer;
+  fwdProxy: ForwardProxy;
+  revProxy: ReverseProxy;
 }) => {
   return {
     agentStatus: async (
@@ -21,27 +29,24 @@ const createStatusRPC = ({
       callback: grpc.sendUnaryData<agentPB.InfoMessage>,
     ): Promise<void> => {
       const response = new agentPB.InfoMessage();
-      const action = async (response: agentPB.InfoMessage) => {
-        const nodeMessage = new nodesPB.Node();
-        const addressMessage = new nodesPB.Address();
-        const certificateMessage = new keysPB.Certificate();
-        // TODO set nodeId, host, port from status object
-        // Also can add any other info we want to return
-        nodeMessage.setNodeId('nodeId');
-        addressMessage.setHost('host');
-        addressMessage.setPort(0);
-        certificateMessage.setCert(
-          (await keyManager.getRootCertChain()).toString(),
-        );
-        response.setNodeId(nodeMessage);
-        response.setAddress(addressMessage);
-        response.setCert(certificateMessage);
-      };
-
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-        await action(response);
+        response.setPid(process.pid);
+        response.setNodeId(keyManager.getNodeId());
+        response.setClientHost(grpcServerClient.host);
+        response.setClientPort(grpcServerClient.port);
+        response.setIngressHost(revProxy.ingressHost);
+        response.setIngressPort(revProxy.ingressPort);
+        response.setEgressHost(fwdProxy.egressHost);
+        response.setEgressPort(fwdProxy.egressPort);
+        response.setAgentHost(grpcServerAgent.host);
+        response.setAgentPort(grpcServerAgent.port);
+        response.setProxyHost(fwdProxy.proxyHost);
+        response.setProxyPort(fwdProxy.proxyPort);
+        response.setRootPublicKeyPem(keyManager.getRootKeyPairPem().publicKey);
+        response.setRootCertPem(keyManager.getRootCertPem());
+        response.setRootCertChainPem(await keyManager.getRootCertChainPem());
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
