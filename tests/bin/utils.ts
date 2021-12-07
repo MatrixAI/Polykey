@@ -11,7 +11,7 @@ import nexpect from 'nexpect';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 import * as binUtils from '@/bin/utils';
-import * as statusErrors from '@/status/errors';
+import { Status, errors as statusErrors } from '@/status';
 
 /**
  * Runs pk command functionally
@@ -307,6 +307,7 @@ async function pkAgent(
     path.join(global.binAgentDir, 'references', reference),
     reference,
   );
+  // Here the agent server is part of the jest process
   const { exitCode, stderr } = await pkStdio(
     [
       'agent',
@@ -355,6 +356,10 @@ async function pkAgent(
       }
       throw e;
     }
+    const status = new Status({
+      statusPath: global.binAgentDir,
+      fs,
+    });
     await pkStdio(
       ['agent', 'stop', '--verbose'],
       {
@@ -363,6 +368,8 @@ async function pkAgent(
       },
       global.binAgentDir,
     );
+    // `pk agent stop` is asynchronous, need to wait for it to be DEAD
+    await status.waitFor('DEAD');
   };
 }
 
