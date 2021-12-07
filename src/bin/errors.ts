@@ -9,7 +9,8 @@ class ErrorCLINodePath extends ErrorCLI {
 }
 
 class ErrorCLIStatusMissing extends ErrorCLI {
-  description = 'Could not resolve nodeId, clientHost or clientPort from non-existent Status';
+  description =
+    'Could not resolve nodeId, clientHost or clientPort from non-existent Status';
   exitCode = sysexits.USAGE;
 }
 

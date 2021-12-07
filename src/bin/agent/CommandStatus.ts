@@ -97,7 +97,7 @@ class CommandStatus extends CommandPolykey {
               proxyPort,
               rootPublicKeyPem,
               rootCertPem,
-              rootCertChainPem
+              rootCertChainPem,
             },
           }),
         );

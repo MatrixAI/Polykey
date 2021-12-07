@@ -52,7 +52,7 @@ describe('bin/utils', () => {
     expect(
       binUtils.outputFormatter({
         type: 'dict',
-        data: { key1: 'first\nsecond', key2: 'first\nsecond\n' }
+        data: { key1: 'first\nsecond', key2: 'first\nsecond\n' },
       }),
     ).toBe('key1\tfirst\n\tsecond\nkey2\tfirst\n\tsecond\n');
     // JSON

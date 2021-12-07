@@ -166,15 +166,15 @@ async function processClientStatus(
       clientPort: Port | undefined;
     }
   | {
-      statusInfo: StatusLive,
+      statusInfo: StatusLive;
       status: Status;
       nodeId: NodeId;
       clientHost: Host;
       clientPort: Port;
     }
   | {
-      statusInfo: undefined,
-      status: undefined,
+      statusInfo: undefined;
+      status: undefined;
       nodeId: NodeId;
       clientHost: Host;
       clientPort: Port;
@@ -187,7 +187,7 @@ async function processClientStatus(
       status: undefined,
       nodeId,
       clientHost,
-      clientPort
+      clientPort,
     };
   }
   const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -196,7 +196,7 @@ async function processClientStatus(
     fs,
     logger: logger.getChild(Status.name),
   });
-  let statusInfo = await status.readStatus();
+  const statusInfo = await status.readStatus();
   // If not all parameters are set, and that the status doesn't exist
   // Then this an exception
   if (statusInfo == null) {
@@ -211,7 +211,7 @@ async function processClientStatus(
       status,
       nodeId,
       clientHost,
-      clientPort
+      clientPort,
     };
   }
   return {
@@ -219,7 +219,7 @@ async function processClientStatus(
     status,
     nodeId,
     clientHost,
-    clientPort
+    clientPort,
   };
 }
 

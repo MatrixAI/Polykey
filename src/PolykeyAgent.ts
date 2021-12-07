@@ -512,7 +512,7 @@ class PolykeyAgent {
       clientHost: this.grpcServerClient.host,
       clientPort: this.grpcServerClient.port,
       ingressHost: this.revProxy.ingressHost,
-      ingressPort: this.revProxy.ingressPort
+      ingressPort: this.revProxy.ingressPort,
     });
 
     this.logger.info(`Started ${this.constructor.name}`);

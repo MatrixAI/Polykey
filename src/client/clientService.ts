@@ -72,7 +72,7 @@ function createClientService({
       grpcServerClient,
       grpcServerAgent,
       fwdProxy,
-      revProxy
+      revProxy,
     }),
     ...createSessionsRPC({
       authenticate,

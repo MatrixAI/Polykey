@@ -1,4 +1,3 @@
-import type { StatusInfo } from '../../status/types';
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -26,9 +25,7 @@ class CommandStop extends CommandPolykey {
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
       const statusInfo = clientStatus.statusInfo;
-      if (
-        statusInfo?.status === 'DEAD'
-      ) {
+      if (statusInfo?.status === 'DEAD') {
         this.logger.info('Agent is already dead');
         return;
       } else if (statusInfo?.status === 'STOPPING') {

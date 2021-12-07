@@ -1,4 +1,5 @@
 import type { ChildProcess } from 'child_process';
+import type ErrorPolykey from '@/ErrorPolykey';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
@@ -13,7 +14,6 @@ import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 import * as binUtils from '@/bin/utils';
 import { Status, errors as statusErrors } from '@/status';
-import ErrorPolykey from '@/ErrorPolykey';
 import config from '@/config';
 import { never, sleep } from '@/utils';
 
@@ -303,10 +303,9 @@ async function pkAgent(
   env: Record<string, string | undefined> = {},
 ): Promise<() => Promise<void>> {
   // The references directory will act like our reference count
-  await fs.promises.mkdir(
-    path.join(global.binAgentDir, 'references'),
-    { recursive: true }
-  );
+  await fs.promises.mkdir(path.join(global.binAgentDir, 'references'), {
+    recursive: true,
+  });
   const reference = Math.floor(Math.random() * 1000).toString();
   // Plus 1 to the reference count
   await fs.promises.writeFile(
@@ -399,13 +398,11 @@ async function pkAgent(
 async function processExit(
   process: ChildProcess,
 ): Promise<[number | null, NodeJS.Signals | null]> {
-  return await new Promise(
-    (resolve) => {
-      process.once('exit', (code, signal) => {
-        resolve([code, signal]);
-      });
-    },
-  );
+  return await new Promise((resolve) => {
+    process.once('exit', (code, signal) => {
+      resolve([code, signal]);
+    });
+  });
 }
 
 /**
@@ -414,7 +411,7 @@ async function processExit(
 function expectProcessError(
   exitCode: number,
   stderr: string,
-  error: ErrorPolykey
+  error: ErrorPolykey,
 ) {
   expect(exitCode).toBe(error.exitCode);
   const stdErrLine = stderr.trim().split('\n').pop();

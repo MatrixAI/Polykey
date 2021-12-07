@@ -4,7 +4,6 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Status } from '@/status';
 import config from '@/config';
-import * as binUtils from '@/bin/utils';
 import * as binErrors from '@/bin/errors';
 import * as testBinUtils from '../utils';
 
@@ -47,15 +46,12 @@ describe('stop', () => {
         logger,
       });
       await testBinUtils.pkStdio(
-        [
-          'agent',
-          'stop',
-        ],
+        ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
-        dataDir
+        dataDir,
       );
       await status.waitFor('DEAD');
     },
@@ -90,24 +86,14 @@ describe('stop', () => {
       // Simultaneous calls to stop must use pkExec
       const [agentStop1, agentStop2] = await Promise.all([
         testBinUtils.pkExec(
-          [
-            'agent',
-            'stop',
-            '--password-file',
-            passwordPath,
-          ],
+          ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
           dataDir,
         ),
         testBinUtils.pkExec(
-          [
-            'agent',
-            'stop',
-            '--password-file',
-            passwordPath,
-          ],
+          ['agent', 'stop', '--password-file', passwordPath],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
           },
@@ -116,12 +102,7 @@ describe('stop', () => {
       ]);
       await status.waitFor('STOPPING');
       const agentStop3 = await testBinUtils.pkStdio(
-        [
-          'agent',
-          'stop',
-          '--node-path',
-          path.join(dataDir, 'polykey'),
-        ],
+        ['agent', 'stop', '--node-path', path.join(dataDir, 'polykey')],
         {
           PK_PASSWORD: password,
         },
@@ -129,12 +110,7 @@ describe('stop', () => {
       );
       await status.waitFor('DEAD');
       const agentStop4 = await testBinUtils.pkStdio(
-        [
-          'agent',
-          'stop',
-          '--password-file',
-          passwordPath,
-        ],
+        ['agent', 'stop', '--password-file', passwordPath],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
         },
@@ -145,7 +121,7 @@ describe('stop', () => {
       expect(agentStop3.exitCode).toBe(0);
       expect(agentStop4.exitCode).toBe(0);
     },
-    global.defaultTimeout * 2
+    global.defaultTimeout * 2,
   );
   test(
     'stopping starting agent results in error',
@@ -163,21 +139,18 @@ describe('stop', () => {
           // 1024 is the smallest size and is faster to start
           '--root-key-pair-bits',
           '1024',
-          '--verbose'
+          '--verbose',
         ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
         },
         dataDir,
-        logger
+        logger,
       );
       await status.waitFor('STARTING');
       const { exitCode, stderr } = await testBinUtils.pkStdio(
-        [
-          'agent',
-          'stop',
-        ],
+        ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
         },
@@ -186,14 +159,11 @@ describe('stop', () => {
       testBinUtils.expectProcessError(
         exitCode,
         stderr,
-        new binErrors.ErrorCLIStatusStarting()
+        new binErrors.ErrorCLIStatusStarting(),
       );
       await status.waitFor('LIVE');
       await testBinUtils.pkStdio(
-        [
-          'agent',
-          'stop',
-        ],
+        ['agent', 'stop'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -202,6 +172,6 @@ describe('stop', () => {
       );
       await status.waitFor('DEAD');
     },
-    global.defaultTimeout * 2
+    global.defaultTimeout * 2,
   );
 });
