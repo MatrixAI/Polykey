@@ -124,14 +124,13 @@ function createClientService({
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
         const response = new utilsPB.EmptyMessage();
-        setTimeout(async () => {
-          await polykeyAgent.stop();
-          await polykeyAgent.destroy();
-        }, 50);
+        // Respond first to close the GRPC connection
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
       }
+      // Stop is called after GRPC resources are cleared
+      await polykeyAgent.stop();
     },
   };
 
