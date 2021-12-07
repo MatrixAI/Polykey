@@ -134,15 +134,17 @@ async function pkExec(
     path.join(global.projectDir, 'src/bin/polykey.ts'),
   );
   return new Promise((resolve, reject) => {
-    child_process.exec(
-      `\
-      ts-node \
-      --project ${tsConfigPath} \
-      --require ${tsConfigPathsRegisterPath} \
-      --transpile-only \
-      ${polykeyPath} \
-      ${args.join(' ')}\
-      `,
+    child_process.execFile(
+      'ts-node',
+      [
+        '--project',
+        tsConfigPath,
+        '--require',
+        tsConfigPathsRegisterPath,
+        '--transpile-only',
+        polykeyPath,
+        ...args,
+      ],
       {
         env,
         cwd,
