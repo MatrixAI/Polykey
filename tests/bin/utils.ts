@@ -8,11 +8,14 @@ import readline from 'readline';
 import * as mockProcess from 'jest-mock-process';
 import mockedEnv from 'mocked-env';
 import nexpect from 'nexpect';
+import lock from 'fd-lock';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 import * as binUtils from '@/bin/utils';
 import { Status, errors as statusErrors } from '@/status';
 import ErrorPolykey from '@/ErrorPolykey';
+import config from '@/config';
+import { never, sleep } from '@/utils';
 
 /**
  * Runs pk command functionally
@@ -291,25 +294,36 @@ async function pkExpect({
  * Creates a PK agent running in the global path
  * Use this in beforeAll, and use the result in afterAll
  * Uses a references directory as a reference count
+ * Uses fd-lock to serialise access to the pkAgent
+ * This means all test modules using this will be serialised
+ * Any beforeAll must use global.maxTimeout
  */
 async function pkAgent(
   args: Array<string> = [],
   env: Record<string, string | undefined> = {},
-) {
+): Promise<() => Promise<void>> {
   // The references directory will act like our reference count
-  try {
-    return await fs.promises.mkdir(path.join(global.binAgentDir, 'references'));
-  } catch (e) {
-    if (e.code !== 'EEXIST') {
-      throw e;
-    }
-  }
+  await fs.promises.mkdir(
+    path.join(global.binAgentDir, 'references'),
+    { recursive: true }
+  );
   const reference = Math.floor(Math.random() * 1000).toString();
   // Plus 1 to the reference count
   await fs.promises.writeFile(
     path.join(global.binAgentDir, 'references', reference),
     reference,
   );
+  // This lock ensures serialised usage of global pkAgent
+  // It is placed after reference counting
+  // Because multiple test processes will queue up references
+  const testLockPath = path.join(global.binAgentDir, 'test.lock');
+  const testLockFile = await fs.promises.open(
+    testLockPath,
+    fs.constants.O_WRONLY | fs.constants.O_CREAT,
+  );
+  while (!lock(testLockFile.fd)) {
+    await sleep(1000);
+  }
   // Here the agent server is part of the jest process
   const { exitCode, stderr } = await pkStdio(
     [
@@ -342,14 +356,14 @@ async function pkAgent(
       })
       .trim();
     if (exitCode !== e.exitCode || stdErrLine !== eOutput) {
-      // This should not happen
-      throw new Error('Failed to start Polykey Agent');
+      never();
     }
   }
   return async () => {
     await fs.promises.rm(
       path.join(global.binAgentDir, 'references', reference),
     );
+    lock.unlock(testLockFile.fd);
     // If the pids directory is not empty, there are other processes still running
     try {
       await fs.promises.rmdir(path.join(global.binAgentDir, 'references'));
@@ -360,11 +374,11 @@ async function pkAgent(
       throw e;
     }
     const status = new Status({
-      statusPath: global.binAgentDir,
+      statusPath: path.join(global.binAgentDir, config.defaults.statusBase),
       fs,
     });
     await pkStdio(
-      ['agent', 'stop', '--verbose'],
+      ['agent', 'stop'],
       {
         PK_NODE_PATH: global.binAgentDir,
         PK_PASSWORD: global.binAgentPassword,

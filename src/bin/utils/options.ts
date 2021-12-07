@@ -48,7 +48,7 @@ const fresh = new commander.Option(
 /**
  * Node ID used for connecting to a remote agent
  */
-const nodeId = new commander.Option('-ni', '--node-id <id>').env('PK_NODE_ID');
+const nodeId = new commander.Option('-ni, --node-id <id>').env('PK_NODE_ID');
 
 /**
  * Client host used for connecting to remote agent

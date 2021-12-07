@@ -11,6 +11,7 @@ declare global {
       defaultTimeout: number;
       polykeyStartupTimeout: number;
       failedConnectionTimeout: number;
+      maxTimeout: number;
     }
   }
 }
@@ -43,3 +44,8 @@ global.binAgentPassword = 'hello world';
 global.defaultTimeout = 20000;
 global.polykeyStartupTimeout = 30000;
 global.failedConnectionTimeout = 50000;
+
+/**
+ * Timeouts rely on setTimeout which takes 32 bit numbers
+ */
+global.maxTimeout = Math.pow(2, 31) - 1;

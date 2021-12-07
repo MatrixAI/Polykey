@@ -23,7 +23,7 @@ describe('stop', () => {
     });
   });
   test(
-    'stop running agent',
+    'stop LIVE agent',
     async () => {
       const password = 'abc123';
       const { exitCode } = await testBinUtils.pkStdio(
