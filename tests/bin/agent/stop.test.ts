@@ -183,18 +183,11 @@ describe('stop', () => {
         },
         dataDir,
       );
-      const e = new binErrors.ErrorCLIStatusStarting();
-      expect(exitCode).toBe(e.exitCode);
-      const stdErrLine = stderr.trim().split('\n').pop();
-      const eOutput = binUtils
-        .outputFormatter({
-          type: 'error',
-          name: e.name,
-          description: e.description,
-          message: e.message,
-        })
-        .trim();
-      expect(stdErrLine).toBe(eOutput);
+      testBinUtils.expectProcessError(
+        exitCode,
+        stderr,
+        new binErrors.ErrorCLIStatusStarting()
+      );
       await status.waitFor('LIVE');
       await testBinUtils.pkStdio(
         [

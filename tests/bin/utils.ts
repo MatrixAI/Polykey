@@ -12,6 +12,7 @@ import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 import * as binUtils from '@/bin/utils';
 import { Status, errors as statusErrors } from '@/status';
+import ErrorPolykey from '@/ErrorPolykey';
 
 /**
  * Runs pk command functionally
@@ -384,7 +385,7 @@ async function pkAgent(
 async function processExit(
   process: ChildProcess,
 ): Promise<[number | null, NodeJS.Signals | null]> {
-  return await new Promise<[number | null, NodeJS.Signals | null]>(
+  return await new Promise(
     (resolve) => {
       process.once('exit', (code, signal) => {
         resolve([code, signal]);
@@ -393,4 +394,34 @@ async function processExit(
   );
 }
 
-export { pk, pkStdio, pkExec, pkSpawn, pkExpect, pkAgent, processExit };
+/**
+ * Checks exit code and stderr against ErrorPolykey
+ */
+function expectProcessError(
+  exitCode: number,
+  stderr: string,
+  error: ErrorPolykey
+) {
+  expect(exitCode).toBe(error.exitCode);
+  const stdErrLine = stderr.trim().split('\n').pop();
+  const errorOutput = binUtils
+    .outputFormatter({
+      type: 'error',
+      name: error.name,
+      description: error.description,
+      message: error.message,
+    })
+    .trim();
+  expect(stdErrLine).toBe(errorOutput);
+}
+
+export {
+  pk,
+  pkStdio,
+  pkExec,
+  pkSpawn,
+  pkExpect,
+  pkAgent,
+  processExit,
+  expectProcessError,
+};

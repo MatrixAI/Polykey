@@ -182,7 +182,7 @@ describe('start', () => {
       rlErr2.on('line', (l) => {
         stdErrLine2 = l;
       });
-      const [index, exitCode, signal] = await new Promise<
+      let [index, exitCode, signal] = await new Promise<
         [number, number | null, NodeJS.Signals | null]
       >((resolve) => {
         agentProcess1.once('exit', (code, signal) => {
@@ -193,31 +193,27 @@ describe('start', () => {
         });
       });
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
-      expect(exitCode).toBe(errorStatusLocked.exitCode);
-      expect(signal).toBe(null);
-      const eOutput = binUtils
-        .outputFormatter({
-          type: 'error',
-          name: errorStatusLocked.name,
-          description: errorStatusLocked.description,
-          message: errorStatusLocked.message,
-        })
-        .trim();
       // It's either the first or second process
       if (index === 0) {
-        expect(stdErrLine1).toBeDefined();
-        expect(stdErrLine1).toBe(eOutput);
+        testBinUtils.expectProcessError(
+          exitCode!,
+          stdErrLine1,
+          errorStatusLocked
+        );
         agentProcess2.kill('SIGQUIT');
-        const [exitCode, signal] = await testBinUtils.processExit(
+        [exitCode, signal] = await testBinUtils.processExit(
           agentProcess2,
         );
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGQUIT');
       } else if (index === 1) {
-        expect(stdErrLine2).toBeDefined();
-        expect(stdErrLine2).toBe(eOutput);
+        testBinUtils.expectProcessError(
+          exitCode!,
+          stdErrLine2,
+          errorStatusLocked
+        );
         agentProcess1.kill('SIGQUIT');
-        const [exitCode, signal] = await testBinUtils.processExit(
+        [exitCode, signal] = await testBinUtils.processExit(
           agentProcess1,
         );
         expect(exitCode).toBe(null);
@@ -263,7 +259,7 @@ describe('start', () => {
       rlErr2.on('line', (l) => {
         stdErrLine2 = l;
       });
-      const [index, exitCode, signal] = await new Promise<
+      let [index, exitCode, signal] = await new Promise<
         [number, number | null, NodeJS.Signals | null]
       >((resolve) => {
         agentProcess.once('exit', (code, signal) => {
@@ -274,31 +270,27 @@ describe('start', () => {
         });
       });
       const errorStatusLocked = new statusErrors.ErrorStatusLocked();
-      expect(exitCode).toBe(errorStatusLocked.exitCode);
-      expect(signal).toBe(null);
-      const eOutput = binUtils
-        .outputFormatter({
-          type: 'error',
-          name: errorStatusLocked.name,
-          description: errorStatusLocked.description,
-          message: errorStatusLocked.message,
-        })
-        .trim();
       // It's either the first or second process
       if (index === 0) {
-        expect(stdErrLine1).toBeDefined();
-        expect(stdErrLine1).toBe(eOutput);
+        testBinUtils.expectProcessError(
+          exitCode!,
+          stdErrLine1,
+          errorStatusLocked
+        );
         bootstrapProcess.kill('SIGTERM');
-        const [exitCode, signal] = await testBinUtils.processExit(
+        [exitCode, signal] = await testBinUtils.processExit(
           bootstrapProcess,
         );
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGTERM');
       } else if (index === 1) {
-        expect(stdErrLine2).toBeDefined();
-        expect(stdErrLine2).toBe(eOutput);
+        testBinUtils.expectProcessError(
+          exitCode!,
+          stdErrLine2,
+          errorStatusLocked
+        );
         agentProcess.kill('SIGTERM');
-        const [exitCode, signal] = await testBinUtils.processExit(agentProcess);
+        [exitCode, signal] = await testBinUtils.processExit(agentProcess);
         expect(exitCode).toBe(null);
         expect(signal).toBe('SIGTERM');
       }
