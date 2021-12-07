@@ -533,4 +533,49 @@ describe('start', () => {
     },
     global.defaultTimeout * 3,
   );
+  test('start with network configuration', async () => {
+    const status = new Status({
+      statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+      fs,
+      logger,
+    });
+    const password = 'abc123';
+    // Make sure these ports are not occupied
+    const clientHost = '127.0.0.2';
+    const clientPort = 55555;
+    const ingressHost = '127.0.0.3';
+    const ingressPort = 55556;
+    const agentProcess = await testBinUtils.pkSpawn(
+      [
+        'agent',
+        'start',
+        '--root-key-pair-bits',
+        '1024',
+        '--client-host',
+        clientHost,
+        '--client-port',
+        clientPort.toString(),
+        '--ingress-host',
+        ingressHost,
+        '--ingress-port',
+        ingressPort.toString(),
+        '--verbose',
+      ],
+      {
+        PK_NODE_PATH: path.join(dataDir, 'polykey'),
+        PK_PASSWORD: password,
+      },
+      dataDir,
+      logger.getChild('agentProcess'),
+    );
+    const statusInfo = await status.waitFor('LIVE');
+    expect(statusInfo.data.clientHost).toBe(clientHost);
+    expect(statusInfo.data.clientPort).toBe(clientPort);
+    agentProcess.kill('SIGTERM');
+    const [exitCode, signal] = await testBinUtils.processExit(agentProcess);
+    expect(exitCode).toBe(null);
+    expect(signal).toBe('SIGTERM');
+    // Check for graceful exit
+    await status.waitFor('DEAD');
+  }, global.defaultTimeout * 2);
 });

@@ -1,15 +1,11 @@
 import type { NodeId } from '@/nodes/types';
 import type { Host, Port } from '@/network/types';
-
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
-import * as statusErrors from '@/status/errors';
-import * as utilErrors from '@/utils/errors';
-import { sleep } from '@/utils';
-import { Status } from '../../src/status';
+import { sleep, errors as utilsErrors } from '@/utils';
+import { Status, errors as statusErrors } from '@/status';
 
 describe('Lockfile is', () => {
   const logger = new Logger('Lockfile Test', LogLevel.WARN, [
@@ -64,6 +60,8 @@ describe('Lockfile is', () => {
       nodeId: 'node' as NodeId,
       clientHost: '::1' as Host,
       clientPort: 0 as Port,
+      ingressHost: '127.0.0.1' as Host,
+      ingressPort: 0 as Port,
       grpcHost: 'localhost',
       grpcPort: 12345,
       anything: 'something',
@@ -101,6 +99,8 @@ describe('Lockfile is', () => {
       nodeId: 'node' as NodeId,
       clientHost: '::1' as Host,
       clientPort: 0 as Port,
+      ingressHost: '127.0.0.1' as Host,
+      ingressPort: 0 as Port,
       grpcHost: 'localhost',
       grpcPort: 12345,
       anything: 'something',
@@ -150,6 +150,8 @@ describe('Lockfile is', () => {
       clientHost: '' as Host,
       clientPort: 0 as Port,
       nodeId: '' as NodeId,
+      ingressHost: '127.0.0.1' as Host,
+      ingressPort: 0 as Port,
       pid: 0,
     });
     expect((await status.readStatus())?.status).toEqual('LIVE');
@@ -170,6 +172,8 @@ describe('Lockfile is', () => {
       await status.finishStart({
         clientHost: '' as Host,
         clientPort: 0 as Port,
+        ingressHost: '127.0.0.1' as Host,
+        ingressPort: 0 as Port,
         nodeId: '' as NodeId,
         pid: 0,
       });
@@ -190,14 +194,14 @@ describe('Lockfile is', () => {
     const test2 = status.waitFor('LIVE', waitForTimeout);
     await expect(async () => {
       await test2;
-    }).rejects.toThrow(utilErrors.ErrorUtilsPollTimeout);
+    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
     await prom2;
 
     // Should throw if no file was found / unlocked.
     const test3 = status.waitFor('LIVE', waitForTimeout);
     await expect(async () => {
       await test3;
-    }).rejects.toThrow(utilErrors.ErrorUtilsPollTimeout);
+    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
   });
   test('Status can wait for its status to be DEAD if Stopping.', async () => {
     // Should succeed if not started.
@@ -209,14 +213,14 @@ describe('Lockfile is', () => {
     const test = status.waitFor('LIVE', waitForTimeout);
     await expect(async () => {
       await test;
-    }).rejects.toThrow(utilErrors.ErrorUtilsPollTimeout);
+    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
 
     // Should throw an error whens started.
     await status.start({ pid: 0 });
     const test2 = status.waitFor('DEAD', waitForTimeout);
     await expect(async () => {
       await test2;
-    }).rejects.toThrow(utilErrors.ErrorUtilsPollTimeout);
+    }).rejects.toThrow(utilsErrors.ErrorUtilsPollTimeout);
 
     // Should wait and succeed when stopping.
     const delayedStart = async () => {

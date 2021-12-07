@@ -30,9 +30,18 @@
             "pid": { "type": "number" },
             "nodeId": { "type": "string" },
             "clientHost": { "type": "string" },
-            "clientPort": { "type": "number" }
+            "clientPort": { "type": "number" },
+            "ingressHost": { "type": "string" },
+            "ingressPort": { "type": "number" }
           },
-          "required": ["pid", "nodeId", "clientHost", "clientPort"]
+          "required": [
+            "pid",
+            "nodeId",
+            "clientHost",
+            "clientPort",
+            "ingressHost",
+            "ingressPort"
+          ]
         }
       }
     },
