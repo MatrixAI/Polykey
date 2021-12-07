@@ -59,7 +59,7 @@ describe('stop', () => {
     },
     global.defaultTimeout * 2,
   );
-  test.only(
+  test(
     'stopping is idempotent during concurrent calls and STOPPING or DEAD status',
     async () => {
       const password = 'abc123';
@@ -143,6 +143,6 @@ describe('stop', () => {
       expect(agentStop3.exitCode).toBe(0);
       expect(agentStop4.exitCode).toBe(0);
     },
-    global.defaultTimeout * 3
+    global.defaultTimeout * 2
   );
 });

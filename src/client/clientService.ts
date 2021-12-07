@@ -120,10 +120,13 @@ function createClientService({
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
+      const response = new utilsPB.EmptyMessage();
+      if (!polykeyAgent.running) {
+        return callback(null, response);
+      }
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-        const response = new utilsPB.EmptyMessage();
         // Respond first to close the GRPC connection
         callback(null, response);
       } catch (err) {
@@ -131,6 +134,7 @@ function createClientService({
       }
       // Stop is called after GRPC resources are cleared
       await polykeyAgent.stop();
+      return;
     },
   };
 
