@@ -10,7 +10,7 @@ import * as binUtils from '@/bin/utils';
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts);
 
-describe('utils retryAuthentication', () => {
+describe('bin/utils retryAuthentication', () => {
   test('no retry on success', async () => {
     const mockCallSuccess = jest.fn().mockResolvedValue('hello world');
     const result = await binUtils.retryAuthentication(mockCallSuccess);
