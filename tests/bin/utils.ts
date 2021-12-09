@@ -127,7 +127,10 @@ async function pkExec(
 }> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = { ...process.env, ...env };
+  env = {
+    ...process.env,
+    ...env,
+  };
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -145,6 +148,8 @@ async function pkExec(
         tsConfigPath,
         '--require',
         tsConfigPathsRegisterPath,
+        '--compiler',
+        'typescript-cached-transpile',
         '--transpile-only',
         polykeyPath,
         ...args,
@@ -186,7 +191,10 @@ async function pkSpawn(
 ): Promise<ChildProcess> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = { ...process.env, ...env };
+  env = {
+    ...process.env,
+    ...env,
+  };
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -203,6 +211,8 @@ async function pkSpawn(
       tsConfigPath,
       '--require',
       tsConfigPathsRegisterPath,
+      '--compiler',
+      'typescript-cached-transpile',
       '--transpile-only',
       polykeyPath,
       ...args,
@@ -243,7 +253,10 @@ async function pkExpect({
 }> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = { ...process.env, ...env };
+  env = {
+    ...process.env,
+    ...env,
+  };
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -261,6 +274,8 @@ async function pkExpect({
       tsConfigPath,
       '--require',
       tsConfigPathsRegisterPath,
+      '--compiler',
+      'typescript-cached-transpile',
       '--transpile-only',
       polykeyPath,
       ...args,

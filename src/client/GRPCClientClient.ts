@@ -103,23 +103,15 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
   public sessionsUnlock(...args) {
-    return grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
       this.client.sessionsUnlock,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public sessionsRefresh(...args) {
-    return grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
-      this.client,
-      this.client.sessionsRefresh,
-    )(...args);
-  }
-
-  @ready(new clientErrors.ErrorClientClientDestroyed())
   public sessionsLockAll(...args) {
-    return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
       this.client.sessionsLockAll,
     )(...args);

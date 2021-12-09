@@ -53,7 +53,7 @@ describe('CLI Sessions', () => {
   test('processes should store session token in session file', async () => {
     // Run command to set token
     let exitCode, stdout;
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkExec(
       ['agent', 'status', '--format', 'json', '--verbose'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -63,9 +63,8 @@ describe('CLI Sessions', () => {
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-    await sleep(1100);
     // Try again without password
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkExec(
       ['agent', 'status', '--format', 'json', '--verbose'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -82,7 +81,9 @@ describe('CLI Sessions', () => {
       logger,
     });
     // Generate new token
-    await testBinUtils.pkStdio(
+    // Using pkExec such that the asynchronous session token write operation is
+    // ensured to have been completed at conclusion of command. 
+    await testBinUtils.pkExec(
       ['agent', 'unlock'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -90,10 +91,9 @@ describe('CLI Sessions', () => {
       },
       global.binAgentDir,
     );
-    await sleep(1100);
     const token1 = await session.readToken();
     // New command should refresh token
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
+    const { exitCode, stdout } = await testBinUtils.pkExec(
       ['agent', 'status', '--format', 'json', '--verbose'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -102,7 +102,6 @@ describe('CLI Sessions', () => {
     );
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-    await sleep(1100);
     const token2 = await session.readToken();
     expect(token1).not.toBe(token2);
   });
@@ -114,7 +113,7 @@ describe('CLI Sessions', () => {
     });
     // Run first command
     let exitCode, stdout;
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkExec(
       ['agent', 'status', '--format', 'json', '--verbose'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -124,10 +123,9 @@ describe('CLI Sessions', () => {
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-    await sleep(1100);
     const token1 = await session.readToken();
     // Run second command
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+    ({ exitCode, stdout } = await testBinUtils.pkExec(
       ['agent', 'status', '--format', 'json', '--verbose'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -137,7 +135,6 @@ describe('CLI Sessions', () => {
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-    await sleep(1100);
     const token2 = await session.readToken();
     // Assert different
     expect(token1).not.toBe(token2);
@@ -180,7 +177,7 @@ describe('CLI Sessions', () => {
   });
   test('cause old sessions to fail when locking all sessions', async () => {
     // Generate new token
-    await testBinUtils.pkStdio(
+    await testBinUtils.pkExec(
       ['agent', 'unlock'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -188,9 +185,8 @@ describe('CLI Sessions', () => {
       },
       global.binAgentDir,
     );
-    await sleep(1100);
     // Lockall
-    await testBinUtils.pkStdio(
+    await testBinUtils.pkExec(
       ['agent', 'lockall'],
       {
         PK_NODE_PATH: global.binAgentDir,
@@ -199,7 +195,7 @@ describe('CLI Sessions', () => {
       global.binAgentDir,
     );
     // Call should fail because token is invalidated
-    const { exitCode, stderr } = await testBinUtils.pkStdio(
+    const { exitCode, stderr } = await testBinUtils.pkExec(
       ['agent', 'status', '--verbose'],
       {
         PK_NODE_PATH: global.binAgentDir,

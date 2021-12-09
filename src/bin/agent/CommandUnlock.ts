@@ -1,6 +1,3 @@
-import type { SessionToken } from '../../sessions/types';
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -17,10 +14,7 @@ class CommandUnlock extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
-      const sessionsPB = await import(
-        '../../proto/js/polykey/v1/sessions/sessions_pb'
-      );
-
+      const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -29,41 +23,29 @@ class CommandUnlock extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
       try {
         pkClient = await PolykeyClient.createPolykeyClient({
-          nodePath: options.nodePath,
           nodeId: clientOptions.nodeId,
           host: clientOptions.clientHost,
           port: clientOptions.clientPort,
+          nodePath: options.nodePath,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const password = await binProcessors.processPassword(
-          options.passwordFile,
-          this.fs,
+        const emptyMessage = new utilsPB.EmptyMessage();
+        await binUtils.retryAuthentication(
+          (auth) => pkClient.grpcClient.sessionsUnlock(emptyMessage, auth),
+          meta
         );
-        const grpcClient = pkClient.grpcClient;
-        const passwordMessage = new sessionsPB.Password();
-        passwordMessage.setPassword(password);
-        const responseMessage = await binUtils.retryAuthentication(
-          (metaRetried?: Metadata) => {
-            return metaRetried != null
-              ? grpcClient.sessionsUnlock(passwordMessage, metaRetried)
-              : grpcClient.sessionsUnlock(passwordMessage);
-          },
-        );
-        const token: SessionToken = responseMessage.getToken() as SessionToken;
-
-        // Write token to file
-        await pkClient.session.writeToken(token);
-        process.stdout.write('Client session started');
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

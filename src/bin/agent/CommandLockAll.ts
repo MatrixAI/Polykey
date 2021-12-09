@@ -23,7 +23,11 @@ class CommandLockAll extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -35,18 +39,13 @@ class CommandLockAll extends CommandPolykey {
           nodePath: options.nodePath,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const emptyMessage = new utilsPB.EmptyMessage();
         await binUtils.retryAuthentication(
-          (auth) => grpcClient.sessionsLockAll(emptyMessage, auth),
+          (auth) => pkClient.grpcClient.sessionsLockAll(emptyMessage, auth),
           meta,
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }
