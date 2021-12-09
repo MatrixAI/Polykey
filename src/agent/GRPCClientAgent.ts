@@ -38,16 +38,17 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     logger?: Logger;
   }): Promise<GRPCClientAgent> {
     logger.info(`Creating ${this.name}`);
-    const { client, serverCertChain } = await super.createClient({
-      clientConstructor: AgentServiceClient,
-      nodeId,
-      host,
-      port,
-      tlsConfig,
-      proxyConfig,
-      timeout,
-      logger,
-    });
+    const { client, serverCertChain, flowCountInterceptor } =
+      await super.createClient({
+        clientConstructor: AgentServiceClient,
+        nodeId,
+        host,
+        port,
+        tlsConfig,
+        proxyConfig,
+        timeout,
+        logger,
+      });
     const grpcClientAgent = new GRPCClientAgent({
       client,
       nodeId,
@@ -56,6 +57,7 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
       tlsConfig,
       proxyConfig,
       serverCertChain,
+      flowCountInterceptor,
       logger,
     });
     logger.info(`Created ${this.name}`);

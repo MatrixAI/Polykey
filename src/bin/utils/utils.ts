@@ -103,7 +103,11 @@ async function retryAuthentication<T>(
     if ('PK_PASSWORD' in process.env || 'PK_TOKEN' in process.env) {
       throw e;
     }
-    if (!(e instanceof clientErrors.ErrorClientAuthDenied)) {
+    // If it is exception is not missing or denied, then throw the exception
+    if (
+      !(e instanceof clientErrors.ErrorClientAuthMissing) &&
+      !(e instanceof clientErrors.ErrorClientAuthDenied)
+    ) {
       throw e;
     }
   }
@@ -119,6 +123,7 @@ async function retryAuthentication<T>(
     try {
       return await f(meta);
     } catch (e) {
+      // The auth cannot be missing, so when it is denied do we retry
       if (!(e instanceof clientErrors.ErrorClientAuthDenied)) {
         throw e;
       }

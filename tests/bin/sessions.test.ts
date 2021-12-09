@@ -23,7 +23,10 @@ describe('CLI Sessions', () => {
   ]);
   let dataDir: string;
   let pkAgentClose;
-  const sessionTokenPath = path.join(global.binAgentDir, config.defaults.tokenBase);
+  const sessionTokenPath = path.join(
+    global.binAgentDir,
+    config.defaults.tokenBase,
+  );
   beforeAll(async () => {
     pkAgentClose = await testBinUtils.pkAgent();
   }, global.maxTimeout);
@@ -82,7 +85,7 @@ describe('CLI Sessions', () => {
     });
     // Generate new token
     // Using pkExec such that the asynchronous session token write operation is
-    // ensured to have been completed at conclusion of command. 
+    // ensured to have been completed at conclusion of command.
     await testBinUtils.pkExec(
       ['agent', 'unlock'],
       {

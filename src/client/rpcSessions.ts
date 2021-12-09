@@ -1,6 +1,4 @@
 import type { SessionManager } from '../sessions';
-import type { KeyManager } from '../keys';
-
 import type * as grpc from '@grpc/grpc-js';
 import type * as utils from './utils';
 import * as grpcUtils from '../grpc/utils';
@@ -9,11 +7,9 @@ import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 const createSessionsRPC = ({
   authenticate,
   sessionManager,
-  keyManager,
 }: {
   authenticate: utils.Authenticate;
   sessionManager: SessionManager;
-  keyManager: KeyManager;
 }) => {
   return {
     sessionsUnlock: async (
