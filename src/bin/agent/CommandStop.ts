@@ -34,6 +34,10 @@ class CommandStop extends CommandPolykey {
       } else if (statusInfo?.status === 'STARTING') {
         throw new binErrors.ErrorCLIStatusStarting();
       }
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
       // Either the statusInfo is undefined or LIVE
       // Either way, the connection parameters now exist
       let pkClient: PolykeyClient;
@@ -48,14 +52,9 @@ class CommandStop extends CommandPolykey {
           port: clientStatus.clientPort!,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
         const emptyMessage = new utilsPB.EmptyMessage();
-        const grpcClient = pkClient.grpcClient;
         await binUtils.retryAuthentication(
-          (auth) => grpcClient.agentStop(emptyMessage, auth),
+          (auth) => pkClient.grpcClient.agentStop(emptyMessage, auth),
           meta,
         );
         this.logger.info('Stopping Agent');

@@ -1,8 +1,10 @@
 import type PolykeyClient from '../../PolykeyClient';
+import path from 'path';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
+import config from '../../config';
 
 class CommandLockAll extends CommandPolykey {
   constructor(...args: ConstructorParameters<typeof CommandPolykey>) {
@@ -14,7 +16,9 @@ class CommandLockAll extends CommandPolykey {
     this.addOption(binOptions.clientPort);
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
+      const { default: Session } = await import('../../sessions/Session');
       const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
+
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -27,6 +31,14 @@ class CommandLockAll extends CommandPolykey {
         options.passwordFile,
         this.fs,
       );
+      const session = new Session({
+        sessionTokenPath: path.join(
+          options.nodePath,
+          config.defaults.tokenBase,
+        ),
+        fs: this.fs,
+        logger: this.logger.getChild(Session.name),
+      });
       let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
@@ -44,6 +56,8 @@ class CommandLockAll extends CommandPolykey {
           (auth) => pkClient.grpcClient.sessionsLockAll(emptyMessage, auth),
           meta,
         );
+        // Destroy local session
+        await session.destroy();
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

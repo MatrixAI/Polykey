@@ -76,7 +76,7 @@ function authenticator(
       const encoded = auth.substring(6);
       const decoded = base64.base64pad.baseDecode(encoded);
       const decodedString = String.fromCharCode(...decoded);
-      const match = decodedString.match(/:(.+)/);
+      const match = decodedString.match(/:(.*)/);
       if (match == null) {
         throw new clientErrors.ErrorClientAuthFormat();
       }

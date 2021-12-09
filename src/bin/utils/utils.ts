@@ -97,14 +97,13 @@ async function retryAuthentication<T>(
   try {
     return await f(meta);
   } catch (e) {
-    // If it is any exception other than ErrorClientAuthMissing, throw the exception
-    // If it is ErrorClientAuthMissing and unattended, throw the exception
+    // If it is unattended, throw the exception
+    // Don't enter into a retry loop when unattended
     // Unattended means that either the `PK_PASSWORD` or `PK_TOKEN` was set
-    if (
-      !(e instanceof clientErrors.ErrorClientAuthMissing) ||
-      'PK_PASSWORD' in process.env ||
-      'PK_TOKEN' in process.env
-    ) {
+    if ('PK_PASSWORD' in process.env || 'PK_TOKEN' in process.env) {
+      throw e;
+    }
+    if (!(e instanceof clientErrors.ErrorClientAuthDenied)) {
       throw e;
     }
   }
