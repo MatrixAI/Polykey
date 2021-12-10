@@ -20,9 +20,11 @@ const createSessionsRPC = ({
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-        return callback(null, response);
+        callback(null, response);
+        return;
       } catch (e) {
-        return callback(grpcUtils.fromError(e), null);
+        callback(grpcUtils.fromError(e), null);
+        return;
       }
     },
     sessionsLockAll: async (
@@ -34,9 +36,11 @@ const createSessionsRPC = ({
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
         await sessionManager.resetKey();
-        return callback(null, response);
+        callback(null, response);
+        return;
       } catch (err) {
-        return callback(grpcUtils.fromError(err), null);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
   };
