@@ -51,8 +51,10 @@ const createVaultRPC = ({
           await genWritable.next(((_) => vaultListMessage)());
         }
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
     vaultsCreate: async (
@@ -69,10 +71,12 @@ const createVaultRPC = ({
           call.request.getNameOrId() as VaultName,
         );
         response.setNameOrId(vaultsUtils.makeVaultIdPretty(vault.vaultId));
+        callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     vaultsRename: async (
       call: grpc.ServerUnaryCall<vaultsPB.Rename, vaultsPB.Vault>,
@@ -96,8 +100,10 @@ const createVaultRPC = ({
         await vaultManager.renameVault(vaultId, newName);
         response.setNameOrId(vaultsUtils.makeVaultIdPretty(vaultId));
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsDelete: async (
@@ -117,8 +123,10 @@ const createVaultRPC = ({
         await vaultManager.destroyVault(vaultId);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsClone: async (
@@ -150,8 +158,10 @@ const createVaultRPC = ({
         // await vaultManager.cloneVault(vaultId, id);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsPull: async (
@@ -181,8 +191,10 @@ const createVaultRPC = ({
         // Await vaultManager.pullVault(vaultId, id);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsScan: async (
@@ -203,8 +215,10 @@ const createVaultRPC = ({
           await genWritable.next(vaultListMessage);
         });
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
     vaultsSecretsList: async (
@@ -230,8 +244,10 @@ const createVaultRPC = ({
           await genWritable.next(secretMessage);
         }
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
     vaultsSecretsMkdir: async (
@@ -259,8 +275,10 @@ const createVaultRPC = ({
         });
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsSecretsStat: async (
@@ -280,8 +298,10 @@ const createVaultRPC = ({
         // Const stats = await vaultManager.vaultStats(id);
         // response.setStats(JSON.stringify(stats)););
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsSecretsDelete: async (
@@ -307,8 +327,10 @@ const createVaultRPC = ({
         await vaultOps.deleteSecret(vault, secretName);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsSecretsEdit: async (
@@ -340,8 +362,10 @@ const createVaultRPC = ({
         await vaultOps.updateSecret(vault, secretName, secretContent);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsSecretsGet: async (
@@ -368,8 +392,10 @@ const createVaultRPC = ({
 
         response.setSecretContent(secretContent);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsSecretsRename: async (
@@ -401,8 +427,10 @@ const createVaultRPC = ({
         await vaultOps.renameSecret(vault, oldSecret, newSecret);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsSecretsNew: async (
@@ -429,8 +457,10 @@ const createVaultRPC = ({
         await vaultOps.addSecret(vault, secret, content);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsSecretsNewDir: async (
@@ -456,8 +486,10 @@ const createVaultRPC = ({
         await vaultOps.addSecretDirectory(vault, secretsPath, fs);
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsPermissionsSet: async (
@@ -485,8 +517,10 @@ const createVaultRPC = ({
         const response = new utilsPB.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsPermissionsUnset: async (
@@ -514,8 +548,10 @@ const createVaultRPC = ({
         const response = new utilsPB.StatusMessage();
         response.setSuccess(true);
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsPermissions: async (
@@ -556,14 +592,17 @@ const createVaultRPC = ({
         //   await genWritable.next(permissionMessage);
         // }
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
     vaultsVersion: async (
       call: grpc.ServerUnaryCall<vaultsPB.Version, vaultsPB.VersionResult>,
       callback: grpc.sendUnaryData<vaultsPB.VersionResult>,
     ): Promise<void> => {
+      const response = new vaultsPB.VersionResult();
       try {
         // Checking session token
         const metadata = await authenticate(call.metadata);
@@ -594,13 +633,14 @@ const createVaultRPC = ({
         const isLatestVersion = latestOid === currentVersionId;
 
         // Creating message
-        const vaultsVersionResultMessage = new vaultsPB.VersionResult();
-        vaultsVersionResultMessage.setIsLatestVersion(isLatestVersion);
+        response.setIsLatestVersion(isLatestVersion);
 
         // Sending message
-        callback(null, vaultsVersionResultMessage);
+        callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     vaultsLog: async (
@@ -638,8 +678,10 @@ const createVaultRPC = ({
           await genWritable.next(vaultsLogEntryMessage);
         }
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
   };

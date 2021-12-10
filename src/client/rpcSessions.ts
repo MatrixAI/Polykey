@@ -22,8 +22,8 @@ const createSessionsRPC = ({
         call.sendMetadata(metadata);
         callback(null, response);
         return;
-      } catch (e) {
-        callback(grpcUtils.fromError(e), null);
+      } catch (err) {
+        callback(grpcUtils.fromError(err), null);
         return;
       }
     },

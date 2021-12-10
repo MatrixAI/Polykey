@@ -1,6 +1,7 @@
 import type { Metadata } from '@grpc/grpc-js';
 
 import type PolykeyClient from '../../PolykeyClient';
+import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
 import * as binOptions from '../utils/options';
@@ -51,10 +52,19 @@ class CommandRenew extends CommandPolykey {
         const grpcClient = pkClient.grpcClient;
         const keyMessage = new keysPB.Key();
 
-        const password = await binProcessors.processPassword(
-          passwordPath,
-          this.fs,
-        );
+        let password: string | undefined;
+        try {
+          password = (
+            await this.fs.promises.readFile(passwordPath, 'utf-8')
+          ).trim();
+        } catch (e) {
+          throw new binErrors.ErrorCLIPasswordFileRead(e.message, {
+            errno: e.errno,
+            syscall: e.syscall,
+            code: e.code,
+            path: e.path,
+          });
+        }
         keyMessage.setName(password);
 
         await binUtils.retryAuthentication(

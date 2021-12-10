@@ -20,6 +20,7 @@ const createNotificationsRPC = ({
       call: grpc.ServerUnaryCall<notificationsPB.Send, utilsPB.EmptyMessage>,
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
+      const response = new utilsPB.EmptyMessage();
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
@@ -32,11 +33,12 @@ const createNotificationsRPC = ({
         const validatedData =
           notificationsUtils.validateGeneralNotification(data);
         await notificationsManager.sendNotification(receivingId, validatedData);
+        callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
-      const emptyMessage = new utilsPB.EmptyMessage();
-      callback(null, emptyMessage);
     },
     notificationsRead: async (
       call: grpc.ServerUnaryCall<notificationsPB.Read, notificationsPB.List>,
@@ -91,25 +93,29 @@ const createNotificationsRPC = ({
           notifMessages.push(notificationsMessage);
         }
         response.setNotificationList(notifMessages);
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     notificationsClear: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
+      const response = new utilsPB.EmptyMessage();
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
 
         await notificationsManager.clearNotifications();
+        callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
-      const emptyMessage = new utilsPB.EmptyMessage();
-      callback(null, emptyMessage);
     },
   };
 };

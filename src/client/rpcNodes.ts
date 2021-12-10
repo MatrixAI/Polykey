@@ -50,10 +50,12 @@ const createNodesRPC = ({
           ip: call.request.getAddress()!.getHost(),
           port: call.request.getAddress()!.getPort(),
         } as NodeAddress);
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     /**
      * Checks if a remote node is online.
@@ -71,10 +73,12 @@ const createNodesRPC = ({
           makeNodeId(call.request.getNodeId()),
         );
         response.setSuccess(status);
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     /**
      * Checks whether there is an existing Gestalt Invitation from the other node.
@@ -108,10 +112,12 @@ const createNodesRPC = ({
           await nodeManager.claimNode(remoteNodeId);
           response.setSuccess(true);
         }
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     /**
      * Attempts to get the node address of a provided node ID (by contacting
@@ -134,10 +140,12 @@ const createNodesRPC = ({
           .setAddress(
             new nodesPB.Address().setHost(address.ip).setPort(address.port),
           );
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
   };
 };

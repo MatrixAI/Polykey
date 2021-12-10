@@ -77,7 +77,6 @@ function createClientService({
     ...createSessionsRPC({
       authenticate,
       sessionManager,
-      keyManager,
     }),
     ...createVaultRPC({
       vaultManager,
@@ -121,6 +120,7 @@ function createClientService({
       const write = promisify(call.write).bind(call);
       await write(nodeMessage);
       call.end();
+      return;
     },
     agentStop: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
