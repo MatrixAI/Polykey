@@ -9,7 +9,7 @@ import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binProcessors from '../utils/processors';
 import * as binErrors from '../errors';
-import { promise } from '../../utils';
+import { promise, dirEmpty } from '../../utils';
 import config from '../../config';
 
 class CommandStart extends CommandPolykey {
@@ -47,7 +47,7 @@ class CommandStart extends CommandPolykey {
           this.fs,
         );
       } else if (
-        (await this.fs.promises.readdir(options.nodePath)).length === 0
+        await dirEmpty(this.fs, options.nodePath)
       ) {
         // If the node path is empty, get a new password
         password = await binProcessors.processNewPassword(
