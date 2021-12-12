@@ -19,21 +19,58 @@ import { Status } from '../../status';
 import config from '../../config';
 
 /**
- * Prompts for password
+ * Prompts for existing password
  * This masks SIGINT handling
  * When SIGINT is received this will return undefined
  */
 async function promptPassword(): Promise<string | undefined> {
-  const response = await prompts({
-    type: 'password',
+  const { password } = await prompts({
     name: 'password',
-    message: 'Please enter your password',
+    type: 'password',
+    message: 'Please enter the password',
   });
-  return response.password;
+  return password;
 }
 
 /**
- * Processes password
+ * Prompts for new password
+ * This masks SIGINT handling
+ * When SIGINT is received this will return undefined
+ */
+async function promptNewPassword(): Promise<string | undefined> {
+  let password: string | undefined;
+  while (true) {
+    ({ password } = await prompts({
+      name: 'password',
+      type: 'password',
+      message: 'Enter new password',
+    }));
+    // If undefined, then SIGINT was sent
+    // Break the loop and return undefined password
+    if (password == null) {
+      break;
+    }
+    const { passwordConfirm }= await prompts({
+      name: 'passwordConfirm',
+      type: 'password',
+      message: 'Confirm new password',
+    });
+    // If undefined, then SIGINT was sent
+    // Break the loop and return undefined password
+    if (passwordConfirm == null) {
+      break;
+    }
+    if (password === passwordConfirm) {
+      break;
+    }
+    // Interactive message
+    process.stderr.write('Passwords do not match!\n');
+  }
+  return password;
+}
+
+/**
+ * Processes existing password
  * Use this when password is necessary
  * Order of operations are:
  * 1. Reads --password-file
@@ -66,6 +103,39 @@ async function processPassword(
     }
   }
   return password;
+}
+
+/**
+ * Processes new password
+ * Use this when a new password is necessary
+ * Order of operations are:
+ * 1. Reads --password-new-file
+ * 2. Prompts for password
+ * This may return an empty string
+ */
+async function processNewPassword(
+  passwordNewFile?: string,
+  fs: FileSystem = require('fs'),
+): Promise<string> {
+  let passwordNew: string | undefined;
+  if (passwordNewFile != null) {
+    try {
+      passwordNew = (await fs.promises.readFile(passwordNewFile, 'utf-8')).trim();
+    } catch (e) {
+      throw new binErrors.ErrorCLIPasswordFileRead(e.message, {
+        errno: e.errno,
+        syscall: e.syscall,
+        code: e.code,
+        path: e.path,
+      });
+    }
+  } else {
+    passwordNew = await promptNewPassword();
+    if (passwordNew === undefined) {
+      throw new binErrors.ErrorCLIPasswordMissing();
+    }
+  }
+  return passwordNew;
 }
 
 /**
@@ -266,7 +336,9 @@ async function processAuthentication(
 
 export {
   promptPassword,
+  promptNewPassword,
   processPassword,
+  processNewPassword,
   processRecoveryCode,
   processClientOptions,
   processClientStatus,
