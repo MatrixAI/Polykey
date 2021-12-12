@@ -94,8 +94,6 @@ async function processPassword(
         path: e.path,
       });
     }
-  } else if (typeof process.env['PK_PASSWORD'] === 'string') {
-    password = process.env['PK_PASSWORD'];
   } else {
     password = await promptPassword();
     if (password === undefined) {
@@ -129,6 +127,8 @@ async function processNewPassword(
         path: e.path,
       });
     }
+  } else if (typeof process.env['PK_PASSWORD'] === 'string') {
+    passwordNew = process.env['PK_PASSWORD'];
   } else {
     passwordNew = await promptNewPassword();
     if (passwordNew === undefined) {
