@@ -33,12 +33,37 @@ class CommandStart extends CommandPolykey {
       options.clientPort =
         options.clientPort ?? config.defaults.networkConfig.clientPort;
       const { default: PolykeyAgent } = await import('../../PolykeyAgent');
-      // Password is necessary
-      // If recovery code is supplied, then this is the new password
-      const password = await binProcessors.processPassword(
-        options.passwordFile,
-        this.fs,
-      );
+      let password: string | undefined;
+      if (options.fresh) {
+        // If fresh, then get a new password
+        password = await binProcessors.processNewPassword(
+          options.passwordFile,
+          this.fs,
+        );
+      } else if (options.recoveryCodeFile != null) {
+        // If recovery code is supplied, then this is the new password
+        password = await binProcessors.processNewPassword(
+          options.passwordFile,
+          this.fs,
+        );
+      } else if (
+        (await this.fs.promises.readdir(options.nodePath)).length === 0
+      ) {
+        // If the node path is empty, get a new password
+        password = await binProcessors.processNewPassword(
+          options.passwordFile,
+          this.fs,
+        );
+      } else {
+        // Otherwise this is the existing password
+        // however, the code is capable of doing partial bootstrapping
+        // so it's possible that this is also a new password
+        // if the root key isn't setup
+        password = await binProcessors.processPassword(
+          options.passwordFile,
+          this.fs,
+        );
+      }
       const recoveryCodeIn = await binProcessors.processRecoveryCode(
         options.recoveryCodeFile,
         this.fs,
