@@ -94,6 +94,8 @@ async function processPassword(
         path: e.path,
       });
     }
+  } else if (typeof process.env['PK_PASSWORD'] === 'string') {
+    password = process.env['PK_PASSWORD'];
   } else {
     password = await promptPassword();
     if (password === undefined) {
@@ -108,12 +110,17 @@ async function processPassword(
  * Use this when a new password is necessary
  * Order of operations are:
  * 1. Reads --password-new-file
- * 2. Prompts for password
+ * 2. Reads PK_PASSWORD
+ * 3. Prompts and confirms password
+ * If processNewPassword is used when an existing password is needed
+ * for authentication, then the existing boolean should be set to true
+ * This ensures that this call does not read `PK_PASSWORD`
  * This may return an empty string
  */
 async function processNewPassword(
   passwordNewFile?: string,
   fs: FileSystem = require('fs'),
+  existing: boolean = false
 ): Promise<string> {
   let passwordNew: string | undefined;
   if (passwordNewFile != null) {
@@ -127,7 +134,7 @@ async function processNewPassword(
         path: e.path,
       });
     }
-  } else if (typeof process.env['PK_PASSWORD'] === 'string') {
+  } else if (!existing && (typeof process.env['PK_PASSWORD'] === 'string')) {
     passwordNew = process.env['PK_PASSWORD'];
   } else {
     passwordNew = await promptNewPassword();

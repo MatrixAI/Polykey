@@ -30,9 +30,9 @@ class CommandRenew extends CommandPolykey {
       );
       const passwordNew = await binProcessors.processNewPassword(
         options.passwordNewFile,
-        this.fs
+        this.fs,
+        true
       );
-
       let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
