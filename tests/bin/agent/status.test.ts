@@ -53,8 +53,9 @@ describe('status', () => {
         dataDir,
       ));
       expect(exitCode).toBe(0);
+      // If the command was slow, it may have become LIVE already
       expect(JSON.parse(stdout)).toMatchObject({
-        status: 'STARTING',
+        status: expect.stringMatching(/STARTING|LIVE/),
         pid: agentProcess.pid,
       });
       await status.waitFor('LIVE');
