@@ -1,3 +1,8 @@
+/**
+ * There is no command call sessions
+ * This is just for testing the CLI Authentication Retry Loop
+ * @module
+ */
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -20,30 +25,17 @@ describe('CLI Sessions', () => {
   const logger = new Logger('sessions test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let dataDir: string;
   let pkAgentClose;
-  const sessionTokenPath = path.join(
-    global.binAgentDir,
-    config.defaults.tokenBase,
-  );
   beforeAll(async () => {
     pkAgentClose = await testBinUtils.pkAgent();
   }, global.maxTimeout);
   afterAll(async () => {
     await pkAgentClose();
   });
+  let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    // Invalidate all active sessions
-    await testBinUtils.pkStdio(
-      ['agent', 'lock'],
-      {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
-      },
-      global.binAgentDir,
     );
   });
   afterEach(async () => {
@@ -52,47 +44,18 @@ describe('CLI Sessions', () => {
       recursive: true,
     });
   });
-  test('processes should refresh the session token', async () => {
+  test('serial commands refresh the session token', async () => {
     const session = await Session.createSession({
-      sessionTokenPath,
+      sessionTokenPath: path.join(
+        global.binAgentDir,
+        config.defaults.tokenBase,
+      ),
       fs,
       logger,
     });
-    await testBinUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
-      },
-      global.binAgentDir,
-    );
-    const token1 = await session.readToken();
-    // New command should refresh token
-    // Need to wait for 1100ms to ensure refreshed token will be different from previous one
-    // Our tokens are not nonces and are expected to be able to be reused
-    await sleep(1100);
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json', '--verbose'],
-      {
-        PK_NODE_PATH: global.binAgentDir,
-      },
-      global.binAgentDir,
-    );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-    const token2 = await session.readToken();
-    expect(token1).not.toBe(token2);
-  });
-  test('serial processes should both refresh the session token', async () => {
-    const session = await Session.createSession({
-      sessionTokenPath,
-      fs,
-      logger,
-    });
-    // Run first command
-    let exitCode, stdout;
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json', '--verbose'],
+    let exitCode;
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
       {
         PK_NODE_PATH: global.binAgentDir,
         PK_PASSWORD: global.binAgentPassword,
@@ -100,14 +63,13 @@ describe('CLI Sessions', () => {
       global.binAgentDir,
     ));
     expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
     const token1 = await session.readToken();
-    // Run second command
-    // Need to wait for 1100ms to ensure refreshed token will be different from previous one
-    // Our tokens are not nonces and are expected to be able to be reused
+    // Tokens are not nonces
+    // Wait at least 1 second
+    // To ensure that the next token has a new expiry
     await sleep(1100);
-    ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json', '--verbose'],
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
       {
         PK_NODE_PATH: global.binAgentDir,
         PK_PASSWORD: global.binAgentPassword,
@@ -115,12 +77,11 @@ describe('CLI Sessions', () => {
       global.binAgentDir,
     ));
     expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
     const token2 = await session.readToken();
-    // Assert different
     expect(token1).not.toBe(token2);
+    await session.stop();
   });
-  test('unattended calls with invalid auth should fail', async () => {
+  test('unattended commands with invalid authentication should fail', async () => {
     let exitCode, stderr;
     // Password and Token set
     ({ exitCode, stderr } = await testBinUtils.pkStdio(
@@ -168,46 +129,39 @@ describe('CLI Sessions', () => {
       new clientErrors.ErrorClientAuthDenied(),
     );
   });
-  test('password can be used to authenticate attended calls', async () => {
+  test('prompt for password to authenticate attended commands', async () => {
     const password = global.binAgentPassword;
+    await testBinUtils.pkStdio(
+      ['agent', 'lock'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+      },
+      global.binAgentDir,
+    );
     mockedPrompts.mockClear();
     mockedPrompts.mockImplementation(async (_opts: any) => {
       return { password };
     });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json', '--verbose'],
+    const { exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
       {
         PK_NODE_PATH: global.binAgentDir,
       },
       global.binAgentDir,
     );
     expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
     // Prompted for password 1 time
     expect(mockedPrompts.mock.calls.length).toBe(1);
     mockedPrompts.mockClear();
   });
-  test('re-prompt for password if unable to authenticate call', async () => {
-    const validPassword = global.binAgentPassword;
-    const invalidPassword = 'invalid';
-    mockedPrompts.mockClear();
-    mockedPrompts
-      .mockResolvedValueOnce({ password: invalidPassword })
-      .mockResolvedValue({ password: validPassword });
-    const { exitCode, stdout } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json', '--verbose'],
+  test('re-prompts for password if unable to authenticate command', async () => {
+    await testBinUtils.pkStdio(
+      ['agent', 'lock'],
       {
         PK_NODE_PATH: global.binAgentDir,
       },
       global.binAgentDir,
     );
-    expect(exitCode).toBe(0);
-    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-    // Prompted for password 2 times
-    expect(mockedPrompts.mock.calls.length).toBe(2);
-    mockedPrompts.mockClear();
-  });
-  test('will not prompt for password reauthentication on generic error', async () => {
     const validPassword = global.binAgentPassword;
     const invalidPassword = 'invalid';
     mockedPrompts.mockClear();
@@ -215,13 +169,13 @@ describe('CLI Sessions', () => {
       .mockResolvedValueOnce({ password: invalidPassword })
       .mockResolvedValue({ password: validPassword });
     const { exitCode } = await testBinUtils.pkStdio(
-      ['identities', 'search', 'InvalidProvider'],
+      ['agent', 'status'],
       {
         PK_NODE_PATH: global.binAgentDir,
       },
       global.binAgentDir,
     );
-    expect(exitCode).not.toBe(0);
+    expect(exitCode).toBe(0);
     // Prompted for password 2 times
     expect(mockedPrompts.mock.calls.length).toBe(2);
     mockedPrompts.mockClear();

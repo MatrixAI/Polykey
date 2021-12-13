@@ -64,6 +64,7 @@ describe('lockall', () => {
       logger,
     });
     expect(await session.readToken()).toBeUndefined();
+    await session.stop();
   });
   test('lockall ensures reauthentication is required', async () => {
     const password = global.binAgentPassword;
@@ -116,6 +117,7 @@ describe('lockall', () => {
       logger,
     });
     const token = await session.readToken();
+    await session.stop();
     await testBinUtils.pkStdio(
       ['agent', 'lockall'],
       {
