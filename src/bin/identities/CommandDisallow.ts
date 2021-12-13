@@ -28,7 +28,6 @@ class CommandDisallow extends CommandPolykey {
         '../../proto/js/polykey/v1/permissions/permissions_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -37,8 +36,11 @@ class CommandDisallow extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -50,16 +52,9 @@ class CommandDisallow extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         let name: string;
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(permissions);
-
         if (gestaltId.nodeId) {
           // Setting by Node.
           const nodeMessage = new nodesPB.Node();
@@ -69,7 +64,7 @@ class CommandDisallow extends CommandPolykey {
           // Trusting
           await binUtils.retryAuthentication(
             (auth) =>
-              grpcClient.gestaltsActionsUnsetByNode(setActionMessage, auth),
+              pkClient.grpcClient.gestaltsActionsUnsetByNode(setActionMessage, auth),
             meta,
           );
         } else {
@@ -85,7 +80,7 @@ class CommandDisallow extends CommandPolykey {
           // Trusting.
           await binUtils.retryAuthentication(
             (auth) =>
-              grpcClient.gestaltsActionsUnsetByIdentity(setActionMessage, auth),
+              pkClient.grpcClient.gestaltsActionsUnsetByIdentity(setActionMessage, auth),
             meta,
           );
         }
@@ -98,7 +93,7 @@ class CommandDisallow extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

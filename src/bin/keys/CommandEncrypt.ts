@@ -20,7 +20,6 @@ class CommandEncypt extends CommandPolykey {
     this.action(async (filePath, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const keysPB = await import('../../proto/js/polykey/v1/keys/keys_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -29,8 +28,11 @@ class CommandEncypt extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -42,15 +44,7 @@ class CommandEncypt extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-
-        const grpcClient = pkClient.grpcClient;
         const cryptoMessage = new keysPB.Crypto();
-
         let plainText: string;
         try {
           plainText = await this.fs.promises.readFile(filePath, {
@@ -64,13 +58,11 @@ class CommandEncypt extends CommandPolykey {
             path: e.path,
           });
         }
-
         cryptoMessage.setData(plainText);
         const response = await binUtils.retryAuthentication(
-          (auth) => grpcClient.keysEncrypt(cryptoMessage, auth),
+          (auth) => pkClient.grpcClient.keysEncrypt(cryptoMessage, auth),
           meta,
         );
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -78,7 +70,7 @@ class CommandEncypt extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

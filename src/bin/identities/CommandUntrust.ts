@@ -27,7 +27,6 @@ class CommandUntrust extends CommandPolykey {
         '../../proto/js/polykey/v1/permissions/permissions_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -36,8 +35,11 @@ class CommandUntrust extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -49,17 +51,10 @@ class CommandUntrust extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const action = 'notify';
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(action);
         let name: string;
-
         if (gestaltId.nodeId) {
           // Setting by Node.
           const nodeMessage = new nodesPB.Node();
@@ -68,7 +63,7 @@ class CommandUntrust extends CommandPolykey {
           name = `${gestaltId.nodeId}`;
           await binUtils.retryAuthentication(
             (auth) =>
-              grpcClient.gestaltsActionsUnsetByNode(setActionMessage, auth),
+              pkClient.grpcClient.gestaltsActionsUnsetByNode(setActionMessage, auth),
             meta,
           );
         } else {
@@ -83,11 +78,10 @@ class CommandUntrust extends CommandPolykey {
           )}`;
           await binUtils.retryAuthentication(
             (auth) =>
-              grpcClient.gestaltsActionsUnsetByIdentity(setActionMessage, auth),
+              pkClient.grpcClient.gestaltsActionsUnsetByIdentity(setActionMessage, auth),
             meta,
           );
         }
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -95,7 +89,7 @@ class CommandUntrust extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

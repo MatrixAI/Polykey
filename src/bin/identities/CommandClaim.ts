@@ -19,7 +19,6 @@ class CommandClaim extends CommandPolykey {
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -28,8 +27,11 @@ class CommandClaim extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -41,27 +43,16 @@ class CommandClaim extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-
-        const grpcClient = pkClient.grpcClient;
-
-        // Constructing message.
         const providerMessage = new identitiesPB.Provider();
         providerMessage.setProviderId(providerId);
         providerMessage.setMessage(identityId);
-
-        // Sending message.
         await binUtils.retryAuthentication(
           (auth) =>
-            grpcClient.identitiesClaim(providerMessage, auth),
+            pkClient.grpcClient.identitiesClaim(providerMessage, auth),
           meta,
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

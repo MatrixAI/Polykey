@@ -24,7 +24,6 @@ class CommandMkdir extends CommandPolykey {
       const vaultsPB = await import(
         '../../proto/js/polykey/v1/vaults/vaults_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -33,8 +32,11 @@ class CommandMkdir extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -46,25 +48,17 @@ class CommandMkdir extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const vaultMkdirMessage = new vaultsPB.Mkdir();
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(secretPath[0]);
         vaultMkdirMessage.setVault(vaultMessage);
         vaultMkdirMessage.setDirName(secretPath[1]);
         vaultMkdirMessage.setRecursive(options.recursive);
-
         await binUtils.retryAuthentication(
           (auth) =>
-            grpcClient.vaultsSecretsMkdir(vaultMkdirMessage, auth),
+            pkClient.grpcClient.vaultsSecretsMkdir(vaultMkdirMessage, auth),
           meta,
         );
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -74,7 +68,7 @@ class CommandMkdir extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

@@ -30,7 +30,6 @@ class CommandGet extends CommandPolykey {
       const secretsPB = await import(
         '../../proto/js/polykey/v1/secrets/secrets_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -39,8 +38,11 @@ class CommandGet extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -52,24 +54,16 @@ class CommandGet extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const isEnv: boolean = options.env ?? false;
         const secretMessage = new secretsPB.Secret();
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(secretPath[0]);
         secretMessage.setVault(vaultMessage);
         secretMessage.setSecretName(secretPath[1]);
-
         const response = await binUtils.retryAuthentication(
-          (auth) => grpcClient.vaultsSecretsGet(secretMessage, auth),
+          (auth) => pkClient.grpcClient.vaultsSecretsGet(secretMessage, auth),
           meta,
         );
-
         if (isEnv) {
           process.stdout.write(
             binUtils.outputFormatter({
@@ -93,7 +87,7 @@ class CommandGet extends CommandPolykey {
           );
         }
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

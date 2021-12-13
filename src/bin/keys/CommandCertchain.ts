@@ -15,7 +15,6 @@ class CommandsCertchain extends CommandPolykey {
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -24,8 +23,11 @@ class CommandsCertchain extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -37,18 +39,11 @@ class CommandsCertchain extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-
-        const grpcClient = pkClient.grpcClient;
         const emptyMessage = new utilsPB.EmptyMessage();
         const data = await binUtils.retryAuthentication(
           async (auth) => {
             const data: Array<string> = [];
-            const stream = grpcClient.keysCertsChainGet(emptyMessage, auth);
+            const stream = pkClient.grpcClient.keysCertsChainGet(emptyMessage, auth);
             for await (const cert of stream) {
               data.push(`Certificate:\t\t${cert.getCert()}`);
             }
@@ -56,7 +51,6 @@ class CommandsCertchain extends CommandPolykey {
           },
           meta,
         );
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -64,7 +58,7 @@ class CommandsCertchain extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

@@ -18,7 +18,6 @@ class CommandAdd extends CommandPolykey {
     this.action(async (nodeId, host, port, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -27,8 +26,11 @@ class CommandAdd extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -40,23 +42,15 @@ class CommandAdd extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const nodeAddressMessage = new nodesPB.NodeAddress();
         nodeAddressMessage.setNodeId(nodeId);
         nodeAddressMessage.setAddress(
           new nodesPB.Address().setHost(host).setPort(port),
         );
-
         await binUtils.retryAuthentication(
-          (auth) => grpcClient.nodesAdd(nodeAddressMessage, auth),
+          (auth) => pkClient.grpcClient.nodesAdd(nodeAddressMessage, auth),
           meta,
         );
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -64,7 +58,7 @@ class CommandAdd extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }
