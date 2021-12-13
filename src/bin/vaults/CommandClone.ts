@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -59,7 +57,7 @@ class CommandClone extends CommandPolykey {
         vaultMessage.setNameOrId(vaultNameOrId);
 
         await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.vaultsClone(vaultCloneMessage, auth),
+          (auth) => grpcClient.vaultsClone(vaultCloneMessage, auth),
           meta,
         );
 

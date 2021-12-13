@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -59,7 +57,7 @@ class CommandShare extends CommandPolykey {
         nodeMessage.setNodeId(nodeId);
 
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
+          (auth) =>
             grpcClient.vaultsPermissionsSet(setVaultPermsMessage, auth),
           meta,
         );

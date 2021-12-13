@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -56,7 +54,7 @@ class CommandRename extends CommandPolykey {
         vaultRenameMessage.setNewName(newVaultName);
 
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
+          (auth) =>
             grpcClient.vaultsRename(vaultRenameMessage, auth),
           meta,
         );

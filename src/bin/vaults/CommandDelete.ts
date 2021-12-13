@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -52,7 +50,7 @@ class CommandDelete extends CommandPolykey {
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(vaultName);
         await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.vaultsDelete(vaultMessage, auth),
+          (auth) => grpcClient.vaultsDelete(vaultMessage, auth),
           meta,
         );
 

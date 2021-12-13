@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -53,7 +51,7 @@ class CommandCreate extends CommandPolykey {
         vaultMessage.setNameOrId(vaultName);
 
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.vaultsCreate(vaultMessage, auth),
+          (auth) => grpcClient.vaultsCreate(vaultMessage, auth),
           meta,
         );
 
