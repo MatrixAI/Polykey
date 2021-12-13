@@ -15,7 +15,6 @@ import config from '@/config';
 import { errors as clientErrors } from '@/client';
 import * as testUtils from './utils';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:

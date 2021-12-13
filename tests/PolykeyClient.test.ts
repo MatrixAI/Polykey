@@ -11,9 +11,8 @@ import { Status } from '@/status';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
 import config from '@/config';
-import * as testUtils from './utils';
+import * as testClientUtils from './client/utils';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:
@@ -60,7 +59,7 @@ describe('PolykeyClient', () => {
       nodePath: nodePath2,
       logger: logger.getChild(PolykeyAgent.name),
     });
-    [server, _port] = await testUtils.openTestClientServer({
+    [server, _port] = await testClientUtils.openTestClientServer({
       polykeyAgent,
       secure: false,
     });
@@ -79,7 +78,7 @@ describe('PolykeyClient', () => {
   afterAll(async () => {
     await client.destroy();
     await pkClient.stop();
-    await testUtils.closeTestClientServer(server);
+    await testClientUtils.closeTestClientServer(server);
     await polykeyAgent2.stop();
     await polykeyAgent2.destroy();
     await polykeyAgent.stop();
