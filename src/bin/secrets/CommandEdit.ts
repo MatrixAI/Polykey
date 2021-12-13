@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
@@ -67,7 +65,7 @@ class CommandEdit extends CommandPolykey {
         secretMessage.setSecretName(secretPath[1]);
 
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.vaultsSecretsGet(secretMessage, auth),
+          (auth) => grpcClient.vaultsSecretsGet(secretMessage, auth),
           meta,
         );
 

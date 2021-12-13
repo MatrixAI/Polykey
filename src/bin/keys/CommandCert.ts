@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -48,7 +46,7 @@ class CommandCert extends CommandPolykey {
         const grpcClient = pkClient.grpcClient;
         const emptyMessage = new utilsPB.EmptyMessage();
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.keysCertsGet(emptyMessage, auth),
+          (auth) => grpcClient.keysCertsGet(emptyMessage, auth),
           meta,
         );
 

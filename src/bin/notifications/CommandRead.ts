@@ -1,5 +1,4 @@
 import type { Notification } from '../../notifications/types';
-import type { Metadata } from '@grpc/grpc-js';
 
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
@@ -74,7 +73,7 @@ class CommandRead extends CommandPolykey {
         notificationsReadMessage.setOrder(options.order);
 
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
+          (auth) =>
             grpcClient.notificationsRead(notificationsReadMessage, auth),
           meta,
         );

@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -59,7 +57,7 @@ class CommandClaim extends CommandPolykey {
         }
 
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.nodesClaim(nodeClaimMessage, auth),
+          (auth) => grpcClient.nodesClaim(nodeClaimMessage, auth),
           meta,
         );
         const claimed = response.getSuccess();

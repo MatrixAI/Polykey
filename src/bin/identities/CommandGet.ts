@@ -1,6 +1,4 @@
-import type { Metadata } from '@grpc/grpc-js';
 import type gestaltsPB from '../../proto/js/polykey/v1/gestalts/gestalts_pb';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
@@ -64,7 +62,7 @@ class CommandGet extends CommandPolykey {
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           res = await binUtils.retryAuthentication(
-            (auth?: Metadata) =>
+            (auth) =>
               grpcClient.gestaltsGestaltGetByNode(nodeMessage, auth),
             meta,
           );
@@ -74,7 +72,7 @@ class CommandGet extends CommandPolykey {
           providerMessage.setProviderId(gestaltId.providerId);
           providerMessage.setMessage(gestaltId.identityId);
           res = await binUtils.retryAuthentication(
-            (auth?: Metadata) =>
+            (auth) =>
               grpcClient.gestaltsGestaltGetByIdentity(providerMessage, auth),
             meta,
           );

@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
@@ -68,7 +66,7 @@ class CommandDecrypt extends CommandPolykey {
 
         cryptoMessage.setData(cipherText);
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.keysDecrypt(cryptoMessage, auth),
+          (auth) => grpcClient.keysDecrypt(cryptoMessage, auth),
           meta,
         );
 

@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -53,9 +51,9 @@ class CommandList extends CommandPolykey {
         vaultMessage.setNameOrId(vaultName);
 
         const data = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
+          async (auth) => {
             const data: Array<string> = [];
-            const stream = grpcClient.vaultsSecretsList(vaultMessage, meta);
+            const stream = grpcClient.vaultsSecretsList(vaultMessage, auth);
             for await (const secret of stream) {
               data.push(`${secret.getSecretName()}`);
             }

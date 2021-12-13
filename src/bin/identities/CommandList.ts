@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
@@ -50,9 +48,9 @@ class CommandList extends CommandPolykey {
         const emptyMessage = new utilsPB.EmptyMessage();
         let output: any;
         const gestalts = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
+          async (auth) => {
             const gestalts: Array<any> = [];
-            const stream = grpcClient.gestaltsGestaltList(emptyMessage, meta);
+            const stream = grpcClient.gestaltsGestaltList(emptyMessage, auth);
             for await (const val of stream) {
               const gestalt = JSON.parse(val.getName());
               const newGestalt: any = {
@@ -75,7 +73,7 @@ class CommandList extends CommandPolykey {
               const nodeMessage = new nodesPB.Node();
               nodeMessage.setNodeId(newGestalt.nodes[0].id);
               const actionsMessage = await binUtils.retryAuthentication(
-                (auth?: Metadata) =>
+                (auth) =>
                   grpcClient.gestaltsActionsGetByNode(nodeMessage, auth),
                 meta,
               );

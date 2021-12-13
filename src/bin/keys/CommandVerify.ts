@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
@@ -78,7 +76,7 @@ class CommandVerify extends CommandPolykey {
         cryptoMessage.setSignature(signature);
 
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.keysVerify(cryptoMessage, auth),
+          (auth) => grpcClient.keysVerify(cryptoMessage, auth),
           meta,
         );
 

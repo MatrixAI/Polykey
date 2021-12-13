@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -49,7 +47,7 @@ class CommandClear extends CommandPolykey {
         const emptyMessage = new utilsPB.EmptyMessage();
 
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
+          (auth) =>
             grpcClient.notificationsClear(emptyMessage, auth),
           meta,
         );

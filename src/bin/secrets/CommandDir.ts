@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -62,7 +60,7 @@ class CommandDir extends CommandPolykey {
         secretDirectoryMessage.setSecretDirectory(directoryPath);
 
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
+          (auth) =>
             grpcClient.vaultsSecretsNewDir(secretDirectoryMessage, auth),
           meta,
         );

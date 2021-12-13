@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -70,7 +68,7 @@ class CommandAllow extends CommandPolykey {
           name = `${gestaltId.nodeId}`;
           // Trusting
           await binUtils.retryAuthentication(
-            (auth?: Metadata) =>
+            (auth) =>
               grpcClient.gestaltsActionsSetByNode(setActionMessage, auth),
             meta,
           );
@@ -85,7 +83,7 @@ class CommandAllow extends CommandPolykey {
             gestaltId.identityId,
           )}`;
           await binUtils.retryAuthentication(
-            (auth?: Metadata) =>
+            (auth) =>
               grpcClient.gestaltsActionsSetByIdentity(setActionMessage, auth),
             meta,
           );

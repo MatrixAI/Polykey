@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -54,7 +52,7 @@ class CommandPing extends CommandPolykey {
         let error;
         try {
           statusMessage = await binUtils.retryAuthentication(
-            (auth?: Metadata) => grpcClient.nodesPing(nodeMessage, auth),
+            (auth) => grpcClient.nodesPing(nodeMessage, auth),
             meta,
           );
         } catch (err) {

@@ -1,5 +1,4 @@
 import type { Host, Port } from '../../network/types';
-import type { Metadata } from '@grpc/grpc-js';
 
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
@@ -61,7 +60,7 @@ class CommandFind extends CommandPolykey {
         };
         try {
           const response = await binUtils.retryAuthentication(
-            (auth?: Metadata) => grpcClient.nodesFind(nodeMessage, auth),
+            (auth) => grpcClient.nodesFind(nodeMessage, auth),
             meta,
           );
 

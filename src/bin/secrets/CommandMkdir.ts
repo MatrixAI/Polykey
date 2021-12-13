@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -62,7 +60,7 @@ class CommandMkdir extends CommandPolykey {
         vaultMkdirMessage.setRecursive(options.recursive);
 
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
+          (auth) =>
             grpcClient.vaultsSecretsMkdir(vaultMkdirMessage, auth),
           meta,
         );

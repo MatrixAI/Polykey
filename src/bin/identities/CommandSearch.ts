@@ -1,6 +1,4 @@
-import type { Metadata } from '@grpc/grpc-js';
 import type { ProviderId, IdentityId } from '../../identities/types';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
@@ -57,7 +55,7 @@ class CommandSearch extends CommandPolykey {
         const providerMessage = new identitiesPB.Provider();
         providerMessage.setProviderId(providerId);
         const res = await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
+          (auth) =>
             grpcClient.identitiesInfoGet(providerMessage, auth),
           meta,
         );

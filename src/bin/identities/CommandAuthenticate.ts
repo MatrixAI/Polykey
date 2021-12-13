@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -56,10 +54,10 @@ class CommandAuthenticate extends CommandPolykey {
         providerMessage.setMessage(identityId);
         // Sending message.
         const successMessage = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
+          async (auth) => {
             const stream = grpcClient.identitiesAuthenticate(
               providerMessage,
-              meta,
+              auth,
             );
             const codeMessage = (await stream.next()).value;
             process.stdout.write(
