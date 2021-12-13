@@ -5,6 +5,7 @@ import { mocked } from 'ts-jest/utils';
 import prompts from 'prompts';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Session } from '@/sessions';
+import { sleep } from '@/utils';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from './utils';
@@ -67,6 +68,8 @@ describe('CLI Sessions', () => {
     );
     const token1 = await session.readToken();
     // New command should refresh token
+    // Need to wait for 1100ms to ensure refreshed token will be different from previous one
+    await sleep(1100);
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json', '--verbose'],
       {
@@ -99,6 +102,8 @@ describe('CLI Sessions', () => {
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
     const token1 = await session.readToken();
     // Run second command
+    // Need to wait for 1100ms to ensure refreshed token will be different from previous one
+    await sleep(1100);
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json', '--verbose'],
       {
