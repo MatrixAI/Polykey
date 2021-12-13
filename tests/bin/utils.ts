@@ -378,6 +378,7 @@ async function pkAgent(
       path.join(global.binAgentDir, 'references', reference),
     );
     lock.unlock(testLockFile.fd);
+    await testLockFile.close();
     // If the pids directory is not empty, there are other processes still running
     try {
       await fs.promises.rmdir(path.join(global.binAgentDir, 'references'));
