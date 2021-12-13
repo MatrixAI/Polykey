@@ -69,6 +69,7 @@ describe('CLI Sessions', () => {
     const token1 = await session.readToken();
     // New command should refresh token
     // Need to wait for 1100ms to ensure refreshed token will be different from previous one
+    // Our tokens are not nonces and are expected to be able to be reused
     await sleep(1100);
     const { exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json', '--verbose'],
@@ -103,6 +104,7 @@ describe('CLI Sessions', () => {
     const token1 = await session.readToken();
     // Run second command
     // Need to wait for 1100ms to ensure refreshed token will be different from previous one
+    // Our tokens are not nonces and are expected to be able to be reused
     await sleep(1100);
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json', '--verbose'],
