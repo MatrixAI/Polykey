@@ -1,4 +1,3 @@
-import type { SessionToken } from '@/sessions/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -41,12 +40,14 @@ describe('lock', () => {
     });
   });
   test('lock deletes the session token', async () => {
-    const session = await Session.createSession({
-      sessionTokenPath,
-      fs,
-      logger,
-    });
-    await session.writeToken('abc' as SessionToken);
+    await testBinUtils.pkStdio(
+      ['agent', 'unlock'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+        PK_PASSWORD: global.binAgentPassword,
+      },
+      global.binAgentDir,
+    );
     const { exitCode } = await testBinUtils.pkStdio(
       ['agent', 'lock'],
       {
@@ -55,6 +56,11 @@ describe('lock', () => {
       global.binAgentDir,
     );
     expect(exitCode).toBe(0);
+    const session = await Session.createSession({
+      sessionTokenPath,
+      fs,
+      logger,
+    });
     expect(await session.readToken()).toBeUndefined();
   });
   test('lock ensures reauthentication is required', async () => {
@@ -63,14 +69,13 @@ describe('lock', () => {
     mockedPrompts.mockImplementation(async (_opts: any) => {
       return { password };
     });
-    // Session token is set
     await testBinUtils.pkStdio(
-      ['agent', 'status'],
+      ['agent', 'unlock'],
       {
         PK_NODE_PATH: global.binAgentDir,
         PK_PASSWORD: global.binAgentPassword,
       },
-      global.binAgentDir
+      global.binAgentDir,
     );
     // Session token is deleted
     await testBinUtils.pkStdio(
