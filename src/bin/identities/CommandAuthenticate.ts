@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -21,7 +19,6 @@ class CommandAuthenticate extends CommandPolykey {
       const identitiesPB = await import(
         '../../proto/js/polykey/v1/identities/identities_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -30,8 +27,11 @@ class CommandAuthenticate extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -43,23 +43,14 @@ class CommandAuthenticate extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-
-        const grpcClient = pkClient.grpcClient;
-        // Constructing message.
         const providerMessage = new identitiesPB.Provider();
         providerMessage.setProviderId(providerId);
         providerMessage.setMessage(identityId);
-        // Sending message.
         const successMessage = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
-            const stream = grpcClient.identitiesAuthenticate(
+          async (auth) => {
+            const stream = pkClient.grpcClient.identitiesAuthenticate(
               providerMessage,
-              meta,
+              auth,
             );
             const codeMessage = (await stream.next()).value;
             process.stdout.write(
@@ -72,7 +63,6 @@ class CommandAuthenticate extends CommandPolykey {
           },
           meta,
         );
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -82,7 +72,7 @@ class CommandAuthenticate extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

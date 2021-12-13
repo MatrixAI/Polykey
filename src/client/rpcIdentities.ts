@@ -62,8 +62,10 @@ const createIdentitiesRPC = ({
         response.setMessage(userName);
         await genWritable.next(response);
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
     identitiesTokenPut: async (
@@ -84,10 +86,12 @@ const createIdentitiesRPC = ({
           provider?.getMessage() as IdentityId,
           { accessToken: call.request.getToken() } as TokenData,
         );
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     identitiesTokenGet: async (
       call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Token>,
@@ -103,10 +107,12 @@ const createIdentitiesRPC = ({
           call.request.getMessage() as IdentityId,
         );
         response.setToken(JSON.stringify(tokens));
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     identitiesTokenDelete: async (
       call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
@@ -121,10 +127,12 @@ const createIdentitiesRPC = ({
           call.request.getProviderId() as ProviderId,
           call.request.getMessage() as IdentityId,
         );
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     identitiesProvidersList: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, identitiesPB.Provider>,
@@ -137,10 +145,12 @@ const createIdentitiesRPC = ({
 
         const providers = identitiesManager.getProviders();
         response.setProviderId(JSON.stringify(Object.keys(providers)));
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     identitiesInfoGetConnected: async (
       call: grpc.ServerWritableStream<
@@ -182,8 +192,10 @@ const createIdentitiesRPC = ({
           await genWritable.next(identityInfoMessage);
         }
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
     /**
@@ -193,22 +205,24 @@ const createIdentitiesRPC = ({
       call: grpc.ServerUnaryCall<identitiesPB.Provider, identitiesPB.Provider>,
       callback: grpc.sendUnaryData<identitiesPB.Provider>,
     ): Promise<void> => {
+      const response = new identitiesPB.Provider();
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
         // Get's an identity out of all identities.
-        const providerMessage = new identitiesPB.Provider();
         const providerId = call.request.getProviderId() as ProviderId;
         const provider = identitiesManager.getProvider(providerId);
         if (provider == null) throw Error(`Invalid provider: ${providerId}`);
         const identities = await provider.getAuthIdentityIds();
         if (identities.length !== 0) {
-          providerMessage.setProviderId(providerId);
-          providerMessage.setMessage(identities[0]);
+          response.setProviderId(providerId);
+          response.setMessage(identities[0]);
         } else throw Error(`No identities found for provider: ${providerId}`);
-        callback(null, providerMessage);
+        callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
     /**
@@ -220,6 +234,7 @@ const createIdentitiesRPC = ({
     ): Promise<void> => {
       // To augment a keynode we need a provider, generate an oauthkey and then
       const info = call.request;
+      const response = new utilsPB.EmptyMessage();
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
@@ -239,11 +254,12 @@ const createIdentitiesRPC = ({
         await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo); // Need to call this
         // it takes NodeInfo and IdentityInfo.
         // Getting and creating NodeInfo is blocked by
+        callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
-      const emptyMessage = new utilsPB.EmptyMessage();
-      callback(null, emptyMessage);
     },
   };
 };

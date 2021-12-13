@@ -8,7 +8,6 @@ import type * as agentPB from '../proto/js/polykey/v1/agent/agent_pb';
 import type * as vaultsPB from '../proto/js/polykey/v1/vaults/vaults_pb';
 import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import type * as notificationsPB from '../proto/js/polykey/v1/notifications/notifications_pb';
-import type * as sessionsPB from '../proto/js/polykey/v1/sessions/sessions_pb';
 import type * as gestaltsPB from '../proto/js/polykey/v1/gestalts/gestalts_pb';
 import type * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
 import type * as keysPB from '../proto/js/polykey/v1/keys/keys_pb';
@@ -54,17 +53,18 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     if (session != null) {
       interceptors.push(clientUtils.sessionInterceptor(session));
     }
-    const { client, serverCertChain } = await super.createClient({
-      clientConstructor: ClientServiceClient,
-      nodeId,
-      host,
-      port,
-      tlsConfig,
-      proxyConfig,
-      timeout,
-      interceptors,
-      logger,
-    });
+    const { client, serverCertChain, flowCountInterceptor } =
+      await super.createClient({
+        clientConstructor: ClientServiceClient,
+        nodeId,
+        host,
+        port,
+        tlsConfig,
+        proxyConfig,
+        timeout,
+        interceptors,
+        logger,
+      });
     const grpcClientClient = new GRPCClientClient({
       client,
       nodeId,
@@ -73,6 +73,7 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
       tlsConfig,
       proxyConfig,
       serverCertChain,
+      flowCountInterceptor,
       logger,
     });
     logger.info(`Created ${this.name}`);
@@ -103,23 +104,15 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
   public sessionsUnlock(...args) {
-    return grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
       this.client.sessionsUnlock,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public sessionsRefresh(...args) {
-    return grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
-      this.client,
-      this.client.sessionsRefresh,
-    )(...args);
-  }
-
-  @ready(new clientErrors.ErrorClientClientDestroyed())
   public sessionsLockAll(...args) {
-    return grpcUtils.promisifyUnaryCall<utilsPB.StatusMessage>(
+    return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
       this.client.sessionsLockAll,
     )(...args);

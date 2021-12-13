@@ -127,7 +127,10 @@ async function pkExec(
 }> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = { ...process.env, ...env };
+  env = {
+    ...process.env,
+    ...env,
+  };
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -145,6 +148,8 @@ async function pkExec(
         tsConfigPath,
         '--require',
         tsConfigPathsRegisterPath,
+        '--compiler',
+        'typescript-cached-transpile',
         '--transpile-only',
         polykeyPath,
         ...args,
@@ -186,7 +191,10 @@ async function pkSpawn(
 ): Promise<ChildProcess> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = { ...process.env, ...env };
+  env = {
+    ...process.env,
+    ...env,
+  };
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -203,6 +211,8 @@ async function pkSpawn(
       tsConfigPath,
       '--require',
       tsConfigPathsRegisterPath,
+      '--compiler',
+      'typescript-cached-transpile',
       '--transpile-only',
       polykeyPath,
       ...args,
@@ -243,7 +253,10 @@ async function pkExpect({
 }> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
-  env = { ...process.env, ...env };
+  env = {
+    ...process.env,
+    ...env,
+  };
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -261,6 +274,8 @@ async function pkExpect({
       tsConfigPath,
       '--require',
       tsConfigPathsRegisterPath,
+      '--compiler',
+      'typescript-cached-transpile',
       '--transpile-only',
       polykeyPath,
       ...args,
@@ -297,6 +312,10 @@ async function pkExpect({
  * Uses fd-lock to serialise access to the pkAgent
  * This means all test modules using this will be serialised
  * Any beforeAll must use global.maxTimeout
+ * Tips for usage:
+ *   * Do not restart this global agent
+ *   * Ensure client-side side-effects are removed at the end of each test
+ *   * Ensure server-side side-effects are removed at the end of each test
  */
 async function pkAgent(
   args: Array<string> = [],
@@ -363,6 +382,7 @@ async function pkAgent(
       path.join(global.binAgentDir, 'references', reference),
     );
     lock.unlock(testLockFile.fd);
+    await testLockFile.close();
     // If the pids directory is not empty, there are other processes still running
     try {
       await fs.promises.rmdir(path.join(global.binAgentDir, 'references'));
@@ -385,6 +405,7 @@ async function pkAgent(
       global.binAgentDir,
     );
     // `pk agent stop` is asynchronous, need to wait for it to be DEAD
+    // This also means STDERR from the stopping agent may appear on the test logs
     await status.waitFor('DEAD');
   };
 }

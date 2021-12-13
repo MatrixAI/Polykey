@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -27,7 +25,6 @@ class CommandDir extends CommandPolykey {
       const secretsPB = await import(
         '../../proto/js/polykey/v1/secrets/secrets_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -36,8 +33,11 @@ class CommandDir extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -49,34 +49,21 @@ class CommandDir extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const secretDirectoryMessage = new secretsPB.Directory();
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(vaultName);
         secretDirectoryMessage.setVault(vaultMessage);
         secretDirectoryMessage.setSecretDirectory(directoryPath);
-
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
-            grpcClient.vaultsSecretsNewDir(secretDirectoryMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.vaultsSecretsNewDir(
+              secretDirectoryMessage,
+              auth,
+            ),
           meta,
         );
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Secret directory added to vault: ${secretDirectoryMessage.getSecretDirectory()}`,
-            ],
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

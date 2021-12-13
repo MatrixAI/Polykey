@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -22,7 +20,6 @@ class CommandUnshare extends CommandPolykey {
         '../../proto/js/polykey/v1/vaults/vaults_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -31,8 +28,11 @@ class CommandUnshare extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -44,12 +44,6 @@ class CommandUnshare extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const unsetVaultPermsMessage = new vaultsPB.PermUnset();
         const vaultMessage = new vaultsPB.Vault();
         const nodeMessage = new nodesPB.Node();
@@ -57,27 +51,16 @@ class CommandUnshare extends CommandPolykey {
         unsetVaultPermsMessage.setNode(nodeMessage);
         vaultMessage.setNameOrId(vaultName);
         nodeMessage.setNodeId(nodeId);
-
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
-            grpcClient.vaultsPermissionsUnset(unsetVaultPermsMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.vaultsPermissionsUnset(
+              unsetVaultPermsMessage,
+              auth,
+            ),
           meta,
         );
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Unshared Vault: ${unsetVaultPermsMessage
-                .getVault()
-                ?.getNameOrId()} to: ${unsetVaultPermsMessage
-                .getNode()
-                ?.getNodeId()}`,
-            ],
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

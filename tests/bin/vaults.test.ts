@@ -528,8 +528,6 @@ describe('CLI vaults', () => {
 
       const result = await utils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain(vaultName);
-      expect(result.stdout).toContain(ver1Oid);
 
       const fileContents = await vault.access(async (efs) => {
         return (await efs.readFile(secret1.name)).toString();
@@ -562,8 +560,6 @@ describe('CLI vaults', () => {
 
       const result2 = await utils.pkStdio([...command2], {}, dataDir);
       expect(result2.exitCode).toBe(0);
-      expect(result2.stdout).toContain(vaultName);
-      expect(result2.stdout).toContain('latest');
     });
     test('should handle invalid version IDs', async () => {
       await polykeyAgent.vaultManager.createVault(vaultName);

@@ -13,7 +13,7 @@ class CommandBootstrap extends CommandPolykey {
     this.addOption(binOptions.fresh);
     this.action(async (options) => {
       const bootstrapUtils = await import('../../bootstrap/utils');
-      const password = await binProcessors.processPassword(
+      const password = await binProcessors.processNewPassword(
         options.passwordFile,
         this.fs,
       );

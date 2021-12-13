@@ -154,7 +154,7 @@ describe('CLI keys', () => {
         const passPath = path.join(dataDir, 'passwordNew');
         await fs.promises.writeFile(passPath, 'password-new');
 
-        command = ['keys', 'renew', '-np', nodePath, passPath];
+        command = ['keys', 'renew', '-np', nodePath, '-pnf', passPath];
 
         const result = await utils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
@@ -183,7 +183,7 @@ describe('CLI keys', () => {
         const passPath = path.join(dataDir, 'passwordNewNew');
         await fs.promises.writeFile(passPath, 'password-new-new');
 
-        command = ['keys', 'reset', '-np', nodePath, passPath];
+        command = ['keys', 'reset', '-np', nodePath, '-pnf', passPath];
 
         const result = await utils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
@@ -211,7 +211,7 @@ describe('CLI keys', () => {
         const passPath = path.join(dataDir, 'passwordChange');
         await fs.promises.writeFile(passPath, 'password-change');
 
-        command = ['keys', 'password', '-np', nodePath, passPath];
+        command = ['keys', 'password', '-np', nodePath, '-pnf', passPath];
 
         const result2 = await utils.pkStdio([...command], {}, dataDir);
         expect(result2.exitCode).toBe(0);

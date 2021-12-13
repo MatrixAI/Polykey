@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -29,7 +27,6 @@ class CommandRename extends CommandPolykey {
       const secretsPB = await import(
         '../../proto/js/polykey/v1/secrets/secrets_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -38,8 +35,11 @@ class CommandRename extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -51,12 +51,6 @@ class CommandRename extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const vaultMessage = new vaultsPB.Vault();
         const secretMessage = new secretsPB.Secret();
         const secretRenameMessage = new secretsPB.Rename();
@@ -65,23 +59,13 @@ class CommandRename extends CommandPolykey {
         vaultMessage.setNameOrId(secretPath[0]);
         secretMessage.setSecretName(secretPath[1]);
         secretRenameMessage.setNewName(newSecretName);
-
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
-            grpcClient.vaultsSecretsRename(secretRenameMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.vaultsSecretsRename(secretRenameMessage, auth),
           meta,
         );
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Renamed secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()} to ${secretRenameMessage.getNewName()}`,
-            ],
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

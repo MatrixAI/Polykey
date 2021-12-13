@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -20,7 +18,6 @@ class CommandPing extends CommandPolykey {
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
       const CLIErrors = await import('../errors');
       const nodesErrors = await import('../../nodes/errors');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -29,8 +26,11 @@ class CommandPing extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -42,19 +42,13 @@ class CommandPing extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(nodeId);
         let statusMessage;
         let error;
         try {
           statusMessage = await binUtils.retryAuthentication(
-            (auth?: Metadata) => grpcClient.nodesPing(nodeMessage, auth),
+            (auth) => pkClient.grpcClient.nodesPing(nodeMessage, auth),
             meta,
           );
         } catch (err) {
@@ -66,28 +60,23 @@ class CommandPing extends CommandPolykey {
             throw err;
           }
         }
-
         const status = { success: false, message: '' };
         status.success = statusMessage ? statusMessage.getSuccess() : false;
         if (!status.success && !error)
           error = new CLIErrors.ErrorNodePingFailed('No response received');
-
         if (status.success) status.message = 'Node is Active.';
         else status.message = error.message;
-
         const output: any =
           options.format === 'json' ? status : [status.message];
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
             data: output,
           }),
         );
-
         if (error != null) throw error;
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

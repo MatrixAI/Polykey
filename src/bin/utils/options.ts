@@ -88,6 +88,11 @@ const passwordFile = new commander.Option(
   'Path to Password',
 );
 
+const passwordNewFile = new commander.Option(
+  '-pnf, --password-new-file <path>',
+  'Path to new Password',
+);
+
 const recoveryCodeFile = new commander.Option(
   '-rcf, --recovery-code-file <path>',
   'Path to Recovery Code',
@@ -123,8 +128,9 @@ export {
   clientPort,
   ingressHost,
   ingressPort,
-  recoveryCodeFile,
   passwordFile,
+  passwordNewFile,
+  recoveryCodeFile,
   background,
   backgroundOutFile,
   backgroundErrFile,

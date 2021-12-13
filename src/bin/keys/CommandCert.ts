@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -17,7 +15,6 @@ class CommandCert extends CommandPolykey {
     this.action(async (options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -26,8 +23,11 @@ class CommandCert extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -39,19 +39,11 @@ class CommandCert extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-
-        const grpcClient = pkClient.grpcClient;
         const emptyMessage = new utilsPB.EmptyMessage();
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.keysCertsGet(emptyMessage, auth),
+          (auth) => pkClient.grpcClient.keysCertsGet(emptyMessage, auth),
           meta,
         );
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -59,7 +51,7 @@ class CommandCert extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

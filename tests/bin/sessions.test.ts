@@ -1,215 +1,183 @@
-import type { VaultName } from '@/vaults/types';
-import type { SessionToken } from '@/sessions/types';
+/**
+ * There is no command call sessions
+ * This is just for testing the CLI Authentication Retry Loop
+ * @module
+ */
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import lock from 'fd-lock';
+import { mocked } from 'ts-jest/utils';
+import prompts from 'prompts';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import PolykeyAgent from '@/PolykeyAgent';
+import { Session } from '@/sessions';
 import { sleep } from '@/utils';
-import * as testUtils from './utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import config from '@/config';
+import * as clientErrors from '@/client/errors';
+import * as testBinUtils from './utils';
 
 /**
- * This test file has been optimised to use only one instance of PolykeyAgent where posible.
- * Setting up the PolykeyAgent has been done in a beforeAll block.
- * Keep this in mind when adding or editing tests.
- * Any side effects need to be undone when the test has completed.
- * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
- *
- * - left over state can cause a test to fail in certain cases.
- * - left over state can cause similar tests to succeed when they should fail.
- * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
- * - when in doubt test each modified or added test on it's own as well as the whole file.
- * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
+ * Mock prompts module which is used prompt for password
  */
+jest.mock('prompts');
+const mockedPrompts = mocked(prompts);
 
-describe('Session Token Refreshing', () => {
-  const logger = new Logger('pkStdio Test', LogLevel.WARN, [
+describe('CLI Sessions', () => {
+  const logger = new Logger('sessions test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let dataDir: string;
-  let nodePath: string;
-  let passwordFile: string;
-  let sessionFile: string;
-  let polykeyAgent: PolykeyAgent;
-
-  let tokenBuffer: Buffer;
-  let token: SessionToken;
-  let command: string[];
-  const vaultName = 'TestVault' as VaultName;
-
+  let pkAgentClose;
   beforeAll(async () => {
-    // This handles the expensive setting up of the polykey agent.
+    pkAgentClose = await testBinUtils.pkAgent();
+  }, global.maxTimeout);
+  afterAll(async () => {
+    await pkAgentClose();
+  });
+  let dataDir: string;
+  beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
-    nodePath = path.join(dataDir, 'keynode');
-    command = ['vaults', 'list', '-np', nodePath];
-    passwordFile = path.join(dataDir, 'passwordFile');
-    sessionFile = path.join(nodePath, 'token');
-    await fs.promises.writeFile(passwordFile, 'password');
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
-      password: 'password',
-      nodePath: nodePath,
-      logger: logger,
-    });
-    await polykeyAgent.vaultManager.createVault(vaultName);
   });
-
-  afterAll(async () => {
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
-    await fs.promises.rmdir(dataDir, { recursive: true });
-  });
-
-  test('Process should store session token in session file', async () => {
-    // Agent has not been unlocked yet
-    const result = await testUtils.pkStdio(
-      command,
-      { PK_PASSWORD: 'password' },
-      dataDir,
-    );
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(vaultName);
-
-    const buff = await fs.promises.readFile(sessionFile);
-    const newToken = buff.toString() as SessionToken;
-    expect(
-      async () => await polykeyAgent.sessionManager.verifyToken(newToken),
-    ).not.toThrow();
-  });
-
-  describe('After session has been unlocked', () => {
-    beforeAll(async () => {
-      // Authorize session
-      await testUtils.pkStdio(
-        ['agent', 'unlock', '-np', nodePath, '--password-file', passwordFile],
-        {},
-        dataDir,
-      );
-    }, global.polykeyStartupTimeout);
-
-    test('Process should refresh the session token', async () => {
-      tokenBuffer = await fs.promises.readFile(sessionFile);
-      token = tokenBuffer.toString() as SessionToken;
-      const prevToken = token;
-
-      // At least 1 second of delay
-      // Expiry time resolution is in seconds
-      await sleep(1100);
-      const result = await testUtils.pkStdio(command, {}, dataDir);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain(vaultName);
-
-      const buff = await fs.promises.readFile(sessionFile);
-      const newToken = buff.toString() as SessionToken;
-      expect(
-        async () => await polykeyAgent.sessionManager.verifyToken(newToken),
-      ).not.toThrow();
-      // Make sure the first and second tokens are not the same
-      expect(newToken).not.toEqual(prevToken);
+  afterEach(async () => {
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
     });
-
-    test('Serial processes should refresh the session token', async () => {
-      let result = await testUtils.pkStdio(command, {}, dataDir);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain(vaultName);
-
-      tokenBuffer = await fs.promises.readFile(sessionFile);
-      const token1 = tokenBuffer.toString() as SessionToken;
-      expect(
-        async () => await polykeyAgent.sessionManager.verifyToken(token1),
-      ).not.toThrow();
-
-      // At least 1 second of delay
-      // Expiry time resolution is in seconds
-      await sleep(1100);
-      result = await testUtils.pkStdio(command, {}, dataDir);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain(vaultName);
-
-      tokenBuffer = await fs.promises.readFile(sessionFile);
-      const token2 = tokenBuffer.toString() as SessionToken;
-      expect(
-        async () => await polykeyAgent.sessionManager.verifyToken(token2),
-      ).not.toThrow();
-
-      // Make sure the first and second tokens are not the same
-      expect(token1).not.toEqual(token2);
+  });
+  test('serial commands refresh the session token', async () => {
+    const session = await Session.createSession({
+      sessionTokenPath: path.join(
+        global.binAgentDir,
+        config.defaults.tokenBase,
+      ),
+      fs,
+      logger,
     });
-
-    test(
-      'Failing processes should unlock the session file',
-      async () => {
-        const result = await testUtils.pkStdio(
-          ['vaults', 'delete', 'NotAVault', '-np', nodePath],
-          {},
-          dataDir,
-        );
-        expect(result.exitCode).not.toBe(0);
-
-        tokenBuffer = await fs.promises.readFile(sessionFile);
-        token = tokenBuffer.toString() as SessionToken;
-        expect(
-          async () => await polykeyAgent.sessionManager.verifyToken(token),
-        ).not.toThrow();
-
-        // Try to lock the session file to ensure it's unlocked
-        const fd = fs.openSync(sessionFile, 'r');
-        expect(lock(fd)).toBeTruthy();
-        lock.unlock(fd);
-        fs.closeSync(fd);
+    let exitCode;
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+        PK_PASSWORD: global.binAgentPassword,
       },
-      global.failedConnectionTimeout,
+      global.binAgentDir,
+    ));
+    expect(exitCode).toBe(0);
+    const token1 = await session.readToken();
+    // Tokens are not nonces
+    // Wait at least 1 second
+    // To ensure that the next token has a new expiry
+    await sleep(1100);
+    ({ exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+        PK_PASSWORD: global.binAgentPassword,
+      },
+      global.binAgentDir,
+    ));
+    expect(exitCode).toBe(0);
+    const token2 = await session.readToken();
+    expect(token1).not.toBe(token2);
+    await session.stop();
+  });
+  test('unattended commands with invalid authentication should fail', async () => {
+    let exitCode, stderr;
+    // Password and Token set
+    ({ exitCode, stderr } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+        PK_PASSWORD: 'invalid',
+        PK_TOKEN: 'token',
+      },
+      global.binAgentDir,
+    ));
+    testBinUtils.expectProcessError(
+      exitCode,
+      stderr,
+      new clientErrors.ErrorClientAuthDenied(),
     );
-
-    test('Parallel processes should not refresh the session token', async () => {
-      let tokenP1 = 'token1' as SessionToken;
-      let tokenP2 = 'token2' as SessionToken;
-
-      tokenBuffer = await fs.promises.readFile(sessionFile);
-      const prevTokenParallel = tokenBuffer.toString() as SessionToken;
-
-      async function runListCommand(): Promise<SessionToken> {
-        // At least 1 second of delay
-        // Expiry time resolution is in seconds
-        await sleep(1000);
-        await testUtils.pkStdio(command, {}, dataDir);
-        const buffer = await fs.promises.readFile(sessionFile);
-        return buffer.toString() as SessionToken;
-      }
-
-      [tokenP1, tokenP2] = await Promise.all([
-        runListCommand(),
-        runListCommand(),
-      ]);
-
-      // Verify both tokens
-      expect(
-        async () => await polykeyAgent.sessionManager.verifyToken(tokenP1),
-      ).not.toThrow();
-      expect(
-        async () => await polykeyAgent.sessionManager.verifyToken(tokenP2),
-      ).not.toThrow();
-
-      // Check that both commands were completed
-      expect(tokenP1).not.toEqual('token1');
-      expect(tokenP2).not.toEqual('token2');
-
-      // Check that the session token was refreshed exactly one time
-      if (tokenP1 === prevTokenParallel) {
-        expect(tokenP2).not.toEqual(prevTokenParallel);
-      } else if (tokenP2 === prevTokenParallel) {
-        expect(tokenP1).not.toEqual(prevTokenParallel);
-      } else {
-        expect(tokenP1).toEqual(tokenP2);
-      }
+    // Password set
+    ({ exitCode, stderr } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+        PK_PASSWORD: 'invalid',
+        PK_TOKEN: undefined,
+      },
+      global.binAgentDir,
+    ));
+    testBinUtils.expectProcessError(
+      exitCode,
+      stderr,
+      new clientErrors.ErrorClientAuthDenied(),
+    );
+    // Token set
+    ({ exitCode, stderr } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+        PK_PASSWORD: undefined,
+        PK_TOKEN: 'token',
+      },
+      global.binAgentDir,
+    ));
+    testBinUtils.expectProcessError(
+      exitCode,
+      stderr,
+      new clientErrors.ErrorClientAuthDenied(),
+    );
+  });
+  test('prompt for password to authenticate attended commands', async () => {
+    const password = global.binAgentPassword;
+    await testBinUtils.pkStdio(
+      ['agent', 'lock'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+      },
+      global.binAgentDir,
+    );
+    mockedPrompts.mockClear();
+    mockedPrompts.mockImplementation(async (_opts: any) => {
+      return { password };
     });
+    const { exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+      },
+      global.binAgentDir,
+    );
+    expect(exitCode).toBe(0);
+    // Prompted for password 1 time
+    expect(mockedPrompts.mock.calls.length).toBe(1);
+    mockedPrompts.mockClear();
+  });
+  test('re-prompts for password if unable to authenticate command', async () => {
+    await testBinUtils.pkStdio(
+      ['agent', 'lock'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+      },
+      global.binAgentDir,
+    );
+    const validPassword = global.binAgentPassword;
+    const invalidPassword = 'invalid';
+    mockedPrompts.mockClear();
+    mockedPrompts
+      .mockResolvedValueOnce({ password: invalidPassword })
+      .mockResolvedValue({ password: validPassword });
+    const { exitCode } = await testBinUtils.pkStdio(
+      ['agent', 'status'],
+      {
+        PK_NODE_PATH: global.binAgentDir,
+      },
+      global.binAgentDir,
+    );
+    expect(exitCode).toBe(0);
+    // Prompted for password 2 times
+    expect(mockedPrompts.mock.calls.length).toBe(2);
+    mockedPrompts.mockClear();
   });
 });

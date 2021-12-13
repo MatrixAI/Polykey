@@ -38,6 +38,10 @@ class CommandStatus extends CommandPolykey {
           }),
         );
       } else {
+        const meta = await binProcessors.processAuthentication(
+          options.passwordFile,
+          this.fs,
+        );
         let pkClient: PolykeyClient;
         this.exitHandlers.handlers.push(async () => {
           if (pkClient != null) await pkClient.stop();
@@ -51,10 +55,6 @@ class CommandStatus extends CommandPolykey {
             nodePath: options.nodePath,
             logger: this.logger.getChild(PolykeyClient.name),
           });
-          const meta = await binProcessors.processAuthentication(
-            options.passwordFile,
-            this.fs,
-          );
           const emptyMessage = new utilsPB.EmptyMessage();
           response = await binUtils.retryAuthentication(
             (auth) => pkClient.grpcClient.agentStatus(emptyMessage, auth),

@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -21,7 +19,6 @@ class CommandVersion extends CommandPolykey {
       const vaultsPB = await import(
         '../../proto/js/polykey/v1/vaults/vaults_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -30,8 +27,11 @@ class CommandVersion extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -43,30 +43,16 @@ class CommandVersion extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const vaultMessage = new vaultsPB.Vault();
         const vaultsVersionMessage = new vaultsPB.Version();
         vaultMessage.setNameOrId(vault);
         vaultsVersionMessage.setVault(vaultMessage);
         vaultsVersionMessage.setVersionId(versionId);
-
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
-            grpcClient.vaultsVersion(vaultsVersionMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.vaultsVersion(vaultsVersionMessage, auth),
           meta,
         );
-
-        let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
-
-        if (versionId.toLowerCase() === 'last') {
-          successMessage = [`Vault ${vault} is now at the latest version.`];
-        }
-
         /**
          * Previous status message:
          * ---
@@ -74,15 +60,8 @@ class CommandVersion extends CommandPolykey {
          * will discard all changes applied to the vault in later versions. You will
          * not be able to return to these later versions if changes are made.
          */
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: successMessage,
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

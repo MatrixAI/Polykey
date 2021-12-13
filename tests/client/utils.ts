@@ -35,7 +35,8 @@ async function openTestClientServer({
     discovery: polykeyAgent.discovery,
     fwdProxy: polykeyAgent.fwdProxy,
     revProxy: polykeyAgent.revProxy,
-    clientGrpcServer: polykeyAgent.grpcServerClient,
+    grpcServerClient: polykeyAgent.grpcServerClient,
+    grpcServerAgent: polykeyAgent.grpcServerAgent,
     fs: polykeyAgent.fs,
   });
 

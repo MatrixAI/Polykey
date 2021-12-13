@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
@@ -33,7 +31,6 @@ class CommandCreate extends CommandPolykey {
       const secretsPB = await import(
         '../../proto/js/polykey/v1/secrets/secrets_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -42,8 +39,11 @@ class CommandCreate extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -55,19 +55,11 @@ class CommandCreate extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-
-        const grpcClient = pkClient.grpcClient;
         const secretMessage = new secretsPB.Secret();
         const vaultMessage = new vaultsPB.Vault();
         secretMessage.setVault(vaultMessage);
         vaultMessage.setNameOrId(secretPath[0]);
         secretMessage.setSecretName(secretPath[1]);
-
         let content: Buffer;
         try {
           content = await this.fs.promises.readFile(directoryPath);
@@ -80,22 +72,12 @@ class CommandCreate extends CommandPolykey {
           });
         }
         secretMessage.setSecretContent(content);
-
         await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.vaultsSecretsNew(secretMessage, auth),
+          (auth) => pkClient.grpcClient.vaultsSecretsNew(secretMessage, auth),
           meta,
         );
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Secret: ${secretMessage.getSecretName()} successfully created in vault: ${vaultMessage.getNameOrId()}`,
-            ],
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

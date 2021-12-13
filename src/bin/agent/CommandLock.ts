@@ -9,7 +9,6 @@ class CommandLock extends CommandPolykey {
     this.description('Lock the Client and Clear the Existing Token');
     this.action(async (options) => {
       const { default: Session } = await import('../../sessions/Session');
-      // Just delete the session token
       const session = new Session({
         sessionTokenPath: path.join(
           options.nodePath,
@@ -18,6 +17,7 @@ class CommandLock extends CommandPolykey {
         fs: this.fs,
         logger: this.logger.getChild(Session.name),
       });
+      // Destroy local session
       await session.destroy();
     });
   }

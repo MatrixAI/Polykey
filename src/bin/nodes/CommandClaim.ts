@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -22,7 +20,6 @@ class CommandClaim extends CommandPolykey {
     this.action(async (nodeId, options) => {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -31,8 +28,11 @@ class CommandClaim extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -44,12 +44,6 @@ class CommandClaim extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const nodeClaimMessage = new nodesPB.Claim();
         nodeClaimMessage.setNodeId(nodeId);
         if (options.forceInvite) {
@@ -57,13 +51,11 @@ class CommandClaim extends CommandPolykey {
         } else {
           nodeClaimMessage.setForceInvite(false);
         }
-
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.nodesClaim(nodeClaimMessage, auth),
+          (auth) => pkClient.grpcClient.nodesClaim(nodeClaimMessage, auth),
           meta,
         );
         const claimed = response.getSuccess();
-
         if (claimed) {
           process.stdout.write(
             binUtils.outputFormatter({
@@ -84,7 +76,7 @@ class CommandClaim extends CommandPolykey {
           );
         }
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

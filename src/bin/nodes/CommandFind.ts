@@ -1,5 +1,4 @@
 import type { Host, Port } from '../../network/types';
-import type { Metadata } from '@grpc/grpc-js';
 
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
@@ -22,7 +21,6 @@ class CommandFind extends CommandPolykey {
       const networkUtils = await import('../../network/utils');
       const CLIErrors = await import('../errors');
       const nodesErrors = await import('../../nodes/errors');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -31,8 +29,11 @@ class CommandFind extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -44,12 +45,6 @@ class CommandFind extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const nodeMessage = new nodesPB.Node();
         nodeMessage.setNodeId(nodeId);
         const result = {
@@ -61,10 +56,9 @@ class CommandFind extends CommandPolykey {
         };
         try {
           const response = await binUtils.retryAuthentication(
-            (auth?: Metadata) => grpcClient.nodesFind(nodeMessage, auth),
+            (auth) => pkClient.grpcClient.nodesFind(nodeMessage, auth),
             meta,
           );
-
           result.success = true;
           result.id = response.getNodeId();
           result.host = response.getAddress()!.getHost();
@@ -83,10 +77,8 @@ class CommandFind extends CommandPolykey {
           result.port = 0;
           result.message = `Failed to find node ${result.id}`;
         }
-
         let output: any = result;
         if (options.format === 'human') output = [result.message];
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
@@ -97,7 +89,7 @@ class CommandFind extends CommandPolykey {
         if (!result.success)
           throw new CLIErrors.ErrorNodeFindFailed(result.message);
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

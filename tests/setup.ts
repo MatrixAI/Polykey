@@ -6,6 +6,7 @@ declare global {
     interface Global {
       projectDir: string;
       testDir: string;
+      keyPairDir: string;
       binAgentDir: string;
       binAgentPassword: string;
       defaultTimeout: number;
@@ -25,6 +26,13 @@ global.projectDir = path.join(__dirname, '../');
  * Absolute directory to the test root
  */
 global.testDir = __dirname;
+
+/**
+ * Absolute directory to shared keypair directory
+ * Generating the root key pair takes time
+ * This global key pair can be used by mocks
+ */
+global.keyPairDir = path.join(os.tmpdir(), 'polykey-test-keypair');
 
 /**
  * Absolute directory to a shared data directory used by bin tests

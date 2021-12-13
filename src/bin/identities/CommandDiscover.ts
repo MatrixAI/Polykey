@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
@@ -28,7 +26,6 @@ class CommandDiscover extends CommandPolykey {
         '../../proto/js/polykey/v1/identities/identities_pb'
       );
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -37,8 +34,11 @@ class CommandDiscover extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -50,22 +50,13 @@ class CommandDiscover extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
-        let name: string;
-
         if (gestaltId.nodeId) {
           // Discovery by Node.
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
-          name = `${gestaltId.nodeId}`;
           await binUtils.retryAuthentication(
-            (auth?: Metadata) =>
-              grpcClient.gestaltsDiscoveryByNode(nodeMessage, auth),
+            (auth) =>
+              pkClient.grpcClient.gestaltsDiscoveryByNode(nodeMessage, auth),
             meta,
           );
         } else {
@@ -73,25 +64,17 @@ class CommandDiscover extends CommandPolykey {
           const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(gestaltId.providerId);
           providerMessage.setMessage(gestaltId.identityId);
-          name = `${parsers.formatIdentityString(
-            gestaltId.providerId,
-            gestaltId.identityId,
-          )}`;
           await binUtils.retryAuthentication(
-            (auth?: Metadata) =>
-              grpcClient.gestaltsDiscoveryByIdentity(providerMessage, auth),
+            (auth) =>
+              pkClient.grpcClient.gestaltsDiscoveryByIdentity(
+                providerMessage,
+                auth,
+              ),
             meta,
           );
         }
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Starting discovery at: ${name}...`],
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

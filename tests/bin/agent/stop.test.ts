@@ -5,6 +5,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Status } from '@/status';
 import config from '@/config';
 import * as binErrors from '@/bin/errors';
+import * as clientErrors from '@/client/errors';
+import { sleep } from '@/utils';
 import * as testBinUtils from '../utils';
 
 describe('stop', () => {
@@ -162,6 +164,59 @@ describe('stop', () => {
         new binErrors.ErrorCLIStatusStarting(),
       );
       await status.waitFor('LIVE');
+      await testBinUtils.pkStdio(
+        ['agent', 'stop'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      await status.waitFor('DEAD');
+    },
+    global.defaultTimeout * 2,
+  );
+  test(
+    'stopping while unauthenticated does not stop',
+    async () => {
+      const password = 'abc123';
+      await testBinUtils.pkStdio(
+        [
+          'agent',
+          'start',
+          // 1024 is the smallest size and is faster to start
+          '--root-key-pair-bits',
+          '1024',
+        ],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: password,
+        },
+        dataDir,
+      );
+      const status = new Status({
+        statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        fs,
+        logger,
+      });
+      const { exitCode, stderr } = await testBinUtils.pkStdio(
+        ['agent', 'stop'],
+        {
+          PK_NODE_PATH: path.join(dataDir, 'polykey'),
+          PK_PASSWORD: 'wrong password',
+        },
+        dataDir,
+      );
+      testBinUtils.expectProcessError(
+        exitCode,
+        stderr,
+        new clientErrors.ErrorClientAuthDenied(),
+      );
+      // Should still be LIVE
+      await sleep(500);
+      const statusInfo = await status.readStatus();
+      expect(statusInfo).toBeDefined();
+      expect(statusInfo?.status).toBe('LIVE');
       await testBinUtils.pkStdio(
         ['agent', 'stop'],
         {

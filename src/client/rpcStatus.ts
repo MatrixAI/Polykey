@@ -48,8 +48,10 @@ const createStatusRPC = ({
         response.setRootCertPem(keyManager.getRootCertPem());
         response.setRootCertChainPem(await keyManager.getRootCertChainPem());
         callback(null, response);
+        return;
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
     },
   };

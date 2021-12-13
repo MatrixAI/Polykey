@@ -39,10 +39,12 @@ const createKeysRPC = ({
         const keyPair = keyManager.getRootKeyPairPem();
         response.setPublic(keyPair.publicKey);
         response.setPrivate(keyPair.privateKey);
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysKeyPairReset: async (
       call: grpc.ServerUnaryCall<keysPB.Key, utilsPB.EmptyMessage>,
@@ -67,10 +69,12 @@ const createKeysRPC = ({
           // Finally, refresh the node buckets
           await nodeManager.refreshBuckets();
         });
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysKeyPairRenew: async (
       call: grpc.ServerUnaryCall<keysPB.Key, utilsPB.EmptyMessage>,
@@ -94,10 +98,12 @@ const createKeysRPC = ({
           // Finally, refresh the node buckets
           await nodeManager.refreshBuckets();
         });
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysEncrypt: async (
       call: grpc.ServerUnaryCall<keysPB.Crypto, keysPB.Crypto>,
@@ -112,10 +118,12 @@ const createKeysRPC = ({
           Buffer.from(call.request.getData(), 'binary'),
         );
         response.setData(data.toString('binary'));
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysDecrypt: async (
       call: grpc.ServerUnaryCall<keysPB.Crypto, keysPB.Crypto>,
@@ -130,10 +138,12 @@ const createKeysRPC = ({
           Buffer.from(call.request.getData(), 'binary'),
         );
         response.setData(data.toString('binary'));
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysSign: async (
       call: grpc.ServerUnaryCall<keysPB.Crypto, keysPB.Crypto>,
@@ -148,10 +158,12 @@ const createKeysRPC = ({
           Buffer.from(call.request.getData(), 'binary'),
         );
         response.setSignature(signature.toString('binary'));
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysVerify: async (
       call: grpc.ServerUnaryCall<keysPB.Crypto, utilsPB.StatusMessage>,
@@ -167,10 +179,12 @@ const createKeysRPC = ({
           Buffer.from(call.request.getSignature(), 'binary'),
         );
         response.setSuccess(status);
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysPasswordChange: async (
       call: grpc.ServerUnaryCall<sessionsPB.Password, utilsPB.EmptyMessage>,
@@ -182,10 +196,12 @@ const createKeysRPC = ({
         call.sendMetadata(metadata);
 
         await keyManager.changePassword(call.request.getPassword());
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysCertsGet: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, keysPB.Certificate>,
@@ -198,10 +214,12 @@ const createKeysRPC = ({
 
         const cert = keyManager.getRootCertPem();
         response.setCert(cert);
+        callback(null, response);
+        return;
       } catch (err) {
-        callback(grpcUtils.fromError(err), response);
+        callback(grpcUtils.fromError(err), null);
+        return;
       }
-      callback(null, response);
     },
     keysCertsChainGet: async (
       call: grpc.ServerWritableStream<utilsPB.EmptyMessage, keysPB.Certificate>,
@@ -219,8 +237,10 @@ const createKeysRPC = ({
           await genWritable.next(certMessage);
         }
         await genWritable.next(null);
+        return;
       } catch (err) {
         await genWritable.throw(err);
+        return;
       }
     },
   };

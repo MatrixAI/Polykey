@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binUtils from '../utils';
@@ -21,7 +19,6 @@ class CommandSend extends CommandPolykey {
       const notificationsPB = await import(
         '../../proto/js/polykey/v1/notifications/notifications_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -30,8 +27,11 @@ class CommandSend extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -43,36 +43,21 @@ class CommandSend extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const notificationsSendMessage = new notificationsPB.Send();
         const generalMessage = new notificationsPB.General();
         generalMessage.setMessage(message);
         notificationsSendMessage.setReceiverId(node);
         notificationsSendMessage.setData(generalMessage);
-
         await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
-            grpcClient.notificationsSend(notificationsSendMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.notificationsSend(
+              notificationsSendMessage,
+              auth,
+            ),
           meta,
         );
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Successsfully sent notification: "${notificationsSendMessage
-                .getData()
-                ?.getMessage()}" to Keynode with ID: ${notificationsSendMessage.getReceiverId()}`,
-            ],
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

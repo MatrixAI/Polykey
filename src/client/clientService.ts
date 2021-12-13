@@ -77,7 +77,6 @@ function createClientService({
     ...createSessionsRPC({
       authenticate,
       sessionManager,
-      keyManager,
     }),
     ...createVaultRPC({
       vaultManager,
@@ -121,6 +120,7 @@ function createClientService({
       const write = promisify(call.write).bind(call);
       await write(nodeMessage);
       call.end();
+      return;
     },
     agentStop: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
@@ -128,7 +128,8 @@ function createClientService({
     ): Promise<void> => {
       const response = new utilsPB.EmptyMessage();
       if (!polykeyAgent.running) {
-        return callback(null, response);
+        callback(null, response);
+        return;
       }
       try {
         const metadata = await authenticate(call.metadata);
@@ -137,6 +138,7 @@ function createClientService({
         callback(null, response);
       } catch (err) {
         callback(grpcUtils.fromError(err), null);
+        return;
       }
       // Stop is called after GRPC resources are cleared
       await polykeyAgent.stop();

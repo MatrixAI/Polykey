@@ -3,8 +3,19 @@ import type { NodeAddress } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { utils as keyUtils } from '@/keys';
-import { PolykeyAgent } from '../src';
+import { PolykeyAgent } from '@';
+import * as keysUtils from '@/keys/utils';
+
+async function getGlobalKeyPair() {
+  const [publicKeyPem, privateKeyPem] = await Promise.all([
+    fs.promises.readFile(path.join(global.keyPairDir, 'root.pub'), 'utf-8'),
+    fs.promises.readFile(path.join(global.keyPairDir, 'root.key'), 'utf-8'),
+  ]);
+  return keysUtils.keyPairFromPem({
+    publicKey: publicKeyPem,
+    privateKey: privateKeyPem,
+  });
+}
 
 /**
  * Helper function to create a remote keynode to contact.
@@ -65,13 +76,14 @@ function makeCrypto(dbKey: Buffer) {
   return {
     key: dbKey,
     ops: {
-      encrypt: keyUtils.encryptWithKey,
-      decrypt: keyUtils.decryptWithKey,
+      encrypt: keysUtils.encryptWithKey,
+      decrypt: keysUtils.decryptWithKey,
     },
   };
 }
 
 export {
+  getGlobalKeyPair,
   setupRemoteKeynode,
   cleanupRemoteKeynode,
   addRemoteDetails,

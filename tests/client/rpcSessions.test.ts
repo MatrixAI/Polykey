@@ -1,5 +1,4 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { SessionToken } from '@/sessions/types';
 import type { ClientServiceClient } from '@/proto/js/polykey/v1/client_service_grpc_pb';
 import os from 'os';
 import path from 'path';
@@ -7,12 +6,10 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as sessionsPB from '@/proto/js/polykey/v1/sessions/sessions_pb';
 import { KeyManager } from '@/keys';
 import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
-import { sleep } from '@/utils';
-import * as errors from '@/errors';
+import * as clientUtils from '@/client/utils';
 import * as testUtils from './utils';
 
 // Mocks.
@@ -22,19 +19,6 @@ jest.mock('@/keys/utils', () => ({
     jest.requireActual('@/keys/utils').generateKeyPair,
 }));
 
-/**
- * This test file has been optimised to use only one instance of PolykeyAgent where posible.
- * Setting up the PolykeyAgent has been done in a beforeAll block.
- * Keep this in mind when adding or editing tests.
- * Any side effects need to be undone when the test has completed.
- * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
- *
- * - left over state can cause a test to fail in certain cases.
- * - left over state can cause similar tests to succeed when they should fail.
- * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
- * - when in doubt test each modified or added test on it's own as well as the whole file.
- * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
- */
 describe('Sessions client service', () => {
   const password = 'password';
   const logger = new Logger('SessionsClientServerTest', LogLevel.WARN, [
@@ -101,81 +85,27 @@ describe('Sessions client service', () => {
     const sessionToken = await polykeyAgent.sessionManager.createToken();
     callCredentials = testUtils.createCallCredentials(sessionToken);
   });
-
   test('can request a session', async () => {
-    const requestJWT = grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
+    const unlock = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       client,
       client.sessionsUnlock,
     );
 
-    const passwordMessage = new sessionsPB.Password();
-    passwordMessage.setPassword(passwordFile);
-
-    const res = await requestJWT(passwordMessage);
-    expect(typeof res.getToken()).toBe('string');
-    const result = await polykeyAgent.sessionManager.verifyToken(
-      res.getToken() as SessionToken,
-    );
+    const pCall = unlock(new utilsPB.EmptyMessage(), callCredentials);
+    const meta = await pCall.meta;
+    const token = clientUtils.decodeAuthToSession(meta);
+    const result = await polykeyAgent.sessionManager.verifyToken(token!);
     expect(result).toBeTruthy();
   });
-  test('can refresh session', async () => {
-    const requestJWT = grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
-      client,
-      client.sessionsUnlock,
-    );
-
-    const passwordMessage = new sessionsPB.Password();
-    passwordMessage.setPassword(passwordFile);
-
-    const res1 = await requestJWT(passwordMessage);
-    const token1 = res1.getToken() as SessionToken;
-    const callCredentialsRefresh = testUtils.createCallCredentials(token1);
-
-    const sessionRefresh = grpcUtils.promisifyUnaryCall<sessionsPB.Token>(
-      client,
-      client.sessionsRefresh,
-    );
-
-    await sleep(1100);
-    const emptyMessage = new utilsPB.EmptyMessage();
-    const res2 = await sessionRefresh(emptyMessage, callCredentialsRefresh);
-    expect(typeof res2.getToken()).toBe('string');
-    const token2 = res2.getToken() as SessionToken;
-    const result = await polykeyAgent.sessionManager.verifyToken(token2);
-    expect(result).toBeTruthy();
-    expect(token1).not.toEqual(token2);
-  });
-  test('actions over GRPC refresh the session', async () => {
-    // Since we refresh the token when metadata is sent, check that
-    // metadata is sent and that we can do something when it happens
-    const agentStatus = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
-      client,
-      client.agentStatus,
-    );
-    const emptyMessage = new utilsPB.EmptyMessage();
-    const res = agentStatus(emptyMessage, callCredentials);
-    let check = 0;
-    res.call.on('metadata', () => (check = 1));
-    await res;
-    expect(check).toEqual(1);
-  });
-  test('session can lock all', async () => {
-    const agentStatus = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
-      client,
-      client.agentStatus,
-    );
-
-    // Locking the session.
-    const sessionLockAll = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(
+  test('can lock all sessions', async () => {
+    const lockall = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       client,
       client.sessionsLockAll,
     );
 
-    const emptyMessage = new utilsPB.EmptyMessage();
-    await sessionLockAll(emptyMessage, callCredentials);
-    // Should reject the session token.
-    await expect(() => agentStatus(emptyMessage)).rejects.toThrow(
-      errors.ErrorClientAuthMissing,
-    );
+    await lockall(new utilsPB.EmptyMessage(), callCredentials);
+    const prevToken = clientUtils.decodeAuthToSession(callCredentials);
+    const result = await polykeyAgent.sessionManager.verifyToken(prevToken!);
+    expect(result).toBeFalsy();
   });
 });

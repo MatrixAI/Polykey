@@ -16,7 +16,7 @@ import * as grpcUtils from './utils';
 import * as grpcErrors from './errors';
 import { utils as keysUtils } from '../keys';
 import { utils as networkUtils, errors as networkErrors } from '../network';
-import { promisify } from '../utils';
+import { promisify, promise, timerStart, timerStop } from '../utils';
 
 abstract class GRPCClient<T extends Client> {
   /**
@@ -55,6 +55,7 @@ abstract class GRPCClient<T extends Client> {
     logger?: Logger;
   }): Promise<{
     client: T;
+    flowCountInterceptor: grpcUtils.FlowCountInterceptor;
     serverCertChain?: Array<Certificate>;
   }> {
     const address = networkUtils.buildAddress(host, port);
@@ -80,9 +81,10 @@ abstract class GRPCClient<T extends Client> {
       // Prevents complaints with having an ip address as the server name
       'grpc.ssl_target_name_override': nodeId,
     };
+    const flowCountInterceptor = new grpcUtils.FlowCountInterceptor();
     const clientOptions: ClientOptions = {
       // Interceptor middleware on every call
-      interceptors,
+      interceptors: [flowCountInterceptor.interceptor, ...interceptors],
     };
     let client: T;
     if (proxyConfig == null) {
@@ -147,7 +149,7 @@ abstract class GRPCClient<T extends Client> {
       }
     }
     logger.info(`Created ${this.name} connecting to ${address}`);
-    return { client, serverCertChain };
+    return { client, serverCertChain, flowCountInterceptor };
   }
 
   public readonly nodeId: NodeId;
@@ -159,6 +161,7 @@ abstract class GRPCClient<T extends Client> {
   protected logger: Logger;
   protected client: T;
   protected serverCertChain?: Array<Certificate>;
+  protected flowCountInterceptor?: grpcUtils.FlowCountInterceptor;
   protected _secured: boolean = false;
 
   constructor({
@@ -169,6 +172,7 @@ abstract class GRPCClient<T extends Client> {
     tlsConfig,
     proxyConfig,
     serverCertChain,
+    flowCountInterceptor,
     logger,
   }: {
     client: T;
@@ -178,6 +182,7 @@ abstract class GRPCClient<T extends Client> {
     tlsConfig?: Partial<TLSConfig>;
     proxyConfig?: ProxyConfig;
     serverCertChain?: Array<Certificate>;
+    flowCountInterceptor?: grpcUtils.FlowCountInterceptor;
     logger: Logger;
   }) {
     this.logger = logger;
@@ -188,6 +193,7 @@ abstract class GRPCClient<T extends Client> {
     this.tlsConfig = tlsConfig;
     this.proxyConfig = proxyConfig;
     this.serverCertChain = serverCertChain;
+    this.flowCountInterceptor = flowCountInterceptor;
     if (tlsConfig != null) {
       this._secured = true;
     }
@@ -197,7 +203,11 @@ abstract class GRPCClient<T extends Client> {
     return this._secured;
   }
 
-  public async destroy(): Promise<void> {
+  public async destroy({
+    timeout,
+  }: {
+    timeout?: number;
+  } = {}): Promise<void> {
     const address = `${this.host}:${this.port}`;
     this.logger.info(
       `Destroying ${this.constructor.name} connected to ${address}`,
@@ -205,6 +215,32 @@ abstract class GRPCClient<T extends Client> {
     // This currently doesn't stop all inflight requests
     // https://github.com/grpc/grpc-node/issues/1340
     this.client.close();
+    // Block until all flow count is empty
+    // This ensures asynchronous interceptors are completed
+    // Before this function returns
+    if (
+      this.flowCountInterceptor != null &&
+      this.flowCountInterceptor.flowCount !== 0
+    ) {
+      const { p: flowEmptyP, resolveP: resolveFlowEmptyP } = promise<void>();
+      this.flowCountInterceptor.once('empty', () => {
+        resolveFlowEmptyP();
+      });
+      const timer = timeout != null ? timerStart(timeout) : undefined;
+      try {
+        await Promise.race([
+          flowEmptyP,
+          ...(timer != null ? [timer.timerP] : []),
+        ]);
+      } finally {
+        if (timer != null) timerStop(timer);
+      }
+      if (timer?.timedOut) {
+        this.logger.info(
+          `Timed out stopping ${this.constructor.name}, forcing destroy`,
+        );
+      }
+    }
     this.logger.info(
       `Destroyed ${this.constructor.name} connected to ${address}`,
     );

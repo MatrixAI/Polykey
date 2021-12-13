@@ -75,7 +75,7 @@ function createTestService({
           new grpcErrors.ErrorGRPC('test error', { grpc: true }),
         );
       } else {
-        // Will send back a number of messsage
+        // Will send back a number of message
         // equal to the character length of the challenge string
         for (let i = 0; i < messageFrom.getChallenge().length; i++) {
           messageTo.setChallenge(messageFrom.getChallenge());

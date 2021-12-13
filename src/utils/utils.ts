@@ -48,6 +48,22 @@ async function mkdirExists(fs: FileSystem, path, ...args) {
 }
 
 /**
+ * Checks if a directory is empty
+ * If the path does not exist, also returns true
+ */
+async function dirEmpty(fs: FileSystem, path): Promise<boolean> {
+  try {
+    const entries = await fs.promises.readdir(path);
+    return entries.length === 0;
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      return false;
+    }
+    throw e;
+  }
+}
+
+/**
  * Test whether a path includes another path
  * This will return true when path 1 is the same as path 2
  */
@@ -58,15 +74,6 @@ function pathIncludes(p1: string, p2: string): boolean {
     (relative === '' || !relative.startsWith('..')) &&
     !path.isAbsolute(relative)
   );
-}
-
-function pidIsRunning(pid: number) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e) {
-    return false;
-  }
 }
 
 async function sleep(ms: number) {
@@ -91,10 +98,6 @@ function filterEmptyObject(o) {
 
 function getUnixtime(date: Date = new Date()) {
   return Math.round(date.getTime() / 1000);
-}
-
-function getRandomInt(max = Number.MAX_SAFE_INTEGER) {
-  return Math.floor(Math.random() * max);
 }
 
 /**
@@ -204,13 +207,12 @@ export {
   getDefaultNodePath,
   never,
   mkdirExists,
+  dirEmpty,
   pathIncludes,
-  pidIsRunning,
   sleep,
   isEmptyObject,
   filterEmptyObject,
   getUnixtime,
-  getRandomInt,
   poll,
   promisify,
   promise,

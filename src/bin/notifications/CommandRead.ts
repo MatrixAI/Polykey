@@ -1,5 +1,4 @@
 import type { Notification } from '../../notifications/types';
-import type { Metadata } from '@grpc/grpc-js';
 
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
@@ -35,7 +34,6 @@ class CommandRead extends CommandPolykey {
         '../../proto/js/polykey/v1/notifications/notifications_pb'
       );
       const notificationsUtils = await import('../../notifications/utils');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -44,8 +42,11 @@ class CommandRead extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -57,14 +58,7 @@ class CommandRead extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const notificationsReadMessage = new notificationsPB.Read();
-
         if (options.unread) {
           notificationsReadMessage.setUnread(true);
         } else {
@@ -72,13 +66,14 @@ class CommandRead extends CommandPolykey {
         }
         notificationsReadMessage.setNumber(options.number);
         notificationsReadMessage.setOrder(options.order);
-
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) =>
-            grpcClient.notificationsRead(notificationsReadMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.notificationsRead(
+              notificationsReadMessage,
+              auth,
+            ),
           meta,
         );
-
         const notificationMessages = response.getNotificationList();
         const notifications: Array<Notification> = [];
         for (const message of notificationMessages) {
@@ -111,7 +106,6 @@ class CommandRead extends CommandPolykey {
               break;
             }
           }
-
           const notification = {
             data: data,
             senderId: message.getSenderId(),
@@ -121,7 +115,6 @@ class CommandRead extends CommandPolykey {
             notificationsUtils.validateNotification(notification),
           );
         }
-
         if (notifications.length === 0) {
           process.stdout.write(
             binUtils.outputFormatter({
@@ -167,7 +160,7 @@ class CommandRead extends CommandPolykey {
           );
         }
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

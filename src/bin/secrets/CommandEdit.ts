@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import * as binErrors from '../errors';
 import CommandPolykey from '../CommandPolykey';
@@ -31,7 +29,6 @@ class CommandEdit extends CommandPolykey {
       const secretsPB = await import(
         '../../proto/js/polykey/v1/secrets/secrets_pb'
       );
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -40,8 +37,11 @@ class CommandEdit extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -53,35 +53,22 @@ class CommandEdit extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-
-        const grpcClient = pkClient.grpcClient;
         const secretMessage = new secretsPB.Secret();
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(secretPath[0]);
         secretMessage.setVault(vaultMessage);
         secretMessage.setSecretName(secretPath[1]);
-
         const response = await binUtils.retryAuthentication(
-          (auth?: Metadata) => grpcClient.vaultsSecretsGet(secretMessage, auth),
+          (auth) => pkClient.grpcClient.vaultsSecretsGet(secretMessage, auth),
           meta,
         );
-
         const secretContent = response.getSecretName();
-
         // Linux
         const tmpDir = `${os.tmpdir}/pksecret`;
         await this.fs.promises.mkdir(tmpDir);
         const tmpFile = `${tmpDir}/pkSecretFile`;
-
         await this.fs.promises.writeFile(tmpFile, secretContent);
-
         execSync(`$EDITOR \"${tmpFile}\"`, { stdio: 'inherit' });
-
         let content: Buffer;
         try {
           content = await this.fs.promises.readFile(tmpFile);
@@ -93,26 +80,14 @@ class CommandEdit extends CommandPolykey {
             path: e.path,
           });
         }
-
         secretMessage.setVault(vaultMessage);
         secretMessage.setSecretContent(content);
-        await grpcClient.vaultsSecretsEdit(secretMessage);
-
+        await pkClient.grpcClient.vaultsSecretsEdit(secretMessage);
         await this.fs.promises.rmdir(tmpDir, { recursive: true });
-
         // Windows
         // TODO: complete windows impl
-
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Edited secret: ${vaultMessage.getNameOrId()} in vault: ${vaultMessage.getNameOrId()}`,
-            ],
-          }),
-        );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }

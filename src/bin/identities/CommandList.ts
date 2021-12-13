@@ -1,5 +1,3 @@
-import type { Metadata } from '@grpc/grpc-js';
-
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
@@ -19,7 +17,6 @@ class CommandList extends CommandPolykey {
       const { default: PolykeyClient } = await import('../../PolykeyClient');
       const utilsPB = await import('../../proto/js/polykey/v1/utils/utils_pb');
       const nodesPB = await import('../../proto/js/polykey/v1/nodes/nodes_pb');
-
       const clientOptions = await binProcessors.processClientOptions(
         options.nodePath,
         options.nodeId,
@@ -28,8 +25,11 @@ class CommandList extends CommandPolykey {
         this.fs,
         this.logger.getChild(binProcessors.processClientOptions.name),
       );
-
-      let pkClient: PolykeyClient | undefined;
+      const meta = await binProcessors.processAuthentication(
+        options.passwordFile,
+        this.fs,
+      );
+      let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
         if (pkClient != null) await pkClient.stop();
       });
@@ -41,54 +41,47 @@ class CommandList extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-
-        const meta = await binProcessors.processAuthentication(
-          options.passwordFile,
-          this.fs,
-        );
-        const grpcClient = pkClient.grpcClient;
         const emptyMessage = new utilsPB.EmptyMessage();
         let output: any;
-        const gestalts = await binUtils.retryAuthentication(
-          async (meta: Metadata) => {
-            const gestalts: Array<any> = [];
-            const stream = grpcClient.gestaltsGestaltList(emptyMessage, meta);
-            for await (const val of stream) {
-              const gestalt = JSON.parse(val.getName());
-              const newGestalt: any = {
-                permissions: [],
-                nodes: [],
-                identities: [],
-              };
-              for (const node of Object.keys(gestalt.nodes)) {
-                const nodeInfo = gestalt.nodes[node];
-                newGestalt.nodes.push({ id: nodeInfo.id });
-              }
-              for (const identity of Object.keys(gestalt.identities)) {
-                const identityInfo = gestalt.identities[identity];
-                newGestalt.identities.push({
-                  providerId: identityInfo.providerId,
-                  identityId: identityInfo.identityId,
-                });
-              }
-              // Getting the permissions for the gestalt.
-              const nodeMessage = new nodesPB.Node();
-              nodeMessage.setNodeId(newGestalt.nodes[0].id);
-              const actionsMessage = await binUtils.retryAuthentication(
-                (auth?: Metadata) =>
-                  grpcClient.gestaltsActionsGetByNode(nodeMessage, auth),
-                meta,
-              );
-              const actionList = actionsMessage.getActionList();
-              if (actionList.length === 0) newGestalt.permissions = null;
-              else newGestalt.permissions = actionList;
-              gestalts.push(newGestalt);
+        const gestalts = await binUtils.retryAuthentication(async (auth) => {
+          const gestalts: Array<any> = [];
+          const stream = pkClient.grpcClient.gestaltsGestaltList(
+            emptyMessage,
+            auth,
+          );
+          for await (const val of stream) {
+            const gestalt = JSON.parse(val.getName());
+            const newGestalt: any = {
+              permissions: [],
+              nodes: [],
+              identities: [],
+            };
+            for (const node of Object.keys(gestalt.nodes)) {
+              const nodeInfo = gestalt.nodes[node];
+              newGestalt.nodes.push({ id: nodeInfo.id });
             }
-            return gestalts;
-          },
-          meta,
-        );
-
+            for (const identity of Object.keys(gestalt.identities)) {
+              const identityInfo = gestalt.identities[identity];
+              newGestalt.identities.push({
+                providerId: identityInfo.providerId,
+                identityId: identityInfo.identityId,
+              });
+            }
+            // Getting the permissions for the gestalt.
+            const nodeMessage = new nodesPB.Node();
+            nodeMessage.setNodeId(newGestalt.nodes[0].id);
+            const actionsMessage = await binUtils.retryAuthentication(
+              (auth) =>
+                pkClient.grpcClient.gestaltsActionsGetByNode(nodeMessage, auth),
+              meta,
+            );
+            const actionList = actionsMessage.getActionList();
+            if (actionList.length === 0) newGestalt.permissions = null;
+            else newGestalt.permissions = actionList;
+            gestalts.push(newGestalt);
+          }
+          return gestalts;
+        }, meta);
         output = gestalts;
         if (options.format !== 'json') {
           // Convert to a human readable list.
@@ -123,7 +116,7 @@ class CommandList extends CommandPolykey {
           }),
         );
       } finally {
-        if (pkClient != null) await pkClient.stop();
+        if (pkClient! != null) await pkClient.stop();
       }
     });
   }
