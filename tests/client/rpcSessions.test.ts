@@ -86,24 +86,24 @@ describe('Sessions client service', () => {
     callCredentials = testUtils.createCallCredentials(sessionToken);
   });
   test('can request a session', async () => {
-    const requestJWT = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+    const unlock = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       client,
       client.sessionsUnlock,
     );
 
-    const pCall = requestJWT(new utilsPB.EmptyMessage(), callCredentials);
+    const pCall = unlock(new utilsPB.EmptyMessage(), callCredentials);
     const meta = await pCall.meta;
     const token = clientUtils.decodeAuthToSession(meta);
     const result = await polykeyAgent.sessionManager.verifyToken(token!);
     expect(result).toBeTruthy();
   });
   test('can lock all sessions', async () => {
-    const requestJWT = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
+    const lockall = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       client,
       client.sessionsLockAll,
     );
 
-    await requestJWT(new utilsPB.EmptyMessage(), callCredentials);
+    await lockall(new utilsPB.EmptyMessage(), callCredentials);
     const prevToken = clientUtils.decodeAuthToSession(callCredentials);
     const result = await polykeyAgent.sessionManager.verifyToken(prevToken!);
     expect(result).toBeFalsy();
