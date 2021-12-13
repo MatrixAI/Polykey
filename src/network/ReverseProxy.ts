@@ -19,10 +19,10 @@ class ReverseProxy {
   public readonly connTimeoutTime: number;
 
   protected logger: Logger;
-  protected _ingressHost: Host;
-  protected _ingressPort: Port;
-  protected _serverHost: Host;
-  protected _serverPort: Port;
+  protected ingressHost: Host;
+  protected ingressPort: Port;
+  protected serverHost: Host;
+  protected serverPort: Port;
   protected utpSocket: UTP;
   protected tlsConfig: TLSConfig;
   protected connectionLocks: Map<Address, Mutex> = new Map();
@@ -63,26 +63,27 @@ class ReverseProxy {
     ingressPort?: Port;
     tlsConfig: TLSConfig;
   }): Promise<void> {
-    this._ingressHost = ingressHost;
-    this.tlsConfig = tlsConfig;
     let ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let serverAddress = networkUtils.buildAddress(serverHost, serverPort);
     this.logger.info(
       `Starting Reverse Proxy from ${ingressAddress} to ${serverAddress}`,
     );
-    const utpSocket = UTP.createServer(this.handleConnection, {
-      allowHalfOpen: false,
-    });
-    const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
-    await utpSocketListen(ingressPort, this._ingressHost);
-    this._ingressPort = utpSocket.address().port;
-    this._serverHost = serverHost;
-    this._serverPort = serverPort;
-    this.utpSocket = utpSocket;
-    ingressAddress = networkUtils.buildAddress(
-      this._ingressHost,
-      this._ingressPort,
+    const utpSocket = UTP.createServer(
+      {
+        allowHalfOpen: true,
+      },
+      this.handleConnection
     );
+    const utpSocketListen = promisify(utpSocket.listen).bind(utpSocket);
+    await utpSocketListen(ingressPort, ingressHost);
+    ingressPort = utpSocket.address().port;
+    this.serverHost = serverHost;
+    this.serverPort = serverPort;
+    this.ingressHost = ingressHost;
+    this.ingressPort = ingressPort;
+    this.utpSocket = utpSocket;
+    this.tlsConfig = tlsConfig;
+    ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     serverAddress = networkUtils.buildAddress(serverHost, serverPort);
     this.logger.info(
       `Started Reverse Proxy from ${ingressAddress} to ${serverAddress}`,
@@ -107,31 +108,31 @@ class ReverseProxy {
     this.logger.info('Stopped Reverse Proxy');
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
-  get ingressHost(): Host {
-    return this._ingressHost;
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
+  public getIngressHost(): Host {
+    return this.ingressHost;
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
-  get ingressPort(): Port {
-    return this._ingressPort;
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
+  public getIngressPort(): Port {
+    return this.ingressPort;
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
-  get serverHost(): Host {
-    return this._serverHost;
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
+  public getServerHost(): Host {
+    return this.serverHost;
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
-  get serverPort(): Port {
-    return this._serverPort;
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
+  public getServerPort(): Port {
+    return this.serverPort;
   }
 
-  public setTLSConfig(tlsConfig: TLSConfig): void {
-    this.tlsConfig = tlsConfig;
+  public getConnectionCount(): number {
+    return this.connections.egress.size;
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
   public getConnectionInfoByProxy(
     proxyHost: Host,
     proxyPort: Port,
@@ -148,12 +149,12 @@ class ReverseProxy {
       certificates: clientCertificates,
       egressHost: conn.host,
       egressPort: conn.port,
-      ingressHost: this._ingressHost,
-      ingressPort: this._ingressPort,
+      ingressHost: this.ingressHost,
+      ingressPort: this.ingressPort,
     };
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
   public getConnectionInfoByEgress(
     egressHost: Host,
     egressPort: Port,
@@ -170,16 +171,17 @@ class ReverseProxy {
       certificates: clientCertificates,
       egressHost: conn.host,
       egressPort: conn.port,
-      ingressHost: this._ingressHost,
-      ingressPort: this._ingressPort,
+      ingressHost: this.ingressHost,
+      ingressPort: this.ingressPort,
     };
   }
 
-  get connectionCount(): number {
-    return this.connections.egress.size;
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
+  public setTLSConfig(tlsConfig: TLSConfig): void {
+    this.tlsConfig = tlsConfig;
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
   public async openConnection(
     egressHost: Host,
     egressPort: Port,
@@ -200,7 +202,7 @@ class ReverseProxy {
     }
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotStarted())
+  @ready(new networkErrors.ErrorReverseProxyNotRunning())
   public async closeConnection(
     egressHost: Host,
     egressPort: Port,
@@ -297,8 +299,8 @@ class ReverseProxy {
       return conn;
     }
     conn = new ConnectionReverse({
-      serverHost: this._serverHost,
-      serverPort: this._serverPort,
+      serverHost: this.serverHost,
+      serverPort: this.serverPort,
       connections: this.connections,
       utpSocket: this.utpSocket,
       host: egressHost,

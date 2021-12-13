@@ -1,6 +1,5 @@
 import type UTP from 'utp-native';
 import type { Host, Port, Address, TLSConfig } from './types';
-
 import Logger from '@matrixai/logger';
 import * as networkUtils from './utils';
 import { promisify } from '../utils';
@@ -15,7 +14,6 @@ abstract class Connection {
 
   protected logger: Logger;
   protected timeout: ReturnType<typeof setTimeout>;
-  protected _started: boolean = false;
   protected _composed: boolean = false;
 
   constructor({
@@ -44,10 +42,6 @@ abstract class Connection {
     this.tlsConfig = tlsConfig;
     this.address = address;
     this.timeoutTime = timeoutTime;
-  }
-
-  get started(): boolean {
-    return this._started;
   }
 
   get composed(): boolean {

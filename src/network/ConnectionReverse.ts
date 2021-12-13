@@ -7,6 +7,7 @@ import type { AbstractConstructorParameters, Timer } from '../types';
 
 import net from 'net';
 import tls from 'tls';
+import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
@@ -18,6 +19,8 @@ type ConnectionsReverse = {
   proxy: Map<Address, ConnectionReverse>;
 };
 
+interface ConnectionReverse extends StartStop {}
+@StartStop()
 class ConnectionReverse extends Connection {
   public readonly serverHost: Host;
   public readonly serverPort: Port;
@@ -51,77 +54,68 @@ class ConnectionReverse extends Connection {
   }: {
     timer?: Timer;
   } = {}): Promise<void> {
+    this.logger.info('Starting Connection Reverse');
+    // Promise for ready
+    const { p: readyP, resolveP: resolveReadyP } = promise<void>();
+    // Promise for server connection
+    const { p: socketP, resolveP: resolveSocketP } = promise<void>();
+    // Promise for start errors
+    const { p: errorP, rejectP: rejectErrorP } = promise<void>();
+    this.resolveReadyP = resolveReadyP;
+    this.utpSocket.on('message', this.handleMessage);
+    this.serverSocket = net.connect(this.serverPort, this.serverHost, () => {
+      const proxyAddressInfo = this.serverSocket.address() as AddressInfo;
+      this.proxyHost = proxyAddressInfo.address as Host;
+      this.proxyPort = proxyAddressInfo.port as Port;
+      this.proxyAddress = networkUtils.buildAddress(
+        this.proxyHost,
+        this.proxyPort,
+      );
+      resolveSocketP();
+    });
+    const handleStartError = (e) => {
+      rejectErrorP(e);
+    };
+    this.serverSocket.once('error', handleStartError);
+    this.serverSocket.on('end', this.handleEnd);
+    this.serverSocket.on('close', this.handleClose);
+    let punchInterval;
     try {
-      if (this._started) {
-        return;
-      }
-      this.logger.info('Starting Connection Reverse');
-      this._started = true;
-      // Promise for ready
-      const { p: readyP, resolveP: resolveReadyP } = promise<void>();
-      // Promise for server connection
-      const { p: socketP, resolveP: resolveSocketP } = promise<void>();
-      // Promise for start errors
-      const { p: errorP, rejectP: rejectErrorP } = promise<void>();
-      this.resolveReadyP = resolveReadyP;
-      this.utpSocket.on('message', this.handleMessage);
-      this.serverSocket = net.connect(this.serverPort, this.serverHost, () => {
-        const proxyAddressInfo = this.serverSocket.address() as AddressInfo;
-        this.proxyHost = proxyAddressInfo.address as Host;
-        this.proxyPort = proxyAddressInfo.port as Port;
-        this.proxyAddress = networkUtils.buildAddress(
-          this.proxyHost,
-          this.proxyPort,
-        );
-        resolveSocketP();
-      });
-      const handleStartError = (e) => {
-        rejectErrorP(e);
-      };
-      this.serverSocket.once('error', handleStartError);
-      this.serverSocket.on('end', this.handleEnd);
-      this.serverSocket.on('close', this.handleClose);
-      let punchInterval;
-      try {
-        await Promise.race([
-          socketP,
-          errorP,
-          ...(timer != null ? [timer.timerP] : []),
-        ]);
-        // Send punch & ready signal
+      await Promise.race([
+        socketP,
+        errorP,
+        ...(timer != null ? [timer.timerP] : []),
+      ]);
+      // Send punch & ready signal
+      await this.send(networkUtils.pingBuffer);
+      punchInterval = setInterval(async () => {
         await this.send(networkUtils.pingBuffer);
-        punchInterval = setInterval(async () => {
-          await this.send(networkUtils.pingBuffer);
-        }, 1000);
-        await Promise.race([
-          readyP,
-          errorP,
-          ...(timer != null ? [timer.timerP] : []),
-        ]);
-      } catch (e) {
-        await this.stop();
-        throw new networkErrors.ErrorConnectionStart(e.message, {
-          code: e.code,
-          errno: e.errno,
-          syscall: e.syscall,
-        });
-      } finally {
-        clearInterval(punchInterval);
-      }
-      if (timer?.timedOut) {
-        await this.stop();
-        throw new networkErrors.ErrorConnectionStartTimeout();
-      }
-      this.serverSocket.off('error', handleStartError);
-      this.serverSocket.on('error', this.handleError);
-      this.connections.egress.set(this.address, this);
-      this.connections.proxy.set(this.proxyAddress, this);
-      this.startTimeout();
-      this.logger.info('Started Connection Reverse');
+      }, 1000);
+      await Promise.race([
+        readyP,
+        errorP,
+        ...(timer != null ? [timer.timerP] : []),
+      ]);
     } catch (e) {
-      this._started = false;
-      throw e;
+      await this.stop();
+      throw new networkErrors.ErrorConnectionStart(e.message, {
+        code: e.code,
+        errno: e.errno,
+        syscall: e.syscall,
+      });
+    } finally {
+      clearInterval(punchInterval);
     }
+    if (timer?.timedOut) {
+      await this.stop();
+      throw new networkErrors.ErrorConnectionStartTimeout();
+    }
+    this.serverSocket.off('error', handleStartError);
+    this.serverSocket.on('error', this.handleError);
+    this.connections.egress.set(this.address, this);
+    this.connections.proxy.set(this.proxyAddress, this);
+    this.startTimeout();
+    this.logger.info('Started Connection Reverse');
   }
 
   /**
@@ -129,15 +123,12 @@ class ConnectionReverse extends Connection {
    * Repeated invocations are noops
    */
   public async stop() {
-    if (!this._started) {
-      return;
-    }
     this.logger.info('Stopping Connection Reverse');
-    this._started = false;
     this._composed = false;
     this.stopTimeout();
     this.utpSocket.off('message', this.handleMessage);
     if (!this.serverSocket.destroyed) {
+      // console.log('SENDING END TO serverSocket');
       this.serverSocket.end();
       this.serverSocket.destroy();
     }
@@ -149,14 +140,13 @@ class ConnectionReverse extends Connection {
   /**
    * Repeated invocations are noops
    */
+  @ready(new networkErrors.ErrorConnectionNotRunning())
   public async compose(utpConn: UTPConnection, timer?: Timer): Promise<void> {
-    if (!this._started) {
-      throw new networkErrors.ErrorConnectionNotStarted();
-    }
     try {
       if (this._composed) {
         throw new networkErrors.ErrorConnectionComposed();
       }
+      this._composed = true;
       this.logger.info('Composing Connection Reverse');
       // Promise for secure establishment
       const { p: secureP, resolveP: resolveSecureP } = promise<void>();
@@ -201,11 +191,33 @@ class ConnectionReverse extends Connection {
           // The utp connection may already be destroyed
           tlsSocket.destroy();
         } else {
+
+          // console.log('DESTROYED', tlsSocket.destroyed);
+          // // @ts-ignore
+          // console.log('PENDING', tlsSocket.pending);
+          // // @ts-ignore
+          // console.log('READYSTATE', tlsSocket.readyState);
+          // console.log('CONNECTING', tlsSocket.connecting);
+          // console.log('ALLOW HALF OPEN', tlsSocket.allowHalfOpen);
+          // console.log('ALLOW HALF OPEN utpConn', utpConn.allowHalfOpen);
+          // console.log('ENDED?', tlsSocket.writableEnded);
+          // console.log('FINISHED?', tlsSocket.writableFinished);
+          // console.log('ENDED?', utpConn.writableEnded);
+          // console.log('FINISHED?', utpConn.writableFinished);
+          // console.log(utpConn);
+
           // Prevent half open connections
           tlsSocket.end();
+
+          // utpConn.end();
+          // console.log("ENDED TLS SOCKET AGAIN?");
+
         }
       });
       tlsSocket.on('error', (e) => {
+
+        // console.log('EMITTING ERROR ON TLS SOCKET', e);
+
         if (!this.serverSocket.destroyed) {
           this.serverSocket.emit('error', e);
         }
@@ -225,7 +237,6 @@ class ConnectionReverse extends Connection {
       tlsSocket.pipe(this.serverSocket);
       this.serverSocket.pipe(tlsSocket);
       this.clientCertChain = clientCertChain;
-      this._composed = true;
       this.logger.info('Composed Connection Reverse');
     } catch (e) {
       this._composed = false;
@@ -233,17 +244,13 @@ class ConnectionReverse extends Connection {
     }
   }
 
+  @ready(new networkErrors.ErrorConnectionNotRunning())
   public getProxyHost(): Host {
-    if (!this._started) {
-      throw new networkErrors.ErrorConnectionNotStarted();
-    }
     return this.proxyHost;
   }
 
+  @ready(new networkErrors.ErrorConnectionNotRunning())
   public getProxyPort(): Port {
-    if (!this._started) {
-      throw new networkErrors.ErrorConnectionNotStarted();
-    }
     return this.proxyPort;
   }
 

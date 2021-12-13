@@ -140,30 +140,36 @@ class VaultManager {
   public async start({
     fresh = false,
   }: { fresh?: boolean } = {}): Promise<void> {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    this.vaultsDbDomain = 'VaultManager';
-    this.vaultsDb = await this.db.level(this.vaultsDbDomain);
-    this.vaultsNamesDbDomain = [this.vaultsDbDomain, 'names'];
-    this.vaultsNamesDb = await this.db.level(
-      this.vaultsNamesDbDomain[1],
-      this.vaultsDb,
-    );
-    if (fresh) {
-      await this.vaultsDb.clear();
-      await this.fs.promises.rm(this.vaultsPath, {
-        force: true,
-        recursive: true,
+    try {
+      this.logger.info(`Starting ${this.constructor.name}`);
+      this.vaultsDbDomain = 'VaultManager';
+      this.vaultsDb = await this.db.level(this.vaultsDbDomain);
+      this.vaultsNamesDbDomain = [this.vaultsDbDomain, 'names'];
+      this.vaultsNamesDb = await this.db.level(
+        this.vaultsNamesDbDomain[1],
+        this.vaultsDb,
+      );
+      if (fresh) {
+        await this.vaultsDb.clear();
+        await this.fs.promises.rm(this.vaultsPath, {
+          force: true,
+          recursive: true,
+        });
+        this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
+      }
+      await utils.mkdirExists(this.fs, this.vaultsPath);
+      this.efs = await EncryptedFS.createEncryptedFS({
+        dbPath: this.vaultsPath,
+        dbKey: this.vaultsKey,
+        logger: this.logger,
       });
-      this.logger.info(`Removing vaults directory at '${this.vaultsPath}'`);
+      await this.efs.start();
+      this.logger.info(`Started ${this.constructor.name}`);
+    } catch (e) {
+      this.logger.warn(`Failed Starting ${this.constructor.name}`);
+      await this.stop();
+      throw e;
     }
-    await utils.mkdirExists(this.fs, this.vaultsPath);
-    this.efs = await EncryptedFS.createEncryptedFS({
-      dbPath: this.vaultsPath,
-      dbKey: this.vaultsKey,
-      logger: this.logger,
-    });
-    await this.efs.start();
-    this.logger.info(`Started ${this.constructor.name}`);
   }
 
   public async stop(): Promise<void> {

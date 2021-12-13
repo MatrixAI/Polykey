@@ -146,7 +146,7 @@ describe('start', () => {
     global.defaultTimeout * 2,
   );
   test(
-    'concurrent starts are coalesced',
+    'concurrent starts results in 1 success',
     async () => {
       const password = 'abc123';
       // One of these processes is blocked
@@ -220,7 +220,7 @@ describe('start', () => {
     global.defaultTimeout * 2,
   );
   test(
-    'concurrent bootstrap is coalesced',
+    'concurrent with bootstrap results in 1 success',
     async () => {
       const password = 'abc123';
       // One of these processes is blocked

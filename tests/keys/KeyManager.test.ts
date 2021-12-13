@@ -210,7 +210,10 @@ describe('KeyManager', () => {
     });
     // No way we can encrypt 1000 bytes without a ridiculous key size
     const plainText = Buffer.from(new Array(1000 + 1).join('A'));
-    const maxSize = keysUtils.maxEncryptSize(keysUtils.publicKeyBitSize(keyPair.publicKey) / 8, 32);
+    const maxSize = keysUtils.maxEncryptSize(
+      keysUtils.publicKeyBitSize(keyPair.publicKey) / 8,
+      32,
+    );
     await expect(keyManager.encryptWithRootKeyPair(plainText)).rejects.toThrow(
       `Maximum plain text byte size is ${maxSize}`,
     );

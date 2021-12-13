@@ -6,6 +6,7 @@ import { Status } from '@/status';
 import * as binErrors from '@/bin/errors';
 import config from '@/config';
 import * as testBinUtils from '../utils';
+import * as testUtils from '../../utils';
 
 describe('status', () => {
   const logger = new Logger('status test', LogLevel.WARN, [
@@ -70,8 +71,9 @@ describe('status', () => {
         dataDir,
       ));
       expect(exitCode).toBe(0);
+      // If the command was slow, it may have become DEAD already
       expect(JSON.parse(stdout)).toMatchObject({
-        status: 'STOPPING',
+        status: expect.stringMatching(/STOPPING|DEAD/),
         pid: agentProcess.pid,
       });
       await testBinUtils.processExit(agentProcess);
@@ -104,16 +106,22 @@ describe('status', () => {
     );
   });
   describe('status with global agent', () => {
-    let pkAgentClose;
+    let globalAgentDir;
+    let globalAgentPassword;
+    let globalAgentClose;
     beforeAll(async () => {
-      pkAgentClose = await testBinUtils.pkAgent();
-    }, global.maxTimeout);
+      ({
+        globalAgentDir,
+        globalAgentPassword,
+        globalAgentClose
+      } = await testUtils.setupGlobalAgent(logger));
+    }, globalThis.maxTimeout);
     afterAll(async () => {
-      await pkAgentClose();
+      await globalAgentClose();
     });
     test('status on LIVE agent', async () => {
       const status = new Status({
-        statusPath: path.join(global.binAgentDir, config.defaults.statusBase),
+        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
         fs,
         logger,
       });
@@ -121,10 +129,10 @@ describe('status', () => {
       const { exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json', '--verbose'],
         {
-          PK_NODE_PATH: global.binAgentDir,
-          PK_PASSWORD: global.binAgentPassword,
+          PK_NODE_PATH: globalAgentDir,
+          PK_PASSWORD: globalAgentPassword,
         },
-        global.binAgentDir,
+        globalAgentDir,
       );
       expect(exitCode).toBe(0);
       expect(JSON.parse(stdout)).toMatchObject({
@@ -148,9 +156,9 @@ describe('status', () => {
     });
     test('status on remote LIVE agent', async () => {
       const passwordPath = path.join(dataDir, 'password');
-      await fs.promises.writeFile(passwordPath, global.binAgentPassword);
+      await fs.promises.writeFile(passwordPath, globalAgentPassword);
       const status = new Status({
-        statusPath: path.join(global.binAgentDir, config.defaults.statusBase),
+        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
         fs,
         logger,
       });

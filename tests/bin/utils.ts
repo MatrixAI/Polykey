@@ -310,111 +310,6 @@ async function pkExpect({
 }
 
 /**
- * Creates a PK agent running in the global path
- * Use this in beforeAll, and use the result in afterAll
- * Uses a references directory as a reference count
- * Uses fd-lock to serialise access to the pkAgent
- * This means all test modules using this will be serialised
- * Any beforeAll must use global.maxTimeout
- * Tips for usage:
- *   * Do not restart this global agent
- *   * Ensure client-side side-effects are removed at the end of each test
- *   * Ensure server-side side-effects are removed at the end of each test
- */
-async function pkAgent(
-  args: Array<string> = [],
-  env: Record<string, string | undefined> = {},
-): Promise<() => Promise<void>> {
-  // The references directory will act like our reference count
-  await fs.promises.mkdir(path.join(global.binAgentDir, 'references'), {
-    recursive: true,
-  });
-  const reference = Math.floor(Math.random() * 1000).toString();
-  // Plus 1 to the reference count
-  await fs.promises.writeFile(
-    path.join(global.binAgentDir, 'references', reference),
-    reference,
-  );
-  // This lock ensures serialised usage of global pkAgent
-  // It is placed after reference counting
-  // Because multiple test processes will queue up references
-  const testLockPath = path.join(global.binAgentDir, 'test.lock');
-  const testLockFile = await fs.promises.open(
-    testLockPath,
-    fs.constants.O_WRONLY | fs.constants.O_CREAT,
-  );
-  while (!lock(testLockFile.fd)) {
-    await sleep(1000);
-  }
-  // Here the agent server is part of the jest process
-  const { exitCode, stderr } = await pkStdio(
-    [
-      'agent',
-      'start',
-      // 1024 is the smallest size and is faster to start
-      '--root-key-pair-bits',
-      '1024',
-      ...args,
-    ],
-    {
-      PK_NODE_PATH: global.binAgentDir,
-      PK_PASSWORD: global.binAgentPassword,
-      ...env,
-    },
-    global.binAgentDir,
-  );
-  // If the status is locked, we can ignore the start call
-  if (exitCode !== 0) {
-    // Last line of STDERR
-    const stdErrLine = stderr.trim().split('\n').pop();
-    const e = new statusErrors.ErrorStatusLocked();
-    // Expected output for ErrorStatusLocked
-    const eOutput = binUtils
-      .outputFormatter({
-        type: 'error',
-        name: e.name,
-        description: e.description,
-        message: e.message,
-      })
-      .trim();
-    if (exitCode !== e.exitCode || stdErrLine !== eOutput) {
-      never();
-    }
-  }
-  return async () => {
-    await fs.promises.rm(
-      path.join(global.binAgentDir, 'references', reference),
-    );
-    lock.unlock(testLockFile.fd);
-    await testLockFile.close();
-    // If the pids directory is not empty, there are other processes still running
-    try {
-      await fs.promises.rmdir(path.join(global.binAgentDir, 'references'));
-    } catch (e) {
-      if (e.code === 'ENOTEMPTY') {
-        return;
-      }
-      throw e;
-    }
-    const status = new Status({
-      statusPath: path.join(global.binAgentDir, config.defaults.statusBase),
-      fs,
-    });
-    await pkStdio(
-      ['agent', 'stop'],
-      {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
-      },
-      global.binAgentDir,
-    );
-    // `pk agent stop` is asynchronous, need to wait for it to be DEAD
-    // This also means STDERR from the stopping agent may appear on the test logs
-    await status.waitFor('DEAD');
-  };
-}
-
-/**
  * Waits for child process to exit
  * When process is terminated with signal
  * The code will be null
@@ -457,7 +352,6 @@ export {
   pkExec,
   pkSpawn,
   pkExpect,
-  pkAgent,
   processExit,
   expectProcessError,
 };

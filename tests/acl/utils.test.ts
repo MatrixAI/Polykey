@@ -1,6 +1,6 @@
 import * as aclUtils from '@/acl/utils';
 
-describe('utils', () => {
+describe('acl/utils', () => {
   test('merging permissions', async () => {
     const perm1 = {
       gestalt: {

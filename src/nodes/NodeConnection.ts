@@ -79,9 +79,9 @@ class NodeConnection {
     seedConnections?: Map<NodeId, NodeConnection>;
   }): Promise<NodeConnection> {
     logger.info(`Creating ${this.name}`);
-    const proxyConfig: ProxyConfig = {
-      host: forwardProxy.proxyHost,
-      port: forwardProxy.proxyPort,
+    const proxyConfig = {
+      host: forwardProxy.getProxyHost(),
+      port: forwardProxy.getProxyPort(),
       authToken: forwardProxy.authToken,
     };
     const nodeConnection = new NodeConnection({
@@ -146,8 +146,8 @@ class NodeConnection {
     this.logger.info(`Starting ${this.constructor.name}`);
     // 1. Get the egress port of the fwdProxy (used for hole punching)
     const egressAddress = networkUtils.buildAddress(
-      this.fwdProxy.egressHost,
-      this.fwdProxy.egressPort,
+      this.fwdProxy.getEgressHost(),
+      this.fwdProxy.getEgressPort(),
     );
     // Also need to sign this for authentication (i.e. from expected source)
     const signature = await this.keyManager.signWithRootKeyPair(

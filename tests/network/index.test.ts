@@ -12,7 +12,7 @@ describe('network index', () => {
   ]);
   test('integration of forward and reverse proxy', async () => {
     // Client keys
-    const clientKeyPair = await keysUtils.generateKeyPair(4096);
+    const clientKeyPair = await keysUtils.generateKeyPair(1024);
     const clientKeyPairPem = keysUtils.keyPairToPem(clientKeyPair);
     const clientCert = keysUtils.generateCertificate(
       clientKeyPair.publicKey,
@@ -23,7 +23,7 @@ describe('network index', () => {
     const clientCertPem = keysUtils.certToPem(clientCert);
     const clientNodeId = networkUtils.certNodeId(clientCert);
     // Server keys
-    const serverKeyPair = await keysUtils.generateKeyPair(4096);
+    const serverKeyPair = await keysUtils.generateKeyPair(1024);
     const serverKeyPairPem = keysUtils.keyPairToPem(serverKeyPair);
     const serverCert = keysUtils.generateCertificate(
       serverKeyPair.publicKey,
@@ -68,8 +68,8 @@ describe('network index', () => {
       host: revProxy.ingressHost,
       port: revProxy.ingressPort,
       proxyConfig: {
-        host: fwdProxy.proxyHost,
-        port: fwdProxy.proxyPort,
+        host: fwdProxy.getProxyHost(),
+        port: fwdProxy.getProxyPort(),
         authToken: fwdProxy.authToken,
       },
       logger,
@@ -105,29 +105,29 @@ describe('network index', () => {
       expect(duplexStreamResponse.value.getChallenge()).toBe(m.getChallenge());
     }
     // Ensure that the connection count is the same
-    expect(fwdProxy.connectionCount).toBe(1);
+    expect(fwdProxy.getConnectionCount()).toBe(1);
     expect(revProxy.connectionCount).toBe(1);
     expect(
       fwdProxy.getConnectionInfoByIngress(client.host, client.port),
     ).toEqual(
       expect.objectContaining({
         nodeId: serverNodeId,
-        egressHost: fwdProxy.egressHost,
-        egressPort: fwdProxy.egressPort,
+        egressHost: fwdProxy.getEgressHost(),
+        egressPort: fwdProxy.getEgressPort(),
         ingressHost: revProxy.ingressHost,
         ingressPort: revProxy.ingressPort,
       }),
     );
     expect(
       revProxy.getConnectionInfoByEgress(
-        fwdProxy.egressHost,
-        fwdProxy.egressPort,
+        fwdProxy.getEgressHost(),
+        fwdProxy.getEgressPort(),
       ),
     ).toEqual(
       expect.objectContaining({
         nodeId: clientNodeId,
-        egressHost: fwdProxy.egressHost,
-        egressPort: fwdProxy.egressPort,
+        egressHost: fwdProxy.getEgressHost(),
+        egressPort: fwdProxy.getEgressPort(),
         ingressHost: revProxy.ingressHost,
         ingressPort: revProxy.ingressPort,
       }),

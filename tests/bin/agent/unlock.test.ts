@@ -5,15 +5,22 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Session } from '@/sessions';
 import config from '@/config';
 import * as testBinUtils from '../utils';
+import * as testUtils from '../../utils';
 
 describe('unlock', () => {
-  const logger = new Logger('lock test', LogLevel.WARN, [new StreamHandler()]);
-  let pkAgentClose;
+  const logger = new Logger('unlock test', LogLevel.WARN, [new StreamHandler()]);
+  let globalAgentDir;
+  let globalAgentPassword;
+  let globalAgentClose;
   beforeAll(async () => {
-    pkAgentClose = await testBinUtils.pkAgent();
-  }, global.maxTimeout);
+    ({
+      globalAgentDir,
+      globalAgentPassword,
+      globalAgentClose
+    } = await testUtils.setupGlobalAgent(logger));
+  }, globalThis.maxTimeout);
   afterAll(async () => {
-    await pkAgentClose();
+    await globalAgentClose();
   });
   let dataDir: string;
   beforeEach(async () => {
@@ -31,7 +38,7 @@ describe('unlock', () => {
     // Fresh session, to delete the token
     const session = await Session.createSession({
       sessionTokenPath: path.join(
-        global.binAgentDir,
+        globalAgentDir,
         config.defaults.tokenBase,
       ),
       fs,
@@ -42,19 +49,19 @@ describe('unlock', () => {
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'unlock'],
       {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
+        PK_NODE_PATH: globalAgentDir,
+        PK_PASSWORD: globalAgentPassword,
       },
-      global.binAgentDir,
+      globalAgentDir,
     ));
     expect(exitCode).toBe(0);
     // Run command without password
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: global.binAgentDir,
+        PK_NODE_PATH: globalAgentDir,
       },
-      global.binAgentDir,
+      globalAgentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
@@ -62,10 +69,10 @@ describe('unlock', () => {
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'status', '--format', 'json'],
       {
-        PK_NODE_PATH: global.binAgentDir,
+        PK_NODE_PATH: globalAgentDir,
         PK_TOKEN: await session.readToken(),
       },
-      global.binAgentDir,
+      globalAgentDir,
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });

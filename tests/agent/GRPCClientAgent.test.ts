@@ -2,12 +2,12 @@ import type * as grpc from '@grpc/grpc-js';
 import type { NodeAddress, NodeInfo } from '@/nodes/types';
 import type { ClaimIdString, ClaimIntermediary } from '@/claims/types';
 import type { Host, Port, TLSConfig } from '@/network/types';
-import type { GRPCClientAgent } from '@/agent';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
+import { GRPCClientAgent } from '@/agent';
 import { DB } from '@matrixai/db';
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
@@ -28,32 +28,37 @@ import * as testAgentUtils from './utils';
 import * as testUtils from '../utils';
 import TestNodeConnection from '../nodes/TestNodeConnection';
 
-jest
-  .spyOn(keysUtils, 'generateKeyPair')
-  .mockImplementation(testUtils.getGlobalKeyPair);
-jest
-  .spyOn(keysUtils, 'generateDeterministicKeyPair')
-  .mockImplementation(testUtils.getGlobalKeyPair);
-
-describe('GRPC agent', () => {
+describe('GRPCClientAgent', () => {
   const password = 'password';
-  const logger = new Logger('AgentServerTest', LogLevel.WARN, [
+  const logger = new Logger(`${GRPCClientAgent.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const node1: NodeInfo = {
     id: makeNodeId('v359vgrgmqf1r5g4fvisiddjknjko6bmm4qv7646jr7fi9enbfuug'),
     chain: {},
   };
-
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
+  beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
+  });
+  afterAll(async () => {
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
+  });
   let client: GRPCClientAgent;
   let server: grpc.Server;
   let port: number;
-
   let dataDir: string;
   let keysPath: string;
   let vaultsPath: string;
   let dbPath: string;
-
   let keyManager: KeyManager;
   let vaultManager: VaultManager;
   let nodeManager: NodeManager;
@@ -62,10 +67,8 @@ describe('GRPC agent', () => {
   let gestaltGraph: GestaltGraph;
   let db: DB;
   let notificationsManager: NotificationsManager;
-
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
@@ -73,14 +76,12 @@ describe('GRPC agent', () => {
     keysPath = path.join(dataDir, 'keys');
     vaultsPath = path.join(dataDir, 'vaults');
     dbPath = path.join(dataDir, 'db');
-
     keyManager = await KeyManager.createKeyManager({
       password,
       keysPath,
       fs: fs,
       logger: logger,
     });
-
     const tlsConfig: TLSConfig = {
       keyPrivatePem: keyManager.getRootKeyPairPem().privateKey,
       certChainPem: await keyManager.getRootCertChainPem(),
@@ -92,11 +93,9 @@ describe('GRPC agent', () => {
     await fwdProxy.start({
       tlsConfig,
     });
-
     revProxy = new ReverseProxy({
       logger: logger,
     });
-
     db = await DB.createDB({
       dbPath: dbPath,
       fs: fs,
@@ -106,27 +105,23 @@ describe('GRPC agent', () => {
         ops: {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
-        }
+        },
       },
     });
-
     acl = await ACL.createACL({
       db: db,
       logger: logger,
     });
-
     gestaltGraph = await GestaltGraph.createGestaltGraph({
       db: db,
       acl: acl,
       logger: logger,
     });
-
     sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,
       db: db,
       logger: logger,
     });
-
     nodeManager = await NodeManager.createNodeManager({
       db: db,
       sigchain: sigchain,
@@ -135,7 +130,6 @@ describe('GRPC agent', () => {
       revProxy: revProxy,
       logger: logger,
     });
-
     notificationsManager =
       await NotificationsManager.createNotificationsManager({
         acl: acl,
@@ -145,7 +139,6 @@ describe('GRPC agent', () => {
         messageCap: 5,
         logger: logger,
       });
-
     vaultManager = await VaultManager.createVaultManager({
       keyManager: keyManager,
       vaultsPath: vaultsPath,
@@ -157,7 +150,6 @@ describe('GRPC agent', () => {
       fs: fs,
       logger: logger,
     });
-
     await nodeManager.start();
     [server, port] = await testAgentUtils.openTestAgentServer({
       keyManager,
@@ -171,7 +163,6 @@ describe('GRPC agent', () => {
   afterEach(async () => {
     await testAgentUtils.closeTestAgentClient(client);
     await testAgentUtils.closeTestAgentServer(server);
-
     await vaultManager.stop();
     await notificationsManager.stop();
     await sigchain.stop();
@@ -181,13 +172,11 @@ describe('GRPC agent', () => {
     await fwdProxy.stop();
     await db.stop();
     await keyManager.stop();
-
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
   });
-
   test('GRPCClientAgent readiness', async () => {
     await client.destroy();
     await expect(async () => {

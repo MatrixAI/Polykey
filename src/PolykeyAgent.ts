@@ -150,158 +150,180 @@ class PolykeyAgent {
     const dbPath = path.join(statePath, config.defaults.dbBase);
     const keysPath = path.join(statePath, config.defaults.keysBase);
     const vaultsPath = path.join(statePath, config.defaults.vaultsBase);
-    status =
-      status ??
-      new Status({
-        statusPath,
-        fs: fs,
-        logger: logger.getChild(Status.name),
-      });
-    // Start locking the status
-    await status.start({ pid: process.pid });
-    schema =
-      schema ??
-      (await Schema.createSchema({
-        statePath,
-        fs,
-        logger: logger.getChild(Schema.name),
-        fresh,
-      }));
-    keyManager =
-      keyManager ??
-      (await KeyManager.createKeyManager({
-        ...keysConfig_,
-        keysPath,
-        password,
-        fs,
-        logger: logger.getChild(KeyManager.name),
-        fresh,
-      }));
-    db =
-      db ??
-      (await DB.createDB({
-        dbPath,
-        crypto: {
-          key: keyManager.dbKey,
-          ops: {
-            encrypt: keysUtils.encryptWithKey,
-            decrypt: keysUtils.decryptWithKey,
+    try {
+      status =
+        status ??
+        new Status({
+          statusPath,
+          fs: fs,
+          logger: logger.getChild(Status.name),
+        });
+      // Start locking the status
+      await status.start({ pid: process.pid });
+      schema =
+        schema ??
+        (await Schema.createSchema({
+          statePath,
+          fs,
+          logger: logger.getChild(Schema.name),
+          fresh,
+        }));
+      keyManager =
+        keyManager ??
+        (await KeyManager.createKeyManager({
+          ...keysConfig_,
+          keysPath,
+          password,
+          fs,
+          logger: logger.getChild(KeyManager.name),
+          fresh,
+        }));
+      db =
+        db ??
+        (await DB.createDB({
+          dbPath,
+          crypto: {
+            key: keyManager.dbKey,
+            ops: {
+              encrypt: keysUtils.encryptWithKey,
+              decrypt: keysUtils.decryptWithKey,
+            },
           },
-        },
-        fs,
-        logger: logger.getChild(DB.name),
-        fresh,
-      }));
-    identitiesManager =
-      identitiesManager ??
-      (await IdentitiesManager.createIdentitiesManager({
-        db,
-        logger: logger.getChild(IdentitiesManager.name),
-        fresh,
-      }));
-    // Registering providers
-    const githubProvider = new providers.GithubProvider({
-      clientId: config.providers['github.com'].clientId,
-      logger: logger.getChild(providers.GithubProvider.name),
-    });
-    identitiesManager.registerProvider(githubProvider);
-    sigchain =
-      sigchain ??
-      (await Sigchain.createSigchain({
-        keyManager,
-        db,
-        logger: logger.getChild(Sigchain.name),
-        fresh,
-      }));
-    acl =
-      acl ??
-      (await ACL.createACL({
-        db,
-        logger: logger.getChild(ACL.name),
-        fresh,
-      }));
-    gestaltGraph =
-      gestaltGraph ??
-      (await GestaltGraph.createGestaltGraph({
-        db,
-        acl,
-        logger: logger.getChild(GestaltGraph.name),
-        fresh,
-      }));
-    fwdProxy =
-      fwdProxy ??
-      new ForwardProxy({
-        ...forwardProxyConfig_,
-        logger: logger.getChild(ForwardProxy.name),
+          fs,
+          logger: logger.getChild(DB.name),
+          fresh,
+        }));
+      identitiesManager =
+        identitiesManager ??
+        (await IdentitiesManager.createIdentitiesManager({
+          db,
+          logger: logger.getChild(IdentitiesManager.name),
+          fresh,
+        }));
+      // Registering providers
+      const githubProvider = new providers.GithubProvider({
+        clientId: config.providers['github.com'].clientId,
+        logger: logger.getChild(providers.GithubProvider.name),
       });
-    revProxy =
-      revProxy ??
-      new ReverseProxy({
-        ...reverseProxyConfig_,
-        logger: logger.getChild(ReverseProxy.name),
-      });
-    nodeManager =
-      nodeManager ??
-      (await NodeManager.createNodeManager({
-        db,
-        seedNodes,
-        sigchain,
-        keyManager,
-        fwdProxy,
-        revProxy,
-        logger: logger.getChild(NodeManager.name),
-        fresh,
-      }));
-    discovery =
-      discovery ??
-      (await Discovery.createDiscovery({
-        gestaltGraph,
-        identitiesManager,
-        nodeManager,
-        logger: logger.getChild(Discovery.name),
-      }));
-    vaultManager =
-      vaultManager ??
-      (await VaultManager.createVaultManager({
-        vaultsKey: keyManager.vaultKey,
-        vaultsPath,
-        keyManager,
-        nodeManager,
-        gestaltGraph,
-        acl,
-        db,
-        fs,
-        logger: logger.getChild(VaultManager.name),
-        fresh,
-      }));
-    notificationsManager =
-      notificationsManager ??
-      (await NotificationsManager.createNotificationsManager({
-        acl,
-        db,
-        nodeManager,
-        keyManager,
-        logger: logger.getChild(NotificationsManager.name),
-        fresh,
-      }));
-    sessionManager =
-      sessionManager ??
-      (await SessionManager.createSessionManager({
-        db,
-        keyManager,
-        logger: logger.getChild(SessionManager.name),
-        fresh,
-      }));
-    grpcServerClient =
-      grpcServerClient ??
-      new GRPCServer({
-        logger: logger.getChild(GRPCServer.name + 'Client'),
-      });
-    grpcServerAgent =
-      grpcServerAgent ??
-      new GRPCServer({
-        logger: logger.getChild(GRPCServer.name + 'Agent'),
-      });
+      identitiesManager.registerProvider(githubProvider);
+      sigchain =
+        sigchain ??
+        (await Sigchain.createSigchain({
+          keyManager,
+          db,
+          logger: logger.getChild(Sigchain.name),
+          fresh,
+        }));
+      acl =
+        acl ??
+        (await ACL.createACL({
+          db,
+          logger: logger.getChild(ACL.name),
+          fresh,
+        }));
+      gestaltGraph =
+        gestaltGraph ??
+        (await GestaltGraph.createGestaltGraph({
+          db,
+          acl,
+          logger: logger.getChild(GestaltGraph.name),
+          fresh,
+        }));
+      fwdProxy =
+        fwdProxy ??
+        new ForwardProxy({
+          ...forwardProxyConfig_,
+          logger: logger.getChild(ForwardProxy.name),
+        });
+      revProxy =
+        revProxy ??
+        new ReverseProxy({
+          ...reverseProxyConfig_,
+          logger: logger.getChild(ReverseProxy.name),
+        });
+      nodeManager =
+        nodeManager ??
+        (await NodeManager.createNodeManager({
+          db,
+          seedNodes,
+          sigchain,
+          keyManager,
+          fwdProxy,
+          revProxy,
+          logger: logger.getChild(NodeManager.name),
+          fresh,
+        }));
+      // Discovery uses in-memory CreateDestroy pattern
+      // Therefore it should be destroyed during stop
+      discovery =
+        discovery ??
+        (await Discovery.createDiscovery({
+          gestaltGraph,
+          identitiesManager,
+          nodeManager,
+          logger: logger.getChild(Discovery.name),
+        }));
+      vaultManager =
+        vaultManager ??
+        (await VaultManager.createVaultManager({
+          vaultsKey: keyManager.vaultKey,
+          vaultsPath,
+          keyManager,
+          nodeManager,
+          gestaltGraph,
+          acl,
+          db,
+          fs,
+          logger: logger.getChild(VaultManager.name),
+          fresh,
+        }));
+      notificationsManager =
+        notificationsManager ??
+        (await NotificationsManager.createNotificationsManager({
+          acl,
+          db,
+          nodeManager,
+          keyManager,
+          logger: logger.getChild(NotificationsManager.name),
+          fresh,
+        }));
+      sessionManager =
+        sessionManager ??
+        (await SessionManager.createSessionManager({
+          db,
+          keyManager,
+          logger: logger.getChild(SessionManager.name),
+          fresh,
+        }));
+      grpcServerClient =
+        grpcServerClient ??
+        new GRPCServer({
+          logger: logger.getChild(GRPCServer.name + 'Client'),
+        });
+      grpcServerAgent =
+        grpcServerAgent ??
+        new GRPCServer({
+          logger: logger.getChild(GRPCServer.name + 'Agent'),
+        });
+    } catch (e) {
+      logger.warn(`Failed Creating ${this.name}`);
+      await sessionManager?.stop();
+      await notificationsManager?.stop();
+      await vaultManager?.stop();
+      await discovery?.destroy();
+      await nodeManager?.stop();
+      await revProxy?.stop();
+      await fwdProxy?.stop();
+      await gestaltGraph?.stop();
+      await acl?.stop();
+      await sigchain?.stop();
+      await identitiesManager?.stop();
+      await db?.stop();
+      await keyManager?.stop();
+      await schema?.stop();
+      await status?.stop({});
+      throw e;
+    }
     const polykeyAgent = new PolykeyAgent({
       nodePath,
       status,
@@ -429,100 +451,100 @@ class PolykeyAgent {
     networkConfig?: NetworkConfig;
     fresh?: boolean;
   }) {
-    this.logger.info(`Starting ${this.constructor.name}`);
-    const networkConfig_ = {
-      ...config.defaults.networkConfig,
-      ...utils.filterEmptyObject(networkConfig),
-    };
-    await this.status.start({ pid: process.pid });
-    await this.schema.start({ fresh });
-    const agentService = createAgentService({
-      keyManager: this.keyManager,
-      vaultManager: this.vaultManager,
-      nodeManager: this.nodeManager,
-      sigchain: this.sigchain,
-      notificationsManager: this.notificationsManager,
-    });
-    const clientService = createClientService({
-      polykeyAgent: this,
-      discovery: this.discovery,
-      gestaltGraph: this.gestaltGraph,
-      identitiesManager: this.identitiesManager,
-      keyManager: this.keyManager,
-      nodeManager: this.nodeManager,
-      notificationsManager: this.notificationsManager,
-      sessionManager: this.sessionManager,
-      vaultManager: this.vaultManager,
-      sigchain: this.sigchain,
-      grpcServerClient: this.grpcServerClient,
-      grpcServerAgent: this.grpcServerAgent,
-      fwdProxy: this.fwdProxy,
-      revProxy: this.revProxy,
-      fs: this.fs,
-    });
-
-    // Starting modules
-    await this.keyManager.start({
-      password,
-      fresh,
-    });
-    await this.db.start({ fresh });
-    await this.identitiesManager.start({ fresh });
-    await this.sigchain.start({ fresh });
-    await this.acl.start({ fresh });
-    await this.gestaltGraph.start({ fresh });
-
-    // GRPC Server
-    const tlsConfig = {
-      keyPrivatePem: this.keyManager.getRootKeyPairPem().privateKey,
-      certChainPem: await this.keyManager.getRootCertChainPem(),
-    };
-
-    // Client server
-    await this.grpcServerClient.start({
-      services: [[ClientServiceService, clientService]],
-      host: networkConfig_.clientHost,
-      port: networkConfig_.clientPort,
-      tlsConfig,
-    });
-    // Agent server
-    await this.grpcServerAgent.start({
-      services: [[AgentServiceService, agentService]],
-      host: networkConfig_.agentHost,
-      port: networkConfig_.agentPort,
-    });
-    await this.fwdProxy.start({
-      proxyHost: networkConfig_.proxyHost,
-      proxyPort: networkConfig_.proxyPort,
-      egressHost: networkConfig_.egressHost,
-      egressPort: networkConfig_.egressPort,
-      tlsConfig,
-    });
-    await this.revProxy.start({
-      serverHost: this.grpcServerAgent.host,
-      serverPort: this.grpcServerAgent.port,
-      ingressHost: networkConfig_.ingressHost,
-      ingressPort: networkConfig_.ingressPort,
-      tlsConfig,
-    });
-
-    await this.nodeManager.start({ fresh });
-    await this.nodeManager.getConnectionsToSeedNodes();
-    await this.nodeManager.syncNodeGraph();
-    await this.vaultManager.start({ fresh });
-    await this.notificationsManager.start({ fresh });
-    await this.sessionManager.start({ fresh });
-
-    await this.status.finishStart({
-      pid: process.pid,
-      nodeId: this.keyManager.getNodeId(),
-      clientHost: this.grpcServerClient.host,
-      clientPort: this.grpcServerClient.port,
-      ingressHost: this.revProxy.ingressHost,
-      ingressPort: this.revProxy.ingressPort,
-    });
-
-    this.logger.info(`Started ${this.constructor.name}`);
+    try {
+      this.logger.info(`Starting ${this.constructor.name}`);
+      const networkConfig_ = {
+        ...config.defaults.networkConfig,
+        ...utils.filterEmptyObject(networkConfig),
+      };
+      await this.status.start({ pid: process.pid });
+      await this.schema.start({ fresh });
+      const agentService = createAgentService({
+        keyManager: this.keyManager,
+        vaultManager: this.vaultManager,
+        nodeManager: this.nodeManager,
+        sigchain: this.sigchain,
+        notificationsManager: this.notificationsManager,
+      });
+      const clientService = createClientService({
+        polykeyAgent: this,
+        discovery: this.discovery,
+        gestaltGraph: this.gestaltGraph,
+        identitiesManager: this.identitiesManager,
+        keyManager: this.keyManager,
+        nodeManager: this.nodeManager,
+        notificationsManager: this.notificationsManager,
+        sessionManager: this.sessionManager,
+        vaultManager: this.vaultManager,
+        sigchain: this.sigchain,
+        grpcServerClient: this.grpcServerClient,
+        grpcServerAgent: this.grpcServerAgent,
+        fwdProxy: this.fwdProxy,
+        revProxy: this.revProxy,
+        fs: this.fs,
+      });
+      // Starting modules
+      await this.keyManager.start({
+        password,
+        fresh,
+      });
+      await this.db.start({ fresh });
+      await this.identitiesManager.start({ fresh });
+      await this.sigchain.start({ fresh });
+      await this.acl.start({ fresh });
+      await this.gestaltGraph.start({ fresh });
+      // GRPC Server
+      const tlsConfig = {
+        keyPrivatePem: this.keyManager.getRootKeyPairPem().privateKey,
+        certChainPem: await this.keyManager.getRootCertChainPem(),
+      };
+      // Client server
+      await this.grpcServerClient.start({
+        services: [[ClientServiceService, clientService]],
+        host: networkConfig_.clientHost,
+        port: networkConfig_.clientPort,
+        tlsConfig,
+      });
+      // Agent server
+      await this.grpcServerAgent.start({
+        services: [[AgentServiceService, agentService]],
+        host: networkConfig_.agentHost,
+        port: networkConfig_.agentPort,
+      });
+      await this.fwdProxy.start({
+        proxyHost: networkConfig_.proxyHost,
+        proxyPort: networkConfig_.proxyPort,
+        egressHost: networkConfig_.egressHost,
+        egressPort: networkConfig_.egressPort,
+        tlsConfig,
+      });
+      await this.revProxy.start({
+        serverHost: this.grpcServerAgent.host,
+        serverPort: this.grpcServerAgent.port,
+        ingressHost: networkConfig_.ingressHost,
+        ingressPort: networkConfig_.ingressPort,
+        tlsConfig,
+      });
+      await this.nodeManager.start({ fresh });
+      await this.nodeManager.getConnectionsToSeedNodes();
+      await this.nodeManager.syncNodeGraph();
+      await this.vaultManager.start({ fresh });
+      await this.notificationsManager.start({ fresh });
+      await this.sessionManager.start({ fresh });
+      await this.status.finishStart({
+        pid: process.pid,
+        nodeId: this.keyManager.getNodeId(),
+        clientHost: this.grpcServerClient.host,
+        clientPort: this.grpcServerClient.port,
+        ingressHost: this.revProxy.getIngressHost(),
+        ingressPort: this.revProxy.getIngressPort(),
+      });
+      this.logger.info(`Started ${this.constructor.name}`);
+    } catch (e) {
+      this.logger.warn(`Failed Starting ${this.constructor.name}`);
+      await this.stop();
+      throw e;
+    }
   }
 
   /**
@@ -534,6 +556,7 @@ class PolykeyAgent {
     await this.sessionManager.stop();
     await this.notificationsManager.stop();
     await this.vaultManager.stop();
+    await this.discovery.destroy();
     await this.nodeManager.stop();
     await this.revProxy.stop();
     await this.fwdProxy.stop();
@@ -556,7 +579,6 @@ class PolykeyAgent {
     await this.db.start();
     await this.sessionManager.destroy();
     await this.notificationsManager.destroy();
-    await this.discovery.destroy();
     await this.vaultManager.destroy();
     await this.nodeManager.destroy();
     await this.gestaltGraph.destroy();

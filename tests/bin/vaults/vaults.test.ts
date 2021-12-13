@@ -7,7 +7,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { makeNodeId } from '@/nodes/utils';
 import { makeVaultIdPretty } from '@/vaults/utils';
-import * as utils from './utils';
+import * as testBinUtils from '../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -86,7 +86,7 @@ describe('CLI vaults', () => {
     vaultNumber = 0;
 
     // Authorize session
-    await utils.pkStdio(
+    await testBinUtils.pkStdio(
       ['agent', 'unlock', '-np', dataDir, '--password-file', passwordFile],
       {},
       dataDir,
@@ -111,16 +111,16 @@ describe('CLI vaults', () => {
       await polykeyAgent.vaultManager.createVault('Vault1' as VaultName);
       await polykeyAgent.vaultManager.createVault('Vault2' as VaultName);
 
-      const result = await utils.pkStdio([...command]);
+      const result = await testBinUtils.pkStdio([...command]);
       expect(result.exitCode).toBe(0);
     });
   });
   describe('commandCreateVaults', () => {
     test('should create vaults', async () => {
       command = ['vaults', 'create', '-np', dataDir, 'MyTestVault'];
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
-      const result2 = await utils.pkStdio(
+      const result2 = await testBinUtils.pkStdio(
         ['vaults', 'touch', '-np', dataDir, 'MyTestVault2'],
         {},
         dataDir,
@@ -143,7 +143,7 @@ describe('CLI vaults', () => {
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       const list = (await polykeyAgent.vaultManager.listVaults()).keys();
@@ -166,7 +166,7 @@ describe('CLI vaults', () => {
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       // Exit code of the exception
       expect(result.exitCode).toBe(10);
 
@@ -188,7 +188,7 @@ describe('CLI vaults', () => {
       id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      const result2 = await utils.pkStdio([...command], {}, dataDir);
+      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result2.exitCode).toBe(0);
 
       const list = (await polykeyAgent.vaultManager.listVaults()).keys();
@@ -206,7 +206,7 @@ describe('CLI vaults', () => {
       const id = polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -217,7 +217,7 @@ describe('CLI vaults', () => {
       const id = await polykeyAgent.vaultManager.getVaultId(vaultName);
       expect(id).toBeTruthy();
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
       fail();
       // FIXME methods not implemented.
@@ -245,7 +245,7 @@ describe('CLI vaults', () => {
       // await polykeyAgent.vaults.setVaultPermissions(node2.id, id!);
       // await polykeyAgent.vaults.setVaultPermissions(node3.id, id!);
 
-      const result = await utils.pkStdio([...command]);
+      const result = await testBinUtils.pkStdio([...command]);
       expect(result.exitCode).toBe(0);
       // Const sharedNodes = await polykeyAgent.vaults.getVaultPermissions(
       //   id!,
@@ -272,7 +272,7 @@ describe('CLI vaults', () => {
 
       // await polykeyAgent.vaults.unsetVaultPermissions(node2.id, vault.vaultId);
 
-      const result = await utils.pkStdio([...command]);
+      const result = await testBinUtils.pkStdio([...command]);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -306,16 +306,16 @@ describe('CLI vaults', () => {
         // );
 
         const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
-        const targetHost = targetPolykeyAgent.revProxy.ingressHost;
-        const targetPort = targetPolykeyAgent.revProxy.ingressPort;
+        const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
+        const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
         await polykeyAgent.nodeManager.setNode(targetNodeId, {
           host: targetHost,
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
         await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
-        const clientEgressHost = polykeyAgent.fwdProxy.egressHost;
-        const clientEgressPort = polykeyAgent.fwdProxy.egressPort;
+        const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
+        const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
         // Server agent: start sending hole-punching packets back to the 'client'
         // agent (in order to establish a connection)
         await targetPolykeyAgent.nodeManager.openConnection(
@@ -337,7 +337,7 @@ describe('CLI vaults', () => {
         // Vault does not exist on the source PolykeyAgent so the pull command throws an error which
         // caught, the error is checked and if it is ErrorVaultUndefined, then the Agent attempts a
         // clone instead
-        const result = await utils.pkStdio([...command]);
+        const result = await testBinUtils.pkStdio([...command]);
         expect(result.exitCode).toBe(0);
 
         // Const list = (await polykeyAgent.vaults.listVaults()).map(
@@ -382,16 +382,16 @@ describe('CLI vaults', () => {
         // );
 
         const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
-        const targetHost = targetPolykeyAgent.revProxy.ingressHost;
-        const targetPort = targetPolykeyAgent.revProxy.ingressPort;
+        const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
+        const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
         await polykeyAgent.nodeManager.setNode(targetNodeId, {
           host: targetHost,
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
         await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
-        const clientEgressHost = polykeyAgent.fwdProxy.egressHost;
-        const clientEgressPort = polykeyAgent.fwdProxy.egressPort;
+        const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
+        const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
         // Server agent: start sending hole-punching packets back to the 'client'
         // agent (in order to establish a connection)
         await targetPolykeyAgent.nodeManager.openConnection(
@@ -425,7 +425,7 @@ describe('CLI vaults', () => {
           targetNodeId,
         ];
 
-        const result = await utils.pkStdio([...command]);
+        const result = await testBinUtils.pkStdio([...command]);
         expect(result.exitCode).toBe(0);
 
         // Await expect(clonedVault.listSecrets()).resolves.toStrictEqual([
@@ -454,16 +454,16 @@ describe('CLI vaults', () => {
       });
 
       const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
-      const targetHost = targetPolykeyAgent.revProxy.ingressHost;
-      const targetPort = targetPolykeyAgent.revProxy.ingressPort;
+      const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
+      const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
         host: targetHost,
         port: targetPort,
       });
       // Client agent: Start sending hole-punching packets to the target
       await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
-      const clientEgressHost = polykeyAgent.fwdProxy.egressHost;
-      const clientEgressPort = polykeyAgent.fwdProxy.egressPort;
+      const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
+      const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
       // Server agent: start sending hole-punching packets back to the 'client'
       // agent (in order to establish a connection)
       await targetPolykeyAgent.nodeManager.openConnection(
@@ -498,7 +498,7 @@ describe('CLI vaults', () => {
         '-ni',
         targetNodeId as string,
       ];
-      const result = await utils.pkStdio([...command]);
+      const result = await testBinUtils.pkStdio([...command]);
       expect(result.exitCode).toBe(0);
 
       await targetPolykeyAgent.stop();
@@ -526,7 +526,7 @@ describe('CLI vaults', () => {
 
       const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       const fileContents = await vault.access(async (efs) => {
@@ -553,12 +553,12 @@ describe('CLI vaults', () => {
 
       const command = ['vaults', 'version', '-np', dataDir, vaultName, ver1Oid];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       const command2 = ['vaults', 'version', '-np', dataDir, vaultName, 'last'];
 
-      const result2 = await utils.pkStdio([...command2], {}, dataDir);
+      const result2 = await testBinUtils.pkStdio([...command2], {}, dataDir);
       expect(result2.exitCode).toBe(0);
     });
     test('should handle invalid version IDs', async () => {
@@ -575,7 +575,7 @@ describe('CLI vaults', () => {
         'NOT_A_VALID_CHECKOUT_ID',
       ];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(10);
 
       expect(result.stderr).toContain('ErrorVaultCommitUndefined');
@@ -590,7 +590,7 @@ describe('CLI vaults', () => {
         'NOT_A_VALID_CHECKOUT_ID',
       ];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(10);
       expect(result.stderr).toContain('ErrorVaultUndefined');
     });
@@ -629,7 +629,7 @@ describe('CLI vaults', () => {
     test('Should get all commits', async () => {
       const command = ['vaults', 'log', '-np', dataDir, vaultName];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toEqual(0);
       expect(result.stdout).toContain(commit1Oid);
       expect(result.stdout).toContain(commit2Oid);
@@ -638,7 +638,7 @@ describe('CLI vaults', () => {
     test('should get a part of the log', async () => {
       const command = ['vaults', 'log', '-np', dataDir, '-d', '2', vaultName];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toEqual(0);
       expect(result.stdout).not.toContain(commit1Oid);
       expect(result.stdout).toContain(commit2Oid);
@@ -657,7 +657,7 @@ describe('CLI vaults', () => {
         commit2Oid,
       ];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toEqual(0);
       expect(result.stdout).not.toContain(commit1Oid);
       expect(result.stdout).toContain(commit2Oid);

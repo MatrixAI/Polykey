@@ -51,20 +51,20 @@ class Schema {
 
   public constructor({
     statePath,
-    stateVersion,
-    lock,
-    fs,
+    stateVersion = config.stateVersion as StateVersion,
+    lock = new utils.RWLock(),
+    fs = require('fs'),
     logger,
   }: {
     statePath: string;
-    stateVersion: StateVersion;
-    lock: utils.RWLock;
-    fs: FileSystem;
-    logger: Logger;
+    stateVersion?: StateVersion;
+    lock?: utils.RWLock;
+    fs?: FileSystem;
+    logger?: Logger;
   }) {
-    this.logger = logger;
+    this.logger = logger ?? new Logger(this.constructor.name);
     this.statePath = statePath;
-    this.stateVersionPath = path.join(statePath, 'version');
+    this.stateVersionPath = path.join(statePath, config.defaults.stateVersionBase);
     this.stateVersion = stateVersion;
     this.lock = lock;
     this.fs = fs;

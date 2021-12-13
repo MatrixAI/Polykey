@@ -4,9 +4,6 @@ import mockedEnv from 'mocked-env';
 import { utils as clientUtils, errors as clientErrors } from '@/client';
 import * as binUtils from '@/bin/utils';
 
-/**
- * Mock prompts module which is used prompt for password
- */
 jest.mock('prompts');
 const mockedPrompts = mocked(prompts);
 

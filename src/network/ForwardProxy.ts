@@ -23,10 +23,10 @@ class ForwardProxy {
   public readonly connPingIntervalTime: number;
 
   protected logger: Logger;
-  protected _proxyHost: Host;
-  protected _proxyPort: Port;
-  protected _egressHost: Host;
-  protected _egressPort: Port;
+  protected proxyHost: Host;
+  protected proxyPort: Port;
+  protected egressHost: Host;
+  protected egressPort: Port;
   protected server: http.Server;
   protected utpSocket: UTP;
   protected tlsConfig: TLSConfig;
@@ -78,28 +78,26 @@ class ForwardProxy {
     egressPort?: Port;
     tlsConfig: TLSConfig;
   }): Promise<void> {
-    this._proxyHost = proxyHost;
-    this._egressHost = egressHost;
-    this.tlsConfig = tlsConfig;
-
-    let proxyAddress = networkUtils.buildAddress(this._proxyHost, proxyPort);
-    let egressAddress = networkUtils.buildAddress(this._egressHost, egressPort);
+    let proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
+    let egressAddress = networkUtils.buildAddress(egressHost, egressPort);
     this.logger.info(
       `Starting Forward Proxy from ${proxyAddress} to ${egressAddress}`,
     );
     const utpSocket = UTP({ allowHalfOpen: false });
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     await utpSocketBind(egressPort, egressHost);
-    this._egressPort = utpSocket.address().port;
+    egressPort = utpSocket.address().port;
     const serverListen = promisify(this.server.listen).bind(this.server);
-    await serverListen(proxyPort, this._proxyHost);
-    this._proxyPort = (this.server.address() as AddressInfo).port as Port;
-    proxyAddress = networkUtils.buildAddress(this._proxyHost, this._proxyPort);
-    egressAddress = networkUtils.buildAddress(
-      this._egressHost,
-      this._egressPort,
-    );
+    await serverListen(proxyPort, proxyHost);
+    proxyPort = (this.server.address() as AddressInfo).port as Port;
+    this.proxyHost = proxyHost;
+    this.proxyPort = proxyPort;
+    this.egressHost = egressHost;
+    this.egressPort = egressPort;
     this.utpSocket = utpSocket;
+    this.tlsConfig = tlsConfig;
+    proxyAddress = networkUtils.buildAddress(proxyHost, proxyPort);
+    egressAddress = networkUtils.buildAddress(egressHost, egressPort);
     this.logger.info(
       `Started Forward Proxy from ${proxyAddress} to ${egressAddress}`,
     );
@@ -125,30 +123,30 @@ class ForwardProxy {
     this.logger.info('Stopped Forward Proxy Server');
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get proxyHost(): Host {
-    return this._proxyHost;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getProxyHost(): Host {
+    return this.proxyHost;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get proxyPort(): Port {
-    return this._proxyPort;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getProxyPort(): Port {
+    return this.proxyPort;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get egressHost(): Host {
-    return this._egressHost;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getEgressHost(): Host {
+    return this.egressHost;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
-  get egressPort(): Port {
-    return this._egressPort;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public getEgressPort(): Port {
+    return this.egressPort;
+  }
+  public getConnectionCount(): number {
+    return this.connections.ingress.size;
   }
 
-  public setTLSConfig(tlsConfig: TLSConfig): void {
-    this.tlsConfig = tlsConfig;
-  }
-
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public getConnectionInfoByClient(
     clientHost: Host,
     clientPort: Port,
@@ -163,13 +161,14 @@ class ForwardProxy {
     return {
       nodeId: serverNodeIds[0],
       certificates: serverCertificates,
-      egressHost: this._egressHost,
-      egressPort: this._egressPort,
+      egressHost: this.egressHost,
+      egressPort: this.egressPort,
       ingressHost: conn.host,
       ingressPort: conn.port,
     };
   }
 
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public getConnectionInfoByIngress(
     ingressHost: Host,
     ingressPort: Port,
@@ -184,18 +183,19 @@ class ForwardProxy {
     return {
       nodeId: serverNodeIds[0],
       certificates: serverCertificates,
-      egressHost: this._egressHost,
-      egressPort: this._egressPort,
+      egressHost: this.egressHost,
+      egressPort: this.egressPort,
       ingressHost: conn.host,
       ingressPort: conn.port,
     };
   }
 
-  get connectionCount(): number {
-    return this.connections.ingress.size;
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  public setTLSConfig(tlsConfig: TLSConfig): void {
+    this.tlsConfig = tlsConfig;
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public async openConnection(
     nodeId: NodeId,
     ingressHost: Host,
@@ -217,7 +217,7 @@ class ForwardProxy {
     }
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotStarted())
+  @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public async closeConnection(
     ingressHost: Host,
     ingressPort: Port,
@@ -401,7 +401,7 @@ class ForwardProxy {
    * Regular HTTP requests are not allowed
    */
   protected handleRequest = (
-    request: http.IncomingMessage,
+    _request: http.IncomingMessage,
     response: http.ServerResponse,
   ): void => {
     response.writeHead(405);

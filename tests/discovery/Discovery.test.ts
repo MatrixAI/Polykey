@@ -3,7 +3,7 @@ import type { IdentityId, ProviderId } from '@/identities/types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import Logger, { LogLevel } from '@matrixai/logger';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Discovery } from '@/discovery';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as discoveryErrors from '@/discovery/errors';
@@ -23,9 +23,10 @@ jest.mock('@/keys/utils', () => ({
 }));
 
 describe('Discovery', () => {
-  // Constants.
   const password = 'password';
-  const logger = new Logger('Discovery Tests', LogLevel.WARN);
+  const logger = new Logger('Discovery Tests', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   const testToken = {
     providerId: 'test-provider' as ProviderId,
     identityId: 'test_user' as IdentityId,

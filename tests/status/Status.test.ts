@@ -4,21 +4,21 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import config from '@/config';
 import { sleep, errors as utilsErrors } from '@/utils';
 import { Status, errors as statusErrors } from '@/status';
 
-describe('Lockfile is', () => {
-  const logger = new Logger('Lockfile Test', LogLevel.WARN, [
+describe('Status', () => {
+  const logger = new Logger(`${Status.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const waitForTimeout = 1000;
   let dataDir: string;
   let status: Status;
   let statusPath: string;
-
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'status-test-'));
-    statusPath = path.join(dataDir, 'status');
+    statusPath = path.join(dataDir, config.defaults.statusBase);
     status = new Status({
       statusPath,
       fs: fs,
@@ -125,7 +125,7 @@ describe('Lockfile is', () => {
     // Try to start a new status.
     // Creation should succeed.
     const status2 = new Status({
-      statusPath: path.join(dataDir, 'status'),
+      statusPath: path.join(dataDir, config.defaults.statusBase),
       fs: fs,
       logger: logger,
     });

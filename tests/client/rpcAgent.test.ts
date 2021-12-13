@@ -9,6 +9,7 @@ import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { KeyManager } from '@/keys';
 import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
+import config from '@/config';
 import { Status } from '@/status';
 import * as testUtils from './utils';
 
@@ -110,7 +111,7 @@ describe('Agent client service', () => {
       const emptyMessage = new utilsPB.EmptyMessage();
       await agentStop(emptyMessage, callCredentials);
 
-      const statusPath = path.join(polykeyAgent.nodePath, 'status');
+      const statusPath = path.join(polykeyAgent.nodePath, config.defaults.statusBase);
       const status = new Status({
         statusPath,
         fs,

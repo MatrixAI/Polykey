@@ -17,9 +17,11 @@ import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
 import * as nodesErrors from '@/nodes/errors';
 import { makeNodeId } from '@/nodes/utils';
+import config from '@/config';
 import { Status } from '@/status';
 import * as testUtils from './utils';
 import * as testKeynodeUtils from '../utils';
+import { sleep } from '@/utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -43,7 +45,7 @@ jest.mock('@/keys/utils', () => ({
  */
 describe('Client service', () => {
   const password = 'password';
-  const logger = new Logger('rpcNodes Test', LogLevel.WARN, [
+  const logger = new Logger('rpcNodes Test', LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
   let client: ClientServiceClient;
@@ -95,6 +97,9 @@ describe('Client service', () => {
       logger,
       fwdProxy,
       keyManager,
+      forwardProxyConfig: {
+        connTimeoutTime: 2000,
+      },
     });
 
     nodeManager = polykeyAgent.nodeManager;
@@ -180,7 +185,7 @@ describe('Client service', () => {
       const serverNodeId = polykeyServer.nodeManager.getNodeId();
       await testKeynodeUtils.addRemoteDetails(polykeyAgent, polykeyServer);
       await polykeyServer.stop();
-      const statusPath = path.join(polykeyServer.nodePath, 'status.json');
+      const statusPath = path.join(polykeyServer.nodePath, config.defaults.statusBase);
       const status = new Status({
         statusPath,
         fs,
@@ -208,6 +213,8 @@ describe('Client service', () => {
       // Case 3: pre-existing connection no longer active, so offline
       await polykeyServer.stop();
       await status.waitFor('DEAD', 10000);
+      // Currently need this timeout - also set COnnectionForward setTImeout to 1000
+      await sleep(3000);
       const res3 = await nodesPing(nodeMessage, callCredentials);
       expect(res3.getSuccess()).toEqual(false);
     },

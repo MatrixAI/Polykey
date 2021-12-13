@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
-import * as utils from './utils';
+import * as testBinUtils from '../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -46,7 +46,7 @@ describe('CLI keys', () => {
   });
   beforeEach(async () => {
     // Authorize session
-    await utils.pkStdio(
+    await testBinUtils.pkStdio(
       ['agent', 'unlock', '-np', nodePath, '--password-file', passwordFile],
       {},
       dataDir,
@@ -56,24 +56,24 @@ describe('CLI keys', () => {
   describe('commandCertChain', () => {
     test('should get the certificate chain', async () => {
       command = ['keys', 'certchain', '-np', nodePath];
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
   describe('commandGetCert', () => {
     test('should get the certificate', async () => {
       command = ['keys', 'cert', '-np', nodePath];
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
   describe('commandGetRootKeypair', () => {
     test('should get the root keypair', async () => {
       command = ['keys', 'root', '-np', nodePath];
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
-      const result2 = await utils.pkStdio([...command, '-pk'], {}, dataDir);
+      const result2 = await testBinUtils.pkStdio([...command, '-pk'], {}, dataDir);
       expect(result2.exitCode).toBe(0);
     });
   });
@@ -84,7 +84,7 @@ describe('CLI keys', () => {
         encoding: 'binary',
       });
       command = ['keys', 'encrypt', '-np', nodePath, dataPath];
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -97,7 +97,7 @@ describe('CLI keys', () => {
       );
       await fs.promises.writeFile(dataPath, encrypted, { encoding: 'binary' });
       command = ['keys', 'decrypt', '-np', nodePath, dataPath];
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -108,7 +108,7 @@ describe('CLI keys', () => {
 
       command = ['keys', 'sign', '-np', nodePath, dataPath];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -126,7 +126,7 @@ describe('CLI keys', () => {
 
       command = ['keys', 'verify', '-np', nodePath, dataPath, signatureTrue];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -143,7 +143,7 @@ describe('CLI keys', () => {
 
         command = ['keys', 'renew', '-np', nodePath, '-pnf', passPath];
 
-        const result = await utils.pkStdio([...command], {}, dataDir);
+        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
 
         const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
@@ -172,7 +172,7 @@ describe('CLI keys', () => {
 
         command = ['keys', 'reset', '-np', nodePath, '-pnf', passPath];
 
-        const result = await utils.pkStdio([...command], {}, dataDir);
+        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
 
         const rootKeypairNew = polykeyAgent.keyManager.getRootKeyPair();
@@ -200,7 +200,7 @@ describe('CLI keys', () => {
 
         command = ['keys', 'password', '-np', nodePath, '-pnf', passPath];
 
-        const result2 = await utils.pkStdio([...command], {}, dataDir);
+        const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
         expect(result2.exitCode).toBe(0);
 
         await polykeyAgent.stop();

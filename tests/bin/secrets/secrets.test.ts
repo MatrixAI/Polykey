@@ -5,7 +5,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { vaultOps } from '@/vaults';
-import * as utils from './utils';
+import * as testBinUtils from '../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -33,7 +33,7 @@ describe('CLI secrets', () => {
       logger: logger,
     });
     // Authorize session
-    await utils.pkStdio(
+    await testBinUtils.pkStdio(
       ['agent', 'unlock', '-np', dataDir, '--password-file', passwordFile],
       {},
       dataDir,
@@ -66,7 +66,7 @@ describe('CLI secrets', () => {
           `${vaultName}:MySecret`,
         ];
 
-        const result = await utils.pkStdio([...command], {}, dataDir);
+        const result = await testBinUtils.pkStdio([...command], {}, dataDir);
         expect(result.exitCode).toBe(0);
 
         const list = await vaultOps.listSecrets(vault);
@@ -90,7 +90,7 @@ describe('CLI secrets', () => {
 
       command = ['secrets', 'delete', '-np', dataDir, `${vaultName}:MySecret`];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       list = await vaultOps.listSecrets(vault);
@@ -106,7 +106,7 @@ describe('CLI secrets', () => {
 
       command = ['secrets', 'get', '-np', dataDir, `${vaultName}:MySecret`];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -121,7 +121,7 @@ describe('CLI secrets', () => {
 
       command = ['secrets', 'list', '-np', dataDir, vaultName];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
     });
   });
@@ -139,7 +139,7 @@ describe('CLI secrets', () => {
         '-r',
       ];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       await vaultOps.addSecret(vault, 'dir1/MySecret1', 'this is the secret 1');
@@ -171,7 +171,7 @@ describe('CLI secrets', () => {
         'MyRenamedSecret',
       ];
 
-      const result = await utils.pkStdio([...command], {}, dataDir);
+      const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
       const list = await vaultOps.listSecrets(vault);
@@ -201,7 +201,7 @@ describe('CLI secrets', () => {
         `${vaultName}:MySecret`,
       ];
 
-      const result2 = await utils.pkStdio([...command], {}, dataDir);
+      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result2.exitCode).toBe(0);
 
       const list = await vaultOps.listSecrets(vault);
@@ -236,7 +236,7 @@ describe('CLI secrets', () => {
 
       command = ['secrets', 'dir', '-np', dataDir, secretDir, vaultName];
 
-      const result2 = await utils.pkStdio([...command], {}, dataDir);
+      const result2 = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result2.exitCode).toBe(0);
 
       list = await vaultOps.listSecrets(vault);

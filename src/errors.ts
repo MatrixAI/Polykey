@@ -58,5 +58,6 @@ export * from './claims/errors';
 export * from './sigchain/errors';
 export * from './bootstrap/errors';
 export * from './notifications/errors';
+export * from './schema/errors';
 export * from './status/errors';
 export * from './utils/errors';

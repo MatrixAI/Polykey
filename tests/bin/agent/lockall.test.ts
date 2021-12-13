@@ -8,6 +8,7 @@ import { Session } from '@/sessions';
 import config from '@/config';
 import * as clientErrors from '@/client/errors';
 import * as testBinUtils from '../utils';
+import * as testUtils from '../../utils';
 
 /**
  * Mock prompts module which is used prompt for password
@@ -19,12 +20,18 @@ describe('lockall', () => {
   const logger = new Logger('lockall test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let pkAgentClose;
+  let globalAgentDir;
+  let globalAgentPassword;
+  let globalAgentClose;
   beforeAll(async () => {
-    pkAgentClose = await testBinUtils.pkAgent();
-  }, global.maxTimeout);
+    ({
+      globalAgentDir,
+      globalAgentPassword,
+      globalAgentClose
+    } = await testUtils.setupGlobalAgent(logger));
+  }, globalThis.maxTimeout);
   afterAll(async () => {
-    await pkAgentClose();
+    await globalAgentClose();
   });
   let dataDir: string;
   beforeEach(async () => {
@@ -42,22 +49,22 @@ describe('lockall', () => {
     await testBinUtils.pkStdio(
       ['agent', 'unlock'],
       {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
+        PK_NODE_PATH: globalAgentDir,
+        PK_PASSWORD: globalAgentPassword,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     const { exitCode } = await testBinUtils.pkStdio(
       ['agent', 'lockall'],
       {
-        PK_NODE_PATH: global.binAgentDir,
+        PK_NODE_PATH: globalAgentDir,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     expect(exitCode).toBe(0);
     const session = await Session.createSession({
       sessionTokenPath: path.join(
-        global.binAgentDir,
+        globalAgentDir,
         config.defaults.tokenBase,
       ),
       fs,
@@ -67,21 +74,21 @@ describe('lockall', () => {
     await session.stop();
   });
   test('lockall ensures reauthentication is required', async () => {
-    const password = global.binAgentPassword;
+    const password = globalAgentPassword;
     await testBinUtils.pkStdio(
       ['agent', 'unlock'],
       {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
+        PK_NODE_PATH: globalAgentDir,
+        PK_PASSWORD: globalAgentPassword,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     await testBinUtils.pkStdio(
       ['agent', 'lockall'],
       {
-        PK_NODE_PATH: global.binAgentDir,
+        PK_NODE_PATH: globalAgentDir,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     // Token is deleted, reauthentication is required
     mockedPrompts.mockClear();
@@ -91,9 +98,9 @@ describe('lockall', () => {
     await testBinUtils.pkStdio(
       ['agent', 'status'],
       {
-        PK_NODE_PATH: global.binAgentDir,
+        PK_NODE_PATH: globalAgentDir,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     // Prompted for password 1 time
     expect(mockedPrompts.mock.calls.length).toBe(1);
@@ -103,14 +110,14 @@ describe('lockall', () => {
     await testBinUtils.pkStdio(
       ['agent', 'unlock'],
       {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
+        PK_NODE_PATH: globalAgentDir,
+        PK_PASSWORD: globalAgentPassword,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     const session = await Session.createSession({
       sessionTokenPath: path.join(
-        global.binAgentDir,
+        globalAgentDir,
         config.defaults.tokenBase,
       ),
       fs,
@@ -121,19 +128,19 @@ describe('lockall', () => {
     await testBinUtils.pkStdio(
       ['agent', 'lockall'],
       {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
+        PK_NODE_PATH: globalAgentDir,
+        PK_PASSWORD: globalAgentPassword,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     // Old token is invalid
     const { exitCode, stderr } = await testBinUtils.pkStdio(
       ['agent', 'status'],
       {
-        PK_NODE_PATH: global.binAgentDir,
+        PK_NODE_PATH: globalAgentDir,
         PK_TOKEN: token,
       },
-      global.binAgentDir,
+      globalAgentDir,
     );
     testBinUtils.expectProcessError(
       exitCode,

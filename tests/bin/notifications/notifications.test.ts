@@ -8,8 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { utils as idUtils } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
 import { makeVaultId } from '@/vaults/utils';
-import * as utils from './utils';
-import * as testUtils from './utils';
+import * as testBinUtils from '../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -64,12 +63,12 @@ describe('CLI Notifications', () => {
     senderNodeId = senderPolykeyAgent.nodeManager.getNodeId();
     receiverNodeId = receiverPolykeyAgent.nodeManager.getNodeId();
     await senderPolykeyAgent.nodeManager.setNode(receiverNodeId, {
-      host: receiverPolykeyAgent.revProxy.ingressHost,
-      port: receiverPolykeyAgent.revProxy.ingressPort,
+      host: receiverPolykeyAgent.revProxy.getIngressHost(),
+      port: receiverPolykeyAgent.revProxy.getIngressPort(),
     } as NodeAddress);
 
     // Authorize session
-    await utils.pkStdio([
+    await testBinUtils.pkStdio([
       'agent',
       'unlock',
       '-np',
@@ -77,7 +76,7 @@ describe('CLI Notifications', () => {
       '--password-file',
       senderPasswordFile,
     ]);
-    await utils.pkStdio([
+    await testBinUtils.pkStdio([
       'agent',
       'unlock',
       '-np',
@@ -108,7 +107,7 @@ describe('CLI Notifications', () => {
         vaults: {},
       });
       const commands = genCommandsSender(['send', receiverNodeId, 'msg']);
-      const result = await testUtils.pkStdio(commands, {}, senderDataDir);
+      const result = await testBinUtils.pkStdio(commands, {}, senderDataDir);
       expect(result.exitCode).toBe(0); // Succeeds
       const notifications =
         await receiverPolykeyAgent.notificationsManager.readNotifications();
@@ -123,7 +122,7 @@ describe('CLI Notifications', () => {
         vaults: {},
       });
       const commands = genCommandsSender(['send', receiverNodeId, 'msg']);
-      const result = await testUtils.pkStdio(commands, {}, senderDataDir);
+      const result = await testBinUtils.pkStdio(commands, {}, senderDataDir);
       expect(result.exitCode).toBe(0); // Succeeds
       const notifications =
         await receiverPolykeyAgent.notificationsManager.readNotifications();
@@ -153,11 +152,11 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands = genCommandsReceiver(['read']);
-      const result1 = await testUtils.pkStdio(
+      const result1 = await testBinUtils.pkStdio(
         receiverCommands,
         {},
         receiverDataDir,
@@ -171,8 +170,8 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg4',
       ]);
-      await testUtils.pkStdio(senderCommands4, {}, senderDataDir);
-      const result2 = await testUtils.pkStdio(
+      await testBinUtils.pkStdio(senderCommands4, {}, senderDataDir);
+      const result2 = await testBinUtils.pkStdio(
         receiverCommands,
         {},
         receiverDataDir,
@@ -205,19 +204,19 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands1 = genCommandsReceiver(['read']);
-      await testUtils.pkStdio(receiverCommands1, {}, receiverDataDir);
+      await testBinUtils.pkStdio(receiverCommands1, {}, receiverDataDir);
       const senderCommands4 = genCommandsSender([
         'send',
         receiverNodeId,
         'msg4',
       ]);
-      await testUtils.pkStdio(senderCommands4, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands4, {}, senderDataDir);
       const receiverCommands2 = genCommandsReceiver(['read', '--unread']);
-      const result = await testUtils.pkStdio(
+      const result = await testBinUtils.pkStdio(
         receiverCommands2,
         {},
         receiverDataDir,
@@ -250,11 +249,11 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands = genCommandsReceiver(['read', '--number', '2']);
-      const result = await testUtils.pkStdio(
+      const result = await testBinUtils.pkStdio(
         receiverCommands,
         {},
         receiverDataDir,
@@ -286,9 +285,9 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommands = genCommandsReceiver([
         'read',
         '--unread',
@@ -297,17 +296,17 @@ describe('CLI Notifications', () => {
         '--order',
         'oldest',
       ]);
-      const result1 = await testUtils.pkStdio(
+      const result1 = await testBinUtils.pkStdio(
         receiverCommands,
         {},
         receiverDataDir,
       );
-      const result2 = await testUtils.pkStdio(
+      const result2 = await testBinUtils.pkStdio(
         receiverCommands,
         {},
         receiverDataDir,
       );
-      const result3 = await testUtils.pkStdio(
+      const result3 = await testBinUtils.pkStdio(
         receiverCommands,
         {},
         receiverDataDir,
@@ -321,7 +320,7 @@ describe('CLI Notifications', () => {
     });
     test('Should read no notifications.', async () => {
       const receiverCommands = genCommandsReceiver(['read']);
-      const result = await testUtils.pkStdio(
+      const result = await testBinUtils.pkStdio(
         receiverCommands,
         {},
         receiverDataDir,
@@ -365,7 +364,7 @@ describe('CLI Notifications', () => {
         notificationData3,
       );
       const commands = genCommandsReceiver(['read']);
-      const result = await testUtils.pkStdio(commands, {}, receiverDataDir);
+      const result = await testBinUtils.pkStdio(commands, {}, receiverDataDir);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Message from Keynode');
       expect(result.stdout).toContain('invited you to join their Gestalt');
@@ -395,13 +394,13 @@ describe('CLI Notifications', () => {
         receiverNodeId,
         'msg3',
       ]);
-      await testUtils.pkStdio(senderCommands1, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands2, {}, senderDataDir);
-      await testUtils.pkStdio(senderCommands3, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands1, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands2, {}, senderDataDir);
+      await testBinUtils.pkStdio(senderCommands3, {}, senderDataDir);
       const receiverCommandsClear = genCommandsReceiver(['clear']);
       const receiverCommandsRead = genCommandsReceiver(['read']);
-      await testUtils.pkStdio(receiverCommandsClear);
-      const result = await testUtils.pkStdio(
+      await testBinUtils.pkStdio(receiverCommandsClear);
+      const result = await testBinUtils.pkStdio(
         receiverCommandsRead,
         {},
         receiverDataDir,
