@@ -21,7 +21,7 @@ async function setup() {
   console.log(`Creating global.keyPairDir: ${keyPairDir}`);
   await fs.promises.rm(keyPairDir, { force: true, recursive: true });
   await fs.promises.mkdir(keyPairDir);
-  const rootKeyPair = await keysUtils.generateKeyPair(1024);
+  const rootKeyPair = await keysUtils.generateKeyPair(4096);
   const rootKeyPairPem = keysUtils.keyPairToPem(rootKeyPair);
   await Promise.all([
     fs.promises.writeFile(

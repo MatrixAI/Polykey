@@ -9,7 +9,6 @@ import path from 'path';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { Mutex } from 'async-mutex';
 import { DB } from '@matrixai/db';
-
 import { KeyManager } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
@@ -17,23 +16,24 @@ import { Sigchain } from '@/sigchain';
 import { ACL } from '@/acl';
 import { GestaltGraph } from '@/gestalts';
 import { errors as agentErrors } from '@/agent';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
-import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NotificationsManager } from '@/notifications';
 import { utils as claimsUtils, errors as claimsErrors } from '@/claims';
 import { makeNodeId } from '@/nodes/utils';
-import * as testUtils from './utils';
+import * as keysUtils from '@/keys/utils';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as vaultsPB from '@/proto/js/polykey/v1/vaults/vaults_pb';
+import * as nodesPB from '@/proto/js/polykey/v1/nodes/nodes_pb';
+import * as testAgentUtils from './utils';
+import * as testUtils from '../utils';
 import TestNodeConnection from '../nodes/TestNodeConnection';
-import { makeCrypto } from '../utils';
 
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+jest
+  .spyOn(keysUtils, 'generateKeyPair')
+  .mockImplementation(testUtils.getGlobalKeyPair);
+jest
+  .spyOn(keysUtils, 'generateDeterministicKeyPair')
+  .mockImplementation(testUtils.getGlobalKeyPair);
 
 describe('GRPC agent', () => {
   const password = 'password';
@@ -101,7 +101,13 @@ describe('GRPC agent', () => {
       dbPath: dbPath,
       fs: fs,
       logger: logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        }
+      },
     });
 
     acl = await ACL.createACL({
@@ -153,18 +159,18 @@ describe('GRPC agent', () => {
     });
 
     await nodeManager.start();
-    [server, port] = await testUtils.openTestAgentServer({
+    [server, port] = await testAgentUtils.openTestAgentServer({
       keyManager,
       vaultManager,
       nodeManager,
       sigchain,
       notificationsManager,
     });
-    client = await testUtils.openTestAgentClient(port);
+    client = await testAgentUtils.openTestAgentClient(port);
   }, global.polykeyStartupTimeout);
   afterEach(async () => {
-    await testUtils.closeTestAgentClient(client);
-    await testUtils.closeTestAgentServer(server);
+    await testAgentUtils.closeTestAgentClient(client);
+    await testAgentUtils.closeTestAgentServer(server);
 
     await vaultManager.stop();
     await notificationsManager.stop();
