@@ -53,7 +53,10 @@ class CommandShare extends CommandPolykey {
         nodeMessage.setNodeId(nodeId);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsPermissionsSet(setVaultPermsMessage, auth),
+            pkClient.grpcClient.vaultsPermissionsSet(
+              setVaultPermsMessage,
+              auth,
+            ),
           meta,
         );
       } finally {

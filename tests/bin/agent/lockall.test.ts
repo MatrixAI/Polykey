@@ -79,7 +79,7 @@ describe('lockall', () => {
     await testBinUtils.pkStdio(
       ['agent', 'lockall'],
       {
-        PK_NODE_PATH: global.binAgentDir
+        PK_NODE_PATH: global.binAgentDir,
       },
       global.binAgentDir,
     );

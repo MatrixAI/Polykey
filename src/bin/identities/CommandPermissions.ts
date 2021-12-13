@@ -66,7 +66,10 @@ class CommandPermissions extends CommandPolykey {
           providerMessage.setMessage(gestaltId.identityId);
           const res = await binUtils.retryAuthentication(
             (auth) =>
-              pkClient.grpcClient.gestaltsActionsGetByIdentity(providerMessage, auth),
+              pkClient.grpcClient.gestaltsActionsGetByIdentity(
+                providerMessage,
+                auth,
+              ),
             meta,
           );
           actions = res.getActionList();

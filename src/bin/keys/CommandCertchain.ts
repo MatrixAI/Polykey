@@ -40,17 +40,17 @@ class CommandsCertchain extends CommandPolykey {
           logger: this.logger.getChild(PolykeyClient.name),
         });
         const emptyMessage = new utilsPB.EmptyMessage();
-        const data = await binUtils.retryAuthentication(
-          async (auth) => {
-            const data: Array<string> = [];
-            const stream = pkClient.grpcClient.keysCertsChainGet(emptyMessage, auth);
-            for await (const cert of stream) {
-              data.push(`Certificate:\t\t${cert.getCert()}`);
-            }
-            return data;
-          },
-          meta,
-        );
+        const data = await binUtils.retryAuthentication(async (auth) => {
+          const data: Array<string> = [];
+          const stream = pkClient.grpcClient.keysCertsChainGet(
+            emptyMessage,
+            auth,
+          );
+          for await (const cert of stream) {
+            data.push(`Certificate:\t\t${cert.getCert()}`);
+          }
+          return data;
+        }, meta);
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',

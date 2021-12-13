@@ -73,8 +73,7 @@ class CommandUpdate extends CommandPolykey {
         }
         secretMessage.setSecretContent(content);
         await binUtils.retryAuthentication(
-          (auth) =>
-            pkClient.grpcClient.vaultsSecretsEdit(secretMessage, auth),
+          (auth) => pkClient.grpcClient.vaultsSecretsEdit(secretMessage, auth),
           meta,
         );
       } finally {

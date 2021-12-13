@@ -50,7 +50,10 @@ class CommandSend extends CommandPolykey {
         notificationsSendMessage.setData(generalMessage);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.notificationsSend(notificationsSendMessage, auth),
+            pkClient.grpcClient.notificationsSend(
+              notificationsSendMessage,
+              auth,
+            ),
           meta,
         );
       } finally {

@@ -41,8 +41,7 @@ class CommandClear extends CommandPolykey {
         });
         const emptyMessage = new utilsPB.EmptyMessage();
         await binUtils.retryAuthentication(
-          (auth) =>
-            pkClient.grpcClient.notificationsClear(emptyMessage, auth),
+          (auth) => pkClient.grpcClient.notificationsClear(emptyMessage, auth),
           meta,
         );
       } finally {

@@ -68,7 +68,10 @@ class CommandGet extends CommandPolykey {
           providerMessage.setMessage(gestaltId.identityId);
           res = await binUtils.retryAuthentication(
             (auth) =>
-              pkClient.grpcClient.gestaltsGestaltGetByIdentity(providerMessage, auth),
+              pkClient.grpcClient.gestaltsGestaltGetByIdentity(
+                providerMessage,
+                auth,
+              ),
             meta,
           );
         }

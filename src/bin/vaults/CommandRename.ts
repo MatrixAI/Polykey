@@ -49,8 +49,7 @@ class CommandRename extends CommandPolykey {
         vaultMessage.setNameOrId(vaultName);
         vaultRenameMessage.setNewName(newVaultName);
         await binUtils.retryAuthentication(
-          (auth) =>
-            pkClient.grpcClient.vaultsRename(vaultRenameMessage, auth),
+          (auth) => pkClient.grpcClient.vaultsRename(vaultRenameMessage, auth),
           meta,
         );
       } finally {

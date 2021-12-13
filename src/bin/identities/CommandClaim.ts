@@ -47,8 +47,7 @@ class CommandClaim extends CommandPolykey {
         providerMessage.setProviderId(providerId);
         providerMessage.setMessage(identityId);
         await binUtils.retryAuthentication(
-          (auth) =>
-            pkClient.grpcClient.identitiesClaim(providerMessage, auth),
+          (auth) => pkClient.grpcClient.identitiesClaim(providerMessage, auth),
           meta,
         );
       } finally {

@@ -91,7 +91,7 @@ describe('lock', () => {
       {
         PK_NODE_PATH: global.binAgentDir,
       },
-      global.binAgentDir
+      global.binAgentDir,
     );
     // Prompted for password 1 time
     expect(mockedPrompts.mock.calls.length).toBe(1);

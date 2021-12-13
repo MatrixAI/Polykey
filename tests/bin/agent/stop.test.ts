@@ -6,8 +6,8 @@ import { Status } from '@/status';
 import config from '@/config';
 import * as binErrors from '@/bin/errors';
 import * as clientErrors from '@/client/errors';
-import * as testBinUtils from '../utils';
 import { sleep } from '@/utils';
+import * as testBinUtils from '../utils';
 
 describe('stop', () => {
   const logger = new Logger('stop test', LogLevel.WARN, [new StreamHandler()]);
@@ -210,7 +210,7 @@ describe('stop', () => {
       testBinUtils.expectProcessError(
         exitCode,
         stderr,
-        new clientErrors.ErrorClientAuthDenied()
+        new clientErrors.ErrorClientAuthDenied(),
       );
       // Should still be LIVE
       await sleep(500);
@@ -227,6 +227,6 @@ describe('stop', () => {
       );
       await status.waitFor('DEAD');
     },
-    global.defaultTimeout * 2
-   );
+    global.defaultTimeout * 2,
+  );
 });

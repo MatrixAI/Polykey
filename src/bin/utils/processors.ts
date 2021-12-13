@@ -50,7 +50,7 @@ async function promptNewPassword(): Promise<string | undefined> {
     if (password == null) {
       break;
     }
-    const { passwordConfirm }= await prompts({
+    const { passwordConfirm } = await prompts({
       name: 'passwordConfirm',
       type: 'password',
       message: 'Confirm new password',
@@ -120,12 +120,14 @@ async function processPassword(
 async function processNewPassword(
   passwordNewFile?: string,
   fs: FileSystem = require('fs'),
-  existing: boolean = false
+  existing: boolean = false,
 ): Promise<string> {
   let passwordNew: string | undefined;
   if (passwordNewFile != null) {
     try {
-      passwordNew = (await fs.promises.readFile(passwordNewFile, 'utf-8')).trim();
+      passwordNew = (
+        await fs.promises.readFile(passwordNewFile, 'utf-8')
+      ).trim();
     } catch (e) {
       throw new binErrors.ErrorCLIPasswordFileRead(e.message, {
         errno: e.errno,
@@ -134,7 +136,7 @@ async function processNewPassword(
         path: e.path,
       });
     }
-  } else if (!existing && (typeof process.env['PK_PASSWORD'] === 'string')) {
+  } else if (!existing && typeof process.env['PK_PASSWORD'] === 'string') {
     passwordNew = process.env['PK_PASSWORD'];
   } else {
     passwordNew = await promptNewPassword();

@@ -6,14 +6,14 @@ import fs from 'fs';
 import { PolykeyAgent } from '@';
 import * as keysUtils from '@/keys/utils';
 
-async function getGlobalKeyPair () {
-  const [publicKeyPem, privateKeyPem ] = await Promise.all([
+async function getGlobalKeyPair() {
+  const [publicKeyPem, privateKeyPem] = await Promise.all([
     fs.promises.readFile(path.join(global.keyPairDir, 'root.pub'), 'utf-8'),
-    fs.promises.readFile(path.join(global.keyPairDir, 'root.key'), 'utf-8')
+    fs.promises.readFile(path.join(global.keyPairDir, 'root.key'), 'utf-8'),
   ]);
   return keysUtils.keyPairFromPem({
     publicKey: publicKeyPem,
-    privateKey: privateKeyPem
+    privateKey: privateKeyPem,
   });
 }
 

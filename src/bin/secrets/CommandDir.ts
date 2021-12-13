@@ -56,7 +56,10 @@ class CommandDir extends CommandPolykey {
         secretDirectoryMessage.setSecretDirectory(directoryPath);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsSecretsNewDir(secretDirectoryMessage, auth),
+            pkClient.grpcClient.vaultsSecretsNewDir(
+              secretDirectoryMessage,
+              auth,
+            ),
           meta,
         );
       } finally {

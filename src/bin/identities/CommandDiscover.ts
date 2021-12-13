@@ -66,7 +66,10 @@ class CommandDiscover extends CommandPolykey {
           providerMessage.setMessage(gestaltId.identityId);
           await binUtils.retryAuthentication(
             (auth) =>
-              pkClient.grpcClient.gestaltsDiscoveryByIdentity(providerMessage, auth),
+              pkClient.grpcClient.gestaltsDiscoveryByIdentity(
+                providerMessage,
+                auth,
+              ),
             meta,
           );
         }

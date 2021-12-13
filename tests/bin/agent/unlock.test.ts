@@ -36,7 +36,7 @@ describe('unlock', () => {
       ),
       fs,
       logger,
-      fresh: true
+      fresh: true,
     });
     let exitCode, stdout;
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
@@ -63,7 +63,7 @@ describe('unlock', () => {
       ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: global.binAgentDir,
-        PK_TOKEN: await session.readToken()
+        PK_TOKEN: await session.readToken(),
       },
       global.binAgentDir,
     ));

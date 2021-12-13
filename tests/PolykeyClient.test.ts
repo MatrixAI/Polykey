@@ -9,9 +9,11 @@ import * as keysUtils from '@/keys/utils';
 import config from '@/config';
 import * as testUtils from './utils';
 
-jest.spyOn(keysUtils, 'generateKeyPair')
+jest
+  .spyOn(keysUtils, 'generateKeyPair')
   .mockImplementation(testUtils.getGlobalKeyPair);
-jest.spyOn(keysUtils, 'generateDeterministicKeyPair')
+jest
+  .spyOn(keysUtils, 'generateDeterministicKeyPair')
   .mockImplementation(testUtils.getGlobalKeyPair);
 
 describe('PolykeyClient', () => {
@@ -57,10 +59,7 @@ describe('PolykeyClient', () => {
   });
   test('preserving and destroying session state', async () => {
     const session = await Session.createSession({
-      sessionTokenPath: path.join(
-        nodePath,
-        config.defaults.tokenBase,
-      ),
+      sessionTokenPath: path.join(nodePath, config.defaults.tokenBase),
       fs,
       logger,
     });
@@ -73,7 +72,7 @@ describe('PolykeyClient', () => {
       nodePath,
       fs,
       logger,
-      fresh: true
+      fresh: true,
     });
     expect(await session.readToken()).toBeUndefined();
     await session.writeToken('abc' as SessionToken);

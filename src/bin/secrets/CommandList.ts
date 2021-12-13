@@ -45,17 +45,17 @@ class CommandList extends CommandPolykey {
         });
         const vaultMessage = new vaultsPB.Vault();
         vaultMessage.setNameOrId(vaultName);
-        const data = await binUtils.retryAuthentication(
-          async (auth) => {
-            const data: Array<string> = [];
-            const stream = pkClient.grpcClient.vaultsSecretsList(vaultMessage, auth);
-            for await (const secret of stream) {
-              data.push(`${secret.getSecretName()}`);
-            }
-            return data;
-          },
-          meta,
-        );
+        const data = await binUtils.retryAuthentication(async (auth) => {
+          const data: Array<string> = [];
+          const stream = pkClient.grpcClient.vaultsSecretsList(
+            vaultMessage,
+            auth,
+          );
+          for await (const secret of stream) {
+            data.push(`${secret.getSecretName()}`);
+          }
+          return data;
+        }, meta);
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',

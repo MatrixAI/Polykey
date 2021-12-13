@@ -27,13 +27,13 @@ async function setup() {
     fs.promises.writeFile(
       path.join(keyPairDir, 'root.pub'),
       rootKeyPairPem.publicKey,
-      'utf-8'
+      'utf-8',
     ),
     fs.promises.writeFile(
       path.join(keyPairDir, 'root.key'),
       rootKeyPairPem.privateKey,
-      'utf-8'
-    )
+      'utf-8',
+    ),
   ]);
   // Setup global agent directory
   // eslint-disable-next-line no-console

@@ -33,7 +33,7 @@ class CommandPassword extends CommandPolykey {
       const passwordNew = await binProcessors.processNewPassword(
         options.passwordNewFile,
         this.fs,
-        true
+        true,
       );
       let pkClient: PolykeyClient;
       this.exitHandlers.handlers.push(async () => {
@@ -50,7 +50,8 @@ class CommandPassword extends CommandPolykey {
         const passwordMessage = new sessionsPB.Password();
         passwordMessage.setPassword(passwordNew);
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.keysPasswordChange(passwordMessage, auth),
+          (auth) =>
+            pkClient.grpcClient.keysPasswordChange(passwordMessage, auth),
           meta,
         );
       } finally {

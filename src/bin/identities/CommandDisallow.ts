@@ -62,7 +62,10 @@ class CommandDisallow extends CommandPolykey {
           // Trusting
           await binUtils.retryAuthentication(
             (auth) =>
-              pkClient.grpcClient.gestaltsActionsUnsetByNode(setActionMessage, auth),
+              pkClient.grpcClient.gestaltsActionsUnsetByNode(
+                setActionMessage,
+                auth,
+              ),
             meta,
           );
         } else {
@@ -74,7 +77,10 @@ class CommandDisallow extends CommandPolykey {
           // Trusting.
           await binUtils.retryAuthentication(
             (auth) =>
-              pkClient.grpcClient.gestaltsActionsUnsetByIdentity(setActionMessage, auth),
+              pkClient.grpcClient.gestaltsActionsUnsetByIdentity(
+                setActionMessage,
+                auth,
+              ),
             meta,
           );
         }

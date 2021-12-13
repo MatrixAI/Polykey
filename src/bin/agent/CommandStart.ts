@@ -46,9 +46,7 @@ class CommandStart extends CommandPolykey {
           options.passwordFile,
           this.fs,
         );
-      } else if (
-        await dirEmpty(this.fs, options.nodePath)
-      ) {
+      } else if (await dirEmpty(this.fs, options.nodePath)) {
         // If the node path is empty, get a new password
         password = await binProcessors.processNewPassword(
           options.passwordFile,

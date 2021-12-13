@@ -68,7 +68,10 @@ class CommandRead extends CommandPolykey {
         notificationsReadMessage.setOrder(options.order);
         const response = await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.notificationsRead(notificationsReadMessage, auth),
+            pkClient.grpcClient.notificationsRead(
+              notificationsReadMessage,
+              auth,
+            ),
           meta,
         );
         const notificationMessages = response.getNotificationList();

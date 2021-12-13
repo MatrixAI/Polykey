@@ -58,7 +58,10 @@ class CommandLog extends CommandPolykey {
         const data = await binUtils.retryAuthentication(
           async (meta: Metadata) => {
             const data: Array<string> = [];
-            const stream = pkClient.grpcClient.vaultsLog(vaultsLogMessage, meta);
+            const stream = pkClient.grpcClient.vaultsLog(
+              vaultsLogMessage,
+              meta,
+            );
             for await (const commit of stream) {
               const timeStamp = commit.getTimeStamp();
               const date = new Date(timeStamp);

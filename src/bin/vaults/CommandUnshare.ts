@@ -53,7 +53,10 @@ class CommandUnshare extends CommandPolykey {
         nodeMessage.setNodeId(nodeId);
         await binUtils.retryAuthentication(
           (auth) =>
-            pkClient.grpcClient.vaultsPermissionsUnset(unsetVaultPermsMessage, auth),
+            pkClient.grpcClient.vaultsPermissionsUnset(
+              unsetVaultPermsMessage,
+              auth,
+            ),
           meta,
         );
       } finally {

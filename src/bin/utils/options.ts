@@ -90,7 +90,7 @@ const passwordFile = new commander.Option(
 
 const passwordNewFile = new commander.Option(
   '-pnf, --password-new-file <path>',
-  'Path to new Password'
+  'Path to new Password',
 );
 
 const recoveryCodeFile = new commander.Option(
