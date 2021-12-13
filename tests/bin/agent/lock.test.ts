@@ -16,10 +16,6 @@ const mockedPrompts = mocked(prompts);
 
 describe('lock', () => {
   const logger = new Logger('lock test', LogLevel.WARN, [new StreamHandler()]);
-  const sessionTokenPath = path.join(
-    global.binAgentDir,
-    config.defaults.tokenBase,
-  );
   let pkAgentClose;
   beforeAll(async () => {
     pkAgentClose = await testBinUtils.pkAgent();
@@ -57,11 +53,15 @@ describe('lock', () => {
     );
     expect(exitCode).toBe(0);
     const session = await Session.createSession({
-      sessionTokenPath,
+      sessionTokenPath: path.join(
+        global.binAgentDir,
+        config.defaults.tokenBase,
+      ),
       fs,
       logger,
     });
     expect(await session.readToken()).toBeUndefined();
+    await session.stop();
   });
   test('lock ensures reauthentication is required', async () => {
     const password = global.binAgentPassword;

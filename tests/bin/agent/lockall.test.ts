@@ -19,10 +19,6 @@ describe('lockall', () => {
   const logger = new Logger('lockall test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  const sessionTokenPath = path.join(
-    global.binAgentDir,
-    config.defaults.tokenBase,
-  );
   let pkAgentClose;
   beforeAll(async () => {
     pkAgentClose = await testBinUtils.pkAgent();
@@ -60,7 +56,10 @@ describe('lockall', () => {
     );
     expect(exitCode).toBe(0);
     const session = await Session.createSession({
-      sessionTokenPath,
+      sessionTokenPath: path.join(
+        global.binAgentDir,
+        config.defaults.tokenBase,
+      ),
       fs,
       logger,
     });
@@ -109,7 +108,10 @@ describe('lockall', () => {
       global.binAgentDir,
     );
     const session = await Session.createSession({
-      sessionTokenPath,
+      sessionTokenPath: path.join(
+        global.binAgentDir,
+        config.defaults.tokenBase,
+      ),
       fs,
       logger,
     });

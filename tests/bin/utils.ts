@@ -312,6 +312,10 @@ async function pkExpect({
  * Uses fd-lock to serialise access to the pkAgent
  * This means all test modules using this will be serialised
  * Any beforeAll must use global.maxTimeout
+ * Tips for usage:
+ *   * Do not restart this global agent
+ *   * Ensure client-side side-effects are removed at the end of each test
+ *   * Ensure server-side side-effects are removed at the end of each test
  */
 async function pkAgent(
   args: Array<string> = [],
@@ -401,6 +405,7 @@ async function pkAgent(
       global.binAgentDir,
     );
     // `pk agent stop` is asynchronous, need to wait for it to be DEAD
+    // This also means STDERR from the stopping agent may appear on the test logs
     await status.waitFor('DEAD');
   };
 }

@@ -1,10 +1,13 @@
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { Session } from '@/sessions';
+import config from '@/config';
 import * as testBinUtils from '../utils';
 
 describe('unlock', () => {
-  let dataDir: string;
+  const logger = new Logger('lock test', LogLevel.WARN, [new StreamHandler()]);
   let pkAgentClose;
   beforeAll(async () => {
     pkAgentClose = await testBinUtils.pkAgent();
@@ -12,18 +15,10 @@ describe('unlock', () => {
   afterAll(async () => {
     await pkAgentClose();
   });
+  let dataDir: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
-    );
-    // Invalidate all active sessions
-    await testBinUtils.pkStdio(
-      ['agent', 'lock'],
-      {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
-      },
-      global.binAgentDir,
     );
   });
   afterEach(async () => {
@@ -32,12 +27,17 @@ describe('unlock', () => {
       recursive: true,
     });
   });
-  test('should store session token in session file', async () => {
-    // Assert no existing session file
-    await expect(
-      fs.promises.readdir(path.join(global.binAgentDir)),
-    ).resolves.not.toContain('token');
-    // Run command to set token
+  test('unlock acquires session token', async () => {
+    // Fresh session, to delete the token
+    const session = await Session.createSession({
+      sessionTokenPath: path.join(
+        global.binAgentDir,
+        config.defaults.tokenBase,
+      ),
+      fs,
+      logger,
+      fresh: true
+    });
     let exitCode, stdout;
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
       ['agent', 'unlock'],
@@ -48,9 +48,9 @@ describe('unlock', () => {
       global.binAgentDir,
     ));
     expect(exitCode).toBe(0);
-    // Run a command without password to check token is valid
+    // Run command without password
     ({ exitCode, stdout } = await testBinUtils.pkStdio(
-      ['agent', 'status', '--format', 'json', '--verbose'],
+      ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: global.binAgentDir,
       },
@@ -58,35 +58,17 @@ describe('unlock', () => {
     ));
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
-  });
-  test('should fail to unlock if agent stopped', async () => {
-    // Stop agent
-    await testBinUtils.pkStdio(
-      ['agent', 'stop'],
+    // Run command with PK_TOKEN
+    ({ exitCode, stdout } = await testBinUtils.pkStdio(
+      ['agent', 'status', '--format', 'json'],
       {
         PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
+        PK_TOKEN: await session.readToken()
       },
       global.binAgentDir,
-    );
-    // Run unlock command
-    const { exitCode } = await testBinUtils.pkStdio(
-      ['agent', 'unlock'],
-      {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
-      },
-      global.binAgentDir,
-    );
-    expect(exitCode).toBe(64);
-    // Undo side-effects
-    await testBinUtils.pkStdio(
-      ['agent', 'start'],
-      {
-        PK_NODE_PATH: global.binAgentDir,
-        PK_PASSWORD: global.binAgentPassword,
-      },
-      global.binAgentDir,
-    );
+    ));
+    expect(exitCode).toBe(0);
+    expect(JSON.parse(stdout)).toMatchObject({ status: 'LIVE' });
+    await session.stop();
   });
 });
