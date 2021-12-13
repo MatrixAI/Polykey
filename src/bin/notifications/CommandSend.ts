@@ -53,16 +53,6 @@ class CommandSend extends CommandPolykey {
             pkClient.grpcClient.notificationsSend(notificationsSendMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Successsfully sent notification: "${notificationsSendMessage
-                .getData()
-                ?.getMessage()}" to Keynode with ID: ${notificationsSendMessage.getReceiverId()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

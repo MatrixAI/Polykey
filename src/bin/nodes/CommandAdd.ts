@@ -51,12 +51,6 @@ class CommandAdd extends CommandPolykey {
           (auth) => pkClient.grpcClient.nodesAdd(nodeAddressMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: ['Added node'],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

@@ -61,14 +61,6 @@ class CommandDelete extends CommandPolykey {
             pkClient.grpcClient.vaultsSecretsDelete(secretMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()} successfully deleted`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

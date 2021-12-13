@@ -59,14 +59,6 @@ class CommandMkdir extends CommandPolykey {
             pkClient.grpcClient.vaultsSecretsMkdir(vaultMkdirMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Directory: ${vaultMkdirMessage.getDirName()} created inside vault: ${vaultMessage.getNameOrId()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

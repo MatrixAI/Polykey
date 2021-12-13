@@ -59,14 +59,6 @@ class CommandDir extends CommandPolykey {
             pkClient.grpcClient.vaultsSecretsNewDir(secretDirectoryMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Secret directory added to vault: ${secretDirectoryMessage.getSecretDirectory()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

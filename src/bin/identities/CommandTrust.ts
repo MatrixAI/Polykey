@@ -54,13 +54,11 @@ class CommandTrust extends CommandPolykey {
         const action = 'notify';
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(action);
-        let name: string;
         if (gestaltId.nodeId) {
           // Setting by Node.
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           setActionMessage.setNode(nodeMessage);
-          name = `${gestaltId.nodeId}`;
           await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsActionsSetByNode(setActionMessage, auth),
@@ -72,22 +70,12 @@ class CommandTrust extends CommandPolykey {
           providerMessage.setProviderId(gestaltId.providerId!);
           providerMessage.setMessage(gestaltId.identityId!);
           setActionMessage.setIdentity(providerMessage);
-          name = `${parsers.formatIdentityString(
-            gestaltId.providerId,
-            gestaltId.identityId,
-          )}`;
           await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsActionsSetByIdentity(setActionMessage, auth),
             meta,
           );
         }
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Trusting: ${name}`],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

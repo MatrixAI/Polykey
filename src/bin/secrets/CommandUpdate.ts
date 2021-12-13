@@ -77,14 +77,6 @@ class CommandUpdate extends CommandPolykey {
             pkClient.grpcClient.vaultsSecretsEdit(secretMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Updated secret: ${secretMessage.getSecretName()} in vault: ${vaultMessage.getNameOrId()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

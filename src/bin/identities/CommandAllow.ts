@@ -54,13 +54,11 @@ class CommandAllow extends CommandPolykey {
         });
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(permissions);
-        let name: string;
         if (gestaltId.nodeId) {
           // Setting by Node
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           setActionMessage.setNode(nodeMessage);
-          name = `${gestaltId.nodeId}`;
           // Trusting
           await binUtils.retryAuthentication(
             (auth) =>
@@ -73,22 +71,12 @@ class CommandAllow extends CommandPolykey {
           providerMessage.setProviderId(gestaltId.providerId);
           providerMessage.setMessage(gestaltId.identityId);
           setActionMessage.setIdentity(providerMessage);
-          name = `${parsers.formatIdentityString(
-            gestaltId.providerId,
-            gestaltId.identityId,
-          )}`;
           await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsActionsSetByIdentity(setActionMessage, auth),
             meta,
           );
         }
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Allowing: ${name} ${permissions}`],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

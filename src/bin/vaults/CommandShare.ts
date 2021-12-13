@@ -56,18 +56,6 @@ class CommandShare extends CommandPolykey {
             pkClient.grpcClient.vaultsPermissionsSet(setVaultPermsMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Shared Vault: ${setVaultPermsMessage
-                .getVault()
-                ?.getNameOrId()} to: ${setVaultPermsMessage
-                .getNode()
-                ?.getNodeId()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

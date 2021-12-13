@@ -53,10 +53,6 @@ class CommandVersion extends CommandPolykey {
             pkClient.grpcClient.vaultsVersion(vaultsVersionMessage, auth),
           meta,
         );
-        let successMessage = [`Vault ${vault} is now at version ${versionId}.`];
-        if (versionId.toLowerCase() === 'last') {
-          successMessage = [`Vault ${vault} is now at the latest version.`];
-        }
         /**
          * Previous status message:
          * ---
@@ -64,12 +60,6 @@ class CommandVersion extends CommandPolykey {
          * will discard all changes applied to the vault in later versions. You will
          * not be able to return to these later versions if changes are made.
          */
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: successMessage,
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

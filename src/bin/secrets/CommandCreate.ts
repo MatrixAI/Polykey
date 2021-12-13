@@ -76,14 +76,6 @@ class CommandCreate extends CommandPolykey {
           (auth) => pkClient.grpcClient.vaultsSecretsNew(secretMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Secret: ${secretMessage.getSecretName()} successfully created in vault: ${vaultMessage.getNameOrId()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

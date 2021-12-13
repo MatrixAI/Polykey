@@ -52,7 +52,6 @@ class CommandDisallow extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        let name: string;
         const setActionMessage = new permissionsPB.ActionSet();
         setActionMessage.setAction(permissions);
         if (gestaltId.nodeId) {
@@ -60,7 +59,6 @@ class CommandDisallow extends CommandPolykey {
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
           setActionMessage.setNode(nodeMessage);
-          name = `${gestaltId.nodeId}`;
           // Trusting
           await binUtils.retryAuthentication(
             (auth) =>
@@ -73,10 +71,6 @@ class CommandDisallow extends CommandPolykey {
           providerMessage.setProviderId(gestaltId.providerId);
           providerMessage.setMessage(gestaltId.identityId);
           setActionMessage.setIdentity(providerMessage);
-          name = `${parsers.formatIdentityString(
-            gestaltId.providerId,
-            gestaltId.identityId,
-          )}`;
           // Trusting.
           await binUtils.retryAuthentication(
             (auth) =>
@@ -84,14 +78,6 @@ class CommandDisallow extends CommandPolykey {
             meta,
           );
         }
-
-        const action = options.action;
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Allowing: ${name} ${action}`],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

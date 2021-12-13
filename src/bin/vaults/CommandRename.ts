@@ -53,14 +53,6 @@ class CommandRename extends CommandPolykey {
             pkClient.grpcClient.vaultsRename(vaultRenameMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Renamed vault: ${vaultMessage.getNameOrId()} to ${vaultRenameMessage.getNewName()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

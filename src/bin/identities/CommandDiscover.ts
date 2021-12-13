@@ -50,12 +50,10 @@ class CommandDiscover extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        let name: string;
         if (gestaltId.nodeId) {
           // Discovery by Node.
           const nodeMessage = new nodesPB.Node();
           nodeMessage.setNodeId(gestaltId.nodeId);
-          name = `${gestaltId.nodeId}`;
           await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsDiscoveryByNode(nodeMessage, auth),
@@ -66,22 +64,12 @@ class CommandDiscover extends CommandPolykey {
           const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(gestaltId.providerId);
           providerMessage.setMessage(gestaltId.identityId);
-          name = `${parsers.formatIdentityString(
-            gestaltId.providerId,
-            gestaltId.identityId,
-          )}`;
           await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsDiscoveryByIdentity(providerMessage, auth),
             meta,
           );
         }
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Starting discovery at: ${name}...`],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

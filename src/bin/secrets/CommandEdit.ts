@@ -86,14 +86,6 @@ class CommandEdit extends CommandPolykey {
         await this.fs.promises.rmdir(tmpDir, { recursive: true });
         // Windows
         // TODO: complete windows impl
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Edited secret: ${vaultMessage.getNameOrId()} in vault: ${vaultMessage.getNameOrId()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

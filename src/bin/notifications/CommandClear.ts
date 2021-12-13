@@ -45,12 +45,6 @@ class CommandClear extends CommandPolykey {
             pkClient.grpcClient.notificationsClear(emptyMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [`Successsfully cleared all notifications`],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }

@@ -56,18 +56,6 @@ class CommandUnshare extends CommandPolykey {
             pkClient.grpcClient.vaultsPermissionsUnset(unsetVaultPermsMessage, auth),
           meta,
         );
-        process.stdout.write(
-          binUtils.outputFormatter({
-            type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              `Unshared Vault: ${unsetVaultPermsMessage
-                .getVault()
-                ?.getNameOrId()} to: ${unsetVaultPermsMessage
-                .getNode()
-                ?.getNodeId()}`,
-            ],
-          }),
-        );
       } finally {
         if (pkClient! != null) await pkClient.stop();
       }
