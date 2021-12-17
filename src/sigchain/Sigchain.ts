@@ -220,8 +220,8 @@ class Sigchain {
    * Appends a claim (of any type) to the sigchain.
    */
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
-  public async addClaim(claimData: ClaimData): Promise<void> {
-    await this._transaction(async () => {
+  public async addClaim(claimData: ClaimData): Promise<ClaimEncoded> {
+    return await this._transaction(async () => {
       const prevSequenceNumber = await this.getSequenceNumber();
       const newSequenceNumber = prevSequenceNumber + 1;
 
@@ -247,6 +247,7 @@ class Sigchain {
         },
       ];
       await this.db.batch(ops);
+      return claim;
     });
   }
 

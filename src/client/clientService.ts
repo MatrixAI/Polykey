@@ -7,6 +7,7 @@ import type { GestaltGraph } from '../gestalts';
 import type { SessionManager } from '../sessions';
 import type { NotificationsManager } from '../notifications';
 import type { Discovery } from '../discovery';
+import type { Sigchain } from '../sigchain';
 import type { GRPCServer } from '../grpc';
 import type { ForwardProxy, ReverseProxy } from '../network';
 import type { FileSystem } from '../types';
@@ -43,6 +44,7 @@ function createClientService({
   sessionManager,
   notificationsManager,
   discovery,
+  sigchain,
   grpcServerClient,
   grpcServerAgent,
   fwdProxy,
@@ -58,6 +60,7 @@ function createClientService({
   sessionManager: SessionManager;
   notificationsManager: NotificationsManager;
   discovery: Discovery;
+  sigchain: Sigchain;
   grpcServerClient: GRPCServer;
   grpcServerAgent: GRPCServer;
   fwdProxy: ForwardProxy;
@@ -93,7 +96,7 @@ function createClientService({
     }),
     ...createIdentitiesRPC({
       identitiesManager,
-      gestaltGraph,
+      sigchain,
       nodeManager,
       authenticate,
     }),

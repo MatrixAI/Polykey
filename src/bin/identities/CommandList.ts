@@ -2,7 +2,6 @@ import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
-import * as parsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
 
 class CommandList extends CommandPolykey {
@@ -90,25 +89,18 @@ class CommandList extends CommandPolykey {
           for (const gestalt of gestalts) {
             output.push(`gestalt ${count}`);
             output.push(`permissions: ${gestalt.permissions ?? 'None'}`);
-
             // Listing nodes
             for (const node of gestalt.nodes) {
               output.push(`${node.id}`);
             }
             // Listing identities
             for (const identity of gestalt.identities) {
-              output.push(
-                parsers.formatIdentityString(
-                  identity.providerId,
-                  identity.identityId,
-                ),
-              );
+              output.push(`${identity.providerId}:${identity.identityId}`);
             }
             output.push('');
             count++;
           }
         }
-
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',

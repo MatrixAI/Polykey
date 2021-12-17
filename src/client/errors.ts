@@ -22,8 +22,9 @@ class ErrorClientAuthDenied extends ErrorClient {
   exitCode = 77;
 }
 
-class ErrorClientInvalidNode extends ErrorClient {
-  exitCode: number = 70;
+class ErrorClientInvalidProvider extends ErrorClient {
+  description = 'Provider Id is invalid or does not exist';
+  exitCode = 70;
 }
 
 export {
@@ -32,5 +33,5 @@ export {
   ErrorClientAuthMissing,
   ErrorClientAuthFormat,
   ErrorClientAuthDenied,
-  ErrorClientInvalidNode,
+  ErrorClientInvalidProvider,
 };

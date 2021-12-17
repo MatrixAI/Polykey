@@ -1,9 +1,7 @@
-import type { ProviderId, IdentityId } from '../../identities/types';
 import type PolykeyClient from '../../PolykeyClient';
 import CommandPolykey from '../CommandPolykey';
 import * as binOptions from '../utils/options';
 import * as binUtils from '../utils';
-import * as parsers from '../utils/parsers';
 import * as binProcessors from '../utils/processors';
 
 class CommandSearch extends CommandPolykey {
@@ -54,15 +52,16 @@ class CommandSearch extends CommandPolykey {
             pkClient.grpcClient.identitiesInfoGet(providerMessage, auth),
           meta,
         );
+        let output = '';
+        if (res.getIdentityId() && res.getProviderId()) {
+          output = `${res.getProviderId()}:${res.getIdentityId()}`;
+        } else {
+          this.logger.info('No Connected Identities found for Provider');
+        }
         process.stdout.write(
           binUtils.outputFormatter({
             type: options.format === 'json' ? 'json' : 'list',
-            data: [
-              parsers.formatIdentityString(
-                res.getProviderId() as ProviderId,
-                res.getMessage() as IdentityId,
-              ),
-            ],
+            data: [output],
           }),
         );
       } finally {

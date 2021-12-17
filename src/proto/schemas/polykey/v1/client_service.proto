@@ -65,7 +65,7 @@ service ClientService {
   rpc VaultsLog(polykey.v1.vaults.Log) returns (stream polykey.v1.vaults.LogEntry);
 
   // Identities
-  rpc IdentitiesAuthenticate(polykey.v1.identities.Provider) returns (stream polykey.v1.identities.Provider);
+  rpc IdentitiesAuthenticate(polykey.v1.identities.Provider) returns (stream polykey.v1.identities.AuthenticationProcess);
   rpc IdentitiesTokenPut(polykey.v1.identities.TokenSpecific) returns (polykey.v1.utils.EmptyMessage);
   rpc IdentitiesTokenGet(polykey.v1.identities.Provider) returns (polykey.v1.identities.Token);
   rpc IdentitiesTokenDelete(polykey.v1.identities.Provider) returns (polykey.v1.utils.EmptyMessage);

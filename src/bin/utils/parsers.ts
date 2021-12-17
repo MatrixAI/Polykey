@@ -56,10 +56,4 @@ function parseIdentityString(identityString: string): {
   return { providerId, identityId };
 }
 
-function formatIdentityString(
-  providerId: ProviderId,
-  identityId: IdentityId,
-): string {
-  return `${providerId}:${identityId}`;
-}
-export { parseNumber, parseSecretPath, parseGestaltId, formatIdentityString };
+export { parseNumber, parseSecretPath, parseGestaltId };

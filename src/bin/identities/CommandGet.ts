@@ -65,7 +65,7 @@ class CommandGet extends CommandPolykey {
           // Getting from identity.
           const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setMessage(gestaltId.identityId);
+          providerMessage.setIdentityId(gestaltId.identityId);
           res = await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsGestaltGetByIdentity(
@@ -88,12 +88,7 @@ class CommandGet extends CommandPolykey {
           // Listing identities
           for (const identityKey of Object.keys(gestalt.identities)) {
             const identity = gestalt.identities[identityKey];
-            output.push(
-              parsers.formatIdentityString(
-                identity.providerId,
-                identity.identityId,
-              ),
-            );
+            output.push(`${identity.providerId}:${identity.identityId}`);
           }
         }
         process.stdout.write(

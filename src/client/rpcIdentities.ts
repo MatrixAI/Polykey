@@ -1,70 +1,71 @@
-import type { NodeManager } from '../nodes';
-import type { NodeInfo } from '../nodes/types';
-import type { GestaltGraph } from '../gestalts';
-import type { IdentitiesManager } from '../identities';
-import type {
-  IdentityId,
-  ProviderId,
-  TokenData,
-  IdentityInfo,
-} from '../identities/types';
-
-import type * as grpc from '@grpc/grpc-js';
 import type * as utils from './utils';
-import * as errors from '../errors';
+import type { NodeManager } from '../nodes';
+import type { Sigchain } from '../sigchain';
+import type { IdentitiesManager } from '../identities';
+import type { IdentityId, ProviderId, TokenData } from '../identities/types';
+import type * as grpc from '@grpc/grpc-js';
+import * as clientErrors from './errors';
+import * as claimsUtils from '../claims/utils';
 import * as grpcUtils from '../grpc/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
+import * as identitiesErrors from '../identities/errors';
+import { never } from '../utils';
 
 const createIdentitiesRPC = ({
   identitiesManager,
+  sigchain,
   nodeManager,
-  gestaltGraph,
   authenticate,
 }: {
   identitiesManager: IdentitiesManager;
+  sigchain: Sigchain;
   nodeManager: NodeManager;
-  gestaltGraph: GestaltGraph;
   authenticate: utils.Authenticate;
 }) => {
   return {
     identitiesAuthenticate: async (
       call: grpc.ServerWritableStream<
         identitiesPB.Provider,
-        identitiesPB.Provider
+        identitiesPB.AuthenticationProcess
       >,
     ): Promise<void> => {
       const genWritable = grpcUtils.generatorWritable(call);
-      const response = new identitiesPB.Provider();
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-
         const provider = identitiesManager.getProvider(
           call.request.getProviderId() as ProviderId,
         );
-        const authFlow = provider?.authenticate();
-        const userCode = (await authFlow?.next())?.value;
-        if (typeof userCode !== 'string') {
-          throw new errors.ErrorProviderAuthentication(
-            'userCode was not a string',
-          );
+        if (provider == null) {
+          throw new clientErrors.ErrorClientInvalidProvider();
         }
-        response.setMessage(userCode);
-        await genWritable.next(response);
-
-        // Wait to finish.
-        const userName = (await authFlow?.next())?.value;
-        if (userName == null)
-          throw new errors.ErrorProviderAuthentication(
-            'Failed to authenticate.',
-          );
-        response.setMessage(userName);
-        await genWritable.next(response);
+        const authFlow = provider.authenticate();
+        let authFlowResult = await authFlow.next();
+        if (authFlowResult.done) {
+          never();
+        }
+        const authProcess = new identitiesPB.AuthenticationProcess();
+        const authRequest = new identitiesPB.AuthenticationRequest();
+        authRequest.setUrl(authFlowResult.value.url);
+        const map = authRequest.getDataMap();
+        for (const [k, v] of Object.entries(authFlowResult.value.data)) {
+          map.set(k, v);
+        }
+        authProcess.setRequest(authRequest);
+        await genWritable.next(authProcess);
+        authFlowResult = await authFlow.next();
+        if (!authFlowResult.done) {
+          never();
+        }
+        const authResponse = new identitiesPB.AuthenticationResponse();
+        authResponse.setIdentityId(authFlowResult.value);
+        authProcess.setResponse(authResponse);
+        await genWritable.next(authProcess);
         await genWritable.next(null);
         return;
-      } catch (err) {
-        await genWritable.throw(err);
+      } catch (e) {
+        await genWritable.throw(e);
         return;
       }
     },
@@ -83,7 +84,7 @@ const createIdentitiesRPC = ({
         const provider = call.request.getProvider();
         await identitiesManager.putToken(
           provider?.getProviderId() as ProviderId,
-          provider?.getMessage() as IdentityId,
+          provider?.getIdentityId() as IdentityId,
           { accessToken: call.request.getToken() } as TokenData,
         );
         callback(null, response);
@@ -104,7 +105,7 @@ const createIdentitiesRPC = ({
 
         const tokens = await identitiesManager.getToken(
           call.request.getProviderId() as ProviderId,
-          call.request.getMessage() as IdentityId,
+          call.request.getIdentityId() as IdentityId,
         );
         response.setToken(JSON.stringify(tokens));
         callback(null, response);
@@ -125,7 +126,7 @@ const createIdentitiesRPC = ({
 
         await identitiesManager.delToken(
           call.request.getProviderId() as ProviderId,
-          call.request.getMessage() as IdentityId,
+          call.request.getIdentityId() as IdentityId,
         );
         callback(null, response);
         return;
@@ -168,12 +169,10 @@ const createIdentitiesRPC = ({
           ?.getProviderId() as ProviderId;
         const identityId = call.request
           .getProvider()
-          ?.getMessage() as IdentityId;
+          ?.getIdentityId() as IdentityId;
         const provider = identitiesManager.getProvider(providerId);
         if (provider == null)
-          throw Error(
-            `Provider id: ${providerId} is invalid or provider doesn't exist.`,
-          );
+          throw new clientErrors.ErrorClientInvalidProvider();
 
         const identities = provider.getConnectedIdentityDatas(
           identityId,
@@ -184,7 +183,7 @@ const createIdentitiesRPC = ({
           const identityInfoMessage = new identitiesPB.Info();
           const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(identity.providerId);
-          providerMessage.setMessage(identity.identityId);
+          providerMessage.setIdentityId(identity.identityId);
           identityInfoMessage.setProvider(providerMessage);
           identityInfoMessage.setName(identity.name ?? '');
           identityInfoMessage.setEmail(identity.email ?? '');
@@ -212,12 +211,13 @@ const createIdentitiesRPC = ({
         // Get's an identity out of all identities.
         const providerId = call.request.getProviderId() as ProviderId;
         const provider = identitiesManager.getProvider(providerId);
-        if (provider == null) throw Error(`Invalid provider: ${providerId}`);
-        const identities = await provider.getAuthIdentityIds();
-        if (identities.length !== 0) {
+        if (provider !== undefined) {
+          const identities = await provider.getAuthIdentityIds();
           response.setProviderId(providerId);
-          response.setMessage(identities[0]);
-        } else throw Error(`No identities found for provider: ${providerId}`);
+          if (identities.length !== 0) {
+            response.setIdentityId(identities[0]);
+          }
+        }
         callback(null, response);
         return;
       } catch (err) {
@@ -232,28 +232,30 @@ const createIdentitiesRPC = ({
       call: grpc.ServerUnaryCall<identitiesPB.Provider, utilsPB.EmptyMessage>,
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
     ): Promise<void> => {
-      // To augment a keynode we need a provider, generate an oauthkey and then
-      const info = call.request;
       const response = new utilsPB.EmptyMessage();
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-
-        const nodeId = nodeManager.getNodeId(); // Getting the local node ID.
-
-        // Do the deed...
-        const nodeInfo: NodeInfo = {
-          id: nodeId,
-          chain: {},
-        };
-        const identityInfo: IdentityInfo = {
-          providerId: info.getProviderId() as ProviderId,
-          identityId: info.getMessage() as IdentityId,
-          claims: {},
-        };
-        await gestaltGraph.linkNodeAndIdentity(nodeInfo, identityInfo); // Need to call this
-        // it takes NodeInfo and IdentityInfo.
-        // Getting and creating NodeInfo is blocked by
+        // Check provider is authenticated
+        const providerId = call.request.getProviderId() as ProviderId;
+        const provider = identitiesManager.getProvider(providerId);
+        if (provider == null)
+          throw new clientErrors.ErrorClientInvalidProvider();
+        const identityId = call.request.getIdentityId() as IdentityId;
+        const identities = await provider.getAuthIdentityIds();
+        if (!identities.includes(identityId)) {
+          throw new identitiesErrors.ErrorProviderUnauthenticated();
+        }
+        // Create identity claim on our node
+        const claim = await sigchain.addClaim({
+          type: 'identity',
+          node: nodeManager.getNodeId(),
+          provider: providerId,
+          identity: identityId,
+        });
+        // Publish claim on identity
+        const claimDecoded = claimsUtils.decodeClaim(claim);
+        await provider.publishClaim(identityId, claimDecoded);
         callback(null, response);
         return;
       } catch (err) {

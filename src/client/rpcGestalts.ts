@@ -7,7 +7,6 @@ import type * as grpc from '@grpc/grpc-js';
 import type * as clientUtils from './utils';
 import type * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import type * as identitiesPB from '../proto/js/polykey/v1/identities/identities_pb';
-import * as clientErrors from './errors';
 
 import { makeGestaltAction } from '../gestalts/utils';
 
@@ -60,7 +59,7 @@ const createGestaltsRPC = ({
 
         const gestalt = await gestaltGraph.getGestaltByIdentity(
           call.request.getProviderId() as ProviderId,
-          call.request.getMessage() as IdentityId,
+          call.request.getIdentityId() as IdentityId,
         );
         if (gestalt != null) {
           response.setGestaltGraph(JSON.stringify(gestalt));
@@ -129,7 +128,7 @@ const createGestaltsRPC = ({
         // Constructing identity info.
         const gen = discovery.discoverGestaltByIdentity(
           info.getProviderId() as ProviderId,
-          info.getMessage() as IdentityId,
+          info.getIdentityId() as IdentityId,
         );
         for await (const _ of gen) {
           // Empty
@@ -180,7 +179,7 @@ const createGestaltsRPC = ({
         call.sendMetadata(metadata);
 
         const providerId = info.getProviderId() as ProviderId;
-        const identityId = info.getMessage() as IdentityId;
+        const identityId = info.getIdentityId() as IdentityId;
         const result = await gestaltGraph.getGestaltActionsByIdentity(
           providerId,
           identityId,
@@ -209,19 +208,6 @@ const createGestaltsRPC = ({
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-        // Checking
-        switch (info.getNodeOrProviderCase()) {
-          default:
-          case permissionsPB.ActionSet.NodeOrProviderCase
-            .NODE_OR_PROVIDER_NOT_SET:
-          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
-            throw new clientErrors.ErrorClientInvalidNode(
-              'Node not set for SetActionMessage.',
-            );
-          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
-            break; // This is fine.
-        }
-
         // Setting the action.
         const action = makeGestaltAction(info.getAction());
         const nodeId = makeNodeId(info.getNode()?.getNodeId());
@@ -242,23 +228,10 @@ const createGestaltsRPC = ({
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-        // Checking
-        switch (info.getNodeOrProviderCase()) {
-          default:
-          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
-          case permissionsPB.ActionSet.NodeOrProviderCase
-            .NODE_OR_PROVIDER_NOT_SET:
-            throw new clientErrors.ErrorClientInvalidNode(
-              'Identity not set for SetActionMessage.',
-            );
-          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
-            break; // This is fine.
-        }
-
         // Setting the action.
         const action = makeGestaltAction(info.getAction());
         const providerId = info.getIdentity()?.getProviderId() as ProviderId;
-        const identityId = info.getIdentity()?.getMessage() as IdentityId;
+        const identityId = info.getIdentity()?.getIdentityId() as IdentityId;
         await gestaltGraph.setGestaltActionByIdentity(
           providerId,
           identityId,
@@ -280,19 +253,6 @@ const createGestaltsRPC = ({
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-        // Checking
-        switch (info.getNodeOrProviderCase()) {
-          default:
-          case permissionsPB.ActionSet.NodeOrProviderCase
-            .NODE_OR_PROVIDER_NOT_SET:
-          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
-            throw new clientErrors.ErrorClientInvalidNode(
-              'Node not set for SetActionMessage.',
-            );
-          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
-            break; // This is fine.
-        }
-
         // Setting the action.
         const action = makeGestaltAction(info.getAction());
         const nodeId = makeNodeId(info.getNode()?.getNodeId());
@@ -313,23 +273,10 @@ const createGestaltsRPC = ({
       try {
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
-        // Checking
-        switch (info.getNodeOrProviderCase()) {
-          default:
-          case permissionsPB.ActionSet.NodeOrProviderCase.NODE:
-          case permissionsPB.ActionSet.NodeOrProviderCase
-            .NODE_OR_PROVIDER_NOT_SET:
-            throw new clientErrors.ErrorClientInvalidNode(
-              'Identity not set for SetActionMessage.',
-            );
-          case permissionsPB.ActionSet.NodeOrProviderCase.IDENTITY:
-            break; // This is fine.
-        }
-
         // Setting the action.
         const action = makeGestaltAction(info.getAction());
         const providerId = info.getIdentity()?.getProviderId() as ProviderId;
-        const identityId = info.getIdentity()?.getMessage() as IdentityId;
+        const identityId = info.getIdentity()?.getIdentityId() as IdentityId;
         await gestaltGraph.unsetGestaltActionByIdentity(
           providerId,
           identityId,

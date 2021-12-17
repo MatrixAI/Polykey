@@ -63,7 +63,7 @@ class CommandDiscover extends CommandPolykey {
           //  Discovery by Identity
           const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setMessage(gestaltId.identityId);
+          providerMessage.setIdentityId(gestaltId.identityId);
           await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsDiscoveryByIdentity(

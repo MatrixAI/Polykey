@@ -48,7 +48,7 @@ class CommandPermissions extends CommandPolykey {
           port: clientOptions.clientPort,
           logger: this.logger.getChild(PolykeyClient.name),
         });
-        let actions;
+        let actions: string[] = [];
         if (gestaltId.nodeId) {
           // Getting by Node.
           const nodeMessage = new nodesPB.Node();
@@ -63,7 +63,7 @@ class CommandPermissions extends CommandPolykey {
           // Getting by Identity
           const providerMessage = new identitiesPB.Provider();
           providerMessage.setProviderId(gestaltId.providerId);
-          providerMessage.setMessage(gestaltId.identityId);
+          providerMessage.setIdentityId(gestaltId.identityId);
           const res = await binUtils.retryAuthentication(
             (auth) =>
               pkClient.grpcClient.gestaltsActionsGetByIdentity(

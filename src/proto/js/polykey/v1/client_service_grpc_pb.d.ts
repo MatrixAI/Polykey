@@ -433,14 +433,14 @@ interface IClientServiceService_IVaultsLog extends grpc.MethodDefinition<polykey
     responseSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.LogEntry>;
     responseDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.LogEntry>;
 }
-interface IClientServiceService_IIdentitiesAuthenticate extends grpc.MethodDefinition<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.Provider> {
+interface IClientServiceService_IIdentitiesAuthenticate extends grpc.MethodDefinition<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.AuthenticationProcess> {
     path: "/polykey.v1.ClientService/IdentitiesAuthenticate";
     requestStream: false;
     responseStream: true;
     requestSerialize: grpc.serialize<polykey_v1_identities_identities_pb.Provider>;
     requestDeserialize: grpc.deserialize<polykey_v1_identities_identities_pb.Provider>;
-    responseSerialize: grpc.serialize<polykey_v1_identities_identities_pb.Provider>;
-    responseDeserialize: grpc.deserialize<polykey_v1_identities_identities_pb.Provider>;
+    responseSerialize: grpc.serialize<polykey_v1_identities_identities_pb.AuthenticationProcess>;
+    responseDeserialize: grpc.deserialize<polykey_v1_identities_identities_pb.AuthenticationProcess>;
 }
 interface IClientServiceService_IIdentitiesTokenPut extends grpc.MethodDefinition<polykey_v1_identities_identities_pb.TokenSpecific, polykey_v1_utils_utils_pb.EmptyMessage> {
     path: "/polykey.v1.ClientService/IdentitiesTokenPut";
@@ -674,7 +674,7 @@ export interface IClientServiceServer extends grpc.UntypedServiceImplementation 
     vaultsPermissions: grpc.handleServerStreamingCall<polykey_v1_vaults_vaults_pb.PermGet, polykey_v1_vaults_vaults_pb.Permission>;
     vaultsVersion: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.Version, polykey_v1_vaults_vaults_pb.VersionResult>;
     vaultsLog: grpc.handleServerStreamingCall<polykey_v1_vaults_vaults_pb.Log, polykey_v1_vaults_vaults_pb.LogEntry>;
-    identitiesAuthenticate: grpc.handleServerStreamingCall<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.Provider>;
+    identitiesAuthenticate: grpc.handleServerStreamingCall<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.AuthenticationProcess>;
     identitiesTokenPut: grpc.handleUnaryCall<polykey_v1_identities_identities_pb.TokenSpecific, polykey_v1_utils_utils_pb.EmptyMessage>;
     identitiesTokenGet: grpc.handleUnaryCall<polykey_v1_identities_identities_pb.Provider, polykey_v1_identities_identities_pb.Token>;
     identitiesTokenDelete: grpc.handleUnaryCall<polykey_v1_identities_identities_pb.Provider, polykey_v1_utils_utils_pb.EmptyMessage>;
@@ -810,8 +810,8 @@ export interface IClientServiceClient {
     vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
     vaultsLog(request: polykey_v1_vaults_vaults_pb.Log, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.LogEntry>;
     vaultsLog(request: polykey_v1_vaults_vaults_pb.Log, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.LogEntry>;
-    identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.Provider>;
-    identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.Provider>;
+    identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
+    identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
     identitiesTokenPut(request: polykey_v1_identities_identities_pb.TokenSpecific, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     identitiesTokenPut(request: polykey_v1_identities_identities_pb.TokenSpecific, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     identitiesTokenPut(request: polykey_v1_identities_identities_pb.TokenSpecific, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
@@ -988,8 +988,8 @@ export class ClientServiceClient extends grpc.Client implements IClientServiceCl
     public vaultsVersion(request: polykey_v1_vaults_vaults_pb.Version, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.VersionResult) => void): grpc.ClientUnaryCall;
     public vaultsLog(request: polykey_v1_vaults_vaults_pb.Log, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.LogEntry>;
     public vaultsLog(request: polykey_v1_vaults_vaults_pb.Log, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.LogEntry>;
-    public identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.Provider>;
-    public identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.Provider>;
+    public identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
+    public identitiesAuthenticate(request: polykey_v1_identities_identities_pb.Provider, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_identities_identities_pb.AuthenticationProcess>;
     public identitiesTokenPut(request: polykey_v1_identities_identities_pb.TokenSpecific, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public identitiesTokenPut(request: polykey_v1_identities_identities_pb.TokenSpecific, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;
     public identitiesTokenPut(request: polykey_v1_identities_identities_pb.TokenSpecific, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EmptyMessage) => void): grpc.ClientUnaryCall;

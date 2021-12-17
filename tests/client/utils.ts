@@ -33,6 +33,7 @@ async function openTestClientServer({
     sessionManager: polykeyAgent.sessionManager,
     notificationsManager: polykeyAgent.notificationsManager,
     discovery: polykeyAgent.discovery,
+    sigchain: polykeyAgent.sigchain,
     fwdProxy: polykeyAgent.fwdProxy,
     revProxy: polykeyAgent.revProxy,
     grpcServerClient: polykeyAgent.grpcServerClient,
