@@ -324,7 +324,7 @@ class PolykeyAgent {
       await status?.stop({});
       throw e;
     }
-    const polykeyAgent = new PolykeyAgent({
+    const pkAgent = new PolykeyAgent({
       nodePath,
       status,
       schema,
@@ -346,13 +346,13 @@ class PolykeyAgent {
       fs,
       logger,
     });
-    await polykeyAgent.start({
+    await pkAgent.start({
       password,
       networkConfig,
       fresh,
     });
     logger.info(`Created ${this.name}`);
-    return polykeyAgent;
+    return pkAgent;
   }
 
   public readonly nodePath: string;
@@ -467,7 +467,7 @@ class PolykeyAgent {
         notificationsManager: this.notificationsManager,
       });
       const clientService = createClientService({
-        polykeyAgent: this,
+        pkAgent: this,
         discovery: this.discovery,
         gestaltGraph: this.gestaltGraph,
         identitiesManager: this.identitiesManager,

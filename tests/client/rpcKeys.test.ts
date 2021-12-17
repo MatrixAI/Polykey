@@ -14,26 +14,12 @@ import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
 import * as testUtils from './utils';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:
     jest.requireActual('@/keys/utils').generateKeyPair,
 }));
 
-/**
- * This test file has been optimised to use only one instance of PolykeyAgent where posible.
- * Setting up the PolykeyAgent has been done in a beforeAll block.
- * Keep this in mind when adding or editing tests.
- * Any side effects need to be undone when the test has completed.
- * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
- *
- * - left over state can cause a test to fail in certain cases.
- * - left over state can cause similar tests to succeed when they should fail.
- * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
- * - when in doubt test each modified or added test on it's own as well as the whole file.
- * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
- */
 describe('Keys client service', () => {
   const password = 'password';
   const logger = new Logger('KeysClientServerTest', LogLevel.WARN, [
@@ -44,7 +30,7 @@ describe('Keys client service', () => {
   let server: grpc.Server;
   let port: number;
   let dataDir: string;
-  let polykeyAgent: PolykeyAgent;
+  let pkAgent: PolykeyAgent;
   let keyManager: KeyManager;
   let nodeManager: NodeManager;
   let passwordFile: string;
@@ -70,7 +56,7 @@ describe('Keys client service', () => {
       logger: logger,
     });
 
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
       logger,
@@ -78,10 +64,10 @@ describe('Keys client service', () => {
       keyManager,
     });
 
-    nodeManager = polykeyAgent.nodeManager;
+    nodeManager = pkAgent.nodeManager;
 
     [server, port] = await testUtils.openTestClientServer({
-      polykeyAgent,
+      pkAgent,
       secure: false,
     });
 
@@ -91,8 +77,8 @@ describe('Keys client service', () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
+    await pkAgent.stop();
+    await pkAgent.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -101,7 +87,7 @@ describe('Keys client service', () => {
     await fs.promises.rm(passwordFile);
   });
   beforeEach(async () => {
-    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    const sessionToken = await pkAgent.sessionManager.createToken();
     callCredentials = testUtils.createCallCredentials(sessionToken);
   });
 
@@ -133,11 +119,11 @@ describe('Keys client service', () => {
       const keyPair = keyManager.getRootKeyPairPem();
       const nodeId1 = nodeManager.getNodeId();
       // @ts-ignore - get protected property
-      const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
+      const fwdTLSConfig1 = pkAgent.fwdProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
+      const revTLSConfig1 = pkAgent.revProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const serverTLSConfig1 = polykeyAgent.grpcServerClient.tlsConfig;
+      const serverTLSConfig1 = pkAgent.grpcServerClient.tlsConfig;
       const expectedTLSConfig1: TLSConfig = {
         keyPrivatePem: keyPair.privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -153,11 +139,11 @@ describe('Keys client service', () => {
       const key = await getRootKeyPair(emptyMessage, callCredentials);
       const nodeId2 = nodeManager.getNodeId();
       // @ts-ignore - get protected property
-      const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
+      const fwdTLSConfig2 = pkAgent.fwdProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
+      const revTLSConfig2 = pkAgent.revProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const serverTLSConfig2 = polykeyAgent.grpcServerClient.tlsConfig;
+      const serverTLSConfig2 = pkAgent.grpcServerClient.tlsConfig;
       const expectedTLSConfig2: TLSConfig = {
         keyPrivatePem: key.getPrivate(),
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -182,11 +168,11 @@ describe('Keys client service', () => {
       const rootKeyPair1 = keyManager.getRootKeyPairPem();
       const nodeId1 = nodeManager.getNodeId();
       // @ts-ignore - get protected property
-      const fwdTLSConfig1 = polykeyAgent.fwdProxy.tlsConfig;
+      const fwdTLSConfig1 = pkAgent.fwdProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const revTLSConfig1 = polykeyAgent.revProxy.tlsConfig;
+      const revTLSConfig1 = pkAgent.revProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const serverTLSConfig1 = polykeyAgent.grpcServerClient.tlsConfig;
+      const serverTLSConfig1 = pkAgent.grpcServerClient.tlsConfig;
       const expectedTLSConfig1: TLSConfig = {
         keyPrivatePem: rootKeyPair1.privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),
@@ -200,11 +186,11 @@ describe('Keys client service', () => {
       const rootKeyPair2 = keyManager.getRootKeyPairPem();
       const nodeId2 = nodeManager.getNodeId();
       // @ts-ignore - get protected property
-      const fwdTLSConfig2 = polykeyAgent.fwdProxy.tlsConfig;
+      const fwdTLSConfig2 = pkAgent.fwdProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const revTLSConfig2 = polykeyAgent.revProxy.tlsConfig;
+      const revTLSConfig2 = pkAgent.revProxy.tlsConfig;
       // @ts-ignore - get protected property
-      const serverTLSConfig2 = polykeyAgent.grpcServerClient.tlsConfig;
+      const serverTLSConfig2 = pkAgent.grpcServerClient.tlsConfig;
       const expectedTLSConfig2: TLSConfig = {
         keyPrivatePem: rootKeyPair2.privateKey,
         certChainPem: await keyManager.getRootCertChainPem(),

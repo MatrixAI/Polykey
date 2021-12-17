@@ -21,15 +21,15 @@ jest.mock('@/keys/utils', () => ({
     jest.requireActual('@/keys/utils').generateKeyPair,
 }));
 
-describe('GRPCClientClient', () => {
+describe(GRPCClientClient.name, () => {
   const password = 'password';
-  const logger = new Logger('GRPCClientClientTest', LogLevel.WARN, [
+  const logger = new Logger(`${GRPCClientClient.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let client: GRPCClientClient;
   let server: grpc.Server;
   let port: number;
-  let polykeyAgent: PolykeyAgent;
+  let pkAgent: PolykeyAgent;
   let dataDir: string;
   let nodePath: string;
   let nodeId: NodeId;
@@ -39,18 +39,28 @@ describe('GRPCClientClient', () => {
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'node');
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+
+    // THIS IS TESTING FROM THE client side level
+    // this should be its own directory
+    // tests from the client side API
+
+    // tests from the server side API
+
+
+
+
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
       logger: logger,
     });
-    nodeId = polykeyAgent.nodeManager.getNodeId();
+    nodeId = pkAgent.nodeManager.getNodeId();
     [server, port] = await testUtils.openTestClientServer({
-      polykeyAgent,
+      pkAgent,
     });
     const sessionTokenPath = path.join(nodePath, 'sessionToken');
     const session = new Session({ sessionTokenPath, fs, logger });
-    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    const sessionToken = await pkAgent.sessionManager.createToken();
     await session.start({
       sessionToken,
     });
@@ -58,8 +68,8 @@ describe('GRPCClientClient', () => {
   afterAll(async () => {
     await client.destroy();
     await testUtils.closeTestClientServer(server);
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
+    await pkAgent.stop();
+    await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

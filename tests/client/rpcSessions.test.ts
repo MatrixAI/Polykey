@@ -27,7 +27,7 @@ describe('Sessions client service', () => {
   let server: grpc.Server;
   let port: number;
   let dataDir: string;
-  let polykeyAgent: PolykeyAgent;
+  let pkAgent: PolykeyAgent;
   let keyManager: KeyManager;
   let passwordFile: string;
   let callCredentials: grpc.Metadata;
@@ -52,7 +52,7 @@ describe('Sessions client service', () => {
       logger: logger,
     });
 
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
       logger,
@@ -61,7 +61,7 @@ describe('Sessions client service', () => {
     });
 
     [server, port] = await testUtils.openTestClientServer({
-      polykeyAgent,
+      pkAgent,
       secure: false,
     });
 
@@ -71,8 +71,8 @@ describe('Sessions client service', () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
+    await pkAgent.stop();
+    await pkAgent.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -81,30 +81,30 @@ describe('Sessions client service', () => {
     await fs.promises.rm(passwordFile);
   });
   beforeEach(async () => {
-    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    const sessionToken = await pkAgent.sessionManager.createToken();
     callCredentials = testUtils.createCallCredentials(sessionToken);
   });
   test('can request a session', async () => {
     const unlock = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       client,
-      client.sessionsUnlock,
+      client.agentUnlock,
     );
 
     const pCall = unlock(new utilsPB.EmptyMessage(), callCredentials);
     const meta = await pCall.meta;
     const token = clientUtils.decodeAuthToSession(meta);
-    const result = await polykeyAgent.sessionManager.verifyToken(token!);
+    const result = await pkAgent.sessionManager.verifyToken(token!);
     expect(result).toBeTruthy();
   });
   test('can lock all sessions', async () => {
     const lockall = grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       client,
-      client.sessionsLockAll,
+      client.agentLockAll,
     );
 
     await lockall(new utilsPB.EmptyMessage(), callCredentials);
     const prevToken = clientUtils.decodeAuthToSession(callCredentials);
-    const result = await polykeyAgent.sessionManager.verifyToken(prevToken!);
+    const result = await pkAgent.sessionManager.verifyToken(prevToken!);
     expect(result).toBeFalsy();
   });
 });

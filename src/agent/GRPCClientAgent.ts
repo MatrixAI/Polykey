@@ -42,7 +42,6 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
     timeout?: number;
     logger?: Logger;
   }): Promise<GRPCClientAgent> {
-    logger.info(`Creating ${this.name}`);
     const { client, serverCertChain, flowCountInterceptor } =
       await super.createClient({
         clientConstructor: AgentServiceClient,
@@ -65,14 +64,11 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
       flowCountInterceptor,
       logger,
     });
-    logger.info(`Created ${this.name}`);
     return grpcClientAgent;
   }
 
   public async destroy() {
-    this.logger.info(`Destroying ${this.constructor.name}`);
     await super.destroy();
-    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
@@ -157,10 +153,10 @@ class GRPCClientAgent extends GRPCClient<AgentServiceClient> {
   }
 
   @ready(new agentErrors.ErrorAgentClientDestroyed())
-  public vaultsPermisssionsCheck(...args) {
+  public vaultsPermissionsCheck(...args) {
     return grpcUtils.promisifyUnaryCall<vaultsPB.NodePermissionAllowed>(
       this.client,
-      this.client.vaultsPermisssionsCheck,
+      this.client.vaultsPermissionsCheck,
     )(...args);
   }
 

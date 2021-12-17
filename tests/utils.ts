@@ -8,7 +8,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { PolykeyAgent } from '@';
 import { Status } from '@/status';
 import { utils as keysUtils } from '@/keys';
-import { GRPCClientClient, Metadata, utils as clientUtils } from '@/client';
+import { GRPCClientClient, utils as clientUtils } from '@/client';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { sleep } from '@/utils';
 import config from '@/config';

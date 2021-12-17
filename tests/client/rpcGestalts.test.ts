@@ -24,26 +24,12 @@ import * as nodesUtils from '@/nodes/utils';
 import * as testUtils from './utils';
 import TestProvider from '../identities/TestProvider';
 
-// Mocks.
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
   generateDeterministicKeyPair:
     jest.requireActual('@/keys/utils').generateKeyPair,
 }));
 
-/**
- * This test file has been optimised to use only one instance of PolykeyAgent where posible.
- * Setting up the PolykeyAgent has been done in a beforeAll block.
- * Keep this in mind when adding or editing tests.
- * Any side effects need to be undone when the test has completed.
- * Preferably within a `afterEach()` since any cleanup will be skipped inside a failing test.
- *
- * - left over state can cause a test to fail in certain cases.
- * - left over state can cause similar tests to succeed when they should fail.
- * - starting or stopping the agent within tests should be done on a new instance of the polykey agent.
- * - when in doubt test each modified or added test on it's own as well as the whole file.
- * - Looking into adding a way to safely clear each domain's DB information with out breaking modules.
- */
 describe('Client service', () => {
   const password = 'password';
   const logger = new Logger('ClientServerTest', LogLevel.WARN, [
@@ -53,7 +39,7 @@ describe('Client service', () => {
   let server: grpc.Server;
   let port: number;
   let dataDir: string;
-  let polykeyAgent: PolykeyAgent;
+  let pkAgent: PolykeyAgent;
   let keyManager: KeyManager;
   let nodeManager: NodeManager;
   let gestaltGraph: GestaltGraph;
@@ -110,7 +96,7 @@ describe('Client service', () => {
       logger: logger,
     });
 
-    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+    pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath: dataDir,
       logger,
@@ -118,16 +104,16 @@ describe('Client service', () => {
       keyManager,
     });
 
-    nodeManager = polykeyAgent.nodeManager;
-    gestaltGraph = polykeyAgent.gestaltGraph;
-    identitiesManager = polykeyAgent.identitiesManager;
+    nodeManager = pkAgent.nodeManager;
+    gestaltGraph = pkAgent.gestaltGraph;
+    identitiesManager = pkAgent.identitiesManager;
 
     // Adding provider
     const testProvider = new TestProvider();
     identitiesManager.registerProvider(testProvider);
 
     [server, port] = await testUtils.openTestClientServer({
-      polykeyAgent,
+      pkAgent,
       secure: false,
     });
 
@@ -142,8 +128,8 @@ describe('Client service', () => {
     await testUtils.closeTestClientServer(server);
     testUtils.closeSimpleClientClient(client);
 
-    await polykeyAgent.stop();
-    await polykeyAgent.destroy();
+    await pkAgent.stop();
+    await pkAgent.destroy();
 
     await fs.promises.rm(dataDir, {
       force: true,
@@ -152,7 +138,7 @@ describe('Client service', () => {
     await fs.promises.rm(passwordFile);
   });
   beforeEach(async () => {
-    const sessionToken = await polykeyAgent.sessionManager.createToken();
+    const sessionToken = await pkAgent.sessionManager.createToken();
     callCredentials = testUtils.createCallCredentials(sessionToken);
   });
   afterEach(async () => {

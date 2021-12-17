@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import PolykeyAgent from '@/PolykeyAgent';
-import { utils as bootstrapUtils, errors as bootstrapErrors }  from '@/bootstrap';
+import * as bootstrapUtils from '@/bootstrap/utils';
+import * as bootstrapErrors from '@/bootstrap/errors';
 import { utils as keysUtils } from '@/keys';
 import { errors as statusErrors } from '@/status';
 import config from '@/config';
@@ -29,11 +29,8 @@ describe('bootstrap/utils', () => {
     mockedGenerateDeterministicKeyPair.mockRestore();
   });
   let dataDir: string;
-  // let nodePath: string;
   beforeEach(async () => {
     dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
-    // nodePath = path.join(dataDir, 'Node');
-    // await fs.promises.mkdir(nodePath);
   });
   afterEach(async () => {
     await fs.promises.rm(dataDir, {

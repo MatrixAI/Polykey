@@ -13,8 +13,14 @@ import * as keysUtils from '@/keys/utils';
 import * as testUtils from '../utils';
 
 describe('claims/utils', () => {
-  const publicKey: PublicKeyPem = testUtils.globalKeyPairPem.publicKey;
-  const privateKey: PrivateKeyPem = testUtils.globalKeyPairPem.privateKey;
+  let publicKey: PublicKeyPem;
+  let privateKey: PrivateKeyPem;
+  beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    const globalKeyPairPem = keysUtils.keyPairToPem(globalKeyPair);
+    publicKey = globalKeyPairPem.publicKey;
+    privateKey = globalKeyPairPem.privateKey;
+  });
   test('creates a claim (both node and identity)', async () => {
     const nodeClaim = await claimsUtils.createClaim({
       privateKey,

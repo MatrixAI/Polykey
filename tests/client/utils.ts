@@ -16,35 +16,35 @@ import { promisify } from '@/utils';
 import * as grpcUtils from '@/grpc/utils';
 
 async function openTestClientServer({
-  polykeyAgent,
+  pkAgent,
   secure,
 }: {
-  polykeyAgent: PolykeyAgent;
+  pkAgent: PolykeyAgent;
   secure?: boolean;
 }) {
   const _secure = secure ?? true;
   const clientService: IClientServiceServer = createClientService({
-    polykeyAgent,
-    keyManager: polykeyAgent.keyManager,
-    vaultManager: polykeyAgent.vaultManager,
-    nodeManager: polykeyAgent.nodeManager,
-    identitiesManager: polykeyAgent.identitiesManager,
-    gestaltGraph: polykeyAgent.gestaltGraph,
-    sessionManager: polykeyAgent.sessionManager,
-    notificationsManager: polykeyAgent.notificationsManager,
-    discovery: polykeyAgent.discovery,
-    sigchain: polykeyAgent.sigchain,
-    fwdProxy: polykeyAgent.fwdProxy,
-    revProxy: polykeyAgent.revProxy,
-    grpcServerClient: polykeyAgent.grpcServerClient,
-    grpcServerAgent: polykeyAgent.grpcServerAgent,
-    fs: polykeyAgent.fs,
+    pkAgent,
+    keyManager: pkAgent.keyManager,
+    vaultManager: pkAgent.vaultManager,
+    nodeManager: pkAgent.nodeManager,
+    identitiesManager: pkAgent.identitiesManager,
+    gestaltGraph: pkAgent.gestaltGraph,
+    sessionManager: pkAgent.sessionManager,
+    notificationsManager: pkAgent.notificationsManager,
+    discovery: pkAgent.discovery,
+    sigchain: pkAgent.sigchain,
+    fwdProxy: pkAgent.fwdProxy,
+    revProxy: pkAgent.revProxy,
+    grpcServerClient: pkAgent.grpcServerClient,
+    grpcServerAgent: pkAgent.grpcServerAgent,
+    fs: pkAgent.fs,
   });
 
   const callCredentials = _secure
     ? grpcUtils.serverSecureCredentials(
-        polykeyAgent.keyManager.getRootKeyPairPem().privateKey,
-        await polykeyAgent.keyManager.getRootCertChainPem(),
+        pkAgent.keyManager.getRootKeyPairPem().privateKey,
+        await pkAgent.keyManager.getRootCertChainPem(),
       )
     : grpcUtils.serverInsecureCredentials();
 

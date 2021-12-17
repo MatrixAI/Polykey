@@ -55,7 +55,6 @@ const config = {
    */
   defaults: {
     nodePath: getDefaultNodePath(),
-
     statusBase: 'status.json',
     stateBase: 'state',
     stateVersionBase: 'version',

@@ -53,7 +53,7 @@ class CommandLockAll extends CommandPolykey {
         });
         const emptyMessage = new utilsPB.EmptyMessage();
         await binUtils.retryAuthentication(
-          (auth) => pkClient.grpcClient.sessionsLockAll(emptyMessage, auth),
+          (auth) => pkClient.grpcClient.agentLockAll(emptyMessage, auth),
           meta,
         );
         // Destroy local session

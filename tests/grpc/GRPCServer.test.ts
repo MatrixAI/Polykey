@@ -1,26 +1,26 @@
+import type { Authenticate } from '@/client/types';
 import type { Host, Port } from '@/network/types';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
-
 import { GRPCServer, utils as grpcUtils } from '@/grpc';
-import { KeyManager } from '@/keys';
-import { utils as networkUtils } from '@/network';
+import { KeyManager, utils as keysUtils } from '@/keys';
+import { SessionManager } from '@/sessions';
+import * as networkUtils from '@/network/utils';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as grpcErrors from '@/grpc/errors';
-import { SessionManager } from '@/sessions';
 import * as clientUtils from '@/client/utils';
-import * as keysUtils from '@/keys/utils';
-import * as utils from './utils';
+import * as testGrpcUtils from './utils';
+import * as testUtils from '../utils';
 
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+jest
+  .spyOn(keysUtils, 'generateKeyPair')
+  .mockResolvedValue(testUtils.globalKeyPair);
+jest
+  .spyOn(keysUtils, 'generateDeterministicKeyPair')
+  .mockResolvedValue(testUtils.globalKeyPair);
 
 describe('GRPCServer', () => {
   const password = 'password';
@@ -28,7 +28,7 @@ describe('GRPCServer', () => {
   let keyManager: KeyManager;
   let db: DB;
   let sessionManager: SessionManager;
-  let authenticate: clientUtils.Authenticate;
+  let authenticate: Authenticate;
   const logger = new Logger('GRPCServer Test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
@@ -99,8 +99,8 @@ describe('GRPCServer', () => {
     await server.start({
       services: [
         [
-          utils.TestServiceService,
-          utils.createTestService({ authenticate, logger }),
+          testGrpcUtils.TestServiceService,
+          testGrpcUtils.createTestService({ authenticate, logger }),
         ],
       ],
       host: '127.0.0.1' as Host,
@@ -128,8 +128,8 @@ describe('GRPCServer', () => {
     await server.start({
       services: [
         [
-          utils.TestServiceService,
-          utils.createTestService({ authenticate, logger }),
+          testGrpcUtils.TestServiceService,
+          testGrpcUtils.createTestService({ authenticate, logger }),
         ],
       ],
       host: '127.0.0.1' as Host,
@@ -147,7 +147,7 @@ describe('GRPCServer', () => {
       clientKeyPair.privateKey,
       31536000,
     );
-    const client = await utils.openTestClientSecure(
+    const client = await testGrpcUtils.openTestClientSecure(
       nodeIdServer,
       server.port,
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
@@ -163,7 +163,7 @@ describe('GRPCServer', () => {
     expect(pCall.call.getPeer()).toBe(`dns:127.0.0.1:${server.port}`);
     const m_ = await pCall;
     expect(m_.getChallenge()).toBe(m.getChallenge());
-    utils.closeTestClientSecure(client);
+    testGrpcUtils.closeTestClientSecure(client);
     await server.stop();
   });
   test('changing the private key and certificate on the fly', async () => {
@@ -180,8 +180,8 @@ describe('GRPCServer', () => {
     await server.start({
       services: [
         [
-          utils.TestServiceService,
-          utils.createTestService({ authenticate, logger }),
+          testGrpcUtils.TestServiceService,
+          testGrpcUtils.createTestService({ authenticate, logger }),
         ],
       ],
       host: '127.0.0.1' as Host,
@@ -200,7 +200,7 @@ describe('GRPCServer', () => {
     );
     // First client connection
     const nodeIdServer1 = networkUtils.certNodeId(serverCert1);
-    const client1 = await utils.openTestClientSecure(
+    const client1 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer1,
       server.port,
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
@@ -237,7 +237,7 @@ describe('GRPCServer', () => {
     expect(m2_.getChallenge()).toBe(m2.getChallenge());
     // Second client connection
     const nodeIdServer2 = networkUtils.certNodeId(serverCert2);
-    const client2 = await utils.openTestClientSecure(
+    const client2 = await testGrpcUtils.openTestClientSecure(
       nodeIdServer2,
       server.port,
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
@@ -253,8 +253,8 @@ describe('GRPCServer', () => {
     expect(pCall3.call.getPeer()).toBe(`dns:127.0.0.1:${server.port}`);
     const m3_ = await pCall3;
     expect(m3_.getChallenge()).toBe(m3.getChallenge());
-    utils.closeTestClientSecure(client1);
-    utils.closeTestClientSecure(client2);
+    testGrpcUtils.closeTestClientSecure(client1);
+    testGrpcUtils.closeTestClientSecure(client2);
     await server.stop();
   });
   test('authenticated commands acquire a token', async () => {
@@ -271,8 +271,8 @@ describe('GRPCServer', () => {
     await server.start({
       services: [
         [
-          utils.TestServiceService,
-          utils.createTestService({ authenticate, logger }),
+          testGrpcUtils.TestServiceService,
+          testGrpcUtils.createTestService({ authenticate, logger }),
         ],
       ],
       host: '127.0.0.1' as Host,
@@ -290,7 +290,7 @@ describe('GRPCServer', () => {
       clientKeyPair.privateKey,
       31536000,
     );
-    const client = await utils.openTestClientSecure(
+    const client = await testGrpcUtils.openTestClientSecure(
       nodeIdServer,
       server.port,
       keysUtils.privateKeyToPem(clientKeyPair.privateKey),
@@ -310,7 +310,7 @@ describe('GRPCServer', () => {
     expect(typeof token).toBe('string');
     expect(token!.length > 0).toBe(true);
     expect(await sessionManager.verifyToken(token!)).toBe(true);
-    utils.closeTestClientSecure(client);
+    testGrpcUtils.closeTestClientSecure(client);
     await server.stop();
   });
 });

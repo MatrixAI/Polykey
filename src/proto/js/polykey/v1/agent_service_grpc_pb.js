@@ -209,8 +209,8 @@ vaultsGitInfoGet: {
     responseSerialize: serialize_polykey_v1_vaults_Vault,
     responseDeserialize: deserialize_polykey_v1_vaults_Vault,
   },
-  vaultsPermisssionsCheck: {
-    path: '/polykey.v1.AgentService/VaultsPermisssionsCheck',
+  vaultsPermissionsCheck: {
+    path: '/polykey.v1.AgentService/VaultsPermissionsCheck',
     requestStream: false,
     responseStream: false,
     requestType: polykey_v1_vaults_vaults_pb.NodePermission,

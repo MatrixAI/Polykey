@@ -12,8 +12,8 @@ import { ACL, errors as aclErrors } from '@/acl';
 import { utils as keysUtils } from '@/keys';
 import { utils as vaultsUtils } from '@/vaults';
 
-describe('ACL', () => {
-  const logger = new Logger(`${ACL.name} Test`, LogLevel.WARN, [
+describe(ACL.name, () => {
+  const logger = new Logger(`${ACL.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let dataDir: string;

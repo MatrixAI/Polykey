@@ -49,7 +49,6 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
     timeout?: number;
     logger?: Logger;
   }): Promise<GRPCClientClient> {
-    logger.info(`Creating ${this.name}`);
     const interceptors: Array<Interceptor> = [];
     if (session != null) {
       interceptors.push(clientUtils.sessionInterceptor(session));
@@ -77,14 +76,11 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
       flowCountInterceptor,
       logger,
     });
-    logger.info(`Created ${this.name}`);
     return grpcClientClient;
   }
 
   public async destroy() {
-    this.logger.info(`Destroying ${this.constructor.name}`);
     await super.destroy();
-    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
@@ -104,18 +100,18 @@ class GRPCClientClient extends GRPCClient<ClientServiceClient> {
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public sessionsUnlock(...args) {
+  public agentUnlock(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.client.sessionsUnlock,
+      this.client.agentUnlock,
     )(...args);
   }
 
   @ready(new clientErrors.ErrorClientClientDestroyed())
-  public sessionsLockAll(...args) {
+  public agentLockAll(...args) {
     return grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(
       this.client,
-      this.client.sessionsLockAll,
+      this.client.agentLockAll,
     )(...args);
   }
 

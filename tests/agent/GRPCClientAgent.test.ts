@@ -28,9 +28,9 @@ import * as testAgentUtils from './utils';
 import * as testUtils from '../utils';
 import TestNodeConnection from '../nodes/TestNodeConnection';
 
-describe('GRPCClientAgent', () => {
+describe(GRPCClientAgent.name, () => {
   const password = 'password';
-  const logger = new Logger(`${GRPCClientAgent.name} Test`, LogLevel.WARN, [
+  const logger = new Logger(`${GRPCClientAgent.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   const node1: NodeInfo = {
@@ -199,10 +199,10 @@ describe('GRPCClientAgent', () => {
     const vaultPermMessage = new vaultsPB.NodePermission();
     vaultPermMessage.setNodeId(node1.id);
     // VaultPermMessage.setVaultId(vault.vaultId);
-    const response = await client.vaultsPermisssionsCheck(vaultPermMessage);
+    const response = await client.vaultsPermissionsCheck(vaultPermMessage);
     expect(response.getPermission()).toBeFalsy();
     // Await vaultManager.setVaultPermissions('12345' as NodeId, vault.vaultId);
-    const response2 = await client.vaultsPermisssionsCheck(vaultPermMessage);
+    const response2 = await client.vaultsPermissionsCheck(vaultPermMessage);
     expect(response2.getPermission()).toBeTruthy();
     // Await vaultManager.deleteVault(vault.vaultId);
   });

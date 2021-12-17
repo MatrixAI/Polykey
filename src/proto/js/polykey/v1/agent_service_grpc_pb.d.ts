@@ -16,7 +16,7 @@ interface IAgentServiceService extends grpc.ServiceDefinition<grpc.UntypedServic
     vaultsGitInfoGet: IAgentServiceService_IVaultsGitInfoGet;
     vaultsGitPackGet: IAgentServiceService_IVaultsGitPackGet;
     vaultsScan: IAgentServiceService_IVaultsScan;
-    vaultsPermisssionsCheck: IAgentServiceService_IVaultsPermisssionsCheck;
+    vaultsPermissionsCheck: IAgentServiceService_IVaultsPermissionsCheck;
     nodesClosestLocalNodesGet: IAgentServiceService_INodesClosestLocalNodesGet;
     nodesClaimsGet: IAgentServiceService_INodesClaimsGet;
     nodesChainDataGet: IAgentServiceService_INodesChainDataGet;
@@ -61,8 +61,8 @@ interface IAgentServiceService_IVaultsScan extends grpc.MethodDefinition<polykey
     responseSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.Vault>;
     responseDeserialize: grpc.deserialize<polykey_v1_vaults_vaults_pb.Vault>;
 }
-interface IAgentServiceService_IVaultsPermisssionsCheck extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.NodePermission, polykey_v1_vaults_vaults_pb.NodePermissionAllowed> {
-    path: "/polykey.v1.AgentService/VaultsPermisssionsCheck";
+interface IAgentServiceService_IVaultsPermissionsCheck extends grpc.MethodDefinition<polykey_v1_vaults_vaults_pb.NodePermission, polykey_v1_vaults_vaults_pb.NodePermissionAllowed> {
+    path: "/polykey.v1.AgentService/VaultsPermissionsCheck";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<polykey_v1_vaults_vaults_pb.NodePermission>;
@@ -132,7 +132,7 @@ export interface IAgentServiceServer extends grpc.UntypedServiceImplementation {
     vaultsGitInfoGet: grpc.handleServerStreamingCall<polykey_v1_vaults_vaults_pb.Vault, polykey_v1_vaults_vaults_pb.PackChunk>;
     vaultsGitPackGet: grpc.handleBidiStreamingCall<polykey_v1_vaults_vaults_pb.PackChunk, polykey_v1_vaults_vaults_pb.PackChunk>;
     vaultsScan: grpc.handleServerStreamingCall<polykey_v1_nodes_nodes_pb.Node, polykey_v1_vaults_vaults_pb.Vault>;
-    vaultsPermisssionsCheck: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.NodePermission, polykey_v1_vaults_vaults_pb.NodePermissionAllowed>;
+    vaultsPermissionsCheck: grpc.handleUnaryCall<polykey_v1_vaults_vaults_pb.NodePermission, polykey_v1_vaults_vaults_pb.NodePermissionAllowed>;
     nodesClosestLocalNodesGet: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.Node, polykey_v1_nodes_nodes_pb.NodeTable>;
     nodesClaimsGet: grpc.handleUnaryCall<polykey_v1_nodes_nodes_pb.ClaimType, polykey_v1_nodes_nodes_pb.Claims>;
     nodesChainDataGet: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EmptyMessage, polykey_v1_nodes_nodes_pb.ChainData>;
@@ -152,9 +152,9 @@ export interface IAgentServiceClient {
     vaultsGitPackGet(metadata: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<polykey_v1_vaults_vaults_pb.PackChunk, polykey_v1_vaults_vaults_pb.PackChunk>;
     vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Vault>;
     vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Vault>;
-    vaultsPermisssionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
-    vaultsPermisssionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
-    vaultsPermisssionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
+    vaultsPermissionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
+    vaultsPermissionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
+    vaultsPermissionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
     nodesClosestLocalNodesGet(request: polykey_v1_nodes_nodes_pb.Node, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeTable) => void): grpc.ClientUnaryCall;
     nodesClosestLocalNodesGet(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeTable) => void): grpc.ClientUnaryCall;
     nodesClosestLocalNodesGet(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeTable) => void): grpc.ClientUnaryCall;
@@ -186,9 +186,9 @@ export class AgentServiceClient extends grpc.Client implements IAgentServiceClie
     public vaultsGitPackGet(metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientDuplexStream<polykey_v1_vaults_vaults_pb.PackChunk, polykey_v1_vaults_vaults_pb.PackChunk>;
     public vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Vault>;
     public vaultsScan(request: polykey_v1_nodes_nodes_pb.Node, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_vaults_vaults_pb.Vault>;
-    public vaultsPermisssionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
-    public vaultsPermisssionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
-    public vaultsPermisssionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
+    public vaultsPermissionsCheck(request: polykey_v1_vaults_vaults_pb.NodePermission, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_vaults_vaults_pb.NodePermissionAllowed) => void): grpc.ClientUnaryCall;
     public nodesClosestLocalNodesGet(request: polykey_v1_nodes_nodes_pb.Node, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeTable) => void): grpc.ClientUnaryCall;
     public nodesClosestLocalNodesGet(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeTable) => void): grpc.ClientUnaryCall;
     public nodesClosestLocalNodesGet(request: polykey_v1_nodes_nodes_pb.Node, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_nodes_nodes_pb.NodeTable) => void): grpc.ClientUnaryCall;
