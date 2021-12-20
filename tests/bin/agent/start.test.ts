@@ -8,6 +8,7 @@ import { Status, errors as statusErrors } from '@/status';
 import config from '@/config';
 import * as nodesUtils from '@/nodes/utils';
 import * as testBinUtils from '../utils';
+import * as testUtils from '../../utils';
 
 describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
@@ -571,12 +572,8 @@ describe('start', () => {
     global.defaultTimeout * 2,
   );
   describe('seed nodes', () => {
-    let seedNodeClose;
     const connTimeoutTime = 500;
-    let seedNodeId;
     const seedNodeHost = '127.0.0.1';
-    let seedNodePort;
-
     const dummySeed1Id = nodesUtils.makeNodeId(
       'vrsc24a1er424epq77dtoveo93meij0pc8ig4uvs9jbeld78n9nl0',
     );
@@ -587,26 +584,27 @@ describe('start', () => {
     );
     const dummySeed2Host = '128.0.0.1';
     const dummySeed2Port = 1314;
-
+    let globalAgentDir;
+    let globalAgentClose;
+    let seedNodeId;
+    let seedNodePort;
     beforeAll(async () => {
-      seedNodeClose = await testBinUtils.pkAgent([
-        '--connection-timeout',
-        connTimeoutTime.toString(),
-        '--ingress-host',
-        seedNodeHost,
-      ]);
+      ({
+        globalAgentDir,
+        globalAgentClose
+      } = await testUtils.setupGlobalAgent(logger));
       const status = new Status({
-        statusPath: path.join(global.binAgentDir, config.defaults.statusBase),
+        statusPath: path.join(globalAgentDir, config.defaults.statusBase),
         fs,
         logger,
       });
-      const statusInfo = await status.waitFor('LIVE', 5000);
+      const statusInfo = await status.waitFor('LIVE');
       // Get the dynamic seed node components
       seedNodeId = statusInfo.data.nodeId;
       seedNodePort = statusInfo.data.ingressPort;
     }, global.maxTimeout);
     afterAll(async () => {
-      await seedNodeClose();
+      await globalAgentClose();
     });
 
     test(
