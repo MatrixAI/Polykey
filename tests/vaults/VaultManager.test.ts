@@ -818,7 +818,7 @@ describe('VaultManager', () => {
           await vaultOps.addSecret(vault, name, content);
         }
         await nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
+          host: targetHost,
           port: targetPort,
         } as NodeAddress);
         await nodeManager.getConnectionToNode(targetNodeId);

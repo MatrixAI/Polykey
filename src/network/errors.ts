@@ -83,6 +83,8 @@ class ErrorCertChainKeyInvalid extends ErrorCertChain {}
  */
 class ErrorCertChainSignatureInvalid extends ErrorCertChain {}
 
+class ErrorHostnameResolutionFailed extends ErrorNetwork {}
+
 export {
   ErrorNetwork,
   ErrorForwardProxyNotStarted,
@@ -110,4 +112,5 @@ export {
   ErrorCertChainNameInvalid,
   ErrorCertChainKeyInvalid,
   ErrorCertChainSignatureInvalid,
+  ErrorHostnameResolutionFailed,
 };

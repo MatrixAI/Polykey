@@ -1,6 +1,11 @@
 import type { IdentityId, ProviderId } from '../../identities/types';
+import type { Host, Hostname, Port } from '../../network/types';
+import type { NodeAddress, NodeId, NodeMapping } from '../../nodes/types';
 import commander from 'commander';
 import * as nodesUtils from '../../nodes/utils';
+import * as networkUtils from '../../network/utils';
+import config from '../../config';
+import { never } from '../../utils';
 
 function parseNumber(v: string): number {
   const num = parseInt(v);
@@ -56,4 +61,96 @@ function parseIdentityString(identityString: string): {
   return { providerId, identityId };
 }
 
-export { parseNumber, parseSecretPath, parseGestaltId };
+/**
+ * Acquires the default seed nodes from src/config.ts.
+ */
+function getDefaultSeedNodes(network: string): NodeMapping {
+  const seedNodes: NodeMapping = {};
+  let source;
+  switch (network) {
+    case 'testnet':
+      source = config.defaults.network.testnet;
+      break;
+    case 'mainnet':
+      source = config.defaults.network.mainnet;
+      break;
+    default:
+      never();
+  }
+  for (const id in source) {
+    const seedNodeId = id as NodeId;
+    const seedNodeAddress: NodeAddress = {
+      host: source[seedNodeId].host as Host | Hostname,
+      port: source[seedNodeId].port as Port,
+    };
+    seedNodes[seedNodeId] = seedNodeAddress;
+  }
+  return seedNodes;
+}
+
+/**
+ * Seed nodes expected to be of form 'nodeId1@host:port;nodeId2@host:port;...'
+ * By default, any specified seed nodes (in CLI option, or environment variable)
+ * will overwrite the default nodes in src/config.ts.
+ * Special flag '<seed-nodes>' in the content indicates that the default seed
+ * nodes should be added to the starting seed nodes instead of being overwritten.
+ */
+function parseSeedNodes(rawSeedNodes: string): [NodeMapping, boolean] {
+  const seedNodeMappings: NodeMapping = {};
+  let defaults = false;
+  // If specifically set no seed nodes, then ensure we start with none
+  if (rawSeedNodes === '') return [seedNodeMappings, defaults];
+  const semicolonSeedNodes = rawSeedNodes.split(';');
+  for (const rawSeedNode of semicolonSeedNodes) {
+    // Empty string will occur if there's an extraneous ';' (e.g. at end of env)
+    if (rawSeedNode === '') continue;
+    // Append the default seed nodes if we encounter the special flag
+    if (rawSeedNode === '<default>') {
+      defaults = true;
+      continue;
+    }
+    const idHostPort = rawSeedNode.split(/[@:]/);
+    if (idHostPort.length !== 3) {
+      throw new commander.InvalidOptionArgumentError(
+        `${rawSeedNode} is not of format 'nodeId@host:port'`,
+      );
+    }
+    if (!nodesUtils.isNodeId(idHostPort[0])) {
+      throw new commander.InvalidOptionArgumentError(
+        `${idHostPort[0]} is not a valid node ID`,
+      );
+    }
+    if (!networkUtils.isValidHostname(idHostPort[1])) {
+      throw new commander.InvalidOptionArgumentError(
+        `${idHostPort[1]} is not a valid hostname`,
+      );
+    }
+    const port = parseNumber(idHostPort[2]);
+    const seedNodeId = idHostPort[0] as NodeId;
+    const seedNodeAddress: NodeAddress = {
+      host: idHostPort[1] as Host | Hostname,
+      port: port as Port,
+    };
+    seedNodeMappings[seedNodeId] = seedNodeAddress;
+  }
+  return [seedNodeMappings, defaults];
+}
+
+function parseNetwork(network: string): NodeMapping {
+  // Getting a list of network names from the config defaults
+  const networks = config.defaults.network;
+  const validNetworks = Object.keys(networks);
+
+  // Checking if the network name is valid.
+  if (validNetworks.includes(network)) return getDefaultSeedNodes(network);
+  throw new commander.InvalidArgumentError(`${network} is not a valid network`);
+}
+
+export {
+  parseNumber,
+  parseSecretPath,
+  parseGestaltId,
+  getDefaultSeedNodes,
+  parseSeedNodes,
+  parseNetwork,
+};

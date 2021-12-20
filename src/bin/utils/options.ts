@@ -4,7 +4,7 @@
  * @module
  */
 import commander from 'commander';
-import * as binParsers from './parsers';
+import * as binParsers from '../utils/parsers';
 import config from '../../config';
 
 /**
@@ -83,6 +83,13 @@ const ingressPort = new commander.Option(
   .env('PK_INGRESS_PORT')
   .default(config.defaults.networkConfig.ingressPort);
 
+const connTimeoutTime = new commander.Option(
+  '--connection-timeout <ms>',
+  'Timeout value for connection establishment between nodes',
+)
+  .argParser(binParsers.parseNumber)
+  .default(config.defaults.forwardProxyConfig.connTimeoutTime);
+
 const passwordFile = new commander.Option(
   '-pf, --password-file <path>',
   'Path to Password',
@@ -118,6 +125,22 @@ const rootKeyPairBits = new commander.Option(
   'Bit size of root key pair',
 ).argParser(binParsers.parseNumber);
 
+const seedNodes = new commander.Option(
+  '-sn, --seed-nodes [nodeId1@host:port;nodeId2@host:port;...]',
+  'Seed node address mappings',
+)
+  .argParser(binParsers.parseSeedNodes)
+  .env('PK_SEED_NODES')
+  .default([{}, true]);
+
+const network = new commander.Option(
+  '-n --network <network>',
+  'Setting the desired default network.',
+)
+  .argParser(binParsers.parseNetwork)
+  .env('PK_NETWORK')
+  .default(config.defaults.network.mainnet);
+
 export {
   nodePath,
   format,
@@ -128,11 +151,14 @@ export {
   clientPort,
   ingressHost,
   ingressPort,
+  connTimeoutTime,
+  recoveryCodeFile,
   passwordFile,
   passwordNewFile,
-  recoveryCodeFile,
   background,
   backgroundOutFile,
   backgroundErrFile,
   rootKeyPairBits,
+  seedNodes,
+  network,
 };

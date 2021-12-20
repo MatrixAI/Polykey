@@ -1,13 +1,14 @@
 import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
-import type { Host, Port, Address, NetworkMessage } from './types';
+import type { Host, Hostname, Port, Address, NetworkMessage } from './types';
 import type { Certificate, PublicKey } from '../keys/types';
 import type { NodeId } from '../nodes/types';
 
 import { Buffer } from 'buffer';
+import dns from 'dns';
 import { IPv4, IPv6, Validator } from 'ip-num';
 import * as networkErrors from './errors';
-import { isEmptyObject } from '../utils';
+import { isEmptyObject, promisify } from '../utils';
 import { utils as keysUtils } from '../keys';
 
 const pingBuffer = serializeNetworkMessage({
@@ -51,6 +52,46 @@ function parseAddress(address: string): [Host, Port] {
   const dstHost = dstHostMatch[1] ?? dstHostMatch[2];
   const dstPort = url.port === '' ? 80 : parseInt(url.port);
   return [dstHost as Host, dstPort as Port];
+}
+
+/**
+ * Validates that a provided host address is a valid IPv4 or IPv6 address.
+ */
+function isValidHost(host: string): boolean {
+  const [isIPv4] = Validator.isValidIPv4String(host);
+  const [isIPv6] = Validator.isValidIPv6String(host);
+  return isIPv4 || isIPv6;
+}
+
+/**
+ * Validates that a provided hostname is valid, as per RFC 1123.
+ */
+function isValidHostname(hostname: string): boolean {
+  return hostname.match(
+    /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/,
+  )
+    ? true
+    : false;
+}
+
+/**
+ * Resolves a provided hostname to its respective IP address (type Host).
+ */
+async function resolveHost(host: Host | Hostname): Promise<Host> {
+  // If already IPv4/IPv6 address, return it
+  if (isValidHost(host)) {
+    return host as Host;
+  }
+  const lookup = promisify(dns.lookup).bind(dns);
+  let resolvedHost;
+  try {
+    // Resolve the hostname and get the IPv4 address
+    resolvedHost = await lookup(host, 4);
+  } catch (e) {
+    throw new networkErrors.ErrorHostnameResolutionFailed(e.message);
+  }
+  // Returns an array of [ resolved address, family (4 or 6) ]
+  return resolvedHost[0] as Host;
 }
 
 /**
@@ -317,6 +358,9 @@ export {
   toAuthToken,
   buildAddress,
   parseAddress,
+  isValidHost,
+  isValidHostname,
+  resolveHost,
   resolvesZeroIP,
   serializeNetworkMessage,
   unserializeNetworkMessage,

@@ -1,6 +1,5 @@
 import type { NodeData, NodeId } from './types';
 
-import { Validator } from 'ip-num';
 import { ErrorInvalidNodeId } from './errors';
 import { fromMultibase, isIdString, makeIdString } from '../GenericIdTypes';
 
@@ -67,15 +66,6 @@ function makeNodeId(arg: any): NodeId {
 }
 
 /**
- * Validates that a provided host address is a valid IPv4 or IPv6 address.
- */
-function isValidHost(host: string): boolean {
-  const [isIPv4] = Validator.isValidIPv4String(host);
-  const [isIPv6] = Validator.isValidIPv6String(host);
-  return isIPv4 || isIPv6;
-}
-
-/**
  * Node ID to an array of 8-bit unsigned ints
  */
 function nodeIdToU8(id: string): Uint8Array {
@@ -103,7 +93,6 @@ export {
   calculateBucketIndex,
   isNodeId,
   makeNodeId,
-  isValidHost,
   nodeIdToU8,
   sortByDistance,
 };

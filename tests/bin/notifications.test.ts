@@ -64,7 +64,7 @@ describe('CLI Notifications', () => {
     senderNodeId = senderPolykeyAgent.nodeManager.getNodeId();
     receiverNodeId = receiverPolykeyAgent.nodeManager.getNodeId();
     await senderPolykeyAgent.nodeManager.setNode(receiverNodeId, {
-      ip: receiverPolykeyAgent.revProxy.ingressHost,
+      host: receiverPolykeyAgent.revProxy.ingressHost,
       port: receiverPolykeyAgent.revProxy.ingressPort,
     } as NodeAddress);
 

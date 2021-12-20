@@ -14,7 +14,6 @@ import type { FileSystem } from '../types';
 
 import type * as grpc from '@grpc/grpc-js';
 import type { IClientServiceServer } from '../proto/js/polykey/v1/client_service_grpc_pb';
-import { promisify } from 'util';
 import createStatusRPC from './rpcStatus';
 import createSessionsRPC from './rpcSessions';
 import createVaultRPC from './rpcVaults';
@@ -25,7 +24,6 @@ import createIdentitiesRPC from './rpcIdentities';
 import createNotificationsRPC from './rpcNotifications';
 import * as clientUtils from './utils';
 import * as grpcUtils from '../grpc/utils';
-import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import { ClientServiceService } from '../proto/js/polykey/v1/client_service_grpc_pb';
 
@@ -114,17 +112,6 @@ function createClientService({
       notificationsManager,
       authenticate,
     }),
-    nodesList: async (
-      call: grpc.ServerWritableStream<utilsPB.EmptyMessage, nodesPB.Node>,
-    ): Promise<void> => {
-      // Call.request // PROCESS THE REQEUST MESSAGE
-      const nodeMessage = new nodesPB.Node();
-      nodeMessage.setNodeId('some node name');
-      const write = promisify(call.write).bind(call);
-      await write(nodeMessage);
-      call.end();
-      return;
-    },
     agentStop: async (
       call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, utilsPB.EmptyMessage>,
       callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,

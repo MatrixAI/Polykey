@@ -67,7 +67,7 @@ async function addRemoteDetails(
 ) {
   // Add remote node's details to local node
   await localNode.nodeManager.setNode(remoteNode.nodeManager.getNodeId(), {
-    ip: remoteNode.revProxy.ingressHost,
+    host: remoteNode.revProxy.ingressHost,
     port: remoteNode.revProxy.ingressPort,
   } as NodeAddress);
 }

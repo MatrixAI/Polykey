@@ -290,7 +290,7 @@ describe('GRPC agent', () => {
         lock: new Mutex(),
       });
       await nodeManager.setNode(nodeIdY, {
-        ip: 'unnecessary' as Host,
+        host: 'unnecessary' as Host,
         port: 0 as Port,
       } as NodeAddress);
     });

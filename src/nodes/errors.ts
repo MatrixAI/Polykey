@@ -29,6 +29,9 @@ class ErrorNodeGraphInvalidBucketIndex extends ErrorNodes {}
 class ErrorNodeConnectionRunning extends ErrorNodes {}
 
 class ErrorNodeConnectionNotRunning extends ErrorNodes {}
+class ErrorNodeGraphOversizedBucket extends ErrorNodes {
+  description: 'Bucket invalidly contains more nodes than capacity';
+}
 
 class ErrorNodeConnectionDestroyed extends ErrorNodes {}
 
@@ -67,6 +70,7 @@ export {
   ErrorNodeGraphInvalidBucketIndex,
   ErrorNodeConnectionRunning,
   ErrorNodeConnectionNotRunning,
+  ErrorNodeGraphOversizedBucket,
   ErrorNodeConnectionDestroyed,
   ErrorNodeConnectionTimeout,
   ErrorNodeConnectionNotExist,

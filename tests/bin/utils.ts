@@ -43,6 +43,7 @@ async function pkStdio(
 }> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   // Parse the arguments of process.stdout.write and process.stderr.write
   const parseArgs = (args) => {
     const data = args[0];
@@ -131,6 +132,7 @@ async function pkExec(
     ...process.env,
     ...env,
   };
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -195,6 +197,7 @@ async function pkSpawn(
     ...process.env,
     ...env,
   };
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );
@@ -257,6 +260,7 @@ async function pkExpect({
     ...process.env,
     ...env,
   };
+  env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
   );

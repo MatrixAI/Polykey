@@ -7,10 +7,9 @@ import type * as grpc from '@grpc/grpc-js';
 import type * as utils from '../client/utils';
 import * as utilsPB from '../proto/js/polykey/v1/utils/utils_pb';
 import * as nodesPB from '../proto/js/polykey/v1/nodes/nodes_pb';
-import * as nodesUtils from '../nodes/utils';
+import { utils as nodesUtils, errors as nodesErrors } from '../nodes';
 import * as grpcUtils from '../grpc/utils';
-import * as nodesErrors from '../nodes/errors';
-import { makeNodeId } from '../nodes/utils';
+import * as networkUtils from '../network/utils';
 
 const createNodesRPC = ({
   nodeManager,
@@ -40,16 +39,19 @@ const createNodesRPC = ({
         if (!validNodeId) {
           throw new nodesErrors.ErrorInvalidNodeId();
         }
-        const validHost = nodesUtils.isValidHost(
+        const validHost = networkUtils.isValidHost(
           call.request.getAddress()!.getHost(),
         );
         if (!validHost) {
           throw new nodesErrors.ErrorInvalidHost();
         }
-        await nodeManager.setNode(makeNodeId(call.request.getNodeId()), {
-          ip: call.request.getAddress()!.getHost(),
-          port: call.request.getAddress()!.getPort(),
-        } as NodeAddress);
+        await nodeManager.setNode(
+          nodesUtils.makeNodeId(call.request.getNodeId()),
+          {
+            host: call.request.getAddress()!.getHost(),
+            port: call.request.getAddress()!.getPort(),
+          } as NodeAddress,
+        );
         callback(null, response);
         return;
       } catch (err) {
@@ -70,7 +72,7 @@ const createNodesRPC = ({
         call.sendMetadata(metadata);
 
         const status = await nodeManager.pingNode(
-          makeNodeId(call.request.getNodeId()),
+          nodesUtils.makeNodeId(call.request.getNodeId()),
         );
         response.setSuccess(status);
         callback(null, response);
@@ -94,7 +96,7 @@ const createNodesRPC = ({
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
 
-        const remoteNodeId = makeNodeId(call.request.getNodeId());
+        const remoteNodeId = nodesUtils.makeNodeId(call.request.getNodeId());
         const gestaltInvite = await notificationsManager.findGestaltInvite(
           remoteNodeId,
         );
@@ -133,12 +135,12 @@ const createNodesRPC = ({
         const metadata = await authenticate(call.metadata);
         call.sendMetadata(metadata);
 
-        const nodeId = makeNodeId(call.request.getNodeId());
+        const nodeId = nodesUtils.makeNodeId(call.request.getNodeId());
         const address = await nodeManager.findNode(nodeId);
         response
           .setNodeId(nodeId)
           .setAddress(
-            new nodesPB.Address().setHost(address.ip).setPort(address.port),
+            new nodesPB.Address().setHost(address.host).setPort(address.port),
           );
         callback(null, response);
         return;

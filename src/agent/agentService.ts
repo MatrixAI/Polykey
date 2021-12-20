@@ -195,7 +195,7 @@ function createAgentService({
         );
         for (const node of closestNodes) {
           const addressMessage = new nodesPB.Address();
-          addressMessage.setHost(node.address.ip);
+          addressMessage.setHost(node.address.host);
           addressMessage.setPort(node.address.port);
           // Add the node to the response's map (mapping of node ID -> node address)
           response.getNodeTableMap().set(node.id, addressMessage);

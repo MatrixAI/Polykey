@@ -104,7 +104,7 @@ describe('CLI Nodes', () => {
   describe('commandClaimNode', () => {
     beforeAll(async () => {
       await remoteOnline.nodeManager.setNode(keynodeId, {
-        ip: polykeyAgent.revProxy.ingressHost,
+        host: polykeyAgent.revProxy.ingressHost,
         port: polykeyAgent.revProxy.ingressPort,
       } as NodeAddress);
       await polykeyAgent.acl.setNodePerm(remoteOnlineNodeId, {
@@ -353,7 +353,7 @@ describe('CLI Nodes', () => {
       // Checking if node was added.
       const res = await polykeyAgent.nodeManager.getNode(validNodeId);
       expect(res).toBeTruthy();
-      expect(res!.ip).toEqual(validHost);
+      expect(res!.host).toEqual(validHost);
       expect(res!.port).toEqual(port);
     });
     test(

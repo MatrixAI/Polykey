@@ -309,7 +309,7 @@ describe('CLI vaults', () => {
         const targetHost = targetPolykeyAgent.revProxy.ingressHost;
         const targetPort = targetPolykeyAgent.revProxy.ingressPort;
         await polykeyAgent.nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
+          host: targetHost,
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
@@ -385,7 +385,7 @@ describe('CLI vaults', () => {
         const targetHost = targetPolykeyAgent.revProxy.ingressHost;
         const targetPort = targetPolykeyAgent.revProxy.ingressPort;
         await polykeyAgent.nodeManager.setNode(targetNodeId, {
-          ip: targetHost,
+          host: targetHost,
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
@@ -457,7 +457,7 @@ describe('CLI vaults', () => {
       const targetHost = targetPolykeyAgent.revProxy.ingressHost;
       const targetPort = targetPolykeyAgent.revProxy.ingressPort;
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
-        ip: targetHost,
+        host: targetHost,
         port: targetPort,
       });
       // Client agent: Start sending hole-punching packets to the target
