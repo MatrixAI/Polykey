@@ -6,26 +6,24 @@ import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { GRPCClientClient } from '@/client';
-import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import { PolykeyAgent } from '@';
+import { utils as keysUtils } from '@/keys';
 import { Status } from '@/status';
-import * as binProcessors from '@/bin/utils/processors';
 import { Session } from '@/sessions';
-import config from '@/config';
 import { errors as clientErrors } from '@/client';
-import * as testUtils from './utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import config from '@/config';
+import * as binProcessors from '@/bin/utils/processors';
+import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
+import * as testClientUtils from './utils';
+import * as testUtils from '../utils';
 
 describe(GRPCClientClient.name, () => {
   const password = 'password';
   const logger = new Logger(`${GRPCClientClient.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let client: GRPCClientClient;
   let server: grpc.Server;
   let port: number;
@@ -35,27 +33,24 @@ describe(GRPCClientClient.name, () => {
   let nodeId: NodeId;
   let session: Session;
   beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
     nodePath = path.join(dataDir, 'node');
-
-    // THIS IS TESTING FROM THE client side level
-    // this should be its own directory
-    // tests from the client side API
-
-    // tests from the server side API
-
-
-
-
     pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
       logger: logger,
     });
     nodeId = pkAgent.nodeManager.getNodeId();
-    [server, port] = await testUtils.openTestClientServer({
+    [server, port] = await testClientUtils.openTestClientServer({
       pkAgent,
     });
     const sessionTokenPath = path.join(nodePath, 'sessionToken');
@@ -64,16 +59,18 @@ describe(GRPCClientClient.name, () => {
     await session.start({
       sessionToken,
     });
-  }, global.polykeyStartupTimeout);
+  });
   afterAll(async () => {
     await client.destroy();
-    await testUtils.closeTestClientServer(server);
+    await testClientUtils.closeTestClientServer(server);
     await pkAgent.stop();
     await pkAgent.destroy();
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,
     });
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('cannot be called when destroyed', async () => {
     client = await GRPCClientClient.createGRPCClientClient({

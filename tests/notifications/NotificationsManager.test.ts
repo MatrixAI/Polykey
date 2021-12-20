@@ -204,7 +204,7 @@ describe('NotificationsManager', () => {
       ingressHost: receiverHost,
       tlsConfig: revTLSConfig,
     });
-    receiverIngressPort = revProxy.ingressPort;
+    receiverIngressPort = revProxy.getIngressPort();
   }, global.polykeyStartupTimeout * 2);
 
   beforeEach(async () => {

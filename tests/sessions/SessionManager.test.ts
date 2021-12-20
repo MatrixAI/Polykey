@@ -6,20 +6,17 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { KeyManager } from '@/keys';
 import SessionManager from '@/sessions/SessionManager';
 import * as sessionsErrors from '@/sessions/errors';
-import { sleep } from '@/utils';
 import * as keysUtils from '@/keys/utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import { sleep } from '@/utils';
+import * as testUtils from '../utils';
 
 describe('SessionManager', () => {
   const password = 'password';
   const logger = new Logger(`${SessionManager.name} Test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   /**
    * Shared db, keyManager for all tests
    */
@@ -27,6 +24,13 @@ describe('SessionManager', () => {
   let db: DB;
   let keyManager: KeyManager;
   beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -56,6 +60,8 @@ describe('SessionManager', () => {
       force: true,
       recursive: true,
     });
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('session manager readiness', async () => {
     const sessionManager = await SessionManager.createSessionManager({
