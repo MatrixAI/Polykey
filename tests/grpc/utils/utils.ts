@@ -1,6 +1,6 @@
 import type Logger from '@matrixai/logger';
+import type { Authenticate } from '@/client/types';
 import type { NodeId } from '@/nodes/types';
-import type * as clientUtils from '@/client/utils';
 import * as grpc from '@grpc/grpc-js';
 import { utils as grpcUtils } from '@/grpc';
 import { promisify } from '@/utils';
@@ -11,7 +11,7 @@ import {
 import createTestService from './testService';
 
 async function openTestServer(
-  authenticate: clientUtils.Authenticate,
+  authenticate: Authenticate,
   logger?: Logger,
 ): Promise<[grpc.Server, number]> {
   const testService = createTestService({ authenticate, logger });
@@ -80,7 +80,7 @@ function closeTestClientSecure(client: TestServiceClient) {
 async function openTestServerSecure(
   keyPrivatePem,
   certChainPem,
-  authenticate: clientUtils.Authenticate,
+  authenticate: Authenticate,
   logger?: Logger,
 ): Promise<[grpc.Server, number]> {
   const testService = createTestService({ authenticate, logger });

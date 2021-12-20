@@ -15,24 +15,26 @@ import * as clientUtils from '@/client/utils';
 import * as testGrpcUtils from './utils';
 import * as testUtils from '../utils';
 
-jest
-  .spyOn(keysUtils, 'generateKeyPair')
-  .mockResolvedValue(testUtils.globalKeyPair);
-jest
-  .spyOn(keysUtils, 'generateDeterministicKeyPair')
-  .mockResolvedValue(testUtils.globalKeyPair);
-
 describe('GRPCServer', () => {
+  const logger = new Logger('GRPCServer Test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   const password = 'password';
+  let mockedGenerateKeyPair: jest.SpyInstance;
+  let mockedGenerateDeterministicKeyPair: jest.SpyInstance;
   let dataDir: string;
   let keyManager: KeyManager;
   let db: DB;
   let sessionManager: SessionManager;
   let authenticate: Authenticate;
-  const logger = new Logger('GRPCServer Test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
   beforeAll(async () => {
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    mockedGenerateKeyPair = jest
+      .spyOn(keysUtils, 'generateKeyPair')
+      .mockResolvedValue(globalKeyPair);
+    mockedGenerateDeterministicKeyPair = jest
+      .spyOn(keysUtils, 'generateDeterministicKeyPair')
+      .mockResolvedValue(globalKeyPair);
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -70,6 +72,8 @@ describe('GRPCServer', () => {
       force: true,
       recursive: true,
     });
+    mockedGenerateKeyPair.mockRestore();
+    mockedGenerateDeterministicKeyPair.mockRestore();
   });
   test('GRPCServer readiness', async () => {
     const server = new GRPCServer({
