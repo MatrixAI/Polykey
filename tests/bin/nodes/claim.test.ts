@@ -1,0 +1,138 @@
+import type { Host, Port } from '@/network/types';
+import type { NodeId } from '@/nodes/types';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import PolykeyAgent from '@/PolykeyAgent';
+import * as testBinUtils from '../utils';
+import * as testUtils from '../../utils';
+
+jest.mock('@/keys/utils', () => ({
+  ...jest.requireActual('@/keys/utils'),
+  generateDeterministicKeyPair:
+    jest.requireActual('@/keys/utils').generateKeyPair,
+}));
+
+describe('claim', () => {
+  const password = 'password';
+  const logger = new Logger('claim test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
+  let dataDir: string;
+  let nodePath: string;
+  let passwordFile: string;
+  let polykeyAgent: PolykeyAgent;
+  let remoteOnline: PolykeyAgent;
+
+  let keynodeId: NodeId;
+  let remoteOnlineNodeId: NodeId;
+  let remoteOnlineHost: Host;
+  let remoteOnlinePort: Port;
+
+  // Helper functions
+  function genCommands(options: Array<string>) {
+    return ['nodes', ...options, '-np', nodePath];
+  }
+
+  beforeAll(async () => {
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
+    nodePath = path.join(dataDir, 'keynode');
+    passwordFile = path.join(dataDir, 'passwordFile');
+    await fs.promises.writeFile(passwordFile, 'password');
+    polykeyAgent = await PolykeyAgent.createPolykeyAgent({
+      password,
+      nodePath: nodePath,
+      logger: logger,
+    });
+    keynodeId = polykeyAgent.nodeManager.getNodeId();
+    // Setting up a remote keynode
+    remoteOnline = await testUtils.setupRemoteKeynode({
+      logger,
+    });
+    remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
+    remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
+    remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
+    await testUtils.addRemoteDetails(polykeyAgent, remoteOnline);
+
+    await remoteOnline.nodeManager.setNode(keynodeId, {
+      host: polykeyAgent.revProxy.getIngressHost(),
+      port: polykeyAgent.revProxy.getIngressPort(),
+    });
+    await polykeyAgent.acl.setNodePerm(remoteOnlineNodeId, {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+    await remoteOnline.acl.setNodePerm(keynodeId, {
+      gestalt: {
+        notify: null,
+      },
+      vaults: {},
+    });
+
+    // Authorize session
+    await testBinUtils.pkStdio(
+      ['agent', 'unlock', '-np', nodePath, '--password-file', passwordFile],
+      {},
+      nodePath,
+    );
+  }, global.polykeyStartupTimeout * 2);
+
+  afterEach(async () => {
+    await polykeyAgent.notificationsManager.clearNotifications();
+    await remoteOnline.notificationsManager.clearNotifications();
+    await polykeyAgent.sigchain.clearDB();
+    await remoteOnline.sigchain.clearDB();
+  });
+  afterAll(async () => {
+    await polykeyAgent.stop();
+    await polykeyAgent.destroy();
+    await testUtils.cleanupRemoteKeynode(remoteOnline);
+    await fs.promises.rm(dataDir, {
+      force: true,
+      recursive: true,
+    });
+  });
+  test(
+    'send a gestalt invite',
+    async () => {
+      const commands = genCommands(['claim', remoteOnlineNodeId]);
+      const result = await testBinUtils.pkStdio(commands);
+      expect(result.exitCode).toBe(0); // Succeeds.
+      expect(result.stdout).toContain('Gestalt Invite');
+      expect(result.stdout).toContain(remoteOnlineNodeId);
+    },
+    global.polykeyStartupTimeout * 4,
+  );
+  test('send a gestalt invite (force invite)', async () => {
+    await remoteOnline.notificationsManager.sendNotification(keynodeId, {
+      type: 'GestaltInvite',
+    });
+    // Needs to be forced, as the local node has already received an invitation
+    const commands = genCommands([
+      'claim',
+      remoteOnlineNodeId,
+      '--force-invite',
+    ]);
+    const result = await testBinUtils.pkStdio(commands, {}, dataDir);
+    expect(result.exitCode).toBe(0); // Succeeds.
+    expect(result.stdout).toContain('Gestalt Invite');
+    expect(result.stdout).toContain(remoteOnlineNodeId);
+  });
+  test('claim the remote node', async () => {
+    await remoteOnline.notificationsManager.sendNotification(keynodeId, {
+      type: 'GestaltInvite',
+    });
+    // Received an invitation, so will attempt to perform the claiming process
+    const commands = genCommands(['claim', remoteOnlineNodeId]);
+    const result = await testBinUtils.pkStdio(commands, {}, dataDir);
+    console.log('result', result.exitCode, result.stderr, result.stdout);
+    expect(result.exitCode).toBe(0); // Succeeds.
+    expect(result.stdout).toContain('cryptolink claim');
+    expect(result.stdout).toContain(remoteOnlineNodeId);
+  });
+});
