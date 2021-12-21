@@ -58,8 +58,13 @@ class ErrorConnectionTimeout extends ErrorConnection {
   exitCode = sysexits.UNAVAILABLE;
 }
 
+class ErrorConnectionEndTimeout extends ErrorConnection {
+  description = 'Connection end timed out';
+  exitCode = sysexits.UNAVAILABLE;
+}
+
 /**
- * Used by ConnectionForward
+ * Used by ConnectionForward and ConnectionReverse
  */
 class ErrorConnectionStart extends ErrorConnection {
   description = 'Connection start failed';
@@ -141,6 +146,7 @@ export {
   ErrorConnectionNotComposed,
   ErrorConnectionMessageParse,
   ErrorConnectionTimeout,
+  ErrorConnectionEndTimeout,
   ErrorConnectionStart,
   ErrorConnectionStartTimeout,
   ErrorConnectionCompose,

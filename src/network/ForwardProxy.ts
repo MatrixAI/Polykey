@@ -12,15 +12,17 @@ import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import ConnectionForward from './ConnectionForward';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
-import { promisify, sleep, timerStart, timerStop } from '../utils';
+import { promisify, timerStart, timerStop } from '../utils';
 
 interface ForwardProxy extends StartStop {}
 @StartStop()
 class ForwardProxy {
   public readonly authToken: string;
   public readonly connConnectTime: number;
-  public readonly connTimeoutTime: number;
-  public readonly connPingIntervalTime: number;
+  public readonly connKeepAliveTimeoutTime: number;
+  public readonly connEndTime: number;
+  public readonly connPunchIntervalTime: number;
+  public readonly connKeepAliveIntervalTime: number;
 
   protected logger: Logger;
   protected proxyHost: Host;
@@ -39,23 +41,28 @@ class ForwardProxy {
   constructor({
     authToken,
     connConnectTime = 20000,
-    connTimeoutTime = 20000,
-    connPingIntervalTime = 1000,
+    connKeepAliveTimeoutTime = 20000,
+    connEndTime = 1000,
+    connPunchIntervalTime = 1000,
+    connKeepAliveIntervalTime = 1000,
     logger,
   }: {
     authToken: string;
     connConnectTime?: number;
-    connTimeoutTime?: number;
-    connPingIntervalTime?: number;
-
+    connKeepAliveTimeoutTime?: number;
+    connEndTime?: number;
+    connPunchIntervalTime?: number;
+    connKeepAliveIntervalTime?: number;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(ForwardProxy.name);
     this.logger.info('Creating Forward Proxy');
     this.authToken = authToken;
     this.connConnectTime = connConnectTime;
-    this.connTimeoutTime = connTimeoutTime;
-    this.connPingIntervalTime = connPingIntervalTime;
+    this.connKeepAliveTimeoutTime = connKeepAliveTimeoutTime;
+    this.connEndTime = connEndTime;
+    this.connPunchIntervalTime = connPunchIntervalTime;
+    this.connKeepAliveIntervalTime = connKeepAliveIntervalTime;
     this.server = http.createServer();
     this.server.on('request', this.handleRequest);
     this.server.on('connect', this.handleConnect);
@@ -83,7 +90,10 @@ class ForwardProxy {
     this.logger.info(
       `Starting Forward Proxy from ${proxyAddress} to ${egressAddress}`,
     );
-    const utpSocket = UTP({ allowHalfOpen: false });
+    // Normal sockets defaults to `allowHalfOpen: false`
+    // But UTP defaults to `allowHalfOpen: true`
+    // Setting `allowHalfOpen: false` on UTP is buggy and cannot be used
+    const utpSocket = UTP({ allowHalfOpen: true });
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     await utpSocketBind(egressPort, egressHost);
     egressPort = utpSocket.address().port;
@@ -105,15 +115,20 @@ class ForwardProxy {
 
   public async stop(): Promise<void> {
     this.logger.info('Stopping Forward Proxy Server');
+    // Ensure no new connections are created
+    this.server.removeAllListeners('connect');
+    this.server.on('connect', async (_request, clientSocket) => {
+      const clientSocketEnd = promisify(clientSocket.end).bind(clientSocket);
+      await clientSocketEnd('HTTP/1.1 503 Service Unavailable\r\n' + '\r\n');
+      clientSocket.destroy();
+    });
+    const connStops: Array<Promise<void>> = [];
+    for (const [_, conn] of this.connections.ingress) {
+      connStops.push(conn.stop());
+    }
     const serverClose = promisify(this.server.close).bind(this.server);
     await serverClose();
-    // Ensure no new connections are created while this is iterating
-    await Promise.all(
-      Array.from(this.connections.ingress, ([, conn]) => conn.stop()),
-    );
-    // Delay socket close by about 1 second
-    // this gives some time for the end/FIN packets to be sent
-    await sleep(1000);
+    await Promise.all(connStops);
     // Even when all connections are destroyed
     // the utp socket sometimes hangs in closing
     // here we asynchronously close and unreference it
@@ -195,6 +210,14 @@ class ForwardProxy {
     this.tlsConfig = tlsConfig;
   }
 
+  /**
+   * Manually opens a connection with the ForwardProxy
+   * Usually you just use HTTP Connect requests to trigger handleConnect
+   * This will default to using `this.connConnectTime` if
+   * timer is not set or set to `undefined`
+   * It will only stop the timer if using the default timer
+   * Set timer to `null` explicitly to wait forever
+   */
   @ready(new networkErrors.ErrorForwardProxyNotRunning())
   public async openConnection(
     nodeId: NodeId,
@@ -202,6 +225,10 @@ class ForwardProxy {
     ingressPort: Port,
     timer?: Timer,
   ): Promise<void> {
+    let timer_ = timer;
+    if (timer === undefined) {
+      timer_ = timerStart(this.connConnectTime);
+    }
     const ingressAddress = networkUtils.buildAddress(ingressHost, ingressPort);
     let lock = this.connectionLocks.get(ingressAddress);
     if (lock == null) {
@@ -210,8 +237,11 @@ class ForwardProxy {
     }
     const release = await lock.acquire();
     try {
-      await this.establishConnection(nodeId, ingressHost, ingressPort, timer);
+      await this.establishConnection(nodeId, ingressHost, ingressPort, timer_);
     } finally {
+      if (timer === undefined) {
+        timerStop(timer_!);
+      }
       release();
       this.connectionLocks.delete(ingressAddress);
     }
@@ -311,9 +341,43 @@ class ForwardProxy {
           timer,
         );
       } catch (e) {
+        if (e instanceof networkErrors.ErrorConnectionStartTimeout) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd('HTTP/1.1 504 Gateway Timeout\r\n' + '\r\n');
+            clientSocket.destroy(e);
+          }
+          return;
+        }
+        if (e instanceof networkErrors.ErrorConnectionStart) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd('HTTP/1.1 502 Bad Gateway\r\n' + '\r\n');
+            clientSocket.destroy(e);
+          }
+          return;
+        }
+        if (e instanceof networkErrors.ErrorCertChain) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd(
+              'HTTP/1.1 526 Invalid SSL Certificate\r\n' + '\r\n',
+            );
+            clientSocket.destroy(e);
+          }
+          return;
+        }
+        if (e instanceof networkErrors.ErrorConnectionTimeout) {
+          if (!clientSocket.destroyed) {
+            await clientSocketEnd(
+              'HTTP/1.1 524 A Timeout Occurred\r\n' + '\r\n',
+            );
+            clientSocket.destroy(e);
+          }
+          return;
+        }
         if (e instanceof networkErrors.ErrorConnection) {
           if (!clientSocket.destroyed) {
-            await clientSocketEnd('HTTP/1.1 400 Bad Request\r\n' + '\r\n');
+            await clientSocketEnd(
+              'HTTP/1.1 500 Internal Server Error\r\n' + '\r\n',
+            );
             clientSocket.destroy(e);
           }
           return;
@@ -372,12 +436,14 @@ class ForwardProxy {
     conn = new ConnectionForward({
       nodeId,
       connections: this.connections,
-      pingIntervalTime: this.connPingIntervalTime,
       utpSocket: this.utpSocket,
       host: ingressHost,
       port: ingressPort,
       tlsConfig: this.tlsConfig,
-      timeoutTime: this.connTimeoutTime,
+      keepAliveTimeoutTime: this.connKeepAliveTimeoutTime,
+      endTime: this.connEndTime,
+      punchIntervalTime: this.connPunchIntervalTime,
+      keepAliveIntervalTime: this.connKeepAliveIntervalTime,
       logger: this.logger.getChild(
         `${ConnectionForward.name} ${ingressAddress}`,
       ),

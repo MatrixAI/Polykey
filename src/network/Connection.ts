@@ -10,7 +10,24 @@ abstract class Connection {
   public readonly port: Port;
   public readonly address: Address;
   public readonly tlsConfig: Readonly<TLSConfig>;
-  public readonly timeoutTime: number;
+  /**
+   * Time used for keep-alive timeout
+   */
+  public readonly keepAliveTimeoutTime: number;
+  /**
+   * Time used to gracefully wait for teardown
+   * Used for both UTP and client sockets in forward
+   * Used for both UTP and server sockets in reverse
+   */
+  public readonly endTime: number;
+  /**
+   * Time used between each ping or pong message for hole-punching
+   */
+  public readonly punchIntervalTime: number;
+  /**
+   * Time used between each ping or pong message for keep-alive
+   */
+  public readonly keepAliveIntervalTime: number;
 
   protected logger: Logger;
   protected timeout: ReturnType<typeof setTimeout>;
@@ -21,14 +38,20 @@ abstract class Connection {
     host,
     port,
     tlsConfig,
-    timeoutTime = 20000,
+    keepAliveTimeoutTime = 20000,
+    endTime = 1000,
+    punchIntervalTime = 1000,
+    keepAliveIntervalTime = 1000,
     logger,
   }: {
     utpSocket: UTP;
     host: Host;
     port: Port;
     tlsConfig: TLSConfig;
-    timeoutTime?: number;
+    keepAliveTimeoutTime?: number;
+    endTime?: number;
+    punchIntervalTime?: number;
+    keepAliveIntervalTime?: number;
     logger?: Logger;
   }) {
     const address = networkUtils.buildAddress(host, port);
@@ -41,7 +64,10 @@ abstract class Connection {
     this.port = port;
     this.tlsConfig = tlsConfig;
     this.address = address;
-    this.timeoutTime = timeoutTime;
+    this.keepAliveTimeoutTime = keepAliveTimeoutTime;
+    this.endTime = endTime;
+    this.punchIntervalTime = punchIntervalTime;
+    this.keepAliveIntervalTime = keepAliveIntervalTime;
   }
 
   get composed(): boolean {

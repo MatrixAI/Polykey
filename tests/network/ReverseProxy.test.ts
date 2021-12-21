@@ -1,5 +1,4 @@
 import type { AddressInfo } from 'net';
-
 import type { Host, Port } from '@/network/types';
 import type { KeyPairPem } from '@/keys/types';
 import net from 'net';
@@ -12,55 +11,72 @@ import {
   errors as networkErrors,
 } from '@/network';
 import * as keysUtils from '@/keys/utils';
-import { promisify, promise, timerStart, timerStop, sleep } from '@/utils';
+import { promisify, promise, timerStart, timerStop, poll, sleep } from '@/utils';
+import * as testUtils from '../utils';
 
-describe('ReverseProxy', () => {
-  const logger = new Logger('ReverseProxy Test', LogLevel.WARN, [
+/**
+ * Mock TCP server
+ * This is the server that the ReverseProxy will be proxying to
+ */
+function tcpServer(end: boolean = false) {
+  const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
+  const { p: serverConnEndP, resolveP: resolveServerConnEndP } = promise<void>();
+  const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
+    promise<void>();
+  const server = net.createServer({
+    allowHalfOpen: false
+  }, (conn) => {
+    resolveServerConnP();
+    conn.on('end', () => {
+      resolveServerConnEndP();
+      conn.end();
+      conn.destroy();
+    });
+    conn.once('close', () => {
+      resolveServerConnClosedP();
+    });
+    if (end) {
+      conn.removeAllListeners('end');
+      conn.on('end', () => {
+        resolveServerConnEndP();
+        conn.destroy();
+      });
+      conn.end();
+    }
+  });
+  const serverClose = promisify(server.close).bind(server);
+  const serverListen = promisify(server.listen).bind(server);
+  const serverHost = () => {
+    return (server.address() as AddressInfo).address as Host;
+  };
+  const serverPort = () => {
+    return (server.address() as AddressInfo).port as Port;
+  };
+  return {
+    serverListen,
+    serverClose,
+    serverConnP,
+    serverConnEndP,
+    serverConnClosedP,
+    serverHost,
+    serverPort,
+  };
+}
+
+describe(ReverseProxy.name, () => {
+  const logger = new Logger(`${ReverseProxy.name} test`, LogLevel.DEBUG, [
     new StreamHandler(),
   ]);
-  let keyPairPem: KeyPairPem, certPem: string;
-
-  // Helper functions
-  function server(end: boolean = false) {
-    const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
-    const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
-      promise<void>();
-    const server = net.createServer((conn) => {
-      resolveServerConnP();
-      conn.once('close', () => {
-        resolveServerConnClosedP();
-      });
-      if (end) {
-        conn.end();
-        conn.destroy();
-      }
-    });
-    const serverClose = promisify(server.close).bind(server);
-    const serverListen = promisify(server.listen).bind(server);
-    const serverHost = () => {
-      return (server.address() as AddressInfo).address as Host;
-    };
-    const serverPort = () => {
-      return (server.address() as AddressInfo).port as Port;
-    };
-    return {
-      serverListen,
-      serverClose,
-      serverConnP,
-      serverConnClosedP,
-      serverHost,
-      serverPort,
-    };
-  }
-
+  let keyPairPem: KeyPairPem
+  let certPem: string;
   beforeAll(async () => {
-    const keyPair = await keysUtils.generateKeyPair(4096);
-    keyPairPem = keysUtils.keyPairToPem(keyPair);
+    const globalKeyPair = await testUtils.setupGlobalKeypair();
+    keyPairPem = keysUtils.keyPairToPem(globalKeyPair);
     const cert = keysUtils.generateCertificate(
-      keyPair.publicKey,
-      keyPair.privateKey,
-      keyPair.privateKey,
-      86400,
+      globalKeyPair.publicKey,
+      globalKeyPair.privateKey,
+      globalKeyPair.privateKey,
+      86400
     );
     certPem = keysUtils.certToPem(cert);
   });
@@ -68,7 +84,6 @@ describe('ReverseProxy', () => {
     const revProxy = new ReverseProxy({
       logger: logger,
     });
-
     // Should be a noop
     await revProxy.stop();
     await revProxy.start({
@@ -80,19 +95,30 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
+    expect(typeof revProxy.getServerHost()).toBe('string');
+    expect(typeof revProxy.getServerPort()).toBe('number');
+    expect(revProxy.getServerPort()).toBeGreaterThan(0);
+    expect(typeof revProxy.getIngressHost()).toBe('string');
+    expect(typeof revProxy.getIngressPort()).toBe('number');
+    expect(revProxy.getIngressPort()).toBeGreaterThan(0);
+    // Should be a noop (already started)
+    await revProxy.start({
+      serverHost: '::1' as Host,
+      serverPort: 1 as Port,
+      ingressHost: '127.0.0.1' as Host,
+      tlsConfig: {
+        keyPrivatePem: keyPairPem.privateKey,
+        certChainPem: certPem,
+      },
+    });
     await revProxy.stop();
     expect(() => {
-      revProxy.ingressHost;
-    }).toThrow(networkErrors.ErrorReverseProxyNotStarted);
+      revProxy.getIngressHost();
+    }).toThrow(networkErrors.ErrorReverseProxyNotRunning);
     expect(() => {
       revProxy.getConnectionInfoByProxy('::1' as Host, 1 as Port);
-    }).toThrow(networkErrors.ErrorReverseProxyNotStarted);
-  });
-  test('starting and stopping the reverse proxy', async () => {
-    const revProxy = new ReverseProxy({
-      logger: logger,
-    });
-    // Starting the rev proxy doesn't start a connection to the server
+    }).toThrow(networkErrors.ErrorReverseProxyNotRunning);
+    // Start it again
     await revProxy.start({
       serverHost: '::1' as Host,
       serverPort: 1 as Port,
@@ -102,30 +128,12 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    expect(typeof revProxy.ingressHost).toBe('string');
-    expect(typeof revProxy.ingressPort).toBe('number');
-    expect(revProxy.ingressPort).toBeGreaterThan(0);
-    expect(typeof revProxy.serverHost).toBe('string');
-    expect(typeof revProxy.serverPort).toBe('number');
-    expect(revProxy.connectionCount).toBe(0);
-    expect(revProxy.serverHost).toBe('::1');
-    expect(revProxy.serverPort).toBe(1);
-    await revProxy.stop();
-    await revProxy.start({
-      serverHost: '::1' as Host,
-      serverPort: 1 as Port,
-      ingressHost: '127.0.0.1' as Host,
-      tlsConfig: {
-        keyPrivatePem: keyPairPem.privateKey,
-        certChainPem: certPem,
-      },
-    });
-    expect(revProxy.ingressHost).toBe('127.0.0.1');
+    expect(revProxy.getServerHost()).toBe('::1');
     await revProxy.stop();
   });
   test('open connection to port 0 fails', async () => {
     const revProxy = new ReverseProxy({
-      logger: logger,
+      logger: logger.getChild('ReverseProxy port 0'),
     });
     const {
       serverListen,
@@ -134,7 +142,7 @@ describe('ReverseProxy', () => {
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
+    } = tcpServer();
     await serverListen(0);
     await revProxy.start({
       serverHost: serverHost(),
@@ -164,7 +172,7 @@ describe('ReverseProxy', () => {
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
+    } = tcpServer();
     await serverListen(0);
     await revProxy.start({
       serverHost: serverHost(),
@@ -207,7 +215,7 @@ describe('ReverseProxy', () => {
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
+    } = tcpServer();
     await serverListen(0);
     await revProxy.start({
       serverHost: serverHost(),
@@ -218,8 +226,8 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    const ingressHost = revProxy.ingressHost;
-    const ingressPort = revProxy.ingressPort;
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
     const utpSocket = UTP();
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
@@ -236,7 +244,7 @@ describe('ReverseProxy', () => {
     await utpSocketBind(0, '127.0.0.1');
     const utpSocketPort = utpSocket.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
-    expect(revProxy.connectionCount).toBe(1);
+    expect(revProxy.getConnectionCount()).toBe(1);
     await revProxy.closeConnection('127.0.0.1' as Host, utpSocketPort as Port);
     await expect(serverConnP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
@@ -257,7 +265,7 @@ describe('ReverseProxy', () => {
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
+    } = tcpServer();
     await serverListen(0);
     await revProxy.start({
       serverHost: serverHost(),
@@ -268,8 +276,8 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    const ingressHost = revProxy.ingressHost;
-    const ingressPort = revProxy.ingressPort;
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
     // First client
     const utpSocket1 = UTP();
     const handleMessage1 = async (data: Buffer) => {
@@ -304,10 +312,10 @@ describe('ReverseProxy', () => {
     const utpSocketPort2 = utpSocket2.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort1 as Port);
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort2 as Port);
-    expect(revProxy.connectionCount).toBe(2);
+    expect(revProxy.getConnectionCount()).toBe(2);
     await revProxy.closeConnection('127.0.0.1' as Host, utpSocketPort1 as Port);
     await revProxy.closeConnection('127.0.0.1' as Host, utpSocketPort2 as Port);
-    expect(revProxy.connectionCount).toBe(0);
+    expect(revProxy.getConnectionCount()).toBe(0);
     await expect(serverConnP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
     utpSocket1.off('message', handleMessage1);
@@ -328,10 +336,11 @@ describe('ReverseProxy', () => {
       serverListen,
       serverClose,
       serverConnP,
+      serverConnEndP,
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server(true);
+    } = tcpServer(true);
     await serverListen(0);
     await revProxy.start({
       serverHost: serverHost(),
@@ -342,8 +351,8 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    const ingressHost = revProxy.ingressHost;
-    const ingressPort = revProxy.ingressPort;
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
     const utpSocket = UTP();
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
@@ -360,38 +369,39 @@ describe('ReverseProxy', () => {
     await utpSocketBind(0, '127.0.0.1');
     const utpSocketPort = utpSocket.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
-    expect(revProxy.connectionCount).toBe(1);
+    expect(revProxy.getConnectionCount()).toBe(1);
     await expect(serverConnP).resolves.toBeUndefined();
-    // The server closed the connection
+    // The server receives the end confirmation for graceful exit
+    await expect(serverConnEndP).resolves.toBeUndefined();
+    // The server is closed
     await expect(serverConnClosedP).resolves.toBeUndefined();
-    // Wait for the end signal to be received
-    await sleep(2000);
     // The rev proxy won't have this connection
-    expect(revProxy.connectionCount).toBe(0);
+    expect(revProxy.getConnectionCount()).toBe(0);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
     await revProxy.stop();
     await serverClose();
   });
-  test('connect timeout due to hanging client', async () => {
-    // ConnConnectTime will affect ErrorConnectionComposeTimeout during compose
-    // connTimeoutTime will affect ErrorConnectionTimeout which is needed
+  test.only('connect timeout due to hanging client', async () => {
+    // `connConnectTime` will affect ErrorConnectionComposeTimeout
+    // `connKeepAliveTimeoutTime` will affect ErrorConnectionTimeout which is needed
     // because failing to connect to the open connection
     // doesn't automatically mean the connection is destroyed
     const revProxy = new ReverseProxy({
       connConnectTime: 3000,
-      connTimeoutTime: 3000,
+      connKeepAliveTimeoutTime: 3000,
       logger: logger,
     });
     const {
       serverListen,
       serverClose,
       serverConnP,
+      serverConnEndP,
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
+    } = tcpServer();
     await serverListen(0);
     await revProxy.start({
       serverHost: serverHost(),
@@ -402,8 +412,8 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    const ingressHost = revProxy.ingressHost;
-    const ingressPort = revProxy.ingressPort;
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
     const utpSocket = UTP();
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
@@ -420,8 +430,9 @@ describe('ReverseProxy', () => {
     await utpSocketBind(0, '127.0.0.1');
     const utpSocketPort = utpSocket.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
-    expect(revProxy.connectionCount).toBe(1);
+    expect(revProxy.getConnectionCount()).toBe(1);
     // This retries multiple times
+    // This will eventually fail and trigger a ErrorConnectionComposeTimeout
     const utpConn = utpSocket.connect(ingressPort, ingressHost);
     utpConn.setTimeout(2000, () => {
       utpConn.emit('error', new Error('TIMED OUT'));
@@ -438,12 +449,36 @@ describe('ReverseProxy', () => {
     });
     // The client connection times out
     await expect(utpConnErrorP).rejects.toThrow(/TIMED OUT/);
+
+    console.log('000000');
+
     await utpConnClosedP;
-    // Wait for the open connection to timeout
-    await sleep(3000);
-    expect(revProxy.connectionCount).toBe(0);
+
+    console.log('AAAA');
+
     await expect(serverConnP).resolves.toBeUndefined();
+
+    console.log('BBBB');
+
+    await expect(serverConnEndP).resolves.toBeUndefined();
+
+    console.log('CCCC');
+
     await expect(serverConnClosedP).resolves.toBeUndefined();
+
+    console.log('DDDDD');
+
+    // Connection count should reach 0 eventually
+    await expect(poll(
+      async () => {
+        return revProxy.getConnectionCount();
+      },
+      (_, result) => {
+        if (result === 0) return true;
+        return false;
+      },
+      100
+    )).resolves.toBe(0);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -451,23 +486,23 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('connect fails due to missing client certificates', async () => {
-    // ConnConnectTime will affect ErrorConnectionComposeTimeout during compose
-    // connTimeoutTime will affect ErrorConnectionTimeout which is needed
-    // because failing to connect to the open connection
+    // `connKeepAliveTimeoutTime` will affect ErrorConnectionTimeout
+    // Note that failing to connect to the open connection
     // doesn't automatically mean the connection is destroyed
+    // reverse proxy keeps the connection alive until `connKeepAliveTimeoutTime` expires
     const revProxy = new ReverseProxy({
-      connConnectTime: 3000,
-      connTimeoutTime: 3000,
+      connKeepAliveTimeoutTime: 2000,
       logger: logger,
     });
     const {
       serverListen,
       serverClose,
       serverConnP,
+      serverConnEndP,
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
+    } = tcpServer();
     await serverListen(0);
     await revProxy.start({
       serverHost: serverHost(),
@@ -478,8 +513,8 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    const ingressHost = revProxy.ingressHost;
-    const ingressPort = revProxy.ingressPort;
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
     const utpSocket = UTP();
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
@@ -496,17 +531,12 @@ describe('ReverseProxy', () => {
     await utpSocketBind(0, '127.0.0.1');
     const utpSocketPort = utpSocket.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
-    expect(revProxy.connectionCount).toBe(1);
+    expect(revProxy.getConnectionCount()).toBe(1);
     const { p: tlsSocketClosedP, resolveP: resolveTlsSocketClosedP } =
       promise<void>();
     const utpConn = utpSocket.connect(ingressPort, ingressHost);
-    // This will propagate the error to tlsSocket
-    utpConn.setTimeout(2000, () => {
-      utpConn.emit('error', new Error('TIMED OUT'));
-    });
-    // TLS socket without a certificate
-    // should also cause a timeout
-    // the secure event never occurs
+    // This will send an empty certificate chain
+    // Expect `ErrorCertChainEmpty`
     let secureConnection = false;
     const tlsSocket = tls.connect(
       {
@@ -527,6 +557,7 @@ describe('ReverseProxy', () => {
         tlsSocket.destroy();
       } else {
         tlsSocket.end();
+        tlsSocket.destroy();
       }
     });
     tlsSocket.on('close', () => {
@@ -537,11 +568,21 @@ describe('ReverseProxy', () => {
     // We won't receive an error because it will be closed
     expect(errored).toBe(false);
     expect(secureConnection).toBe(true);
-    // Wait for the open connection to timeout
-    await sleep(3000);
-    expect(revProxy.connectionCount).toBe(0);
     await expect(serverConnP).resolves.toBeUndefined();
+    // Eventually `ErrorConnectionTimeout` occurs, and these will be gracefully closed
+    await expect(serverConnEndP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
+    // Connection count should reach 0 eventually
+    await expect(poll(
+      async () => {
+        return revProxy.getConnectionCount();
+      },
+      (_, result) => {
+        if (result === 0) return true;
+        return false;
+      },
+      100
+    )).resolves.toBe(0);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -549,7 +590,7 @@ describe('ReverseProxy', () => {
     await serverClose();
   });
   test('connect success', async () => {
-    const clientKeyPair = await keysUtils.generateKeyPair(4096);
+    const clientKeyPair = await keysUtils.generateKeyPair(1024);
     const clientKeyPairPem = keysUtils.keyPairToPem(clientKeyPair);
     const clientCert = keysUtils.generateCertificate(
       clientKeyPair.publicKey,
@@ -562,10 +603,11 @@ describe('ReverseProxy', () => {
       serverListen,
       serverClose,
       serverConnP,
+      serverConnEndP,
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
+    } = tcpServer();
     await serverListen(0, '127.0.0.1');
     const revProxy = new ReverseProxy({
       logger: logger,
@@ -579,13 +621,13 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    const ingressHost = revProxy.ingressHost;
-    const ingressPort = revProxy.ingressPort;
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
     const { p: clientReadyP, resolveP: resolveClientReadyP } = promise<void>();
     const { p: clientSecureConnectP, resolveP: resolveClientSecureConnectP } =
       promise<void>();
     const { p: clientCloseP, resolveP: resolveClientCloseP } = promise<void>();
-    const utpSocket = UTP({ allowHalfOpen: false });
+    const utpSocket = UTP({ allowHalfOpen: true });
     const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
@@ -614,45 +656,59 @@ describe('ReverseProxy', () => {
         resolveClientSecureConnectP();
       },
     );
+    let tlsSocketEnded = false;
     tlsSocket.on('end', () => {
-      logger.info('GOT THE END EVENT');
+      tlsSocketEnded = true;
       if (utpConn.destroyed) {
         tlsSocket.destroy();
       } else {
         tlsSocket.end();
+        tlsSocket.destroy();
       }
     });
     tlsSocket.on('close', () => {
       resolveClientCloseP();
     });
     await send(networkUtils.pingBuffer);
-    expect(revProxy.connectionCount).toBe(1);
+    expect(revProxy.getConnectionCount()).toBe(1);
     await clientReadyP;
     await clientSecureConnectP;
     await serverConnP;
     await revProxy.closeConnection('127.0.0.1' as Host, utpSocketPort as Port);
-    expect(revProxy.connectionCount).toBe(0);
+    expect(revProxy.getConnectionCount()).toBe(0);
     await clientCloseP;
+    await serverConnEndP;
     await serverConnClosedP;
+    expect(tlsSocketEnded).toBe(true);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
     await revProxy.stop();
     await serverClose();
   });
-  test('stopping the proxy with open connections', async () => {
-    const revProxy = new ReverseProxy({
-      logger: logger,
-    });
+  test.only('stopping the proxy with open connections', async () => {
+    const clientKeyPair = await keysUtils.generateKeyPair(1024);
+    const clientKeyPairPem = keysUtils.keyPairToPem(clientKeyPair);
+    const clientCert = keysUtils.generateCertificate(
+      clientKeyPair.publicKey,
+      clientKeyPair.privateKey,
+      clientKeyPair.privateKey,
+      86400,
+    );
+    const clientCertPem = keysUtils.certToPem(clientCert);
     const {
       serverListen,
       serverClose,
       serverConnP,
+      serverConnEndP,
       serverConnClosedP,
       serverHost,
       serverPort,
-    } = server();
-    await serverListen(0);
+    } = tcpServer();
+    await serverListen(0, '127.0.0.1');
+    const revProxy = new ReverseProxy({
+      logger: logger,
+    });
     await revProxy.start({
       serverHost: serverHost(),
       serverPort: serverPort(),
@@ -662,12 +718,18 @@ describe('ReverseProxy', () => {
         certChainPem: certPem,
       },
     });
-    const ingressHost = revProxy.ingressHost;
-    const ingressPort = revProxy.ingressPort;
-    const utpSocket = UTP();
+    const ingressHost = revProxy.getIngressHost();
+    const ingressPort = revProxy.getIngressPort();
+    const { p: clientReadyP, resolveP: resolveClientReadyP } = promise<void>();
+    const { p: clientSecureConnectP, resolveP: resolveClientSecureConnectP } =
+      promise<void>();
+    const { p: clientCloseP, resolveP: resolveClientCloseP } = promise<void>();
+    const utpSocket = UTP({ allowHalfOpen: true });
+    const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
+        resolveClientReadyP();
         await send(networkUtils.pongBuffer);
       }
     };
@@ -676,15 +738,60 @@ describe('ReverseProxy', () => {
       const utpSocketSend = promisify(utpSocket.send).bind(utpSocket);
       await utpSocketSend(data, 0, data.byteLength, ingressPort, ingressHost);
     };
-    const utpSocketBind = promisify(utpSocket.bind).bind(utpSocket);
     await utpSocketBind(0, '127.0.0.1');
     const utpSocketPort = utpSocket.address().port;
     await revProxy.openConnection('127.0.0.1' as Host, utpSocketPort as Port);
-    expect(revProxy.connectionCount).toBe(1);
+    const utpConn = utpSocket.connect(ingressPort, ingressHost);
+    const tlsSocket = tls.connect(
+      {
+        key: Buffer.from(clientKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(clientCertPem, 'ascii'),
+        socket: utpConn,
+        rejectUnauthorized: false,
+      },
+      () => {
+        resolveClientSecureConnectP();
+      },
+    );
+    let tlsSocketEnded = false;
+    tlsSocket.on('end', () => {
+      tlsSocketEnded = true;
+      if (utpConn.destroyed) {
+        tlsSocket.destroy();
+      } else {
+        tlsSocket.end();
+        tlsSocket.destroy();
+      }
+    });
+    tlsSocket.on('close', () => {
+      resolveClientCloseP();
+    });
+    await send(networkUtils.pingBuffer);
+    expect(revProxy.getConnectionCount()).toBe(1);
+    await clientReadyP;
+    await clientSecureConnectP;
+    await serverConnP;
+
+    // await sleep(3000);
+
+    console.log('BEFORE STOP');
+
+    // Stopping with 1 active connection (not just opened)
     await revProxy.stop();
-    expect(revProxy.connectionCount).toBe(0);
-    await expect(serverConnP).resolves.toBeUndefined();
+
+    console.log('AFTER STOP');
+
+
+    expect(revProxy.getConnectionCount()).toBe(0);
+    await clientCloseP;
+
+    console.log('AAAAAAAAA');
+
+    await expect(serverConnEndP).resolves.toBeUndefined();
+    console.log('BBBBBBBB');
     await expect(serverConnClosedP).resolves.toBeUndefined();
+    console.log('CCCCCCCCC');
+    expect(tlsSocketEnded).toBe(true);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();

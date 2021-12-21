@@ -63,9 +63,7 @@ class GRPCClientTest extends GRPCClient<TestServiceClient> {
   }
 
   public async destroy() {
-    this.logger.info(`Destroying ${this.constructor.name}`);
     await super.destroy();
-    this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
   @ready()
