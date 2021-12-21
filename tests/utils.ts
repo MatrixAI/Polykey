@@ -114,6 +114,7 @@ async function setupGlobalAgent(
       keysConfig: {
         rootKeyPairBits: 1024
       },
+      seedNodes: {}, // explicitly no seed nodes on startup
       logger,
     });
     statusInfo = await status.readStatus();

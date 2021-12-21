@@ -43,6 +43,10 @@ async function pkStdio(
 }> {
   cwd =
     cwd ?? (await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-')));
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   // Parse the arguments of process.stdout.write and process.stderr.write
   const parseArgs = (args) => {
@@ -132,6 +136,10 @@ async function pkExec(
     ...process.env,
     ...env,
   };
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
@@ -197,6 +205,10 @@ async function pkSpawn(
     ...process.env,
     ...env,
   };
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
@@ -260,6 +272,10 @@ async function pkExpect({
     ...process.env,
     ...env,
   };
+  // Recall that we attempt to connect to all specified seed nodes on agent start.
+  // Therefore, for testing purposes only, we default the seed nodes as empty
+  // (if not defined in the env) to ensure no attempted connections. A regular
+  // PolykeyAgent is expected to initially connect to the mainnet seed nodes
   env['PK_SEED_NODES'] = env['PK_SEED_NODES'] ?? '';
   const tsConfigPath = path.resolve(
     path.join(global.projectDir, 'tsconfig.json'),
