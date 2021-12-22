@@ -6,7 +6,7 @@
  * The parse error message must focus on why the validation failed
  * @module
  */
-import type { NodeId } from '../nodes/types';
+import type { NodeId, SeedNodes } from '../nodes/types';
 import type { ProviderId, IdentityId } from '../identities/types';
 import type { GestaltAction, GestaltId } from '../gestalts/types';
 import type { VaultAction } from '../vaults/types';
@@ -18,6 +18,7 @@ import * as gestaltsUtils from '../gestalts/utils';
 import * as vaultsUtils from '../vaults/utils';
 import * as networkUtils from '../network/utils';
 import * as claimsUtils from '../claims/utils';
+import config from '../config';
 
 function parseInteger(data: any): number {
   data = parseInt(data);
@@ -173,6 +174,75 @@ function parsePort(data: any): Port {
   return data;
 }
 
+function parseNetwork(data: any): SeedNodes {
+  if (typeof data !== 'string' || !(data in config.defaults.network)) {
+    throw new validationErrors.ErrorParse(
+      `Network must be one of ${Object.keys(config.defaults.network).join(
+        ', ',
+      )}`,
+    );
+  }
+  return config.defaults.network[data];
+}
+
+/**
+ * Seed nodes expected to be of form 'nodeId1@host:port;nodeId2@host:port;...'
+ * By default, any specified seed nodes (in CLI option, or environment variable)
+ * will overwrite the default nodes in src/config.ts.
+ * Special flag `<defaults>` indicates that the default seed
+ * nodes should be added to the starting seed nodes instead of being overwritten
+ */
+function parseSeedNodes(data: any): [SeedNodes, boolean] {
+  if (typeof data !== 'string') {
+    throw new validationErrors.ErrorParse(
+      'Seed nodes must be of format `nodeId@host:port;...`',
+    );
+  }
+  const seedNodes: SeedNodes = {};
+  // Determines whether the defaults flag is set or not
+  let defaults = false;
+  // If explicitly set to an empty string, then no seed nodes and no defaults
+  if (data === '') return [seedNodes, defaults];
+  for (const seedNodeString of data.split(';')) {
+    // Empty string will occur if there's an extraneous ';' (e.g. at end of env)
+    if (seedNodeString === '') continue;
+    if (seedNodeString === '<defaults>') {
+      defaults = true;
+      continue;
+    }
+    let seedNodeUrl: URL;
+    try {
+      seedNodeUrl = new URL(`pk://${seedNodeString}`);
+    } catch (e) {
+      if (e instanceof TypeError) {
+        throw new validationErrors.ErrorParse(
+          'Seed nodes must be of format `nodeId@host:port;...`',
+        );
+      }
+      throw e;
+    }
+    const nodeIdEncoded = seedNodeUrl.username;
+    // Remove square braces for IPv6
+    const nodeHostOrHostname = seedNodeUrl.hostname.replace(/[\[\]]/g, '');
+    const nodePort = seedNodeUrl.port;
+    try {
+      parseNodeId(nodeIdEncoded);
+      seedNodes[nodeIdEncoded] = {
+        host: parseHostOrHostname(nodeHostOrHostname),
+        port: parsePort(nodePort),
+      };
+    } catch (e) {
+      if (e instanceof validationErrors.ErrorParse) {
+        throw new validationErrors.ErrorParse(
+          'Seed nodes must be of format `nodeId@host:port;...`',
+        );
+      }
+      throw e;
+    }
+  }
+  return [seedNodes, defaults];
+}
+
 export {
   parseInteger,
   parseNumber,
@@ -187,4 +257,6 @@ export {
   parseHostname,
   parseHostOrHostname,
   parsePort,
+  parseNetwork,
+  parseSeedNodes,
 };

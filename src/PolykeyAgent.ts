@@ -1,7 +1,7 @@
 import type { FileSystem } from './types';
 import type { PolykeyWorkerManagerInterface } from './workers/types';
 import type { Host, Port } from './network/types';
-import type { NodeMapping } from './nodes/types';
+import type { SeedNodes } from './nodes/types';
 
 import type { RootKeyPairChangeData } from './keys/types';
 import path from 'path';
@@ -14,7 +14,7 @@ import { Status } from './status';
 import { Schema } from './schema';
 import { VaultManager } from './vaults';
 import { ACL } from './acl';
-import { NodeManager } from './nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from './nodes';
 import { NotificationsManager } from './notifications';
 import { GestaltGraph } from './gestalts';
 import { Sigchain } from './sigchain';
@@ -22,7 +22,8 @@ import { Discovery } from './discovery';
 import { SessionManager } from './sessions';
 import { GRPCServer } from './grpc';
 import { IdentitiesManager, providers } from './identities';
-import { ForwardProxy, ReverseProxy } from './network';
+import ForwardProxy from './network/ForwardProxy';
+import ReverseProxy from './network/ReverseProxy';
 import { EventBus, captureRejectionSymbol } from './events';
 import { createAgentService, AgentServiceService } from './agent';
 import { createClientService, ClientServiceService } from './client';
@@ -61,6 +62,7 @@ class PolykeyAgent {
     networkConfig = {},
     forwardProxyConfig = {},
     reverseProxyConfig = {},
+    nodeConnectionManagerConfig = {},
     seedNodes = {},
     // Optional dependencies
     status,
@@ -73,6 +75,8 @@ class PolykeyAgent {
     gestaltGraph,
     fwdProxy,
     revProxy,
+    nodeGraph,
+    nodeConnectionManager,
     nodeManager,
     discovery,
     vaultManager,
@@ -102,8 +106,13 @@ class PolykeyAgent {
       connConnectTime?: number;
       connTimeoutTime?: number;
     };
+    nodeConnectionManagerConfig?: {
+      connConnectTime?: number;
+      connTimeoutTime?: number;
+      initialClosestNodes?: number;
+    };
     networkConfig?: NetworkConfig;
-    seedNodes?: NodeMapping;
+    seedNodes?: SeedNodes;
     status?: Status;
     schema?: Schema;
     keyManager?: KeyManager;
@@ -114,6 +123,8 @@ class PolykeyAgent {
     gestaltGraph?: GestaltGraph;
     fwdProxy?: ForwardProxy;
     revProxy?: ReverseProxy;
+    nodeGraph?: NodeGraph;
+    nodeConnectionManager?: NodeConnectionManager;
     nodeManager?: NodeManager;
     discovery?: Discovery;
     vaultManager?: VaultManager;
@@ -145,6 +156,10 @@ class PolykeyAgent {
     const reverseProxyConfig_ = {
       ...config.defaults.reverseProxyConfig,
       ...utils.filterEmptyObject(reverseProxyConfig),
+    };
+    const nodeConnectionManagerConfig_ = {
+      ...config.defaults.nodeConnectionManagerConfig,
+      ...utils.filterEmptyObject(nodeConnectionManagerConfig),
     };
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -254,26 +269,45 @@ class PolykeyAgent {
           ...reverseProxyConfig_,
           logger: logger.getChild(ReverseProxy.name),
         });
-      nodeManager =
-        nodeManager ??
-        (await NodeManager.createNodeManager({
+      nodeGraph =
+        nodeGraph ??
+        (await NodeGraph.createNodeGraph({
           db,
-          seedNodes,
-          sigchain,
+          fresh,
           keyManager,
+          logger: logger.getChild(NodeGraph.name),
+        }));
+      nodeConnectionManager =
+        nodeConnectionManager ??
+        new NodeConnectionManager({
+          keyManager,
+          nodeGraph,
           fwdProxy,
           revProxy,
+          seedNodes,
+          ...nodeConnectionManagerConfig_,
+          logger: logger.getChild(NodeConnectionManager.name),
+        });
+      nodeManager =
+        nodeManager ??
+        new NodeManager({
+          db,
+          sigchain,
+          keyManager,
+          nodeGraph,
+          nodeConnectionManager,
           logger: logger.getChild(NodeManager.name),
-          fresh,
-        }));
+        });
       // Discovery uses in-memory CreateDestroy pattern
       // Therefore it should be destroyed during stop
       discovery =
         discovery ??
         (await Discovery.createDiscovery({
+          keyManager,
           gestaltGraph,
           identitiesManager,
           nodeManager,
+          sigchain,
           logger: logger.getChild(Discovery.name),
         }));
       vaultManager =
@@ -282,7 +316,7 @@ class PolykeyAgent {
           vaultsKey: keyManager.vaultKey,
           vaultsPath,
           keyManager,
-          nodeManager,
+          nodeConnectionManager,
           gestaltGraph,
           acl,
           db,
@@ -295,6 +329,7 @@ class PolykeyAgent {
         (await NotificationsManager.createNotificationsManager({
           acl,
           db,
+          nodeConnectionManager,
           nodeManager,
           keyManager,
           logger: logger.getChild(NotificationsManager.name),
@@ -324,7 +359,6 @@ class PolykeyAgent {
       await notificationsManager?.stop();
       await vaultManager?.stop();
       await discovery?.destroy();
-      await nodeManager?.stop();
       await revProxy?.stop();
       await fwdProxy?.stop();
       await gestaltGraph?.stop();
@@ -349,6 +383,8 @@ class PolykeyAgent {
       gestaltGraph,
       fwdProxy,
       revProxy,
+      nodeGraph,
+      nodeConnectionManager,
       nodeManager,
       discovery,
       vaultManager,
@@ -380,6 +416,8 @@ class PolykeyAgent {
   public readonly gestaltGraph: GestaltGraph;
   public readonly fwdProxy: ForwardProxy;
   public readonly revProxy: ReverseProxy;
+  public readonly nodeGraph: NodeGraph;
+  public readonly nodeConnectionManager: NodeConnectionManager;
   public readonly nodeManager: NodeManager;
   public readonly discovery: Discovery;
   public readonly vaultManager: VaultManager;
@@ -404,6 +442,8 @@ class PolykeyAgent {
     gestaltGraph,
     fwdProxy,
     revProxy,
+    nodeGraph,
+    nodeConnectionManager,
     nodeManager,
     discovery,
     vaultManager,
@@ -426,6 +466,8 @@ class PolykeyAgent {
     gestaltGraph: GestaltGraph;
     fwdProxy: ForwardProxy;
     revProxy: ReverseProxy;
+    nodeGraph: NodeGraph;
+    nodeConnectionManager: NodeConnectionManager;
     nodeManager: NodeManager;
     discovery: Discovery;
     vaultManager: VaultManager;
@@ -449,6 +491,8 @@ class PolykeyAgent {
     this.gestaltGraph = gestaltGraph;
     this.fwdProxy = fwdProxy;
     this.revProxy = revProxy;
+    this.nodeGraph = nodeGraph;
+    this.nodeConnectionManager = nodeConnectionManager;
     this.nodeManager = nodeManager;
     this.discovery = discovery;
     this.vaultManager = vaultManager;
@@ -513,7 +557,9 @@ class PolykeyAgent {
         keyManager: this.keyManager,
         vaultManager: this.vaultManager,
         nodeManager: this.nodeManager,
+        nodeGraph: this.nodeGraph,
         sigchain: this.sigchain,
+        nodeConnectionManager: this.nodeConnectionManager,
         notificationsManager: this.notificationsManager,
       });
       const clientService = createClientService({
@@ -522,6 +568,8 @@ class PolykeyAgent {
         gestaltGraph: this.gestaltGraph,
         identitiesManager: this.identitiesManager,
         keyManager: this.keyManager,
+        nodeGraph: this.nodeGraph,
+        nodeConnectionManager: this.nodeConnectionManager,
         nodeManager: this.nodeManager,
         notificationsManager: this.notificationsManager,
         sessionManager: this.sessionManager,
@@ -575,9 +623,9 @@ class PolykeyAgent {
         ingressPort: networkConfig_.ingressPort,
         tlsConfig,
       });
-      await this.nodeManager.start({ fresh });
-      await this.nodeManager.getConnectionsToSeedNodes();
-      await this.nodeManager.syncNodeGraph();
+      await this.nodeConnectionManager.start();
+      await this.nodeGraph.start({ fresh });
+      await this.nodeConnectionManager.syncNodeGraph();
       await this.vaultManager.start({ fresh });
       await this.notificationsManager.start({ fresh });
       await this.sessionManager.start({ fresh });
@@ -597,7 +645,6 @@ class PolykeyAgent {
       await this.notificationsManager?.stop();
       await this.vaultManager?.stop();
       await this.discovery?.destroy();
-      await this.nodeManager?.stop();
       await this.revProxy?.stop();
       await this.fwdProxy?.stop();
       await this.grpcServerAgent?.stop();
@@ -625,7 +672,8 @@ class PolykeyAgent {
     await this.notificationsManager.stop();
     await this.vaultManager.stop();
     await this.discovery.destroy();
-    await this.nodeManager.stop();
+    await this.nodeConnectionManager.stop();
+    await this.nodeGraph.stop();
     await this.revProxy.stop();
     await this.fwdProxy.stop();
     await this.grpcServerAgent.stop();
@@ -649,7 +697,7 @@ class PolykeyAgent {
     await this.sessionManager.destroy();
     await this.notificationsManager.destroy();
     await this.vaultManager.destroy();
-    await this.nodeManager.destroy();
+    await this.nodeGraph.destroy();
     await this.gestaltGraph.destroy();
     await this.acl.destroy();
     await this.sigchain.destroy();

@@ -50,7 +50,7 @@ describe(GRPCClientClient.name, () => {
       nodePath,
       logger: logger,
     });
-    nodeId = pkAgent.nodeManager.getNodeId();
+    nodeId = pkAgent.keyManager.getNodeId();
     [server, port] = await testClientUtils.openTestClientServer({
       pkAgent,
     });

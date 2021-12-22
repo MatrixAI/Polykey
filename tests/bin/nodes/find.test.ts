@@ -6,14 +6,9 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 describe('find', () => {
   const password = 'password';
@@ -39,7 +34,16 @@ describe('find', () => {
     return ['nodes', ...options, '-np', nodePath];
   }
 
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
   beforeAll(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
+
     rootDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -64,7 +68,7 @@ describe('find', () => {
       },
       logger,
     });
-    remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
+    remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
     remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
     remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
@@ -78,7 +82,7 @@ describe('find', () => {
       },
       logger,
     });
-    remoteOfflineNodeId = remoteOffline.nodeManager.getNodeId();
+    remoteOfflineNodeId = remoteOffline.keyManager.getNodeId();
     remoteOfflineHost = remoteOffline.revProxy.getIngressHost();
     remoteOfflinePort = remoteOffline.revProxy.getIngressPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
@@ -198,9 +202,11 @@ describe('find', () => {
       const result2 = await testBinUtils.pkStdio(commands2, {}, dataDir);
       expect(result2.exitCode).toBe(1);
       expect(result2.stdout).toContain(`message`);
-      expect(result2.stdout).toContain(`Failed to find node ${unknownNodeId}`);
+      expect(result2.stdout).toContain(
+        `Failed to find node ${nodesUtils.encodeNodeId(unknownNodeId)}`,
+      );
       expect(result2.stdout).toContain('id');
-      expect(result2.stdout).toContain(unknownNodeId);
+      expect(result2.stdout).toContain(nodesUtils.encodeNodeId(unknownNodeId));
       expect(result2.stdout).toContain('port');
       expect(result2.stdout).toContain('0');
       expect(result2.stdout).toContain('host');

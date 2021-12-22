@@ -5,13 +5,12 @@ import type { Certificate } from '../keys/types';
 import type { Address, Host, NetworkMessage, Port } from './types';
 import type { NodeId } from '../nodes/types';
 import type { AbstractConstructorParameters, Timer } from '../types';
-
 import tls from 'tls';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
-import { utils as keysUtils } from '../keys';
+import * as keysUtils from '../keys/utils';
 import { promise, timerStart, timerStop } from '../utils';
 
 type ConnectionsForward = {
@@ -23,7 +22,6 @@ interface ConnectionForward extends StartStop {}
 @StartStop()
 class ConnectionForward extends Connection {
   public readonly nodeId: NodeId;
-  public readonly endTime: number;
 
   protected connections: ConnectionsForward;
   protected pingInterval: ReturnType<typeof setInterval>;

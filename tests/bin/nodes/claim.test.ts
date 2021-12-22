@@ -5,14 +5,9 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { utils as nodesUtils } from '@/nodes';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 describe('claim', () => {
   const password = 'password';
@@ -33,7 +28,16 @@ describe('claim', () => {
     return ['nodes', ...options, '-np', nodePath];
   }
 
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
   beforeAll(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
+
     rootDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -48,7 +52,7 @@ describe('claim', () => {
       nodePath: nodePath,
       logger: logger,
     });
-    keynodeId = polykeyAgent.nodeManager.getNodeId();
+    keynodeId = polykeyAgent.keyManager.getNodeId();
     // Setting up a remote keynode
     remoteOnline = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
@@ -58,11 +62,11 @@ describe('claim', () => {
       },
       logger,
     });
-    remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
+    remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
     remoteOnlineNodeIdEncoded = nodesUtils.encodeNodeId(remoteOnlineNodeId);
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
 
-    await remoteOnline.nodeManager.setNode(keynodeId, {
+    await remoteOnline.nodeGraph.setNode(keynodeId, {
       host: polykeyAgent.revProxy.getIngressHost(),
       port: polykeyAgent.revProxy.getIngressPort(),
     });

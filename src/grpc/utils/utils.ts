@@ -27,12 +27,11 @@ import type {
   AsyncGeneratorDuplexStreamClient,
 } from '../types';
 import type { CertificatePemChain, PrivateKeyPem } from '../../keys/types';
-
 import { Buffer } from 'buffer';
 import * as grpc from '@grpc/grpc-js';
 import * as grpcErrors from '../errors';
 import * as errors from '../../errors';
-import { promisify, promise, never } from '../../utils';
+import { promisify, promise, never } from '../../utils/utils';
 
 /**
  * GRPC insecure credentials for the client

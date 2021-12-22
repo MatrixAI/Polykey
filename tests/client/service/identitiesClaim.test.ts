@@ -11,7 +11,7 @@ import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
 import { IdentitiesManager } from '@/identities';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import {
@@ -78,7 +78,8 @@ describe('identitiesClaim', () => {
   let dataDir: string;
   let testProvider: TestProvider;
   let identitiesManager: IdentitiesManager;
-  let nodeManager: NodeManager;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
@@ -131,20 +132,26 @@ describe('identitiesClaim', () => {
       keyManager,
       logger,
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
-      sigchain,
-      fwdProxy,
-      revProxy,
-      logger,
+      logger: logger.getChild('NodeGraph'),
     });
+    nodeConnectionManager = new NodeConnectionManager({
+      connConnectTime: 2000,
+      fwdProxy,
+      keyManager,
+      nodeGraph,
+      revProxy,
+      logger: logger.getChild('nodeConnectionManager'),
+    });
+    await nodeConnectionManager.start();
     const clientService = {
       identitiesClaim: identitiesClaim({
         authenticate,
         identitiesManager,
         sigchain,
-        nodeManager,
+        keyManager,
       }),
     };
     grpcServer = new GRPCServer({ logger });
@@ -163,7 +170,8 @@ describe('identitiesClaim', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await nodeManager.stop();
+    await nodeConnectionManager.stop();
+    await nodeGraph.stop();
     await sigchain.stop();
     await revProxy.stop();
     await fwdProxy.stop();

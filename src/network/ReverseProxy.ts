@@ -2,7 +2,6 @@ import type UTPConnection from 'utp-native/lib/connection';
 import type { Host, Port, Address, ConnectionInfo, TLSConfig } from './types';
 import type { ConnectionsReverse } from './ConnectionReverse';
 import type { Timer } from '../types';
-
 import UTP from 'utp-native';
 import { Mutex } from 'async-mutex';
 import Logger from '@matrixai/logger';

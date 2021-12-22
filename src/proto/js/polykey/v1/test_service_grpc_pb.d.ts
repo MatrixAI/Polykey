@@ -14,6 +14,8 @@ interface ITestServiceService extends grpc.ServiceDefinition<grpc.UntypedService
     clientStream: ITestServiceService_IClientStream;
     duplexStream: ITestServiceService_IDuplexStream;
     unaryAuthenticated: ITestServiceService_IUnaryAuthenticated;
+    unaryFail: ITestServiceService_IunaryFail;
+    serverStreamFail: ITestServiceService_IserverStreamFail;
 }
 
 interface ITestServiceService_IUnary extends grpc.MethodDefinition<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage> {
@@ -61,6 +63,24 @@ interface ITestServiceService_IUnaryAuthenticated extends grpc.MethodDefinition<
     responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EchoMessage>;
     responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EchoMessage>;
 }
+interface ITestServiceService_IunaryFail extends grpc.MethodDefinition<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage> {
+    path: "/polykey.v1.TestService/unaryFail";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EchoMessage>;
+    requestDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EchoMessage>;
+    responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EchoMessage>;
+    responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EchoMessage>;
+}
+interface ITestServiceService_IserverStreamFail extends grpc.MethodDefinition<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage> {
+    path: "/polykey.v1.TestService/serverStreamFail";
+    requestStream: false;
+    responseStream: true;
+    requestSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EchoMessage>;
+    requestDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EchoMessage>;
+    responseSerialize: grpc.serialize<polykey_v1_utils_utils_pb.EchoMessage>;
+    responseDeserialize: grpc.deserialize<polykey_v1_utils_utils_pb.EchoMessage>;
+}
 
 export const TestServiceService: ITestServiceService;
 
@@ -70,6 +90,8 @@ export interface ITestServiceServer extends grpc.UntypedServiceImplementation {
     clientStream: grpc.handleClientStreamingCall<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage>;
     duplexStream: grpc.handleBidiStreamingCall<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage>;
     unaryAuthenticated: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage>;
+    unaryFail: grpc.handleUnaryCall<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage>;
+    serverStreamFail: grpc.handleServerStreamingCall<polykey_v1_utils_utils_pb.EchoMessage, polykey_v1_utils_utils_pb.EchoMessage>;
 }
 
 export interface ITestServiceClient {
@@ -88,6 +110,11 @@ export interface ITestServiceClient {
     unaryAuthenticated(request: polykey_v1_utils_utils_pb.EchoMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
     unaryAuthenticated(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
     unaryAuthenticated(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    unaryFail(request: polykey_v1_utils_utils_pb.EchoMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    unaryFail(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    unaryFail(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    serverStreamFail(request: polykey_v1_utils_utils_pb.EchoMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_utils_utils_pb.EchoMessage>;
+    serverStreamFail(request: polykey_v1_utils_utils_pb.EchoMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_utils_utils_pb.EchoMessage>;
 }
 
 export class TestServiceClient extends grpc.Client implements ITestServiceClient {
@@ -106,4 +133,9 @@ export class TestServiceClient extends grpc.Client implements ITestServiceClient
     public unaryAuthenticated(request: polykey_v1_utils_utils_pb.EchoMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
     public unaryAuthenticated(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
     public unaryAuthenticated(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    public unaryFail(request: polykey_v1_utils_utils_pb.EchoMessage, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    public unaryFail(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    public unaryFail(request: polykey_v1_utils_utils_pb.EchoMessage, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: polykey_v1_utils_utils_pb.EchoMessage) => void): grpc.ClientUnaryCall;
+    public serverStreamFail(request: polykey_v1_utils_utils_pb.EchoMessage, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_utils_utils_pb.EchoMessage>;
+    public serverStreamFail(request: polykey_v1_utils_utils_pb.EchoMessage, metadata?: grpc.Metadata, options?: Partial<grpc.CallOptions>): grpc.ClientReadableStream<polykey_v1_utils_utils_pb.EchoMessage>;
 }

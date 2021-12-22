@@ -2,13 +2,13 @@ import type Logger from '@matrixai/logger';
 import type { Authenticate } from '@/client/types';
 import type { NodeId } from '@/nodes/types';
 import * as grpc from '@grpc/grpc-js';
-import { utils as grpcUtils } from '@/grpc';
+import * as grpcUtils from '@/grpc/utils';
+import * as nodesUtils from '@/nodes/utils';
 import { promisify } from '@/utils';
 import {
   TestServiceService,
   TestServiceClient,
 } from '@/proto/js/polykey/v1/test_service_grpc_pb';
-import { utils as nodesUtils } from '@/nodes';
 import createTestService from './testService';
 
 async function openTestServer(

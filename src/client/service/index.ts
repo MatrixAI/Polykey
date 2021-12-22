@@ -1,7 +1,11 @@
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { KeyManager } from '../../keys';
 import type { VaultManager } from '../../vaults';
-import type { NodeManager } from '../../nodes';
+import type {
+  NodeManager,
+  NodeConnectionManager,
+  NodeGraph,
+} from '../../nodes';
 import type { IdentitiesManager } from '../../identities';
 import type { GestaltGraph } from '../../gestalts';
 import type { SessionManager } from '../../sessions';
@@ -9,7 +13,8 @@ import type { NotificationsManager } from '../../notifications';
 import type { Discovery } from '../../discovery';
 import type { Sigchain } from '../../sigchain';
 import type { GRPCServer } from '../../grpc';
-import type { ForwardProxy, ReverseProxy } from '../../network';
+import type ForwardProxy from '../../network/ForwardProxy';
+import type ReverseProxy from '../../network/ReverseProxy';
 import type { IClientServiceServer } from '../../proto/js/polykey/v1/client_service_grpc_pb';
 import type { FileSystem } from '../../types';
 import Logger from '@matrixai/logger';
@@ -87,6 +92,8 @@ function createService({
   pkAgent: PolykeyAgent;
   keyManager: KeyManager;
   vaultManager: VaultManager;
+  nodeGraph: NodeGraph;
+  nodeConnectionManager: NodeConnectionManager;
   nodeManager: NodeManager;
   identitiesManager: IdentitiesManager;
   gestaltGraph: GestaltGraph;

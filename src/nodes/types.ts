@@ -1,10 +1,11 @@
+import type { Id } from '@matrixai/id';
 import type { Opaque } from '../types';
 import type { Host, Hostname, Port } from '../network/types';
 import type { Claim, ClaimId } from '../claims/types';
 import type { ChainData } from '../sigchain/types';
-import type { Id } from '@matrixai/id';
 
 type NodeId = Opaque<'NodeId', Id>;
+type NodeIdString = Opaque<'NodeIdString', string>;
 type NodeIdEncoded = Opaque<'NodeIdEncoded', string>;
 
 type NodeAddress = {
@@ -12,9 +13,7 @@ type NodeAddress = {
   port: Port;
 };
 
-type NodeMapping = {
-  [key: string]: NodeAddress;
-};
+type SeedNodes = Record<NodeIdEncoded, NodeAddress>;
 
 type NodeData = {
   id: NodeId;
@@ -69,9 +68,10 @@ type NodeGraphOp =
 
 export type {
   NodeId,
+  NodeIdString,
   NodeIdEncoded,
   NodeAddress,
-  NodeMapping,
+  SeedNodes,
   NodeData,
   NodeClaim,
   NodeInfo,

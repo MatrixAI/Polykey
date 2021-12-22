@@ -7,7 +7,7 @@ import { Metadata } from '@grpc/grpc-js';
 import { DB } from '@matrixai/db';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import {
@@ -39,7 +39,7 @@ describe('nodesFind', () => {
       .spyOn(keysUtils, 'generateDeterministicKeyPair')
       .mockResolvedValue(globalKeyPair);
     mockedFindNode = jest
-      .spyOn(NodeManager.prototype, 'findNode')
+      .spyOn(NodeConnectionManager.prototype, 'findNode')
       .mockResolvedValue({
         host: '127.0.0.1' as Host,
         port: 11111 as Port,
@@ -52,7 +52,8 @@ describe('nodesFind', () => {
   });
   const authToken = 'abc123';
   let dataDir: string;
-  let nodeManager: NodeManager;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let sigchain: Sigchain;
   let fwdProxy: ForwardProxy;
   let revProxy: ReverseProxy;
@@ -99,18 +100,25 @@ describe('nodesFind', () => {
       keyManager,
       logger,
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
       db,
       keyManager,
-      sigchain,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
       fwdProxy,
       revProxy,
-      logger,
+      connConnectTime: 2000,
+      connTimeoutTime: 2000,
+      logger: logger.getChild('NodeConnectionManager'),
     });
+    await nodeConnectionManager.start();
     const clientService = {
       nodesFind: nodesFind({
+        nodeConnectionManager,
         authenticate,
-        nodeManager,
       }),
     };
     grpcServer = new GRPCServer({ logger });
@@ -129,8 +137,9 @@ describe('nodesFind', () => {
   afterEach(async () => {
     await grpcClient.destroy();
     await grpcServer.stop();
-    await nodeManager.stop();
     await sigchain.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
     await revProxy.stop();
     await fwdProxy.stop();
     await db.stop();

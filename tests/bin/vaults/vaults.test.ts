@@ -7,13 +7,8 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import { makeVaultIdPretty } from '@/vaults/utils';
 import { utils as nodesUtils } from '@/nodes';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 /**
  * This test file has been optimised to use only one instance of PolykeyAgent where posible.
@@ -68,7 +63,16 @@ describe('CLI vaults', () => {
     return `vault-${vaultNumber}` as VaultName;
   }
 
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
   beforeAll(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
+
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -309,7 +313,7 @@ describe('CLI vaults', () => {
         expect(id).toBeTruthy();
 
         await targetPolykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
+          id: nodesUtils.encodeNodeId(polykeyAgent.keyManager.getNodeId()),
           chain: {},
         });
         fail();
@@ -319,20 +323,23 @@ describe('CLI vaults', () => {
         //   vault.vaultId,
         // );
 
-        const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
+        const targetNodeId = targetPolykeyAgent.keyManager.getNodeId();
         const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
         const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
-        await polykeyAgent.nodeManager.setNode(targetNodeId, {
+        await polykeyAgent.nodeGraph.setNode(targetNodeId, {
           host: targetHost,
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
-        await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
+        await polykeyAgent.nodeConnectionManager.withConnF(
+          targetNodeId,
+          async () => {},
+        );
         const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
         const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
         // Server agent: start sending hole-punching packets back to the 'client'
         // agent (in order to establish a connection)
-        await targetPolykeyAgent.nodeManager.openConnection(
+        await targetPolykeyAgent.nodeConnectionManager.holePunchReverse(
           clientEgressHost,
           clientEgressPort,
         );
@@ -385,7 +392,7 @@ describe('CLI vaults', () => {
         expect(id).toBeTruthy();
 
         await targetPolykeyAgent.gestaltGraph.setNode({
-          id: nodesUtils.encodeNodeId(polykeyAgent.nodeManager.getNodeId()),
+          id: nodesUtils.encodeNodeId(polykeyAgent.keyManager.getNodeId()),
           chain: {},
         });
         fail();
@@ -395,20 +402,23 @@ describe('CLI vaults', () => {
         //   vault.vaultId,
         // );
 
-        const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
+        const targetNodeId = targetPolykeyAgent.keyManager.getNodeId();
         const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
         const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
-        await polykeyAgent.nodeManager.setNode(targetNodeId, {
+        await polykeyAgent.nodeGraph.setNode(targetNodeId, {
           host: targetHost,
           port: targetPort,
         });
         // Client agent: Start sending hole-punching packets to the target
-        await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
+        await polykeyAgent.nodeConnectionManager.withConnF(
+          targetNodeId,
+          async () => {},
+        );
         const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
         const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
         // Server agent: start sending hole-punching packets back to the 'client'
         // agent (in order to establish a connection)
-        await targetPolykeyAgent.nodeManager.openConnection(
+        await targetPolykeyAgent.nodeConnectionManager.holePunchReverse(
           clientEgressHost,
           clientEgressPort,
         );
@@ -467,7 +477,7 @@ describe('CLI vaults', () => {
         logger: logger,
       });
 
-      const targetNodeId = targetPolykeyAgent.nodeManager.getNodeId();
+      const targetNodeId = targetPolykeyAgent.keyManager.getNodeId();
       const targetHost = targetPolykeyAgent.revProxy.getIngressHost();
       const targetPort = targetPolykeyAgent.revProxy.getIngressPort();
       await polykeyAgent.nodeManager.setNode(targetNodeId, {
@@ -475,12 +485,15 @@ describe('CLI vaults', () => {
         port: targetPort,
       });
       // Client agent: Start sending hole-punching packets to the target
-      await polykeyAgent.nodeManager.getConnectionToNode(targetNodeId);
+      await polykeyAgent.nodeConnectionManager.withConnF(
+        targetNodeId,
+        async () => {},
+      );
       const clientEgressHost = polykeyAgent.fwdProxy.getEgressHost();
       const clientEgressPort = polykeyAgent.fwdProxy.getEgressPort();
       // Server agent: start sending hole-punching packets back to the 'client'
       // agent (in order to establish a connection)
-      await targetPolykeyAgent.nodeManager.openConnection(
+      await targetPolykeyAgent.nodeConnectionManager.holePunchReverse(
         clientEgressHost,
         clientEgressPort,
       );

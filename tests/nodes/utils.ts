@@ -1,83 +1,48 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 
-import type { PolykeyAgent } from '@';
+import type PolykeyAgent from '@/PolykeyAgent';
 import { IdInternal } from '@matrixai/id';
+import { bigInt2Bytes } from '@/utils';
 
 /**
- * Generates a node ID that, according to Kademlia, will be placed into 'nodeId's
- * bucket at 'bucketIndex'.
- * Recall that a bucket index is chosen based on:
- * 2^i <= distance (from current node) < 2^(i+1)
- * Therefore, generatedNodeId = 2^i XOR nodeId.
+ * Generate a deterministic NodeId for a specific bucket given an existing NodeId
+ * This requires solving the bucket index (`i`) and distance equation:
+ * `2^i <= distance < 2^(i+1)`
+ * Where `distance` is: `New NodeId XOR Given NodeId`
+ * The XOR operation `a XOR b = c` means `a XOR c = b` and `b XOR c = a`
+ * The new NodeId that starts with a bucket offset of 0 would be:
+ * `New NodeId = 2^i XOR Given NodeId`
+ * To get the next NodeId within the same bucket, increment the `bucketOffset`
+ * The `bucketOffset` is limited by the size of each bucket `2^(i+1) - 2^i`
+ * @param nodeId NodeId that distance is measured from
+ * @param bucketIndex Desired bucket index for new NodeId
+ * @param bucketOffset Offset position for new NodeId from the bucket index
  */
-function generateNodeIdForBucket(nodeId: NodeId, bucketIndex: number): NodeId {
+function generateNodeIdForBucket(
+  nodeId: NodeId,
+  bucketIndex: number,
+  bucketOffset: number = 0,
+): NodeId {
   const lowerBoundDistance = BigInt(2) ** BigInt(bucketIndex);
-  const bufferId = Buffer.from(nodeId.toBuffer());
-  // Console.log(bufferId);
-  const bufferDistance = bigIntToBuffer(lowerBoundDistance);
-  // Console.log(bufferDistance);
-  // Console.log('Distance buffer:', bufferDistance);
-  // console.log('Node ID buffer:', bufferId);
-
-  const max = Math.max(bufferId.length, bufferDistance.length);
-  // Reverse the buffers such that we XOR from right to left
-  bufferId.reverse();
-  bufferDistance.reverse();
-  const newIdArray = Buffer.alloc(max);
-
-  // XOR the 'rightmost' bytes first
-  for (let i = 0; i < bufferId.length && i < bufferDistance.length; i++) {
-    newIdArray[i] = bufferId[i] ^ bufferDistance[i];
+  const upperBoundDistance = BigInt(2) ** BigInt(bucketIndex + 1);
+  if (bucketOffset >= upperBoundDistance - lowerBoundDistance) {
+    throw new RangeError('bucketOffset is beyond bucket size');
   }
-  // If distance buffer is longer, append its bytes
-  for (let i = bufferId.length; i < bufferDistance.length; i++) {
-    newIdArray[i] = bufferDistance[i];
-  }
-  // If node ID buffer is longer, append its bytes
-  for (let i = bufferDistance.length; i < bufferId.length; i++) {
-    newIdArray[i] = bufferId[i];
-  }
-
-  // Reverse the XORed array back to normal
-  newIdArray.reverse();
-  // Convert to an ASCII string
-  return IdInternal.fromBuffer<NodeId>(newIdArray);
-}
-
-/**
- * Increases the passed node ID's last character code by 1.
- * If used in conjunction with calculateNodeIdForBucket, can produce multiple
- * node IDs that will appear in the same bucket.
- * NOTE: For node IDs appearing in lower-indexed buckets (i.e. bucket indexes
- * roughly around 0-4), this will occasionally cause the node ID to overflow
- * into the next bucket instead. For safety, ensure this function is used for
- * nodes appearing in larger-indexed buckets.
- */
-function incrementNodeId(nodeId: NodeId): NodeId {
-  const nodeIdArray = Buffer.from(nodeId.toBuffer());
-  const lastCharIndex = nodeIdArray.length - 1;
-  nodeIdArray[lastCharIndex] = nodeIdArray[lastCharIndex] + 1;
-  return IdInternal.fromBuffer<NodeId>(nodeIdArray);
-}
-
-/**
- * Converts a BigInt to a hex buffer.
- */
-function bigIntToBuffer(number: BigInt) {
-  let hex = number.toString(16);
-  if (hex.length % 2) {
-    hex = '0' + hex;
-  }
-  const len = hex.length / 2;
-  const u8 = new Uint8Array(len);
-  let i = 0;
-  let j = 0;
-  while (i < len) {
-    u8[i] = parseInt(hex.slice(j, j + 2), 16);
-    i += 1;
-    j += 2;
-  }
-  return u8;
+  // Offset position within the bucket
+  const distance = bigInt2Bytes(
+    lowerBoundDistance + BigInt(bucketOffset),
+    nodeId.byteLength,
+  );
+  // XOR the nodeIdBuffer with distance
+  const nodeIdBufferNew = nodeId.map((byte, i) => {
+    return byte ^ distance[i];
+  });
+  // Zero-copy the new NodeId
+  return IdInternal.create<NodeId>(
+    nodeIdBufferNew,
+    nodeIdBufferNew.byteOffset,
+    nodeIdBufferNew.byteLength,
+  );
 }
 
 /**
@@ -85,15 +50,15 @@ function bigIntToBuffer(number: BigInt) {
  */
 async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
-  await localNode.nodeManager.setNode(remoteNode.nodeManager.getNodeId(), {
+  await localNode.nodeManager.setNode(remoteNode.keyManager.getNodeId(), {
     host: remoteNode.revProxy.getIngressHost(),
     port: remoteNode.revProxy.getIngressPort(),
   } as NodeAddress);
   // Add local node's details to remote node
-  await remoteNode.nodeManager.setNode(localNode.nodeManager.getNodeId(), {
+  await remoteNode.nodeManager.setNode(localNode.keyManager.getNodeId(), {
     host: localNode.revProxy.getIngressHost(),
     port: localNode.revProxy.getIngressPort(),
   } as NodeAddress);
 }
 
-export { generateNodeIdForBucket, incrementNodeId, nodesConnect };
+export { generateNodeIdForBucket, nodesConnect };

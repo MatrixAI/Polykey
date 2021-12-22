@@ -9,13 +9,8 @@ import { utils as idUtils } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
 import { makeVaultId } from '@/vaults/utils';
 import { utils as nodesUtils } from '@/nodes';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 describe('CLI Notifications', () => {
   const password = 'password';
@@ -38,7 +33,16 @@ describe('CLI Notifications', () => {
     return ['notifications', ...options, '-np', receiverNodePath];
   }
 
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
   beforeAll(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
+
     senderDataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -61,9 +65,9 @@ describe('CLI Notifications', () => {
       nodePath: receiverNodePath,
       logger: logger,
     });
-    senderNodeId = senderPolykeyAgent.nodeManager.getNodeId();
-    receiverNodeId = receiverPolykeyAgent.nodeManager.getNodeId();
-    await senderPolykeyAgent.nodeManager.setNode(receiverNodeId, {
+    senderNodeId = senderPolykeyAgent.keyManager.getNodeId();
+    receiverNodeId = receiverPolykeyAgent.keyManager.getNodeId();
+    await senderPolykeyAgent.nodeGraph.setNode(receiverNodeId, {
       host: receiverPolykeyAgent.revProxy.getIngressHost(),
       port: receiverPolykeyAgent.revProxy.getIngressPort(),
     } as NodeAddress);

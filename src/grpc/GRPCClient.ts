@@ -9,17 +9,24 @@ import type {
 import type { NodeId } from '../nodes/types';
 import type { Certificate } from '../keys/types';
 import type { Host, Port, TLSConfig, ProxyConfig } from '../network/types';
-
 import http2 from 'http2';
 import Logger from '@matrixai/logger';
+import * as grpc from '@grpc/grpc-js';
 import * as grpcUtils from './utils';
 import * as grpcErrors from './errors';
-import { utils as keysUtils } from '../keys';
-import { utils as networkUtils, errors as networkErrors } from '../network';
-import { promisify, promise, timerStart, timerStop } from '../utils';
-import { utils as nodeUtils } from '../nodes';
+import * as keysUtils from '../keys/utils';
+import * as networkUtils from '../network/utils';
+import * as networkErrors from '../network/errors';
+import * as nodeUtils from '../nodes/utils';
+import {
+  promisify,
+  promise,
+  timerStart,
+  timerStop,
+  never,
+} from '../utils/utils';
 
-abstract class GRPCClient<T extends Client> {
+abstract class GRPCClient<T extends Client = Client> {
   /**
    * Create the gRPC client
    * This will asynchronously start the connection and verify the
@@ -30,7 +37,7 @@ abstract class GRPCClient<T extends Client> {
    * By default timeout is Infinity which means it retries connection
    * establishment forever
    */
-  public static async createClient<T extends Client>({
+  public static async createClient<T extends Client = Client>({
     clientConstructor,
     nodeId,
     host,
@@ -120,6 +127,8 @@ abstract class GRPCClient<T extends Client> {
     try {
       await waitForReady(timeout);
     } catch (e) {
+      // If we fail here then we leak the client object...
+      client.close();
       throw new grpcErrors.ErrorGRPCClientTimeout();
     }
     let serverCertChain: Array<Certificate> | undefined;
@@ -165,6 +174,7 @@ abstract class GRPCClient<T extends Client> {
   protected serverCertChain?: Array<Certificate>;
   protected flowCountInterceptor?: grpcUtils.FlowCountInterceptor;
   protected _secured: boolean = false;
+  protected destroyCallback: () => Promise<void>;
 
   constructor({
     client,
@@ -175,6 +185,7 @@ abstract class GRPCClient<T extends Client> {
     proxyConfig,
     serverCertChain,
     flowCountInterceptor,
+    destroyCallback = async () => {},
     logger,
   }: {
     client: T;
@@ -185,6 +196,7 @@ abstract class GRPCClient<T extends Client> {
     proxyConfig?: ProxyConfig;
     serverCertChain?: Array<Certificate>;
     flowCountInterceptor?: grpcUtils.FlowCountInterceptor;
+    destroyCallback?: () => Promise<void>;
     logger: Logger;
   }) {
     this.logger = logger;
@@ -196,9 +208,12 @@ abstract class GRPCClient<T extends Client> {
     this.proxyConfig = proxyConfig;
     this.serverCertChain = serverCertChain;
     this.flowCountInterceptor = flowCountInterceptor;
+    this.destroyCallback = destroyCallback;
     if (tlsConfig != null) {
       this._secured = true;
     }
+    // Register the channel state watcher
+    this.watchChannelState();
   }
 
   get secured(): boolean {
@@ -243,6 +258,7 @@ abstract class GRPCClient<T extends Client> {
         );
       }
     }
+    await this.destroyCallback();
     this.logger.info(
       `Destroyed ${this.constructor.name} connected to ${address}`,
     );
@@ -268,6 +284,54 @@ abstract class GRPCClient<T extends Client> {
       return;
     }
     return this.serverCertChain!.map((crt) => keysUtils.certCopy(crt));
+  }
+
+  /**
+   * Watches for connection state change
+   * Calls `this.destroy()` when the underlying channel is destroyed
+   */
+  protected watchChannelState() {
+    const channel = this.client.getChannel();
+    let connected = false;
+    const checkState = async (e?: Error) => {
+      if (e != null) {
+        // This should not happen because the error should only occur
+        // when the deadline is exceeded, however our deadline here is Infinity
+        this.logger.warn(`Watch Channel State Error: ${e.toString()}`);
+        never();
+      }
+      const state = channel.getConnectivityState(false);
+      this.logger.debug(
+        `Watch Channel State: ${grpc.connectivityState[state]}`,
+      );
+      switch (state) {
+        case grpc.connectivityState.READY:
+          connected = true;
+          break;
+        case grpc.connectivityState.IDLE:
+          // If connected already, then switching to IDLE means
+          // the connection has timed out
+          if (connected) {
+            await this.destroy();
+            return;
+          }
+          break;
+        case grpc.connectivityState.SHUTDOWN:
+          await this.destroy();
+          return;
+      }
+      try {
+        channel.watchConnectivityState(state, Infinity, checkState);
+      } catch (e) {
+        // Exception occurs only when the channel is already shutdown
+        await this.destroy();
+        return;
+      }
+    };
+    checkState().then(
+      () => {},
+      () => {},
+    );
   }
 }
 

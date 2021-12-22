@@ -30,7 +30,7 @@ import {
 import * as bip39 from 'bip39';
 import { IdInternal } from '@matrixai/id';
 import * as keysErrors from './errors';
-import { utils as nodesUtils } from '../nodes';
+import * as nodesUtils from '../nodes/utils';
 import config from '../config';
 import { promisify, getUnixtime, never } from '../utils';
 

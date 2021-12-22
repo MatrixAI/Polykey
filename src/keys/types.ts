@@ -1,7 +1,7 @@
-import type { NodeId } from '../nodes/types';
 import type { asn1, pki } from 'node-forge';
-import type { Opaque } from '../types';
+import type { NodeId } from '../nodes/types';
 import type { TLSConfig } from '../network/types';
+import type { Opaque } from '../types';
 
 type PublicKey = pki.rsa.PublicKey;
 type PrivateKey = pki.rsa.PrivateKey;

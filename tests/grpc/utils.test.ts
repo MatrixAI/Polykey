@@ -1,7 +1,9 @@
 import type { TestServiceClient } from '@/proto/js/polykey/v1/test_service_grpc_pb';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import * as grpc from '@grpc/grpc-js';
-import { utils as grpcUtils, errors as grpcErrors } from '@/grpc';
+import { getLogger } from '@grpc/grpc-js/build/src/logging';
+import * as grpcUtils from '@/grpc/utils';
+import * as grpcErrors from '@/grpc/errors';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
 import * as utils from './utils';
 
@@ -26,6 +28,14 @@ describe('GRPC utils', () => {
       utils.closeTestServerForce(server);
     }, 2000);
     await utils.closeTestServer(server);
+  });
+  test('setting the global GRPC logger', () => {
+    const grpcLogger1 = getLogger();
+    // Sets the global GRPC logger to the logger
+    grpcUtils.setLogger(logger);
+    const grpcLogger2 = getLogger();
+    // These objects should not be the same
+    expect(grpcLogger1).not.toBe(grpcLogger2);
   });
   test('promisified client unary call', async () => {
     const unary = grpcUtils.promisifyUnaryCall<utilsPB.EchoMessage>(

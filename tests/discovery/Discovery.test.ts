@@ -12,7 +12,7 @@ import { utils as claimsUtils } from '@/claims';
 import { Discovery, errors as discoveryErrors } from '@/discovery';
 import { GestaltGraph } from '@/gestalts';
 import { IdentitiesManager } from '@/identities';
-import { NodeManager } from '@/nodes';
+import { NodeConnectionManager, NodeGraph, NodeManager } from '@/nodes';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
@@ -43,6 +43,8 @@ describe('Discovery', () => {
   let dataDir: string;
   let gestaltGraph: GestaltGraph;
   let identitiesManager: IdentitiesManager;
+  let nodeGraph: NodeGraph;
+  let nodeConnectionManager: NodeConnectionManager;
   let nodeManager: NodeManager;
   let db: DB;
   let acl: ACL;
@@ -121,12 +123,27 @@ describe('Discovery', () => {
         certChainPem: await keyManager.getRootCertChainPem(),
       },
     });
-    nodeManager = await NodeManager.createNodeManager({
+    nodeGraph = await NodeGraph.createNodeGraph({
+      db,
+      keyManager,
+      logger: logger.getChild('NodeGraph'),
+    });
+    nodeConnectionManager = new NodeConnectionManager({
+      keyManager,
+      nodeGraph,
+      fwdProxy,
+      revProxy,
+      connConnectTime: 2000,
+      connTimeoutTime: 2000,
+      logger: logger.getChild('NodeConnectionManager'),
+    });
+    await nodeConnectionManager.start();
+    nodeManager = new NodeManager({
       db,
       keyManager,
       sigchain,
-      fwdProxy,
-      revProxy,
+      nodeGraph,
+      nodeConnectionManager,
       logger: logger.getChild('nodeManager'),
     });
     // Set up other gestalt
@@ -147,11 +164,11 @@ describe('Discovery', () => {
       logger: logger.getChild('nodeB'),
     });
     await testNodesUtils.nodesConnect(nodeA, nodeB);
-    await nodeManager.setNode(nodeA.nodeManager.getNodeId(), {
+    await nodeGraph.setNode(nodeA.keyManager.getNodeId(), {
       host: nodeA.revProxy.getIngressHost(),
       port: nodeA.revProxy.getIngressPort(),
     });
-    await nodeA.nodeManager.claimNode(nodeB.nodeManager.getNodeId());
+    await nodeA.nodeManager.claimNode(nodeB.keyManager.getNodeId());
     nodeA.identitiesManager.registerProvider(testProvider);
     identityId = 'other-gestalt' as IdentityId;
     await nodeA.identitiesManager.putToken(testToken.providerId, identityId, {
@@ -159,7 +176,7 @@ describe('Discovery', () => {
     });
     const identityClaim: ClaimLinkIdentity = {
       type: 'identity',
-      node: nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+      node: nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
       provider: testProvider.id,
       identity: identityId,
     };
@@ -170,7 +187,8 @@ describe('Discovery', () => {
   afterAll(async () => {
     await nodeA.stop();
     await nodeB.stop();
-    await nodeManager.stop();
+    await nodeGraph.stop();
+    await nodeConnectionManager.stop();
     await revProxy.stop();
     await fwdProxy.stop();
     await sigchain.stop();
@@ -188,9 +206,11 @@ describe('Discovery', () => {
   });
   test('discovery readiness', async () => {
     const discovery = await Discovery.createDiscovery({
+      keyManager,
       gestaltGraph,
       identitiesManager,
       nodeManager,
+      sigchain,
       logger,
     });
     expect(discovery[destroyed]).toBeFalsy();
@@ -205,13 +225,15 @@ describe('Discovery', () => {
   });
   test('discovery by node', async () => {
     const discovery = await Discovery.createDiscovery({
+      keyManager,
       gestaltGraph,
       identitiesManager,
       nodeManager,
+      sigchain,
       logger,
     });
     const discoverProcess = discovery.discoverGestaltByNode(
-      nodeA.nodeManager.getNodeId(),
+      nodeA.keyManager.getNodeId(),
     );
     for await (const _step of discoverProcess) {
       // Waiting for the discovery process to finish.
@@ -220,10 +242,10 @@ describe('Discovery', () => {
     expect(gestalt.length).not.toBe(0);
     const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeA.nodeManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
     await discovery.destroy();
@@ -237,13 +259,15 @@ describe('Discovery', () => {
   });
   test('discovery by identity', async () => {
     const discovery = await Discovery.createDiscovery({
+      keyManager,
       gestaltGraph,
       identitiesManager,
       nodeManager,
+      sigchain,
       logger,
     });
     const discoverProcess = discovery.discoverGestaltByNode(
-      nodeA.nodeManager.getNodeId(),
+      nodeA.keyManager.getNodeId(),
     );
     for await (const _step of discoverProcess) {
       // Waiting for the discovery process to finish.
@@ -252,10 +276,10 @@ describe('Discovery', () => {
     expect(gestalt.length).not.toBe(0);
     const gestaltString = JSON.stringify(gestalt);
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeA.nodeManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeA.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(
-      nodesUtils.encodeNodeId(nodeB.nodeManager.getNodeId()),
+      nodesUtils.encodeNodeId(nodeB.keyManager.getNodeId()),
     );
     expect(gestaltString).toContain(identityId);
     await discovery.destroy();

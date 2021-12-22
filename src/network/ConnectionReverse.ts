@@ -5,14 +5,13 @@ import type { Host, Port, Address, NetworkMessage } from './types';
 import type { NodeId } from '../nodes/types';
 import type { Certificate } from '../keys/types';
 import type { AbstractConstructorParameters, Timer } from '../types';
-
 import net from 'net';
 import tls from 'tls';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import Connection from './Connection';
 import * as networkUtils from './utils';
 import * as networkErrors from './errors';
-import { utils as keysUtils } from '../keys';
+import * as keysUtils from '../keys/utils';
 import { promise, timerStart, timerStop } from '../utils';
 
 type ConnectionsReverse = {

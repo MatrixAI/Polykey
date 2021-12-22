@@ -1,53 +1,43 @@
 import type { PublicKeyPem } from '@/keys/types';
 import type { AbstractConstructorParameters } from '@/types';
 
-import type { NodeId } from '@/nodes/types';
-import type { Host, Port, ProxyConfig } from '@/network/types';
-import type { ForwardProxy } from '@/network';
-import type { KeyManager } from '@/keys';
+import type { Host, Port } from '@/network/types';
+import type ForwardProxy from '@/network/ForwardProxy';
+import type GRPCClientAgent from '@/agent/GRPCClientAgent';
 import Logger from '@matrixai/logger';
-import { NodeConnection } from '@/nodes';
+import NodeConnection from '@/nodes/NodeConnection';
 
 /**
  * A dummy NodeConnection object. Currently used for when a connection isn't
  * required to be established, but we are required to get the public key from
  * the other node.
  */
-class TestNodeConnection extends NodeConnection {
+class TestNodeConnection extends NodeConnection<GRPCClientAgent> {
   protected publicKey: PublicKeyPem | null;
 
   static async createTestNodeConnection({
     publicKey,
-    targetNodeId,
     targetHost,
     targetPort,
-    forwardProxy,
-    keyManager,
+    fwdProxy,
+    destroyCallback,
     logger,
   }: {
     publicKey: PublicKeyPem | null;
-    targetNodeId: NodeId;
     targetHost: Host;
     targetPort: Port;
-    forwardProxy: ForwardProxy;
-    keyManager: KeyManager;
+    fwdProxy: ForwardProxy;
+    destroyCallback: () => Promise<void>;
     logger?: Logger;
   }): Promise<TestNodeConnection> {
     const logger_ = logger ?? new Logger('NodeConnection');
-    const proxyConfig_ = {
-      host: forwardProxy.getProxyHost(),
-      port: forwardProxy.getProxyPort(),
-      authToken: forwardProxy.authToken,
-    } as ProxyConfig;
     return new TestNodeConnection({
       publicKey,
-      forwardProxy,
-      keyManager,
       logger: logger_,
-      targetHost,
-      targetNodeId,
-      targetPort,
-      proxyConfig: proxyConfig_,
+      host: targetHost,
+      port: targetPort,
+      destroyCallback,
+      fwdProxy,
     });
   }
 

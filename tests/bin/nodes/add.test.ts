@@ -7,14 +7,9 @@ import { IdInternal } from '@matrixai/id';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import { sysexits } from '@/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 describe('add', () => {
   const password = 'password';
@@ -35,7 +30,16 @@ describe('add', () => {
     return ['nodes', ...options, '-np', nodePath];
   }
 
-  beforeAll(async () => {
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
+  beforeEach(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
+
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -54,11 +58,8 @@ describe('add', () => {
       {},
       nodePath,
     );
-  }, global.polykeyStartupTimeout * 3);
+  }, global.polykeyStartupTimeout);
   afterEach(async () => {
-    await polykeyAgent.nodeManager.clearDB();
-  });
-  afterAll(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
     await fs.promises.rm(dataDir, {
@@ -78,7 +79,7 @@ describe('add', () => {
     expect(result.exitCode).toBe(0);
 
     // Checking if node was added.
-    const res = await polykeyAgent.nodeManager.getNode(validNodeId);
+    const res = await polykeyAgent.nodeGraph.getNode(validNodeId);
     expect(res).toBeTruthy();
     expect(res!.host).toEqual(validHost);
     expect(res!.port).toEqual(port);
@@ -110,7 +111,7 @@ describe('add', () => {
       expect(result.exitCode).toBe(sysexits.USAGE);
 
       // Checking if node was added.
-      const res = await polykeyAgent.nodeManager.getNode(validNodeId);
+      const res = await polykeyAgent.nodeGraph.getNode(validNodeId);
       expect(res).toBeUndefined();
     },
     global.failedConnectionTimeout,

@@ -27,6 +27,8 @@ async function openTestClientServer({
     pkAgent,
     keyManager: pkAgent.keyManager,
     vaultManager: pkAgent.vaultManager,
+    nodeGraph: pkAgent.nodeGraph,
+    nodeConnectionManager: pkAgent.nodeConnectionManager,
     nodeManager: pkAgent.nodeManager,
     identitiesManager: pkAgent.identitiesManager,
     gestaltGraph: pkAgent.gestaltGraph,

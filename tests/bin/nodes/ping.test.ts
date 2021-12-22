@@ -5,14 +5,9 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
+import * as keysUtils from '@/keys/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
 
 describe('ping', () => {
   const password = 'password';
@@ -33,7 +28,16 @@ describe('ping', () => {
     return ['nodes', ...options, '-np', nodePath];
   }
 
+  const mockedGenerateDeterministicKeyPair = jest.spyOn(
+    keysUtils,
+    'generateDeterministicKeyPair',
+  );
+
   beforeAll(async () => {
+    mockedGenerateDeterministicKeyPair.mockImplementation((bits, _) => {
+      return keysUtils.generateKeyPair(bits);
+    });
+
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -58,7 +62,7 @@ describe('ping', () => {
       },
       logger,
     });
-    remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
+    remoteOnlineNodeId = remoteOnline.keyManager.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
 
     // Setting up an offline remote keynode
@@ -70,7 +74,7 @@ describe('ping', () => {
       },
       logger,
     });
-    remoteOfflineNodeId = remoteOffline.nodeManager.getNodeId();
+    remoteOfflineNodeId = remoteOffline.keyManager.getNodeId();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
 
@@ -129,7 +133,7 @@ describe('ping', () => {
         'ping',
         nodesUtils.encodeNodeId(fakeNodeId),
       ]);
-      const result = await testBinUtils.pk(commands);
+      const result = await testBinUtils.pkStdio(commands);
       expect(result.exitCode).not.toBe(0); // Should fail if node doesn't exist.
       expect(result.stdout).toContain('Failed to resolve node ID');
 

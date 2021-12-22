@@ -3,7 +3,7 @@ import type { Host, Port } from '@/network/types';
 import type { IAgentServiceServer } from '@/proto/js/polykey/v1/agent_service_grpc_pb';
 import type { KeyManager } from '@/keys';
 import type { VaultManager } from '@/vaults';
-import type { NodeManager } from '@/nodes';
+import type { NodeGraph, NodeConnectionManager, NodeManager } from '@/nodes';
 import type { Sigchain } from '@/sigchain';
 import type { NotificationsManager } from '@/notifications';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
@@ -19,13 +19,17 @@ import * as testUtils from '../utils';
 async function openTestAgentServer({
   keyManager,
   vaultManager,
+  nodeConnectionManager,
   nodeManager,
+  nodeGraph,
   sigchain,
   notificationsManager,
 }: {
   keyManager: KeyManager;
   vaultManager: VaultManager;
+  nodeConnectionManager: NodeConnectionManager;
   nodeManager: NodeManager;
+  nodeGraph: NodeGraph;
   sigchain: Sigchain;
   notificationsManager: NotificationsManager;
 }) {
@@ -33,8 +37,10 @@ async function openTestAgentServer({
     keyManager,
     vaultManager,
     nodeManager,
+    nodeGraph,
     sigchain: sigchain,
     notificationsManager: notificationsManager,
+    nodeConnectionManager: nodeConnectionManager,
   });
 
   const server = new grpc.Server();
@@ -62,6 +68,7 @@ async function openTestAgentClient(port: number): Promise<GRPCClientAgent> {
     host: '127.0.0.1' as Host,
     port: port as Port,
     logger: logger,
+    destroyCallback: async () => {},
     timeout: 30000,
   });
   return agentClient;

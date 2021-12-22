@@ -93,7 +93,12 @@ const config = {
       connConnectTime: 20000,
       connTimeoutTime: 20000,
     },
-    // This is not used by the `PolykeyAgent` with defaults to `{}`
+    nodeConnectionManagerConfig: {
+      connConnectTime: 20000,
+      connTimeoutTime: 60000,
+      initialClosestNodes: 3,
+    },
+    // This is not used by the `PolykeyAgent` which defaults to `{}`
     network: {
       mainnet: {},
       testnet: {},
