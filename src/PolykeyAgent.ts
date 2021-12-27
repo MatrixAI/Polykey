@@ -542,7 +542,24 @@ class PolykeyAgent {
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
       this.logger.warn(`Failed Starting ${this.constructor.name}`);
-      await this.stop();
+      await this.status?.beginStop({ pid: process.pid });
+      await this.sessionManager?.stop();
+      await this.notificationsManager?.stop();
+      await this.vaultManager?.stop();
+      await this.discovery?.destroy();
+      await this.nodeManager?.stop();
+      await this.revProxy?.stop();
+      await this.fwdProxy?.stop();
+      await this.grpcServerAgent?.stop();
+      await this.grpcServerClient?.stop();
+      await this.gestaltGraph?.stop();
+      await this.acl?.stop();
+      await this.sigchain?.stop();
+      await this.identitiesManager?.stop();
+      await this.db?.stop();
+      await this.keyManager?.stop();
+      await this.schema?.stop();
+      await this.status?.stop({});
       throw e;
     }
   }

@@ -218,7 +218,7 @@ class ForwardProxy {
    * It will only stop the timer if using the default timer
    * Set timer to `null` explicitly to wait forever
    */
-  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  @ready(new networkErrors.ErrorForwardProxyNotRunning(), true)
   public async openConnection(
     nodeId: NodeId,
     ingressHost: Host,
@@ -247,7 +247,7 @@ class ForwardProxy {
     }
   }
 
-  @ready(new networkErrors.ErrorForwardProxyNotRunning())
+  @ready(new networkErrors.ErrorForwardProxyNotRunning(), true)
   public async closeConnection(
     ingressHost: Host,
     ingressPort: Port,

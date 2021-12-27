@@ -64,7 +64,7 @@ function tcpServer(end: boolean = false) {
 }
 
 describe(ReverseProxy.name, () => {
-  const logger = new Logger(`${ReverseProxy.name} test`, LogLevel.DEBUG, [
+  const logger = new Logger(`${ReverseProxy.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
   let keyPairPem: KeyPairPem
@@ -383,11 +383,14 @@ describe(ReverseProxy.name, () => {
     await revProxy.stop();
     await serverClose();
   });
-  test.only('connect timeout due to hanging client', async () => {
+  test('connect timeout due to hanging client', async () => {
     // `connConnectTime` will affect ErrorConnectionComposeTimeout
     // `connKeepAliveTimeoutTime` will affect ErrorConnectionTimeout which is needed
-    // because failing to connect to the open connection
-    // doesn't automatically mean the connection is destroyed
+    // This should trigger both ErrorConnectionComposeTimeout and ErrorConnectionTimeout
+    // ErrorConnectionComposeTimeout results in a failed composition
+    // ErrorConnectionTimeout results in stopping the connection
+    // Failing to connect to the open connection doesn't
+    // automatically mean the connection is destroyed
     const revProxy = new ReverseProxy({
       connConnectTime: 3000,
       connKeepAliveTimeoutTime: 3000,
@@ -449,25 +452,10 @@ describe(ReverseProxy.name, () => {
     });
     // The client connection times out
     await expect(utpConnErrorP).rejects.toThrow(/TIMED OUT/);
-
-    console.log('000000');
-
     await utpConnClosedP;
-
-    console.log('AAAA');
-
     await expect(serverConnP).resolves.toBeUndefined();
-
-    console.log('BBBB');
-
     await expect(serverConnEndP).resolves.toBeUndefined();
-
-    console.log('CCCC');
-
     await expect(serverConnClosedP).resolves.toBeUndefined();
-
-    console.log('DDDDD');
-
     // Connection count should reach 0 eventually
     await expect(poll(
       async () => {
@@ -686,7 +674,7 @@ describe(ReverseProxy.name, () => {
     await revProxy.stop();
     await serverClose();
   });
-  test.only('stopping the proxy with open connections', async () => {
+  test('stopping the proxy with open connections', async () => {
     const clientKeyPair = await keysUtils.generateKeyPair(1024);
     const clientKeyPairPem = keysUtils.keyPairToPem(clientKeyPair);
     const clientCert = keysUtils.generateCertificate(
@@ -771,26 +759,12 @@ describe(ReverseProxy.name, () => {
     await clientReadyP;
     await clientSecureConnectP;
     await serverConnP;
-
-    // await sleep(3000);
-
-    console.log('BEFORE STOP');
-
     // Stopping with 1 active connection (not just opened)
     await revProxy.stop();
-
-    console.log('AFTER STOP');
-
-
     expect(revProxy.getConnectionCount()).toBe(0);
     await clientCloseP;
-
-    console.log('AAAAAAAAA');
-
     await expect(serverConnEndP).resolves.toBeUndefined();
-    console.log('BBBBBBBB');
     await expect(serverConnClosedP).resolves.toBeUndefined();
-    console.log('CCCCCCCCC');
     expect(tlsSocketEnded).toBe(true);
     utpSocket.off('message', handleMessage);
     utpSocket.close();

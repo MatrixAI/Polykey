@@ -1,4 +1,5 @@
 import type { Socket, AddressInfo } from 'net';
+import type { TLSSocket } from 'tls';
 import type UTPConnection from 'utp-native/lib/connection';
 import type { Host, Port, Address, NetworkMessage } from './types';
 import type { NodeId } from '../nodes/types';
@@ -27,7 +28,7 @@ class ConnectionReverse extends Connection {
 
   protected connections: ConnectionsReverse;
   protected serverSocket: Socket;
-  protected tlsSocket?: Socket;
+  protected tlsSocket?: TLSSocket;
   protected proxyHost: Host;
   protected proxyPort: Port;
   protected proxyAddress: Address;
@@ -152,12 +153,10 @@ class ConnectionReverse extends Connection {
         ...(timer != null ? [timer.timerP] : []),
       ]);
     } catch (e) {
-      // Destroy the socket before calling stop
-      // The stop will try to do a graceful end
-      // if the socket is not already destroyed
-      // However at this point the socket is not actually established
+      // Clean up partial start
+      // Socket isn't established yet, so it is destroyed
       this.serverSocket.destroy();
-      await this.stop();
+      this.utpSocket.off('message', this.handleMessage);
       throw new networkErrors.ErrorConnectionStart(e.message, {
         code: e.code,
         errno: e.errno,
@@ -169,7 +168,10 @@ class ConnectionReverse extends Connection {
     this.serverSocket.on('error', this.handleError);
     this.serverSocket.off('error', handleStartError);
     if (timer?.timedOut) {
-      await this.stop();
+      // Clean up partial start
+      // Socket isn't established yet, so it is destroyed
+      this.serverSocket.destroy();
+      this.utpSocket.off('message', this.handleMessage);
       throw new networkErrors.ErrorConnectionStartTimeout();
     }
     this.connections.egress.set(this.address, this);
@@ -207,10 +209,7 @@ class ConnectionReverse extends Connection {
     this.logger.info('Stopped Connection Reverse');
   }
 
-  /**
-   * Repeated invocations are noops
-   */
-  @ready(new networkErrors.ErrorConnectionNotRunning())
+  @ready(new networkErrors.ErrorConnectionNotRunning(), true)
   public async compose(utpConn: UTPConnection, timer?: Timer): Promise<void> {
     try {
       if (this._composed) {
@@ -222,6 +221,9 @@ class ConnectionReverse extends Connection {
       const { p: secureP, resolveP: resolveSecureP } = promise<void>();
       // Promise for compose errors
       const { p: errorP, rejectP: rejectErrorP } = promise<void>();
+      const handleComposeError = (e) => {
+        rejectErrorP(e);
+      };
       const tlsSocket = new tls.TLSSocket(utpConn, {
         key: Buffer.from(this.tlsConfig.keyPrivatePem, 'ascii'),
         cert: Buffer.from(this.tlsConfig.certChainPem, 'ascii'),
@@ -232,9 +234,6 @@ class ConnectionReverse extends Connection {
       tlsSocket.once('secure', () => {
         resolveSecureP();
       });
-      const handleComposeError = (e) => {
-        rejectErrorP(e);
-      };
       tlsSocket.once('error', handleComposeError);
       try {
         await Promise.race([
@@ -243,7 +242,7 @@ class ConnectionReverse extends Connection {
           ...(timer != null ? [timer.timerP] : []),
         ]);
       } catch (e) {
-        // Hard close the tls socket
+        // Clean up partial compose
         if (!tlsSocket.destroyed) {
           tlsSocket.end();
           tlsSocket.destroy();
@@ -259,15 +258,8 @@ class ConnectionReverse extends Connection {
         await this.stop();
       });
       tlsSocket.off('error', handleComposeError);
-      // TODO:, this location is problematic
-      // IF stop is called in the middle of composition
-      // It feels like we need to LOCK the operations
-      // So that if you're composing, you cannot stop
-      // And when stopping you cannot compose
-      // At this point, graceful exit can be done for the tls socket
-      this.tlsSocket = tlsSocket;
       if (timer?.timedOut) {
-        // Hard close the tls socket
+        // Clean up partial compose
         if (!tlsSocket.destroyed) {
           tlsSocket.end();
           tlsSocket.destroy();
@@ -278,33 +270,33 @@ class ConnectionReverse extends Connection {
       try {
         networkUtils.verifyClientCertificateChain(clientCertChain);
       } catch (e) {
-        // Hard close the tls socket
+        // Clean up partial compose
         if (!tlsSocket.destroyed) {
           tlsSocket.end();
           tlsSocket.destroy();
         }
         throw e;
       }
-
-
-      tlsSocket.on('end', async () => {
+      // The TLSSocket is now established
+      this.tlsSocket = tlsSocket;
+      this.tlsSocket.on('end', async () => {
         this.logger.debug('Receives tlsSocket ending');
         if (utpConn.destroyed) {
-          tlsSocket.destroy();
+          this.tlsSocket!.destroy();
           this.logger.debug('Destroyed tlsSocket');
         } else {
           this.logger.debug('Responds tlsSocket ending');
-          tlsSocket.end();
-          tlsSocket.destroy();
+          this.tlsSocket!.end();
+          this.tlsSocket!.destroy();
           this.logger.debug('Responded tlsSocket ending');
         }
         await this.stop();
       });
-      tlsSocket.on('close', async () => {
+      this.tlsSocket.on('close', async () => {
         await this.stop();
       });
-      tlsSocket.pipe(this.serverSocket, { end: false });
-      this.serverSocket.pipe(tlsSocket, { end: false });
+      this.tlsSocket.pipe(this.serverSocket, { end: false });
+      this.serverSocket.pipe(this.tlsSocket, { end: false });
       this.clientCertChain = clientCertChain;
       this.logger.info('Composed Connection Reverse');
     } catch (e) {
@@ -323,6 +315,7 @@ class ConnectionReverse extends Connection {
     return this.proxyPort;
   }
 
+  @ready(new networkErrors.ErrorConnectionNotRunning())
   public getClientCertificates(): Array<Certificate> {
     if (!this._composed) {
       throw new networkErrors.ErrorConnectionNotComposed();
@@ -330,6 +323,7 @@ class ConnectionReverse extends Connection {
     return this.clientCertChain.map((crt) => keysUtils.certCopy(crt));
   }
 
+  @ready(new networkErrors.ErrorConnectionNotRunning())
   public getClientNodeIds(): Array<NodeId> {
     if (!this._composed) {
       throw new networkErrors.ErrorConnectionNotComposed();
@@ -339,13 +333,15 @@ class ConnectionReverse extends Connection {
 
   protected startKeepAliveTimeout() {
     this.timeout = setTimeout(async () => {
-      // This is more precisely an error for reverse
-      // However it may not yet be established
       const e = new networkErrors.ErrorConnectionTimeout();
+      // If the TLSSocket is established, emit the error so the
+      // tlsSocket error handler handles it
+      // This is not emitted on serverSocket in order maintain
+      // symmetry with ConnectionForward behaviour
       if (this.tlsSocket != null && !this.tlsSocket.destroyed) {
         this.tlsSocket.emit('error', e);
       } else {
-        // The composition has not occurred yet
+        // Otherwise the composition has not occurred yet
         // This means we have timed out waiting for a composition
         this.logger.warn(`Reverse Error: ${e.toString()}`);
         await this.stop();

@@ -196,7 +196,7 @@ class ReverseProxy {
     this.tlsConfig = tlsConfig;
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotRunning())
+  @ready(new networkErrors.ErrorReverseProxyNotRunning(), true)
   public async openConnection(
     egressHost: Host,
     egressPort: Port,
@@ -224,7 +224,7 @@ class ReverseProxy {
     }
   }
 
-  @ready(new networkErrors.ErrorReverseProxyNotRunning())
+  @ready(new networkErrors.ErrorReverseProxyNotRunning(), true)
   public async closeConnection(
     egressHost: Host,
     egressPort: Port,
@@ -262,13 +262,6 @@ class ReverseProxy {
     }
     const release = await lock.acquire();
     try {
-      const handleConnectionError = (e) => {
-        this.logger.warn(
-          `Failed connection from ${egressAddress} - ${e.toString()}`,
-        );
-        utpConn.destroy();
-      };
-      utpConn.on('error', handleConnectionError);
       this.logger.info(`Handling connection from ${egressAddress}`);
       const timer = timerStart(this.connConnectTime);
       try {
@@ -283,16 +276,14 @@ class ReverseProxy {
           throw e;
         }
         if (!utpConn.destroyed) {
-          utpConn.emit('error', e);
-        } else {
-          this.logger.warn(
-            `Failed connection from ${egressAddress} - ${e.toString()}`,
-          );
+          utpConn.destroy();
         }
+        this.logger.warn(
+          `Failed connection from ${egressAddress} - ${e.toString()}`,
+        );
       } finally {
         timerStop(timer);
       }
-      utpConn.off('error', handleConnectionError);
       this.logger.info(`Handled connection from ${egressAddress}`);
     } finally {
       release();

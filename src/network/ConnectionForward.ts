@@ -159,12 +159,13 @@ class ConnectionForward extends Connection {
         ...(timer != null ? [timer.timerP] : []),
       ]);
     } catch (e) {
-      // Destroy the socket before calling stop
-      // The stop will try to do a graceful end
-      // if the socket is not already destroyed
-      // However at this point the socket is not actually established
-      this.tlsSocket.destroy();
-      await this.stop();
+      // Clean up partial start
+      // TLSSocket isn't established yet, so it is destroyed
+      if (!this.tlsSocket.destroyed) {
+        this.tlsSocket.end();
+        this.tlsSocket.destroy();
+      }
+      this.utpSocket.off('message', this.handleMessage);
       throw new networkErrors.ErrorConnectionStart(e.message, {
         code: e.code,
         errno: e.errno,
@@ -176,17 +177,26 @@ class ConnectionForward extends Connection {
     this.tlsSocket.on('error', this.handleError);
     this.tlsSocket.off('error', handleStartError);
     if (timer?.timedOut) {
-      // Destroy the socket
-      // At this point the socket is not actually established
-      this.tlsSocket.destroy();
-      await this.stop();
+      // Clean up partial start
+      // TLSSocket isn't established yet, so it is destroyed
+      if (!this.tlsSocket.destroyed) {
+        this.tlsSocket.end();
+        this.tlsSocket.destroy();
+      }
+      this.utpSocket.off('message', this.handleMessage);
       throw new networkErrors.ErrorConnectionStartTimeout();
     }
     const serverCertChain = networkUtils.getCertificateChain(this.tlsSocket);
     try {
       networkUtils.verifyServerCertificateChain(this.nodeId, serverCertChain);
     } catch (e) {
-      await this.stop();
+      // Clean up partial start
+      this.utpSocket.off('message', this.handleMessage);
+      // TLSSocket is established, and is ended gracefully
+      this.logger.debug('Sends tlsSocket ending');
+      // Graceful exit has its own end handler
+      this.tlsSocket.removeAllListeners('end');
+      await this.endGracefully(this.tlsSocket, this.endTime);
       throw e;
     }
     await this.startKeepAliveInterval();
@@ -196,9 +206,6 @@ class ConnectionForward extends Connection {
     this.logger.info('Started Connection Forward');
   }
 
-  /**
-   * Repeated invocations are noops
-   */
   public async stop(): Promise<void> {
     this.logger.info('Stopping Connection Forward');
     this._composed = false;

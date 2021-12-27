@@ -167,7 +167,7 @@ class VaultManager {
       this.logger.info(`Started ${this.constructor.name}`);
     } catch (e) {
       this.logger.warn(`Failed Starting ${this.constructor.name}`);
-      await this.stop();
+      await this.efs.stop();
       throw e;
     }
   }
