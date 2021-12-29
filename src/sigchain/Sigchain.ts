@@ -424,21 +424,6 @@ class Sigchain {
   }
 
   @ready(new sigchainErrors.ErrorSigchainNotRunning())
-  public async getLatestClaimId(): Promise<ClaimId | undefined> {
-    return await this._transaction(async () => {
-      let latestId: ClaimId | undefined;
-      const keyStream = this.sigchainClaimsDb.createKeyStream({
-        limit: 1,
-        reverse: true,
-      });
-      for await (const o of keyStream) {
-        latestId = o as any as ClaimId;
-      }
-      return latestId;
-    });
-  }
-
-  @ready(new sigchainErrors.ErrorSigchainNotRunning())
   public async getSeqMap(): Promise<Record<number, ClaimId>> {
     const map: Record<number, ClaimId> = {};
     const claimStream = this.sigchainClaimsDb.createKeyStream();
@@ -460,6 +445,20 @@ class Sigchain {
         this.sequenceNumberKey,
         0,
       );
+    });
+  }
+
+  protected async getLatestClaimId(): Promise<ClaimId | undefined> {
+    return await this._transaction(async () => {
+      let latestId: ClaimId | undefined;
+      const keyStream = this.sigchainClaimsDb.createKeyStream({
+        limit: 1,
+        reverse: true,
+      });
+      for await (const o of keyStream) {
+        latestId = o as any as ClaimId;
+      }
+      return latestId;
     });
   }
 }
