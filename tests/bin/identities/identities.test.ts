@@ -702,7 +702,7 @@ describe('CLI Identities', () => {
         provider: testProvider.id,
         identity: identityId,
       };
-      const claimEncoded = await nodeB.sigchain.addClaim(claimIdentToB);
+      const [,claimEncoded] = await nodeB.sigchain.addClaim(claimIdentToB);
       const claim = claimsUtils.decodeClaim(claimEncoded);
       await testProvider.publishClaim(identityId, claim);
     }, global.polykeyStartupTimeout * 2);

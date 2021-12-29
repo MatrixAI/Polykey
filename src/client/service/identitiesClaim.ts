@@ -44,7 +44,7 @@ function identitiesClaim({
         throw new identitiesErrors.ErrorProviderUnauthenticated();
       }
       // Create identity claim on our node
-      const claim = await sigchain.addClaim({
+      const [, claim] = await sigchain.addClaim({
         type: 'identity',
         node: nodeManager.getNodeId(),
         provider: providerId,

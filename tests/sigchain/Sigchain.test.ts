@@ -85,9 +85,6 @@ describe('Sigchain', () => {
     await expect(async () => {
       await sigchain.getSequenceNumber();
     }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
-    await expect(async () => {
-      await sigchain.getLatestClaimId();
-    }).rejects.toThrow(sigchainErrors.ErrorSigchainNotRunning);
   });
   test('async start initialises the sequence number', async () => {
     const sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
@@ -102,9 +99,8 @@ describe('Sigchain', () => {
       node1: srcNodeId,
       node2: 'NodeId2' as NodeId,
     };
-    await sigchain.addClaim(cryptolink);
+    const [claimId] = await sigchain.addClaim(cryptolink);
 
-    const claimId = await sigchain.getLatestClaimId();
     expect(claimId).toBeTruthy();
     const claim = await sigchain.getClaim(claimId!);
 
@@ -147,16 +143,14 @@ describe('Sigchain', () => {
       node1: srcNodeId,
       node2: 'NodeId2' as NodeId,
     };
-    await sigchain.addClaim(cryptolink);
-    const claimId1 = await sigchain.getLatestClaimId();
+    const [claimId1] = await sigchain.addClaim(cryptolink);
 
     const cryptolink2: ClaimData = {
       type: 'node',
       node1: srcNodeId,
       node2: 'NodeId3' as NodeId,
     };
-    await sigchain.addClaim(cryptolink2);
-    const claimId2 = await sigchain.getLatestClaimId();
+    const [claimId2] = await sigchain.addClaim(cryptolink2);
 
     const claim1 = await sigchain.getClaim(claimId1!);
     const claim2 = await sigchain.getClaim(claimId2!);

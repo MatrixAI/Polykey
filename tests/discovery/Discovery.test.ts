@@ -134,7 +134,7 @@ describe('Discovery', () => {
         provider: testProvider.id,
         identity: identityId,
       };
-      const claimEncoded = await nodeB.sigchain.addClaim(claimIdentToB);
+      const [,claimEncoded] = await nodeB.sigchain.addClaim(claimIdentToB);
       const claim = await claimsUtils.decodeClaim(claimEncoded);
       await testProvider.publishClaim(identityId, claim);
     }, global.polykeyStartupTimeout * 3);
@@ -264,7 +264,7 @@ describe('Discovery', () => {
         provider: testProvider.id,
         identity: identityIdB,
       };
-      const claimBEncoded = await nodeD.sigchain.addClaim(claimIdentToD);
+      const [,claimBEncoded] = await nodeD.sigchain.addClaim(claimIdentToD);
       const claimB = claimsUtils.decodeClaim(claimBEncoded);
       await testProvider.publishClaim(identityIdB, claimB);
 
@@ -299,7 +299,7 @@ describe('Discovery', () => {
         provider: testProvider.id,
         identity: identityIdA,
       };
-      const claimAEncoded = await nodeB.sigchain.addClaim(claimIdentToB);
+      const [,claimAEncoded] = await nodeB.sigchain.addClaim(claimIdentToB);
       const claimA = claimsUtils.decodeClaim(claimAEncoded);
       await testProvider.publishClaim(identityIdA, claimA);
 
