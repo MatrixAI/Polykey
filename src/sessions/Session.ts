@@ -94,7 +94,6 @@ class Session {
     this.logger.info(`Destroyed ${this.constructor.name}`);
   }
 
-  @ready(new sessionErrors.ErrorSessionNotRunning())
   public async readToken(): Promise<SessionToken | undefined> {
     let sessionTokenFile;
     try {
@@ -126,7 +125,6 @@ class Session {
     }
   }
 
-  @ready(new sessionErrors.ErrorSessionNotRunning())
   public async writeToken(sessionToken: SessionToken): Promise<void> {
     let sessionTokenFile;
     try {

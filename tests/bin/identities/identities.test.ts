@@ -14,7 +14,7 @@ import { makeNodeId } from '@/nodes/utils';
 import * as claimsUtils from '@/claims/utils';
 import * as identitiesUtils from '@/identities/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
+import * as testNodesUtils from '../../nodes/utils';
 import TestProvider from '../../identities/TestProvider';
 
 jest.mock('@/keys/utils', () => ({
@@ -656,25 +656,42 @@ describe('CLI Identities', () => {
     });
   });
   describe('commandDiscoverGestalts', () => {
+    let rootDataDir;
     // Test variables
     let nodeB: PolykeyAgent;
     let nodeC: PolykeyAgent;
     // Let testProvider: TestProvider;
     let identityId: IdentityId;
-
     beforeAll(async () => {
+      rootDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
       // Setup the remote gestalt state here
       // Setting up remote nodes.
-      nodeB = await testUtils.setupRemoteKeynode({ logger });
-      nodeC = await testUtils.setupRemoteKeynode({ logger });
+      nodeB = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeB'),
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
+      });
+      nodeC = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(rootDataDir, 'nodeC'),
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
+      });
 
       // Forming links
       // B->C
       // Adding connection details.
-      await testUtils.addRemoteDetails(polykeyAgent, nodeB);
-      await testUtils.addRemoteDetails(nodeB, polykeyAgent);
-      await testUtils.addRemoteDetails(nodeB, nodeC);
-      await testUtils.addRemoteDetails(nodeC, nodeB);
+      await testNodesUtils.nodesConnect(polykeyAgent, nodeB);
+      await testNodesUtils.nodesConnect(nodeB, polykeyAgent);
+      await testNodesUtils.nodesConnect(nodeB, nodeC);
+      await testNodesUtils.nodesConnect(nodeC, nodeB);
       // Adding sigchain details.
       const claimBtoC: ClaimLinkNode = {
         type: 'node',
@@ -707,12 +724,15 @@ describe('CLI Identities', () => {
       await testProvider.publishClaim(identityId, claim);
     }, global.polykeyStartupTimeout * 2);
     afterAll(async () => {
-      // Clean up the remote gestalt state here.
-      await testUtils.cleanupRemoteKeynode(nodeB);
-      await testUtils.cleanupRemoteKeynode(nodeC);
+      await nodeC.stop();
+      await nodeB.stop();
       // Unclaim identity
       testProvider.links = {};
       testProvider.linkIdCounter = 0;
+      await fs.promises.rm(rootDataDir, {
+        force: true,
+        recursive: true,
+      });
     });
     afterEach(async () => {
       // Clean the local nodes gestalt graph here.

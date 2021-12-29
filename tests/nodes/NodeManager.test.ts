@@ -2,24 +2,19 @@ import type { ClaimIdString } from '@/claims/types';
 import type { CertificatePem, KeyPairPem, PublicKeyPem } from '@/keys/types';
 import type { Host, Port } from '@/network/types';
 import type { NodeId, NodeAddress } from '@/nodes/types';
-import type { PolykeyAgent } from '@';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-
+import { PolykeyAgent } from '@';
 import { DB } from '@matrixai/db';
-import { KeyManager } from '@/keys';
-import { NodeManager } from '@/nodes';
+import { KeyManager, utils as keysUtils } from '@/keys';
+import { NodeManager, errors as nodesErrors } from '@/nodes';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { Sigchain } from '@/sigchain';
-import { sleep } from '@/utils';
-import * as nodesErrors from '@/nodes/errors';
-import * as claimsUtils from '@/claims/utils';
+import { utils as claimsUtils } from '@/claims';
 import { makeNodeId } from '@/nodes/utils';
-import * as keysUtils from '@/keys/utils';
-import { makeCrypto } from '../utils';
-import * as testUtils from '../utils';
+import { sleep } from '@/utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -98,7 +93,13 @@ describe('NodeManager', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     sigchain = await Sigchain.createSigchain({ keyManager, db, logger });
 
@@ -144,22 +145,39 @@ describe('NodeManager', () => {
     // await expect(nodeManager.writeToken()).rejects.toThrow(nodesErrors.ErrorNodeManagerNotRunning);
   });
   describe('getConnectionToNode', () => {
+    let targetDataDir: string;
     let target: PolykeyAgent;
     let targetNodeId: NodeId;
     let targetNodeAddress: NodeAddress;
 
     beforeAll(async () => {
-      target = await testUtils.setupRemoteKeynode({
-        logger: logger,
+      targetDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      target = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: targetDataDir,
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
       });
     }, global.polykeyStartupTimeout);
+
+    afterAll(async () => {
+      await target.stop();
+      await fs.promises.rm(targetDataDir, {
+        force: true,
+        recursive: true,
+      });
+    });
 
     beforeEach(async () => {
       await target.start({ password: 'password' });
       targetNodeId = target.keyManager.getNodeId();
       targetNodeAddress = {
-        host: target.revProxy.ingressHost,
-        port: target.revProxy.ingressPort,
+        host: target.revProxy.getIngressHost(),
+        port: target.revProxy.getIngressPort(),
       };
       await nodeManager.setNode(targetNodeId, targetNodeAddress);
     });
@@ -167,10 +185,6 @@ describe('NodeManager', () => {
     afterEach(async () => {
       // Delete the created node connection each time.
       await target.stop();
-    });
-
-    afterAll(async () => {
-      await testUtils.cleanupRemoteKeynode(target);
     });
 
     test('creates new connection to node', async () => {
@@ -254,13 +268,18 @@ describe('NodeManager', () => {
   test(
     'pings node',
     async () => {
-      const server = await testUtils.setupRemoteKeynode({
+      const server = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(dataDir, 'server'),
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
         logger: logger,
       });
       const serverNodeId = server.nodeManager.getNodeId();
       let serverNodeAddress: NodeAddress = {
-        host: server.revProxy.ingressHost,
-        port: server.revProxy.ingressPort,
+        host: server.revProxy.getIngressHost(),
+        port: server.revProxy.getIngressPort(),
       };
       await nodeManager.setNode(serverNodeId, serverNodeAddress);
 
@@ -274,8 +293,8 @@ describe('NodeManager', () => {
       await server.start({ password: 'password' });
       // Update the node address (only changes because we start and stop)
       serverNodeAddress = {
-        host: server.revProxy.ingressHost,
-        port: server.revProxy.ingressPort,
+        host: server.revProxy.getIngressHost(),
+        port: server.revProxy.getIngressPort(),
       };
       await nodeManager.setNode(serverNodeId, serverNodeAddress);
       // Check if active
@@ -292,8 +311,6 @@ describe('NodeManager', () => {
       // Case 3: pre-existing connection no longer active, so offline
       const active3 = await nodeManager.pingNode(serverNodeId);
       expect(active3).toBe(false);
-
-      await testUtils.cleanupRemoteKeynode(server);
     },
     global.failedConnectionTimeout * 2,
   ); // Ping needs to timeout (takes 20 seconds + setup + pulldown)
@@ -319,16 +336,26 @@ describe('NodeManager', () => {
         host: '127.0.0.1' as Host,
         port: 11111 as Port,
       };
-      const server = await testUtils.setupRemoteKeynode({ logger: logger });
+
+      const server = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(dataDir, 'server'),
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger: logger,
+      });
+
+
       await nodeManager.setNode(server.nodeManager.getNodeId(), {
-        host: server.revProxy.ingressHost,
-        port: server.revProxy.ingressPort,
+        host: server.revProxy.getIngressHost(),
+        port: server.revProxy.getIngressPort(),
       } as NodeAddress);
       await server.nodeManager.setNode(nodeId, nodeAddress);
       const foundAddress2 = await nodeManager.findNode(nodeId);
       expect(foundAddress2).toStrictEqual(nodeAddress);
 
-      await testUtils.cleanupRemoteKeynode(server);
+      await server.stop();
     },
     global.polykeyStartupTimeout,
   );
@@ -337,10 +364,17 @@ describe('NodeManager', () => {
     async () => {
       // Case 3: node exhausts all contacts and cannot find node
       const nodeId = nodeId1;
-      const server = await testUtils.setupRemoteKeynode({ logger: logger });
+      const server = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: path.join(dataDir, 'server'),
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
+      });
       await nodeManager.setNode(server.nodeManager.getNodeId(), {
-        host: server.revProxy.ingressHost,
-        port: server.revProxy.ingressPort,
+        host: server.revProxy.getIngressHost(),
+        port: server.revProxy.getIngressPort(),
       } as NodeAddress);
       // Add a dummy node to the server node graph database
       // Server will not be able to connect to this node (the only node in its
@@ -353,8 +387,7 @@ describe('NodeManager', () => {
       await expect(() => nodeManager.findNode(nodeId)).rejects.toThrowError(
         nodesErrors.ErrorNodeGraphNodeNotFound,
       );
-
-      await testUtils.cleanupRemoteKeynode(server);
+      await server.stop();
     },
     global.failedConnectionTimeout * 2,
   );
@@ -380,34 +413,53 @@ describe('NodeManager', () => {
     // We're unable to mock the actions of the server, but we can ensure the
     // state on each side is as expected.
 
+    let xDataDir: string;
     let x: PolykeyAgent;
     let xNodeId: NodeId;
     let xNodeAddress: NodeAddress;
     let xPublicKey: PublicKeyPem;
 
+    let yDataDir: string;
     let y: PolykeyAgent;
     let yNodeId: NodeId;
     let yNodeAddress: NodeAddress;
     let yPublicKey: PublicKeyPem;
 
     beforeAll(async () => {
-      x = await testUtils.setupRemoteKeynode({
-        logger: logger,
+      xDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      x = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: xDataDir,
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
       });
+
       xNodeId = x.nodeManager.getNodeId();
       xNodeAddress = {
-        host: x.revProxy.ingressHost,
-        port: x.revProxy.ingressPort,
+        host: x.revProxy.getIngressHost(),
+        port: x.revProxy.getIngressPort(),
       };
       xPublicKey = x.keyManager.getRootKeyPairPem().publicKey;
 
-      y = await testUtils.setupRemoteKeynode({
-        logger: logger,
+      yDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-')
+      );
+      y = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: xDataDir,
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
       });
       yNodeId = y.nodeManager.getNodeId();
       yNodeAddress = {
-        host: y.revProxy.ingressHost,
-        port: y.revProxy.ingressPort,
+        host: y.revProxy.getIngressHost(),
+        port: y.revProxy.getIngressPort(),
       };
       yPublicKey = y.keyManager.getRootKeyPairPem().publicKey;
 
@@ -415,8 +467,16 @@ describe('NodeManager', () => {
       await y.nodeManager.setNode(xNodeId, xNodeAddress);
     }, global.polykeyStartupTimeout * 2);
     afterAll(async () => {
-      await testUtils.cleanupRemoteKeynode(x);
-      await testUtils.cleanupRemoteKeynode(y);
+      await y.stop();
+      await x.stop();
+      await fs.promises.rm(yDataDir, {
+        force: true,
+        recursive: true,
+      });
+      await fs.promises.rm(xDataDir, {
+        force: true,
+        recursive: true,
+      });
     });
 
     // Make sure to remove any side-effects after each test

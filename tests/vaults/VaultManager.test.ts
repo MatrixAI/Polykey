@@ -10,7 +10,7 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { utils as idUtils } from '@matrixai/id';
 
-import { KeyManager } from '@/keys';
+import { KeyManager, utils as keysUtils } from '@/keys';
 import { NodeManager } from '@/nodes';
 import { Sigchain } from '@/sigchain';
 import { VaultManager, vaultOps } from '@/vaults';
@@ -24,7 +24,6 @@ import { NotificationsManager } from '@/notifications';
 import { errors as vaultErrors } from '@/vaults';
 import { utils as vaultUtils } from '@/vaults';
 import { makeVaultId } from '@/vaults/utils';
-import { makeCrypto } from '../utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -107,7 +106,13 @@ describe('VaultManager', () => {
     db = await DB.createDB({
       dbPath: dbPath,
       logger: logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
 
     sigchain = await Sigchain.createSigchain({
@@ -590,7 +595,13 @@ describe('VaultManager', () => {
       targetDb = await DB.createDB({
         dbPath: path.join(targetDataDir, 'db'),
         logger: logger,
-        crypto: makeCrypto(keyManager.dbKey),
+        crypto: {
+          key: keyManager.dbKey,
+          ops: {
+            encrypt: keysUtils.encryptWithKey,
+            decrypt: keysUtils.decryptWithKey,
+          },
+        },
       });
       targetSigchain = await Sigchain.createSigchain({
         keyManager: targetKeyManager,
@@ -681,7 +692,13 @@ describe('VaultManager', () => {
       altDb = await DB.createDB({
         dbPath: path.join(altDataDir, 'db'),
         logger: logger,
-        crypto: makeCrypto(keyManager.dbKey),
+        crypto: {
+          key: keyManager.dbKey,
+          ops: {
+            encrypt: keysUtils.encryptWithKey,
+            decrypt: keysUtils.decryptWithKey,
+          },
+        },
       });
       altSigchain = await Sigchain.createSigchain({
         keyManager: altKeyManager,
@@ -763,10 +780,10 @@ describe('VaultManager', () => {
       await revProxy.closeConnection(altHost, altPort);
       await revProxy.closeConnection(sourceHost, sourcePort);
       await altRevProxy.closeConnection(sourceHost, sourcePort);
-      await fwdProxy.closeConnection(fwdProxy.egressHost, fwdProxy.egressPort);
+      await fwdProxy.closeConnection(fwdProxy.getEgressHost(), fwdProxy.getEgressPort());
       await altFwdProxy.closeConnection(
-        altFwdProxy.egressHost,
-        altFwdProxy.egressPort,
+        altFwdProxy.getEgressHost(),
+        altFwdProxy.getEgressPort(),
       );
       await revProxy.stop();
       await altRevProxy.stop();

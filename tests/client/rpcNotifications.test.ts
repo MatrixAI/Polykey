@@ -16,7 +16,7 @@ import { ForwardProxy } from '@/network';
 import * as grpcUtils from '@/grpc/utils';
 import * as vaultsUtils from '@/vaults/utils';
 import * as testUtils from './utils';
-import * as testKeynodeUtils from '../utils';
+import * as testNodesUtils from '../nodes/utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -101,12 +101,33 @@ describe('Notifications client service', () => {
   });
 
   describe('Notifications RPC', () => {
+    let receiverDataDir: string;
+    let senderDataDir: string;
     let receiver: PolykeyAgent;
     let sender: PolykeyAgent;
     beforeAll(async () => {
-      receiver = await testKeynodeUtils.setupRemoteKeynode({ logger });
-      sender = await testKeynodeUtils.setupRemoteKeynode({ logger });
-
+      receiverDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      senderDataDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), 'polykey-test-'),
+      );
+      receiver = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: receiverDataDir,
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
+      });
+      sender = await PolykeyAgent.createPolykeyAgent({
+        password: 'password',
+        nodePath: senderDataDir,
+        keysConfig: {
+          rootKeyPairBits: 2048
+        },
+        logger,
+      });
       await sender.nodeManager.setNode(node1.id, {
         host: pkAgent.revProxy.getIngressHost(),
         port: pkAgent.revProxy.getIngressPort(),
@@ -125,8 +146,16 @@ describe('Notifications client service', () => {
       });
     }, global.polykeyStartupTimeout * 2);
     afterAll(async () => {
-      await testKeynodeUtils.cleanupRemoteKeynode(receiver);
-      await testKeynodeUtils.cleanupRemoteKeynode(sender);
+      await sender.stop();
+      await receiver.stop();
+      await fs.promises.rm(senderDataDir, {
+        force: true,
+        recursive: true,
+      });
+      await fs.promises.rm(receiverDataDir, {
+        force: true,
+        recursive: true,
+      });
     });
     afterEach(async () => {
       await receiver.notificationsManager.clearNotifications();
@@ -135,7 +164,7 @@ describe('Notifications client service', () => {
     });
     test('should send notifications.', async () => {
       // Set up a remote node receiver and add its details to agent
-      await testKeynodeUtils.addRemoteDetails(pkAgent, receiver);
+      await testNodesUtils.nodesConnect(pkAgent, receiver);
 
       const notificationsSend =
         grpcUtils.promisifyUnaryCall<utilsPB.EmptyMessage>(

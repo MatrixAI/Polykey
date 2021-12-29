@@ -17,7 +17,6 @@ import { IdentitiesManager, providers } from '@/identities';
 import * as identitiesErrors from '@/identities/errors';
 import * as keysUtils from '@/keys/utils';
 import TestProvider from './TestProvider';
-import { makeCrypto } from '../utils';
 
 describe('IdentitiesManager', () => {
   const logger = new Logger('IdentitiesManager Test', LogLevel.WARN, [
@@ -33,7 +32,13 @@ describe('IdentitiesManager', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(await keysUtils.generateKey()),
+      crypto: {
+        key: await keysUtils.generateKey(),
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      }
     });
   });
   afterEach(async () => {

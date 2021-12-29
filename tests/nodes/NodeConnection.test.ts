@@ -9,7 +9,7 @@ import { DB } from '@matrixai/db';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import { NodeConnection, NodeManager } from '@/nodes';
 import { VaultManager } from '@/vaults';
-import { KeyManager } from '@/keys';
+import { KeyManager, utils as keysUtils } from '@/keys';
 import GRPCServer from '@/grpc/GRPCServer';
 import { AgentServiceService, createAgentService } from '@/agent';
 import { ACL } from '@/acl';
@@ -23,7 +23,6 @@ import * as networkErrors from '@/network/errors';
 import { makeNodeId } from '@/nodes/utils';
 import { poll } from '@/utils';
 import * as nodesTestUtils from './utils';
-import { makeCrypto } from '../utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -134,7 +133,13 @@ describe('NodeConnection', () => {
       dbPath: serverDbPath,
       fs: fs,
       logger: logger,
-      crypto: makeCrypto(serverKeyManager.dbKey),
+      crypto: {
+        key: serverKeyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      }
     });
     serverACL = await ACL.createACL({
       db: serverDb,
@@ -402,8 +407,8 @@ describe('NodeConnection', () => {
 
     await conn.stop();
     await serverRevProxy.closeConnection(
-      clientFwdProxy.egressHost,
-      clientFwdProxy.egressPort,
+      clientFwdProxy.getEgressHost(),
+      clientFwdProxy.getEgressPort(),
     );
     await conn.destroy();
   });
@@ -461,8 +466,8 @@ describe('NodeConnection', () => {
 
     await conn.stop();
     await serverRevProxy.closeConnection(
-      clientFwdProxy.egressHost,
-      clientFwdProxy.egressPort,
+      clientFwdProxy.getEgressHost(),
+      clientFwdProxy.getEgressPort(),
     );
     await conn.destroy();
   });

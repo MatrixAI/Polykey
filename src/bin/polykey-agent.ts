@@ -5,6 +5,7 @@
  * @module
  */
 import type { AgentChildProcessInput, AgentChildProcessOutput } from './types';
+import type { PolykeyWorkerManagerInterface } from '../workers/types';
 import fs from 'fs';
 import process from 'process';
 /**
@@ -21,6 +22,7 @@ process.removeAllListeners('SIGTERM');
 import Logger, { StreamHandler } from '@matrixai/logger';
 import * as binUtils from './utils';
 import PolykeyAgent from '../PolykeyAgent';
+import { WorkerManager, utils as workersUtils } from '../workers';
 import ErrorPolykey from '../ErrorPolykey';
 import { promisify, promise } from '../utils';
 
@@ -42,8 +44,11 @@ async function main(_argv = process.argv): Promise<number> {
   const messageIn = await messageInP;
   logger.setLevel(messageIn.logLevel);
   let pkAgent: PolykeyAgent;
+  let workerManager: PolykeyWorkerManagerInterface;
   exitHandlers.handlers.push(async () => {
-    if (pkAgent != null) await pkAgent.stop();
+    pkAgent?.unsetWorkerManager();
+    await workerManager?.destroy();
+    await pkAgent?.stop();
   });
   try {
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -51,6 +56,13 @@ async function main(_argv = process.argv): Promise<number> {
       logger: logger.getChild(PolykeyAgent.name),
       ...messageIn.agentConfig,
     });
+    if (messageIn.workers !== 0) {
+      workerManager = await workersUtils.createWorkerManager({
+        cores: messageIn.workers,
+        logger: logger.getChild(WorkerManager.name),
+      });
+      pkAgent.setWorkerManager(workerManager);
+    }
   } catch (e) {
     if (e instanceof ErrorPolykey) {
       process.stderr.write(

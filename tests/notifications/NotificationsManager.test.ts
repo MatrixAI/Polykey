@@ -12,7 +12,7 @@ import { DB } from '@matrixai/db';
 import { ACL } from '@/acl';
 import { Sigchain } from '@/sigchain';
 import { GRPCServer } from '@/grpc';
-import { KeyManager } from '@/keys';
+import { KeyManager, utils as keysUtils } from '@/keys';
 import { VaultManager } from '@/vaults';
 import { GestaltGraph } from '@/gestalts';
 import { NodeManager } from '@/nodes';
@@ -22,7 +22,6 @@ import { AgentServiceService, createAgentService } from '@/agent';
 
 import * as networkUtils from '@/network/utils';
 import { generateVaultId } from '@/vaults/utils';
-import { makeCrypto } from '../utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -130,7 +129,13 @@ describe('NotificationsManager', () => {
       dbPath: receiverDbPath,
       fs: fs,
       logger: logger,
-      crypto: makeCrypto(receiverKeyManager.dbKey),
+      crypto: {
+        key: receiverKeyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     receiverACL = await ACL.createACL({
       db: receiverDb,
@@ -222,7 +227,13 @@ describe('NotificationsManager', () => {
       dbPath: senderDbPath,
       fs,
       logger,
-      crypto: makeCrypto(senderKeyManager.dbKey),
+      crypto: {
+        key: senderKeyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     senderACL = await ACL.createACL({ db: senderDb, logger });
     senderSigchain = await Sigchain.createSigchain({

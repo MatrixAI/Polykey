@@ -1,33 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { PolykeyAgent } from '@';
-
-// Mocks.
-jest.mock('@/keys/utils', () => ({
-  ...jest.requireActual('@/keys/utils'),
-  generateDeterministicKeyPair:
-    jest.requireActual('@/keys/utils').generateKeyPair,
-}));
+import * as polykey from '@';
 
 describe('index', () => {
-  const logger = new Logger('index test', LogLevel.WARN, [new StreamHandler()]);
-  let dataDir;
-  beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'polykey-test-'),
-    );
-  });
-  test('construction of Polykey', async () => {
-    const password = 'password';
-    const pk = await PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath: dataDir,
-      logger,
-    });
-    expect(pk).toBeInstanceOf(PolykeyAgent);
-    await pk.stop();
-    await pk.destroy();
+  test('exports PolykeyAgent, PolykeyClient and errors', async () => {
+    expect('PolykeyAgent' in polykey).toBe(true);
+    expect('PolykeyClient' in polykey).toBe(true);
+    expect('errors' in polykey).toBe(true);
   });
 });

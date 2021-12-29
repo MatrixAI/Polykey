@@ -164,7 +164,7 @@ class Status {
         if (statusInfo?.status === status) return true;
         return false;
       },
-      250,
+      50,
       timeout,
     );
     if (statusInfo == null) {

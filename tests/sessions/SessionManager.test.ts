@@ -3,10 +3,8 @@ import os from 'os';
 import path from 'path';
 import { DB } from '@matrixai/db';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { KeyManager } from '@/keys';
-import SessionManager from '@/sessions/SessionManager';
-import * as sessionsErrors from '@/sessions/errors';
-import * as keysUtils from '@/keys/utils';
+import { KeyManager, utils as keysUtils } from '@/keys';
+import { SessionManager, errors as sessionsErrors } from '@/sessions';
 import { sleep } from '@/utils';
 import * as testUtils from '../utils';
 

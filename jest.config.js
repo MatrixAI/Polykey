@@ -21,11 +21,10 @@ const globals = {
   projectDir: __dirname,
   // Absolute directory to the test root
   testDir: path.join(__dirname, 'tests'),
+  // Default global data directory
   dataDir: fs.mkdtempSync(
     path.join(os.tmpdir(), 'polykey-test-global-'),
   ),
-  // Default global password for global agent or global key
-  password: 'password',
   // Default asynchronous test timeout
   defaultTimeout: 20000,
   polykeyStartupTimeout: 30000,

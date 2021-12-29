@@ -35,7 +35,7 @@ describe('status', () => {
         logger,
       });
       const agentProcess = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--verbose'],
+        ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -60,8 +60,10 @@ describe('status', () => {
         pid: agentProcess.pid,
       });
       await status.waitFor('LIVE');
+      const agentProcessExit = testBinUtils.processExit(agentProcess);
       agentProcess.kill('SIGTERM');
-      await status.waitFor('STOPPING');
+      // Cannot wait for STOPPING because waitFor polling may miss the transition
+      await status.waitFor('DEAD');
       ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {
@@ -72,11 +74,11 @@ describe('status', () => {
       ));
       expect(exitCode).toBe(0);
       // If the command was slow, it may have become DEAD already
+      // If it is DEAD, then pid property will be `undefined`
       expect(JSON.parse(stdout)).toMatchObject({
         status: expect.stringMatching(/STOPPING|DEAD/),
-        pid: agentProcess.pid,
       });
-      await testBinUtils.processExit(agentProcess);
+      await agentProcessExit;
       ({ exitCode, stdout } = await testBinUtils.pkStdio(
         ['agent', 'status', '--format', 'json'],
         {

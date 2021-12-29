@@ -11,7 +11,6 @@ import * as keysErrors from '@/keys/errors';
 import * as workersUtils from '@/workers/utils';
 import * as keysUtils from '@/keys/utils';
 import { sleep } from '@/utils';
-import { makeCrypto } from '../utils';
 
 describe('KeyManager', () => {
   const password = 'password';
@@ -305,7 +304,13 @@ describe('KeyManager', () => {
     const db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();
@@ -348,7 +353,13 @@ describe('KeyManager', () => {
     const db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      },
     });
     const rootKeyPair1 = keyManager.getRootKeyPair();
     const rootCert1 = keyManager.getRootCert();

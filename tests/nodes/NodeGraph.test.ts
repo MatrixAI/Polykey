@@ -7,13 +7,12 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import { DB } from '@matrixai/db';
 import { NodeManager, errors as nodesErrors } from '@/nodes';
-import { KeyManager } from '@/keys';
+import { KeyManager, utils as keysUtils } from '@/keys';
 import { ForwardProxy, ReverseProxy } from '@/network';
 import * as nodesUtils from '@/nodes/utils';
 import { Sigchain } from '@/sigchain';
 import { makeNodeId } from '@/nodes/utils';
 import * as nodesTestUtils from './utils';
-import { makeCrypto } from '../utils';
 
 // Mocks.
 jest.mock('@/keys/utils', () => ({
@@ -130,7 +129,13 @@ describe('NodeGraph', () => {
     db = await DB.createDB({
       dbPath,
       logger,
-      crypto: makeCrypto(keyManager.dbKey),
+      crypto: {
+        key: keyManager.dbKey,
+        ops: {
+          encrypt: keysUtils.encryptWithKey,
+          decrypt: keysUtils.decryptWithKey,
+        },
+      }
     });
     sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,

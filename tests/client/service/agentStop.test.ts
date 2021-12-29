@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
+import { running } from '@matrixai/async-init';
 import { PolykeyAgent } from '@';
 import { utils as keysUtils } from '@/keys';
 import { GRPCServer } from '@/grpc';
@@ -100,13 +101,13 @@ describe('agentStop', () => {
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     // While the `agentStop` is asynchronous
     // There is a synchronous switch to `running`
-    expect(pkAgent.running).toBe(false);
+    expect(pkAgent[running]).toBe(false);
     // It may already be stopping
     expect(await status.readStatus()).toMatchObject({
       status: expect.stringMatching(/LIVE|STOPPING|DEAD/)
     });
     await status.waitFor('DEAD');
-    expect(pkAgent.running).toBe(false);
+    expect(pkAgent[running]).toBe(false);
   });
   test('stops the agent with token', async () => {
     const token = await pkAgent.sessionManager.createToken();
@@ -124,13 +125,13 @@ describe('agentStop', () => {
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     // While the `agentStop` is asynchronous
     // There is a synchronous switch to `running`
-    expect(pkAgent.running).toBe(false);
+    expect(pkAgent[running]).toBe(false);
     // It may already be stopping
     expect(await status.readStatus()).toMatchObject({
       status: expect.stringMatching(/LIVE|STOPPING|DEAD/)
     });
     await status.waitFor('DEAD');
-    expect(pkAgent.running).toBe(false);
+    expect(pkAgent[running]).toBe(false);
   });
   test('cannot stop the agent if not authenticated', async () => {
     const statusPath = path.join(nodePath, config.defaults.statusBase);
@@ -145,21 +146,21 @@ describe('agentStop', () => {
         request,
       );
     }).rejects.toThrow(clientErrors.ErrorClientAuthMissing);
-    expect(pkAgent.running).toBe(true);
+    expect(pkAgent[running]).toBe(true);
     await expect(async () => {
       await grpcClient.agentStop(
         request,
         clientUtils.encodeAuthFromPassword('wrong password')
       );
     }).rejects.toThrow(clientErrors.ErrorClientAuthDenied);
-    expect(pkAgent.running).toBe(true);
+    expect(pkAgent[running]).toBe(true);
     await expect(async () => {
       await grpcClient.agentStop(
         request,
         clientUtils.encodeAuthFromSession('wrong token' as SessionToken)
       );
     }).rejects.toThrow(clientErrors.ErrorClientAuthDenied);
-    expect(pkAgent.running).toBe(true);
+    expect(pkAgent[running]).toBe(true);
     expect(await status.readStatus()).toMatchObject({
       status: 'LIVE'
     });

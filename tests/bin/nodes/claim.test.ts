@@ -6,6 +6,7 @@ import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as testBinUtils from '../utils';
+import * as testNodesUtils from '../../nodes/utils';
 import * as testUtils from '../../utils';
 
 jest.mock('@/keys/utils', () => ({
@@ -19,6 +20,7 @@ describe('claim', () => {
   const logger = new Logger('claim test', LogLevel.WARN, [
     new StreamHandler(),
   ]);
+  let rootDataDir: string;
   let dataDir: string;
   let nodePath: string;
   let passwordFile: string;
@@ -36,6 +38,9 @@ describe('claim', () => {
   }
 
   beforeAll(async () => {
+    rootDataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     dataDir = await fs.promises.mkdtemp(
       path.join(os.tmpdir(), 'polykey-test-'),
     );
@@ -49,13 +54,18 @@ describe('claim', () => {
     });
     keynodeId = polykeyAgent.nodeManager.getNodeId();
     // Setting up a remote keynode
-    remoteOnline = await testUtils.setupRemoteKeynode({
+    remoteOnline = await PolykeyAgent.createPolykeyAgent({
+      password: 'password',
+      nodePath: path.join(rootDataDir, 'remoteOnline'),
+      keysConfig: {
+        rootKeyPairBits: 2048
+      },
       logger,
     });
     remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
     remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
     remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
-    await testUtils.addRemoteDetails(polykeyAgent, remoteOnline);
+    await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
 
     await remoteOnline.nodeManager.setNode(keynodeId, {
       host: polykeyAgent.revProxy.getIngressHost(),
@@ -91,7 +101,11 @@ describe('claim', () => {
   afterAll(async () => {
     await polykeyAgent.stop();
     await polykeyAgent.destroy();
-    await testUtils.cleanupRemoteKeynode(remoteOnline);
+    await remoteOnline.stop();
+    await fs.promises.rm(rootDataDir, {
+      force: true,
+      recursive: true,
+    });
     await fs.promises.rm(dataDir, {
       force: true,
       recursive: true,

@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type PolykeyAgent from '../../PolykeyAgent';
-import { running } from '@matrixai/async-init';
+import { status, running } from '@matrixai/async-init';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
@@ -17,7 +17,8 @@ function agentStop ({
     callback: grpc.sendUnaryData<utilsPB.EmptyMessage>,
   ): Promise<void> => {
     const response = new utilsPB.EmptyMessage();
-    if (!pkAgent[running]) {
+    // If not running or in stopping status, then respond successfully
+    if (!pkAgent[running] || pkAgent[status] === 'stopping') {
       callback(null, response);
       return;
     }

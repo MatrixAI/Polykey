@@ -141,6 +141,13 @@ const network = new commander.Option(
   .env('PK_NETWORK')
   .default(config.defaults.network.mainnet);
 
+const workers = new commander.Option(
+  '-w --workers <count>',
+  'Number of workers to use, defaults to number of cores with `all`, 0 means no multi-threading'
+)
+  .argParser(binParsers.parseCoreCount)
+  .default(undefined);
+
 export {
   nodePath,
   format,
@@ -161,4 +168,5 @@ export {
   rootKeyPairBits,
   seedNodes,
   network,
+  workers,
 };
