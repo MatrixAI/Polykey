@@ -2,9 +2,9 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { Discovery } from '../../discovery';
 import type { IdentityId, ProviderId } from '../../identities/types';
+import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 
 function gestaltsDiscoveryByIdentity({
   authenticate,

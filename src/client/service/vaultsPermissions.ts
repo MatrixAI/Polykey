@@ -1,13 +1,9 @@
 import type { Authenticate } from '../types';
+import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
 import { utils as grpcUtils } from '../../grpc';
-import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
-function vaultsPermissions({
-  authenticate,
-}: {
-  authenticate: Authenticate;
-}) {
+function vaultsPermissions({ authenticate }: { authenticate: Authenticate }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.PermGet, vaultsPB.Permission>,
   ): Promise<void> => {

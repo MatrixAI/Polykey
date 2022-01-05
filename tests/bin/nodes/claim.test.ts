@@ -1,4 +1,3 @@
-import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
@@ -7,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -17,9 +15,7 @@ jest.mock('@/keys/utils', () => ({
 
 describe('claim', () => {
   const password = 'password';
-  const logger = new Logger('claim test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
+  const logger = new Logger('claim test', LogLevel.WARN, [new StreamHandler()]);
   let rootDataDir: string;
   let dataDir: string;
   let nodePath: string;
@@ -29,8 +25,6 @@ describe('claim', () => {
 
   let keynodeId: NodeId;
   let remoteOnlineNodeId: NodeId;
-  let remoteOnlineHost: Host;
-  let remoteOnlinePort: Port;
 
   // Helper functions
   function genCommands(options: Array<string>) {
@@ -58,13 +52,11 @@ describe('claim', () => {
       password: 'password',
       nodePath: path.join(rootDataDir, 'remoteOnline'),
       keysConfig: {
-        rootKeyPairBits: 2048
+        rootKeyPairBits: 2048,
       },
       logger,
     });
     remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
-    remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
-    remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
 
     await remoteOnline.nodeManager.setNode(keynodeId, {
@@ -144,7 +136,6 @@ describe('claim', () => {
     // Received an invitation, so will attempt to perform the claiming process
     const commands = genCommands(['claim', remoteOnlineNodeId]);
     const result = await testBinUtils.pkStdio(commands, {}, dataDir);
-    console.log('result', result.exitCode, result.stderr, result.stdout);
     expect(result.exitCode).toBe(0); // Succeeds.
     expect(result.stdout).toContain('cryptolink claim');
     expect(result.stdout).toContain(remoteOnlineNodeId);

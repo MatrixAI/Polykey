@@ -8,16 +8,15 @@ import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
 
 describe('unlock', () => {
-  const logger = new Logger('unlock test', LogLevel.WARN, [new StreamHandler()]);
+  const logger = new Logger('unlock test', LogLevel.WARN, [
+    new StreamHandler(),
+  ]);
   let globalAgentDir;
   let globalAgentPassword;
   let globalAgentClose;
   beforeAll(async () => {
-    ({
-      globalAgentDir,
-      globalAgentPassword,
-      globalAgentClose
-    } = await testUtils.setupGlobalAgent(logger));
+    ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
+      await testUtils.setupGlobalAgent(logger));
   }, globalThis.maxTimeout);
   afterAll(async () => {
     await globalAgentClose();
@@ -37,10 +36,7 @@ describe('unlock', () => {
   test('unlock acquires session token', async () => {
     // Fresh session, to delete the token
     const session = await Session.createSession({
-      sessionTokenPath: path.join(
-        globalAgentDir,
-        config.defaults.tokenBase,
-      ),
+      sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
       fs,
       logger,
       fresh: true,

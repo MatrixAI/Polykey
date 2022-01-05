@@ -1,7 +1,6 @@
 import type { Authenticate } from '../types';
 import type { VaultId, VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
-import type { FileSystem } from '../../types';
 import * as grpc from '@grpc/grpc-js';
 import { utils as idUtils } from '@matrixai/id';
 import { utils as grpcUtils } from '../../grpc';
@@ -17,11 +16,9 @@ function decodeVaultId(input: string): VaultId | undefined {
 function vaultsLog({
   vaultManager,
   authenticate,
-  fs,
 }: {
   vaultManager: VaultManager;
   authenticate: Authenticate;
-  fs: FileSystem;
 }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Log, vaultsPB.LogEntry>,

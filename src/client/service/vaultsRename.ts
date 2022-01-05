@@ -1,13 +1,10 @@
 import type { Authenticate } from '../types';
-import type { Vault, VaultId, VaultName } from '../../vaults/types';
+import type { VaultId, VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
 import * as grpc from '@grpc/grpc-js';
 import { utils as idUtils } from '@matrixai/id';
 import { utils as grpcUtils } from '../../grpc';
-import {
-  utils as vaultsUtils,
-  errors as vaultsErrors,
-} from '../../vaults';
+import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
 function decodeVaultId(input: string): VaultId | undefined {

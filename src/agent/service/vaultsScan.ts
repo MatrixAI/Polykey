@@ -1,7 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
+import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as grpcUtils } from '../../grpc';
-import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
-import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 function vaultsScan(_) {
   return async (

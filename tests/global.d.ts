@@ -1,3 +1,4 @@
+/* eslint-disable no-var */
 /**
  * Follows the globals in jest.config.ts
  * @module

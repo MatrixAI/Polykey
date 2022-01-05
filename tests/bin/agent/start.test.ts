@@ -10,7 +10,6 @@ import { Status, errors as statusErrors } from '@/status';
 import config from '@/config';
 import * as testBinUtils from '../utils';
 import * as testUtils from '../../utils';
-import { sleep } from '@/utils';
 
 describe('start', () => {
   const logger = new Logger('start test', LogLevel.WARN, [new StreamHandler()]);
@@ -159,7 +158,15 @@ describe('start', () => {
       // One of these processes is blocked
       const [agentProcess1, agentProcess2] = await Promise.all([
         testBinUtils.pkSpawn(
-          ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+          [
+            'agent',
+            'start',
+            '--root-key-pair-bits',
+            '1024',
+            '--workers',
+            '0',
+            '--verbose',
+          ],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
@@ -168,7 +175,15 @@ describe('start', () => {
           logger.getChild('agentProcess1'),
         ),
         testBinUtils.pkSpawn(
-          ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+          [
+            'agent',
+            'start',
+            '--root-key-pair-bits',
+            '1024',
+            '--workers',
+            '0',
+            '--verbose',
+          ],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
@@ -233,7 +248,15 @@ describe('start', () => {
       // One of these processes is blocked
       const [agentProcess, bootstrapProcess] = await Promise.all([
         testBinUtils.pkSpawn(
-          ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+          [
+            'agent',
+            'start',
+            '--root-key-pair-bits',
+            '1024',
+            '--workers',
+            '0',
+            '--verbose',
+          ],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
@@ -305,7 +328,15 @@ describe('start', () => {
     async () => {
       const password = 'abc123';
       const agentProcess1 = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+        [
+          'agent',
+          'start',
+          '--root-key-pair-bits',
+          '1024',
+          '--workers',
+          '0',
+          '--verbose',
+        ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -325,7 +356,15 @@ describe('start', () => {
       expect(exitCode1).toBe(null);
       expect(signal1).toBe('SIGHUP');
       const agentProcess2 = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+        [
+          'agent',
+          'start',
+          '--root-key-pair-bits',
+          '1024',
+          '--workers',
+          '0',
+          '--verbose',
+        ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -356,7 +395,15 @@ describe('start', () => {
     async () => {
       const password = 'password';
       const agentProcess1 = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+        [
+          'agent',
+          'start',
+          '--root-key-pair-bits',
+          '1024',
+          '--workers',
+          '0',
+          '--verbose',
+        ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -516,7 +563,15 @@ describe('start', () => {
         recursive: true,
       });
       const agentProcess4 = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+        [
+          'agent',
+          'start',
+          '--root-key-pair-bits',
+          '1024',
+          '--workers',
+          '0',
+          '--verbose',
+        ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password2,
@@ -597,10 +652,8 @@ describe('start', () => {
     let seedNodeHost2;
     let seedNodePort2;
     beforeAll(async () => {
-      ({
-        globalAgentStatus,
-        globalAgentClose
-      } = await testUtils.setupGlobalAgent(logger));
+      ({ globalAgentStatus, globalAgentClose } =
+        await testUtils.setupGlobalAgent(logger));
       // Additional seed node
       agentDataDir = await fs.promises.mkdtemp(
         path.join(os.tmpdir(), 'polykey-test-'),
@@ -609,7 +662,7 @@ describe('start', () => {
         password: 'password',
         nodePath: path.join(agentDataDir, 'agent'),
         keysConfig: {
-          rootKeyPairBits: 1024
+          rootKeyPairBits: 1024,
         },
         logger,
       });
@@ -639,18 +692,17 @@ describe('start', () => {
           fs,
           logger,
         });
-        const mockedConfigDefaultsNetwork = jestMockProps.spyOnProp(
-          config.defaults,
-          'network'
-        ).mockValue({
-          mainnet: {
-            [seedNodeId2]: {
-              host: seedNodeHost2,
-              port: seedNodePort2
-            }
-          },
-          testnet: {}
-        });
+        const mockedConfigDefaultsNetwork = jestMockProps
+          .spyOnProp(config.defaults, 'network')
+          .mockValue({
+            mainnet: {
+              [seedNodeId2]: {
+                host: seedNodeHost2,
+                port: seedNodePort2,
+              },
+            },
+            testnet: {},
+          });
         await testBinUtils.pkStdio(
           [
             'agent',
@@ -672,10 +724,7 @@ describe('start', () => {
           dataDir,
         );
         await testBinUtils.pkStdio(
-          [
-            'agent',
-            'stop',
-          ],
+          ['agent', 'stop'],
           {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: password,
@@ -687,7 +736,9 @@ describe('start', () => {
       },
       global.defaultTimeout * 2,
     );
-    test('start with seed nodes environment variable', async () => {
+    test(
+      'start with seed nodes environment variable',
+      async () => {
         const password = 'abc123';
         const nodePath = path.join(dataDir, 'polykey');
         const statusPath = path.join(nodePath, 'status.json');
@@ -696,18 +747,17 @@ describe('start', () => {
           fs,
           logger,
         });
-        const mockedConfigDefaultsNetwork = jestMockProps.spyOnProp(
-          config.defaults,
-          'network'
-        ).mockValue({
-          mainnet: { },
-          testnet: {
-            [seedNodeId2]: {
-              host: seedNodeHost2,
-              port: seedNodePort2
-            }
-          }
-        });
+        const mockedConfigDefaultsNetwork = jestMockProps
+          .spyOnProp(config.defaults, 'network')
+          .mockValue({
+            mainnet: {},
+            testnet: {
+              [seedNodeId2]: {
+                host: seedNodeHost2,
+                port: seedNodePort2,
+              },
+            },
+          });
         await testBinUtils.pkStdio(
           [
             'agent',
@@ -722,15 +772,12 @@ describe('start', () => {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: password,
             PK_SEED_NODES: `<defaults>;${seedNodeId1}@${seedNodeHost1}:${seedNodePort1}`,
-            PK_NETWORK: 'testnet'
+            PK_NETWORK: 'testnet',
           },
           dataDir,
         );
         await testBinUtils.pkStdio(
-          [
-            'agent',
-            'stop',
-          ],
+          ['agent', 'stop'],
           {
             PK_NODE_PATH: nodePath,
             PK_PASSWORD: password,
@@ -739,6 +786,8 @@ describe('start', () => {
         );
         mockedConfigDefaultsNetwork.mockRestore();
         await status.waitFor('DEAD');
-    }, global.defaultTimeout * 2);
+      },
+      global.defaultTimeout * 2,
+    );
   });
 });

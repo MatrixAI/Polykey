@@ -1,7 +1,7 @@
 import type { Authenticate } from '../types';
 import type { VaultManager } from '../../vaults';
 import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as vaultsUtils } from '../../vaults';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';

@@ -73,7 +73,11 @@ describe('CLI keys', () => {
       const result = await testBinUtils.pkStdio([...command], {}, dataDir);
       expect(result.exitCode).toBe(0);
 
-      const result2 = await testBinUtils.pkStdio([...command, '-pk'], {}, dataDir);
+      const result2 = await testBinUtils.pkStdio(
+        [...command, '-pk'],
+        {},
+        dataDir,
+      );
       expect(result2.exitCode).toBe(0);
     });
   });

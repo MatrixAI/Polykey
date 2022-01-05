@@ -1,4 +1,3 @@
-import Logger from '@matrixai/logger';
 import type PolykeyAgent from '../../PolykeyAgent';
 import type { KeyManager } from '../../keys';
 import type { VaultManager } from '../../vaults';
@@ -13,6 +12,7 @@ import type { GRPCServer } from '../../grpc';
 import type { ForwardProxy, ReverseProxy } from '../../network';
 import type { IClientServiceServer } from '../../proto/js/polykey/v1/client_service_grpc_pb';
 import type { FileSystem } from '../../types';
+import Logger from '@matrixai/logger';
 import agentLockAll from './agentLockAll';
 import agentStatus from './agentStatus';
 import agentStop from './agentStop';
@@ -77,36 +77,31 @@ import vaultsSecretsStat from './vaultsSecretsStat';
 import * as clientUtils from '../utils';
 import { ClientServiceService } from '../../proto/js/polykey/v1/client_service_grpc_pb';
 
-function createService (
-  {
-    keyManager,
-    sessionManager,
-    logger = new Logger(createService.name),
-    fs = require('fs'),
-    ...containerRest
-  }: {
-    pkAgent: PolykeyAgent;
-    keyManager: KeyManager;
-    vaultManager: VaultManager;
-    nodeManager: NodeManager;
-    identitiesManager: IdentitiesManager;
-    gestaltGraph: GestaltGraph;
-    sessionManager: SessionManager;
-    notificationsManager: NotificationsManager;
-    discovery: Discovery;
-    sigchain: Sigchain;
-    grpcServerClient: GRPCServer;
-    grpcServerAgent: GRPCServer;
-    fwdProxy: ForwardProxy;
-    revProxy: ReverseProxy;
-    logger?: Logger;
-    fs?: FileSystem;
-  }
-) {
-  const authenticate = clientUtils.authenticator(
-    sessionManager,
-    keyManager
-  );
+function createService({
+  keyManager,
+  sessionManager,
+  logger = new Logger(createService.name),
+  fs = require('fs'),
+  ...containerRest
+}: {
+  pkAgent: PolykeyAgent;
+  keyManager: KeyManager;
+  vaultManager: VaultManager;
+  nodeManager: NodeManager;
+  identitiesManager: IdentitiesManager;
+  gestaltGraph: GestaltGraph;
+  sessionManager: SessionManager;
+  notificationsManager: NotificationsManager;
+  discovery: Discovery;
+  sigchain: Sigchain;
+  grpcServerClient: GRPCServer;
+  grpcServerAgent: GRPCServer;
+  fwdProxy: ForwardProxy;
+  revProxy: ReverseProxy;
+  logger?: Logger;
+  fs?: FileSystem;
+}) {
+  const authenticate = clientUtils.authenticator(sessionManager, keyManager);
   const container = {
     ...containerRest,
     keyManager,
@@ -115,7 +110,7 @@ function createService (
     fs,
     authenticate,
   };
-  const service: IClientServiceServer ={
+  const service: IClientServiceServer = {
     agentLockAll: agentLockAll(container),
     agentStatus: agentStatus(container),
     agentStop: agentStop(container),

@@ -1,8 +1,4 @@
-import type {
-  IdentityId,
-  IdentityInfo,
-  ProviderId,
-} from '@/identities/types';
+import type { IdentityId, IdentityInfo, ProviderId } from '@/identities/types';
 import type { NodeInfo } from '@/nodes/types';
 import type { ClaimLinkIdentity, ClaimLinkNode } from '@/claims/types';
 import os from 'os';
@@ -672,7 +668,7 @@ describe('CLI Identities', () => {
         password: 'password',
         nodePath: path.join(rootDataDir, 'nodeB'),
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
@@ -680,7 +676,7 @@ describe('CLI Identities', () => {
         password: 'password',
         nodePath: path.join(rootDataDir, 'nodeC'),
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
@@ -719,7 +715,7 @@ describe('CLI Identities', () => {
         provider: testProvider.id,
         identity: identityId,
       };
-      const [,claimEncoded] = await nodeB.sigchain.addClaim(claimIdentToB);
+      const [, claimEncoded] = await nodeB.sigchain.addClaim(claimIdentToB);
       const claim = claimsUtils.decodeClaim(claimEncoded);
       await testProvider.publishClaim(identityId, claim);
     }, global.polykeyStartupTimeout * 2);

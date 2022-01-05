@@ -2,8 +2,8 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { GestaltGraph } from '../../gestalts';
 import type { IdentityId, ProviderId } from '../../identities/types';
+import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import { utils as grpcUtils } from '../../grpc';
-import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import * as permissionsPB from '../../proto/js/polykey/v1/permissions/permissions_pb';
 
 function gestaltsActionsGetByIdentity({

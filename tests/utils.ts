@@ -31,7 +31,10 @@ async function setupGlobalKeypair() {
       // Return key pair if the directory exists
       if (e.code === 'EEXIST') {
         const globalKeyPairPem = {
-          publicKey: fs.readFileSync(path.join(globalKeyPairDir, 'root.pub'), 'utf-8'),
+          publicKey: fs.readFileSync(
+            path.join(globalKeyPairDir, 'root.pub'),
+            'utf-8',
+          ),
           privateKey: fs.readFileSync(
             path.join(globalKeyPairDir, 'root.key'),
             'utf-8',
@@ -56,7 +59,7 @@ async function setupGlobalKeypair() {
       ),
     ]);
     return globalKeyPair;
-  } finally  {
+  } finally {
     // Unlock when we have returned the keypair
     lock.unlock(globalKeyPairLock.fd);
     await globalKeyPairLock.close();
@@ -79,7 +82,7 @@ async function setupGlobalKeypair() {
 async function setupGlobalAgent(
   logger: Logger = new Logger(setupGlobalAgent.name, LogLevel.WARN, [
     new StreamHandler(),
-  ])
+  ]),
 ) {
   const globalAgentPassword = 'password';
   const globalAgentDir = path.join(globalThis.dataDir, 'agent');
@@ -98,21 +101,18 @@ async function setupGlobalAgent(
     await sleep(1000);
   }
   const status = new Status({
-    statusPath: path.join(
-      globalAgentDir,
-      config.defaults.statusBase
-    ),
+    statusPath: path.join(globalAgentDir, config.defaults.statusBase),
     fs,
   });
   let statusInfo = await status.readStatus();
-  if (statusInfo == null || statusInfo.status === 'DEAD')  {
+  if (statusInfo == null || statusInfo.status === 'DEAD') {
     await PolykeyAgent.createPolykeyAgent({
       password: globalAgentPassword,
       nodePath: globalAgentDir,
       keysConfig: {
-        rootKeyPairBits: 2048
+        rootKeyPairBits: 2048,
       },
-      seedNodes: {}, // explicitly no seed nodes on startup
+      seedNodes: {}, // Explicitly no seed nodes on startup
       logger,
     });
     statusInfo = await status.readStatus();
@@ -133,9 +133,7 @@ async function setupGlobalAgent(
       // 7. Because not all tests need the global agent
       // 8. Therefore setupGlobalAgent is lazy and executed by jest worker processes
       try {
-        await fs.promises.rm(
-          path.join(globalAgentDir, 'references', pid),
-        );
+        await fs.promises.rm(path.join(globalAgentDir, 'references', pid));
         // If the references directory is not empty
         // there are other processes still using the global agent
         try {
@@ -148,13 +146,13 @@ async function setupGlobalAgent(
         }
         // Stopping may occur in a different jest worker process
         // therefore we cannot rely on pkAgent, but instead use GRPC
-        const statusInfo = await status.readStatus() as StatusLive;
+        const statusInfo = (await status.readStatus()) as StatusLive;
         const grpcClient = await GRPCClientClient.createGRPCClientClient({
           nodeId: statusInfo.data.nodeId,
           host: statusInfo.data.clientHost,
           port: statusInfo.data.clientPort,
           tlsConfig: { keyPrivatePem: undefined, certChainPem: undefined },
-          logger
+          logger,
         });
         const emptyMessage = new utilsPB.EmptyMessage();
         const meta = clientUtils.encodeAuthFromPassword(globalAgentPassword);
@@ -166,11 +164,8 @@ async function setupGlobalAgent(
         lock.unlock(globalAgentLock.fd);
         await globalAgentLock.close();
       }
-    }
+    },
   };
 }
 
-export {
-  setupGlobalKeypair,
-  setupGlobalAgent,
-};
+export { setupGlobalKeypair, setupGlobalAgent };

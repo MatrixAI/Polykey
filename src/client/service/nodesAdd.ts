@@ -2,18 +2,18 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NodeManager } from '../../nodes';
 import type { NodeAddress } from '../../nodes/types';
+import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as nodesUtils, errors as nodesErrors } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as networkUtils } from '../../network';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
  * Adds a node ID -> node address mapping into the buckets database.
  * This is an unrestricted add: no validity checks are made for the correctness
  * of the passed ID or host/port.
  */
-function nodesAdd ({
+function nodesAdd({
   nodeManager,
   authenticate,
 }: {
@@ -44,7 +44,7 @@ function nodesAdd ({
         {
           host: call.request.getAddress()!.getHost(),
           port: call.request.getAddress()!.getPort(),
-        } as NodeAddress
+        } as NodeAddress,
       );
       callback(null, response);
       return;

@@ -54,7 +54,7 @@ describe('GestaltGraph', () => {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
         },
-      }
+      },
     });
     acl = await ACL.createACL({ db, logger });
 

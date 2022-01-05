@@ -1,4 +1,3 @@
-import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
@@ -7,7 +6,6 @@ import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
 import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as testBinUtils from '../utils';
-import * as testUtils from '../../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -17,9 +15,7 @@ jest.mock('@/keys/utils', () => ({
 
 describe('add', () => {
   const password = 'password';
-  const logger = new Logger('add test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
+  const logger = new Logger('add test', LogLevel.WARN, [new StreamHandler()]);
   let dataDir: string;
   let nodePath: string;
   let passwordFile: string;

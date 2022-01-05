@@ -30,7 +30,9 @@ describe('bootstrap/utils', () => {
   });
   let dataDir: string;
   beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
   });
   afterEach(async () => {
     await fs.promises.rm(dataDir, {
@@ -45,7 +47,7 @@ describe('bootstrap/utils', () => {
       password,
       nodePath,
       fs,
-      logger
+      logger,
     });
     expect(typeof recoveryCode).toBe('string');
     expect(
@@ -57,7 +59,7 @@ describe('bootstrap/utils', () => {
     expect(nodePathContents).toContain(config.defaults.statusBase);
     expect(nodePathContents).toContain(config.defaults.stateBase);
     const stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase)
+      path.join(nodePath, config.defaults.stateBase),
     );
     expect(stateContents).toContain(config.defaults.keysBase);
     expect(stateContents).toContain(config.defaults.dbBase);
@@ -71,7 +73,7 @@ describe('bootstrap/utils', () => {
       password,
       nodePath,
       fs,
-      logger
+      logger,
     });
     expect(typeof recoveryCode).toBe('string');
     expect(
@@ -83,7 +85,7 @@ describe('bootstrap/utils', () => {
     expect(nodePathContents).toContain(config.defaults.statusBase);
     expect(nodePathContents).toContain(config.defaults.stateBase);
     const stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase)
+      path.join(nodePath, config.defaults.stateBase),
     );
     expect(stateContents).toContain(config.defaults.keysBase);
     expect(stateContents).toContain(config.defaults.dbBase);
@@ -96,7 +98,7 @@ describe('bootstrap/utils', () => {
     await fs.promises.writeFile(
       path.join(nodePath1, 'random'),
       'normal file',
-      'utf-8'
+      'utf-8',
     );
     const password = 'password';
     await expect(
@@ -104,8 +106,8 @@ describe('bootstrap/utils', () => {
         password,
         nodePath: nodePath1,
         fs,
-        logger
-      })
+        logger,
+      }),
     ).rejects.toThrowError(bootstrapErrors.ErrorBootstrapExistingState);
     // Hidden file
     const nodePath2 = path.join(dataDir, 'polykey2');
@@ -113,15 +115,15 @@ describe('bootstrap/utils', () => {
     await fs.promises.writeFile(
       path.join(nodePath2, '.random'),
       'hidden file',
-      'utf-8'
+      'utf-8',
     );
     await expect(
       bootstrapUtils.bootstrapState({
         password,
         nodePath: nodePath2,
         fs,
-        logger
-      })
+        logger,
+      }),
     ).rejects.toThrowError(bootstrapErrors.ErrorBootstrapExistingState);
     // Directory
     const nodePath3 = path.join(dataDir, 'polykey3');
@@ -132,8 +134,8 @@ describe('bootstrap/utils', () => {
         password,
         nodePath: nodePath3,
         fs,
-        logger
-      })
+        logger,
+      }),
     ).rejects.toThrowError(bootstrapErrors.ErrorBootstrapExistingState);
   });
   test('concurrent bootstrapping results in 1 success', async () => {
@@ -144,26 +146,24 @@ describe('bootstrap/utils', () => {
         password,
         nodePath,
         fs,
-        logger
+        logger,
       }),
       bootstrapUtils.bootstrapState({
         password,
         nodePath,
         fs,
-        logger
+        logger,
       }),
     ]);
     expect(
       (result1.status === 'rejected' &&
-       result1.reason instanceof statusErrors.ErrorStatusLocked)
-      ||
-      (result2.status === 'rejected' &&
-       result2.reason instanceof statusErrors.ErrorStatusLocked)
+        result1.reason instanceof statusErrors.ErrorStatusLocked) ||
+        (result2.status === 'rejected' &&
+          result2.reason instanceof statusErrors.ErrorStatusLocked),
     ).toBe(true);
     expect(
-      (result1.status === 'fulfilled' && typeof result1.value === 'string')
-      ||
-      (result2.status === 'fulfilled' && typeof result2.value === 'string')
+      (result1.status === 'fulfilled' && typeof result1.value === 'string') ||
+        (result2.status === 'fulfilled' && typeof result2.value === 'string'),
     ).toBe(true);
   });
 });

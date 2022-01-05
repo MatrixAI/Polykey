@@ -1,18 +1,14 @@
 import type * as grpc from '@grpc/grpc-js';
-import type { ClaimIdString, } from '../../claims/types';
+import type { ClaimIdString } from '../../claims/types';
 import type { NodeManager } from '../../nodes';
+import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import { utils as grpcUtils } from '../../grpc';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
-import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 /**
  * Retrieves the ChainDataEncoded of this node.
  */
-function nodesChainDataGet({
-  nodeManager,
-}: {
-  nodeManager: NodeManager;
-}) {
+function nodesChainDataGet({ nodeManager }: { nodeManager: NodeManager }) {
   return async (
     call: grpc.ServerUnaryCall<utilsPB.EmptyMessage, nodesPB.ChainData>,
     callback: grpc.sendUnaryData<nodesPB.ChainData>,

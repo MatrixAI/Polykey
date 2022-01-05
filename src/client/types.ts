@@ -5,6 +5,4 @@ type Authenticate = (
   metadataServer?: grpc.Metadata,
 ) => Promise<grpc.Metadata>;
 
-export type {
-  Authenticate
-};
+export type { Authenticate };

@@ -38,7 +38,9 @@ class CommandStart extends CommandPolykey {
       options.clientPort =
         options.clientPort ?? config.defaults.networkConfig.clientPort;
       const { default: PolykeyAgent } = await import('../../PolykeyAgent');
-      const { WorkerManager, utils: workersUtils } = await import('../../workers');
+      const { WorkerManager, utils: workersUtils } = await import(
+        '../../workers'
+      );
       let password: string | undefined;
       if (options.fresh) {
         // If fresh, then get a new password

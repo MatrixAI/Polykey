@@ -94,8 +94,8 @@ const config = {
     },
     // This is not used by the `PolykeyAgent` with defaults to `{}`
     network: {
-      mainnet: { },
-      testnet: { },
+      mainnet: {},
+      testnet: {},
     },
   },
 };

@@ -19,9 +19,9 @@ import * as nodesErrors from '@/nodes/errors';
 import { makeNodeId } from '@/nodes/utils';
 import config from '@/config';
 import { Status } from '@/status';
+import { sleep } from '@/utils';
 import * as testUtils from './utils';
 import * as testNodesUtils from '../nodes/utils';
-import { sleep } from '@/utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -106,7 +106,7 @@ describe('Client service', () => {
       password: 'password',
       nodePath: path.join(rootDataDir, 'polykeyServer'),
       keysConfig: {
-        rootKeyPairBits: 2048
+        rootKeyPairBits: 2048,
       },
       logger,
     });
@@ -186,7 +186,10 @@ describe('Client service', () => {
       const serverNodeId = polykeyServer.nodeManager.getNodeId();
       await testNodesUtils.nodesConnect(pkAgent, polykeyServer);
       await polykeyServer.stop();
-      const statusPath = path.join(polykeyServer.nodePath, config.defaults.statusBase);
+      const statusPath = path.join(
+        polykeyServer.nodePath,
+        config.defaults.statusBase,
+      );
       const status = new Status({
         statusPath,
         fs,

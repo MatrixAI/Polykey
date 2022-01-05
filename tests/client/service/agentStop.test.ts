@@ -13,7 +13,7 @@ import {
   GRPCClientClient,
   ClientServiceService,
   utils as clientUtils,
-  errors as clientErrors
+  errors as clientErrors,
 } from '@/client';
 import agentStop from '@/client/service/agentStop';
 import config from '@/config';
@@ -46,7 +46,9 @@ describe('agentStop', () => {
   let grpcServer: GRPCServer;
   let grpcClient: GRPCClientClient;
   beforeEach(async () => {
-    dataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'polykey-test-'));
+    dataDir = await fs.promises.mkdtemp(
+      path.join(os.tmpdir(), 'polykey-test-'),
+    );
     nodePath = path.join(dataDir, 'polykey');
     // Note that by doing this, the agent the call is stopping is a separate agent
     pkAgent = await PolykeyAgent.createPolykeyAgent({
@@ -56,13 +58,13 @@ describe('agentStop', () => {
     });
     const authenticate = clientUtils.authenticator(
       pkAgent.sessionManager,
-      pkAgent.keyManager
+      pkAgent.keyManager,
     );
     const clientService = {
       agentStop: agentStop({
         authenticate,
         pkAgent: pkAgent as unknown as PolykeyAgent,
-      })
+      }),
     };
     grpcServer = new GRPCServer({ logger });
     await grpcServer.start({
@@ -74,7 +76,7 @@ describe('agentStop', () => {
       nodeId: pkAgent.keyManager.getNodeId(),
       host: '127.0.0.1' as Host,
       port: grpcServer.port,
-      logger
+      logger,
     });
   });
   afterEach(async () => {
@@ -96,7 +98,7 @@ describe('agentStop', () => {
     const request = new utilsPB.EmptyMessage();
     const response = await grpcClient.agentStop(
       request,
-      clientUtils.encodeAuthFromPassword(password)
+      clientUtils.encodeAuthFromPassword(password),
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     // While the `agentStop` is asynchronous
@@ -104,7 +106,7 @@ describe('agentStop', () => {
     expect(pkAgent[running]).toBe(false);
     // It may already be stopping
     expect(await status.readStatus()).toMatchObject({
-      status: expect.stringMatching(/LIVE|STOPPING|DEAD/)
+      status: expect.stringMatching(/LIVE|STOPPING|DEAD/),
     });
     await status.waitFor('DEAD');
     expect(pkAgent[running]).toBe(false);
@@ -120,7 +122,7 @@ describe('agentStop', () => {
     const request = new utilsPB.EmptyMessage();
     const response = await grpcClient.agentStop(
       request,
-      clientUtils.encodeAuthFromSession(token)
+      clientUtils.encodeAuthFromSession(token),
     );
     expect(response).toBeInstanceOf(utilsPB.EmptyMessage);
     // While the `agentStop` is asynchronous
@@ -128,7 +130,7 @@ describe('agentStop', () => {
     expect(pkAgent[running]).toBe(false);
     // It may already be stopping
     expect(await status.readStatus()).toMatchObject({
-      status: expect.stringMatching(/LIVE|STOPPING|DEAD/)
+      status: expect.stringMatching(/LIVE|STOPPING|DEAD/),
     });
     await status.waitFor('DEAD');
     expect(pkAgent[running]).toBe(false);
@@ -142,27 +144,25 @@ describe('agentStop', () => {
     });
     const request = new utilsPB.EmptyMessage();
     await expect(async () => {
-      await grpcClient.agentStop(
-        request,
-      );
+      await grpcClient.agentStop(request);
     }).rejects.toThrow(clientErrors.ErrorClientAuthMissing);
     expect(pkAgent[running]).toBe(true);
     await expect(async () => {
       await grpcClient.agentStop(
         request,
-        clientUtils.encodeAuthFromPassword('wrong password')
+        clientUtils.encodeAuthFromPassword('wrong password'),
       );
     }).rejects.toThrow(clientErrors.ErrorClientAuthDenied);
     expect(pkAgent[running]).toBe(true);
     await expect(async () => {
       await grpcClient.agentStop(
         request,
-        clientUtils.encodeAuthFromSession('wrong token' as SessionToken)
+        clientUtils.encodeAuthFromSession('wrong token' as SessionToken),
       );
     }).rejects.toThrow(clientErrors.ErrorClientAuthDenied);
     expect(pkAgent[running]).toBe(true);
     expect(await status.readStatus()).toMatchObject({
-      status: 'LIVE'
+      status: 'LIVE',
     });
   });
-})
+});

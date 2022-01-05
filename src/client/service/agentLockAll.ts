@@ -4,7 +4,7 @@ import type { SessionManager } from '../../sessions';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
-function agentLockAll ({
+function agentLockAll({
   sessionManager,
   authenticate,
 }: {

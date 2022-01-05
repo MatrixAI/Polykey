@@ -4,8 +4,8 @@ import grpc from '@grpc/grpc-js';
 import { utils as keysUtils } from '@/keys';
 import { ForwardProxy, ReverseProxy, utils as networkUtils } from '@/network';
 import * as utilsPB from '@/proto/js/polykey/v1/utils/utils_pb';
-import { openTestServer, closeTestServer, GRPCClientTest } from '../grpc/utils';
 import { sleep } from '@/utils';
+import { openTestServer, closeTestServer, GRPCClientTest } from '../grpc/utils';
 
 describe('network index', () => {
   const logger = new Logger('Network Test', LogLevel.WARN, [

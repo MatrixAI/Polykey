@@ -8,7 +8,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -18,9 +17,7 @@ jest.mock('@/keys/utils', () => ({
 
 describe('find', () => {
   const password = 'password';
-  const logger = new Logger('find test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
+  const logger = new Logger('find test', LogLevel.WARN, [new StreamHandler()]);
   let rootDataDir: string;
   let dataDir: string;
   let nodePath: string;
@@ -29,7 +26,6 @@ describe('find', () => {
   let remoteOnline: PolykeyAgent;
   let remoteOffline: PolykeyAgent;
 
-  let keynodeId: NodeId;
   let remoteOnlineNodeId: NodeId;
   let remoteOfflineNodeId: NodeId;
 
@@ -58,14 +54,13 @@ describe('find', () => {
       nodePath: nodePath,
       logger: logger,
     });
-    keynodeId = polykeyAgent.nodeManager.getNodeId();
 
     // Setting up a remote keynode
     remoteOnline = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
       nodePath: path.join(rootDataDir, 'remoteOnline'),
       keysConfig: {
-        rootKeyPairBits: 2048
+        rootKeyPairBits: 2048,
       },
       logger,
     });
@@ -79,7 +74,7 @@ describe('find', () => {
       password: 'password',
       nodePath: path.join(rootDataDir, 'remoteOffline'),
       keysConfig: {
-        rootKeyPairBits: 2048
+        rootKeyPairBits: 2048,
       },
       logger,
     });
@@ -188,9 +183,7 @@ describe('find', () => {
       const result2 = await testBinUtils.pkStdio(commands2, {}, dataDir);
       expect(result2.exitCode).toBe(1);
       expect(result2.stdout).toContain(`message`);
-      expect(result2.stdout).toContain(
-        `Failed to find node ${unknownNodeId}`,
-      );
+      expect(result2.stdout).toContain(`Failed to find node ${unknownNodeId}`);
       expect(result2.stdout).toContain('id');
       expect(result2.stdout).toContain(unknownNodeId);
       expect(result2.stdout).toContain('port');

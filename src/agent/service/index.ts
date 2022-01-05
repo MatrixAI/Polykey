@@ -17,17 +17,15 @@ import vaultsPermissionsCheck from './vaultsPermissionsCheck';
 import vaultsScan from './vaultsScan';
 import { AgentServiceService } from '../../proto/js/polykey/v1/agent_service_grpc_pb';
 
-function createService (
-  container: {
-    keyManager: KeyManager;
-    vaultManager: VaultManager;
-    nodeManager: NodeManager;
-    notificationsManager: NotificationsManager;
-    sigchain: Sigchain;
-  }
-) {
+function createService(container: {
+  keyManager: KeyManager;
+  vaultManager: VaultManager;
+  nodeManager: NodeManager;
+  notificationsManager: NotificationsManager;
+  sigchain: Sigchain;
+}) {
   const container_ = {
-    ...container
+    ...container,
   };
   const service: IAgentServiceServer = {
     echo: echo(container_),

@@ -1,9 +1,9 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { KeyManager } from '../../keys';
+import type * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 
 function keysVerify({
   keyManager,

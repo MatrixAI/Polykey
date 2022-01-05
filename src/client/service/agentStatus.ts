@@ -3,10 +3,10 @@ import type { Authenticate } from '../types';
 import type { KeyManager } from '../../keys';
 import type { GRPCServer } from '../../grpc';
 import type { ForwardProxy, ReverseProxy } from '../../network';
+import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import process from 'process';
 import * as grpcUtils from '../../grpc/utils';
 import * as agentPB from '../../proto/js/polykey/v1/agent/agent_pb';
-import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function agentStatus({
   authenticate,

@@ -1,14 +1,11 @@
 import type * as grpc from '@grpc/grpc-js';
-import type {
-  ClaimEncoded,
-  ClaimIntermediary,
-} from '../../claims/types';
+import type { ClaimEncoded, ClaimIntermediary } from '../../claims/types';
 import type { NodeManager } from '../../nodes';
 import type { Sigchain } from '../../sigchain';
 import type { KeyManager } from '../../keys';
+import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils, errors as claimsErrors } from '../../claims';
-import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 function nodesCrossSignClaim({
   keyManager,
@@ -33,8 +30,7 @@ function nodesCrossSignClaim({
           throw new claimsErrors.ErrorEmptyStream();
         }
         const receivedMessage = readStatus.value;
-        const intermediaryClaimMessage =
-          receivedMessage.getSinglySignedClaim();
+        const intermediaryClaimMessage = receivedMessage.getSinglySignedClaim();
         if (!intermediaryClaimMessage) {
           throw new claimsErrors.ErrorUndefinedSinglySignedClaim();
         }

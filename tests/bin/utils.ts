@@ -9,13 +9,9 @@ import readline from 'readline';
 import * as mockProcess from 'jest-mock-process';
 import mockedEnv from 'mocked-env';
 import nexpect from 'nexpect';
-import lock from 'fd-lock';
 import Logger from '@matrixai/logger';
 import main from '@/bin/polykey';
 import * as binUtils from '@/bin/utils';
-import { Status, errors as statusErrors } from '@/status';
-import config from '@/config';
-import { never, sleep } from '@/utils';
 
 /**
  * Runs pk command functionally

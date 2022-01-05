@@ -3,17 +3,17 @@ import type { Authenticate } from '../types';
 import type { NodeManager } from '../../nodes';
 import type { NotificationData } from '../../notifications/types';
 import type { NotificationsManager } from '../../notifications';
-import { utils as nodesUtils, errors as nodesErrors } from '../../nodes';
+import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
+import { utils as nodesUtils } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 /**
  * Checks whether there is an existing Gestalt Invitation from the other node.
  * If not, send an invitation, if so, create a cryptolink claim between the
  * other node and host node.
  */
-function nodesClaim ({
+function nodesClaim({
   nodeManager,
   notificationsManager,
   authenticate,

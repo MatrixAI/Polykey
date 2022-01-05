@@ -37,7 +37,7 @@ describe(ACL.name, () => {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
         },
-      }
+      },
     });
     vaultId1 = vaultsUtils.makeVaultId(idUtils.fromString('vault1xxxxxxxxxx'));
     vaultId2 = vaultsUtils.makeVaultId(idUtils.fromString('vault2xxxxxxxxxx'));

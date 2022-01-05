@@ -1,4 +1,3 @@
-import type { Host, Port } from '@/network/types';
 import type { NodeId } from '@/nodes/types';
 import os from 'os';
 import path from 'path';
@@ -8,7 +7,6 @@ import PolykeyAgent from '@/PolykeyAgent';
 import * as nodesUtils from '@/nodes/utils';
 import * as testBinUtils from '../utils';
 import * as testNodesUtils from '../../nodes/utils';
-import * as testUtils from '../../utils';
 
 jest.mock('@/keys/utils', () => ({
   ...jest.requireActual('@/keys/utils'),
@@ -18,9 +16,7 @@ jest.mock('@/keys/utils', () => ({
 
 describe('ping', () => {
   const password = 'password';
-  const logger = new Logger('ping test', LogLevel.WARN, [
-    new StreamHandler(),
-  ]);
+  const logger = new Logger('ping test', LogLevel.WARN, [new StreamHandler()]);
   let rootDataDir: string;
   let dataDir: string;
   let nodePath: string;
@@ -29,14 +25,8 @@ describe('ping', () => {
   let remoteOnline: PolykeyAgent;
   let remoteOffline: PolykeyAgent;
 
-  let keynodeId: NodeId;
   let remoteOnlineNodeId: NodeId;
   let remoteOfflineNodeId: NodeId;
-
-  let remoteOnlineHost: Host;
-  let remoteOnlinePort: Port;
-  let remoteOfflineHost: Host;
-  let remoteOfflinePort: Port;
 
   // Helper functions
   function genCommands(options: Array<string>) {
@@ -55,20 +45,17 @@ describe('ping', () => {
       nodePath: nodePath,
       logger: logger,
     });
-    keynodeId = polykeyAgent.nodeManager.getNodeId();
 
     // Setting up a remote keynode
     remoteOnline = await PolykeyAgent.createPolykeyAgent({
       password: 'password',
       nodePath: path.join(rootDataDir, 'remoteOnline'),
       keysConfig: {
-        rootKeyPairBits: 2048
+        rootKeyPairBits: 2048,
       },
       logger,
     });
     remoteOnlineNodeId = remoteOnline.nodeManager.getNodeId();
-    remoteOnlineHost = remoteOnline.revProxy.getIngressHost();
-    remoteOnlinePort = remoteOnline.revProxy.getIngressPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOnline);
 
     // Setting up an offline remote keynode
@@ -76,13 +63,11 @@ describe('ping', () => {
       password: 'password',
       nodePath: path.join(rootDataDir, 'remoteOffline'),
       keysConfig: {
-        rootKeyPairBits: 2048
+        rootKeyPairBits: 2048,
       },
       logger,
     });
     remoteOfflineNodeId = remoteOffline.nodeManager.getNodeId();
-    remoteOfflineHost = remoteOffline.revProxy.getIngressHost();
-    remoteOfflinePort = remoteOffline.revProxy.getIngressPort();
     await testNodesUtils.nodesConnect(polykeyAgent, remoteOffline);
     await remoteOffline.stop();
 

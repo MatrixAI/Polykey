@@ -116,7 +116,7 @@ describe('Notifications client service', () => {
         password: 'password',
         nodePath: receiverDataDir,
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
@@ -124,7 +124,7 @@ describe('Notifications client service', () => {
         password: 'password',
         nodePath: senderDataDir,
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
@@ -306,8 +306,7 @@ describe('Notifications client service', () => {
       await notificationsClear(emptyMessage, callCredentials);
 
       // Call read notifications to check there are none
-      const notifs =
-        await pkAgent.notificationsManager.readNotifications();
+      const notifs = await pkAgent.notificationsManager.readNotifications();
       expect(notifs).toEqual([]);
     });
   });

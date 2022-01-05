@@ -4,7 +4,7 @@ import type { NotificationsManager } from '../../notifications';
 import { utils as grpcUtils } from '../../grpc';
 import * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
 
-function notificationsRead ({
+function notificationsRead({
   notificationsManager,
   authenticate,
 }: {

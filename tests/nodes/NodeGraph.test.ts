@@ -135,7 +135,7 @@ describe('NodeGraph', () => {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
         },
-      }
+      },
     });
     sigchain = await Sigchain.createSigchain({
       keyManager: keyManager,

@@ -11,7 +11,7 @@ import {
   errors as networkErrors,
 } from '@/network';
 import * as keysUtils from '@/keys/utils';
-import { promisify, promise, timerStart, timerStop, poll, sleep } from '@/utils';
+import { promisify, promise, timerStart, timerStop, poll } from '@/utils';
 import * as testUtils from '../utils';
 
 /**
@@ -20,30 +20,34 @@ import * as testUtils from '../utils';
  */
 function tcpServer(end: boolean = false) {
   const { p: serverConnP, resolveP: resolveServerConnP } = promise<void>();
-  const { p: serverConnEndP, resolveP: resolveServerConnEndP } = promise<void>();
+  const { p: serverConnEndP, resolveP: resolveServerConnEndP } =
+    promise<void>();
   const { p: serverConnClosedP, resolveP: resolveServerConnClosedP } =
     promise<void>();
-  const server = net.createServer({
-    allowHalfOpen: false
-  }, (conn) => {
-    resolveServerConnP();
-    conn.on('end', () => {
-      resolveServerConnEndP();
-      conn.end();
-      conn.destroy();
-    });
-    conn.once('close', () => {
-      resolveServerConnClosedP();
-    });
-    if (end) {
-      conn.removeAllListeners('end');
+  const server = net.createServer(
+    {
+      allowHalfOpen: false,
+    },
+    (conn) => {
+      resolveServerConnP();
       conn.on('end', () => {
         resolveServerConnEndP();
+        conn.end();
         conn.destroy();
       });
-      conn.end();
-    }
-  });
+      conn.once('close', () => {
+        resolveServerConnClosedP();
+      });
+      if (end) {
+        conn.removeAllListeners('end');
+        conn.on('end', () => {
+          resolveServerConnEndP();
+          conn.destroy();
+        });
+        conn.end();
+      }
+    },
+  );
   const serverClose = promisify(server.close).bind(server);
   const serverListen = promisify(server.listen).bind(server);
   const serverHost = () => {
@@ -67,7 +71,7 @@ describe(ReverseProxy.name, () => {
   const logger = new Logger(`${ReverseProxy.name} test`, LogLevel.WARN, [
     new StreamHandler(),
   ]);
-  let keyPairPem: KeyPairPem
+  let keyPairPem: KeyPairPem;
   let certPem: string;
   beforeAll(async () => {
     const globalKeyPair = await testUtils.setupGlobalKeypair();
@@ -76,7 +80,7 @@ describe(ReverseProxy.name, () => {
       globalKeyPair.publicKey,
       globalKeyPair.privateKey,
       globalKeyPair.privateKey,
-      86400
+      86400,
     );
     certPem = keysUtils.certToPem(cert);
   });
@@ -457,16 +461,18 @@ describe(ReverseProxy.name, () => {
     await expect(serverConnEndP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
-    await expect(poll(
-      async () => {
-        return revProxy.getConnectionCount();
-      },
-      (_, result) => {
-        if (result === 0) return true;
-        return false;
-      },
-      100
-    )).resolves.toBe(0);
+    await expect(
+      poll(
+        async () => {
+          return revProxy.getConnectionCount();
+        },
+        (_, result) => {
+          if (result === 0) return true;
+          return false;
+        },
+        100,
+      ),
+    ).resolves.toBe(0);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();
@@ -561,16 +567,18 @@ describe(ReverseProxy.name, () => {
     await expect(serverConnEndP).resolves.toBeUndefined();
     await expect(serverConnClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
-    await expect(poll(
-      async () => {
-        return revProxy.getConnectionCount();
-      },
-      (_, result) => {
-        if (result === 0) return true;
-        return false;
-      },
-      100
-    )).resolves.toBe(0);
+    await expect(
+      poll(
+        async () => {
+          return revProxy.getConnectionCount();
+        },
+        (_, result) => {
+          if (result === 0) return true;
+          return false;
+        },
+        100,
+      ),
+    ).resolves.toBe(0);
     utpSocket.off('message', handleMessage);
     utpSocket.close();
     utpSocket.unref();

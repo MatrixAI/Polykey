@@ -1,11 +1,11 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NotificationsManager } from '../../notifications';
+import type * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
 import { utils as grpcUtils } from '../../grpc';
-import { utils as nodesUtils }  from '../../nodes';
+import { utils as nodesUtils } from '../../nodes';
 import { utils as notificationsUtils } from '../../notifications';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as notificationsPB from '../../proto/js/polykey/v1/notifications/notifications_pb';
 
 function notificationsSend({
   notificationsManager,

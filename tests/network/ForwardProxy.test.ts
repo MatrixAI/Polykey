@@ -68,7 +68,7 @@ describe(ForwardProxy.name, () => {
       globalKeyPair.publicKey,
       globalKeyPair.privateKey,
       globalKeyPair.privateKey,
-      86400
+      86400,
     );
     certPem = keysUtils.certToPem(cert);
   });
@@ -181,7 +181,7 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyPort(),
         authToken,
         `127.0.0.1:0?nodeId=${encodeURIComponent('abc')}`,
-      )
+      ),
     ).rejects.toThrow('502');
     await fwdProxy.stop();
   });
@@ -322,46 +322,44 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        // All TLS servers must have a certificate and associated key
-        // This is TLS socket is therefore dead on arrival by not providing
-        // any certificate nor key
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        // TLS socket will be closed as soon as error is emitted
-        // Therefore this will never be called
-        // However the socket is ended anyway automatically
-        tlsSocket.on('end', () => {
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            tlsSocket.destroy();
-          } else {
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      // All TLS servers must have a certificate and associated key
+      // This is TLS socket is therefore dead on arrival by not providing
+      // any certificate nor key
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      // TLS socket will be closed as soon as error is emitted
+      // Therefore this will never be called
+      // However the socket is ended anyway automatically
+      tlsSocket.on('end', () => {
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          tlsSocket.destroy();
+        } else {
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -392,8 +390,11 @@ describe(ForwardProxy.name, () => {
     expect(utpConnError.mock.calls.length).toBe(0);
     // The TLS socket throw an error because there's no suitable signature algorithm
     expect(tlsSocketError.mock.calls.length).toBe(1);
-    // expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(tlsSocketError.mock.calls[0][0]).toHaveProperty('code', 'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM');
+    // Expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(tlsSocketError.mock.calls[0][0]).toHaveProperty(
+      'code',
+      'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM',
+    );
     // The TLS socket end event never was emitted
     expect(tlsSocketEnd.mock.calls.length).toBe(0);
     // The TLS socket close event is emitted with error
@@ -425,46 +426,44 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        // All TLS servers must have a certificate and associated key
-        // This is TLS socket is therefore dead on arrival by not providing
-        // any certificate nor key
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        // TLS socket will be closed as soon as error is emitted
-        // Therefore this will never be called
-        // However the socket is ended anyway automatically
-        tlsSocket.on('end', () => {
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            tlsSocket.destroy();
-          } else {
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      // All TLS servers must have a certificate and associated key
+      // This is TLS socket is therefore dead on arrival by not providing
+      // any certificate nor key
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      // TLS socket will be closed as soon as error is emitted
+      // Therefore this will never be called
+      // However the socket is ended anyway automatically
+      tlsSocket.on('end', () => {
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          tlsSocket.destroy();
+        } else {
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -489,15 +488,20 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
         authToken,
-        `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent('somerandomnodeid')}`,
-      )
+        `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
+          'somerandomnodeid',
+        )}`,
+      ),
     ).rejects.toThrow('502');
     await expect(remoteClosedP).resolves.toBeUndefined();
     expect(utpConnError.mock.calls.length).toBe(0);
     // The TLS socket throw an error because there's no suitable signature algorithm
     expect(tlsSocketError.mock.calls.length).toBe(1);
-    // expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
-    expect(tlsSocketError.mock.calls[0][0]).toHaveProperty('code', 'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM');
+    // Expect(tlsSocketError.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(tlsSocketError.mock.calls[0][0]).toHaveProperty(
+      'code',
+      'ERR_SSL_NO_SUITABLE_SIGNATURE_ALGORITHM',
+    );
     // The TLS socket end event never was emitted
     expect(tlsSocketEnd.mock.calls.length).toBe(0);
     // The TLS socket close event is emitted with error
@@ -539,48 +543,46 @@ describe(ForwardProxy.name, () => {
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
     let secured = false;
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          secured = true;
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        secured = true;
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -655,48 +657,46 @@ describe(ForwardProxy.name, () => {
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
     let secured = false;
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          secured = true;
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        secured = true;
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -720,8 +720,10 @@ describe(ForwardProxy.name, () => {
         fwdProxy.getProxyHost(),
         fwdProxy.getProxyPort(),
         authToken,
-        `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent('somerandomnodeid')}`,
-      )
+        `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
+          'somerandomnodeid',
+        )}`,
+      ),
     ).rejects.toThrow('526');
     await expect(remoteReadyP).resolves.toBeUndefined();
     expect(secured).toBe(true);
@@ -754,7 +756,9 @@ describe(ForwardProxy.name, () => {
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const fwdProxy = new ForwardProxy({
       authToken,
-      logger: logger.getChild('ForwardProxy open connection success - forward initiates end'),
+      logger: logger.getChild(
+        'ForwardProxy open connection success - forward initiates end',
+      ),
     });
     await fwdProxy.start({
       tlsConfig: {
@@ -774,49 +778,47 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-            logger.debug('Reverse: responded tlsSocket ending');
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+          logger.debug('Reverse: responded tlsSocket ending');
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -879,7 +881,9 @@ describe(ForwardProxy.name, () => {
     const fwdProxy = new ForwardProxy({
       authToken,
       connEndTime: 5000,
-      logger: logger.getChild('ForwardProxy open connection success - reverse initiates end'),
+      logger: logger.getChild(
+        'ForwardProxy open connection success - reverse initiates end',
+      ),
     });
     await fwdProxy.start({
       tlsConfig: {
@@ -901,50 +905,48 @@ describe(ForwardProxy.name, () => {
     // Will use this to simulate reverse initiating end
     let tlsSocket_: tls.TLSSocket;
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket_ = tlsSocket;
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            utpConn.end();
-            tlsSocket.destroy();
-            logger.debug('Reverse: responded tlsSocket ending');
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket_ = tlsSocket;
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          utpConn.end();
+          tlsSocket.destroy();
+          logger.debug('Reverse: responded tlsSocket ending');
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -979,7 +981,7 @@ describe(ForwardProxy.name, () => {
     expect(fwdProxy.getConnectionCount()).toBe(1);
     // Start the graceful ending of the tls socket
     logger.debug('Reverse: begins tlsSocket ending');
-    const { p: endP, resolveP: resolveEndP, } = promise<void>();
+    const { p: endP, resolveP: resolveEndP } = promise<void>();
     tlsSocket_!.removeAllListeners('end');
     tlsSocket_!.once('end', resolveEndP);
     tlsSocket_!.end();
@@ -989,16 +991,18 @@ describe(ForwardProxy.name, () => {
     logger.debug('Reverse: finishes tlsSocket ending');
     await expect(remoteClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
-    await expect(poll(
-      async () => {
-        return fwdProxy.getConnectionCount();
-      },
-      (_, result) => {
-        if (result === 0) return true;
-        return false;
-      },
-      100
-    )).resolves.toBe(0);
+    await expect(
+      poll(
+        async () => {
+          return fwdProxy.getConnectionCount();
+        },
+        (_, result) => {
+          if (result === 0) return true;
+          return false;
+        },
+        100,
+      ),
+    ).resolves.toBe(0);
     expect(utpConnError.mock.calls.length).toBe(0);
     expect(tlsSocketError.mock.calls.length).toBe(0);
     // This time the reverse side initiates the end
@@ -1024,7 +1028,9 @@ describe(ForwardProxy.name, () => {
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const fwdProxy = new ForwardProxy({
       authToken,
-      logger: logger.getChild('ForwardProxy HTTP CONNECT success - forward initiates end'),
+      logger: logger.getChild(
+        'ForwardProxy HTTP CONNECT success - forward initiates end',
+      ),
     });
     await fwdProxy.start({
       tlsConfig: {
@@ -1044,49 +1050,47 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-            logger.debug('Reverse: responded tlsSocket ending');
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+          logger.debug('Reverse: responded tlsSocket ending');
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -1109,7 +1113,9 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyHost(),
       fwdProxy.getProxyPort(),
       authToken,
-      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(serverNodeId)}`,
+      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
+        serverNodeId,
+      )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
@@ -1168,7 +1174,9 @@ describe(ForwardProxy.name, () => {
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const fwdProxy = new ForwardProxy({
       authToken,
-      logger: logger.getChild('ForwardProxy HTTP CONNECT success - reverse initiates end'),
+      logger: logger.getChild(
+        'ForwardProxy HTTP CONNECT success - reverse initiates end',
+      ),
     });
     await fwdProxy.start({
       tlsConfig: {
@@ -1190,50 +1198,48 @@ describe(ForwardProxy.name, () => {
     // Will use this to simulate reverse initiating end
     let tlsSocket_: tls.TLSSocket;
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket_ = tlsSocket;
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-            logger.debug('Reverse: responded tlsSocket ending');
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket_ = tlsSocket;
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+          logger.debug('Reverse: responded tlsSocket ending');
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -1256,7 +1262,9 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyHost(),
       fwdProxy.getProxyPort(),
       authToken,
-      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(serverNodeId)}`,
+      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
+        serverNodeId,
+      )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
@@ -1286,7 +1294,7 @@ describe(ForwardProxy.name, () => {
     expect(fwdProxy.getConnectionCount()).toBe(1);
     // Start the graceful ending of the tls socket
     logger.debug('Reverse: begins tlsSocket ending');
-    const { p: endP, resolveP: resolveEndP, } = promise<void>();
+    const { p: endP, resolveP: resolveEndP } = promise<void>();
     tlsSocket_!.removeAllListeners('end');
     tlsSocket_!.once('end', resolveEndP);
     tlsSocket_!.end();
@@ -1298,16 +1306,18 @@ describe(ForwardProxy.name, () => {
     expect(clientSocketEnd.mock.calls.length).toBe(1);
     await expect(remoteClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
-    await expect(poll(
-      async () => {
-        return fwdProxy.getConnectionCount();
-      },
-      (_, result) => {
-        if (result === 0) return true;
-        return false;
-      },
-      100
-    )).resolves.toBe(0);
+    await expect(
+      poll(
+        async () => {
+          return fwdProxy.getConnectionCount();
+        },
+        (_, result) => {
+          if (result === 0) return true;
+          return false;
+        },
+        100,
+      ),
+    ).resolves.toBe(0);
     expect(utpConnError.mock.calls.length).toBe(0);
     expect(tlsSocketError.mock.calls.length).toBe(0);
     // This time the reverse side initiates the end
@@ -1333,7 +1343,9 @@ describe(ForwardProxy.name, () => {
     const serverNodeId = networkUtils.certNodeId(serverCert);
     const fwdProxy = new ForwardProxy({
       authToken,
-      logger: logger.getChild('ForwardProxy HTTP CONNECT success - client initiates end'),
+      logger: logger.getChild(
+        'ForwardProxy HTTP CONNECT success - client initiates end',
+      ),
     });
     await fwdProxy.start({
       tlsConfig: {
@@ -1353,49 +1365,47 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-            logger.debug('Reverse: responded tlsSocket ending');
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+          logger.debug('Reverse: responded tlsSocket ending');
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -1418,7 +1428,9 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyHost(),
       fwdProxy.getProxyPort(),
       authToken,
-      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(serverNodeId)}`,
+      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
+        serverNodeId,
+      )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
@@ -1436,7 +1448,7 @@ describe(ForwardProxy.name, () => {
       utpSocketPort as Port,
     );
     expect(fwdProxy.getConnectionCount()).toBe(1);
-    const { p: endP, resolveP: resolveEndP, } = promise<void>();
+    const { p: endP, resolveP: resolveEndP } = promise<void>();
     // By default net sockets have `allowHalfOpen: false`
     // Here we override the behaviour by removing the end listener
     // And replacing it with our own, and remember to also force destroy
@@ -1452,16 +1464,18 @@ describe(ForwardProxy.name, () => {
     await expect(localClosedP).resolves.toBeUndefined();
     await expect(remoteClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
-    await expect(poll(
-      async () => {
-        return fwdProxy.getConnectionCount();
-      },
-      (_, result) => {
-        if (result === 0) return true;
-        return false;
-      },
-      100
-    )).resolves.toBe(0);
+    await expect(
+      poll(
+        async () => {
+          return fwdProxy.getConnectionCount();
+        },
+        (_, result) => {
+          if (result === 0) return true;
+          return false;
+        },
+        100,
+      ),
+    ).resolves.toBe(0);
     expect(utpConnError.mock.calls.length).toBe(0);
     expect(tlsSocketError.mock.calls.length).toBe(0);
     expect(tlsSocketEnd.mock.calls.length).toBe(1);
@@ -1505,48 +1519,46 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -1637,48 +1649,46 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -1754,48 +1764,46 @@ describe(ForwardProxy.name, () => {
     const tlsSocketEnd = jest.fn();
     const tlsSocketClose = jest.fn();
     // This UTP server will hold the connection
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        utpConn.on('error', (e) => {
-          utpConnError(e);
-        });
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('error', (e) => {
-          tlsSocketError(e);
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          tlsSocketEnd();
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
-        tlsSocket.on('close', (hadError) => {
-          tlsSocketClose(hadError);
-          resolveRemoteClosedP();
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      utpConn.on('error', (e) => {
+        utpConnError(e);
+      });
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('error', (e) => {
+        tlsSocketError(e);
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        tlsSocketEnd();
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      tlsSocket.on('close', (hadError) => {
+        tlsSocketClose(hadError);
+        resolveRemoteClosedP();
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -1819,7 +1827,9 @@ describe(ForwardProxy.name, () => {
       fwdProxy.getProxyHost(),
       fwdProxy.getProxyPort(),
       authToken,
-      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(serverNodeId)}`,
+      `${utpSocketHost}:${utpSocketPort}?nodeId=${encodeURIComponent(
+        serverNodeId,
+      )}`,
     );
     await expect(remoteReadyP).resolves.toBeUndefined();
     await expect(remoteSecureP).resolves.toBeUndefined();
@@ -1836,16 +1846,18 @@ describe(ForwardProxy.name, () => {
     await expect(localClosedP).resolves.toBeUndefined();
     await expect(remoteClosedP).resolves.toBeUndefined();
     // Connection count should reach 0 eventually
-    await expect(poll(
-      async () => {
-        return fwdProxy.getConnectionCount();
-      },
-      (_, result) => {
-        if (result === 0) return true;
-        return false;
-      },
-      100
-    )).resolves.toBe(0);
+    await expect(
+      poll(
+        async () => {
+          return fwdProxy.getConnectionCount();
+        },
+        (_, result) => {
+          if (result === 0) return true;
+          return false;
+        },
+        100,
+      ),
+    ).resolves.toBe(0);
     expect(utpConnError.mock.calls.length).toBe(0);
     expect(tlsSocketError.mock.calls.length).toBe(0);
     expect(tlsSocketEnd.mock.calls.length).toBe(1);
@@ -1884,40 +1896,38 @@ describe(ForwardProxy.name, () => {
       promise<void>();
     const { p: remoteClosedP, resolveP: resolveRemoteClosedP } =
       promise<void>();
-    const utpSocket = UTP.createServer(
-      async (utpConn) => {
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('secure', () => {
-          resolveRemoteSecureP();
-        });
-        tlsSocket.on('close', () => {
-          resolveRemoteClosedP();
-        });
-        tlsSocket.on('end', () => {
-          logger.debug('Reverse: receives tlsSocket ending');
-          if (utpConn.destroyed) {
-            logger.debug('Reverse: destroys tlsSocket');
-            tlsSocket.destroy();
-          } else {
-            logger.debug('Reverse: responds tlsSocket ending');
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
+    const utpSocket = UTP.createServer(async (utpConn) => {
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('secure', () => {
+        resolveRemoteSecureP();
+      });
+      tlsSocket.on('close', () => {
+        resolveRemoteClosedP();
+      });
+      tlsSocket.on('end', () => {
+        logger.debug('Reverse: receives tlsSocket ending');
+        if (utpConn.destroyed) {
+          logger.debug('Reverse: destroys tlsSocket');
+          tlsSocket.destroy();
+        } else {
+          logger.debug('Reverse: responds tlsSocket ending');
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      await send(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP;
+      clearInterval(punchInterval);
+    });
     const handleMessage = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -1996,34 +2006,32 @@ describe(ForwardProxy.name, () => {
       promise<void>();
     const { p: remoteClosedP2, resolveP: resolveRemoteClosedP2 } =
       promise<void>();
-    const utpSocket1 = UTP.createServer(
-      async (utpConn) => {
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem1.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem1, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('close', () => {
-          resolveRemoteClosedP1();
-        });
-        tlsSocket.on('end', () => {
-          if (utpConn.destroyed) {
-            tlsSocket.destroy();
-          } else {
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
+    const utpSocket1 = UTP.createServer(async (utpConn) => {
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem1.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem1, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('close', () => {
+        resolveRemoteClosedP1();
+      });
+      tlsSocket.on('end', () => {
+        if (utpConn.destroyed) {
+          tlsSocket.destroy();
+        } else {
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      await send1(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send1(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send1(networkUtils.pingBuffer);
-        }, 1000);
-        await remoteReadyP1;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 1000);
+      await remoteReadyP1;
+      clearInterval(punchInterval);
+    });
     const handleMessage1 = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {
@@ -2041,34 +2049,32 @@ describe(ForwardProxy.name, () => {
     await utpSocketListen1(0, '127.0.0.1');
     const utpSocketHost1 = utpSocket1.address().address;
     const utpSocketPort1 = utpSocket1.address().port;
-    const utpSocket2 = UTP.createServer(
-      async (utpConn) => {
-        const tlsSocket = new tls.TLSSocket(utpConn, {
-          key: Buffer.from(serverKeyPairPem2.privateKey, 'ascii'),
-          cert: Buffer.from(serverCertPem2, 'ascii'),
-          isServer: true,
-          requestCert: true,
-          rejectUnauthorized: false,
-        });
-        tlsSocket.on('close', () => {
-          resolveRemoteClosedP2();
-        });
-        tlsSocket.on('end', () => {
-          if (utpConn.destroyed) {
-            tlsSocket.destroy();
-          } else {
-            tlsSocket.end();
-            tlsSocket.destroy();
-          }
-        });
+    const utpSocket2 = UTP.createServer(async (utpConn) => {
+      const tlsSocket = new tls.TLSSocket(utpConn, {
+        key: Buffer.from(serverKeyPairPem2.privateKey, 'ascii'),
+        cert: Buffer.from(serverCertPem2, 'ascii'),
+        isServer: true,
+        requestCert: true,
+        rejectUnauthorized: false,
+      });
+      tlsSocket.on('close', () => {
+        resolveRemoteClosedP2();
+      });
+      tlsSocket.on('end', () => {
+        if (utpConn.destroyed) {
+          tlsSocket.destroy();
+        } else {
+          tlsSocket.end();
+          tlsSocket.destroy();
+        }
+      });
+      await send2(networkUtils.pingBuffer);
+      const punchInterval = setInterval(async () => {
         await send2(networkUtils.pingBuffer);
-        const punchInterval = setInterval(async () => {
-          await send2(networkUtils.pingBuffer);
-        }, 2000);
-        await remoteReadyP2;
-        clearInterval(punchInterval);
-      }
-    );
+      }, 2000);
+      await remoteReadyP2;
+      clearInterval(punchInterval);
+    });
     const handleMessage2 = async (data: Buffer) => {
       const msg = networkUtils.unserializeNetworkMessage(data);
       if (msg.type === 'ping') {

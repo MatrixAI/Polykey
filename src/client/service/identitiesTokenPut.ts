@@ -2,8 +2,8 @@ import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId, TokenData } from '../../identities/types';
+import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import { utils as grpcUtils } from '../../grpc';
-import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 function identitiesTokenPut({
@@ -40,4 +40,3 @@ function identitiesTokenPut({
 }
 
 export default identitiesTokenPut;
-

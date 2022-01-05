@@ -35,7 +35,15 @@ describe('status', () => {
         logger,
       });
       const agentProcess = await testBinUtils.pkSpawn(
-        ['agent', 'start', '--root-key-pair-bits', '1024', '--workers', '0', '--verbose'],
+        [
+          'agent',
+          'start',
+          '--root-key-pair-bits',
+          '1024',
+          '--workers',
+          '0',
+          '--verbose',
+        ],
         {
           PK_NODE_PATH: path.join(dataDir, 'polykey'),
           PK_PASSWORD: password,
@@ -112,11 +120,8 @@ describe('status', () => {
     let globalAgentPassword;
     let globalAgentClose;
     beforeAll(async () => {
-      ({
-        globalAgentDir,
-        globalAgentPassword,
-        globalAgentClose
-      } = await testUtils.setupGlobalAgent(logger));
+      ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
+        await testUtils.setupGlobalAgent(logger));
     }, globalThis.maxTimeout);
     afterAll(async () => {
       await globalAgentClose();

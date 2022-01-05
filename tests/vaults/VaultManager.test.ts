@@ -780,7 +780,10 @@ describe('VaultManager', () => {
       await revProxy.closeConnection(altHost, altPort);
       await revProxy.closeConnection(sourceHost, sourcePort);
       await altRevProxy.closeConnection(sourceHost, sourcePort);
-      await fwdProxy.closeConnection(fwdProxy.getEgressHost(), fwdProxy.getEgressPort());
+      await fwdProxy.closeConnection(
+        fwdProxy.getEgressHost(),
+        fwdProxy.getEgressPort(),
+      );
       await altFwdProxy.closeConnection(
         altFwdProxy.getEgressHost(),
         altFwdProxy.getEgressPort(),

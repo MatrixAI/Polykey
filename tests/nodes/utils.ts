@@ -1,6 +1,6 @@
 import type { NodeId, NodeAddress } from '@/nodes/types';
 
-import { PolykeyAgent } from '@';
+import type { PolykeyAgent } from '@';
 import * as nodesUtils from '@/nodes/utils';
 import { makeNodeId } from '@/nodes/utils';
 import { fromMultibase } from '@/GenericIdTypes';
@@ -83,18 +83,12 @@ function bigIntToBuffer(number: BigInt) {
   return u8;
 }
 
-async function nodesConnect(
-  localNode: PolykeyAgent,
-  remoteNode: PolykeyAgent,
-) {
+async function nodesConnect(localNode: PolykeyAgent, remoteNode: PolykeyAgent) {
   // Add remote node's details to local node
-  await localNode.nodeManager.setNode(
-    remoteNode.nodeManager.getNodeId(),
-    {
-      host: remoteNode.revProxy.getIngressHost(),
-      port: remoteNode.revProxy.getIngressPort(),
-    } as NodeAddress
-  );
+  await localNode.nodeManager.setNode(remoteNode.nodeManager.getNodeId(), {
+    host: remoteNode.revProxy.getIngressHost(),
+    port: remoteNode.revProxy.getIngressPort(),
+  } as NodeAddress);
 }
 
 export { generateNodeIdForBucket, incrementNodeId, nodesConnect };

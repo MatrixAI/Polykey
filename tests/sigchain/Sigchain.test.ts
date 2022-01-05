@@ -56,7 +56,7 @@ describe('Sigchain', () => {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
         },
-      }
+      },
     });
   });
   afterEach(async () => {

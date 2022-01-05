@@ -75,7 +75,7 @@ describe('PolykeyAgent', () => {
     expect(nodePathContents).toContain(config.defaults.statusBase);
     expect(nodePathContents).toContain(config.defaults.stateBase);
     let stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase)
+      path.join(nodePath, config.defaults.stateBase),
     );
     expect(stateContents).toContain(config.defaults.keysBase);
     expect(stateContents).toContain(config.defaults.dbBase);
@@ -85,7 +85,7 @@ describe('PolykeyAgent', () => {
     expect(nodePathContents).toContain(config.defaults.statusBase);
     expect(nodePathContents).toContain(config.defaults.stateBase);
     stateContents = await fs.promises.readdir(
-      path.join(nodePath, config.defaults.stateBase)
+      path.join(nodePath, config.defaults.stateBase),
     );
     expect(stateContents).toContain(config.defaults.keysBase);
     expect(stateContents).toContain(config.defaults.dbBase);
@@ -110,26 +110,23 @@ describe('PolykeyAgent', () => {
       logger,
     });
     await pkAgent.stop();
-    expect(await status.readStatus()).toMatchObject({status: 'DEAD'});
+    expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
     await expect(pkAgent.start({ password })).resolves.not.toThrowError();
-    expect(await status.readStatus()).toMatchObject({status: 'LIVE'});
+    expect(await status.readStatus()).toMatchObject({ status: 'LIVE' });
     await pkAgent.stop();
-    expect(await status.readStatus()).toMatchObject({status: 'DEAD'});
-    await expect(pkAgent.start({ password: 'wrong password' })).rejects.toThrowError(
-      errors.ErrorRootKeysParse
-    );
-    expect(await status.readStatus()).toMatchObject({status: 'DEAD'});
+    expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
+    await expect(
+      pkAgent.start({ password: 'wrong password' }),
+    ).rejects.toThrowError(errors.ErrorRootKeysParse);
+    expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
     await pkAgent.destroy();
-    expect(await status.readStatus()).toMatchObject({status: 'DEAD'});
+    expect(await status.readStatus()).toMatchObject({ status: 'DEAD' });
   });
   test('schema state version is maintained after start and stop', async () => {
     const nodePath = path.join(dataDir, 'polykey');
-    const statePath = path.join(
-      nodePath,
-      config.defaults.stateBase,
-    );
+    const statePath = path.join(nodePath, config.defaults.stateBase);
     const schema = new Schema({
-      statePath
+      statePath,
     });
     const pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
@@ -143,36 +140,37 @@ describe('PolykeyAgent', () => {
   });
   test('cannot start during state version mismatch', async () => {
     const nodePath = path.join(dataDir, 'polykey');
-    const statePath = path.join(
-      nodePath,
-      config.defaults.stateBase,
-    );
+    const statePath = path.join(nodePath, config.defaults.stateBase);
     await fs.promises.mkdir(nodePath);
     let schema = await Schema.createSchema({
       statePath,
-      stateVersion: config.stateVersion + 1 as StateVersion,
+      stateVersion: (config.stateVersion + 1) as StateVersion,
       logger,
-      fresh: true
+      fresh: true,
     });
-    schema.stop();
-    await expect(PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath,
-      logger,
-    })).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
+    await schema.stop();
+    await expect(
+      PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath,
+        logger,
+      }),
+    ).rejects.toThrow(errors.ErrorSchemaVersionTooNew);
     // The 0 version will always be too old
     // Because we started our PK's state version as 1
     schema = await Schema.createSchema({
       statePath,
       stateVersion: 0 as StateVersion,
       logger,
-      fresh: true
+      fresh: true,
     });
-    schema.stop();
-    await expect(PolykeyAgent.createPolykeyAgent({
-      password,
-      nodePath,
-      logger,
-    })).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
+    await schema.stop();
+    await expect(
+      PolykeyAgent.createPolykeyAgent({
+        password,
+        nodePath,
+        logger,
+      }),
+    ).rejects.toThrow(errors.ErrorSchemaVersionTooOld);
   });
 });

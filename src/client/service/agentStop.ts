@@ -5,7 +5,7 @@ import { status, running } from '@matrixai/async-init';
 import * as grpcUtils from '../../grpc/utils';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
-function agentStop ({
+function agentStop({
   authenticate,
   pkAgent,
 }: {

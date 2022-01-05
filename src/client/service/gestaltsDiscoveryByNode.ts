@@ -1,10 +1,10 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { Discovery } from '../../discovery';
+import type * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as nodesUtils } from '../../nodes';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
 function gestaltsDiscoveryByNode({
   authenticate,

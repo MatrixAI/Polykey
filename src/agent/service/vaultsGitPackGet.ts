@@ -6,11 +6,7 @@ import { errors as grpcErrors } from '../../grpc';
 import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
-function vaultsGitPackGet({
-  vaultManager,
-}: {
-  vaultManager: VaultManager;
-}) {
+function vaultsGitPackGet({ vaultManager }: { vaultManager: VaultManager }) {
   return async (
     call: grpc.ServerDuplexStream<vaultsPB.PackChunk, vaultsPB.PackChunk>,
   ) => {

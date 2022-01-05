@@ -4,11 +4,11 @@ import type { NodeManager } from '../../nodes';
 import type { Sigchain } from '../../sigchain';
 import type { IdentitiesManager } from '../../identities';
 import type { IdentityId, ProviderId } from '../../identities/types';
+import type * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import * as clientErrors from '../errors';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as claimsUtils } from '../../claims';
 import { errors as identitiesErrors } from '../../identities';
-import * as identitiesPB from '../../proto/js/polykey/v1/identities/identities_pb';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 
 /**
@@ -36,8 +36,7 @@ function identitiesClaim({
       // Check provider is authenticated
       const providerId = call.request.getProviderId() as ProviderId;
       const provider = identitiesManager.getProvider(providerId);
-      if (provider == null)
-        throw new clientErrors.ErrorClientInvalidProvider();
+      if (provider == null) throw new clientErrors.ErrorClientInvalidProvider();
       const identityId = call.request.getIdentityId() as IdentityId;
       const identities = await provider.getAuthIdentityIds();
       if (!identities.includes(identityId)) {

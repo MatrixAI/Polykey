@@ -1,8 +1,7 @@
 import type * as grpc from '@grpc/grpc-js';
 import type { Authenticate } from '../types';
 import type { NodeManager } from '../../nodes';
-import type { NodeAddress } from '../../nodes/types';
-import { utils as nodesUtils, errors as nodesErrors } from '../../nodes';
+import { utils as nodesUtils } from '../../nodes';
 import { utils as grpcUtils } from '../../grpc';
 import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
 
@@ -11,7 +10,7 @@ import * as nodesPB from '../../proto/js/polykey/v1/nodes/nodes_pb';
  * keynodes in the wider Polykey network).
  * @throws ErrorNodeGraphNodeNotFound if node address cannot be found
  */
-function nodesFind ({
+function nodesFind({
   nodeManager,
   authenticate,
 }: {

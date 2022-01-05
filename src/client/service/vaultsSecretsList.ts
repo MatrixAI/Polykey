@@ -1,15 +1,11 @@
 import type { Authenticate } from '../types';
-import type { Vault, VaultId, VaultName } from '../../vaults/types';
+import type { VaultId, VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
-import type { FileSystem } from '../../types';
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
+import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import { utils as idUtils } from '@matrixai/id';
 import { utils as grpcUtils } from '../../grpc';
-import {
-  vaultOps,
-  errors as vaultsErrors,
-} from '../../vaults';
-import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
+import { vaultOps, errors as vaultsErrors } from '../../vaults';
 import * as secretsPB from '../../proto/js/polykey/v1/secrets/secrets_pb';
 
 function decodeVaultId(input: string): VaultId | undefined {
@@ -21,11 +17,9 @@ function decodeVaultId(input: string): VaultId | undefined {
 function vaultsSecretsList({
   vaultManager,
   authenticate,
-  fs,
 }: {
   vaultManager: VaultManager;
   authenticate: Authenticate;
-  fs: FileSystem;
 }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Vault, secretsPB.Secret>,

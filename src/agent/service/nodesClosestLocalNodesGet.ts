@@ -21,9 +21,7 @@ function nodesClosestLocalNodesGet({
     try {
       const targetNodeId = nodesUtils.makeNodeId(call.request.getNodeId());
       // Get all local nodes that are closest to the target node from the request
-      const closestNodes = await nodeManager.getClosestLocalNodes(
-        targetNodeId,
-      );
+      const closestNodes = await nodeManager.getClosestLocalNodes(targetNodeId);
       for (const node of closestNodes) {
         const addressMessage = new nodesPB.Address();
         addressMessage.setHost(node.address.host);

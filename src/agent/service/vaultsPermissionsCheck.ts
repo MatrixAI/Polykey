@@ -1,6 +1,6 @@
 import type * as grpc from '@grpc/grpc-js';
+import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import { utils as grpcUtils } from '../../grpc';
-import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
 function vaultsPermissionsCheck(_) {
   return async (

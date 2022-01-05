@@ -2,15 +2,11 @@ import type { VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
 import * as grpc from '@grpc/grpc-js';
 import { utils as idUtils } from '@matrixai/id';
-import { utils as grpcUtils, errors as grpcErrors } from '../../grpc';
+import { utils as grpcUtils } from '../../grpc';
 import { utils as vaultsUtils, errors as vaultsErrors } from '../../vaults';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
-function vaultsGitInfoGet({
-  vaultManager,
-}: {
-  vaultManager: VaultManager;
-}) {
+function vaultsGitInfoGet({ vaultManager }: { vaultManager: VaultManager }) {
   return async (
     call: grpc.ServerWritableStream<vaultsPB.Vault, vaultsPB.PackChunk>,
   ): Promise<void> => {

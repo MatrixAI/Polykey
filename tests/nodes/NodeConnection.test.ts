@@ -139,7 +139,7 @@ describe('NodeConnection', () => {
           encrypt: keysUtils.encryptWithKey,
           decrypt: keysUtils.decryptWithKey,
         },
-      }
+      },
     });
     serverACL = await ACL.createACL({
       db: serverDb,

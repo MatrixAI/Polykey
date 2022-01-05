@@ -18,11 +18,8 @@ describe('lock', () => {
   let globalAgentPassword;
   let globalAgentClose;
   beforeAll(async () => {
-    ({
-      globalAgentDir,
-      globalAgentPassword,
-      globalAgentClose
-    } = await testUtils.setupGlobalAgent(logger));
+    ({ globalAgentDir, globalAgentPassword, globalAgentClose } =
+      await testUtils.setupGlobalAgent(logger));
   }, globalThis.maxTimeout);
   afterAll(async () => {
     await globalAgentClose();
@@ -57,10 +54,7 @@ describe('lock', () => {
     );
     expect(exitCode).toBe(0);
     const session = await Session.createSession({
-      sessionTokenPath: path.join(
-        globalAgentDir,
-        config.defaults.tokenBase,
-      ),
+      sessionTokenPath: path.join(globalAgentDir, config.defaults.tokenBase),
       fs,
       logger,
     });

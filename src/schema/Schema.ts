@@ -64,7 +64,10 @@ class Schema {
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.statePath = statePath;
-    this.stateVersionPath = path.join(statePath, config.defaults.stateVersionBase);
+    this.stateVersionPath = path.join(
+      statePath,
+      config.defaults.stateVersionBase,
+    );
     this.stateVersion = stateVersion;
     this.lock = lock;
     this.fs = fs;

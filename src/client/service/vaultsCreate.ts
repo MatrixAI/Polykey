@@ -1,21 +1,18 @@
 import type { Authenticate } from '../types';
 import type { Vault, VaultName } from '../../vaults/types';
 import type { VaultManager } from '../../vaults';
-import type { FileSystem } from '../../types';
-import * as grpc from '@grpc/grpc-js';
+import type * as grpc from '@grpc/grpc-js';
+import type * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import { utils as grpcUtils } from '../../grpc';
 import { utils as vaultsUtils } from '../../vaults';
-import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
 import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
 function vaultsCreate({
   vaultManager,
   authenticate,
-  fs,
 }: {
   vaultManager: VaultManager;
   authenticate: Authenticate;
-  fs: FileSystem;
 }) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Vault, utilsPB.StatusMessage>,

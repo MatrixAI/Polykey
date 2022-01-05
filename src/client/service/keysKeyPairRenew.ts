@@ -5,9 +5,9 @@ import type { NodeManager } from '../../nodes';
 import type { GRPCServer } from '../../grpc';
 import type { ForwardProxy, ReverseProxy } from '../../network';
 import type { TLSConfig } from '../../network/types';
+import type * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as keysPB from '../../proto/js/polykey/v1/keys/keys_pb';
 
 function keysKeyPairRenew({
   keyManager,

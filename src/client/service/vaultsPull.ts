@@ -1,14 +1,10 @@
 import type { Authenticate } from '../types';
+import type * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 import * as grpc from '@grpc/grpc-js';
 import { utils as grpcUtils } from '../../grpc';
 import * as utilsPB from '../../proto/js/polykey/v1/utils/utils_pb';
-import * as vaultsPB from '../../proto/js/polykey/v1/vaults/vaults_pb';
 
-function vaultsPull({
-  authenticate,
-}: {
-  authenticate: Authenticate;
-}) {
+function vaultsPull({ authenticate }: { authenticate: Authenticate }) {
   return async (
     call: grpc.ServerUnaryCall<vaultsPB.Pull, utilsPB.StatusMessage>,
     callback: grpc.sendUnaryData<utilsPB.StatusMessage>,

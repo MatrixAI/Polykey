@@ -6,8 +6,8 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import Logger, { LogLevel, StreamHandler } from '@matrixai/logger';
-import { PolykeyAgent } from '@';
 import { DB } from '@matrixai/db';
+import { PolykeyAgent } from '@';
 import { KeyManager, utils as keysUtils } from '@/keys';
 import { NodeManager, errors as nodesErrors } from '@/nodes';
 import { ForwardProxy, ReverseProxy } from '@/network';
@@ -158,7 +158,7 @@ describe('NodeManager', () => {
         password: 'password',
         nodePath: targetDataDir,
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
@@ -272,7 +272,7 @@ describe('NodeManager', () => {
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger: logger,
       });
@@ -341,11 +341,10 @@ describe('NodeManager', () => {
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger: logger,
       });
-
 
       await nodeManager.setNode(server.nodeManager.getNodeId(), {
         host: server.revProxy.getIngressHost(),
@@ -368,7 +367,7 @@ describe('NodeManager', () => {
         password: 'password',
         nodePath: path.join(dataDir, 'server'),
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
@@ -433,7 +432,7 @@ describe('NodeManager', () => {
         password: 'password',
         nodePath: xDataDir,
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
@@ -446,13 +445,13 @@ describe('NodeManager', () => {
       xPublicKey = x.keyManager.getRootKeyPairPem().publicKey;
 
       yDataDir = await fs.promises.mkdtemp(
-        path.join(os.tmpdir(), 'polykey-test-')
+        path.join(os.tmpdir(), 'polykey-test-'),
       );
       y = await PolykeyAgent.createPolykeyAgent({
         password: 'password',
         nodePath: xDataDir,
         keysConfig: {
-          rootKeyPairBits: 2048
+          rootKeyPairBits: 2048,
         },
         logger,
       });
