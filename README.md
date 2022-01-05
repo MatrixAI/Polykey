@@ -67,7 +67,7 @@ Once you update the `src/proto/schemas` files, run this to update the `src/proto
 npm run proto-generate
 ```
 
-### Executing Commands
+### Calling Commands
 
 When calling commands in development, use this style:
 
@@ -85,7 +85,7 @@ npm run docs
 
 See the docs at: https://matrixai.github.io/Polykey/
 
-### Publishing
+### Publishing to NPM
 
 ```sh
 # npm login
@@ -95,6 +95,18 @@ npm publish --access public
 git push
 git push --tags
 ```
+
+### Packaging Cross-Platform Executables
+
+We use `pkg` to package the source code into executables.
+
+This requires a specific version of `pkg` and also `node-gyp-build`.
+
+Configuration for `pkg` is done in:
+
+* `package.json` - Pins `pkg` and `node-gyp-build`, and configures assets and scripts.
+* `utils.nix` - Pins `pkg` for Nix usage
+* `release.nix` - Build expressions for executables
 
 ## Deployment
 
