@@ -104,6 +104,7 @@ describe(GRPCClientClient.name, () => {
     );
     const status = new Status({
       statusPath: path.join(nodePath, config.defaults.statusBase),
+      statusLockPath: path.join(nodePath, config.defaults.statusLockBase),
       fs,
       logger,
     });

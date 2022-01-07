@@ -19,11 +19,9 @@ cache:
     - ./tmp/ts-node-cache/
 EOF
 
-# Each top-level test directory has its own job
-for test in tests/*/; do
-test="${test%\/}"
+# SPECIAL CASE
 cat << EOF
-test ${test##*/}:
+test binagent:
   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: test
   interruptible: true
@@ -31,22 +29,38 @@ test ${test##*/}:
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
         npm ci;
-        npm test -- ./$test;
+        npm test -- ./tests/bin/agent;
         '
 EOF
-done
+
+# # Each top-level test directory has its own job
+# for test in tests/*/; do
+# test="${test%\/}"
+# cat << EOF
+# test ${test##*/}:
+#   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+#   stage: test
+#   interruptible: true
+#   script:
+#     - >
+#         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+#         npm ci;
+#         npm test -- ./$test;
+#         '
+# EOF
+# done
 
 # All top-level test files are accumulated into 1 job
-tests=(tests/*.test.ts)
-cat << EOF
-test index:
-  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
-  stage: test
-  interruptible: true
-  script:
-    - >
-        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-        npm ci;
-        npm test -- ./${tests[@]};
-        '
-EOF
+# tests=(tests/*.test.ts)
+# cat << EOF
+# test index:
+#   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+#   stage: test
+#   interruptible: true
+#   script:
+#     - >
+#         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+#         npm ci;
+#         npm test -- ./${tests[@]};
+#         '
+# EOF

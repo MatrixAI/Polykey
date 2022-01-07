@@ -90,8 +90,10 @@ describe('agentStop', () => {
   });
   test('stops the agent with password', async () => {
     const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
     const status = new Status({
       statusPath,
+      statusLockPath,
       fs,
       logger,
     });
@@ -114,8 +116,10 @@ describe('agentStop', () => {
   test('stops the agent with token', async () => {
     const token = await pkAgent.sessionManager.createToken();
     const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
     const status = new Status({
       statusPath,
+      statusLockPath,
       fs,
       logger,
     });
@@ -137,8 +141,10 @@ describe('agentStop', () => {
   });
   test('cannot stop the agent if not authenticated', async () => {
     const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
     const status = new Status({
       statusPath,
+      statusLockPath,
       fs,
       logger,
     });

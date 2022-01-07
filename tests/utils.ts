@@ -102,6 +102,7 @@ async function setupGlobalAgent(
   }
   const status = new Status({
     statusPath: path.join(globalAgentDir, config.defaults.statusBase),
+    statusLockPath: path.join(globalAgentDir, config.defaults.statusLockBase),
     fs,
   });
   let statusInfo = await status.readStatus();

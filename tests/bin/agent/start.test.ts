@@ -66,6 +66,11 @@ describe('start', () => {
       // Check for graceful exit
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -138,6 +143,11 @@ describe('start', () => {
       expect(polykeyAgentOut).toHaveLength(0);
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -265,7 +275,7 @@ describe('start', () => {
           logger.getChild('agentProcess'),
         ),
         testBinUtils.pkSpawn(
-          ['bootstrap', '--root-key-pair-bits', '1024', '--verbose'],
+          ['bootstrap', '--fresh', '--root-key-pair-bits', '1024', '--verbose'],
           {
             PK_NODE_PATH: path.join(dataDir, 'polykey'),
             PK_PASSWORD: password,
@@ -374,6 +384,11 @@ describe('start', () => {
       );
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -466,6 +481,11 @@ describe('start', () => {
       // Check for graceful exit
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -481,6 +501,11 @@ describe('start', () => {
       const password2 = 'new password';
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -594,6 +619,11 @@ describe('start', () => {
     async () => {
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -686,9 +716,14 @@ describe('start', () => {
       async () => {
         const password = 'abc123';
         const nodePath = path.join(dataDir, 'polykey');
-        const statusPath = path.join(nodePath, 'status.json');
+        const statusPath = path.join(nodePath, config.defaults.statusBase);
+        const statusLockPath = path.join(
+          nodePath,
+          config.defaults.statusLockBase,
+        );
         const status = new Status({
           statusPath,
+          statusLockPath,
           fs,
           logger,
         });
@@ -741,9 +776,14 @@ describe('start', () => {
       async () => {
         const password = 'abc123';
         const nodePath = path.join(dataDir, 'polykey');
-        const statusPath = path.join(nodePath, 'status.json');
+        const statusPath = path.join(nodePath, config.defaults.statusBase);
+        const statusLockPath = path.join(
+          nodePath,
+          config.defaults.statusLockBase,
+        );
         const status = new Status({
           statusPath,
+          statusLockPath,
           fs,
           logger,
         });

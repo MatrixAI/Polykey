@@ -31,6 +31,11 @@ describe('status', () => {
       const password = 'abc123';
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -129,6 +134,10 @@ describe('status', () => {
     test('status on LIVE agent', async () => {
       const status = new Status({
         statusPath: path.join(globalAgentDir, config.defaults.statusBase),
+        statusLockPath: path.join(
+          globalAgentDir,
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -166,6 +175,10 @@ describe('status', () => {
       await fs.promises.writeFile(passwordPath, globalAgentPassword);
       const status = new Status({
         statusPath: path.join(globalAgentDir, config.defaults.statusBase),
+        statusLockPath: path.join(
+          globalAgentDir,
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });

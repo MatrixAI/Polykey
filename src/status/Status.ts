@@ -11,56 +11,60 @@ import lock from 'fd-lock';
 import { StartStop, ready } from '@matrixai/async-init/dist/StartStop';
 import * as statusErrors from './errors';
 import * as statusUtils from './utils';
-import { poll } from '../utils';
+import { sleep, poll } from '../utils';
 
 interface Status extends StartStop {}
 @StartStop()
 class Status {
   public readonly statusPath: string;
+  public readonly statusLockPath: string;
 
   protected logger: Logger;
   protected fs: FileSystem;
-  protected statusFile: FileHandle;
+  protected statusLockFile: FileHandle;
 
   public constructor({
     statusPath,
+    statusLockPath,
     fs = require('fs'),
     logger,
   }: {
     statusPath: string;
+    statusLockPath: string;
     fs?: FileSystem;
     logger?: Logger;
   }) {
     this.logger = logger ?? new Logger(this.constructor.name);
     this.statusPath = statusPath;
+    this.statusLockPath = statusLockPath;
     this.fs = fs;
   }
 
   public async start(data: StatusStarting['data']): Promise<void> {
     this.logger.info(`Starting ${this.constructor.name}`);
-    const statusFile = await this.fs.promises.open(
-      this.statusPath,
+    const statusLockFile = await this.fs.promises.open(
+      this.statusLockPath,
       this.fs.constants.O_WRONLY | this.fs.constants.O_CREAT,
     );
-    if (!lock(statusFile.fd)) {
-      await statusFile.close();
+    if (!lock(statusLockFile.fd)) {
+      await statusLockFile.close();
       throw new statusErrors.ErrorStatusLocked();
     }
-    this.statusFile = statusFile;
+    this.statusLockFile = statusLockFile;
     try {
       await this.writeStatus({
         status: 'STARTING',
         data,
       });
     } catch (e) {
-      lock.unlock(this.statusFile.fd);
-      await this.statusFile.close();
+      lock.unlock(this.statusLockFile.fd);
+      await this.statusLockFile.close();
       throw e;
     }
     this.logger.info(`${this.constructor.name} is STARTING`);
   }
 
-  @ready(new statusErrors.ErrorStatusNotRunning())
+  @ready(new statusErrors.ErrorStatusNotRunning(), true)
   public async finishStart(data: StatusLive['data']): Promise<void> {
     this.logger.info(`Finish ${this.constructor.name} STARTING`);
     await this.writeStatus({
@@ -70,7 +74,7 @@ class Status {
     this.logger.info(`${this.constructor.name} is LIVE`);
   }
 
-  @ready(new statusErrors.ErrorStatusNotRunning())
+  @ready(new statusErrors.ErrorStatusNotRunning(), true)
   public async beginStop(data: StatusStopping['data']): Promise<void> {
     this.logger.info(`Begin ${this.constructor.name} STOPPING`);
     await this.writeStatus({
@@ -86,8 +90,9 @@ class Status {
       status: 'DEAD',
       data,
     });
-    lock.unlock(this.statusFile.fd);
-    await this.statusFile.close();
+    lock.unlock(this.statusLockFile.fd);
+    await this.statusLockFile.close();
+    await this.fs.promises.rm(this.statusLockPath, { force: true });
     this.logger.info(`${this.constructor.name} is DEAD`);
   }
 
@@ -96,50 +101,97 @@ class Status {
    * This can be used without running Status
    */
   public async readStatus(): Promise<StatusInfo | undefined> {
-    let statusData: string;
+    let statusFile;
     try {
-      statusData = await this.fs.promises.readFile(this.statusPath, 'utf-8');
-    } catch (e) {
-      if (e.code === 'ENOENT') {
+      try {
+        statusFile = await this.fs.promises.open(this.statusPath, 'r');
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          return;
+        }
+        throw new statusErrors.ErrorStatusRead(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+      while (!lock(statusFile.fd)) {
+        await sleep(2);
+      }
+      let statusData;
+      try {
+        statusData = (await statusFile.readFile('utf-8')).trim();
+      } catch (e) {
+        throw new statusErrors.ErrorStatusRead(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+      // `writeStatus` may create an empty status file before it completes
+      if (statusData === '') {
         return;
       }
-      throw new statusErrors.ErrorStatusRead(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
-      });
+      let statusInfo;
+      try {
+        statusInfo = JSON.parse(statusData);
+      } catch (e) {
+        throw new statusErrors.ErrorStatusParse('JSON parsing failed');
+      }
+      if (!statusUtils.statusValidate(statusInfo)) {
+        throw new statusErrors.ErrorStatusParse(
+          'StatusInfo validation failed',
+          {
+            errors: statusUtils.statusValidate.errors,
+          },
+        );
+      }
+      return statusInfo as StatusInfo;
+    } finally {
+      if (statusFile != null) {
+        lock.unlock(statusFile.fd);
+        await statusFile.close();
+      }
     }
-    let statusInfo;
-    try {
-      statusInfo = JSON.parse(statusData);
-    } catch (e) {
-      throw new statusErrors.ErrorStatusParse('JSON parsing failed');
-    }
-    if (!statusUtils.statusValidate(statusInfo)) {
-      throw new statusErrors.ErrorStatusParse('StatusInfo validation failed', {
-        errors: statusUtils.statusValidate.errors,
-      });
-    }
-    return statusInfo as StatusInfo;
   }
 
   protected async writeStatus(statusInfo: StatusInfo): Promise<void> {
     this.logger.info(`Writing Status file to ${this.statusPath}`);
+    let statusFile;
     try {
-      await this.statusFile.truncate();
-      await this.statusFile.write(
-        JSON.stringify(statusInfo, undefined, 2) + '\n',
-        0,
-        'utf-8',
+      // Cannot use 'w', it truncates immediately
+      // should truncate only while holding the lock
+      statusFile = await this.fs.promises.open(
+        this.statusPath,
+        this.fs.constants.O_WRONLY | this.fs.constants.O_CREAT,
       );
-    } catch (e) {
-      throw new statusErrors.ErrorStatusWrite(e.message, {
-        errno: e.errno,
-        syscall: e.syscall,
-        code: e.code,
-        path: e.path,
-      });
+      while (!lock(statusFile.fd)) {
+        // Write sleep should be half of read sleep
+        // this ensures write-preferring locking
+        await sleep(1);
+      }
+      try {
+        await statusFile.truncate();
+        await statusFile.write(
+          JSON.stringify(statusInfo, undefined, 2) + '\n',
+          0,
+          'utf-8',
+        );
+      } catch (e) {
+        throw new statusErrors.ErrorStatusWrite(e.message, {
+          errno: e.errno,
+          syscall: e.syscall,
+          code: e.code,
+          path: e.path,
+        });
+      }
+    } finally {
+      if (statusFile != null) {
+        lock.unlock(statusFile.fd);
+        await statusFile.close();
+      }
     }
   }
 

@@ -46,6 +46,11 @@ describe('stop', () => {
       expect(exitCode).toBe(0);
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -69,6 +74,11 @@ describe('stop', () => {
       await fs.promises.writeFile(passwordPath, password);
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -147,6 +157,11 @@ describe('stop', () => {
       const password = 'abc123';
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });
@@ -216,6 +231,11 @@ describe('stop', () => {
       );
       const status = new Status({
         statusPath: path.join(dataDir, 'polykey', config.defaults.statusBase),
+        statusLockPath: path.join(
+          dataDir,
+          'polykey',
+          config.defaults.statusLockBase,
+        ),
         fs,
         logger,
       });

@@ -103,7 +103,7 @@ class Session {
       }
       const sessionTokenData = await sessionTokenFile.readFile('utf-8');
       const sessionToken = sessionTokenData.trim();
-      // WriteToken may create an empty session token file before it completes
+      // `writeToken` may create an empty session token file before it completes
       if (sessionToken === '') {
         return;
       }

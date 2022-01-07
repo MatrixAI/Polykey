@@ -190,8 +190,13 @@ describe('Client service', () => {
         polykeyServer.nodePath,
         config.defaults.statusBase,
       );
+      const statusLockPath = path.join(
+        polykeyServer.nodePath,
+        config.defaults.statusLockBase,
+      );
       const status = new Status({
         statusPath,
+        statusLockPath,
         fs,
         logger,
       });

@@ -99,6 +99,7 @@ describe('PolykeyAgent', () => {
   test('start after stop', async () => {
     const nodePath = `${dataDir}/polykey`;
     const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
     const pkAgent = await PolykeyAgent.createPolykeyAgent({
       password,
       nodePath,
@@ -106,6 +107,7 @@ describe('PolykeyAgent', () => {
     });
     const status = new Status({
       statusPath,
+      statusLockPath,
       fs,
       logger,
     });

@@ -146,6 +146,7 @@ class PolykeyAgent {
     };
     await utils.mkdirExists(fs, nodePath);
     const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
     const statePath = path.join(nodePath, config.defaults.stateBase);
     const dbPath = path.join(statePath, config.defaults.dbBase);
     const keysPath = path.join(statePath, config.defaults.keysBase);
@@ -155,6 +156,7 @@ class PolykeyAgent {
         status ??
         new Status({
           statusPath,
+          statusLockPath,
           fs: fs,
           logger: logger.getChild(Status.name),
         });

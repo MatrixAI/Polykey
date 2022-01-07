@@ -203,8 +203,10 @@ async function processClientOptions(
 }> {
   if (nodeId == null || clientHost == null || clientPort == null) {
     const statusPath = path.join(nodePath, config.defaults.statusBase);
+    const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
     const status = new Status({
       statusPath,
+      statusLockPath,
       fs,
       logger: logger.getChild(Status.name),
     });
@@ -270,8 +272,10 @@ async function processClientStatus(
     };
   }
   const statusPath = path.join(nodePath, config.defaults.statusBase);
+  const statusLockPath = path.join(nodePath, config.defaults.statusLockBase);
   const status = new Status({
     statusPath,
+    statusLockPath,
     fs,
     logger: logger.getChild(Status.name),
   });

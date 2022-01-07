@@ -24,6 +24,11 @@ class ErrorStatusParse extends ErrorStatus {
   exitCode = sysexits.CONFIG;
 }
 
+class ErrorStatusTimeout extends ErrorStatus {
+  description = 'Poll timed out';
+  exitCode = sysexits.TEMPFAIL;
+}
+
 export {
   ErrorStatus,
   ErrorStatusNotRunning,
@@ -31,4 +36,5 @@ export {
   ErrorStatusRead,
   ErrorStatusWrite,
   ErrorStatusParse,
+  ErrorStatusTimeout,
 };
