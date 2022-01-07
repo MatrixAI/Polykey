@@ -1,5 +1,18 @@
 variables:
-  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_STRATEGY: "recursive"
+  # Cache .npm
+  NPM_CONFIG_CACHE: "./tmp/npm"
+  # Prefer offline node module installation
+  NPM_CONFIG_PREFER_OFFLINE: "true"
+  # `ts-node` has its own cache
+  TS_CACHED_TRANSPILE_CACHE: "./tmp/ts-node-cache"
+
+# Cached directories shared between jobs & pipelines per-branch
+cache:
+  key: $CI_COMMIT_REF_SLUG
+  paths:
+    - ./tmp/npm/
+    - ./tmp/ts-node-cache/
 
 stages:
   - check
@@ -15,7 +28,7 @@ stages:
   script:
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-        npm install;
+        npm ci;
         npm run lint;
         '
 
@@ -37,11 +50,11 @@ test-generate:
     - mkdir -p ./tmp
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages bash --run '
-        ./scripts/test-pipelines.sh > tmp/test-pipelines.yml
+        ./scripts/test-pipelines.sh > ./tmp/test-pipelines.yml
         '
   artifacts:
     paths:
-      - tmp/test-pipelines.yml
+      - ./tmp/test-pipelines.yml
 
 test:
   stage: test

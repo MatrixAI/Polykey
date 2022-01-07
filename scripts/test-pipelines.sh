@@ -1,7 +1,25 @@
 #!/usr/bin/env bash
 
-# All directories are accumulated
+# Quote the heredoc to prevent shell expansion
+cat << "EOF"
+variables:
+  GIT_SUBMODULE_STRATEGY: "recursive"
+  # Cache .npm
+  NPM_CONFIG_CACHE: "./tmp/npm"
+  # Prefer offline node module installation
+  NPM_CONFIG_PREFER_OFFLINE: "true"
+  # `ts-node` has its own cache
+  TS_CACHED_TRANSPILE_CACHE: "./tmp/ts-node-cache"
 
+# Cached directories shared between jobs & pipelines per-branch
+cache:
+  key: $CI_COMMIT_REF_SLUG
+  paths:
+    - ./tmp/npm/
+    - ./tmp/ts-node-cache/
+EOF
+
+# Each top-level test directory has its own job
 for test in tests/*/; do
 test="${test%\/}"
 cat << EOF
@@ -12,14 +30,13 @@ test ${test##*/}:
   script:
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-        npm install;
+        npm ci;
         npm test -- ./$test;
         '
 EOF
 done
 
-# All tests in the tests index are accumulated
-
+# All top-level test files are accumulated into 1 job
 tests=(tests/*.test.ts)
 cat << EOF
 test index:
@@ -29,7 +46,7 @@ test index:
   script:
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-        npm install;
+        npm ci;
         npm test -- ./${tests[@]};
         '
 EOF
