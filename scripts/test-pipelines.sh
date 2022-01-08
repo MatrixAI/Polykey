@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+shopt -s globstar
+shopt -s nullglob
+
 # Quote the heredoc to prevent shell expansion
 cat << "EOF"
 variables:
@@ -19,9 +22,34 @@ cache:
     - ./tmp/ts-node-cache/
 EOF
 
-# SPECIAL CASE
-cat << EOF
-test binagent:
+printf "\n"
+
+# # SPECIAL CASE
+# cat << EOF
+# test binagent:
+#   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+#   stage: test
+#   interruptible: true
+#   script:
+#     - >
+#         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+#         npm ci;
+#         npm test -- ./tests/bin/agent;
+#         '
+# EOF
+
+# Each test directory has its own job
+for test_dir in tests/**/*/; do
+  test_files=("$test_dir"*.test.ts)
+  if [ ${#test_files[@]} -eq 0 ]; then
+    continue
+  fi
+  # Remove trailing slash
+  test_dir="${test_dir%\/}"
+  # Remove `tests/` prefix
+  test_dir="${test_dir#*/}"
+  cat << EOF
+test $test_dir:
   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
   stage: test
   interruptible: true
@@ -29,38 +57,23 @@ test binagent:
     - >
         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
         npm ci;
-        npm test -- ./tests/bin/agent;
+        npm test -- ${test_files[@]};
         '
 EOF
-
-# # Each top-level test directory has its own job
-# for test in tests/*/; do
-# test="${test%\/}"
-# cat << EOF
-# test ${test##*/}:
-#   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
-#   stage: test
-#   interruptible: true
-#   script:
-#     - >
-#         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-#         npm ci;
-#         npm test -- ./$test;
-#         '
-# EOF
-# done
+  printf "\n"
+done
 
 # All top-level test files are accumulated into 1 job
-# tests=(tests/*.test.ts)
-# cat << EOF
-# test index:
-#   image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
-#   stage: test
-#   interruptible: true
-#   script:
-#     - >
-#         nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
-#         npm ci;
-#         npm test -- ./${tests[@]};
-#         '
-# EOF
+test_files=(tests/*.test.ts)
+cat << EOF
+test index:
+  image: registry.gitlab.com/matrixai/engineering/maintenance/gitlab-runner
+  stage: test
+  interruptible: true
+  script:
+    - >
+        nix-shell -I nixpkgs=./pkgs.nix --packages nodejs --run '
+        npm ci;
+        npm test -- ${test_files[@]};
+        '
+EOF
